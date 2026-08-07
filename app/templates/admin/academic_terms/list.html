@@ -1,0 +1,66 @@
+{% extends "layouts/base.html" %}
+{% block title %}Academic Terms{% endblock %}
+{% block content %}
+<div class="ds-page">
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+    <h1 style="margin:0">Academic Terms</h1>
+    <a class="btn btn--primary" href="{{ url_for('admin.academic_term_create') }}">New Academic Term</a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  {% if terms %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th style="padding: var(--space-3)">Name</th>
+        <th style="padding: var(--space-3)">Start Date</th>
+        <th style="padding: var(--space-3)">End Date</th>
+        <th style="padding: var(--space-3)">Status</th>
+        <th style="padding: var(--space-3)">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for term in terms %}
+      <tr style="border-bottom:1px solid var(--color-border)">
+        <td style="padding: var(--space-3)">{{ term.name }}</td>
+        <td style="padding: var(--space-3)">{{ term.start_date.isoformat() }}</td>
+        <td style="padding: var(--space-3)">{{ term.end_date.isoformat() }}</td>
+        <td style="padding: var(--space-3)">
+          {% if term.status == "active" %}
+            <span class="badge badge--success">Active</span>
+          {% else %}
+            <span class="badge badge--neutral">Archived</span>
+          {% endif %}
+        </td>
+        <td style="padding: var(--space-3)">
+          <div class="ds-row" style="gap: var(--space-2)">
+            <a class="btn btn--secondary" href="{{ url_for('admin.academic_term_edit', public_id=term.public_id) }}">Edit</a>
+            <form method="post" action="{{ url_for('admin.academic_term_toggle_status', public_id=term.public_id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              {% if term.status == "active" %}
+                <button type="submit" class="btn btn--danger-outline">Deactivate</button>
+              {% else %}
+                <button type="submit" class="btn btn--secondary">Activate</button>
+              {% endif %}
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No academic terms yet</div>
+    <div>Create the first academic term to get started.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

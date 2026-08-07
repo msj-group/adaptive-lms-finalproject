@@ -20,7 +20,7 @@ def create_app(config_name=None):
 
     login_manager.login_view = "auth.login"
 
-    from app.models.user import User
+    from app.models import User
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -31,9 +31,11 @@ def create_app(config_name=None):
 
     from app.blueprints.design_system.routes import design_system_bp
     from app.blueprints.auth.routes import auth_bp
+    from app.blueprints.admin.routes import admin_bp
 
     app.register_blueprint(design_system_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(admin_bp)
 
     register_error_handlers(app)
 

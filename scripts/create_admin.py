@@ -12,6 +12,9 @@ and is never written to disk or printed in plain text.
 """
 import getpass
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app import create_app
 from app.extensions import db

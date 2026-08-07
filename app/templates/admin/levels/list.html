@@ -1,0 +1,74 @@
+{% extends "layouts/base.html" %}
+{% block title %}Levels{% endblock %}
+{% block content %}
+<div class="ds-page">
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+    <h1 style="margin:0">Levels</h1>
+    <a class="btn btn--primary" href="{{ url_for('admin.level_create') }}">New Level</a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert--{{ 'warning' if category == 'warning' else category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  {% if levels %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th style="padding: var(--space-3)">Order</th>
+        <th style="padding: var(--space-3)">Name</th>
+        <th style="padding: var(--space-3)">Code</th>
+        <th style="padding: var(--space-3)">Status</th>
+        <th style="padding: var(--space-3)">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for level in levels %}
+      <tr style="border-bottom:1px solid var(--color-border)">
+        <td style="padding: var(--space-3)">{{ loop.index }}</td>
+        <td style="padding: var(--space-3)">{{ level.name }}</td>
+        <td style="padding: var(--space-3)">{{ level.code or "--" }}</td>
+        <td style="padding: var(--space-3)">
+          {% if level.status == "active" %}
+            <span class="badge badge--success">Active</span>
+          {% else %}
+            <span class="badge badge--neutral">Archived</span>
+          {% endif %}
+        </td>
+        <td style="padding: var(--space-3)">
+          <div class="ds-row" style="gap: var(--space-2)">
+            <form method="post" action="{{ url_for('admin.level_move_up', public_id=level.public_id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--secondary" {{ "disabled" if loop.first }}>&uarr;</button>
+            </form>
+            <form method="post" action="{{ url_for('admin.level_move_down', public_id=level.public_id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--secondary" {{ "disabled" if loop.last }}>&darr;</button>
+            </form>
+            <a class="btn btn--secondary" href="{{ url_for('admin.level_edit', public_id=level.public_id) }}">Edit</a>
+            <form method="post" action="{{ url_for('admin.level_toggle_status', public_id=level.public_id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              {% if level.status == "active" %}
+                <button type="submit" class="btn btn--danger-outline">Deactivate</button>
+              {% else %}
+                <button type="submit" class="btn btn--secondary">Activate</button>
+              {% endif %}
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No levels yet</div>
+    <div>Create the first level to get started.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

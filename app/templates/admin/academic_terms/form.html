@@ -1,0 +1,36 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{ 'Edit Academic Term' if term else 'New Academic Term' }}{% endblock %}
+{% block content %}
+<div class="ds-page" style="max-width: 480px">
+  <h1>{{ 'Edit Academic Term' if term else 'New Academic Term' }}</h1>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="field">
+      {{ form.name.label(class_="field__label") }}
+      {{ form.name(class_="field__input") }}
+      {% for error in form.name.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field" style="margin-top: var(--space-4)">
+      {{ form.start_date.label(class_="field__label") }}
+      {{ form.start_date(class_="field__input") }}
+      {% for error in form.start_date.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field" style="margin-top: var(--space-4)">
+      {{ form.end_date.label(class_="field__label") }}
+      {{ form.end_date(class_="field__input") }}
+      {% for error in form.end_date.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary") }}
+      <a class="btn btn--secondary" href="{{ url_for('admin.academic_terms_list') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
