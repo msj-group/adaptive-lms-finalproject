@@ -1,0 +1,38 @@
+Center name:
+[Youth Center]
+
+City:
+[Misurata]
+
+Country:
+Libya
+
+Timezone:
+Africa/Tripoli
+
+Platform language:
+English only
+
+Approximate number of levels:
+12
+
+Official level names:
+Unknown at the moment. Levels must be configurable.
+
+Student account policy:
+Student accounts are created by the center administration.
+
+Phone:
+[Write it or write Unknown]
+
+Email:
+[Write it or write Unknown]
+
+Address:
+[Write it or write Unknown]
+
+Official colors:
+[#F51A17,#144BAA]
+
+Hosting:
+Not decided yet. The platform must work locally and remain ready for future deployment.
