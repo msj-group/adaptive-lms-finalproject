@@ -1,0 +1,15 @@
+{% macro status_badge(status) -%}
+  {%- if status == "active" -%}
+    <span class="badge badge--success">Active</span>
+  {%- else -%}
+    <span class="badge badge--neutral">Archived</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro flash_messages() -%}
+  {%- with messages = get_flashed_messages(with_categories=true) -%}
+    {%- for category, message in messages %}
+      <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {%- endfor -%}
+  {%- endwith -%}
+{%- endmacro %}

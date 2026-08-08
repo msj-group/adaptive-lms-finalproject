@@ -1,0 +1,43 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ 'Edit Course' if course else 'New Course' }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page" style="max-width: 560px">
+  <h1>{{ 'Edit Course' if course else 'New Course' }}</h1>
+
+  {{ macros.flash_messages() }}
+
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="field">
+      {{ form.level_id.label(class_="field__label") }}
+      {{ form.level_id(class_="field__input") }}
+      {% for error in form.level_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field" style="margin-top: var(--space-4)">
+      {{ form.title.label(class_="field__label") }}
+      {{ form.title(class_="field__input") }}
+      {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field" style="margin-top: var(--space-4)">
+      {{ form.code.label(class_="field__label") }}
+      {{ form.code(class_="field__input") }}
+      {% for error in form.code.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field" style="margin-top: var(--space-4)">
+      {{ form.description.label(class_="field__label") }}
+      {{ form.description(class_="field__input", rows="4") }}
+      {% for error in form.description.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    {% if course %}
+    <p class="ds-section__desc" style="margin-top: var(--space-4)">
+      Display order is managed from the Courses list using the up/down actions.
+    </p>
+    {% endif %}
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary") }}
+      <a class="btn btn--secondary" href="{{ url_for('admin.courses_list') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

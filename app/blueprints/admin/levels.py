@@ -2,6 +2,7 @@ from flask import abort, flash, redirect, render_template, url_for
 
 from app.blueprints.admin import admin_bp
 from app.blueprints.admin.forms import LevelForm
+from app.blueprints.admin.utils import move_within_siblings, normalize_optional_text
 from app.extensions import db
 from app.models import AcademicStatus, Level, UserRole
 from app.security.decorators import roles_required
@@ -9,10 +10,6 @@ from app.security.decorators import roles_required
 
 def _ordered_levels():
     return Level.query.order_by(Level.display_order, Level.id).all()
-
-
-def _normalized_code(raw_code):
-    return raw_code.strip() or None if raw_code else None
 
 
 @admin_bp.get("/levels")
@@ -31,7 +28,7 @@ def level_create():
         next_order = (max_order + 1) if max_order is not None else 0
         level = Level(
             name=form.name.data.strip(),
-            code=_normalized_code(form.code.data),
+            code=normalize_optional_text(form.code.data),
             display_order=next_order,
         )
         db.session.add(level)
@@ -48,7 +45,7 @@ def level_edit(public_id):
     form = LevelForm(obj=level, level_id=level.id)
     if form.validate_on_submit():
         level.name = form.name.data.strip()
-        level.code = _normalized_code(form.code.data)
+        level.code = normalize_optional_text(form.code.data)
         db.session.commit()
         flash(f"Level '{level.name}' updated.", "success")
         return redirect(url_for("admin.levels_list"))
@@ -72,32 +69,26 @@ def level_toggle_status(public_id):
 @admin_bp.post("/levels/<public_id>/move-up")
 @roles_required(UserRole.ADMINISTRATOR.value)
 def level_move_up(public_id):
-    ordered = _ordered_levels()
-    index = next((i for i, lvl in enumerate(ordered) if lvl.public_id == public_id), None)
-    if index is None:
+    level, moved = move_within_siblings(_ordered_levels(), public_id, -1)
+    if level is None:
         abort(404)
-    if index == 0:
-        flash("This level is already first.", "warning")
-    else:
-        current, previous = ordered[index], ordered[index - 1]
-        current.display_order, previous.display_order = previous.display_order, current.display_order
+    if moved:
         db.session.commit()
-        flash(f"Level '{current.name}' moved up.", "success")
+        flash(f"Level '{level.name}' moved up.", "success")
+    else:
+        flash("This level is already first.", "warning")
     return redirect(url_for("admin.levels_list"))
 
 
 @admin_bp.post("/levels/<public_id>/move-down")
 @roles_required(UserRole.ADMINISTRATOR.value)
 def level_move_down(public_id):
-    ordered = _ordered_levels()
-    index = next((i for i, lvl in enumerate(ordered) if lvl.public_id == public_id), None)
-    if index is None:
+    level, moved = move_within_siblings(_ordered_levels(), public_id, 1)
+    if level is None:
         abort(404)
-    if index == len(ordered) - 1:
-        flash("This level is already last.", "warning")
-    else:
-        current, nxt = ordered[index], ordered[index + 1]
-        current.display_order, nxt.display_order = nxt.display_order, current.display_order
+    if moved:
         db.session.commit()
-        flash(f"Level '{current.name}' moved down.", "success")
+        flash(f"Level '{level.name}' moved down.", "success")
+    else:
+        flash("This level is already last.", "warning")
     return redirect(url_for("admin.levels_list"))

@@ -177,3 +177,4 @@ def test_csrf_remains_enforced_on_create():
         finally:
             db.session.remove()
             db.drop_all()
+            db.engine.dispose()

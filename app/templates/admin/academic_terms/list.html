@@ -1,17 +1,14 @@
-{% extends "layouts/base.html" %}
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
 {% block title %}Academic Terms{% endblock %}
-{% block content %}
+{% block admin_content %}
 <div class="ds-page">
   <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
     <h1 style="margin:0">Academic Terms</h1>
     <a class="btn btn--primary" href="{{ url_for('admin.academic_term_create') }}">New Academic Term</a>
   </div>
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for category, message in messages %}
-      <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
-    {% endfor %}
-  {% endwith %}
+  {{ macros.flash_messages() }}
 
   {% if terms %}
   <div style="overflow-x:auto">
@@ -31,13 +28,7 @@
         <td style="padding: var(--space-3)">{{ term.name }}</td>
         <td style="padding: var(--space-3)">{{ term.start_date.isoformat() }}</td>
         <td style="padding: var(--space-3)">{{ term.end_date.isoformat() }}</td>
-        <td style="padding: var(--space-3)">
-          {% if term.status == "active" %}
-            <span class="badge badge--success">Active</span>
-          {% else %}
-            <span class="badge badge--neutral">Archived</span>
-          {% endif %}
-        </td>
+        <td style="padding: var(--space-3)">{{ macros.status_badge(term.status) }}</td>
         <td style="padding: var(--space-3)">
           <div class="ds-row" style="gap: var(--space-2)">
             <a class="btn btn--secondary" href="{{ url_for('admin.academic_term_edit', public_id=term.public_id) }}">Edit</a>

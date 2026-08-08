@@ -4,9 +4,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
-from app.models import AcademicTerm, Course, Level, UserRole
-from tests.conftest import login as _login
-from tests.conftest import make_user as _make_user
+from app.models import AcademicTerm, Course, Level
 
 
 def test_academic_term_model_defaults(app):
@@ -91,33 +89,3 @@ def test_course_title_unique_within_level(app):
         with pytest.raises(IntegrityError):
             db.session.commit()
         db.session.rollback()
-
-
-def test_admin_academics_requires_login(client):
-    resp = client.get("/admin/academics")
-    assert resp.status_code == 302
-    assert "/auth/login" in resp.headers["Location"]
-
-
-def test_admin_academics_forbidden_for_non_admin(app, client):
-    with app.app_context():
-        _make_user("teacher@example.com", UserRole.TEACHER.value)
-    _login(client, "teacher@example.com")
-    resp = client.get("/admin/academics")
-    assert resp.status_code == 403
-
-
-def test_admin_academics_allowed_for_administrator(app, client):
-    with app.app_context():
-        _make_user("admin2@example.com", UserRole.ADMINISTRATOR.value)
-        db.session.add(AcademicTerm(name="Spring 2026", start_date=date(2026, 1, 1), end_date=date(2026, 5, 1)))
-        level = Level(name="Level 3", display_order=3)
-        db.session.add(level)
-        db.session.commit()
-        db.session.add(Course(title="Reading Skills", level_id=level.id))
-        db.session.commit()
-
-    _login(client, "admin2@example.com")
-    resp = client.get("/admin/academics")
-    assert resp.status_code == 200
-    assert b"Academic Overview" in resp.data

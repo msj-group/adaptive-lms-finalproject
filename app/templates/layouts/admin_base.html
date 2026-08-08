@@ -1,0 +1,44 @@
+{% extends "layouts/base.html" %}
+{% block extra_head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+{% block content %}
+<div class="admin-shell">
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar__brand">
+      <img class="admin-sidebar__logo" src="{{ url_for('static', filename='images/center_logo.svg') }}" alt="Center logo">
+      <span class="admin-sidebar__brand-name">Youth Center</span>
+    </div>
+    <nav>
+      <a class="admin-nav__link {{ 'admin-nav__link--active' if request.endpoint == 'admin.dashboard' else '' }}" href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+      {% for section in admin_nav_sections %}
+      <div class="admin-nav__section">
+        <div class="admin-nav__section-title">{{ section.label }}</div>
+        {% for item in section.links %}
+          {% if item.endpoint %}
+            <a class="admin-nav__link {{ 'admin-nav__link--active' if request.endpoint == item.endpoint else '' }}" href="{{ url_for(item.endpoint) }}">{{ item.label }}</a>
+          {% else %}
+            <span class="admin-nav__link admin-nav__link--disabled">{{ item.label }} <span class="badge badge--neutral">Soon</span></span>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </nav>
+  </aside>
+  <div class="admin-main">
+    <header class="admin-header">
+      <div class="admin-header__profile">
+        <span class="admin-header__name">{{ current_user.full_name }}</span>
+        <span class="badge badge--primary">{{ current_user.role|capitalize }}</span>
+        <form method="post" action="{{ url_for('auth.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn--secondary">Logout</button>
+        </form>
+      </div>
+    </header>
+    <div class="admin-content">
+      {% block admin_content %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% endblock %}

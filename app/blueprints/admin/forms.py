@@ -1,8 +1,9 @@
 from flask_wtf import FlaskForm
-from wtforms import DateField, StringField, SubmitField
+from wtforms import DateField, SelectField, StringField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
 
-from app.models import AcademicTerm, Level
+from app.extensions import db
+from app.models import AcademicStatus, AcademicTerm, Course, Level
 
 
 class AcademicTermForm(FlaskForm):
@@ -51,3 +52,46 @@ class LevelForm(FlaskForm):
             query = query.filter(Level.id != self._level_id)
         if query.first() is not None:
             raise ValidationError("A level with this code already exists.")
+
+
+class CourseForm(FlaskForm):
+    level_id = SelectField("Level", coerce=int, validators=[DataRequired()])
+    title = StringField("Title", validators=[DataRequired(), Length(max=150)])
+    code = StringField("Code", validators=[Optional(), Length(max=20)])
+    description = TextAreaField("Description", validators=[Optional(), Length(max=5000)])
+    submit = SubmitField("Save")
+
+    def __init__(self, *args, course_id=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._course_id = course_id
+        self.level_id.choices = [
+            (
+                level.id,
+                level.name if level.status == AcademicStatus.ACTIVE.value else f"{level.name} (Archived)",
+            )
+            for level in Level.query.order_by(Level.display_order, Level.id).all()
+        ]
+
+    def validate_level_id(self, field):
+        if db.session.get(Level, field.data) is None:
+            raise ValidationError("Selected level does not exist.")
+
+    def validate_title(self, field):
+        query = Course.query.filter(
+            Course.level_id == self.level_id.data, Course.title == field.data.strip()
+        )
+        if self._course_id is not None:
+            query = query.filter(Course.id != self._course_id)
+        if query.first() is not None:
+            raise ValidationError("A course with this title already exists in the selected level.")
+
+    def validate_code(self, field):
+        if not field.data or not field.data.strip():
+            return
+        query = Course.query.filter(
+            Course.level_id == self.level_id.data, Course.code == field.data.strip()
+        )
+        if self._course_id is not None:
+            query = query.filter(Course.id != self._course_id)
+        if query.first() is not None:
+            raise ValidationError("A course with this code already exists in the selected level.")

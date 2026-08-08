@@ -6,6 +6,7 @@
   <title>{% block title %}Adaptive English LMS{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
   <main>

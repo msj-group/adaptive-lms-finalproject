@@ -1,0 +1,77 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Courses{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+    <h1 style="margin:0">Courses</h1>
+    <a class="btn btn--primary" href="{{ url_for('admin.course_create', level_id=selected_level_id) if selected_level_id else url_for('admin.course_create') }}">New Course</a>
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  <form method="get" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2)">
+    <label class="field__label" for="level_id" style="margin:0">Filter by level:</label>
+    <select name="level_id" id="level_id" class="field__input" style="width:auto" onchange="this.form.submit()">
+      <option value="">All Levels</option>
+      {% for level in levels %}
+        <option value="{{ level.id }}" {{ "selected" if selected_level_id == level.id else "" }}>{{ level.name }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
+  {% if courses %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th style="padding: var(--space-3)">Title</th>
+        <th style="padding: var(--space-3)">Level</th>
+        <th style="padding: var(--space-3)">Code</th>
+        <th style="padding: var(--space-3)">Status</th>
+        <th style="padding: var(--space-3)">Order</th>
+        <th style="padding: var(--space-3)">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for course in courses %}
+      <tr style="border-bottom:1px solid var(--color-border)">
+        <td style="padding: var(--space-3)">{{ course.title }}</td>
+        <td style="padding: var(--space-3)">{{ course.level.name }}</td>
+        <td style="padding: var(--space-3)">{{ course.code or "--" }}</td>
+        <td style="padding: var(--space-3)">{{ macros.status_badge(course.status) }}</td>
+        <td style="padding: var(--space-3)">{{ course.display_order }}</td>
+        <td style="padding: var(--space-3)">
+          <div class="ds-row" style="gap: var(--space-2)">
+            <form method="post" action="{{ url_for('admin.course_move_up', public_id=course.public_id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--secondary" aria-label="Move {{ course.title }} up">&uarr;</button>
+            </form>
+            <form method="post" action="{{ url_for('admin.course_move_down', public_id=course.public_id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--secondary" aria-label="Move {{ course.title }} down">&darr;</button>
+            </form>
+            <a class="btn btn--secondary" href="{{ url_for('admin.course_edit', public_id=course.public_id) }}">Edit</a>
+            <form method="post" action="{{ url_for('admin.course_toggle_status', public_id=course.public_id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              {% if course.status == "active" %}
+                <button type="submit" class="btn btn--danger-outline">Deactivate</button>
+              {% else %}
+                <button type="submit" class="btn btn--secondary">Activate</button>
+              {% endif %}
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No courses yet</div>
+    <div>Create the first course to get started.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

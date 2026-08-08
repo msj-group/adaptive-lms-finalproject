@@ -1,14 +1,11 @@
-{% extends "layouts/base.html" %}
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
 {% block title %}{{ 'Edit Level' if level else 'New Level' }}{% endblock %}
-{% block content %}
+{% block admin_content %}
 <div class="ds-page" style="max-width: 480px">
   <h1>{{ 'Edit Level' if level else 'New Level' }}</h1>
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for category, message in messages %}
-      <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
-    {% endfor %}
-  {% endwith %}
+  {{ macros.flash_messages() }}
 
   <form method="post" novalidate>
     {{ form.hidden_tag() }}

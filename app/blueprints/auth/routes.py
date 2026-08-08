@@ -3,21 +3,28 @@ from flask_login import current_user, login_required, login_user, logout_user
 
 from app.blueprints.auth.forms import LoginForm
 from app.extensions import limiter
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.security.passwords import verify_password
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
-# Placeholder until role dashboards exist (Phase 3). Every role currently
-# lands on the design system page after login.
-ROLE_HOME_ENDPOINT = "design_system.index"
+# Only roles with a real dashboard get a dedicated entry here. Other roles
+# fall back to DEFAULT_HOME_ENDPOINT until their dashboards are built.
+ROLE_HOME_ENDPOINT = {
+    UserRole.ADMINISTRATOR.value: "admin.dashboard",
+}
+DEFAULT_HOME_ENDPOINT = "design_system.index"
+
+
+def _home_endpoint_for(user):
+    return ROLE_HOME_ENDPOINT.get(user.role, DEFAULT_HOME_ENDPOINT)
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("10 per minute")
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for(ROLE_HOME_ENDPOINT))
+        return redirect(url_for(_home_endpoint_for(current_user)))
 
     form = LoginForm()
     if form.validate_on_submit():
@@ -25,7 +32,7 @@ def login():
         if user and user.is_active_account() and verify_password(user.password_hash, form.password.data):
             login_user(user)
             next_url = request.args.get("next")
-            return redirect(next_url or url_for(ROLE_HOME_ENDPOINT))
+            return redirect(next_url or url_for(_home_endpoint_for(user)))
         flash("Invalid email or password.", "danger")
 
     return render_template("auth/login.html", form=form)

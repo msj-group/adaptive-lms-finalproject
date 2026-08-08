@@ -1,0 +1,33 @@
+{% extends "layouts/admin_base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block admin_content %}
+<h1>Welcome, {{ current_user.full_name }}</h1>
+<p class="ds-section__desc">A snapshot of the current academic structure.</p>
+
+<div class="ds-row" style="flex-wrap: wrap; gap: var(--space-4); margin-top: var(--space-6)">
+  <div class="card" style="width:220px">
+    <div class="card__title">{{ stats.academic_terms_total }}</div>
+    <div class="card__body">Total Academic Terms</div>
+  </div>
+  <div class="card" style="width:220px">
+    <div class="card__title">{{ stats.academic_terms_active }}</div>
+    <div class="card__body">Active Academic Terms</div>
+  </div>
+  <div class="card" style="width:220px">
+    <div class="card__title">{{ stats.levels_total }}</div>
+    <div class="card__body">Total Levels</div>
+  </div>
+  <div class="card" style="width:220px">
+    <div class="card__title">{{ stats.levels_active }}</div>
+    <div class="card__body">Active Levels</div>
+  </div>
+  <div class="card" style="width:220px">
+    <div class="card__title">{{ stats.courses_total }}</div>
+    <div class="card__body">Total Courses</div>
+  </div>
+  <div class="card" style="width:220px">
+    <div class="card__title">{{ stats.courses_active }}</div>
+    <div class="card__body">Active Courses</div>
+  </div>
+</div>
+{% endblock %}

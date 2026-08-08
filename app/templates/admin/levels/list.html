@@ -1,17 +1,14 @@
-{% extends "layouts/base.html" %}
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
 {% block title %}Levels{% endblock %}
-{% block content %}
+{% block admin_content %}
 <div class="ds-page">
   <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
     <h1 style="margin:0">Levels</h1>
     <a class="btn btn--primary" href="{{ url_for('admin.level_create') }}">New Level</a>
   </div>
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for category, message in messages %}
-      <div class="alert alert--{{ 'warning' if category == 'warning' else category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
-    {% endfor %}
-  {% endwith %}
+  {{ macros.flash_messages() }}
 
   {% if levels %}
   <div style="overflow-x:auto">
@@ -31,24 +28,19 @@
         <td style="padding: var(--space-3)">{{ loop.index }}</td>
         <td style="padding: var(--space-3)">{{ level.name }}</td>
         <td style="padding: var(--space-3)">{{ level.code or "--" }}</td>
-        <td style="padding: var(--space-3)">
-          {% if level.status == "active" %}
-            <span class="badge badge--success">Active</span>
-          {% else %}
-            <span class="badge badge--neutral">Archived</span>
-          {% endif %}
-        </td>
+        <td style="padding: var(--space-3)">{{ macros.status_badge(level.status) }}</td>
         <td style="padding: var(--space-3)">
           <div class="ds-row" style="gap: var(--space-2)">
             <form method="post" action="{{ url_for('admin.level_move_up', public_id=level.public_id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn--secondary" {{ "disabled" if loop.first }}>&uarr;</button>
+              <button type="submit" class="btn btn--secondary" aria-label="Move {{ level.name }} up" {{ "disabled" if loop.first }}>&uarr;</button>
             </form>
             <form method="post" action="{{ url_for('admin.level_move_down', public_id=level.public_id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn--secondary" {{ "disabled" if loop.last }}>&darr;</button>
+              <button type="submit" class="btn btn--secondary" aria-label="Move {{ level.name }} down" {{ "disabled" if loop.last }}>&darr;</button>
             </form>
             <a class="btn btn--secondary" href="{{ url_for('admin.level_edit', public_id=level.public_id) }}">Edit</a>
+            <a class="btn btn--secondary" href="{{ url_for('admin.courses_list', level_id=level.id) }}">Courses</a>
             <form method="post" action="{{ url_for('admin.level_toggle_status', public_id=level.public_id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               {% if level.status == "active" %}

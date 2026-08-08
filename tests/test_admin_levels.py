@@ -13,6 +13,18 @@ def _create_level(name, code=None, display_order=None):
     return level
 
 
+def test_move_buttons_have_accessible_labels(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        _create_level("Level 1")
+    login(client, "admin@example.com")
+
+    resp = client.get("/admin/levels")
+    html = resp.get_data(as_text=True)
+    assert 'aria-label="Move Level 1 up"' in html
+    assert 'aria-label="Move Level 1 down"' in html
+
+
 def test_administrator_can_list_levels(app, client):
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
@@ -237,3 +249,4 @@ def test_csrf_enforced_on_create():
         finally:
             db.session.remove()
             db.drop_all()
+            db.engine.dispose()
