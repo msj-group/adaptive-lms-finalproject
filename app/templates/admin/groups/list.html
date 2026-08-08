@@ -1,0 +1,68 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Groups{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+    <h1 style="margin:0">Groups</h1>
+    <a class="btn btn--primary" href="{{ url_for('admin.group_create') }}">New Group</a>
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  <form method="get" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2)">
+    <label class="field__label" for="q" style="margin:0">Search:</label>
+    <input type="search" name="q" id="q" class="field__input" style="width:auto" placeholder="Group name or code" value="{{ search }}">
+    <button type="submit" class="btn btn--secondary">Search</button>
+    {% if search %}
+      <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Clear</a>
+    {% endif %}
+  </form>
+
+  {% if groups %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th style="padding: var(--space-3)">Group Name</th>
+        <th style="padding: var(--space-3)">Code</th>
+        <th style="padding: var(--space-3)">Course</th>
+        <th style="padding: var(--space-3)">Level</th>
+        <th style="padding: var(--space-3)">Academic Term</th>
+        <th style="padding: var(--space-3)">Capacity</th>
+        <th style="padding: var(--space-3)">Status</th>
+        <th style="padding: var(--space-3)">Created</th>
+        <th style="padding: var(--space-3)">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for group in groups %}
+      <tr style="border-bottom:1px solid var(--color-border)">
+        <td style="padding: var(--space-3)">{{ group.name }}</td>
+        <td style="padding: var(--space-3)">{{ group.code or "--" }}</td>
+        <td style="padding: var(--space-3)">{{ group.course.title }}</td>
+        <td style="padding: var(--space-3)">{{ group.course.level.name }}</td>
+        <td style="padding: var(--space-3)">{{ group.academic_term.name }}</td>
+        <td style="padding: var(--space-3)">{{ group.capacity }}</td>
+        <td style="padding: var(--space-3)">{{ macros.status_badge(group.status) }}</td>
+        <td style="padding: var(--space-3)">{{ group.created_at.strftime("%Y-%m-%d") }}</td>
+        <td style="padding: var(--space-3); color: var(--color-text-secondary)">&mdash;</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% elif search %}
+  <div class="empty-state">
+    <div class="empty-state__title">No groups match "{{ search }}"</div>
+    <div>Try a different name or code, or <a href="{{ url_for('admin.groups_list') }}">clear the search</a>.</div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No groups yet</div>
+    <div>Groups will appear here once created for a course and academic term.</div>
+    <a class="btn btn--primary" style="margin-top: var(--space-4)" href="{{ url_for('admin.group_create') }}">Create Group</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

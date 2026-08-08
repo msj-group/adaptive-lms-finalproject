@@ -14,3 +14,4 @@ from app.blueprints.admin import routes  # noqa: E402,F401
 from app.blueprints.admin import academic_terms  # noqa: E402,F401
 from app.blueprints.admin import levels  # noqa: E402,F401
 from app.blueprints.admin import courses  # noqa: E402,F401
+from app.blueprints.admin import groups  # noqa: E402,F401

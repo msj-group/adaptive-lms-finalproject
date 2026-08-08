@@ -12,7 +12,7 @@ ADMIN_NAV_SECTIONS = [
         "links": [
             {"label": "Students", "endpoint": None},
             {"label": "Teachers", "endpoint": None},
-            {"label": "Groups", "endpoint": None},
+            {"label": "Groups", "endpoint": "admin.groups_list"},
             {"label": "Attendance", "endpoint": None},
             {"label": "Grades", "endpoint": None},
         ],

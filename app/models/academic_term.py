@@ -27,6 +27,8 @@ class AcademicTerm(db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
+    groups = db.relationship("Group", back_populates="academic_term")
+
     @validates("status")
     def validate_status(self, _key, value):
         if value not in {s.value for s in AcademicStatus}:

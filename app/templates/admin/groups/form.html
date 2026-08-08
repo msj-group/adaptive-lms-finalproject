@@ -1,0 +1,71 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}New Group{% endblock %}
+{% block admin_content %}
+<div class="ds-page" style="max-width: 560px">
+  <h1>New Group</h1>
+
+  {{ macros.flash_messages() }}
+
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="field">
+      {{ form.academic_term_id.label(class_="field__label") }}
+      {{ form.academic_term_id(class_="field__input") }}
+      {% for error in form.academic_term_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field" style="margin-top: var(--space-4)">
+      <label class="field__label" for="course_id">Course</label>
+      <select name="course_id" id="course_id" class="field__input">
+        {% for course in courses %}
+          <option value="{{ course.id }}" data-level="{{ course.level.name }}" {{ "selected" if form.course_id.data == course.id else "" }}>{{ course.title }} ({{ course.level.name }}){{ " (Archived)" if course.status != "active" else "" }}</option>
+        {% endfor %}
+      </select>
+      {% for error in form.course_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field" style="margin-top: var(--space-4)">
+      <label class="field__label">Level</label>
+      <div id="course-level-display" class="field__input" style="background: var(--color-bg-subtle); color: var(--color-text-secondary);">&mdash;</div>
+    </div>
+    <div class="field" style="margin-top: var(--space-4)">
+      {{ form.name.label(class_="field__label") }}
+      {{ form.name(class_="field__input") }}
+      {% for error in form.name.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field" style="margin-top: var(--space-4)">
+      {{ form.code.label(class_="field__label") }}
+      {{ form.code(class_="field__input") }}
+      {% for error in form.code.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field" style="margin-top: var(--space-4)">
+      {{ form.capacity.label(class_="field__label") }}
+      {{ form.capacity(class_="field__input") }}
+      {% for error in form.capacity.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field" style="margin-top: var(--space-4)">
+      {{ form.status.label(class_="field__label") }}
+      {{ form.status(class_="field__input") }}
+      {% for error in form.status.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary") }}
+      <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+<script>
+  (function () {
+    var select = document.getElementById("course_id");
+    var display = document.getElementById("course-level-display");
+    if (!select || !display) {
+      return;
+    }
+    function updateLevel() {
+      var option = select.options[select.selectedIndex];
+      display.textContent = (option && option.dataset.level) ? option.dataset.level : "—";
+    }
+    select.addEventListener("change", updateLevel);
+    updateLevel();
+  })();
+</script>
+{% endblock %}

@@ -7,25 +7,35 @@ from app.extensions import db
 from app.models.enums import AcademicStatus
 
 
-class Course(db.Model):
-    __tablename__ = "courses"
+class Group(db.Model):
+    __tablename__ = "groups"
     __table_args__ = (
-        db.UniqueConstraint("level_id", "title", name="uq_courses_level_id_title"),
-        db.UniqueConstraint("level_id", "code", name="uq_courses_level_id_code"),
+        db.UniqueConstraint(
+            "academic_term_id", "course_id", "name", name="uq_groups_term_course_name"
+        ),
+        db.UniqueConstraint(
+            "academic_term_id", "course_id", "code", name="uq_groups_term_course_code"
+        ),
+        db.CheckConstraint("capacity > 0", name="ck_groups_positive_capacity"),
     )
 
     id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
     public_id = db.Column(db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4()))
-    level_id = db.Column(
+    academic_term_id = db.Column(
         db.BigInteger().with_variant(db.Integer, "sqlite"),
-        db.ForeignKey("levels.id"),
+        db.ForeignKey("academic_terms.id"),
         nullable=False,
         index=True,
     )
-    title = db.Column(db.String(150), nullable=False)
+    course_id = db.Column(
+        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.ForeignKey("courses.id"),
+        nullable=False,
+        index=True,
+    )
+    name = db.Column(db.String(100), nullable=False)
     code = db.Column(db.String(20), nullable=True)
-    description = db.Column(db.Text, nullable=True)
-    display_order = db.Column(db.Integer, nullable=False, default=0, index=True)
+    capacity = db.Column(db.Integer, nullable=False)
     status = db.Column(db.String(32), nullable=False, default=AcademicStatus.ACTIVE.value, index=True)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
@@ -35,8 +45,8 @@ class Course(db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    level = db.relationship("Level", back_populates="courses")
-    groups = db.relationship("Group", back_populates="course")
+    academic_term = db.relationship("AcademicTerm", back_populates="groups")
+    course = db.relationship("Course", back_populates="groups")
 
     @validates("status")
     def validate_status(self, _key, value):
