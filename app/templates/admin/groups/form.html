@@ -1,9 +1,9 @@
 {% extends "layouts/admin_base.html" %}
 {% import "admin/_macros.html" as macros %}
-{% block title %}New Group{% endblock %}
+{% block title %}{{ 'Edit Group' if group else 'New Group' }}{% endblock %}
 {% block admin_content %}
 <div class="ds-page" style="max-width: 560px">
-  <h1>New Group</h1>
+  <h1>{{ 'Edit Group' if group else 'New Group' }}</h1>
 
   {{ macros.flash_messages() }}
 
@@ -24,8 +24,8 @@
       {% for error in form.course_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
     <div class="field" style="margin-top: var(--space-4)">
-      <label class="field__label">Level</label>
-      <div id="course-level-display" class="field__input" style="background: var(--color-bg-subtle); color: var(--color-text-secondary);">&mdash;</div>
+      <label class="field__label" for="course-level-display">Level</label>
+      <div id="course-level-display" class="field__input" role="status" aria-live="polite" style="background: var(--color-bg-subtle); color: var(--color-text-secondary);">&mdash;</div>
     </div>
     <div class="field" style="margin-top: var(--space-4)">
       {{ form.name.label(class_="field__label") }}
@@ -48,7 +48,7 @@
       {% for error in form.status.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
     <div class="ds-row" style="margin-top: var(--space-6)">
-      {{ form.submit(class_="btn btn--primary") }}
+      {{ form.submit(class_="btn btn--primary", id="group-form-submit") }}
       <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Cancel</a>
     </div>
   </form>
@@ -57,15 +57,23 @@
   (function () {
     var select = document.getElementById("course_id");
     var display = document.getElementById("course-level-display");
-    if (!select || !display) {
-      return;
+    if (select && display) {
+      var updateLevel = function () {
+        var option = select.options[select.selectedIndex];
+        display.textContent = (option && option.dataset.level) ? option.dataset.level : "—";
+      };
+      select.addEventListener("change", updateLevel);
+      updateLevel();
     }
-    function updateLevel() {
-      var option = select.options[select.selectedIndex];
-      display.textContent = (option && option.dataset.level) ? option.dataset.level : "—";
+
+    var form = document.querySelector("form[method='post']");
+    var submitButton = document.getElementById("group-form-submit");
+    if (form && submitButton) {
+      form.addEventListener("submit", function () {
+        submitButton.disabled = true;
+        submitButton.textContent = "Saving...";
+      });
     }
-    select.addEventListener("change", updateLevel);
-    updateLevel();
   })();
 </script>
 {% endblock %}

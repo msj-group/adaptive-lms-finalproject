@@ -1,0 +1,43 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ group.name }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page" style="max-width: 640px">
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+    <h1 style="margin:0">{{ group.name }}</h1>
+    {{ macros.status_badge(group.status) }}
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  <div class="card">
+    <dl style="display: grid; grid-template-columns: 160px 1fr; row-gap: var(--space-3); column-gap: var(--space-4); margin: 0;">
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group Code</dt>
+      <dd style="margin:0">{{ group.code or "--" }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Capacity</dt>
+      <dd style="margin:0">{{ group.capacity }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
+      <dd style="margin:0">{{ group.academic_term.name }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
+      <dd style="margin:0">{{ group.course.title }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
+      <dd style="margin:0">{{ group.course.level.name }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>
+      <dd style="margin:0">{{ group.created_at.strftime("%Y-%m-%d %H:%M") }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Last Updated</dt>
+      <dd style="margin:0">{{ group.updated_at.strftime("%Y-%m-%d %H:%M") }}</dd>
+    </dl>
+  </div>
+
+  <div class="ds-row" style="margin-top: var(--space-6)">
+    <a class="btn btn--primary" href="{{ url_for('admin.group_edit', public_id=group.public_id) }}">Edit Group</a>
+    <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Back to Groups</a>
+  </div>
+</div>
+{% endblock %}

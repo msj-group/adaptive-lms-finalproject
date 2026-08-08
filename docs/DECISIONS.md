@@ -45,3 +45,40 @@ Python-level validator.
 enum (`active` / `archived`) and has no delete route or method, consistent
 with `AcademicTerm`, `Level`, and `Course` -- future enrollment/attendance
 history may reference a group long after it stops running.
+
+## Group delete policy (Phase 3, Step 12)
+
+**Decision: no hard delete. Archive (`active` -> `archived`) is the only
+lifecycle transition, and it is already implemented (Step 11,
+`POST /admin/groups/<public_id>/toggle-status`).**
+
+Reasoning:
+
+- A `Group` is the entity that student enrollments, teacher assignments,
+  schedules, attendance, grades, and assignments will all eventually
+  reference (see the `groups` purpose note above). None of those
+  relationships exist in the schema yet, but the whole point of `Group`
+  existing before them is to be their stable anchor. A hard delete route
+  built now would need to be revisited (and re-secured) the moment any of
+  those future foreign keys land -- either by blocking deletion once
+  children exist, or by cascading, which risks silently destroying
+  enrollment/attendance history. Building it now, before there is anything
+  to protect against, would mean designing it twice.
+- This mirrors the decision already made and shipped for `AcademicTerm`,
+  `Level`, and `Course`: all three are archive-only, no delete route
+  exists for any of them, and every admin list page already reads on
+  "Active"/"Archived" rather than existence. `Group` following the same
+  rule keeps one consistent lifecycle model across the whole Academic
+  Core instead of a special case for one table.
+- Nothing observed while building Steps 7-11 changes this: no current
+  feature needs to permanently remove a `Group` row, and archiving already
+  satisfies every real requirement seen so far (hide it from active use,
+  keep the historical record, allow reactivation if it was archived by
+  mistake).
+
+No delete route, delete button, or delete confirmation was added anywhere
+in the Group admin pages. If a genuine need for permanent removal appears
+later (e.g. a compliance/data-retention requirement), it should be
+designed at that time against the actual relationships that exist then,
+with explicit relationship checks and cascade rules -- not built
+speculatively ahead of the data model that would make it safe.

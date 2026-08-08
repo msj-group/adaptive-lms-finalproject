@@ -109,10 +109,11 @@ class GroupForm(FlaskForm):
         default=AcademicStatus.ACTIVE.value,
         validators=[DataRequired()],
     )
-    submit = SubmitField("Create Group")
+    submit = SubmitField("Save")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, group_id=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self._group_id = group_id
         self.academic_term_id.choices = [
             (
                 term.id,
@@ -144,6 +145,8 @@ class GroupForm(FlaskForm):
             Group.course_id == self.course_id.data,
             Group.name == field.data.strip(),
         )
+        if self._group_id is not None:
+            query = query.filter(Group.id != self._group_id)
         if query.first() is not None:
             raise ValidationError(
                 "A group with this name already exists for the selected term and course."
@@ -157,6 +160,8 @@ class GroupForm(FlaskForm):
             Group.course_id == self.course_id.data,
             Group.code == field.data.strip(),
         )
+        if self._group_id is not None:
+            query = query.filter(Group.id != self._group_id)
         if query.first() is not None:
             raise ValidationError(
                 "A group with this code already exists for the selected term and course."
