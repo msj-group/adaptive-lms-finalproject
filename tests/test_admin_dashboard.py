@@ -107,8 +107,8 @@ def test_disabled_nav_items_are_not_clickable_links(app, client):
 
     resp = client.get("/admin/dashboard")
     html = resp.get_data(as_text=True)
-    assert "Students" in html
-    assert 'href="/admin/students"' not in html
+    assert "Teachers" in html
+    assert 'href="/admin/teachers"' not in html
     assert "Soon" in html
 
 

@@ -22,11 +22,11 @@ def client(app):
     return app.test_client()
 
 
-def make_user(email, role, status=UserStatus.ACTIVE.value, password="Sup3rSecret!123"):
+def make_user(email, role, status=UserStatus.ACTIVE.value, password="Sup3rSecret!123", full_name="Test User"):
     user = User(
         email=email,
         password_hash=hash_password(password),
-        full_name="Test User",
+        full_name=full_name,
         role=role,
         status=status,
     )
