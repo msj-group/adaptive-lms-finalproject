@@ -1,8 +1,41 @@
+from html.parser import HTMLParser
+
 from app.extensions import db
 from app.models import User, UserRole, UserStatus
 from tests.conftest import login, make_user
 
 AJAX_HEADERS = {"X-Requested-With": "XMLHttpRequest"}
+
+
+class _ElementCollector(HTMLParser):
+    """Collects every start tag with its attributes (stdlib-only, no new
+    project dependency) so tests can assert on a specific element's
+    attributes instead of scanning raw HTML text for substrings, which can
+    produce false positives (e.g. matching inside an unrelated attribute
+    or a comment).
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.elements = []
+
+    def handle_starttag(self, tag, attrs):
+        self.elements.append((tag, dict(attrs)))
+
+    def handle_startendtag(self, tag, attrs):
+        self.elements.append((tag, dict(attrs)))
+
+
+def _parse_elements(html):
+    parser = _ElementCollector()
+    parser.feed(html)
+    return parser.elements
+
+
+def _find_one(elements, attr_name):
+    matches = [(tag, attrs) for tag, attrs in elements if attr_name in attrs]
+    assert len(matches) == 1, f"expected exactly one element with [{attr_name}], found {len(matches)}"
+    return matches[0]
 
 
 def _make_admin():
@@ -48,7 +81,14 @@ def test_normal_request_returns_full_page(app, client):
     assert "<html" in html.lower()
     assert "admin-shell" in html
     assert 'id="student-results"' in html
-    assert "AbortController" in html  # live-search script is present
+
+    elements = _parse_elements(html)
+    script_tags = [
+        attrs for tag, attrs in elements
+        if tag == "script" and attrs.get("src") == "/static/js/admin_live_search.js"
+    ]
+    assert len(script_tags) == 1, "expected exactly one <script src='.../admin_live_search.js'>"
+    assert "defer" in script_tags[0]
 
 
 def test_normal_request_includes_filter_form_and_status_region(app, client):
@@ -60,6 +100,45 @@ def test_normal_request_includes_filter_form_and_status_region(app, client):
     assert 'id="student-filter-form"' in html
     assert 'role="status"' in html
     assert 'aria-live="polite"' in html
+
+
+def test_page_provides_required_live_search_configuration(app, client):
+    """The shared script hard-codes nothing resource-specific, so the page
+    itself must supply every piece of the configuration contract -- checked
+    against the actual parsed elements and their attributes, not raw
+    substrings of the response body.
+    """
+    _seed_students(app)
+    login(client, "admin@example.com")
+
+    resp = client.get("/admin/students")
+    html = resp.get_data(as_text=True)
+    elements = _parse_elements(html)
+
+    _, root_attrs = _find_one(elements, "data-live-search")
+    assert root_attrs.get("data-list-url") == "/admin/students"
+    assert root_attrs.get("data-singular") == "student"
+    assert root_attrs.get("data-plural") == "students"
+    assert root_attrs.get("data-status-form-selector") == ".student-status-form[data-confirm]"
+
+    form_tag, _ = _find_one(elements, "data-live-search-form")
+    assert form_tag == "form"
+
+    input_tag, input_attrs = _find_one(elements, "data-live-search-input")
+    assert input_tag == "input"
+    assert input_attrs.get("type") == "search"
+
+    select_tag, _ = _find_one(elements, "data-live-search-status")
+    assert select_tag == "select"
+
+    results_tag, results_attrs = _find_one(elements, "data-live-search-results")
+    assert results_tag == "div"
+    assert results_attrs.get("id") == "student-results"
+
+    status_region_tag, status_region_attrs = _find_one(elements, "data-live-search-status-region")
+    assert status_region_tag == "div"
+    assert status_region_attrs.get("role") == "status"
+    assert status_region_attrs.get("aria-live") == "polite"
 
 
 # ======================================================================
@@ -427,11 +506,63 @@ def test_search_input_is_native_type_search_for_builtin_clear_affordance(app, cl
     assert 'name="q"' in html
 
 
-def test_sequence_guard_present_in_live_search_script(app, client):
-    _seed_students(app)
-    login(client, "admin@example.com")
+def test_shared_live_search_script_is_accessible(client):
+    resp = client.get("/static/js/admin_live_search.js")
+    assert resp.status_code == 200
+    assert "javascript" in resp.headers.get("Content-Type", "")
 
-    resp = client.get("/admin/students")
-    html = resp.get_data(as_text=True)
-    assert "requestSequence" in html
-    assert "AbortController" in html
+
+def test_shared_live_search_script_contains_required_behavior(client):
+    resp = client.get("/static/js/admin_live_search.js")
+    js = resp.get_data(as_text=True)
+
+    # Debounce
+    assert "350" in js
+    assert "setTimeout" in js
+    # AbortController + stale-response sequence guard
+    assert "AbortController" in js
+    assert "requestSequence" in js
+    assert "AbortError" in js
+    # history.replaceState() + popstate restoration
+    assert "history.replaceState" in js
+    assert "popstate" in js
+    # Accessible role="status" feedback
+    assert "Searching..." in js
+    # Delegated Suspend/Reactivate confirmation
+    assert "data-confirm" in js
+    assert "window.confirm" in js
+    # Redirect handling for expired sessions
+    assert "response.redirected" in js
+    # Server-side round trip marker
+    assert "X-Requested-With" in js
+
+    # The shared file must not hard-code Student specifics as behavior
+    # (only allowed as illustrative doc-comment examples).
+    assert "/admin/students" not in js
+    assert "student-status-form" not in js
+    assert 'id="student' not in js
+
+
+def test_status_confirmation_installed_before_feature_detection_gate(client):
+    """Regression guard: the delegated Suspend/Reactivate confirmation must
+    be wired up before the fetch/AbortController/History feature-detection
+    check, so it still works in a browser lacking those APIs -- only live
+    search itself should be skipped there. There is no JavaScript runtime
+    available in this test suite (no Node/browser), so this is a narrowly
+    scoped structural assertion over the actual shipped source rather than
+    an executed behavioural test.
+    """
+    resp = client.get("/static/js/admin_live_search.js")
+    source = resp.get_data(as_text=True)
+
+    foreach_marker = 'document.querySelectorAll("[data-live-search]").forEach(function (root) {'
+    assert foreach_marker in source
+    callback_body = source[source.index(foreach_marker):]
+
+    confirm_call_index = callback_body.index("installStatusConfirmation(root)")
+    feature_check_index = callback_body.index("hasLiveSearchSupport()")
+
+    assert confirm_call_index < feature_check_index, (
+        "installStatusConfirmation(root) must run before the "
+        "hasLiveSearchSupport() gate inside the per-root forEach callback"
+    )

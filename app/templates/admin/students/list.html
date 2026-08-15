@@ -2,7 +2,13 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}Students{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
+<div class="ds-page"
+     data-live-search
+     data-list-url="{{ url_for('admin.students_list') }}"
+     data-singular="student"
+     data-plural="students"
+     data-status-form-selector=".student-status-form[data-confirm]"
+>
   <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
     <h1 style="margin:0">Students</h1>
     <a class="btn btn--primary" href="{{ url_for('admin.student_create') }}">New Student</a>
@@ -10,12 +16,12 @@
 
   {{ macros.flash_messages() }}
 
-  <form method="get" id="student-filter-form" class="ds-row" style="margin-bottom: var(--space-2); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+  <form method="get" id="student-filter-form" data-live-search-form class="ds-row" style="margin-bottom: var(--space-2); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
     <label class="field__label" for="q" style="margin:0">Search:</label>
-    <input type="search" name="q" id="q" class="field__input" style="width:auto" placeholder="Full name or email" value="{{ search }}" autocomplete="off">
+    <input type="search" name="q" id="q" data-live-search-input class="field__input" style="width:auto" placeholder="Full name or email" value="{{ search }}" autocomplete="off">
 
     <label class="field__label" for="status" style="margin:0">Status:</label>
-    <select name="status" id="status" class="field__input" style="width:auto">
+    <select name="status" id="status" data-live-search-status class="field__input" style="width:auto">
       <option value="">All Statuses</option>
       <option value="active" {{ "selected" if selected_status == "active" else "" }}>Active</option>
       <option value="suspended" {{ "selected" if selected_status == "suspended" else "" }}>Suspended</option>
@@ -26,143 +32,11 @@
     </noscript>
   </form>
 
-  <div id="student-search-status" role="status" aria-live="polite" style="min-height: 1.25em; color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--space-4)"></div>
+  <div id="student-search-status" data-live-search-status-region role="status" aria-live="polite" style="min-height: 1.25em; color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--space-4)"></div>
 
-  <div id="student-results">
+  <div id="student-results" data-live-search-results>
     {% include "admin/students/_results.html" %}
   </div>
 </div>
-<script>
-  (function () {
-    var form = document.getElementById("student-filter-form");
-    var searchInput = document.getElementById("q");
-    var statusSelect = document.getElementById("status");
-    var resultsContainer = document.getElementById("student-results");
-    var statusRegion = document.getElementById("student-search-status");
-    var listUrl = "{{ url_for('admin.students_list') }}";
-
-    // Delegated so it keeps working for suspend/reactivate forms injected by
-    // every live update, without needing to re-attach listeners each time.
-    resultsContainer.addEventListener("submit", function (event) {
-      var statusForm = event.target.closest(".student-status-form[data-confirm]");
-      if (statusForm && !window.confirm(statusForm.dataset.confirm)) {
-        event.preventDefault();
-      }
-    });
-
-    if (!window.fetch || !window.AbortController || !window.history || !window.history.replaceState) {
-      // No live-search support in this browser: the plain GET form still
-      // works (its submit button lives in <noscript>, which browsers only
-      // render when scripting is unavailable in the first place).
-      return;
-    }
-
-    var debounceTimer = null;
-    var activeController = null;
-    var requestSequence = 0;
-
-    function describeResults() {
-      var count = resultsContainer.querySelectorAll("tbody tr").length;
-      if (count === 0) {
-        return "No students found.";
-      }
-      return "Showing " + count + (count === 1 ? " student." : " students.");
-    }
-
-    function buildUrl() {
-      var params = new URLSearchParams();
-      if (searchInput.value) {
-        params.set("q", searchInput.value);
-      }
-      if (statusSelect.value) {
-        params.set("status", statusSelect.value);
-      }
-      var queryString = params.toString();
-      return listUrl + (queryString ? "?" + queryString : "");
-    }
-
-    function performSearch() {
-      var url = buildUrl();
-      var thisRequest = ++requestSequence;
-
-      if (activeController) {
-        activeController.abort();
-      }
-      var controller = new AbortController();
-      activeController = controller;
-
-      statusRegion.textContent = "Searching...";
-
-      fetch(url, {
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-        signal: controller.signal,
-      })
-        .then(function (response) {
-          if (response.redirected) {
-            // Session no longer valid (e.g. signed out) -- follow it like a
-            // normal navigation would instead of injecting login markup.
-            window.location.href = response.url;
-            return null;
-          }
-          if (!response.ok) {
-            throw new Error("Request failed with status " + response.status);
-          }
-          return response.text();
-        })
-        .then(function (html) {
-          if (html === null) {
-            return;
-          }
-          if (thisRequest !== requestSequence) {
-            return; // a newer request has already started; this one is stale
-          }
-          resultsContainer.innerHTML = html;
-          history.replaceState(null, "", url);
-          statusRegion.textContent = describeResults();
-        })
-        .catch(function (error) {
-          if (error.name === "AbortError") {
-            return; // superseded by a newer keystroke/status change
-          }
-          if (thisRequest !== requestSequence) {
-            return; // an obsolete request's error must not touch the UI
-          }
-          statusRegion.textContent = "Something went wrong loading results. Please try again.";
-        })
-        .finally(function () {
-          if (activeController === controller) {
-            activeController = null;
-          }
-        });
-    }
-
-    searchInput.addEventListener("input", function () {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(performSearch, 350);
-    });
-
-    statusSelect.addEventListener("change", function () {
-      clearTimeout(debounceTimer);
-      performSearch();
-    });
-
-    form.addEventListener("submit", function (event) {
-      // No visible submit control exists once JS is active (the Filter
-      // button only exists inside <noscript>), but native implicit
-      // submission (e.g. pressing Enter in the search field) can still
-      // fire this event. Route it through the same live-search path
-      // instead of letting it fall through to a full page reload.
-      event.preventDefault();
-      clearTimeout(debounceTimer);
-      performSearch();
-    });
-
-    window.addEventListener("popstate", function () {
-      var params = new URLSearchParams(window.location.search);
-      searchInput.value = params.get("q") || "";
-      statusSelect.value = params.get("status") || "";
-      performSearch();
-    });
-  })();
-</script>
+<script src="{{ url_for('static', filename='js/admin_live_search.js') }}" defer></script>
 {% endblock %}
