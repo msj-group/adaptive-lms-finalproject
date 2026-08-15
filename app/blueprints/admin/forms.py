@@ -1,9 +1,32 @@
 from flask_wtf import FlaskForm
-from wtforms import DateField, IntegerField, SelectField, StringField, SubmitField, TextAreaField
-from wtforms.validators import DataRequired, Length, NumberRange, Optional, ValidationError
+from wtforms import (
+    DateField,
+    IntegerField,
+    PasswordField,
+    SelectField,
+    StringField,
+    SubmitField,
+    TextAreaField,
+)
+from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional, ValidationError
 
 from app.extensions import db
-from app.models import AcademicStatus, AcademicTerm, Course, Group, Level
+from app.models import AcademicStatus, AcademicTerm, Course, Group, Level, User
+
+# Minimum/maximum length for administrator-set student passwords. No
+# composition rules (uppercase/digit/symbol) are enforced -- strength comes
+# from length instead, so long passphrases are preferred over short,
+# complex-looking passwords. This follows only the length-over-composition
+# principle discussed in guidance such as NIST SP 800-63B; it is not a
+# claim of full compliance with that document. In particular, this system
+# authenticates with a password as the sole factor (no MFA), which is why
+# the minimum sits above the more common 12-character baseline, and
+# blocklisting compromised/common passwords is not implemented -- both are
+# documented here as a deliberate scope decision, not an oversight. The
+# maximum bounds the input size reaching Argon2id, since hashing cost
+# scales with input length.
+STUDENT_PASSWORD_MIN_LENGTH = 15
+STUDENT_PASSWORD_MAX_LENGTH = 128
 
 
 class AcademicTermForm(FlaskForm):
@@ -166,3 +189,68 @@ class GroupForm(FlaskForm):
             raise ValidationError(
                 "A group with this code already exists for the selected term and course."
             )
+
+
+def _normalize_email(raw_email):
+    return raw_email.strip().lower() if raw_email else ""
+
+
+class StudentCreateForm(FlaskForm):
+    full_name = StringField("Full Name", validators=[DataRequired(), Length(max=255)])
+    email = StringField("Email", validators=[DataRequired(), Email(), Length(max=255)])
+    password = PasswordField(
+        "Temporary Password",
+        validators=[DataRequired(), Length(min=STUDENT_PASSWORD_MIN_LENGTH, max=STUDENT_PASSWORD_MAX_LENGTH)],
+        render_kw={"autocomplete": "new-password"},
+    )
+    confirm_password = PasswordField(
+        "Confirm Temporary Password",
+        validators=[DataRequired()],
+        render_kw={"autocomplete": "new-password"},
+    )
+    submit = SubmitField("Create Student")
+
+    def validate_email(self, field):
+        normalized = _normalize_email(field.data)
+        if User.query.filter(User.email == normalized).first() is not None:
+            raise ValidationError("A user with this email already exists.")
+
+    def validate_confirm_password(self, field):
+        if field.data != self.password.data:
+            raise ValidationError("Passwords do not match.")
+
+
+class StudentEditForm(FlaskForm):
+    full_name = StringField("Full Name", validators=[DataRequired(), Length(max=255)])
+    email = StringField("Email", validators=[DataRequired(), Email(), Length(max=255)])
+    submit = SubmitField("Save")
+
+    def __init__(self, *args, student_id=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._student_id = student_id
+
+    def validate_email(self, field):
+        normalized = _normalize_email(field.data)
+        query = User.query.filter(User.email == normalized)
+        if self._student_id is not None:
+            query = query.filter(User.id != self._student_id)
+        if query.first() is not None:
+            raise ValidationError("A user with this email already exists.")
+
+
+class StudentPasswordResetForm(FlaskForm):
+    password = PasswordField(
+        "New Temporary Password",
+        validators=[DataRequired(), Length(min=STUDENT_PASSWORD_MIN_LENGTH, max=STUDENT_PASSWORD_MAX_LENGTH)],
+        render_kw={"autocomplete": "new-password"},
+    )
+    confirm_password = PasswordField(
+        "Confirm New Temporary Password",
+        validators=[DataRequired()],
+        render_kw={"autocomplete": "new-password"},
+    )
+    submit = SubmitField("Reset Password")
+
+    def validate_confirm_password(self, field):
+        if field.data != self.password.data:
+            raise ValidationError("Passwords do not match.")

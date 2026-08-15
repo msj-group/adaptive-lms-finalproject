@@ -1,0 +1,54 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ student.full_name }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page" style="max-width: 640px">
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+    <h1 style="margin:0">{{ student.full_name }}</h1>
+    {{ macros.user_status_badge(student.status) }}
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  <div class="card">
+    <dl style="display: grid; grid-template-columns: 160px 1fr; row-gap: var(--space-3); column-gap: var(--space-4); margin: 0;">
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Email</dt>
+      <dd style="margin:0">{{ student.email }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>
+      <dd style="margin:0">{{ student.created_at.strftime("%Y-%m-%d %H:%M") }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Last Updated</dt>
+      <dd style="margin:0">{{ student.updated_at.strftime("%Y-%m-%d %H:%M") }}</dd>
+    </dl>
+  </div>
+
+  <div class="ds-row" style="margin-top: var(--space-6); flex-wrap: wrap;">
+    <a class="btn btn--primary" href="{{ url_for('admin.student_edit', public_id=student.public_id) }}">Edit Student</a>
+    <a class="btn btn--secondary" href="{{ url_for('admin.student_reset_password', public_id=student.public_id) }}">Reset Password</a>
+    <form
+      method="post"
+      action="{{ url_for('admin.student_toggle_status', public_id=student.public_id) }}"
+      class="student-status-form"
+      {% if student.status == "active" %}data-confirm="Suspend {{ student.full_name }}? They will be signed out of any active session and unable to log in until reactivated."{% endif %}
+    >
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% if student.status == "active" %}
+        <button type="submit" class="btn btn--danger-outline">Suspend</button>
+      {% else %}
+        <button type="submit" class="btn btn--secondary">Reactivate</button>
+      {% endif %}
+    </form>
+    <a class="btn btn--secondary" href="{{ url_for('admin.students_list') }}">Back to Students</a>
+  </div>
+</div>
+<script>
+  document.querySelectorAll(".student-status-form[data-confirm]").forEach(function (form) {
+    form.addEventListener("submit", function (event) {
+      if (!confirm(form.dataset.confirm)) {
+        event.preventDefault();
+      }
+    });
+  });
+</script>
+{% endblock %}

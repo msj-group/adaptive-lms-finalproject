@@ -82,3 +82,68 @@ later (e.g. a compliance/data-retention requirement), it should be
 designed at that time against the actual relationships that exist then,
 with explicit relationship checks and cascade rules -- not built
 speculatively ahead of the data model that would make it safe.
+
+## Student account management (Phase 3, Student Milestone)
+
+**User.public_id.** The `users` table only had an internal numeric `id`.
+Student (and every other role's) detail/edit/status/password-reset URLs
+must never expose that internal id, so `User` now carries the same
+`public_id` (UUID, unique, non-null) pattern already used by
+`AcademicTerm`, `Level`, `Course`, and `Group`. Existing rows (the
+Administrator) were backfilled with a generated UUID by the migration
+before the column was tightened to NOT NULL -- see
+`migrations/versions/a23634066372_*.py` for the exact steps.
+
+**Session invalidation (`auth_version`).** Suspending a student, resetting
+their password, or changing their login email must kill any session
+issued before that action -- otherwise a browser that is still logged in
+would keep working after being suspended. `User` gained a small integer
+`auth_version` column for this. `User.get_id()` (used by Flask-Login to
+build the session cookie) returns `"{id}.{auth_version}"` instead of just
+the id; the `user_loader` in `app/__init__.py` parses both parts back out
+and rejects the session if the stored version no longer matches the
+user's current `auth_version`. `bump_auth_version()` is called on status
+toggle, password reset, and email change. This is the smallest change
+that fits the existing Flask-Login integration -- no JWT, no server-side
+session store, no new framework.
+
+One expected, one-time side effect: every session that existed *before*
+this migration was created with the old `get_id()` format (just the raw
+id, no version suffix). The user_loader cannot parse that old format and
+treats it as invalid, so **every currently logged-in user, including the
+Administrator, will be signed out once** the first time they load a page
+after this change ships. They simply log in again normally; no data is
+affected.
+
+**Password policy for administrator-set student passwords.** Minimum 15
+characters, maximum 128, no composition rules (no forced uppercase /
+digit / symbol). This favours passphrases over short-but-complex
+passwords, following the length-over-composition principle discussed in
+guidance such as NIST SP 800-63B -- this is **not** a claim of full
+compliance with that document. The minimum was deliberately set above the
+more commonly cited 12-character baseline because this application
+currently authenticates with a password as the sole factor: there is no
+MFA, so the password alone is the entire barrier to an account. Two
+things NIST SP 800-63B also recommends are explicitly **not** implemented
+yet and are recorded here as future improvements rather than oversights:
+blocklisting known-compromised or common passwords, and a password
+strength meter/feedback at input time. The maximum exists only to bound
+the input size reaching Argon2id, not as a usability restriction.
+
+**No `must_change_password` flag.** A forced first-login password change
+would need a student-facing login/dashboard flow to redirect into, and
+that does not exist yet. Adding the column now without anywhere to act on
+it would be a half-finished control. Recorded here as a follow-up once
+the Student dashboard exists: the Administrator currently hands the
+temporary password to the student out of band (never by email -- no
+email service is approved), and the student keeps using it until an
+administrator resets it.
+
+**Student delete policy.** Same reasoning as Groups: student accounts use
+the Active/Suspended lifecycle only, there is no delete route or button.
+Future Enrollments, Attendance, Grades, Payments, and research records
+may reference a student long after they stop attending, and audit/history
+records must not be able to silently lose their subject. Permanent
+deletion, if ever required, must be designed later as a deliberate
+privacy/data-retention workflow evaluated against whatever relationships
+exist by then -- not implemented now as ordinary CRUD deletion.

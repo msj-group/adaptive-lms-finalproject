@@ -5,6 +5,7 @@ from app.blueprints.auth.forms import LoginForm
 from app.extensions import limiter
 from app.models.user import User, UserRole
 from app.security.passwords import verify_password
+from app.security.redirects import get_safe_redirect_target
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -31,7 +32,7 @@ def login():
         user = User.query.filter_by(email=form.email.data.strip().lower()).first()
         if user and user.is_active_account() and verify_password(user.password_hash, form.password.data):
             login_user(user)
-            next_url = request.args.get("next")
+            next_url = get_safe_redirect_target(request.args.get("next"))
             return redirect(next_url or url_for(_home_endpoint_for(user)))
         flash("Invalid email or password.", "danger")
 

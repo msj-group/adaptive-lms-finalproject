@@ -24,8 +24,13 @@ def create_app(config_name=None):
 
     @login_manager.user_loader
     def load_user(user_id):
-        user = db.session.get(User, int(user_id))
-        if user is None or not user.is_active_account():
+        try:
+            raw_pk, raw_version = user_id.split(".", 1)
+            primary_key, auth_version = int(raw_pk), int(raw_version)
+        except (AttributeError, ValueError):
+            return None
+        user = db.session.get(User, primary_key)
+        if user is None or not user.is_active_account() or user.auth_version != auth_version:
             return None
         return user
 
