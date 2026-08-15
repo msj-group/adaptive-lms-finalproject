@@ -274,3 +274,4 @@ def test_existing_rate_limit_still_enforced():
         finally:
             db.session.remove()
             db.drop_all()
+            db.engine.dispose()

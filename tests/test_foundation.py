@@ -110,3 +110,4 @@ def test_csrf_protection_blocks_missing_token():
         finally:
             db.session.remove()
             db.drop_all()
+            db.engine.dispose()
