@@ -16,3 +16,4 @@ from app.blueprints.admin import levels  # noqa: E402,F401
 from app.blueprints.admin import courses  # noqa: E402,F401
 from app.blueprints.admin import groups  # noqa: E402,F401
 from app.blueprints.admin import students  # noqa: E402,F401
+from app.blueprints.admin import teachers  # noqa: E402,F401

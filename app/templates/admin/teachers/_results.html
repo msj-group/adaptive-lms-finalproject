@@ -1,0 +1,35 @@
+{% import "admin/_macros.html" as macros %}
+{% if teachers %}
+<div style="overflow-x:auto">
+<table style="width:100%; border-collapse:collapse">
+  <thead>
+    <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+      <th style="padding: var(--space-3)">Full Name</th>
+      <th style="padding: var(--space-3)">Email</th>
+      <th style="padding: var(--space-3)">Status</th>
+      <th style="padding: var(--space-3)">Created</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for teacher in teachers %}
+    <tr style="border-bottom:1px solid var(--color-border)">
+      <td style="padding: var(--space-3)">{{ teacher.full_name }}</td>
+      <td style="padding: var(--space-3)">{{ teacher.email }}</td>
+      <td style="padding: var(--space-3)">{{ macros.user_status_badge(teacher.status) }}</td>
+      <td style="padding: var(--space-3)">{{ teacher.created_at.strftime("%Y-%m-%d") }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% elif search or selected_status %}
+<div class="empty-state">
+  <div class="empty-state__title">No teachers match your filters</div>
+  <div>Try a different name or email, or <a href="{{ url_for('admin.teachers_list') }}">clear all filters</a>.</div>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">No teachers yet</div>
+  <div>Teacher accounts created by the center administration will appear here.</div>
+</div>
+{% endif %}

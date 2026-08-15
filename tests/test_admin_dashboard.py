@@ -100,16 +100,47 @@ def test_academic_navigation_links_present_and_working(app, client):
         assert client.get(path).status_code == 200
 
 
-def test_disabled_nav_items_are_not_clickable_links(app, client):
+def test_teachers_nav_item_is_now_a_clickable_link(app, client):
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
     login(client, "admin@example.com")
 
     resp = client.get("/admin/dashboard")
     html = resp.get_data(as_text=True)
-    assert "Teachers" in html
-    assert 'href="/admin/teachers"' not in html
+    assert 'href="/admin/teachers"' in html
+    assert client.get("/admin/teachers").status_code == 200
+
+
+def test_teachers_nav_link_is_active_on_its_own_page(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+    login(client, "admin@example.com")
+
+    resp = client.get("/admin/teachers")
+    html = resp.get_data(as_text=True)
+    assert 'admin-nav__link--active' in html
+    assert re.search(
+        r'<a class="admin-nav__link admin-nav__link--active"[^>]*href="/admin/teachers"',
+        html,
+    )
+
+
+def test_other_disabled_nav_items_remain_disabled(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+    login(client, "admin@example.com")
+
+    resp = client.get("/admin/dashboard")
+    html = resp.get_data(as_text=True)
+    assert "Attendance" in html
+    assert "Grades" in html
+    assert "Payments" in html
+    assert "Research" in html
     assert "Soon" in html
+    assert 'href="/admin/attendance"' not in html
+    assert 'href="/admin/grades"' not in html
+    assert 'href="/admin/payments"' not in html
+    assert 'href="/admin/research"' not in html
 
 
 def test_logout_works(app, client):
