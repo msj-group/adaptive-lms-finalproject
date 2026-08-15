@@ -1,9 +1,23 @@
+import re
+
 from app.models import UserRole, UserStatus
 from tests.conftest import login, make_user
 
 
 def _make_student(email, full_name="Student", status=UserStatus.ACTIVE.value):
     return make_user(email, UserRole.STUDENT.value, status=status, full_name=full_name)
+
+
+def _assert_no_clear_or_filter_controls(html):
+    """There is no custom Clear control at all any more -- the search
+    input's native browser-provided "x" (type=search) covers that job --
+    and no visible Filter button either; it only exists inside <noscript>
+    as a no-JS fallback.
+    """
+    assert 'id="student-clear-filters"' not in html
+    assert re.search(r"<noscript>\s*<button[^>]*>Filter</button>\s*</noscript>", html) is not None
+    outside_noscript = re.sub(r"<noscript>.*?</noscript>", "", html, flags=re.DOTALL)
+    assert ">Filter<" not in outside_noscript
 
 
 def test_administrator_can_access_student_list(app, client):
@@ -152,9 +166,9 @@ def test_invalid_status_value_does_not_crash_or_bypass_filtering(app, client):
         # An unrecognized status must be ignored, not crash and not silently
         # exclude every student either -- the valid student still shows.
         assert "Some Student" in html
-        # It must not be treated as an active filter: no Clear button, and
-        # a "no results" page must never be mistaken for "no students yet".
-        assert ">Clear<" not in html
+        # It must not be treated as an active filter, and a "no results"
+        # page must never be mistaken for "no students yet".
+        _assert_no_clear_or_filter_controls(html)
 
 
 def test_invalid_status_does_not_produce_misleading_empty_state(app, client):
@@ -167,7 +181,7 @@ def test_invalid_status_does_not_produce_misleading_empty_state(app, client):
     assert resp.status_code == 200
     assert "No students yet" in html
     assert "No students match your filters" not in html
-    assert ">Clear<" not in html
+    _assert_no_clear_or_filter_controls(html)
 
 
 def test_empty_database_state(app, client):

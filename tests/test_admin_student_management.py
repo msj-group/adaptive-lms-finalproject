@@ -784,6 +784,165 @@ def test_suspended_student_can_be_reactivated(app, client):
         assert student.status == UserStatus.ACTIVE.value
 
 
+# ======================================================================
+# NAVIGATION AFTER SUSPEND/REACTIVATE (source-aware redirect)
+# ======================================================================
+
+
+def test_suspend_from_unfiltered_list_redirects_to_students_list(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        student = _make_student()
+        public_id = student.public_id
+    login(client, "admin@example.com")
+
+    resp = client.post(
+        f"/admin/students/{public_id}/toggle-status",
+        data={"source": "list", "q": "", "status": ""},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/admin/students"
+
+
+def test_suspend_from_filtered_list_preserves_q_and_status(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        student = _make_student(email="filtered@example.com", full_name="Filtered Target")
+        public_id = student.public_id
+    login(client, "admin@example.com")
+
+    resp = client.post(
+        f"/admin/students/{public_id}/toggle-status",
+        data={"source": "list", "q": "Filtered", "status": "active"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    location = resp.headers["Location"]
+    assert location.startswith("/admin/students?")
+    assert "q=Filtered" in location
+    assert "status=active" in location
+
+
+def test_reactivate_from_filtered_list_preserves_q_and_status(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        student = _make_student(email="reactivate.filtered@example.com", full_name="Reactivate Target",
+                                 status=UserStatus.SUSPENDED.value)
+        public_id = student.public_id
+    login(client, "admin@example.com")
+
+    resp = client.post(
+        f"/admin/students/{public_id}/toggle-status",
+        data={"source": "list", "q": "Reactivate", "status": "suspended"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    location = resp.headers["Location"]
+    assert location.startswith("/admin/students?")
+    assert "q=Reactivate" in location
+    assert "status=suspended" in location
+
+
+def test_invalid_status_not_carried_into_list_redirect(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        student = _make_student()
+        public_id = student.public_id
+    login(client, "admin@example.com")
+
+    resp = client.post(
+        f"/admin/students/{public_id}/toggle-status",
+        data={"source": "list", "q": "", "status": "not-a-real-status"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/admin/students"
+    assert "not-a-real-status" not in resp.headers["Location"]
+
+
+def test_special_characters_in_q_are_safely_encoded_in_redirect(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        student = _make_student()
+        public_id = student.public_id
+    login(client, "admin@example.com")
+
+    resp = client.post(
+        f"/admin/students/{public_id}/toggle-status",
+        data={"source": "list", "q": "<script>&danger", "status": ""},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    location = resp.headers["Location"]
+    # The raw special characters must never appear unescaped in the
+    # Location header (that would risk header/response splitting or a
+    # malformed redirect); url_for() must have percent-encoded them.
+    assert "<script>" not in location
+    assert "&danger" not in location or "%26danger" in location or "&amp;danger" in location
+
+    follow_resp = client.get(location)
+    assert follow_resp.status_code == 200
+
+
+def test_suspend_from_detail_page_still_redirects_to_detail(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        student = _make_student()
+        public_id = student.public_id
+    login(client, "admin@example.com")
+
+    # No "source" field at all -- exactly what detail.html's form sends.
+    resp = client.post(f"/admin/students/{public_id}/toggle-status", follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == f"/admin/students/{public_id}"
+
+
+def test_reactivate_from_detail_page_still_redirects_to_detail(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        student = _make_student(status=UserStatus.SUSPENDED.value)
+        public_id = student.public_id
+    login(client, "admin@example.com")
+
+    resp = client.post(f"/admin/students/{public_id}/toggle-status", follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == f"/admin/students/{public_id}"
+
+
+def test_unrecognized_source_value_falls_back_to_detail_redirect(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        student = _make_student()
+        public_id = student.public_id
+    login(client, "admin@example.com")
+
+    resp = client.post(
+        f"/admin/students/{public_id}/toggle-status",
+        data={"source": "somewhere-else", "q": "ignored", "status": "active"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == f"/admin/students/{public_id}"
+
+
+def test_flash_message_visible_after_following_list_redirect(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        student = _make_student(full_name="Flash Target")
+        public_id = student.public_id
+    login(client, "admin@example.com")
+
+    resp = client.post(
+        f"/admin/students/{public_id}/toggle-status",
+        data={"source": "list", "q": "", "status": ""},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert b"Flash Target" in resp.data
+    assert b"is now suspended" in resp.data
+
+
 def test_toggle_status_route_is_post_only(app, client):
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
@@ -833,6 +992,91 @@ def test_toggle_status_anonymous_and_non_admin_denied(app, client):
 
     login(client, "teacher@example.com")
     assert client.post(f"/admin/students/{public_id}/toggle-status").status_code == 403
+
+
+def test_toggle_status_csrf_still_enforced_with_source_list_fields():
+    """The new source/q/status hidden fields must not create a way to skip
+    CSRF -- a request carrying them but no valid csrf_token must still be
+    rejected exactly like before.
+    """
+    from app import create_app
+
+    app = create_app("testing")
+    app.config["WTF_CSRF_ENABLED"] = True
+    client = app.test_client()
+
+    with app.app_context():
+        db.create_all()
+        try:
+            make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+            student = _make_student()
+            public_id = student.public_id
+
+            token = _get_csrf_token(client, "/auth/login")
+            client.post(
+                "/auth/login",
+                data={"email": "admin@example.com", "password": "Sup3rSecret!123", "csrf_token": token},
+            )
+            resp = client.post(
+                f"/admin/students/{public_id}/toggle-status",
+                data={"source": "list", "q": "abd", "status": "active"},
+            )
+            assert resp.status_code == 400
+            student = User.query.filter_by(public_id=public_id).first()
+            assert student.status == UserStatus.ACTIVE.value
+        finally:
+            db.session.remove()
+            db.drop_all()
+            db.engine.dispose()
+
+
+def test_toggle_status_authorization_unaffected_by_source_list_fields(app, client):
+    with app.app_context():
+        make_user("teacher@example.com", UserRole.TEACHER.value)
+        student = _make_student()
+        public_id = student.public_id
+
+    anon_resp = client.post(
+        f"/admin/students/{public_id}/toggle-status",
+        data={"source": "list", "q": "abd", "status": "active"},
+    )
+    assert anon_resp.status_code == 302
+
+    login(client, "teacher@example.com")
+    teacher_resp = client.post(
+        f"/admin/students/{public_id}/toggle-status",
+        data={"source": "list", "q": "abd", "status": "active"},
+    )
+    assert teacher_resp.status_code == 403
+
+
+def test_toggle_status_still_invalidates_sessions_via_list_redirect_path():
+    """Session invalidation (auth_version bump) must keep working
+    regardless of whether the action was triggered from the list (new
+    redirect path) or the detail page (existing path).
+    """
+    with _isolated_app() as isolated_app:
+        with isolated_app.app_context():
+            make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+            student = _make_student(email="listpath.session@example.com")
+            public_id = student.public_id
+
+        admin_client = isolated_app.test_client()
+        login(admin_client, "admin@example.com")
+
+        student_client = isolated_app.test_client()
+        login(student_client, "listpath.session@example.com")
+        assert student_client.get("/admin/students").status_code == 403  # session alive
+
+        admin_client.post(
+            f"/admin/students/{public_id}/toggle-status",
+            data={"source": "list", "q": "", "status": ""},
+            follow_redirects=True,
+        )
+
+        resp = student_client.get("/admin/students")
+        assert resp.status_code == 302
+        assert "/auth/login" in resp.headers["Location"]
 
 
 def test_toggle_status_non_student_public_id_returns_404(app, client):

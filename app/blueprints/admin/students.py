@@ -14,6 +14,38 @@ def _get_student_or_404(public_id):
     return User.query.filter_by(public_id=public_id, role=UserRole.STUDENT.value).first_or_404()
 
 
+def _escape_like(value):
+    """Escape LIKE/ILIKE metacharacters so a search term containing a
+    literal '%' or '_' is matched as those literal characters instead of
+    being interpreted as a SQL wildcard.
+    """
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+# Fixed, known marker the Students-list toggle-status form sends so the
+# server can tell "this action started from the list" from "this action
+# started from the detail page" -- deliberately NOT a caller-supplied
+# next/return_to URL (that would be an open-redirect surface) and NOT the
+# Referer header (unreliable, spoofable, sometimes stripped by browsers).
+# Only this exact value is honoured; anything else falls back to the
+# existing detail-page redirect.
+STUDENT_LIST_REDIRECT_SOURCE = "list"
+
+
+def _redirect_after_toggle_status(student):
+    if request.form.get("source") == STUDENT_LIST_REDIRECT_SOURCE:
+        raw_q = request.form.get("q", "").strip()
+        raw_status = request.form.get("status", "").strip()
+        status = raw_status if raw_status in {s.value for s in UserStatus} else ""
+        params = {}
+        if raw_q:
+            params["q"] = raw_q
+        if status:
+            params["status"] = status
+        return redirect(url_for("admin.students_list", **params))
+    return redirect(url_for("admin.student_detail", public_id=student.public_id))
+
+
 @admin_bp.get("/students")
 @roles_required(UserRole.ADMINISTRATOR.value)
 def students_list():
@@ -23,14 +55,29 @@ def students_list():
 
     query = User.query.filter(User.role == UserRole.STUDENT.value)
     if search:
-        like = f"%{search}%"
-        query = query.filter(or_(User.full_name.ilike(like), User.email.ilike(like)))
+        # Prefix match only: the beginning of the full name, the beginning
+        # of any individual word within it, or the beginning of the email.
+        # A plain substring match (the previous behaviour) was too broad --
+        # e.g. "ade" would match inside "gadeer".
+        escaped = _escape_like(search)
+        name_prefix = f"{escaped}%"
+        name_word_prefix = f"% {escaped}%"
+        email_prefix = f"{escaped}%"
+        query = query.filter(
+            or_(
+                User.full_name.ilike(name_prefix, escape="\\"),
+                User.full_name.ilike(name_word_prefix, escape="\\"),
+                User.email.ilike(email_prefix, escape="\\"),
+            )
+        )
     if status:
         query = query.filter(User.status == status)
 
     students = query.order_by(User.created_at.desc(), User.id.desc()).all()
+    is_live_search_request = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    template = "admin/students/_results.html" if is_live_search_request else "admin/students/list.html"
     return render_template(
-        "admin/students/list.html",
+        template,
         students=students,
         search=search,
         selected_status=status,
@@ -105,7 +152,7 @@ def student_toggle_status(public_id):
     student.bump_auth_version()
     db.session.commit()
     flash(f"Student '{student.full_name}' is now {student.status}.", "success")
-    return redirect(url_for("admin.student_detail", public_id=student.public_id))
+    return _redirect_after_toggle_status(student)
 
 
 @admin_bp.route("/students/<public_id>/reset-password", methods=["GET", "POST"])

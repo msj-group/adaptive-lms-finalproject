@@ -1,0 +1,57 @@
+{% import "admin/_macros.html" as macros %}
+{% if students %}
+<div style="overflow-x:auto">
+<table style="width:100%; border-collapse:collapse">
+  <thead>
+    <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+      <th style="padding: var(--space-3)">Full Name</th>
+      <th style="padding: var(--space-3)">Email</th>
+      <th style="padding: var(--space-3)">Status</th>
+      <th style="padding: var(--space-3)">Created</th>
+      <th style="padding: var(--space-3)">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for student in students %}
+    <tr style="border-bottom:1px solid var(--color-border)">
+      <td style="padding: var(--space-3)"><a href="{{ url_for('admin.student_detail', public_id=student.public_id) }}">{{ student.full_name }}</a></td>
+      <td style="padding: var(--space-3)">{{ student.email }}</td>
+      <td style="padding: var(--space-3)">{{ macros.user_status_badge(student.status) }}</td>
+      <td style="padding: var(--space-3)">{{ student.created_at.strftime("%Y-%m-%d") }}</td>
+      <td style="padding: var(--space-3)">
+        <div class="ds-row" style="gap: var(--space-2)">
+          <a class="btn btn--secondary" href="{{ url_for('admin.student_edit', public_id=student.public_id) }}">Edit</a>
+          <form
+            method="post"
+            action="{{ url_for('admin.student_toggle_status', public_id=student.public_id) }}"
+            class="student-status-form"
+            {% if student.status == "active" %}data-confirm="Suspend {{ student.full_name }}? They will be signed out of any active session and unable to log in until reactivated."{% endif %}
+          >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="source" value="list">
+            <input type="hidden" name="q" value="{{ search }}">
+            <input type="hidden" name="status" value="{{ selected_status }}">
+            {% if student.status == "active" %}
+              <button type="submit" class="btn btn--danger-outline">Suspend</button>
+            {% else %}
+              <button type="submit" class="btn btn--secondary">Reactivate</button>
+            {% endif %}
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% elif search or selected_status %}
+<div class="empty-state">
+  <div class="empty-state__title">No students match your filters</div>
+  <div>Try a different name or email, or <a href="{{ url_for('admin.students_list') }}">clear all filters</a>.</div>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">No students yet</div>
+  <div>Student accounts created by the center administration will appear here.</div>
+</div>
+{% endif %}
