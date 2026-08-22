@@ -38,6 +38,32 @@ def _find_one(elements, attr_name):
     return matches[0]
 
 
+def _fetch_static_and_close(client, path):
+    """Fetch a static asset via the test client and close the response
+    immediately, returning the (now-closed) response object.
+
+    Flask serves static files (via send_from_directory/send_file) by
+    opening a real OS file handle and streaming it -- unlike an ordinary
+    Jinja-rendered response, which is built entirely in memory with
+    nothing to release. The test client does not close that handle for
+    us just because the body was read; left unclosed, it is only
+    released whenever CPython's garbage collector happens to finalize
+    it, which prints an "unclosed file" ResourceWarning (and fails the
+    test outright when ResourceWarning/PytestUnraisableExceptionWarning
+    are treated as errors, as in the strict verification runs used for
+    this project). Reading the body before closing populates Werkzeug's
+    internal cache, so status_code / headers / get_data() all remain
+    valid to read on the returned response afterward, even though the
+    underlying file handle has already been released.
+    """
+    response = client.get(path)
+    try:
+        response.get_data()
+    finally:
+        response.close()
+    return response
+
+
 def _make_admin():
     return make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
 
@@ -507,13 +533,13 @@ def test_search_input_is_native_type_search_for_builtin_clear_affordance(app, cl
 
 
 def test_shared_live_search_script_is_accessible(client):
-    resp = client.get("/static/js/admin_live_search.js")
+    resp = _fetch_static_and_close(client, "/static/js/admin_live_search.js")
     assert resp.status_code == 200
     assert "javascript" in resp.headers.get("Content-Type", "")
 
 
 def test_shared_live_search_script_contains_required_behavior(client):
-    resp = client.get("/static/js/admin_live_search.js")
+    resp = _fetch_static_and_close(client, "/static/js/admin_live_search.js")
     js = resp.get_data(as_text=True)
 
     # Debounce
@@ -552,7 +578,7 @@ def test_status_confirmation_installed_before_feature_detection_gate(client):
     scoped structural assertion over the actual shipped source rather than
     an executed behavioural test.
     """
-    resp = client.get("/static/js/admin_live_search.js")
+    resp = _fetch_static_and_close(client, "/static/js/admin_live_search.js")
     source = resp.get_data(as_text=True)
 
     foreach_marker = 'document.querySelectorAll("[data-live-search]").forEach(function (root) {'
