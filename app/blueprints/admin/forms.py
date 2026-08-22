@@ -13,7 +13,8 @@ from wtforms.validators import DataRequired, Email, Length, NumberRange, Optiona
 from app.extensions import db
 from app.models import AcademicStatus, AcademicTerm, Course, Group, Level, User
 
-# Minimum/maximum length for administrator-set student passwords. No
+# Minimum/maximum length for administrator-set passwords on any
+# administrator-managed user account (currently Student and Teacher). No
 # composition rules (uppercase/digit/symbol) are enforced -- strength comes
 # from length instead, so long passphrases are preferred over short,
 # complex-looking passwords. This follows only the length-over-composition
@@ -25,8 +26,8 @@ from app.models import AcademicStatus, AcademicTerm, Course, Group, Level, User
 # documented here as a deliberate scope decision, not an oversight. The
 # maximum bounds the input size reaching Argon2id, since hashing cost
 # scales with input length.
-STUDENT_PASSWORD_MIN_LENGTH = 15
-STUDENT_PASSWORD_MAX_LENGTH = 128
+ACCOUNT_PASSWORD_MIN_LENGTH = 15
+ACCOUNT_PASSWORD_MAX_LENGTH = 128
 
 
 class AcademicTermForm(FlaskForm):
@@ -195,12 +196,19 @@ def _normalize_email(raw_email):
     return raw_email.strip().lower() if raw_email else ""
 
 
-class StudentCreateForm(FlaskForm):
+class _AccountCreateFormBase(FlaskForm):
+    """Shared fields/validation for admin-created accounts (Student,
+    Teacher, ...). Each role gets its own thin public subclass below --
+    purely for a role-specific submit label and a clear, discoverable
+    class name in routes/templates, not a semantic "is-a" relationship
+    between roles.
+    """
+
     full_name = StringField("Full Name", validators=[DataRequired(), Length(max=255)])
     email = StringField("Email", validators=[DataRequired(), Email(), Length(max=255)])
     password = PasswordField(
         "Temporary Password",
-        validators=[DataRequired(), Length(min=STUDENT_PASSWORD_MIN_LENGTH, max=STUDENT_PASSWORD_MAX_LENGTH)],
+        validators=[DataRequired(), Length(min=ACCOUNT_PASSWORD_MIN_LENGTH, max=ACCOUNT_PASSWORD_MAX_LENGTH)],
         render_kw={"autocomplete": "new-password"},
     )
     confirm_password = PasswordField(
@@ -208,7 +216,6 @@ class StudentCreateForm(FlaskForm):
         validators=[DataRequired()],
         render_kw={"autocomplete": "new-password"},
     )
-    submit = SubmitField("Create Student")
 
     def validate_email(self, field):
         normalized = _normalize_email(field.data)
@@ -220,28 +227,53 @@ class StudentCreateForm(FlaskForm):
             raise ValidationError("Passwords do not match.")
 
 
-class StudentEditForm(FlaskForm):
+class StudentCreateForm(_AccountCreateFormBase):
+    submit = SubmitField("Create Student")
+
+
+class TeacherCreateForm(_AccountCreateFormBase):
+    submit = SubmitField("Create Teacher")
+
+
+class _AccountEditFormBase(FlaskForm):
+    """Shared fields/validation for editing an admin-managed account's
+    name/email. Subclasses accept a role-specific `..._id` constructor
+    keyword (preserving each role's existing call signature) and forward
+    it to the shared exclude-self uniqueness check.
+    """
+
     full_name = StringField("Full Name", validators=[DataRequired(), Length(max=255)])
     email = StringField("Email", validators=[DataRequired(), Email(), Length(max=255)])
     submit = SubmitField("Save")
 
-    def __init__(self, *args, student_id=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._student_id = student_id
+    def _set_excluded_user_id(self, excluded_user_id):
+        self._excluded_user_id = excluded_user_id
 
     def validate_email(self, field):
         normalized = _normalize_email(field.data)
         query = User.query.filter(User.email == normalized)
-        if self._student_id is not None:
-            query = query.filter(User.id != self._student_id)
+        if self._excluded_user_id is not None:
+            query = query.filter(User.id != self._excluded_user_id)
         if query.first() is not None:
             raise ValidationError("A user with this email already exists.")
 
 
-class StudentPasswordResetForm(FlaskForm):
+class StudentEditForm(_AccountEditFormBase):
+    def __init__(self, *args, student_id=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._set_excluded_user_id(student_id)
+
+
+class TeacherEditForm(_AccountEditFormBase):
+    def __init__(self, *args, teacher_id=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._set_excluded_user_id(teacher_id)
+
+
+class _AccountPasswordResetFormBase(FlaskForm):
     password = PasswordField(
         "New Temporary Password",
-        validators=[DataRequired(), Length(min=STUDENT_PASSWORD_MIN_LENGTH, max=STUDENT_PASSWORD_MAX_LENGTH)],
+        validators=[DataRequired(), Length(min=ACCOUNT_PASSWORD_MIN_LENGTH, max=ACCOUNT_PASSWORD_MAX_LENGTH)],
         render_kw={"autocomplete": "new-password"},
     )
     confirm_password = PasswordField(
@@ -254,3 +286,11 @@ class StudentPasswordResetForm(FlaskForm):
     def validate_confirm_password(self, field):
         if field.data != self.password.data:
             raise ValidationError("Passwords do not match.")
+
+
+class StudentPasswordResetForm(_AccountPasswordResetFormBase):
+    pass
+
+
+class TeacherPasswordResetForm(_AccountPasswordResetFormBase):
+    pass

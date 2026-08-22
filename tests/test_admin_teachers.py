@@ -489,22 +489,23 @@ def test_password_hash_and_internal_id_not_rendered(app, client):
     assert f">{teacher_id}<" not in html
 
 
-def test_no_actions_column_no_new_teacher_button_no_nonfunctional_links(app, client):
+def test_actions_column_new_teacher_button_and_detail_link_now_present(app, client):
+    """Superseded by Teacher Account Management Part 4: the listing was
+    action-less and the name was plain text in Part 3 (no create/detail/
+    edit/status routes existed yet). Now that those routes exist, the list
+    page must expose them -- this replaces the old Part-3-only assertion
+    that they were absent. Full coverage of the actions themselves lives
+    in test_admin_teacher_management.py.
+    """
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
-        _make_teacher("plain@example.com", full_name="Plain Teacher")
+        teacher = _make_teacher("plain@example.com", full_name="Plain Teacher")
+        public_id = teacher.public_id
     login(client, "admin@example.com")
 
     html = client.get("/admin/teachers").get_data(as_text=True)
-    assert ">Actions<" not in html
-    assert "New Teacher" not in html
-    assert ">Edit<" not in html
-    assert ">Suspend<" not in html  # not a substring check -- "Suspended" (status text) legitimately appears
-    assert ">Reactivate<" not in html
-    assert ">Reset Password<" not in html
-    assert "toggle-status" not in html  # no status-toggle form/action exists yet
-
-    # The teacher's name must be plain text, not a link (no detail page yet).
-    elements = _parse_elements(html)
-    anchor_hrefs = [attrs.get("href") for tag, attrs in elements if tag == "a"]
-    assert not any(href and "teachers/" in href and href != "/admin/teachers" for href in anchor_hrefs)
+    assert ">Actions<" in html
+    assert 'href="/admin/teachers/new"' in html
+    assert f'href="/admin/teachers/{public_id}">Plain Teacher</a>' in html
+    assert f"/admin/teachers/{public_id}/edit" in html
+    assert "toggle-status" in html
