@@ -47,6 +47,7 @@ class Group(db.Model):
 
     academic_term = db.relationship("AcademicTerm", back_populates="groups")
     course = db.relationship("Course", back_populates="groups")
+    enrollments = db.relationship("Enrollment", back_populates="group")
 
     @validates("status")
     def validate_status(self, _key, value):

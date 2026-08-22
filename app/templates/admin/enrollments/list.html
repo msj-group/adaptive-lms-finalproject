@@ -1,0 +1,82 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Enrollments{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+    <h1 style="margin:0">Enrollments</h1>
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  <form method="get" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+    <label class="field__label" for="q" style="margin:0">Search:</label>
+    <input type="search" name="q" id="q" class="field__input" style="width:auto" placeholder="Student name or email" value="{{ search }}">
+
+    <label class="field__label" for="status" style="margin:0">Status:</label>
+    <select name="status" id="status" class="field__input" style="width:auto">
+      <option value="">All Statuses</option>
+      <option value="active" {{ "selected" if selected_status == "active" else "" }}>Active</option>
+      <option value="withdrawn" {{ "selected" if selected_status == "withdrawn" else "" }}>Withdrawn</option>
+    </select>
+
+    <label class="field__label" for="term_id" style="margin:0">Term:</label>
+    <select name="term_id" id="term_id" class="field__input" style="width:auto">
+      <option value="">All Terms</option>
+      {% for term in terms %}
+        <option value="{{ term.id }}" {{ "selected" if selected_term_id == term.id else "" }}>{{ term.name }}</option>
+      {% endfor %}
+    </select>
+
+    <button type="submit" class="btn btn--secondary">Filter</button>
+    {% if search or selected_status or selected_term_id %}
+      <a class="btn btn--secondary" href="{{ url_for('admin.enrollments_list') }}">Clear</a>
+    {% endif %}
+  </form>
+
+  {% if enrollments %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th style="padding: var(--space-3)">Student</th>
+        <th style="padding: var(--space-3)">Email</th>
+        <th style="padding: var(--space-3)">Group</th>
+        <th style="padding: var(--space-3)">Group Code</th>
+        <th style="padding: var(--space-3)">Course</th>
+        <th style="padding: var(--space-3)">Level</th>
+        <th style="padding: var(--space-3)">Academic Term</th>
+        <th style="padding: var(--space-3)">Status</th>
+        <th style="padding: var(--space-3)">Created</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for enrollment in enrollments %}
+      <tr style="border-bottom:1px solid var(--color-border)">
+        <td style="padding: var(--space-3)">{{ enrollment.student.full_name }}</td>
+        <td style="padding: var(--space-3)">{{ enrollment.student.email }}</td>
+        <td style="padding: var(--space-3)">{{ enrollment.group.name }}</td>
+        <td style="padding: var(--space-3)">{{ enrollment.group.code or "--" }}</td>
+        <td style="padding: var(--space-3)">{{ enrollment.group.course.title }}</td>
+        <td style="padding: var(--space-3)">{{ enrollment.group.course.level.name }}</td>
+        <td style="padding: var(--space-3)">{{ enrollment.group.academic_term.name }}</td>
+        <td style="padding: var(--space-3)">{{ macros.enrollment_status_badge(enrollment.status) }}</td>
+        <td style="padding: var(--space-3)">{{ enrollment.created_at.strftime("%Y-%m-%d") }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% elif search or selected_status or selected_term_id %}
+  <div class="empty-state">
+    <div class="empty-state__title">No enrollments match your filters</div>
+    <div>Try a different name or email, or <a href="{{ url_for('admin.enrollments_list') }}">clear all filters</a>.</div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No enrollments yet</div>
+    <div>Student enrollments in Groups will appear here.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

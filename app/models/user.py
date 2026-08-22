@@ -39,6 +39,14 @@ class User(UserMixin, db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
+    # Named "student_enrollments", not "enrollments", so it reads
+    # unambiguously as "Enrollment rows where this user is the student" --
+    # a User of any role can technically be the FK target (the database
+    # cannot express "only role=student" on a plain foreign key), and a
+    # generic name here would wrongly imply Admin/Teacher/Researcher
+    # enrollment semantics that do not exist.
+    student_enrollments = db.relationship("Enrollment", back_populates="student")
+
     @validates("role")
     def validate_role(self, _key, value):
         if value not in {r.value for r in UserRole}:
