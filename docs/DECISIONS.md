@@ -193,14 +193,24 @@ below.
 **Decision: Enrollment and Teacher-assignment management live inside each
 Group's own page, not on a separate top-level administrator page.**
 
-`Enrollment` originally had its own standalone administrator listing page
-(introduced with the model itself, migration `d6ae31e9754c` / commit
-`e329e34`). Phase 3, Part 6 removed that standalone `GET /admin/enrollments`
-route, its create/detail/withdraw/reactivate routes, and its "Enrollments"
-navigation item entirely. An administrator now instead opens a specific
-`Group` and uses its **Manage Members** page
-(`GET /admin/groups/<group_public_id>/members`) to manage both its Teacher
-assignments and its Student enrollments in one place.
+The earlier Enrollment milestone (migration `d6ae31e9754c`, commit
+`e329e34`) introduced the `Enrollment` model together with a standalone
+administrator page -- but that page was **read-only**: a single
+`GET /admin/enrollments` listing route, its `list.html` template, and an
+"Enrollments" navigation item. That milestone did **not** implement any
+standalone create, detail, withdraw, or reactivate route -- there was no
+way to mutate an Enrollment through the admin interface at all until
+Phase 3, Part 6.
+
+Phase 3, Part 6 removed the standalone listing route, its template, and
+the navigation item entirely, and introduced the current Group-nested
+`POST` routes for Enrollment creation, withdrawal, and reactivation
+(`group_enrollment_create/withdraw/reactivate`, section H below). There is
+no standalone Enrollment detail page or detail route, before or after
+Part 6 -- Enrollment administration (viewing and mutating) now occurs
+entirely through each Group's **Manage Members** page
+(`GET /admin/groups/<group_public_id>/members`), which also manages that
+Group's Teacher assignments in the same place.
 
 This is clearer than a flat, cross-Group list because membership is never
 meaningful on its own -- every enrollment decision (is there capacity? is
