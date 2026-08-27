@@ -314,10 +314,14 @@ def test_different_students_may_enroll_in_same_group(app):
 def test_database_fk_does_not_enforce_student_role(app):
     """The `student_id` foreign key only guarantees the referenced User
     row exists -- it cannot, at the database level, restrict that row to
-    role=student. This test documents and proves that boundary directly:
-    a non-Student user id is accepted by the FK constraint. Enforcing the
-    role is the responsibility of the (not-yet-built) Enrollment write
-    path, not the schema -- see the Enrollment model's docstring.
+    role=student. This test documents and proves that boundary directly
+    at the model layer: a non-Student user id is accepted by the FK
+    constraint. Role integrity at write/read time is enforced entirely by
+    the application layer instead (`app/blueprints/admin/enrollments.py`
+    -- see `_get_enrollment_for_group_or_404` and the Group-nested
+    create/withdraw/reactivate routes, exercised in
+    tests/test_admin_group_enrollment_management.py), not the schema --
+    see the Enrollment model's docstring.
     """
     with app.app_context():
         teacher = User(

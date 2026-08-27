@@ -15,8 +15,17 @@
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group Code</dt>
       <dd style="margin:0">{{ group.code or "--" }}</dd>
 
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Capacity</dt>
-      <dd style="margin:0">{{ group.capacity }}</dd>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Active Students</dt>
+      <dd style="margin:0">{{ active_student_count }}/{{ group.capacity }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Active Teachers</dt>
+      <dd style="margin:0">
+        {%- if eligible_teacher_names -%}
+          {{ eligible_teacher_names | join(", ") }}
+        {%- else -%}
+          <span class="badge badge--warning">No active teacher assigned</span>
+        {%- endif -%}
+      </dd>
 
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
       <dd style="margin:0">{{ group.academic_term.name }}</dd>
@@ -37,6 +46,7 @@
 
   <div class="ds-row" style="margin-top: var(--space-6)">
     <a class="btn btn--primary" href="{{ url_for('admin.group_edit', public_id=group.public_id) }}">Edit Group</a>
+    <a class="btn btn--primary" href="{{ url_for('admin.group_members', group_public_id=group.public_id) }}">Manage Members</a>
     <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Back to Groups</a>
   </div>
 </div>

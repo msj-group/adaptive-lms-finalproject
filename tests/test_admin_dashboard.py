@@ -125,29 +125,20 @@ def test_teachers_nav_link_is_active_on_its_own_page(app, client):
     )
 
 
-def test_enrollments_nav_item_is_a_clickable_link(app, client):
+def test_no_standalone_enrollments_nav_link(app, client):
+    """Part 6D moved Student Enrollment management entirely onto each
+    Group's Manage Members page -- the standalone Enrollments nav entry
+    and page are gone, and the old flat route must not exist.
+    """
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
     login(client, "admin@example.com")
 
     resp = client.get("/admin/dashboard")
     html = resp.get_data(as_text=True)
-    assert 'href="/admin/enrollments"' in html
-    assert client.get("/admin/enrollments").status_code == 200
-
-
-def test_enrollments_nav_link_is_active_on_its_own_page(app, client):
-    with app.app_context():
-        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
-    login(client, "admin@example.com")
-
-    resp = client.get("/admin/enrollments")
-    html = resp.get_data(as_text=True)
-    assert 'admin-nav__link--active' in html
-    assert re.search(
-        r'<a class="admin-nav__link admin-nav__link--active"[^>]*href="/admin/enrollments"',
-        html,
-    )
+    assert ">Enrollments<" not in html
+    assert 'href="/admin/enrollments"' not in html
+    assert client.get("/admin/enrollments").status_code == 404
 
 
 def test_other_disabled_nav_items_remain_disabled(app, client):

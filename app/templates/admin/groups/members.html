@@ -1,0 +1,194 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ group.name }} — Members{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+    <h1 style="margin:0">{{ group.name }} — Manage Members</h1>
+    {{ macros.status_badge(group.status) }}
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  {% if group.status != "active" %}
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    This group is archived. The roster below is read-only -- reactivate the group from its detail page to change Teacher or Student membership.
+  </div>
+  {% endif %}
+
+  <div class="card" style="margin-bottom: var(--space-6)">
+    <dl style="display: grid; grid-template-columns: 160px 1fr; row-gap: var(--space-3); column-gap: var(--space-4); margin: 0;">
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group Code</dt>
+      <dd style="margin:0">{{ group.code or "--" }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
+      <dd style="margin:0">{{ group.course.title }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
+      <dd style="margin:0">{{ group.course.level.name }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
+      <dd style="margin:0">{{ group.academic_term.name }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Active Students</dt>
+      <dd style="margin:0">{{ active_student_count }}/{{ group.capacity }} ({{ remaining_seats }} seat{{ "" if remaining_seats == 1 else "s" }} remaining)</dd>
+    </dl>
+  </div>
+
+  <div class="ds-row" style="margin-bottom: var(--space-6)">
+    <a class="btn btn--secondary" href="{{ url_for('admin.group_detail', public_id=group.public_id) }}">Back to Group Details</a>
+    <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Back to Groups</a>
+  </div>
+
+  <section style="margin-bottom: var(--space-8)">
+    <h2>Teachers</h2>
+
+    {% if eligible_teacher_count == 0 %}
+    <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+      No active teacher is assigned to this group. Student enrollment is blocked until at least one active teacher is assigned.
+    </div>
+    {% endif %}
+
+    {% if teacher_assignments %}
+    <div style="overflow-x:auto; margin-bottom: var(--space-4)">
+    <table style="width:100%; border-collapse:collapse">
+      <thead>
+        <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+          <th style="padding: var(--space-3)">Teacher</th>
+          <th style="padding: var(--space-3)">Email</th>
+          <th style="padding: var(--space-3)">Assignment</th>
+          <th style="padding: var(--space-3)">Account</th>
+          <th style="padding: var(--space-3)">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for assignment in teacher_assignments %}
+        <tr style="border-bottom:1px solid var(--color-border)">
+          <td style="padding: var(--space-3)">{{ assignment.teacher.full_name }}</td>
+          <td style="padding: var(--space-3)">{{ assignment.teacher.email }}</td>
+          <td style="padding: var(--space-3)">{{ macros.assignment_status_badge(assignment.status) }}</td>
+          <td style="padding: var(--space-3)">{{ macros.user_status_badge(assignment.teacher.status) }}</td>
+          <td style="padding: var(--space-3)">
+            {% if group.status == "active" %}
+              {% if assignment.status == "active" %}
+              <form method="post" action="{{ url_for('admin.group_teacher_remove', group_public_id=group.public_id, assignment_public_id=assignment.public_id) }}" data-confirm="Remove {{ assignment.teacher.full_name }} from {{ group.name }}? This can be reversed later with Reactivate.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn--danger-outline">Remove</button>
+              </form>
+              {% else %}
+              <form method="post" action="{{ url_for('admin.group_teacher_reactivate', group_public_id=group.public_id, assignment_public_id=assignment.public_id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn--secondary">Reactivate</button>
+              </form>
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="margin-bottom: var(--space-4)">
+      <div class="empty-state__title">No teachers assigned yet</div>
+    </div>
+    {% endif %}
+
+    {% if group.status == "active" %}
+      {% if not teacher_form.teacher_public_id.choices %}
+      <div class="alert alert--info">No eligible Teacher accounts are available to assign to this group.</div>
+      {% else %}
+      <form method="post" action="{{ url_for('admin.group_teacher_assign', group_public_id=group.public_id) }}" class="ds-row" style="align-items:flex-end; gap: var(--space-2); flex-wrap: wrap;">
+        {{ teacher_form.hidden_tag() }}
+        <div class="field">
+          {{ teacher_form.teacher_public_id.label(class_="field__label") }}
+          {{ teacher_form.teacher_public_id(class_="field__input") }}
+          {% for error in teacher_form.teacher_public_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+        </div>
+        {{ teacher_form.submit(class_="btn btn--primary") }}
+      </form>
+      {% endif %}
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Students</h2>
+
+    {% if enrollments %}
+    <div style="overflow-x:auto; margin-bottom: var(--space-4)">
+    <table style="width:100%; border-collapse:collapse">
+      <thead>
+        <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+          <th style="padding: var(--space-3)">Student</th>
+          <th style="padding: var(--space-3)">Email</th>
+          <th style="padding: var(--space-3)">Enrollment</th>
+          <th style="padding: var(--space-3)">Account</th>
+          <th style="padding: var(--space-3)">Created</th>
+          <th style="padding: var(--space-3)">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for enrollment in enrollments %}
+        <tr style="border-bottom:1px solid var(--color-border)">
+          <td style="padding: var(--space-3)">{{ enrollment.student.full_name }}</td>
+          <td style="padding: var(--space-3)">{{ enrollment.student.email }}</td>
+          <td style="padding: var(--space-3)">{{ macros.enrollment_status_badge(enrollment.status) }}</td>
+          <td style="padding: var(--space-3)">{{ macros.user_status_badge(enrollment.student.status) }}</td>
+          <td style="padding: var(--space-3)">{{ enrollment.created_at.strftime("%Y-%m-%d") }}</td>
+          <td style="padding: var(--space-3)">
+            {% if group.status == "active" %}
+              {% if enrollment.status == "active" %}
+              <form method="post" action="{{ url_for('admin.group_enrollment_withdraw', group_public_id=group.public_id, enrollment_public_id=enrollment.public_id) }}" data-confirm="Withdraw {{ enrollment.student.full_name }} from {{ group.name }}? This can be reversed later with Reactivate.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn--danger-outline">Withdraw</button>
+              </form>
+              {% else %}
+              <form method="post" action="{{ url_for('admin.group_enrollment_reactivate', group_public_id=group.public_id, enrollment_public_id=enrollment.public_id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn--secondary">Reactivate</button>
+              </form>
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="margin-bottom: var(--space-4)">
+      <div class="empty-state__title">No students enrolled yet</div>
+    </div>
+    {% endif %}
+
+    {% if group.status == "active" %}
+      {% if eligible_teacher_count == 0 %}
+      <div class="alert alert--warning">This group must have at least one active teacher before students can be enrolled.</div>
+      {% elif remaining_seats == 0 %}
+      <div class="alert alert--warning">Group is at full capacity.</div>
+      {% elif not student_form.student_public_id.choices %}
+      <div class="alert alert--info">No eligible Student accounts are available to add to this group.</div>
+      {% else %}
+      <form method="post" action="{{ url_for('admin.group_enrollment_create', group_public_id=group.public_id) }}" class="ds-row" style="align-items:flex-end; gap: var(--space-2); flex-wrap: wrap;">
+        {{ student_form.hidden_tag() }}
+        <div class="field">
+          {{ student_form.student_public_id.label(class_="field__label") }}
+          {{ student_form.student_public_id(class_="field__input") }}
+          {% for error in student_form.student_public_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+        </div>
+        {{ student_form.submit(class_="btn btn--primary") }}
+      </form>
+      {% endif %}
+    {% endif %}
+  </section>
+</div>
+<script>
+  document.querySelectorAll("form[data-confirm]").forEach(function (form) {
+    form.addEventListener("submit", function (event) {
+      if (!confirm(form.dataset.confirm)) {
+        event.preventDefault();
+      }
+    });
+  });
+</script>
+{% endblock %}

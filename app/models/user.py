@@ -47,6 +47,13 @@ class User(UserMixin, db.Model):
     # enrollment semantics that do not exist.
     student_enrollments = db.relationship("Enrollment", back_populates="student")
 
+    # Named "teaching_assignments", not "assignments", for the same reason
+    # as "student_enrollments" above -- a User of any role can technically
+    # be the FK target of GroupTeacherAssignment.teacher_id (the database
+    # cannot express "only role=teacher" on a plain foreign key), and a
+    # generic name here would wrongly imply this applies to every role.
+    teaching_assignments = db.relationship("GroupTeacherAssignment", back_populates="teacher")
+
     @validates("role")
     def validate_role(self, _key, value):
         if value not in {r.value for r in UserRole}:

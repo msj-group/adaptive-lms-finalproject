@@ -6,8 +6,20 @@ from app.blueprints.admin import admin_bp
 from app.blueprints.admin.forms import GroupForm
 from app.blueprints.admin.utils import normalize_optional_text
 from app.extensions import db
-from app.models import AcademicStatus, AcademicTerm, Course, Group, Level, UserRole
+from app.models import (
+    AcademicStatus,
+    AcademicTerm,
+    Course,
+    Group,
+    GroupTeacherAssignment,
+    GroupTeacherAssignmentStatus,
+    Level,
+    User,
+    UserRole,
+    UserStatus,
+)
 from app.security.decorators import roles_required
+from app.services.group_memberships import active_student_enrollment_count
 
 
 def _course_choices():
@@ -80,7 +92,29 @@ def group_detail(public_id):
         .filter_by(public_id=public_id)
         .first_or_404()
     )
-    return render_template("admin/groups/detail.html", group=group)
+    # One focused query for the names of currently-eligible active
+    # Teachers (status=active assignment, role=teacher, active account)
+    # -- not a full Teacher-assignment listing, so no N+1 risk regardless
+    # of how many assignments this Group has.
+    eligible_teacher_names = [
+        row[0]
+        for row in db.session.query(User.full_name)
+        .join(GroupTeacherAssignment, GroupTeacherAssignment.teacher_id == User.id)
+        .filter(
+            GroupTeacherAssignment.group_id == group.id,
+            GroupTeacherAssignment.status == GroupTeacherAssignmentStatus.ACTIVE.value,
+            User.role == UserRole.TEACHER.value,
+            User.status == UserStatus.ACTIVE.value,
+        )
+        .order_by(User.full_name)
+        .all()
+    ]
+    return render_template(
+        "admin/groups/detail.html",
+        group=group,
+        eligible_teacher_names=eligible_teacher_names,
+        active_student_count=active_student_enrollment_count(group.id),
+    )
 
 
 @admin_bp.route("/groups/new", methods=["GET", "POST"])

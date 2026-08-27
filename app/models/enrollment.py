@@ -26,15 +26,21 @@ class Enrollment(db.Model):
     shared `users` table, which can hold any role. The database can only
     guarantee the referenced row exists, not that its `role` is
     "student" -- a plain FK cannot express a conditional constraint like
-    that portably. Enforcing role="student" at write time is the
-    responsibility of the application layer (the not-yet-built
-    Enrollment creation/update flow); this part is listing-only and does
-    not write Enrollment rows, so there is nothing here that could
-    create a non-Student enrollment. A row that somehow references a
-    non-Student user (e.g. a manually seeded/corrupted row) is still
-    technically permitted by this FK -- the administrative listing query
-    is responsible for excluding such rows so they are never presented
-    as valid Student enrollment data.
+    that portably. A row that somehow references a non-Student user (e.g.
+    a manually seeded/corrupted row) is still technically permitted by
+    this FK. Enrollment creation and reactivation
+    (`app/blueprints/admin/enrollments.py`, nested under each Group's
+    Manage Members page) independently re-verify `role == student` and an
+    active account before writing. The Manage Members query
+    (`app/blueprints/admin/group_members.py`) filters Enrollment rows to
+    Student-role Users, so a corrupted row is excluded from that display.
+    The nested withdrawal/reactivation lookup goes through
+    `_get_enrollment_for_group_or_404`, which scopes the Enrollment to
+    both the Group taken from the URL and to a Student-role User -- so a
+    corrupted row 404s there too, consistently with being excluded from
+    the display, rather than being reachable by any route. The FK itself
+    still cannot enforce any of this at the schema level; enforcement is
+    entirely the application layer's responsibility.
     """
 
     __tablename__ = "enrollments"

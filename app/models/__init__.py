@@ -5,6 +5,7 @@ from app.models.level import Level
 from app.models.course import Course
 from app.models.group import Group
 from app.models.enrollment import Enrollment, EnrollmentStatus
+from app.models.group_teacher_assignment import GroupTeacherAssignment, GroupTeacherAssignmentStatus
 
 __all__ = [
     "User",
@@ -17,4 +18,6 @@ __all__ = [
     "Group",
     "Enrollment",
     "EnrollmentStatus",
+    "GroupTeacherAssignment",
+    "GroupTeacherAssignmentStatus",
 ]

@@ -11,7 +11,25 @@ from wtforms import (
 from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional, ValidationError
 
 from app.extensions import db
-from app.models import AcademicStatus, AcademicTerm, Course, Group, Level, User
+from app.models import (
+    AcademicStatus,
+    AcademicTerm,
+    Course,
+    Enrollment,
+    EnrollmentStatus,
+    Group,
+    GroupTeacherAssignment,
+    GroupTeacherAssignmentStatus,
+    Level,
+    User,
+    UserRole,
+    UserStatus,
+)
+from app.services.group_memberships import (
+    active_student_enrollment_count,
+    conflicting_active_enrollment,
+    eligible_active_teacher_count,
+)
 
 # Minimum/maximum length for administrator-set passwords on any
 # administrator-managed user account (currently Student and Teacher). No
@@ -190,6 +208,161 @@ class GroupForm(FlaskForm):
             raise ValidationError(
                 "A group with this code already exists for the selected term and course."
             )
+
+
+class GroupEnrollmentForm(FlaskForm):
+    """Administrator-only enrollment of a Student into one specific Group.
+
+    Deliberately not a subclass of the account-management form bases
+    below -- this is a different domain (an association between two
+    already-existing records, not an account with a name/email/password).
+
+    Mirrors GroupTeacherAssignmentForm's design: the submitted identifier
+    is the Student's `public_id`, never an internal numeric id; the
+    target Group is not a form field (it comes from the URL route) but is
+    accepted as a constructor keyword so this validator can check
+    Group-specific rules (capacity, eligible Teacher, duplicate pair,
+    cross-Group conflict); `validate_choice` is off so a tampered
+    submission reaches `validate_student_public_id` below instead of
+    being silently rejected by WTForms' own choice-matching -- the
+    server-side re-validation must not depend on the <select> options
+    alone.
+    """
+
+    student_public_id = SelectField(
+        "Student", coerce=str, validators=[DataRequired()], validate_choice=False
+    )
+    submit = SubmitField("Enroll Student")
+
+    def __init__(self, *args, group=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._group = group
+        existing_student_ids = set()
+        if group is not None:
+            existing_student_ids = {
+                row[0]
+                for row in db.session.query(Enrollment.student_id).filter_by(group_id=group.id).all()
+            }
+        self.student_public_id.choices = [
+            (student.public_id, f"{student.full_name} — {student.email}")
+            for student in User.query.filter(
+                User.role == UserRole.STUDENT.value,
+                User.status == UserStatus.ACTIVE.value,
+            )
+            .order_by(User.full_name, User.id)
+            .all()
+            if student.id not in existing_student_ids
+        ]
+
+    def validate_student_public_id(self, field):
+        student = User.query.filter_by(public_id=field.data).first()
+        if student is None or student.role != UserRole.STUDENT.value:
+            raise ValidationError("Selected student does not exist.")
+        if student.status != UserStatus.ACTIVE.value:
+            raise ValidationError("Selected student's account is not active.")
+
+        if self._group is None:
+            return
+        group = self._group
+
+        if group.status != AcademicStatus.ACTIVE.value:
+            raise ValidationError("Selected group is not active.")
+
+        if eligible_active_teacher_count(group.id) == 0:
+            raise ValidationError(
+                "This group must have at least one active teacher before students can be enrolled."
+            )
+
+        existing = Enrollment.query.filter_by(student_id=student.id, group_id=group.id).first()
+        if existing is not None:
+            if existing.status == EnrollmentStatus.ACTIVE.value:
+                raise ValidationError("Student is already enrolled in this group.")
+            raise ValidationError(
+                "A withdrawn enrollment already exists for this student and group. "
+                "Reactivate it instead of creating a new one."
+            )
+
+        conflict = conflicting_active_enrollment(student.id, group.id)
+        if conflict is not None:
+            raise ValidationError(
+                f"Student is already actively enrolled in Group '{conflict.group.name}' for the same "
+                "Course and Academic Term. Withdraw that enrollment first."
+            )
+
+        if active_student_enrollment_count(group.id) >= group.capacity:
+            raise ValidationError("This group is at full capacity.")
+
+
+class GroupTeacherAssignmentForm(FlaskForm):
+    """Administrator-only assignment of a Teacher to a Group.
+
+    The submitted identifier is the Teacher's `public_id`, not an internal
+    numeric id, matching the project's public_id-only convention for
+    anything that crosses a request boundary. `validate_choice` is turned
+    off so a tampered submission (a Student/Administrator/Researcher
+    public_id, a suspended Teacher's public_id, or a public_id that never
+    appeared in the rendered choices) reaches `validate_teacher_public_id`
+    below instead of being silently rejected by WTForms' own
+    choice-matching -- the server-side re-validation must not depend on
+    the <select> options alone.
+
+    The target Group is not a form field (it comes from the URL route),
+    but is accepted as a constructor keyword so this validator can also
+    reject a duplicate/removed assignment for that specific Group, the
+    same way GroupEnrollmentForm.validate_student_public_id does for
+    Enrollment.
+    """
+
+    teacher_public_id = SelectField(
+        "Teacher", coerce=str, validators=[DataRequired()], validate_choice=False
+    )
+    submit = SubmitField("Assign Teacher")
+
+    def __init__(self, *args, group=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._group = group
+        # A Teacher who already has ANY assignment row for this Group
+        # (active or removed) is excluded from the "assign" choices --
+        # an active one has nothing to gain from a second assignment,
+        # and a removed one must come back through Reactivate so the
+        # same row (and its history) is reused instead of a duplicate.
+        existing_teacher_ids = set()
+        if group is not None:
+            existing_teacher_ids = {
+                row[0]
+                for row in db.session.query(GroupTeacherAssignment.teacher_id)
+                .filter_by(group_id=group.id)
+                .all()
+            }
+        self.teacher_public_id.choices = [
+            (teacher.public_id, f"{teacher.full_name} — {teacher.email}")
+            for teacher in User.query.filter(
+                User.role == UserRole.TEACHER.value,
+                User.status == UserStatus.ACTIVE.value,
+            )
+            .order_by(User.full_name, User.id)
+            .all()
+            if teacher.id not in existing_teacher_ids
+        ]
+
+    def validate_teacher_public_id(self, field):
+        teacher = User.query.filter_by(public_id=field.data).first()
+        if teacher is None or teacher.role != UserRole.TEACHER.value:
+            raise ValidationError("Selected teacher does not exist.")
+        if teacher.status != UserStatus.ACTIVE.value:
+            raise ValidationError("Selected teacher's account is not active.")
+
+        if self._group is not None:
+            existing = GroupTeacherAssignment.query.filter_by(
+                group_id=self._group.id, teacher_id=teacher.id
+            ).first()
+            if existing is not None:
+                if existing.status == GroupTeacherAssignmentStatus.ACTIVE.value:
+                    raise ValidationError("This teacher is already assigned to this group.")
+                raise ValidationError(
+                    "A removed assignment already exists for this teacher and group. "
+                    "Reactivate it instead of creating a new one."
+                )
 
 
 def _normalize_email(raw_email):

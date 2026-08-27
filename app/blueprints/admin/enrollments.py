@@ -1,86 +1,317 @@
-from flask import render_template, request
-from sqlalchemy import or_
+from flask import abort, flash, redirect, url_for
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 
 from app.blueprints.admin import admin_bp
-from app.models import AcademicTerm, Course, Enrollment, EnrollmentStatus, Group, User, UserRole
+from app.blueprints.admin.forms import GroupEnrollmentForm
+from app.blueprints.admin.group_members import _get_group_locked_or_404, _redirect_to_group_members
+from app.extensions import db
+from app.models import AcademicStatus, Enrollment, EnrollmentStatus, Group, User, UserRole, UserStatus
 from app.security.decorators import roles_required
+from app.services.group_memberships import (
+    active_student_enrollment_count,
+    conflicting_active_enrollment,
+    eligible_active_teacher_count,
+)
 
-_MAX_BIGINT = 9223372036854775807
 
+def _get_group_or_404(group_public_id):
+    """Ordinary, non-locking Group lookup.
 
-def _escape_like(value):
-    """Escape LIKE/ILIKE metacharacters so a search term containing a
-    literal '%' or '_' is matched as those literal characters instead of
-    being interpreted as a SQL wildcard.
+    Used only for 404 handling and to scope the pre-validation work that
+    has to happen before the protected transaction begins: building a
+    form's choices, running its early friendly validation, and (for
+    Withdraw/Reactivate) the initial nested Enrollment lookup. The Group
+    object this returns is never used to decide a business rule -- every
+    mutation route below re-fetches and locks the Group via
+    `_get_group_locked_or_404` before deciding anything, and discards
+    this one.
     """
-    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return Group.query.filter_by(public_id=group_public_id).first_or_404()
 
 
-def _safe_id_arg(name):
-    """Parse a positive integer query-string filter, safely discarding
-    values that are not a valid id (missing, non-numeric, zero/negative,
-    or too large for the BIGINT columns) instead of letting them reach
-    the database and raise an unhandled error.
+def _get_enrollment_for_group_or_404(group, enrollment_public_id):
+    """Look up an Enrollment by its own public_id, constrained to the
+    Group already resolved from the URL AND to rows whose referenced
+    User is actually a Student.
+
+    Enrollment.student_id is a plain FK to the shared users table and can
+    technically reference any role at the database level (see the
+    model's docstring for the role-integrity boundary). An enrollment
+    public_id that is only valid for a *different* Group, or that
+    references a non-Student (the FK cannot prevent that), 404s here --
+    exactly like the compound (public_id, group_id) lookup used for
+    GroupTeacherAssignment.
     """
-    value = request.args.get(name, type=int)
-    if value is None or value < 1 or value > _MAX_BIGINT:
-        return None
-    return value
-
-
-@admin_bp.get("/enrollments")
-@roles_required(UserRole.ADMINISTRATOR.value)
-def enrollments_list():
-    search = request.args.get("q", "").strip()
-    raw_status = request.args.get("status", "").strip()
-    status = raw_status if raw_status in {s.value for s in EnrollmentStatus} else ""
-    term_id = _safe_id_arg("term_id")
-
-    # Enrollment.student_id is a plain FK to the shared users table and
-    # can technically reference any role at the database level (see the
-    # model's docstring for the role-integrity boundary). This listing is
-    # Student Enrollment data specifically, so it constrains the joined
-    # User to role=student -- a row that somehow references a
-    # Teacher/Administrator/Researcher (the FK cannot prevent that) is
-    # excluded here rather than displayed as if it were a valid Student
-    # enrollment.
-    query = Enrollment.query.join(User, Enrollment.student_id == User.id).filter(
-        User.role == UserRole.STUDENT.value
-    ).options(
-        joinedload(Enrollment.student),
-        joinedload(Enrollment.group).joinedload(Group.course).joinedload(Course.level),
-        joinedload(Enrollment.group).joinedload(Group.academic_term),
-    )
-
-    if search:
-        # Same prefix-match + escaping rules already used for Student and
-        # Teacher search: the beginning of the full name, the beginning
-        # of any individual word within it, or the beginning of the
-        # email -- never an arbitrary substring.
-        escaped = _escape_like(search)
-        name_prefix = f"{escaped}%"
-        name_word_prefix = f"% {escaped}%"
-        email_prefix = f"{escaped}%"
-        query = query.filter(
-            or_(
-                User.full_name.ilike(name_prefix, escape="\\"),
-                User.full_name.ilike(name_word_prefix, escape="\\"),
-                User.email.ilike(email_prefix, escape="\\"),
-            )
+    return (
+        Enrollment.query.join(User, Enrollment.student_id == User.id)
+        .filter(
+            Enrollment.public_id == enrollment_public_id,
+            Enrollment.group_id == group.id,
+            User.role == UserRole.STUDENT.value,
         )
-    if status:
-        query = query.filter(Enrollment.status == status)
-    if term_id:
-        query = query.join(Group, Enrollment.group_id == Group.id).filter(Group.academic_term_id == term_id)
-
-    enrollments = query.order_by(Enrollment.created_at.desc(), Enrollment.id.desc()).all()
-
-    return render_template(
-        "admin/enrollments/list.html",
-        enrollments=enrollments,
-        search=search,
-        selected_status=status,
-        selected_term_id=term_id,
-        terms=AcademicTerm.query.order_by(AcademicTerm.start_date.desc()).all(),
+        .options(joinedload(Enrollment.student))
+        .first_or_404()
     )
+
+
+def _lock_student_and_enrollment_for_group(group, enrollment_id, student_id):
+    """The Group is already locked by the caller (via
+    `_get_group_locked_or_404`, which also performed the transaction-
+    boundary reset -- see its docstring for the full rationale), and this
+    is called as the very next statement after that lock, before any
+    ordinary SELECT runs in the fresh transaction. Locks Student, then
+    the Enrollment row itself, in that fixed order -- `SELECT ... FOR
+    UPDATE` on the Enrollment row is what guarantees a current read on
+    MySQL, unlike `db.session.refresh()` against a possibly already-open
+    transaction.
+
+    Verifies the locked Enrollment still belongs to the captured Group
+    and Student (defensive: no route in this app can currently change
+    those on an existing row, but nothing here assumes that stays true)
+    and that the Student is still Student-role, aborting 404 on any
+    mismatch rather than proceeding. Returns (student, enrollment).
+
+    `enrollment_id` and `student_id` must be plain scalar values captured
+    from an earlier, ordinary (unlocked) lookup -- never ORM objects
+    reused across the transaction reset in `_get_group_locked_or_404`.
+
+    Shared by group_enrollment_withdraw and group_enrollment_reactivate.
+    """
+    student = User.query.filter_by(id=student_id).with_for_update().first()
+    enrollment = (
+        Enrollment.query.options(joinedload(Enrollment.student))
+        .filter_by(id=enrollment_id)
+        .with_for_update()
+        .first()
+    )
+    if student is None or enrollment is None:
+        abort(404)
+    if enrollment.group_id != group.id or enrollment.student_id != student.id:
+        abort(404)
+    if student.role != UserRole.STUDENT.value:
+        abort(404)
+    return student, enrollment
+
+
+def _create_or_reactivate_precondition_error(student, group):
+    """Return an error message if `student` cannot receive a new/
+    reactivated ACTIVE Enrollment in `group` right now, else None.
+
+    Must only be called with a `student` and `group` that were already
+    locked (via `_get_group_locked_or_404` and an immediately-following
+    Student lock) in the current fresh transaction -- the checks below
+    issue ordinary SELECT queries (teacher/capacity counts) that are only
+    safe to trust once that lock order has already been established.
+
+    Shared by group_enrollment_create and group_enrollment_reactivate so
+    the same rules apply in both directions; deliberately does not check
+    for an existing (student, group) pair or a conflicting Enrollment in
+    another Group, since those two callers need different follow-up
+    behaviour for those specific cases.
+    """
+    if student.role != UserRole.STUDENT.value:
+        return "Selected student does not exist."
+    if student.status != UserStatus.ACTIVE.value:
+        return "Selected student's account is not active."
+    if group.status != AcademicStatus.ACTIVE.value:
+        return "Selected group is not active."
+    if eligible_active_teacher_count(group.id) == 0:
+        return "This group must have at least one active teacher before students can be enrolled."
+    if active_student_enrollment_count(group.id) >= group.capacity:
+        return "This group is at full capacity."
+    return None
+
+
+@admin_bp.post("/groups/<group_public_id>/enrollments")
+@roles_required(UserRole.ADMINISTRATOR.value)
+def group_enrollment_create(group_public_id):
+    # Ordinary, non-locking Group lookup -- only for 404 handling, early
+    # friendly validation, and building the form's Student choices. This
+    # read (and everything the form's own validators query) runs against
+    # whatever snapshot already existed when the request arrived; nothing
+    # here is trusted for a business decision.
+    preview_group = _get_group_or_404(group_public_id)
+
+    if preview_group.status != AcademicStatus.ACTIVE.value:
+        flash("This group is archived and cannot be modified.", "danger")
+        return _redirect_to_group_members(preview_group)
+
+    form = GroupEnrollmentForm(group=preview_group)
+    if not form.validate_on_submit():
+        for field_errors in form.errors.values():
+            for error in field_errors:
+                flash(error, "danger")
+        return _redirect_to_group_members(preview_group)
+
+    # Capture only the plain scalar value the protected transaction needs
+    # -- `preview_group` and anything the form loaded must not be reused
+    # past this point; they belong to the transaction/snapshot that is
+    # about to be ended.
+    student_public_id = form.student_public_id.data
+
+    # Deliberate transaction-boundary reset (see _get_group_locked_or_404
+    # docstring for the full MySQL/InnoDB REPEATABLE READ rationale):
+    # ends the read-only snapshot the lookup and form validation above
+    # may have established, and re-fetches + locks the *current* Group
+    # row in a fresh transaction.
+    group = _get_group_locked_or_404(group_public_id)
+
+    # Lock the Student row as the very next statement -- no ordinary
+    # SELECT runs between the fresh Group lock and this Student lock.
+    # This is what guarantees the first consistent-read snapshot in this
+    # fresh transaction is only established after any competing
+    # transaction that holds this same Student's row lock (e.g. another
+    # group_enrollment_create for a *different* Group, same Student) has
+    # already committed or rolled back -- so every ordinary SELECT below,
+    # including the cross-Group conflict check, sees that transaction's
+    # result rather than stale data.
+    student = User.query.filter_by(public_id=student_public_id).with_for_update().first()
+
+    # Every critical rule is rechecked here against the newly locked
+    # Group and Student -- nothing from the pre-lock lookup or form
+    # validation above is trusted as final.
+    if group.status != AcademicStatus.ACTIVE.value:
+        flash("This group is archived and cannot be modified.", "danger")
+        return _redirect_to_group_members(group)
+
+    if student is None:
+        flash("Selected student no longer exists.", "danger")
+        return _redirect_to_group_members(group)
+
+    error = _create_or_reactivate_precondition_error(student, group)
+    if error is not None:
+        flash(error, "danger")
+        return _redirect_to_group_members(group)
+
+    existing = Enrollment.query.filter_by(student_id=student.id, group_id=group.id).first()
+    if existing is not None:
+        if existing.status == EnrollmentStatus.ACTIVE.value:
+            flash("Student is already enrolled in this group.", "danger")
+        else:
+            flash(
+                "A withdrawn enrollment already exists for this student and group. "
+                "Reactivate it instead of creating a new one.",
+                "danger",
+            )
+        return _redirect_to_group_members(group)
+
+    # Checked here, after the Student lock -- see the comment above the
+    # Student lock for why that ordering is what makes this read current
+    # rather than a possibly-stale snapshot.
+    conflict = conflicting_active_enrollment(student.id, group.id)
+    if conflict is not None:
+        flash(
+            f"Student is already actively enrolled in Group '{conflict.group.name}' for the same "
+            "Course and Academic Term. Withdraw that enrollment first.",
+            "danger",
+        )
+        return _redirect_to_group_members(group)
+
+    # The form only ever offers a Student choice -- status is forced to
+    # ACTIVE here regardless of anything else submitted in the request
+    # body, and public_id/created_at/updated_at come only from the
+    # model's own server-side defaults, so there is no field through
+    # which a client can mass-assign them.
+    enrollment = Enrollment(student_id=student.id, group_id=group.id, status=EnrollmentStatus.ACTIVE.value)
+    db.session.add(enrollment)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        # Belt-and-braces net: the duplicate-pair check above and this
+        # insert are two separate steps, so even with the Group/Student
+        # locks a concurrent request that does not itself take those
+        # locks could theoretically still race here. The database's
+        # unique constraint is the real guarantee; this only turns the
+        # resulting error into a safe, generic message instead of a 500.
+        db.session.rollback()
+        flash("Student is already enrolled in this group.", "danger")
+        return _redirect_to_group_members(group)
+
+    flash(f"Student '{student.full_name}' enrolled in '{group.name}'.", "success")
+    return _redirect_to_group_members(group)
+
+
+@admin_bp.post("/groups/<group_public_id>/enrollments/<enrollment_public_id>/withdraw")
+@roles_required(UserRole.ADMINISTRATOR.value)
+def group_enrollment_withdraw(group_public_id, enrollment_public_id):
+    # Ordinary, non-locking nested lookup: 404s if the Group doesn't
+    # exist, or if the Enrollment doesn't exist / doesn't belong to this
+    # Group / doesn't reference a Student. Runs before the protected
+    # transaction -- nothing here is trusted for a business decision.
+    preview_group = _get_group_or_404(group_public_id)
+    initial = _get_enrollment_for_group_or_404(preview_group, enrollment_public_id)
+
+    # Capture plain scalar values only -- `preview_group` and `initial`
+    # must not be reused past this point; they belong to the transaction/
+    # snapshot that is about to be ended.
+    enrollment_id = initial.id
+    student_id = initial.student_id
+
+    # Deliberate transaction-boundary reset (see _get_group_locked_or_404
+    # docstring): ends the earlier snapshot and locks the *current* Group
+    # row in a fresh transaction.
+    group = _get_group_locked_or_404(group_public_id)
+
+    # Locks Student then Enrollment as the very next statements -- no
+    # ordinary SELECT runs between the fresh Group lock and the Student
+    # lock. See `_lock_student_and_enrollment_for_group` and the matching
+    # comment in group_enrollment_create for the full rationale.
+    student, enrollment = _lock_student_and_enrollment_for_group(group, enrollment_id, student_id)
+
+    if group.status != AcademicStatus.ACTIVE.value:
+        flash("This group is archived. Reactivate the group before changing its membership.", "danger")
+        return _redirect_to_group_members(group)
+
+    if enrollment.status != EnrollmentStatus.ACTIVE.value:
+        flash("This enrollment is already withdrawn.", "warning")
+        return _redirect_to_group_members(group)
+
+    enrollment.status = EnrollmentStatus.WITHDRAWN.value
+    db.session.commit()
+    flash(f"Enrollment for '{enrollment.student.full_name}' withdrawn.", "success")
+    return _redirect_to_group_members(group)
+
+
+@admin_bp.post("/groups/<group_public_id>/enrollments/<enrollment_public_id>/reactivate")
+@roles_required(UserRole.ADMINISTRATOR.value)
+def group_enrollment_reactivate(group_public_id, enrollment_public_id):
+    # Ordinary, non-locking nested lookup -- see group_enrollment_withdraw
+    # above for the identical rationale.
+    preview_group = _get_group_or_404(group_public_id)
+    initial = _get_enrollment_for_group_or_404(preview_group, enrollment_public_id)
+
+    enrollment_id = initial.id
+    student_id = initial.student_id
+
+    # Deliberate transaction-boundary reset, then lock Student and
+    # Enrollment as the very next statements -- same rationale as
+    # group_enrollment_withdraw and group_enrollment_create.
+    group = _get_group_locked_or_404(group_public_id)
+    student, enrollment = _lock_student_and_enrollment_for_group(group, enrollment_id, student_id)
+
+    if enrollment.status == EnrollmentStatus.ACTIVE.value:
+        flash("This enrollment is already active.", "warning")
+        return _redirect_to_group_members(group)
+
+    error = _create_or_reactivate_precondition_error(student, group)
+    if error is not None:
+        flash(f"This enrollment cannot be reactivated. {error}", "danger")
+        return _redirect_to_group_members(group)
+
+    # Checked here, only after Group, Student, and Enrollment are all
+    # locked in the fresh transaction -- so this read is current rather
+    # than a possibly-stale snapshot from before the reset.
+    conflict = conflicting_active_enrollment(student.id, group.id)
+    if conflict is not None:
+        flash(
+            f"This enrollment cannot be reactivated: student is already actively enrolled in group "
+            f"'{conflict.group.name}' for the same course and academic term. Withdraw that enrollment first.",
+            "danger",
+        )
+        return _redirect_to_group_members(group)
+
+    enrollment.status = EnrollmentStatus.ACTIVE.value
+    db.session.commit()
+    flash(f"Enrollment for '{enrollment.student.full_name}' reactivated.", "success")
+    return _redirect_to_group_members(group)

@@ -1,8 +1,47 @@
 from datetime import date
 
 from app.extensions import db
-from app.models import AcademicTerm, Course, Group, Level, UserRole
+from app.models import (
+    AcademicTerm,
+    Course,
+    Enrollment,
+    EnrollmentStatus,
+    Group,
+    GroupTeacherAssignment,
+    GroupTeacherAssignmentStatus,
+    Level,
+    User,
+    UserRole,
+    UserStatus,
+)
+from app.security.passwords import hash_password
 from tests.conftest import login, make_user
+
+
+def _make_teacher(email="teacher@example.com", full_name="Teacher One", status=UserStatus.ACTIVE.value):
+    teacher = User(
+        email=email,
+        password_hash=hash_password("Sup3rSecret!123"),
+        full_name=full_name,
+        role=UserRole.TEACHER.value,
+        status=status,
+    )
+    db.session.add(teacher)
+    db.session.commit()
+    return teacher
+
+
+def _make_student(email="student@example.com", full_name="Student One", status=UserStatus.ACTIVE.value):
+    student = User(
+        email=email,
+        password_hash=hash_password("Sup3rSecret!123"),
+        full_name=full_name,
+        role=UserRole.STUDENT.value,
+        status=status,
+    )
+    db.session.add(student)
+    db.session.commit()
+    return student
 
 
 def _make_term(name="Fall 2026"):
@@ -1225,7 +1264,7 @@ def test_admin_can_access_detail_page(app, client):
     html = resp.get_data(as_text=True)
     assert "Group A" in html
     assert "GA1" in html
-    assert ">25<" in html
+    assert "0/25" in html
 
 
 def test_detail_page_shows_term_course_and_level(app, client):
@@ -1356,3 +1395,114 @@ def test_filter_params_reject_non_integer_values_without_crashing(app, client):
 
     with app.app_context():
         assert Group.query.count() == 1
+
+
+# ======================================================================
+# PART 6D -- GROUP DETAIL / MANAGE MEMBERS INTEGRATION
+# ======================================================================
+
+
+def test_manage_members_button_points_to_correct_group(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        group = _make_group(name="Linked Group")
+        public_id = group.public_id
+    login(client, "admin@example.com")
+
+    resp = client.get(f"/admin/groups/{public_id}")
+    html = resp.get_data(as_text=True)
+    assert f'href="/admin/groups/{public_id}/members"' in html
+    assert client.get(f"/admin/groups/{public_id}/members").status_code == 200
+
+
+def test_detail_shows_active_eligible_teacher(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        group = _make_group(name="Taught Group")
+        teacher = _make_teacher(full_name="Eligible Teacher")
+        db.session.add(GroupTeacherAssignment(group_id=group.id, teacher_id=teacher.id))
+        db.session.commit()
+        public_id = group.public_id
+    login(client, "admin@example.com")
+
+    html = client.get(f"/admin/groups/{public_id}").get_data(as_text=True)
+    assert "Eligible Teacher" in html
+    assert "No active teacher assigned" not in html
+
+
+def test_detail_shows_no_active_teacher_message_when_none_eligible(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        group = _make_group(name="Teacherless Group")
+        public_id = group.public_id
+    login(client, "admin@example.com")
+
+    html = client.get(f"/admin/groups/{public_id}").get_data(as_text=True)
+    assert "No active teacher assigned" in html
+
+
+def test_detail_suspended_teacher_not_shown_as_eligible(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        group = _make_group(name="Group With Suspended Assignee")
+        teacher = _make_teacher(full_name="Suspended Teacher", status=UserStatus.SUSPENDED.value)
+        db.session.add(GroupTeacherAssignment(group_id=group.id, teacher_id=teacher.id))
+        db.session.commit()
+        public_id = group.public_id
+    login(client, "admin@example.com")
+
+    html = client.get(f"/admin/groups/{public_id}").get_data(as_text=True)
+    assert "Suspended Teacher" not in html
+    assert "No active teacher assigned" in html
+
+
+def test_detail_removed_assignment_not_shown_as_eligible(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        group = _make_group(name="Removed Assignment Group")
+        teacher = _make_teacher(full_name="Removed Teacher")
+        db.session.add(
+            GroupTeacherAssignment(
+                group_id=group.id, teacher_id=teacher.id, status=GroupTeacherAssignmentStatus.REMOVED.value
+            )
+        )
+        db.session.commit()
+        public_id = group.public_id
+    login(client, "admin@example.com")
+
+    html = client.get(f"/admin/groups/{public_id}").get_data(as_text=True)
+    assert "Removed Teacher" not in html
+    assert "No active teacher assigned" in html
+
+
+def test_detail_corrupted_assignment_not_shown_as_eligible(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        group = _make_group(name="Corrupted Assignment Group")
+        corrupt_user = make_user("corruptdetail@example.com", UserRole.RESEARCHER.value, full_name="Not A Teacher")
+        db.session.add(GroupTeacherAssignment(group_id=group.id, teacher_id=corrupt_user.id))
+        db.session.commit()
+        public_id = group.public_id
+    login(client, "admin@example.com")
+
+    html = client.get(f"/admin/groups/{public_id}").get_data(as_text=True)
+    assert "Not A Teacher" not in html
+    assert "No active teacher assigned" in html
+
+
+def test_detail_active_student_count_correct(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        group = _make_group(name="Counted Group", capacity=10)
+        student_a = _make_student(email="counta@example.com")
+        student_b = _make_student(email="countb@example.com")
+        db.session.add(Enrollment(student_id=student_a.id, group_id=group.id, status=EnrollmentStatus.ACTIVE.value))
+        db.session.add(
+            Enrollment(student_id=student_b.id, group_id=group.id, status=EnrollmentStatus.WITHDRAWN.value)
+        )
+        db.session.commit()
+        public_id = group.public_id
+    login(client, "admin@example.com")
+
+    html = client.get(f"/admin/groups/{public_id}").get_data(as_text=True)
+    assert "1/10" in html
