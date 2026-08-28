@@ -9,6 +9,27 @@
 
   <form method="post" novalidate>
     {{ form.hidden_tag() }}
+    {% if group %}
+    <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
+    {% endif %}
+    {% if group and identity_locked %}
+    <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+      Academic Term and Course are locked because this group already has enrollment or
+      teacher-assignment history. To correct a mistake, create a new group and archive this one.
+    </div>
+    <div class="field">
+      <dl class="ds-definition-list" aria-label="Locked group identity" style="margin: 0;">
+        <dt id="locked-term-label" style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
+        <dd aria-labelledby="locked-term-label" style="margin: 0 0 var(--space-3) 0;">{{ group.academic_term.name }}</dd>
+        <dt id="locked-course-label" style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
+        <dd aria-labelledby="locked-course-label" style="margin: 0;">{{ group.course.title }} ({{ group.course.level.name }})</dd>
+      </dl>
+      <input type="hidden" name="academic_term_id" value="{{ group.academic_term_id }}">
+      <input type="hidden" name="course_id" value="{{ group.course_id }}">
+      {% for error in form.academic_term_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+      {% for error in form.course_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    {% else %}
     <div class="field">
       {{ form.academic_term_id.label(class_="field__label") }}
       {{ form.academic_term_id(class_="field__input") }}
@@ -27,6 +48,7 @@
       <label class="field__label" for="course-level-display">Level</label>
       <div id="course-level-display" class="field__input" role="status" aria-live="polite" style="background: var(--color-bg-subtle); color: var(--color-text-secondary);">&mdash;</div>
     </div>
+    {% endif %}
     <div class="field" style="margin-top: var(--space-4)">
       {{ form.name.label(class_="field__label") }}
       {{ form.name(class_="field__input") }}

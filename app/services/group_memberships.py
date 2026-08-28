@@ -72,6 +72,30 @@ def eligible_active_teacher_count(group_id, exclude_assignment_id=None):
     return query.scalar()
 
 
+def group_has_membership_history(group_id):
+    """Whether *any* Enrollment or GroupTeacherAssignment row has ever
+    existed for this Group -- deliberately regardless of status (active
+    or withdrawn/removed) and regardless of whether the referenced User's
+    role is still valid.
+
+    Unlike `active_student_enrollment_count`/`eligible_active_teacher_count`
+    above, this must NOT filter on status or role: a withdrawn Enrollment,
+    a removed GroupTeacherAssignment, or even a corrupted row referencing
+    a non-Student/non-Teacher User (the FK cannot prevent that) all still
+    represent real relationship history that was created under this
+    Group's Course/AcademicTerm identity at the time. Used to decide
+    whether that identity may still be changed -- see the Group edit
+    route -- not whether a row currently counts toward capacity or
+    teacher eligibility, which is a different, stricter question answered
+    by the two functions above.
+    """
+    has_enrollment = db.session.query(Enrollment.id).filter_by(group_id=group_id).first() is not None
+    has_assignment = (
+        db.session.query(GroupTeacherAssignment.id).filter_by(group_id=group_id).first() is not None
+    )
+    return has_enrollment or has_assignment
+
+
 def conflicting_active_enrollment(student_id, target_group_id):
     """Return an existing ACTIVE Enrollment for `student_id` in some
     *other* Group that shares both `course_id` and `academic_term_id`

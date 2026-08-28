@@ -19,48 +19,25 @@ from app.models import (
 )
 from app.security.decorators import roles_required
 from app.services.group_memberships import active_student_enrollment_count, eligible_active_teacher_count
+from app.services.group_transactions import lock_group_for_write
 
 
 def _get_group_locked_or_404(group_public_id):
-    """End the current read-only transaction, then look up a Group by
-    public_id AND take a row lock on it in the same query
-    (`SELECT ... FOR UPDATE`).
+    """Flask-aware wrapper around the shared, Flask-independent
+    `lock_group_for_write` (see its docstring in
+    `app/services/group_transactions.py` for the full deliberate-rollback
+    and lock-order rationale) -- 404s here belong at the route/Blueprint
+    layer, not in the shared service, so every membership mutation route
+    below still gets its 404 for free by calling this thin wrapper rather
+    than the service function directly.
 
-    The `db.session.rollback()` below is a deliberate transaction-
-    boundary reset, not error recovery. By the time any membership
-    mutation route reaches this call, Flask-Login has already read
-    `current_user` and `@roles_required` has checked it -- under MySQL/
-    InnoDB REPEATABLE READ, that read (or any other before this point)
-    may have already established this session's consistent-read
-    snapshot. `SELECT ... FOR UPDATE` always fetches the *current*
-    committed row for whatever it locks regardless of that snapshot, but
-    every *plain* SELECT issued afterwards in the same still-open
-    transaction (capacity counts, eligible-teacher counts, duplicate-
-    assignment/enrollment checks) would otherwise keep reading the
-    earlier snapshot instead of anything committed since. Rolling back
-    here -- nothing has been mutated yet, so there is nothing to lose --
-    ends that snapshot before the lock is taken, so the fresh transaction
-    it starts is what every subsequent check in this request reads from.
-
-    Every Teacher-assignment and Student-enrollment mutation starts
-    here, in the same order, so two concurrent requests touching the
-    same Group's membership serialize on this lock instead of racing
-    independently: the second request blocks until the first commits or
-    rolls back, at which point its own re-check of the same conditions
-    (archived status, capacity, eligible-teacher count, ...) sees the
-    first request's already-committed result rather than stale data.
-
-    SQLite (used by the test suite) has no SELECT ... FOR UPDATE syntax
-    and no REPEATABLE READ snapshot isolation to begin with; SQLAlchemy
-    silently omits the FOR UPDATE clause there (with a warning) instead
-    of raising, so this code path runs correctly in tests without
-    actually locking or resetting any snapshot -- true concurrent
-    blocking and stale-snapshot avoidance are only real on MySQL/InnoDB.
-    Tests can only assert that this helper *requests* the lock and the
-    rollback (structural), not that SQLite honours either.
+    Every Teacher-assignment and Student-enrollment mutation, plus Group
+    edit and Group status toggle (`app/blueprints/admin/groups.py`), lock
+    the Group through this same shared primitive, in the same order, so
+    concurrent requests touching the same Group serialize on this lock
+    instead of racing independently.
     """
-    db.session.rollback()
-    group = Group.query.filter_by(public_id=group_public_id).with_for_update().first()
+    group = lock_group_for_write(group_public_id)
     if group is None:
         abort(404)
     return group
