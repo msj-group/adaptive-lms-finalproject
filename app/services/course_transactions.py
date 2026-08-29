@@ -7,20 +7,23 @@ independent of Flask so it can be imported from any Blueprint without
 pulling in request/response concerns.
 
 On InnoDB foreign-key locking: `groups.course_id` references
-`courses.id`, so a concurrent Group insert/update that references a
-Course row *may* interact with locks already held on that Course's
-primary-key index record, depending on the specific operation and the
-active isolation level -- this is not "categorically irrelevant." It is
-also not something this application relies on as its concurrency
-contract: implicit FK-driven locking is undocumented behaviour of a
-specific storage engine, gives no guarantee about *which* rows end up
-locked or in what order, and provides nothing at all for the
-Course-editing-Course case (two `course_edit` submissions, or an edit
-racing a status toggle or a move), which never touches `groups` at all.
-Every write path below takes an explicit `SELECT ... FOR UPDATE` lock
-instead, exactly mirroring `group_transactions.py`'s own reasoning, so
-the actual serialization guarantee is visible in this code rather than
-implied by a side effect of the storage engine.
+`courses.id`, so a Group insert or update that references a Course row
+may interact with locks on that referenced Course's index record while
+InnoDB checks the foreign-key constraint, depending on the operation and
+the active isolation behaviour. This engine-level behaviour is not the
+application's concurrency contract and is not relied upon here. The
+contract is the explicit Course `SELECT ... FOR UPDATE` locking that the
+protected routes take (`lock_course_for_write` /
+`lock_course_for_write_by_id` below), exactly mirroring
+`group_transactions.py`'s own reasoning, so the serialization guarantee
+is visible in this code.
+
+Course-to-Course operations (two `course_edit` submissions, or an edit
+racing a status toggle or a reorder) do not involve the
+`groups.course_id` foreign key at all; their coordination depends on the
+explicit application locks where implemented (`course_edit` and
+`course_toggle_status` share `lock_course_for_write`) and on ordinary
+database write locking otherwise -- not on any foreign-key side effect.
 
 SQLite (used by the test suite) has no SELECT ... FOR UPDATE syntax and
 no REPEATABLE READ snapshot isolation to begin with, so every function

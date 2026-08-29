@@ -19,9 +19,8 @@ def course_has_group_reference(course_id):
     whether it has any Enrollment/GroupTeacherAssignment history at all.
 
     This is the approved Course-level identity-freeze rule (Part 7B1
-    Policy A; docs/DECISIONS.md does not yet contain a dedicated section
-    for this rule -- permanent decision-document synchronization is
-    deferred to a later part): unlike Group's own
+    Policy A, documented in docs/DECISIONS.md, "Course-level identity
+    integrity (Phase 3, Part 7B1)"): unlike Group's own
     academic_term_id/course_id freeze, which waits for real membership
     history on that one Group
     (`app.services.group_memberships.group_has_membership_history`), a

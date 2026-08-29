@@ -29,7 +29,11 @@ creation without an explicit admin action on the course itself. Storing
 moved to a different level while a group still pointed at the old level)
 with nothing in the schema to prevent it. Reading the level through the
 existing relationship (`group.course.level`) keeps the level facts in a
-single place.
+single place. Phase 3, Part 7B1 hardened this further: once any `Group`
+currently references a `Course`, that `Course`'s `level_id` is frozen --
+so the "explicit admin action on the course itself" is itself blocked
+while the disagreement it would create is possible (see "Course-level
+identity integrity (Phase 3, Part 7B1)" below).
 
 **Uniqueness.** Group names are **not** globally unique. Two different
 `Course`s, or the same `Course` in two different `AcademicTerm`s, may each
@@ -392,8 +396,21 @@ locks the current Group row with `SELECT ... FOR UPDATE` in the same
 query. Because every one of these six routes takes this same Group lock
 before writing anything, they serialize against each other for the *same*
 Group: a second request touching that Group's membership blocks until the
-first commits or rolls back. This says nothing about routes that do not
-call `_get_group_locked_or_404()` -- it does not serialize against them.
+first commits or rolls back.
+
+`_get_group_locked_or_404()` is only this Blueprint's thin 404 wrapper
+around the shared, Flask-independent `lock_group_for_write` /
+`lock_group_in_open_transaction` primitives in
+`app/services/group_transactions.py`. Group edit and Group status toggle
+(Phase 3, Part 7B0 -- `app/blueprints/admin/groups.py`) lock the **same**
+Group row through the **same** primitives, via their own route-local
+wrappers (`_lock_group_or_404`, `_lock_group_in_open_transaction_or_404`),
+so they serialize against these six routes, and against each other, for
+the same Group -- see "Group edit integrity (Phase 3, Part 7B0)" below.
+What the Group lock says nothing about is only a path that takes neither
+wrapper nor the underlying service at all -- e.g. an independent
+Teacher-account status change through `teacher_toggle_status`, which
+never locks the Group (section C's limitation above).
 
 **Enrollment creation (`group_enrollment_create`).** First performs an
 ordinary, unlocked preview Group lookup and `GroupEnrollmentForm`
@@ -467,9 +484,14 @@ conservatively and only for what the code above actually does:
 - The Student lock (Enrollment creation, withdrawal, reactivation)
   coordinates those three routes against each other for the same student
   -- including the cross-Group conflict check from section D.
-- The Group lock coordinates the six routes that call the shared
-  `_get_group_locked_or_404()` helper against each other, for the same
-  Group.
+- The Group lock coordinates, for the same Group, the six membership
+  routes here **and** Group edit / Group status toggle (Part 7B0) --
+  every route that takes the shared `lock_group_for_write` /
+  `lock_group_in_open_transaction` service, through whichever route-local
+  404 wrapper it calls it. `group_edit` additionally locks its submitted
+  target Course first, in a fixed `Course -> Group` order (Part 7B1), so a
+  Group retarget also serializes against a concurrent Course-level change;
+  see "Course-level identity integrity (Phase 3, Part 7B1)".
 - MySQL/InnoDB provides the real locking and snapshot behavior described
   above. The project's automated test suite runs against SQLite, which
   has no `SELECT ... FOR UPDATE` syntax and no `REPEATABLE READ` snapshot
@@ -511,3 +533,307 @@ through the application.
 - The standalone Enrollment admin page and its routes are intentionally
   absent (see section A above); there is no alternate path to the same
   mutations outside a Group's own nested routes.
+
+## Group edit integrity (Phase 3, Part 7B0)
+
+How `group_edit` (`POST /admin/groups/<public_id>/edit`) and
+`group_toggle_status` protect a Group's academic identity, its capacity,
+and against stale-form overwrites. This Part changed route, service, and
+template logic only -- **no model change and no database migration**.
+
+### A. Group identity fields and when they become immutable
+
+- A Group's **academic identity** is the pair (`academic_term_id`,
+  `course_id`) -- the same two fields the "Group model" and
+  "Group-centered membership management" sections already call its
+  identity. Level is not one of them; it is still derived through
+  `Group -> Course -> Level`.
+- Those two fields are **freely editable while the Group has no
+  Enrollment or teacher-assignment history at all**, and **immutable once
+  any such history exists**.
+- **Non-identity fields stay editable regardless of history:** `name`,
+  `code`, `capacity`, and `status` can always be changed (subject to
+  their own validation -- uniqueness, the capacity rule in section C,
+  the status enum).
+- Re-submitting the Group's own current `academic_term_id`/`course_id`
+  (no actual change) is always allowed even when the identity is frozen,
+  so an Administrator can still edit the non-identity fields on a Group
+  that has history.
+- The rule is `_group_identity_change_error`
+  (`app/blueprints/admin/groups.py`), shared by the early pre-lock
+  friendly check and the authoritative post-lock recheck so the two
+  cannot drift.
+
+### B. What counts as Enrollment or teacher-assignment history
+
+`group_has_membership_history(group_id)`
+(`app/services/group_memberships.py`) returns true if **any**
+`Enrollment` **or** `GroupTeacherAssignment` row exists for the Group,
+deliberately **regardless of**:
+
+- **status** -- a `withdrawn` Enrollment or a `removed`
+  `GroupTeacherAssignment` counts exactly like an `active` one; and
+- **the referenced user's role** -- a malformed row whose
+  `student_id`/`teacher_id` points at a non-Student / non-Teacher `User`
+  (the foreign key to `users` cannot forbid this) still counts.
+
+Every one of those rows was created under this Group's Course/Term
+identity at the time, and the same-Course-same-Term Enrollment conflict
+rule (`conflicting_active_enrollment`, section D of the Part 6 section
+above) reads the Group's *current* `course_id`/`academic_term_id`, not
+the value in force when each row was written. Retargeting a Group with
+history would retroactively change what counts as a conflict for its
+existing enrollments. This is intentionally a looser test than the
+`active`/eligible counts used for capacity and teacher eligibility, and
+must stay looser.
+
+### C. Capacity enforcement
+
+On edit, the new `capacity` may not be set below the Group's **current
+active student count**, computed by `active_student_enrollment_count`
+after the lock. That count only includes `active` Enrollment rows whose
+referenced `User` is really a Student: a malformed `active` Enrollment
+referencing a non-Student never inflates it, while a suspended Student's
+still-`active` Enrollment still occupies its seat. The database
+`CHECK (capacity > 0)` constraint (see "Group model") remains the floor.
+
+### D. Signed Group edit snapshot (stale-form protection)
+
+- **Purpose.** The Group row lock only serializes two transactions that
+  overlap in time. It does nothing about a form an Administrator opened
+  minutes ago and submitted after someone else's edit already committed
+  and moved on -- the two requests never overlap, so no lock contention
+  catches it. A signed snapshot of the Group's persisted editable state
+  at render time, re-verified against the *locked, current* row after
+  the fresh lock, catches that instead. No model or migration is needed
+  because the snapshot lives only in the rendered form, signed
+  (itsdangerous `URLSafeSerializer`, the app `SECRET_KEY`, salt
+  `admin.group-edit-snapshot.v1`) so it cannot be forged into claiming
+  an original state that never existed.
+- **Included fields (7):** `public_id`, `academic_term_id`, `course_id`,
+  `name`, `code`, `capacity`, `status` -- every field `group_edit` can
+  write, plus `public_id` to bind the token to one Group.
+- **Stale = reject.** A token that is missing, empty, invalidly signed,
+  wrong-shaped, signed for a different Group, or whose values no longer
+  match the locked Group is stale. Because `status` is one of the seven
+  fields, a completed Group **status toggle** also makes an open edit
+  form stale.
+- **Stale-form PRG behavior.** The snapshot check runs *before* the
+  `GroupForm` is constructed and before any WTForms field validation,
+  and is never skipped because another field is also invalid. A stale
+  token is rejected with a Post/Redirect/Get to a plain GET of the edit
+  page (`_redirect_stale_group_edit`), discarding every submitted value
+  and rendering the current persisted values with a fresh, correctly
+  paired token. A fresh token is **never** paired with stale/attempted
+  values in the same response -- doing so would let an unmodified
+  resubmission slip past the next staleness check. For the same reason,
+  an ordinary WTForms failure or a business-rule rejection (identity,
+  capacity, `IntegrityError`) re-embeds the *original* submitted token
+  unchanged, so if the Group changes again before the next submission
+  that same token is correctly caught as stale then.
+- **Why locking and stale-form protection solve different problems.**
+  The lock stops two concurrent transactions from interleaving; the
+  snapshot stops a non-overlapping, time-separated form from overwriting
+  a change it never saw. Both are kept because neither covers the
+  other's case.
+
+### E. Group locking through the shared transaction service
+
+- `group_edit` and `group_toggle_status` lock the Group through the same
+  Flask-independent primitives every Enrollment/GroupTeacherAssignment
+  mutation uses -- `lock_group_for_write` /
+  `lock_group_in_open_transaction` in
+  `app/services/group_transactions.py` -- each via a thin route-local
+  404 wrapper (`_lock_group_or_404`,
+  `_lock_group_in_open_transaction_or_404` here;
+  `_get_group_locked_or_404` in `group_members.py`). See section F of the
+  Part 6 membership section above for how this makes Group edit, Group
+  status toggle, and the six membership routes serialize for the same
+  Group.
+- **`group_edit` lock order is `Course -> Group`.** It first locks the
+  *submitted target* Course by internal id
+  (`lock_course_for_write_by_id`, which performs the
+  transaction-boundary reset), then the current Group with
+  `lock_group_in_open_transaction` -- the no-reset variant, because a
+  second reset would release the Course lock just taken. This fixed
+  order is what lets retargeting an unused Group to a different Course
+  serialize against a concurrent Course-level change on that same Course
+  (see "Course-level identity integrity" below). `group_toggle_status`,
+  taking no Course, keeps calling `lock_group_for_write` (with its
+  reset) directly.
+- Staleness, identity, and capacity are all rechecked after the locks
+  against freshly queried data; nothing from the pre-lock preview or
+  form validation is trusted. No Group field is assigned until every
+  check passes, so a rejection never leaves a partial update. An
+  `IntegrityError` at commit is caught, rolled back, and reported with a
+  generic message -- no SQL, parameters, or driver text reaches the
+  user.
+
+### F. Group edit/status and membership-route coordination today
+
+- Group edit <-> Group status toggle: serialize on the shared Group
+  lock. A status toggle that commits while an edit form is open also
+  makes that form stale (section D).
+- Group edit / status toggle <-> the six membership routes: all take the
+  same Group row lock, so they serialize for the same Group.
+- Group edit <-> Course edit / Course status toggle: `group_edit` locks
+  its submitted target Course, and `course_edit` / `course_toggle_status`
+  lock the Course through the same shared explicit Course write lock
+  (`lock_course_for_write` / `lock_course_for_write_by_id`,
+  `app/services/course_transactions.py`). So a Group edit serializes on
+  that Course row against a concurrent Course edit or Course status
+  toggle for the same Course. This is transaction serialization on the
+  Course row only -- a Course status change touches none of the seven
+  Group snapshot fields, so it never makes a Group edit form stale
+  (contrast a Group status toggle, section D).
+- Group edit <-> Course reordering (`move-up` / `move-down`): the Course
+  reorder routes currently have no equivalent explicit application
+  transaction primitive, so no full serialization is claimed here; this
+  stays the low-risk cosmetic concern recorded in the Course section's
+  limitations.
+- Group edit takes no Teacher or Student row locks -- the membership
+  routes own those.
+
+### G. Honest limitations
+
+- The automated suite runs on SQLite, which has no
+  `SELECT ... FOR UPDATE` and no `REPEATABLE READ` snapshot isolation.
+  The structural tests prove only that the code *requests* the
+  deliberate rollback and the locks in the documented order -- never
+  that a lock actually blocks a concurrent transaction. Real blocking
+  and isolation hold only on MySQL/InnoDB, and no isolated MySQL test
+  database exists in this project to verify them.
+- Attendance remains a future module; nothing here implements or
+  presumes it.
+
+## Course-level identity integrity (Phase 3, Part 7B1)
+
+How `course_edit` (`POST /admin/courses/<public_id>/edit`) protects a
+Course's `level_id`, and how Group creation/retargeting serializes with
+Course-level changes. Like Part 7B0, this Part changed route, service,
+and template logic only -- **no model change and no database
+migration**.
+
+### A. Policy A -- exactly as implemented
+
+- `Course.level_id` **may change only while no current Group references
+  the Course.** If any Group's `course_id` currently points at this
+  Course, `level_id` is frozen.
+- **Active, archived, empty, and historically used Groups all count**
+  while they currently reference the Course. Unlike Group's own identity
+  freeze (which waits for *that one Group's* membership history), a
+  single Course can back many Groups at once, so moving its Level would
+  silently reinterpret all of them together.
+- **Same-Level submission remains allowed.** Posting the Course's own
+  current `level_id` back (no actual change) is always accepted,
+  regardless of any Group reference.
+- **Title, code, and description remain editable** on a referenced
+  Course; this rule never freezes them.
+- **If every legitimately retargetable Group moves away, the Course may
+  move again**, because no historical Course-reference audit trail
+  exists. `course_has_group_reference` (`app/services/course_integrity.py`)
+  answers "does any Group reference this *now*", not "has one ever". If
+  every Group that used to reference the Course is individually
+  retargeted away (each only ever permitted while that Group itself had
+  no membership history), nothing derives the Course's Level any more
+  and it may move. This is a deliberate, accepted consequence -- there
+  is no place that records a Course's past Level associations.
+- The correction path for a misplaced referenced Course is: archive it,
+  create a new Course under the correct Level.
+- The rule is `_course_level_change_error`
+  (`app/blueprints/admin/courses.py`), shared by the early pre-lock
+  check and the authoritative post-lock recheck.
+
+### B. The scalar Course-reference `EXISTS` check
+
+`course_has_group_reference(course_id)` issues a single scalar SQL
+`EXISTS` query -- `SELECT EXISTS (SELECT groups.id FROM groups WHERE
+groups.course_id = :id)` -- never a `COUNT`, never a Python loop over
+loaded rows, never a materialized `Group`. Only existence matters.
+
+### C. Signed Course edit snapshot -- fields and exclusions
+
+Mirrors the Group edit snapshot (section D above), salt
+`admin.course-edit-snapshot.v1`.
+
+- **Included fields (5):** `public_id`, `level_id`, `title`, normalized
+  `code`, normalized `description`.
+- **Excluded -- `status`:** `course_edit` never writes it (the separate
+  `course_toggle_status` route owns it), so a completed Course status
+  toggle does **not** make an open Course edit form stale.
+- **Excluded -- `display_order`:** a same-Level edit never writes it,
+  while a valid Level move intentionally computes a *new* destination
+  order (`_next_display_order`, after the lock) rather than preserving
+  the snapshotted value.
+- Same stale-form PRG behavior, same "never pair a fresh token with
+  attempted values", and same original-token re-embed on an
+  ordinary/business rejection as Group edit.
+
+### D. Course locking and lock order
+
+- **Course edit and status toggle** both lock the Course through the
+  shared `lock_course_for_write` (`app/services/course_transactions.py`,
+  with the transaction-boundary reset) via the route-local
+  `_lock_course_or_404` wrapper, so a Course edit and a Course status
+  toggle serialize against each other for the same Course.
+- **`group_edit` uses the explicit `Course -> Group` order:** it locks
+  the submitted target Course (`lock_course_for_write_by_id`) *before*
+  the Group (`lock_group_in_open_transaction`, no second reset).
+- **`group_create` locks the target Course**
+  (`lock_course_for_write_by_id`) as the first query of its fresh
+  transaction, before inserting the new Group that references it.
+- **How Group creation/retargeting serializes with Course-Level
+  changes.** A `group_create` or identity-changing `group_edit` holds
+  `SELECT ... FOR UPDATE` on the target Course row; `course_edit`'s
+  Level-change recheck runs only after it holds `SELECT ... FOR UPDATE`
+  on that same row. Neither operation makes its decision from a stale
+  target-Course read -- that is the whole guarantee, and the two
+  outcomes are **asymmetric**:
+    - If `group_create` / identity-changing `group_edit` takes the
+      Course lock and commits the Group reference first, the later
+      Course-Level change rechecks current Group references
+      (`course_has_group_reference`) against the committed row and is
+      **rejected**.
+    - If the Course-Level change takes the Course lock and commits
+      first, the later Group create/retarget locks and reads the Course
+      in its **new** Level and **may proceed** -- it is not rejected
+      merely because the Course moved; the new Group simply references
+      the Course at its current Level.
+- **Explicit locking is the contract.** This serialization is an
+  application-level guarantee from the explicit `SELECT ... FOR UPDATE`
+  calls on the Course row, not reliance on any InnoDB foreign-key side
+  effect. Per `course_transactions.py`'s module docstring: a Group
+  insert or update that references a Course may interact with locks on
+  the referenced Course index record while InnoDB checks the
+  foreign-key constraint, depending on the operation and isolation
+  behaviour, but that engine-level behaviour is not the application's
+  concurrency contract and is not relied upon. Course-to-Course
+  operations (two `course_edit` submissions, or an edit racing a status
+  toggle or a reorder) do not involve the `groups.course_id` foreign
+  key at all; their coordination depends on the explicit application
+  locks where implemented (`course_edit` and `course_toggle_status`
+  share `lock_course_for_write`) and on ordinary database write locking
+  otherwise.
+- **Safe `IntegrityError` handling, no partial mutation.** Every rule is
+  rechecked post-lock; no field is written until all checks pass, so a
+  rejection leaves no partial mutation. An `IntegrityError` at commit is
+  caught, rolled back, and reported generically with no SQL or driver
+  text.
+
+### E. Honest limitations
+
+- SQLite tests validate the requested structure (deliberate rollback,
+  lock calls, lock order) but do **not** prove MySQL/InnoDB blocking or
+  isolation behavior. That holds only on MySQL/InnoDB, and no isolated
+  MySQL test database exists in this project to verify it directly.
+- Explicit `SELECT ... FOR UPDATE` on the Course row is the application
+  contract; implicit foreign-key locking is not relied upon.
+- Concurrent Course/Level **reordering** (`move-up` / `move-down`, and
+  the destination-order computation on a Level move) remains a separate,
+  low-risk, cosmetic concern. It is not claimed to be fully serialized;
+  a rare race there can only produce a display-order oddity, correctable
+  by reordering again.
+- The archive-policy interactions between `Course`, `Level`,
+  `AcademicTerm` and their active descendants remain **undecided** and
+  are unchanged by Parts 7B0/7B1.
+- Attendance remains a future module.

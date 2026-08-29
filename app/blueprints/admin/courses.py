@@ -88,10 +88,9 @@ def _course_level_change_error(current_course, requested_level_id):
     """Return an error message if changing `current_course`'s level_id to
     `requested_level_id` is not allowed, else None.
 
-    Approved Part 7B1 Policy A (docs/DECISIONS.md does not yet contain a
-    dedicated section for this rule -- permanent decision-document
-    synchronization is deferred to a later part): once any Group --
-    active or archived, empty or with real
+    Approved Part 7B1 Policy A (documented in docs/DECISIONS.md,
+    "Course-level identity integrity (Phase 3, Part 7B1)"): once any
+    Group -- active or archived, empty or with real
     Enrollment/GroupTeacherAssignment history -- currently references
     this Course, its level_id is frozen. A single Course can back many
     Groups at once, so moving its level would silently reinterpret every
