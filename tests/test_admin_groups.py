@@ -2229,7 +2229,7 @@ def test_edit_capacity_check_reflects_enrollment_created_before_lock(app, client
     login(client, "admin@example.com")
     snapshot = _get_edit_snapshot(client, public_id)
 
-    original_lock_group_or_404 = groups_module._lock_group_or_404
+    original_lock_group_in_open_transaction_or_404 = groups_module._lock_group_in_open_transaction_or_404
 
     def create_second_enrollment_then_lock(gpid):
         # Active count is 1 when the snapshot above was fetched (capacity
@@ -2240,9 +2240,9 @@ def test_edit_capacity_check_reflects_enrollment_created_before_lock(app, client
             Enrollment(student_id=student_b_id, group_id=group_id, status=EnrollmentStatus.ACTIVE.value)
         )
         db.session.commit()
-        return original_lock_group_or_404(gpid)
+        return original_lock_group_in_open_transaction_or_404(gpid)
 
-    monkeypatch.setattr(groups_module, "_lock_group_or_404", create_second_enrollment_then_lock)
+    monkeypatch.setattr(groups_module, "_lock_group_in_open_transaction_or_404", create_second_enrollment_then_lock)
 
     resp = client.post(
         f"/admin/groups/{public_id}/edit",
@@ -2279,14 +2279,14 @@ def test_edit_valid_snapshot_does_not_bypass_authoritative_history_check(app, cl
     # snapshotted fields are about to change.
     snapshot = _get_edit_snapshot(client, public_id)
 
-    original_lock_group_or_404 = groups_module._lock_group_or_404
+    original_lock_group_in_open_transaction_or_404 = groups_module._lock_group_in_open_transaction_or_404
 
     def create_history_then_lock(gpid):
         db.session.add(Enrollment(student_id=student_id, group_id=group_id, status=EnrollmentStatus.ACTIVE.value))
         db.session.commit()
-        return original_lock_group_or_404(gpid)
+        return original_lock_group_in_open_transaction_or_404(gpid)
 
-    monkeypatch.setattr(groups_module, "_lock_group_or_404", create_history_then_lock)
+    monkeypatch.setattr(groups_module, "_lock_group_in_open_transaction_or_404", create_history_then_lock)
 
     resp = client.post(
         f"/admin/groups/{public_id}/edit",
@@ -2856,14 +2856,14 @@ def test_edit_identity_rejection_preserves_original_token_not_a_fresh_one(app, c
     login(client, "admin@example.com")
     token = _get_edit_snapshot(client, public_id)
 
-    original_lock_group_or_404 = groups_module._lock_group_or_404
+    original_lock_group_in_open_transaction_or_404 = groups_module._lock_group_in_open_transaction_or_404
 
     def create_history_then_lock(gpid):
         db.session.add(Enrollment(student_id=student_id, group_id=group_id, status=EnrollmentStatus.ACTIVE.value))
         db.session.commit()
-        return original_lock_group_or_404(gpid)
+        return original_lock_group_in_open_transaction_or_404(gpid)
 
-    monkeypatch.setattr(groups_module, "_lock_group_or_404", create_history_then_lock)
+    monkeypatch.setattr(groups_module, "_lock_group_in_open_transaction_or_404", create_history_then_lock)
 
     resp = client.post(
         f"/admin/groups/{public_id}/edit",
@@ -2971,14 +2971,14 @@ def test_edit_late_stale_check_catches_group_field_changed_after_preview(app, cl
     login(client, "admin@example.com")
     token = _get_edit_snapshot(client, public_id)
 
-    original_lock_group_or_404 = groups_module._lock_group_or_404
+    original_lock_group_in_open_transaction_or_404 = groups_module._lock_group_in_open_transaction_or_404
 
     def rename_then_lock(gpid):
         db.session.query(Group).filter_by(public_id=gpid).update({"name": "Renamed Concurrently"})
         db.session.commit()
-        return original_lock_group_or_404(gpid)
+        return original_lock_group_in_open_transaction_or_404(gpid)
 
-    monkeypatch.setattr(groups_module, "_lock_group_or_404", rename_then_lock)
+    monkeypatch.setattr(groups_module, "_lock_group_in_open_transaction_or_404", rename_then_lock)
 
     resp = client.post(
         f"/admin/groups/{public_id}/edit",
@@ -3134,10 +3134,13 @@ def test_edit_csrf_and_snapshot_enforcement():
 # ----------------------------------------------------------------------
 
 
-def test_edit_locks_group_row_first_and_only(app, client):
-    """Structural: the edit route must lock only the Group row, using the
-    shared lock primitive, matching the established Group-first lock
-    order used by every membership mutation route."""
+def test_edit_locks_course_then_group_in_order(app, client):
+    """Structural: the edit route must lock the *submitted target* Course
+    first, then the Group -- in that fixed order, and no other row --
+    matching the approved Course -> Group lock order (see
+    app/services/course_transactions.py and app/blueprints/admin/groups.py)
+    that lets a Group create/retarget serialize against a concurrent
+    Course-level change on the same Course."""
     from unittest.mock import patch
 
     from sqlalchemy.orm import Query
@@ -3166,16 +3169,18 @@ def test_edit_locks_group_row_first_and_only(app, client):
             data=_edit_post_data(term_id, course_id, edit_snapshot=snapshot),
         )
 
-    assert calls == ["Group"]
+    assert calls == ["Course", "Group"]
 
 
 def test_edit_resets_transaction_before_lock_and_rechecks_after(app, client):
     """Structural: an early, unlocked has_history check runs first (used
     only for friendly UX, never trusted for the decision), then the
-    deliberate transaction reset happens with nothing else in between,
-    then the Group lock is the first query of the fresh transaction,
-    then the authoritative has_history recheck runs immediately after
-    that lock (the staleness check in between compares only already-
+    deliberate transaction reset happens with nothing else in between (as
+    the first step of locking the submitted target Course), then the
+    Course lock is the first query of the fresh transaction, then the
+    Group lock follows immediately with no second reset in between, then
+    the authoritative has_history recheck runs immediately after that
+    Group lock (the staleness check in between compares only already-
     loaded data, so it issues no additional query) -- in that exact
     order. SQLite proves only that this sequence is requested, not that
     it blocks a real concurrent MySQL transaction."""
@@ -3225,7 +3230,7 @@ def test_edit_resets_transaction_before_lock_and_rechecks_after(app, client):
         )
 
     assert resp.status_code == 302
-    assert events == ["has_history_check", "reset", "lock:Group", "has_history_check"]
+    assert events == ["has_history_check", "reset", "lock:Course", "lock:Group", "has_history_check"]
 
 
 def test_edit_identity_rejection_rolls_back_before_display_query(app, client, monkeypatch):
@@ -3250,14 +3255,14 @@ def test_edit_identity_rejection_rolls_back_before_display_query(app, client, mo
     login(client, "admin@example.com")
     snapshot = _get_edit_snapshot(client, public_id)
 
-    original_lock_group_or_404 = groups_module._lock_group_or_404
+    original_lock_group_in_open_transaction_or_404 = groups_module._lock_group_in_open_transaction_or_404
 
     def create_history_then_lock(gpid):
         db.session.add(Enrollment(student_id=student_id, group_id=group_id, status=EnrollmentStatus.ACTIVE.value))
         db.session.commit()
-        return original_lock_group_or_404(gpid)
+        return original_lock_group_in_open_transaction_or_404(gpid)
 
-    monkeypatch.setattr(groups_module, "_lock_group_or_404", create_history_then_lock)
+    monkeypatch.setattr(groups_module, "_lock_group_in_open_transaction_or_404", create_history_then_lock)
 
     events, resp = _post_lock_rollback_before_display_events(
         client, public_id, _edit_post_data(term_b_id, course_id, edit_snapshot=snapshot)
@@ -3320,9 +3325,11 @@ def test_edit_early_stale_rejection_rolls_back_and_runs_no_display_query(app, cl
 
 def test_edit_early_stale_rejection_never_reaches_the_lock(app, client, monkeypatch):
     """A token already stale against the unlocked preview read is
-    rejected before the Group write lock is ever acquired -- no lock is
-    taken, so there is nothing for the caller to release and
-    `_redirect_stale_group_edit`'s own rollback is the only one needed."""
+    rejected before either write lock is ever acquired -- neither the
+    Course lock (the first one now taken, per the Course -> Group order)
+    nor the Group lock that would follow it -- so there is nothing for
+    the caller to release and `_redirect_stale_group_edit`'s own rollback
+    is the only one needed."""
     import app.blueprints.admin.groups as groups_module
 
     with app.app_context():
@@ -3337,13 +3344,13 @@ def test_edit_early_stale_rejection_never_reaches_the_lock(app, client, monkeypa
     client.post(f"/admin/groups/{public_id}/toggle-status")
 
     lock_calls = []
-    original_lock = groups_module._lock_group_or_404
+    original_lock = groups_module._lock_course_or_404_by_id
 
-    def lock_spy(gpid):
-        lock_calls.append(gpid)
-        return original_lock(gpid)
+    def lock_spy(cid):
+        lock_calls.append(cid)
+        return original_lock(cid)
 
-    monkeypatch.setattr(groups_module, "_lock_group_or_404", lock_spy)
+    monkeypatch.setattr(groups_module, "_lock_course_or_404_by_id", lock_spy)
 
     resp = client.post(
         f"/admin/groups/{public_id}/edit",
@@ -3381,7 +3388,7 @@ def test_edit_post_lock_stale_rejection_releases_lock_before_redirect(app, clien
     token = _get_edit_snapshot(client, public_id)
 
     events = []
-    original_lock = groups_module._lock_group_or_404
+    original_lock = groups_module._lock_group_in_open_transaction_or_404
     original_rollback = db.session.rollback
     original_choices = groups_module._course_choices
 
@@ -3402,7 +3409,7 @@ def test_edit_post_lock_stale_rejection_releases_lock_before_redirect(app, clien
         events.append("course_choices_query")
         return original_choices()
 
-    monkeypatch.setattr(groups_module, "_lock_group_or_404", lock_then_make_stale)
+    monkeypatch.setattr(groups_module, "_lock_group_in_open_transaction_or_404", lock_then_make_stale)
 
     with patch.object(db.session, "rollback", side_effect=rollback_spy), patch(
         "app.blueprints.admin.groups._course_choices", side_effect=choices_spy
@@ -3453,3 +3460,290 @@ def test_toggle_status_uses_shared_group_lock_primitive(app, client):
         client.post(f"/admin/groups/{public_id}/toggle-status")
 
     assert calls["n"] == 1
+
+
+# ======================================================================
+# Part 7B1 -- Course-level identity hardening: closing the Course <-> Group
+# race for both Group reference-creation paths.
+#
+# group_create and the retargeting path of group_edit now lock the
+# *target* Course first (app/services/course_transactions.py, by
+# internal id -- Group.course_id and GroupForm.course_id both store the
+# Course's internal id, never a public_id), then -- for group_edit only
+# -- the Group, in that fixed Course -> Group order and without a second
+# transaction reset in between. This is what makes a Group create/
+# retarget serialize against a concurrent Course-level move on the same
+# Course (Policy A, see app/services/course_integrity.py and
+# tests/test_admin_courses.py's "Course-level identity (Policy A)"
+# section for the Course-side half of this race).
+#
+# SQLite cannot prove real MySQL/InnoDB blocking -- see the same caveat
+# repeated throughout this file and in course_transactions.py's module
+# docstring.
+# ======================================================================
+
+
+def test_create_locks_target_course_before_creating_group(app, client):
+    """Structural: group_create must lock the *target* Course -- the
+    first (and only, since creating a new Group is an INSERT, never an
+    UPDATE) row lock taken -- before the new Group is added."""
+    from unittest.mock import patch
+
+    from sqlalchemy.orm import Query
+
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        term = _make_term()
+        course = _make_course()
+        term_id, course_id = term.id, course.id
+
+    login(client, "admin@example.com")
+
+    calls = []
+    original_with_for_update = Query.with_for_update
+
+    def lock_spy(self, *args, **kwargs):
+        entity = self.column_descriptions[0]["entity"] if self.column_descriptions else None
+        calls.append(getattr(entity, "__name__", "?"))
+        return original_with_for_update(self, *args, **kwargs)
+
+    with patch.object(Query, "with_for_update", lock_spy):
+        resp = client.post(
+            "/admin/groups/new",
+            data={
+                "academic_term_id": term_id,
+                "course_id": course_id,
+                "name": "Locked Create",
+                "code": "",
+                "capacity": "10",
+                "status": "active",
+            },
+            follow_redirects=True,
+        )
+
+    assert b"created" in resp.data.lower()
+    assert calls == ["Course"]
+
+
+def test_create_resets_transaction_before_course_lock(app, client):
+    from unittest.mock import patch
+
+    import app.blueprints.admin.groups as groups_module
+
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        term = _make_term()
+        course = _make_course()
+        term_id, course_id = term.id, course.id
+
+    login(client, "admin@example.com")
+
+    events = []
+    original_rollback = db.session.rollback
+
+    def rollback_spy(*args, **kwargs):
+        events.append("reset")
+        return original_rollback(*args, **kwargs)
+
+    original_lock = groups_module.lock_course_for_write_by_id
+
+    def lock_spy(cid):
+        # `original_lock` itself performs the reset (as its first internal
+        # step) before locking -- appending the "lock:Course" event only
+        # *after* it returns keeps this event list in true chronological
+        # order (reset, then lock), rather than the call order of this
+        # wrapper (which would record lock before its own internal reset).
+        result = original_lock(cid)
+        events.append("lock:Course")
+        return result
+
+    with patch.object(db.session, "rollback", side_effect=rollback_spy), patch.object(
+        groups_module, "lock_course_for_write_by_id", side_effect=lock_spy
+    ):
+        client.post(
+            "/admin/groups/new",
+            data={
+                "academic_term_id": term_id,
+                "course_id": course_id,
+                "name": "Reset Then Lock",
+                "code": "",
+                "capacity": "10",
+                "status": "active",
+            },
+        )
+
+    assert events == ["reset", "lock:Course"]
+
+
+def test_create_rejects_when_target_course_vanishes_between_validation_and_lock(app, client, monkeypatch):
+    """Exceedingly unlikely in practice (Courses are only ever archived,
+    never hard-deleted, anywhere in this application), but handled
+    gracefully -- a friendly re-rendered form error, not a crash -- if
+    the target Course lock comes back empty."""
+    import app.blueprints.admin.groups as groups_module
+
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        term = _make_term()
+        course = _make_course()
+        term_id, course_id = term.id, course.id
+
+    login(client, "admin@example.com")
+    monkeypatch.setattr(groups_module, "lock_course_for_write_by_id", lambda course_id: None)
+
+    resp = client.post(
+        "/admin/groups/new",
+        data={
+            "academic_term_id": term_id,
+            "course_id": course_id,
+            "name": "Should Not Be Created",
+            "code": "",
+            "capacity": "10",
+            "status": "active",
+        },
+    )
+    assert resp.status_code == 200
+    assert b"no longer exists" in resp.data.lower()
+    with app.app_context():
+        assert Group.query.filter_by(name="Should Not Be Created").first() is None
+
+
+def test_create_still_allows_selecting_an_archived_course(app, client):
+    """Approved scope: Part 7B1 does not change the existing policy that
+    an archived Course may still be selected when creating a Group --
+    only its *existence* is rechecked under the new Course lock."""
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        term = _make_term()
+        course = _make_course()
+        course.status = "archived"
+        db.session.commit()
+        term_id, course_id = term.id, course.id
+
+    login(client, "admin@example.com")
+    resp = client.post(
+        "/admin/groups/new",
+        data={
+            "academic_term_id": term_id,
+            "course_id": course_id,
+            "name": "Archived Course Group",
+            "code": "",
+            "capacity": "10",
+            "status": "active",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert b"created" in resp.data.lower()
+    with app.app_context():
+        group = Group.query.filter_by(name="Archived Course Group").first()
+        assert group is not None
+        assert group.course_id == course_id
+
+
+def test_group_edit_retarget_races_with_course_level_move(app, client, monkeypatch):
+    """A Group with no membership history is being retargeted (via
+    group_edit) to reference a Course whose Level is concurrently being
+    changed (via course_edit). Locking the *target* Course first, before
+    the Group, means the two serialize: this test exercises the ordering
+    where the Course-level move commits first, so the Group's retarget
+    correctly proceeds referencing the Course's *new* Level. The reverse
+    ordering (Group reference commits first, so a concurrent Course move
+    then sees it and is rejected) is proven from the Course side in
+    test_admin_courses.py::test_course_level_change_catches_group_inserted_in_preview_to_lock_window."""
+    import app.blueprints.admin.groups as groups_module
+    from app.models import Level
+
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        term = _make_term()
+        level_a = Level(name="Level A", display_order=0)
+        level_b = Level(name="Level B", display_order=1)
+        db.session.add_all([level_a, level_b])
+        db.session.commit()
+        target_course = Course(level_id=level_a.id, title="Target Course", display_order=0)
+        db.session.add(target_course)
+        db.session.commit()
+        group = _make_group(term=term, course=_make_course(title="Other Course"), name="Unused Group")
+        public_id, term_id, target_course_id = group.public_id, term.id, target_course.id
+        level_b_id = level_b.id
+
+    login(client, "admin@example.com")
+    snapshot = _get_edit_snapshot(client, public_id)
+
+    original_lock = groups_module.lock_course_for_write_by_id
+
+    def move_course_level_then_lock(course_id):
+        # Simulates a concurrent course_edit committing a Level move on
+        # the target Course right before this lock is acquired.
+        Course.query.filter_by(id=course_id).update({"level_id": level_b_id, "display_order": 0})
+        db.session.commit()
+        return original_lock(course_id)
+
+    monkeypatch.setattr(groups_module, "lock_course_for_write_by_id", move_course_level_then_lock)
+
+    resp = client.post(
+        f"/admin/groups/{public_id}/edit",
+        data=_edit_post_data(term_id, target_course_id, edit_snapshot=snapshot),
+        follow_redirects=True,
+    )
+    assert b"updated" in resp.data.lower()
+    with app.app_context():
+        group = Group.query.filter_by(public_id=public_id).first()
+        assert group.course_id == target_course_id
+        course = Course.query.filter_by(id=target_course_id).first()
+        assert course.level_id == level_b_id
+
+
+def test_group_edit_rejects_when_target_course_vanishes_between_validation_and_lock(app, client, monkeypatch):
+    """Exceedingly unlikely in practice (Courses are only ever archived,
+    never hard-deleted), but handled gracefully -- a friendly re-rendered
+    form error, not a crash -- if the target Course lock comes back
+    empty."""
+    import app.blueprints.admin.groups as groups_module
+
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        term = _make_term()
+        course = _make_course()
+        group = _make_group(term=term, course=course, name="Group A")
+        public_id, term_id, course_id = group.public_id, term.id, course.id
+
+    login(client, "admin@example.com")
+    snapshot = _get_edit_snapshot(client, public_id)
+    monkeypatch.setattr(groups_module, "lock_course_for_write_by_id", lambda course_id: None)
+
+    resp = client.post(
+        f"/admin/groups/{public_id}/edit",
+        data=_edit_post_data(term_id, course_id, edit_snapshot=snapshot),
+    )
+    assert resp.status_code == 200
+    assert b"no longer exists" in resp.data.lower()
+    with app.app_context():
+        group = Group.query.filter_by(public_id=public_id).first()
+        assert group.name == "Group A"
+
+
+def test_group_edit_404_when_group_vanishes_between_course_lock_and_group_lock(app, client, monkeypatch):
+    """Exceedingly unlikely in practice (Groups are only ever archived,
+    never hard-deleted), but the Group lock following the Course lock
+    must still 404 correctly rather than crash if it ever comes back
+    empty."""
+    import app.blueprints.admin.groups as groups_module
+
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        term = _make_term()
+        course = _make_course()
+        group = _make_group(term=term, course=course, name="Group A")
+        public_id, term_id, course_id = group.public_id, term.id, course.id
+
+    login(client, "admin@example.com")
+    snapshot = _get_edit_snapshot(client, public_id)
+    monkeypatch.setattr(groups_module, "lock_group_in_open_transaction", lambda public_id: None)
+
+    resp = client.post(
+        f"/admin/groups/{public_id}/edit",
+        data=_edit_post_data(term_id, course_id, edit_snapshot=snapshot),
+    )
+    assert resp.status_code == 404

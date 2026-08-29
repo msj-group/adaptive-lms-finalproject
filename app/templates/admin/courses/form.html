@@ -9,11 +9,29 @@
 
   <form method="post" novalidate>
     {{ form.hidden_tag() }}
+    {% if course %}
+    <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
+    {% endif %}
+    {% if course and level_locked %}
+    <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+      Level is locked because one or more groups already reference this course. To correct a
+      mistake, archive this course and create a new one under the correct level.
+    </div>
+    <div class="field">
+      <dl class="ds-definition-list" aria-label="Locked course level" style="margin: 0;">
+        <dt id="locked-level-label" style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
+        <dd aria-labelledby="locked-level-label" style="margin: 0;">{{ course.level.name }}</dd>
+      </dl>
+      <input type="hidden" name="level_id" value="{{ course.level_id }}">
+      {% for error in form.level_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    {% else %}
     <div class="field">
       {{ form.level_id.label(class_="field__label") }}
       {{ form.level_id(class_="field__input") }}
       {% for error in form.level_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
+    {% endif %}
     <div class="field" style="margin-top: var(--space-4)">
       {{ form.title.label(class_="field__label") }}
       {{ form.title(class_="field__input") }}

@@ -49,13 +49,42 @@ def lock_group_for_write(group_public_id):
     one for longer than necessary.
 
     SQLite (used by the test suite) has no SELECT ... FOR UPDATE syntax
-    and no REPEATABLE READ snapshot isolation to begin with; SQLAlchemy
-    silently omits the FOR UPDATE clause there (with a warning) instead
-    of raising, so this code path runs correctly in tests without
-    actually locking or resetting any snapshot -- true concurrent
-    blocking and stale-snapshot avoidance are only real on MySQL/InnoDB.
-    Tests can only assert that this function *requests* the lock and the
-    rollback (structural), not that SQLite honours either.
+    and no REPEATABLE READ snapshot isolation to begin with, so this code
+    path runs correctly in tests without actually locking or resetting
+    any snapshot. This proves nothing about real blocking: SQLite does
+    not prove actual MySQL/InnoDB row blocking. Tests can only assert
+    that this function *requests* the lock and the rollback (structural),
+    not that SQLite honours either.
+
+    Callers that must lock a Course (see
+    `app/services/course_transactions.py`) *before* this Group lock, in
+    the same transaction, should call `lock_group_in_open_transaction`
+    instead -- see that function's docstring for why a second reset here
+    would release the Course lock already held.
     """
     db.session.rollback()
+    return lock_group_in_open_transaction(group_public_id)
+
+
+def lock_group_in_open_transaction(group_public_id):
+    """Lock and return the current Group row by public_id -- or None --
+    WITHOUT first resetting the transaction.
+
+    Only safe to call when the caller's transaction is already
+    known-fresh -- in practice, immediately after
+    `app.services.course_transactions.lock_course_for_write_by_id` has
+    just reset it as the first query of a Course -> Group lock sequence
+    (see `group_edit` in `app/blueprints/admin/groups.py`, which locks
+    the submitted target Course first, precisely so a Group create or
+    retarget serializes against a concurrent Course-level change on that
+    same Course). Calling this directly against a transaction that might
+    still be holding an earlier, stale REPEATABLE READ snapshot
+    reintroduces exactly the staleness problem the reset in
+    `lock_group_for_write` exists to avoid.
+
+    Every route that begins directly with a Group lock -- Group status
+    toggle, and every Enrollment/GroupTeacherAssignment mutation -- must
+    keep calling `lock_group_for_write`, never this function, so that
+    lock is still the first query of a fresh transaction.
+    """
     return Group.query.filter_by(public_id=group_public_id).with_for_update().first()

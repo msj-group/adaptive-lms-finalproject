@@ -21,8 +21,9 @@ from app.models import (
     UserStatus,
 )
 from app.security.decorators import roles_required
+from app.services.course_transactions import lock_course_for_write_by_id
 from app.services.group_memberships import active_student_enrollment_count, group_has_membership_history
-from app.services.group_transactions import lock_group_for_write
+from app.services.group_transactions import lock_group_for_write, lock_group_in_open_transaction
 
 
 def _course_choices():
@@ -129,13 +130,43 @@ def group_create():
 
     form = GroupForm()
     if form.validate_on_submit():
+        # Capture only the plain scalar values the protected transaction
+        # needs -- the request's raw form data must not be trusted for
+        # the actual decision past this point.
+        academic_term_id = form.academic_term_id.data
+        course_id = form.course_id.data
+        name = form.name.data.strip()
+        code = normalize_optional_text(form.code.data)
+        capacity = form.capacity.data
+        status = form.status.data
+
+        # Deliberate transaction-boundary reset then lock the *target*
+        # Course -- the first query of this fresh transaction -- before
+        # the new Group referencing it is created, so this creation
+        # serializes against a concurrent Course-level change on the same
+        # Course (see app/services/course_transactions.py). This does not
+        # change the existing policy that an archived Course may still be
+        # selected here -- only existence is rechecked.
+        course = lock_course_for_write_by_id(course_id)
+        if course is None:
+            # The selected course was deleted between validation and this
+            # lock -- exceedingly unlikely (Courses are only archived,
+            # never hard-deleted, anywhere in this application), but
+            # handled the same way an ordinary field validation error
+            # would be, preserving the Administrator's other attempted
+            # values instead of crashing.
+            form.course_id.errors.append("Selected course no longer exists. Please choose another.")
+            return render_template(
+                "admin/groups/form.html", form=form, courses=_course_choices(), group=None
+            )
+
         group = Group(
-            academic_term_id=form.academic_term_id.data,
-            course_id=form.course_id.data,
-            name=form.name.data.strip(),
-            code=normalize_optional_text(form.code.data),
-            capacity=form.capacity.data,
-            status=form.status.data,
+            academic_term_id=academic_term_id,
+            course_id=course_id,
+            name=name,
+            code=code,
+            capacity=capacity,
+            status=status,
         )
         db.session.add(group)
         db.session.commit()
@@ -296,6 +327,41 @@ def _lock_group_or_404(public_id):
     return group
 
 
+def _lock_course_or_404_by_id(course_id):
+    """Thin, route-local wrapper around `lock_course_for_write_by_id` --
+    locks (and resets the transaction for) `group_edit`'s *submitted*
+    target Course, by internal id, before the Group itself is locked.
+
+    Unlike `_lock_group_or_404`'s bare 404, a missing Course here is a
+    business-rule rejection, not a URL-resource-not-found: the URL's
+    public_id still names a real Group, and the ordinary Group lock right
+    after this one still gives the true 404 if that Group itself is
+    gone. Returns None instead of raising, so the caller can decide how
+    to reject the submission.
+
+    Locking the submitted target Course first, in every group_edit
+    submission that reaches this point -- not only when course_id is
+    actually changing -- is what closes the race between retargeting an
+    unused Group to reference a Course and a concurrent Course-level
+    change on that same Course: see `course_transactions.py`'s module
+    docstring and `course_has_group_reference`.
+    """
+    return lock_course_for_write_by_id(course_id)
+
+
+def _lock_group_in_open_transaction_or_404(public_id):
+    """Thin, route-local 404 wrapper around
+    `lock_group_in_open_transaction` -- the Group lock that follows
+    `_lock_course_or_404_by_id` inside `group_edit`, deliberately without
+    a second transaction reset (which would release the Course lock just
+    acquired).
+    """
+    group = lock_group_in_open_transaction(public_id)
+    if group is None:
+        abort(404)
+    return group
+
+
 def _redirect_stale_group_edit(public_id):
     """Post/Redirect/Get rejection for a snapshot token that is missing,
     empty, invalidly signed, wrong-shaped, belongs to a different Group,
@@ -414,13 +480,20 @@ def group_edit(public_id):
 
         # Deliberate transaction-boundary reset (see
         # lock_group_for_write's docstring for the full MySQL/InnoDB
-        # REPEATABLE READ rationale) then lock the *current* Group row --
-        # the first query of this fresh transaction, and the same shared
-        # primitive every Group-affecting mutation route locks the Group
-        # with, so a concurrent edit, status toggle, or Enrollment/
-        # Assignment change on the same Group serialize against each
-        # other.
-        group = _lock_group_or_404(public_id)
+        # REPEATABLE READ rationale) then lock the *submitted target*
+        # Course first, and only then the current Group row -- in that
+        # fixed Course -> Group order, without a second reset between the
+        # two locks. This is what makes retargeting an unused Group to
+        # reference a Course serialize against a concurrent Course-level
+        # change on that same Course, on top of the pre-existing
+        # guarantee that a concurrent edit, status toggle, or Enrollment/
+        # Assignment change on the same Group also serializes against
+        # this one.
+        course = _lock_course_or_404_by_id(course_id)
+        if course is None:
+            form.course_id.errors.append("Selected course no longer exists. Please choose another.")
+            return _render_group_edit_validation_failure(form, public_id, submitted_snapshot_token)
+        group = _lock_group_in_open_transaction_or_404(public_id)
 
         # Every critical rule is rechecked here against the freshly
         # locked Group and current, just-queried relationship/count data
