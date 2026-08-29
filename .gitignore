@@ -70,3 +70,6 @@ desktop.ini
 *.swp
 tmp/
 temp/
+
+# ---- Local AI tooling (do not ignore the whole .claude/ directory) ----
+/.claude/settings.local.json
