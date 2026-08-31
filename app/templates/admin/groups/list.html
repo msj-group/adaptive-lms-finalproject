@@ -69,12 +69,20 @@
     </thead>
     <tbody>
       {% for group in groups %}
+      {% set ancestor_archived = group.academic_term.status != "active"
+            or group.course.status != "active"
+            or group.course.level.status != "active" %}
       <tr style="border-bottom:1px solid var(--color-border)">
-        <td style="padding: var(--space-3)"><a href="{{ url_for('admin.group_detail', public_id=group.public_id) }}">{{ group.name }}</a></td>
+        <td style="padding: var(--space-3)">
+          <a href="{{ url_for('admin.group_detail', public_id=group.public_id) }}">{{ group.name }}</a>
+          {% if group.status == "active" and ancestor_archived %}
+          <span class="badge badge--warning" title="An Academic Term, Course, or Level above this group is archived">Parent archived</span>
+          {% endif %}
+        </td>
         <td style="padding: var(--space-3)">{{ group.code or "--" }}</td>
-        <td style="padding: var(--space-3)">{{ group.course.title }}</td>
-        <td style="padding: var(--space-3)">{{ group.course.level.name }}</td>
-        <td style="padding: var(--space-3)">{{ group.academic_term.name }}</td>
+        <td style="padding: var(--space-3)">{{ group.course.title }}{% if group.course.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</td>
+        <td style="padding: var(--space-3)">{{ group.course.level.name }}{% if group.course.level.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</td>
+        <td style="padding: var(--space-3)">{{ group.academic_term.name }}{% if group.academic_term.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</td>
         <td style="padding: var(--space-3)">{{ group.capacity }}</td>
         <td style="padding: var(--space-3)">{{ macros.status_badge(group.status) }}</td>
         <td style="padding: var(--space-3)">{{ group.created_at.strftime("%Y-%m-%d") }}</td>

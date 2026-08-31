@@ -1,5 +1,6 @@
-"""M07C1 -- academic-lifecycle query helpers and the AcademicTerm / Level
-/ Course transaction-lock primitives.
+"""Academic-lifecycle query helpers and the AcademicTerm / Level / Course
+transaction-lock primitives -- the M07C1 foundations plus the M07C3
+`lock_academic_hierarchy` ancestor-set helper.
 
 SQLite (the test backend) has no `SELECT ... FOR UPDATE` and no
 REPEATABLE READ snapshot isolation, so nothing here proves that a lock
@@ -16,10 +17,10 @@ verify only the *requested* structure and ordering:
   call of their own (no rollback / commit / close / remove), so they do
   not themselves end the transaction an earlier first-lock entry point
   opened. SQLite cannot show that a real InnoDB lock stays held or
-  blocks another transaction, and these tests do not claim it does.
-
-None of the new services is imported by any Blueprint yet; this Part is
-infrastructure only.
+  blocks another transaction, and these tests do not claim it does;
+- `lock_academic_hierarchy` performs exactly one reset and then locks
+  the requested AcademicTerm/Level/Course rows in entity-type order,
+  ascending unique id within each type.
 """
 
 import contextlib
@@ -52,6 +53,8 @@ from app.services.level_transactions import (
     lock_level_for_write_by_id,
     lock_level_in_open_transaction_by_id,
 )
+from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
+from app.services.academic_term_transactions import lock_academic_term_in_open_transaction_by_id
 
 _MISSING_ID = 999_999
 _MISSING_PUBLIC_ID = "00000000-0000-0000-0000-000000000000"
@@ -668,3 +671,89 @@ def test_full_term_level_course_chain_resets_once_and_ends_no_transaction(app):
             "lock:Course",
             "sql:SELECT",
         ]
+
+
+# ===========================================================================
+# Part M07C3 -- `lock_academic_hierarchy` + the AcademicTerm no-reset primitive
+# ===========================================================================
+
+
+def test_lock_academic_term_in_open_transaction_by_id_never_resets(app):
+    with app.app_context():
+        term_id = _term().id
+        with _lock_trace() as events:
+            assert lock_academic_term_in_open_transaction_by_id(term_id) is not None
+        _assert_no_reset_then_lock(events, "AcademicTerm")
+
+
+def test_lock_academic_hierarchy_locks_type_order_ascending_id_after_one_reset(app):
+    with app.app_context():
+        # Build two of each entity type with deliberately shuffled ids.
+        term_a = _term("Term A")
+        term_b = _term("Term B")
+        level_a = _level("Level A")
+        level_b = _level("Level B")
+        course_a = _course(level_a, "Course A")
+        course_b = _course(level_b, "Course B")
+        term_ids = [term_b.id, term_a.id]
+        level_ids = [level_b.id, level_a.id]
+        course_ids = [course_b.id, course_a.id]
+
+        with _lock_trace() as events:
+            locks = lock_academic_hierarchy(
+                term_ids=term_ids, level_ids=level_ids, course_ids=course_ids
+            )
+
+    assert locks.term(term_a.id).id == term_a.id
+    assert locks.course(course_b.id).id == course_b.id
+    # exactly one reset, first
+    assert events.count("reset") == 1
+    assert events[0] == "reset"
+    # entity-type order: all Terms, then all Levels, then all Courses
+    assert [e for e in events if e.startswith("lock:")] == [
+        "lock:AcademicTerm",
+        "lock:AcademicTerm",
+        "lock:Level",
+        "lock:Level",
+        "lock:Course",
+        "lock:Course",
+    ]
+    # no commit / close / remove anywhere
+    for boundary in ("commit", "close", "remove"):
+        assert boundary not in events
+
+
+def test_lock_academic_hierarchy_ascending_id_within_each_type(app):
+    with app.app_context():
+        t1, t2 = _term("T1"), _term("T2")
+        lock_order = []
+
+        # A spy on the by-id primitives records the id order actually
+        # requested; the hierarchy helper must request them ascending.
+        import app.services.academic_hierarchy_transactions as module
+
+        original = module.lock_academic_term_in_open_transaction_by_id
+
+        def spy(term_id):
+            lock_order.append(term_id)
+            return original(term_id)
+
+        module.lock_academic_term_in_open_transaction_by_id = spy
+        try:
+            lock_academic_hierarchy(term_ids=[t2.id, t1.id, t2.id])
+        finally:
+            module.lock_academic_term_in_open_transaction_by_id = original
+
+    assert lock_order == sorted({t1.id, t2.id})  # deduped + ascending
+
+
+def test_lock_academic_hierarchy_missing_ids_map_to_none(app):
+    with app.app_context():
+        with _lock_trace():
+            locks = lock_academic_hierarchy(
+                term_ids=[_MISSING_ID], level_ids=[_MISSING_ID], course_ids=[_MISSING_ID, None]
+            )
+    assert locks.term(_MISSING_ID) is None
+    assert locks.level(_MISSING_ID) is None
+    assert locks.course(_MISSING_ID) is None
+    assert locks.course(None) is None

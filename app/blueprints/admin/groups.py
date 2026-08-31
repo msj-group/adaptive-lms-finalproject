@@ -12,6 +12,7 @@ from app.models import (
     AcademicStatus,
     AcademicTerm,
     Course,
+    Enrollment,
     Group,
     GroupTeacherAssignment,
     GroupTeacherAssignmentStatus,
@@ -21,13 +22,44 @@ from app.models import (
     UserStatus,
 )
 from app.security.decorators import roles_required
-from app.services.course_transactions import lock_course_for_write_by_id
-from app.services.group_memberships import active_student_enrollment_count, group_has_membership_history
-from app.services.group_transactions import lock_group_for_write, lock_group_in_open_transaction
+from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
+from app.services.group_memberships import (
+    active_student_enrollment_count,
+    active_student_enrollment_rows,
+    conflicting_active_enrollment,
+    eligible_active_teacher_count,
+    group_has_membership_history,
+    teacher_assignment_rows,
+)
+from app.services.group_transactions import lock_group_in_open_transaction
 
 
 def _course_choices():
-    return Course.query.join(Level).order_by(Level.display_order, Course.display_order).all()
+    return (
+        Course.query.options(joinedload(Course.level))
+        .join(Level)
+        .order_by(Level.display_order, Course.display_order)
+        .all()
+    )
+
+
+def _group_form_course_choices(current_course_id=None):
+    """The Courses offered in the Group create/edit form (Part M07C3):
+    active Courses under active Levels only -- plus, for an edit, the
+    Group's own current Course even if it or its Level is archived, so a
+    legacy inconsistent Group can still have its metadata corrected
+    (submitting its unchanged current course). Server-side guards remain
+    authoritative regardless of what this list contains.
+    """
+    return [
+        course
+        for course in _course_choices()
+        if (
+            course.status == AcademicStatus.ACTIVE.value
+            and course.level.status == AcademicStatus.ACTIVE.value
+        )
+        or course.id == current_course_id
+    ]
 
 
 _MAX_BIGINT = 9223372036854775807
@@ -132,32 +164,43 @@ def group_create():
     if form.validate_on_submit():
         # Capture only the plain scalar values the protected transaction
         # needs -- the request's raw form data must not be trusted for
-        # the actual decision past this point.
+        # the actual decision past this point. `status` is deliberately
+        # not read from the request: every new Group starts `active`,
+        # decided server-side below (Part M07C2). A forged `status` field
+        # in the POST body has no effect.
         academic_term_id = form.academic_term_id.data
         course_id = form.course_id.data
         name = form.name.data.strip()
         code = normalize_optional_text(form.code.data)
         capacity = form.capacity.data
-        status = form.status.data
 
-        # Deliberate transaction-boundary reset then lock the *target*
-        # Course -- the first query of this fresh transaction -- before
-        # the new Group referencing it is created, so this creation
-        # serializes against a concurrent Course-level change on the same
-        # Course (see app/services/course_transactions.py). This does not
-        # change the existing policy that an archived Course may still be
-        # selected here -- only existence is rechecked.
-        course = lock_course_for_write_by_id(course_id)
-        if course is None:
-            # The selected course was deleted between validation and this
-            # lock -- exceedingly unlikely (Courses are only archived,
-            # never hard-deleted, anywhere in this application), but
-            # handled the same way an ordinary field validation error
-            # would be, preserving the Administrator's other attempted
-            # values instead of crashing.
-            form.course_id.errors.append("Selected course no longer exists. Please choose another.")
+        # Non-locking preview -- only to discover the submitted Course's
+        # Level id so it can be locked in hierarchy order. Never trusted
+        # for the decision.
+        preview_course = db.session.get(Course, course_id)
+        level_id = preview_course.level_id if preview_course is not None else None
+
+        # Part M07C3 -- parent-first creation. One deliberate reset, then
+        # AcademicTerm -> Level -> Course locked in that fixed order (see
+        # app/services/academic_hierarchy_transactions.py), before the new
+        # Group referencing them is created. This serializes the creation
+        # against a concurrent archive of any of the three ancestors (each
+        # of those toggle routes locks the same row) and against a
+        # concurrent Course-level move.
+        hierarchy = lock_academic_hierarchy(
+            term_ids=[academic_term_id], level_ids=[level_id], course_ids=[course_id]
+        )
+        error_field, error_message = _group_create_ancestor_error(
+            hierarchy, academic_term_id, level_id, course_id
+        )
+        if error_message is not None:
+            db.session.rollback()
+            getattr(form, error_field).errors.append(error_message)
             return render_template(
-                "admin/groups/form.html", form=form, courses=_course_choices(), group=None
+                "admin/groups/form.html",
+                form=form,
+                courses=_group_form_course_choices(),
+                group=None,
             )
 
         group = Group(
@@ -166,14 +209,16 @@ def group_create():
             name=name,
             code=code,
             capacity=capacity,
-            status=status,
+            status=AcademicStatus.ACTIVE.value,
         )
         db.session.add(group)
         db.session.commit()
         flash(f"Group '{group.name}' created.", "success")
         return redirect(url_for("admin.groups_list"))
 
-    return render_template("admin/groups/form.html", form=form, courses=_course_choices(), group=None)
+    return render_template(
+        "admin/groups/form.html", form=form, courses=_group_form_course_choices(), group=None
+    )
 
 
 def _group_identity_change_error(current_group, has_history, academic_term_id, course_id):
@@ -212,6 +257,129 @@ def _group_identity_change_error(current_group, has_history, academic_term_id, c
 
 
 # ----------------------------------------------------------------------
+# Part M07C3 -- guarded academic-lifecycle checks for the Group routes.
+#
+# Every one of these runs only against rows already locked FOR UPDATE by
+# `lock_academic_hierarchy` (AcademicTerm -> Level -> Course) plus the
+# Group lock -- never against a pre-lock preview. The preview reads that
+# discover ancestor ids are only used to decide *which* rows to lock.
+# ----------------------------------------------------------------------
+
+
+def _join_human(items):
+    """['a'] -> 'a'; ['a', 'b'] -> 'a and b'; ['a', 'b', 'c'] -> 'a, b and c'."""
+    items = list(items)
+    if len(items) <= 1:
+        return items[0] if items else ""
+    return ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def _archived_ancestor_labels(term, level, course):
+    """Which of the three locked ancestor rows are missing or archived,
+    as human labels in hierarchy order."""
+    return [
+        label
+        for label, row in (("academic term", term), ("level", level), ("course", course))
+        if row is None or row.status != AcademicStatus.ACTIVE.value
+    ]
+
+
+def _group_create_ancestor_error(hierarchy, term_id, level_id, course_id):
+    """`(form_field_name, message)` if a new Group may not be created
+    under the locked (term, level, course), else `(None, None)`. A Group
+    is created only when all three ancestors exist and are active."""
+    term = hierarchy.term(term_id)
+    course = hierarchy.course(course_id)
+    level = hierarchy.level(level_id) if level_id is not None else None
+    if course is None:
+        return ("course_id", "Selected course no longer exists. Please choose another.")
+    if level is None or course.level_id != level.id:
+        return ("course_id", "The selected course changed while saving. Please reload and try again.")
+    if term is None:
+        return ("academic_term_id", "Selected academic term no longer exists. Please choose another.")
+    archived = _archived_ancestor_labels(term, level, course)
+    if archived:
+        verb = "is" if len(archived) == 1 else "are"
+        return (
+            "course_id",
+            "A group can only be created while its academic term, course, and level are all "
+            f"active. The selected {_join_human(archived)} {verb} archived.",
+        )
+    return (None, None)
+
+
+def _group_retarget_ancestor_error(hierarchy, term_id, course_id, target_level_id):
+    """Message if a Group may not be *retargeted* to the locked (term,
+    course, its level), else None. Retargeting to an archived academic
+    term, archived course, or a course under an archived level is
+    rejected. Metadata-only edits (unchanged current parent) never reach
+    this check."""
+    term = hierarchy.term(term_id)
+    course = hierarchy.course(course_id)
+    level = hierarchy.level(target_level_id) if target_level_id is not None else None
+    archived = _archived_ancestor_labels(term, level, course)
+    if archived:
+        verb = "is" if len(archived) == 1 else "are"
+        return (
+            "A group cannot be moved to an archived academic term, course, or level. The chosen "
+            f"{_join_human(archived)} {verb} archived."
+        )
+    return None
+
+
+def _group_reactivation_roster_error(group):
+    """Part M07C3 roster/capacity/teacher/conflict guard for reactivating
+    an archived Group. Locks every relevant User row (ascending numeric
+    id), then every relevant Enrollment and GroupTeacherAssignment row
+    (ascending numeric id) -- the tail of the global lock order -- then
+    runs each check against that locked, current data. Returns an
+    Administrator-facing message on the first failure, else None.
+
+    No roster row is ever modified here: reactivation keeps the archived
+    Group's closure roster exactly as it stands. The caller already holds
+    the AcademicTerm/Level/Course/Group locks.
+    """
+    enrollment_rows = active_student_enrollment_rows(group.id)  # [(enrollment_id, student_id)] asc
+    assignment_rows = teacher_assignment_rows(group.id)  # [(assignment_id, teacher_id)] asc
+
+    for user_id in sorted(
+        {student_id for _, student_id in enrollment_rows}
+        | {teacher_id for _, teacher_id in assignment_rows}
+    ):
+        User.query.filter_by(id=user_id).with_for_update().first()
+    for enrollment_id, _ in enrollment_rows:
+        Enrollment.query.filter_by(id=enrollment_id).with_for_update().first()
+    for assignment_id, _ in assignment_rows:
+        GroupTeacherAssignment.query.filter_by(id=assignment_id).with_for_update().first()
+
+    active_count = active_student_enrollment_count(group.id)
+    if active_count == 0:
+        # Zero active Student enrollments -- capacity is trivially
+        # sufficient and no eligible Teacher is required.
+        return None
+
+    if active_count > group.capacity:
+        return (
+            f"This group cannot be reactivated: it has {active_count} active students but its "
+            f"capacity is {group.capacity}. Withdraw students or raise the capacity first."
+        )
+    if eligible_active_teacher_count(group.id) == 0:
+        return (
+            "This group cannot be reactivated: it has active students but no eligible active "
+            "teacher assignment. Assign an eligible active teacher first."
+        )
+    for _, student_id in enrollment_rows:
+        conflict = conflicting_active_enrollment(student_id, group.id)
+        if conflict is not None:
+            return (
+                f"This group cannot be reactivated: a student is already actively enrolled in "
+                f"group '{conflict.group.name}' for the same course and academic term. Resolve "
+                f"that conflict first."
+            )
+    return None
+
+
+# ----------------------------------------------------------------------
 # Group-edit stale-form protection
 #
 # The Group row lock (`lock_group_for_write`) only protects two
@@ -225,6 +393,16 @@ def _group_identity_change_error(current_group, has_history, academic_term_id, c
 # catches it instead -- no model change or migration needed, since the
 # snapshot lives only in the rendered form, signed so it cannot be
 # forged into claiming an original state that never existed.
+#
+# The snapshot covers exactly the SIX fields `group_edit` can write
+# (`public_id` binds the token to one Group; it is never written). It
+# deliberately excludes `status`: since Part M07C2, `group_edit` neither
+# reads nor writes status -- `group_toggle_status` solely owns Group
+# lifecycle transitions -- so a status-only toggle after this form was
+# opened must NOT make it stale, and this edit can never overwrite the
+# toggled status. Removing status from the snapshot is only safe because
+# edit no longer touches it; locking and stale-form protection still
+# solve different problems for the six fields that remain.
 # ----------------------------------------------------------------------
 
 _GROUP_EDIT_SNAPSHOT_SALT = "admin.group-edit-snapshot.v1"
@@ -235,7 +413,6 @@ _GROUP_EDIT_SNAPSHOT_FIELDS = (
     "name",
     "code",
     "capacity",
-    "status",
 )
 
 
@@ -281,9 +458,13 @@ def _group_edit_is_stale(snapshot, group_public_id, locked_group):
 
     In every one of those cases the submitted edit form was opened
     against data that is no longer current, so the whole update must be
-    rejected rather than silently overwriting whatever changed since --
-    including a change made by a completed Group status toggle, which
-    updates `status`, one of the compared fields.
+    rejected rather than silently overwriting whatever changed since.
+
+    A completed Group *status toggle* is deliberately NOT one of those
+    cases: `status` is not among the six compared fields (see
+    `_GROUP_EDIT_SNAPSHOT_FIELDS`), because `group_edit` no longer reads
+    or writes status. An edit form opened before a toggle therefore stays
+    valid as long as its six editable fields still match.
     """
     if snapshot is None:
         return True
@@ -313,48 +494,12 @@ def _load_group_for_display(public_id):
     )
 
 
-def _lock_group_or_404(public_id):
-    """Thin, route-local 404 wrapper around the shared
-    `lock_group_for_write` primitive (see its docstring in
-    `app/services/group_transactions.py`) -- used by both `group_edit`
-    and `group_toggle_status` so a Group edit and a Group status toggle
-    serialize against each other, and against every Enrollment/
-    GroupTeacherAssignment mutation, through the exact same lock.
-    """
-    group = lock_group_for_write(public_id)
-    if group is None:
-        abort(404)
-    return group
-
-
-def _lock_course_or_404_by_id(course_id):
-    """Thin, route-local wrapper around `lock_course_for_write_by_id` --
-    locks (and resets the transaction for) `group_edit`'s *submitted*
-    target Course, by internal id, before the Group itself is locked.
-
-    Unlike `_lock_group_or_404`'s bare 404, a missing Course here is a
-    business-rule rejection, not a URL-resource-not-found: the URL's
-    public_id still names a real Group, and the ordinary Group lock right
-    after this one still gives the true 404 if that Group itself is
-    gone. Returns None instead of raising, so the caller can decide how
-    to reject the submission.
-
-    Locking the submitted target Course first, in every group_edit
-    submission that reaches this point -- not only when course_id is
-    actually changing -- is what closes the race between retargeting an
-    unused Group to reference a Course and a concurrent Course-level
-    change on that same Course: see `course_transactions.py`'s module
-    docstring and `course_has_group_reference`.
-    """
-    return lock_course_for_write_by_id(course_id)
-
-
 def _lock_group_in_open_transaction_or_404(public_id):
     """Thin, route-local 404 wrapper around
-    `lock_group_in_open_transaction` -- the Group lock that follows
-    `_lock_course_or_404_by_id` inside `group_edit`, deliberately without
-    a second transaction reset (which would release the Course lock just
-    acquired).
+    `lock_group_in_open_transaction` -- the Group lock that follows the
+    `lock_academic_hierarchy` ancestor locks inside `group_edit` and
+    `group_toggle_status`, deliberately without a second transaction
+    reset (which would release the ancestor locks just acquired).
     """
     group = lock_group_in_open_transaction(public_id)
     if group is None:
@@ -422,7 +567,7 @@ def _render_group_edit_validation_failure(form, public_id, edit_snapshot_token):
     return render_template(
         "admin/groups/form.html",
         form=form,
-        courses=_course_choices(),
+        courses=_group_form_course_choices(display_group.course_id),
         group=display_group,
         identity_locked=group_has_membership_history(display_group.id),
         edit_snapshot_token=edit_snapshot_token,
@@ -455,7 +600,12 @@ def group_edit(public_id):
         if _group_edit_is_stale(preview_snapshot, public_id, preview_group):
             return _redirect_stale_group_edit(public_id)
 
-    form = GroupForm(obj=preview_group, group_id=preview_group.id)
+    form = GroupForm(
+        obj=preview_group,
+        group_id=preview_group.id,
+        current_academic_term_id=preview_group.academic_term_id,
+        current_course_id=preview_group.course_id,
+    )
 
     if form.validate_on_submit():
         error = _group_identity_change_error(
@@ -470,29 +620,39 @@ def group_edit(public_id):
         # needs -- `preview_group`, `identity_locked`, and the request's
         # raw form data above must not be trusted for the actual decision
         # past this point; they belong to the read-only snapshot that is
-        # about to be ended.
+        # about to be ended. `status` is intentionally absent: this route
+        # never writes Group status (Part M07C2 -- `group_toggle_status`
+        # solely owns lifecycle transitions), so a forged `status` field
+        # in the POST body has no effect here.
         academic_term_id = form.academic_term_id.data
         course_id = form.course_id.data
         name = form.name.data.strip()
         code = normalize_optional_text(form.code.data)
         capacity = form.capacity.data
-        status = form.status.data
 
-        # Deliberate transaction-boundary reset (see
-        # lock_group_for_write's docstring for the full MySQL/InnoDB
-        # REPEATABLE READ rationale) then lock the *submitted target*
-        # Course first, and only then the current Group row -- in that
-        # fixed Course -> Group order, without a second reset between the
-        # two locks. This is what makes retargeting an unused Group to
-        # reference a Course serialize against a concurrent Course-level
-        # change on that same Course, on top of the pre-existing
-        # guarantee that a concurrent edit, status toggle, or Enrollment/
-        # Assignment change on the same Group also serializes against
-        # this one.
-        course = _lock_course_or_404_by_id(course_id)
-        if course is None:
-            form.course_id.errors.append("Selected course no longer exists. Please choose another.")
-            return _render_group_edit_validation_failure(form, public_id, submitted_snapshot_token)
+        # Non-locking previews -- only to discover which ancestor rows to
+        # lock. The Group's *current* term/course/level come from
+        # `preview_group`; the submitted *target* course's level from a
+        # cheap `get`. Neither is trusted for the decision.
+        target_course_preview = db.session.get(Course, course_id)
+        target_level_id = (
+            target_course_preview.level_id if target_course_preview is not None else None
+        )
+
+        # Part M07C3 -- one deliberate transaction reset, then the union
+        # of the Group's current and submitted-target AcademicTerm, Level
+        # and Course rows, each set deduplicated and locked in ascending
+        # id order (AcademicTerm -> Level -> Course), then the Group row
+        # with no further reset. This fixed order is shared by
+        # `group_toggle_status` and every Course/Level/Term toggle, so a
+        # concurrent archive of any ancestor, a Course-level move, or a
+        # concurrent Group edit/toggle/membership change all serialize
+        # against this edit.
+        hierarchy = lock_academic_hierarchy(
+            term_ids=[preview_group.academic_term_id, academic_term_id],
+            level_ids=[preview_group.course.level_id, target_level_id],
+            course_ids=[preview_group.course_id, course_id],
+        )
         group = _lock_group_in_open_transaction_or_404(public_id)
 
         # Every critical rule is rechecked here against the freshly
@@ -501,16 +661,24 @@ def group_edit(public_id):
         # is trusted as final. Staleness first, repeating the same check
         # already performed above against the preview read, now against
         # the locked, current one -- this is what closes the window
-        # between that earlier preview and this lock. If the form was
-        # opened (or has since become) against data that is no longer
-        # current, nothing else about the submission is trustworthy
-        # either, so this is a stale-token rejection (discard everything,
-        # PRG), not a business-validation one.
+        # between that earlier preview and this lock. `academic_term_id`
+        # and `course_id` are snapshot fields, so a concurrent retarget
+        # is caught here as stale (discard everything, PRG).
         snapshot = _load_group_edit_snapshot(submitted_snapshot_token)
         if _group_edit_is_stale(snapshot, public_id, group):
             # No rollback here: `_redirect_stale_group_edit` is the single
             # owner of stale-rejection rollback and releases the write
             # lock itself before redirecting.
+            return _redirect_stale_group_edit(public_id)
+
+        target_course = hierarchy.course(course_id)
+        if target_course is None:
+            form.course_id.errors.append("Selected course no longer exists. Please choose another.")
+            return _render_group_edit_validation_failure(form, public_id, submitted_snapshot_token)
+        if target_level_id is None or target_course.level_id != target_level_id:
+            # A concurrent Course level-move changed the target course's
+            # Level between our preview and our locks -- we are holding
+            # the wrong Level. Treat it exactly like a stale form.
             return _redirect_stale_group_edit(public_id)
 
         has_history = group_has_membership_history(group.id)
@@ -519,6 +687,25 @@ def group_edit(public_id):
             form.academic_term_id.errors.append(error)
             form.course_id.errors.append(error)
             return _render_group_edit_validation_failure(form, public_id, submitted_snapshot_token)
+
+        # Part M07C3 -- parent-first retargeting. A retarget (a change to
+        # the term or course) may only land on active ancestors. A
+        # metadata-only edit (unchanged current term *and* course) is
+        # exempt, so a legacy Group under an archived parent can still
+        # have its name/code/capacity corrected.
+        retargeting = (
+            academic_term_id != group.academic_term_id or course_id != group.course_id
+        )
+        if retargeting:
+            retarget_error = _group_retarget_ancestor_error(
+                hierarchy, academic_term_id, course_id, target_course.level_id
+            )
+            if retarget_error is not None:
+                form.academic_term_id.errors.append(retarget_error)
+                form.course_id.errors.append(retarget_error)
+                return _render_group_edit_validation_failure(
+                    form, public_id, submitted_snapshot_token
+                )
 
         active_count = active_student_enrollment_count(group.id)
         if capacity < active_count:
@@ -530,12 +717,13 @@ def group_edit(public_id):
         # No field is assigned until every check above has passed, so a
         # rejection here never leaves a partial update -- either every
         # field below is written and committed together, or none are.
+        # `group.status` is never assigned here (Part M07C2): a status
+        # toggle that committed while this form was open is left intact.
         group.academic_term_id = academic_term_id
         group.course_id = course_id
         group.name = name
         group.code = code
         group.capacity = capacity
-        group.status = status
         try:
             db.session.commit()
         except IntegrityError:
@@ -570,7 +758,7 @@ def group_edit(public_id):
     return render_template(
         "admin/groups/form.html",
         form=form,
-        courses=_course_choices(),
+        courses=_group_form_course_choices(preview_group.course_id),
         group=preview_group,
         identity_locked=identity_locked,
         edit_snapshot_token=edit_snapshot_token,
@@ -580,12 +768,71 @@ def group_edit(public_id):
 @admin_bp.post("/groups/<public_id>/toggle-status")
 @roles_required(UserRole.ADMINISTRATOR.value)
 def group_toggle_status(public_id):
-    group = _lock_group_or_404(public_id)
-    group.status = (
-        AcademicStatus.ARCHIVED.value
-        if group.status == AcademicStatus.ACTIVE.value
-        else AcademicStatus.ACTIVE.value
+    # Non-locking preview -- discovers this Group's current ancestor ids
+    # (and 404s if the Group is gone). Not trusted for any decision.
+    preview_group = _load_group_for_display(public_id)
+    term_id = preview_group.academic_term_id
+    level_id = preview_group.course.level_id
+    course_id = preview_group.course_id
+
+    # Part M07C3 -- one deliberate reset, then AcademicTerm -> Level ->
+    # Course -> Group in the fixed global order. `group_edit` and every
+    # ancestor toggle use the same order, so this route serializes
+    # against a concurrent ancestor archive, Course-level move, Group
+    # edit, and (for reactivation) every membership mutation on this
+    # Group.
+    hierarchy = lock_academic_hierarchy(
+        term_ids=[term_id], level_ids=[level_id], course_ids=[course_id]
     )
+    group = _lock_group_in_open_transaction_or_404(public_id)
+
+    course = hierarchy.course(course_id)
+    if (
+        course is None
+        or group.course_id != course.id
+        or group.academic_term_id != term_id
+        or course.level_id != level_id
+    ):
+        # The Group's ancestor set changed between our preview and our
+        # locks -- we hold the wrong rows. Bail safely.
+        db.session.rollback()
+        flash(
+            "This group was changed by someone else. Please reload the groups list and try again.",
+            "danger",
+        )
+        return redirect(url_for("admin.groups_list"))
+
+    if group.status == AcademicStatus.ACTIVE.value:
+        # Archiving is always allowed -- no descendant guard. Every
+        # Enrollment and GroupTeacherAssignment row is left exactly as
+        # it stands; the roster becomes a frozen closure record and
+        # membership management for the Group becomes read-only.
+        group.status = AcademicStatus.ARCHIVED.value
+        db.session.commit()
+        flash(f"Group '{group.name}' is now archived.", "success")
+        return redirect(url_for("admin.groups_list"))
+
+    # Reactivation -- parent-first, then the full roster guard.
+    term = hierarchy.term(term_id)
+    level = hierarchy.level(level_id)
+    archived = _archived_ancestor_labels(term, level, course)
+    if archived:
+        db.session.rollback()
+        verb = "is" if len(archived) == 1 else "are"
+        flash(
+            f"This group cannot be reactivated while its {_join_human(archived)} {verb} archived. "
+            "Reactivate the parent first.",
+            "danger",
+        )
+        return redirect(url_for("admin.groups_list"))
+
+    roster_error = _group_reactivation_roster_error(group)
+    if roster_error is not None:
+        db.session.rollback()
+        flash(roster_error, "danger")
+        return redirect(url_for("admin.groups_list"))
+
+    group.status = AcademicStatus.ACTIVE.value
     db.session.commit()
-    flash(f"Group '{group.name}' is now {group.status}.", "success")
+    flash(f"Group '{group.name}' is now active.", "success")
     return redirect(url_for("admin.groups_list"))

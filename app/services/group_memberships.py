@@ -14,6 +14,7 @@ from sqlalchemy.orm import aliased, joinedload
 
 from app.extensions import db
 from app.models import (
+    AcademicStatus,
     Enrollment,
     EnrollmentStatus,
     Group,
@@ -98,8 +99,9 @@ def group_has_membership_history(group_id):
 
 def conflicting_active_enrollment(student_id, target_group_id):
     """Return an existing ACTIVE Enrollment for `student_id` in some
-    *other* Group that shares both `course_id` and `academic_term_id`
-    with the target Group, or None if there is no such conflict.
+    *other, currently ACTIVE* Group that shares both `course_id` and
+    `academic_term_id` with the target Group, or None if there is no such
+    conflict.
 
     A Student may legitimately hold active Enrollments in several Groups
     at once (different Courses, or the same Course in different
@@ -112,6 +114,14 @@ def conflicting_active_enrollment(student_id, target_group_id):
     conflicting Enrollment's Group so a caller can build a message that
     names it (e.g. "already enrolled in Group 'X'") without an extra
     query.
+
+    Part M07C3: an *archived* conflicting Group no longer participates.
+    Its roster is a frozen historical closure record, not an operational
+    seat -- so an archived Group's active Enrollment rows never block a
+    new/reactivated enrollment, nor a Group reactivation, in another
+    (active) Group for the same Course + Academic Term. Only the
+    conflicting Group's own status is added here; every other conflict
+    dimension is unchanged.
     """
     TargetGroup = aliased(Group)
     ConflictGroup = aliased(Group)
@@ -123,8 +133,51 @@ def conflicting_active_enrollment(student_id, target_group_id):
             Enrollment.student_id == student_id,
             Enrollment.status == EnrollmentStatus.ACTIVE.value,
             Enrollment.group_id != target_group_id,
+            ConflictGroup.status == AcademicStatus.ACTIVE.value,
             ConflictGroup.course_id == TargetGroup.course_id,
             ConflictGroup.academic_term_id == TargetGroup.academic_term_id,
         )
         .first()
     )
+
+
+def active_student_enrollment_rows(group_id):
+    """`(enrollment_id, student_id)` tuples, ascending by `enrollment_id`,
+    for every ACTIVE Enrollment of `group_id` whose referenced User has
+    the Student role -- the same "valid active Student seat" definition
+    as `active_student_enrollment_count`.
+
+    Part M07C3: the Group-reactivation guard uses this to (a) lock each
+    Student User row and each Enrollment row deterministically and
+    (b) re-check the per-Student cross-Group conflict. It is a
+    non-locking preview read used only to discover the candidate ids;
+    the caller re-locks and re-checks.
+    """
+    return [
+        (row.id, row.student_id)
+        for row in db.session.query(Enrollment.id, Enrollment.student_id)
+        .join(User, Enrollment.student_id == User.id)
+        .filter(
+            Enrollment.group_id == group_id,
+            Enrollment.status == EnrollmentStatus.ACTIVE.value,
+            User.role == UserRole.STUDENT.value,
+        )
+        .order_by(Enrollment.id)
+        .all()
+    ]
+
+
+def teacher_assignment_rows(group_id):
+    """`(assignment_id, teacher_id)` tuples, ascending by `assignment_id`,
+    for *every* GroupTeacherAssignment of `group_id` -- any status, any
+    referenced role. A removed or corrupted row is still a row the
+    Group-reactivation guard must lock deterministically before judging
+    teacher eligibility. Non-locking preview read; the caller re-locks.
+    """
+    return [
+        (row.id, row.teacher_id)
+        for row in db.session.query(GroupTeacherAssignment.id, GroupTeacherAssignment.teacher_id)
+        .filter(GroupTeacherAssignment.group_id == group_id)
+        .order_by(GroupTeacherAssignment.id)
+        .all()
+    ]

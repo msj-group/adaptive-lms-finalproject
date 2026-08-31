@@ -97,13 +97,19 @@ class LevelForm(FlaskForm):
 
 
 class CourseForm(FlaskForm):
-    level_id = SelectField("Level", coerce=int, validators=[DataRequired()])
+    # `validate_choice=False`: the rendered <select> is filtered to active
+    # Levels for usability (Part M07C3), but the authoritative "level must
+    # be active" decision is made server-side after locking. A forged
+    # level_id therefore reaches `validate_level_id` (existence) and then
+    # the route's post-lock guard, rather than being silently bounced by
+    # WTForms' own choice-matching.
+    level_id = SelectField("Level", coerce=int, validators=[DataRequired()], validate_choice=False)
     title = StringField("Title", validators=[DataRequired(), Length(max=150)])
     code = StringField("Code", validators=[Optional(), Length(max=20)])
     description = TextAreaField("Description", validators=[Optional(), Length(max=5000)])
     submit = SubmitField("Save")
 
-    def __init__(self, *args, course_id=None, **kwargs):
+    def __init__(self, *args, course_id=None, current_level_id=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._course_id = course_id
         self.level_id.choices = [
@@ -112,6 +118,7 @@ class CourseForm(FlaskForm):
                 level.name if level.status == AcademicStatus.ACTIVE.value else f"{level.name} (Archived)",
             )
             for level in Level.query.order_by(Level.display_order, Level.id).all()
+            if level.status == AcademicStatus.ACTIVE.value or level.id == current_level_id
         ]
 
     def validate_level_id(self, field):
@@ -140,20 +147,28 @@ class CourseForm(FlaskForm):
 
 
 class GroupForm(FlaskForm):
-    academic_term_id = SelectField("Academic Term", coerce=int, validators=[DataRequired()])
-    course_id = SelectField("Course", coerce=int, validators=[DataRequired()])
+    # No `status` field: a Group's lifecycle status is owned solely by the
+    # dedicated `group_toggle_status` route (Part M07C2). New Groups are
+    # created active server-side; `group_edit` never reads or writes
+    # status. Do not reintroduce a status control (or a hidden field) here
+    # -- it would put a client-controlled value back on the create/edit
+    # path the toggle route is meant to be the single owner of.
+    # `validate_choice=False` on both ancestor selects: the rendered
+    # <select>s are filtered to active AcademicTerms / active Courses
+    # under active Levels for usability (Part M07C3), but the
+    # authoritative "all three ancestors must be active" decision is made
+    # server-side after locking AcademicTerm -> Level -> Course. A forged
+    # id reaches `validate_*` (existence) and then the route guard.
+    academic_term_id = SelectField(
+        "Academic Term", coerce=int, validators=[DataRequired()], validate_choice=False
+    )
+    course_id = SelectField("Course", coerce=int, validators=[DataRequired()], validate_choice=False)
     name = StringField("Group Name", validators=[DataRequired(), Length(max=100)])
     code = StringField("Group Code", validators=[Optional(), Length(max=20)])
     capacity = IntegerField("Capacity", validators=[DataRequired(), NumberRange(min=1)])
-    status = SelectField(
-        "Status",
-        choices=[(s.value, s.value.capitalize()) for s in AcademicStatus],
-        default=AcademicStatus.ACTIVE.value,
-        validators=[DataRequired()],
-    )
     submit = SubmitField("Save")
 
-    def __init__(self, *args, group_id=None, **kwargs):
+    def __init__(self, *args, group_id=None, current_academic_term_id=None, current_course_id=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._group_id = group_id
         self.academic_term_id.choices = [
@@ -162,15 +177,22 @@ class GroupForm(FlaskForm):
                 term.name if term.status == AcademicStatus.ACTIVE.value else f"{term.name} (Archived)",
             )
             for term in AcademicTerm.query.order_by(AcademicTerm.start_date.desc()).all()
+            if term.status == AcademicStatus.ACTIVE.value or term.id == current_academic_term_id
         ]
         self.course_id.choices = [
             (
                 course.id,
                 f"{course.title} ({course.level.name})"
                 if course.status == AcademicStatus.ACTIVE.value
+                and course.level.status == AcademicStatus.ACTIVE.value
                 else f"{course.title} ({course.level.name}) (Archived)",
             )
             for course in Course.query.join(Level).order_by(Level.display_order, Course.display_order).all()
+            if (
+                course.status == AcademicStatus.ACTIVE.value
+                and course.level.status == AcademicStatus.ACTIVE.value
+            )
+            or course.id == current_course_id
         ]
 
     def validate_academic_term_id(self, field):

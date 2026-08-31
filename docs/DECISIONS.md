@@ -541,6 +541,16 @@ How `group_edit` (`POST /admin/groups/<public_id>/edit`) and
 and against stale-form overwrites. This Part changed route, service, and
 template logic only -- **no model change and no database migration**.
 
+**Part M07C2 amendment (Group status ownership).** Since M07C2, Group
+lifecycle status is owned *solely* by `group_toggle_status`: `GroupForm`
+and the create/edit HTML carry no `status` control, `group_create`
+always stores `active` (decided server-side), and `group_edit` never
+reads or writes `status`. The signed edit snapshot dropped from seven
+fields to six (`status` removed), so a status-only toggle no longer
+stales an open edit form and that edit can never overwrite the toggled
+status. The subsections below are updated to reflect this; M07C2 was
+also route/form/template-only -- **no model change and no migration**.
+
 ### A. Group identity fields and when they become immutable
 
 - A Group's **academic identity** is the pair (`academic_term_id`,
@@ -552,9 +562,10 @@ template logic only -- **no model change and no database migration**.
   Enrollment or teacher-assignment history at all**, and **immutable once
   any such history exists**.
 - **Non-identity fields stay editable regardless of history:** `name`,
-  `code`, `capacity`, and `status` can always be changed (subject to
-  their own validation -- uniqueness, the capacity rule in section C,
-  the status enum).
+  `code`, and `capacity` can always be changed (subject to their own
+  validation -- uniqueness, the capacity rule in section C). `status` is
+  **not** editable here at all since M07C2 -- it is changed only through
+  `group_toggle_status`.
 - Re-submitting the Group's own current `academic_term_id`/`course_id`
   (no actual change) is always allowed even when the identity is frozen,
   so an Administrator can still edit the non-identity fields on a Group
@@ -610,14 +621,17 @@ still-`active` Enrollment still occupies its seat. The database
   (itsdangerous `URLSafeSerializer`, the app `SECRET_KEY`, salt
   `admin.group-edit-snapshot.v1`) so it cannot be forged into claiming
   an original state that never existed.
-- **Included fields (7):** `public_id`, `academic_term_id`, `course_id`,
-  `name`, `code`, `capacity`, `status` -- every field `group_edit` can
-  write, plus `public_id` to bind the token to one Group.
+- **Included fields (6):** `academic_term_id`, `course_id`, `name`,
+  `code`, `capacity` -- every field `group_edit` can write -- plus
+  `public_id` to bind the token to one Group. `status` is **excluded**
+  (M07C2): `group_edit` no longer reads or writes it.
 - **Stale = reject.** A token that is missing, empty, invalidly signed,
-  wrong-shaped, signed for a different Group, or whose values no longer
-  match the locked Group is stale. Because `status` is one of the seven
-  fields, a completed Group **status toggle** also makes an open edit
-  form stale.
+  wrong-shaped (including a pre-M07C2 seven-field token), signed for a
+  different Group, or whose six values no longer match the locked Group
+  is stale. A completed Group **status toggle** is deliberately *not* a
+  stale trigger: `status` is not compared, so an edit form opened before
+  a toggle stays valid as long as its six editable fields still match,
+  and applying that edit leaves the toggled status untouched.
 - **Stale-form PRG behavior.** The snapshot check runs *before* the
   `GroupForm` is constructed and before any WTForms field validation,
   and is never skipped because another field is also invalid. A stale
@@ -635,7 +649,10 @@ still-`active` Enrollment still occupies its seat. The database
   The lock stops two concurrent transactions from interleaving; the
   snapshot stops a non-overlapping, time-separated form from overwriting
   a change it never saw. Both are kept because neither covers the
-  other's case.
+  other's case. Dropping `status` from the snapshot is safe *only*
+  because `group_edit` no longer reads or writes it (M07C2) -- the
+  status-toggle-ownership and stale-form concerns are separate, and the
+  snapshot still guards the six fields the edit does write.
 
 ### E. Group locking through the shared transaction service
 
@@ -650,42 +667,44 @@ still-`active` Enrollment still occupies its seat. The database
   Part 6 membership section above for how this makes Group edit, Group
   status toggle, and the six membership routes serialize for the same
   Group.
-- **`group_edit` lock order is `Course -> Group`.** It first locks the
-  *submitted target* Course by internal id
-  (`lock_course_for_write_by_id`, which performs the
-  transaction-boundary reset), then the current Group with
-  `lock_group_in_open_transaction` -- the no-reset variant, because a
-  second reset would release the Course lock just taken. This fixed
-  order is what lets retargeting an unused Group to a different Course
-  serialize against a concurrent Course-level change on that same Course
-  (see "Course-level identity integrity" below). `group_toggle_status`,
-  taking no Course, keeps calling `lock_group_for_write` (with its
-  reset) directly.
+- **`group_edit` lock order (as extended by Part M07C3) is
+  `AcademicTerm(s) -> Level(s) -> Course(s) -> Group`.** It locks the
+  union of the Group's current and submitted-target AcademicTerm, Level
+  and Course rows (deduplicated, ascending id within each type) via
+  `lock_academic_hierarchy` -- which owns the one deliberate reset --
+  then the Group with `lock_group_in_open_transaction` (no second reset).
+  `group_toggle_status` now uses the same `AcademicTerm -> Level ->
+  Course -> Group` chain (and, for a reactivation, extends it with User
+  and relationship rows). See "Guarded academic lifecycle (Phase 3,
+  Part M07C3)" below for the full order and the race-safety table.
 - Staleness, identity, and capacity are all rechecked after the locks
   against freshly queried data; nothing from the pre-lock preview or
   form validation is trusted. No Group field is assigned until every
-  check passes, so a rejection never leaves a partial update. An
-  `IntegrityError` at commit is caught, rolled back, and reported with a
-  generic message -- no SQL, parameters, or driver text reaches the
-  user.
+  check passes, so a rejection never leaves a partial update -- and
+  `group.status` is never among the assigned fields (M07C2), so a
+  status toggle that committed while this form was open survives intact.
+  An `IntegrityError` at commit is caught, rolled back, and reported
+  with a generic message -- no SQL, parameters, or driver text reaches
+  the user.
 
 ### F. Group edit/status and membership-route coordination today
 
-- Group edit <-> Group status toggle: serialize on the shared Group
-  lock. A status toggle that commits while an edit form is open also
-  makes that form stale (section D).
+- Group edit <-> Group status toggle: still serialize on the shared
+  Group lock (concurrency), but since M07C2 a completed status toggle
+  does **not** make an open edit form stale, and the edit -- which never
+  writes `status` -- cannot overwrite the toggled value. The two routes
+  no longer contend over `status` at all: the toggle solely owns it.
 - Group edit / status toggle <-> the six membership routes: all take the
   same Group row lock, so they serialize for the same Group.
-- Group edit <-> Course edit / Course status toggle: `group_edit` locks
-  its submitted target Course, and `course_edit` / `course_toggle_status`
-  lock the Course through the same shared explicit Course write lock
-  (`lock_course_for_write` / `lock_course_for_write_by_id`,
-  `app/services/course_transactions.py`). So a Group edit serializes on
-  that Course row against a concurrent Course edit or Course status
-  toggle for the same Course. This is transaction serialization on the
-  Course row only -- a Course status change touches none of the seven
-  Group snapshot fields, so it never makes a Group edit form stale
-  (contrast a Group status toggle, section D).
+- Group edit <-> Course edit / Course status toggle: `group_edit`,
+  `course_edit` and `course_toggle_status` all lock the relevant Course
+  row (`group_edit` and `course_edit` through
+  `lock_academic_hierarchy` / `lock_course_in_open_transaction`, which
+  delegate to the same `course_transactions.py` primitive). So a Group
+  edit serializes on that Course row against a concurrent Course edit or
+  Course status toggle. This is transaction serialization on the Course
+  row only -- a Course status change touches none of the six Group
+  snapshot fields, so it never makes a Group edit form stale.
 - Group edit <-> Course reordering (`move-up` / `move-down`): the Course
   reorder routes currently have no equivalent explicit application
   transaction primitive, so no full serialization is claimed here; this
@@ -703,6 +722,12 @@ still-`active` Enrollment still occupies its seat. The database
   that a lock actually blocks a concurrent transaction. Real blocking
   and isolation hold only on MySQL/InnoDB, and no isolated MySQL test
   database exists in this project to verify them.
+- M07C2 centralized Group status *ownership*; the guarded-hierarchy
+  wiring (ancestor archive guards, parent-first create/retarget/
+  reactivation, the Group reactivation guard, archived-parent form
+  filtering, the archived-Group conflict-rule change) landed together in
+  **M07C3** -- see "Guarded academic lifecycle (Phase 3, Part M07C3)"
+  below.
 - Attendance remains a future module; nothing here implements or
   presumes it.
 
@@ -771,17 +796,21 @@ Mirrors the Group edit snapshot (section D above), salt
 
 ### D. Course locking and lock order
 
-- **Course edit and status toggle** both lock the Course through the
-  shared `lock_course_for_write` (`app/services/course_transactions.py`,
-  with the transaction-boundary reset) via the route-local
-  `_lock_course_or_404` wrapper, so a Course edit and a Course status
-  toggle serialize against each other for the same Course.
-- **`group_edit` uses the explicit `Course -> Group` order:** it locks
-  the submitted target Course (`lock_course_for_write_by_id`) *before*
-  the Group (`lock_group_in_open_transaction`, no second reset).
-- **`group_create` locks the target Course**
-  (`lock_course_for_write_by_id`) as the first query of its fresh
-  transaction, before inserting the new Group that references it.
+> Part M07C3 extended every lock chain below with the ancestor rows above
+> the Course (`AcademicTerm` for Group routes, `Level` for all of them),
+> via `lock_academic_hierarchy` -- which now owns the single deliberate
+> reset. The `Course -> Group` guarantees described here are unchanged;
+> they are just the tail of a longer chain. See "Guarded academic
+> lifecycle (Phase 3, Part M07C3)".
+
+- **Course edit and status toggle** both lock the Course (now preceded by
+  its Level) through the shared `course_transactions.py` primitives, so a
+  Course edit and a Course status toggle serialize for the same Course.
+- **`group_edit`** locks the union of the current + target Course rows
+  (preceded by their Levels and the Terms) *before* the Group
+  (`lock_group_in_open_transaction`, no second reset).
+- **`group_create`** locks `AcademicTerm -> Level -> Course` before
+  inserting the new Group that references them.
 - **How Group creation/retargeting serializes with Course-Level
   changes.** A `group_create` or identity-changing `group_edit` holds
   `SELECT ... FOR UPDATE` on the target Course row; `course_edit`'s
@@ -811,9 +840,9 @@ Mirrors the Group edit snapshot (section D above), salt
   operations (two `course_edit` submissions, or an edit racing a status
   toggle or a reorder) do not involve the `groups.course_id` foreign
   key at all; their coordination depends on the explicit application
-  locks where implemented (`course_edit` and `course_toggle_status`
-  share `lock_course_for_write`) and on ordinary database write locking
-  otherwise.
+  locks where implemented (`course_edit` and `course_toggle_status` both
+  lock `Level -> Course` through the shared `course_transactions.py`
+  primitives) and on ordinary database write locking otherwise.
 - **Safe `IntegrityError` handling, no partial mutation.** Every rule is
   rechecked post-lock; no field is written until all checks pass, so a
   rejection leaves no partial mutation. An `IntegrityError` at commit is
@@ -834,6 +863,168 @@ Mirrors the Group edit snapshot (section D above), salt
   a rare race there can only produce a display-order oddity, correctable
   by reordering again.
 - The archive-policy interactions between `Course`, `Level`,
-  `AcademicTerm` and their active descendants remain **undecided** and
-  are unchanged by Parts 7B0/7B1.
+  `AcademicTerm` and their active descendants are now **implemented** by
+  the guarded hierarchy -- see "Guarded academic lifecycle (Phase 3,
+  Part M07C3)" below. Parts 7B0/7B1 themselves did not add those guards;
+  M07C1 built the shared query/lock foundations and M07C3 wired them.
+- Attendance remains a future module.
+
+
+## Guarded academic lifecycle (Phase 3, Part M07C3)
+
+Completes milestone M07: the `AcademicTerm -> Level -> Course -> Group`
+hierarchy now has *guarded* lifecycle transitions. Built on the M07C1
+query/lock foundations and the M07C2 Group-status ownership, this Part
+wired the archive guards, parent-first rules, and the Group reactivation
+guard together in one atomic change. **No model change and no database
+migration** -- route, form, service, and template logic only. Nothing
+here hard-deletes, cascades, or automatically repairs legacy rows.
+
+### A. General policy
+
+- Guarded hierarchy, not cascade. Archiving/reactivating one entity
+  never automatically archives, withdraws, removes, reactivates, or
+  rewrites any descendant. Unsafe transitions are *blocked* until the
+  administrator puts the related entities into a valid state.
+- No hard deletion of `AcademicTerm`, `Level`, `Course`, `Group`,
+  `Enrollment`, or `GroupTeacherAssignment` -- unchanged.
+- Pre-existing inconsistent legacy rows (e.g. an active Group already
+  under an archived Course) are **not** auto-repaired. The guards only
+  stop *new* inconsistency; a metadata-only edit that re-submits the
+  entity's unchanged current parent is always allowed so a legacy row
+  can still be corrected.
+- An archived Group's Enrollment and GroupTeacherAssignment rows remain
+  a frozen historical closure roster; membership management for an
+  archived Group stays read-only (unchanged from Part 6 / 7B0).
+
+### B. Exact archive blockers
+
+Held under a `SELECT ... FOR UPDATE` on the entity being archived (its
+own toggle route locks it; every child mutation that could add an active
+descendant locks the same row via `lock_academic_hierarchy`, so they
+serialize):
+
+- **AcademicTerm** archive is rejected if any **active Group** directly
+  references it (`academic_term_has_active_group`).
+- **Course** archive is rejected if any **active Group** directly
+  references it (`course_has_active_group`).
+- **Level** archive is rejected if **either**: any **active Course**
+  directly references it (`level_has_active_course`), **or** any
+  **active Group** references *any* Course of that Level **regardless of
+  that Course's own status** (`level_has_active_group` -- an active Group
+  under an archived Course still blocks the Level).
+
+A rejected archive leaves every row unchanged, rolls back and releases
+its locks, flashes a clear Administrator-facing message, and never
+exposes SQL/driver text. `AcademicTerm` and `Level` reactivation is
+never blocked (they are the roots of their subtrees).
+
+### C. Parent-first creation, retargeting, reactivation
+
+All server-authoritative (checked on locked rows); form filtering is a
+usability aid only.
+
+- A **Course** cannot be *created* under an archived Level, nor *moved*
+  to a different archived Level. Reactivating a Course requires its
+  Level active. Submitting the Course's unchanged current level_id is
+  not a move and is exempt.
+- A **Group** cannot be *created* unless its AcademicTerm, Course, **and**
+  the Course's Level are all active. It cannot be *retargeted* to an
+  archived AcademicTerm, an archived Course, or a Course under an
+  archived Level. Reactivating a Group requires all three ancestors
+  active. A metadata-only edit (unchanged current term **and** course)
+  is exempt -- it never permits retargeting elsewhere or reactivating
+  beneath an archived ancestor.
+
+### D. Group reactivation guard
+
+Before an archived Group becomes active again, `group_toggle_status`
+locks `AcademicTerm -> Level -> Course -> Group`, verifies the three
+ancestors are active, then locks every relevant `User` row (ascending
+numeric id, students and teachers merged) followed by every relevant
+`Enrollment` and `GroupTeacherAssignment` row (ascending id), and checks
+against that locked data:
+
+1. Count active valid Student enrollments (referenced User has the
+   Student role). A **suspended Student's** active Enrollment is
+   retained and still occupies a seat.
+2. If that count is `0`, reactivation proceeds -- no capacity or teacher
+   check, and no conflict check.
+3. Otherwise the count must be `<= group.capacity`.
+4. And at least one **eligible active teacher assignment** must exist:
+   assignment status `active`, referenced User role `teacher`, and that
+   Teacher account `active`. A **suspended Teacher's** assignment is
+   retained but does not satisfy the requirement.
+5. And no active-enrolled Student may have a **conflicting active
+   enrollment** in another *active* Group for the same Course +
+   AcademicTerm.
+
+Any failure leaves the Group archived and modifies no row. Teacher
+account suspension stays independently allowed -- this guard is a
+point-in-time eligibility check at reactivation, not a permanent
+coupling (same principle as the existing Part 6 section C limitation).
+
+### E. Operational conflict change
+
+`conflicting_active_enrollment` gained one filter: the conflicting Group
+must itself be `active`. An archived Group's active Enrollment rows are
+a closure record, so they no longer block a new/reactivated enrollment,
+or a Group reactivation, in another active Group for the same Course +
+AcademicTerm. Every other conflict dimension is unchanged. This shipped
+in the same atomic Part as the reactivation guard.
+
+### F. Global lock order and same-type rule
+
+```
+AcademicTerm -> Level -> Course -> Group
+  -> User rows (ascending numeric id)
+  -> relationship rows (Enrollment then GroupTeacherAssignment, ascending id)
+```
+
+Within one entity type, unique numeric ids are locked in ascending
+order. `app/services/academic_hierarchy_transactions.py`
+(`lock_academic_hierarchy`) owns the single deliberate transaction reset
+and the AcademicTerm/Level/Course portion; it delegates to the per-entity
+`*_in_open_transaction_by_id` primitives so the `SELECT ... FOR UPDATE`
+never drifts. Every later lock joins the same open transaction -- no
+reset between locks. Non-locking preview reads only discover which ids to
+lock; after locking, existence, relationships, statuses, the signed
+snapshot, capacity, and membership state are all rechecked, and a
+previewed relationship that changed (e.g. a Course whose Level moved) is
+rejected safely rather than continued with the wrong ancestor set. The
+resulting lock graph has no reverse-order path.
+
+Race-safety, route by route:
+
+| Route | Locks (in order) | Guard |
+|---|---|---|
+| `academic_term_toggle_status` | AcademicTerm | archive blocked by active Group |
+| `level_toggle_status` | Level | archive blocked by active Course **or** transitive active Group |
+| `course_create` | Level | Level must be active |
+| `course_edit` | Level(s) (source+target, asc id) -> Course | snapshot + Course identity (7B1) + target Level active on a move |
+| `course_toggle_status` | Level -> Course | archive blocked by active Group; reactivation needs active Level |
+| `group_create` | AcademicTerm -> Level -> Course | all three ancestors active |
+| `group_edit` | AcademicTerm(s) -> Level(s) -> Course(s) (union of current+target, asc id) -> Group | snapshot + identity-history (7B0) + capacity + parent-first on a retarget |
+| `group_toggle_status` (archive) | AcademicTerm -> Level -> Course -> Group | none (always allowed; roster untouched) |
+| `group_toggle_status` (reactivate) | ... -> Group -> User(s, asc id) -> Enrollment/Assignment rows (asc id) | ancestors active + section D roster guard |
+
+Existing membership routes (`group_enrollment_*`, `group_teacher_*`)
+keep their Group -> User -> relationship locking unchanged; they never
+lock an ancestor, so they add no reverse path.
+
+### G. Honest limitations
+
+- SQLite (the test backend) has no `SELECT ... FOR UPDATE` and no
+  REPEATABLE READ snapshot isolation. The structural tests prove only
+  the *requested* lock set and order and the deliberate single reset --
+  never that a real InnoDB lock blocks a concurrent transaction. That
+  guarantee holds only on MySQL/InnoDB, and no isolated MySQL test
+  database exists in this project; MySQL concurrency checks (Term-archive
+  vs concurrent Group insert, Group-reactivate vs concurrent conflicting
+  enrollment, Level-archive vs concurrent Course create, a deadlock
+  probe over the fixed order) would eventually be needed there.
+- Course/Level **reordering** (`move-up` / `move-down`) still has no
+  explicit transaction primitive -- unchanged low-risk cosmetic concern.
+- Legacy inconsistent rows are left as-is; a separate read-only
+  consistency report against the real database was not built here.
 - Attendance remains a future module.

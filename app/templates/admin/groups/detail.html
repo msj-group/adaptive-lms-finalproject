@@ -10,6 +10,17 @@
 
   {{ macros.flash_messages() }}
 
+  {% set ancestor_archived = group.academic_term.status != "active"
+        or group.course.status != "active"
+        or group.course.level.status != "active" %}
+  {% if group.status == "active" and ancestor_archived %}
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    This group is active, but one of its academic parents (Academic Term, Course, or Level) is
+    archived. Guarded-lifecycle rules will not let it be reactivated once archived until every
+    parent is active again.
+  </div>
+  {% endif %}
+
   <div class="card">
     <dl style="display: grid; grid-template-columns: 160px 1fr; row-gap: var(--space-3); column-gap: var(--space-4); margin: 0;">
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group Code</dt>
@@ -28,13 +39,13 @@
       </dd>
 
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
-      <dd style="margin:0">{{ group.academic_term.name }}</dd>
+      <dd style="margin:0">{{ group.academic_term.name }}{% if group.academic_term.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
 
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
-      <dd style="margin:0">{{ group.course.title }}</dd>
+      <dd style="margin:0">{{ group.course.title }}{% if group.course.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
 
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
-      <dd style="margin:0">{{ group.course.level.name }}</dd>
+      <dd style="margin:0">{{ group.course.level.name }}{% if group.course.level.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
 
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>
       <dd style="margin:0">{{ group.created_at.strftime("%Y-%m-%d %H:%M") }}</dd>

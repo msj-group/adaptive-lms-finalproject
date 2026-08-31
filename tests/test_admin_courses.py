@@ -1003,14 +1003,17 @@ def test_late_stale_check_catches_course_field_changed_after_preview(app, client
     login(client, "admin@example.com")
     token = _get_course_edit_snapshot(client, public_id)
 
-    original_lock = courses_module.lock_course_for_write
+    # Part M07C3: `course_edit` now locks Level(s) -> Course via
+    # `lock_academic_hierarchy` (which owns the one deliberate reset).
+    # Patch it to land a concurrent commit in the preview -> lock window.
+    original_hierarchy = courses_module.lock_academic_hierarchy
 
-    def rename_then_lock(pid):
-        Course.query.filter_by(public_id=pid).update({"title": "Renamed Concurrently"})
+    def rename_then_lock(*args, **kwargs):
+        Course.query.filter_by(public_id=public_id).update({"title": "Renamed Concurrently"})
         db.session.commit()
-        return original_lock(pid)
+        return original_hierarchy(*args, **kwargs)
 
-    monkeypatch.setattr(courses_module, "lock_course_for_write", rename_then_lock)
+    monkeypatch.setattr(courses_module, "lock_academic_hierarchy", rename_then_lock)
 
     resp = client.post(
         f"/admin/courses/{public_id}/edit",
@@ -1183,18 +1186,18 @@ def test_destination_display_order_calculated_after_locking(app, client, monkeyp
     login(client, "admin@example.com")
     snapshot = _get_course_edit_snapshot(client, public_id)
 
-    original_lock = courses_module.lock_course_for_write
+    original_hierarchy = courses_module.lock_academic_hierarchy
 
-    def add_another_course_then_lock(pid):
+    def add_another_course_then_lock(*args, **kwargs):
         # Simulates a concurrent Course created in the destination Level
         # right before this lock -- committed between the preview read
-        # and the fresh lock.
+        # and the fresh Level -> Course lock.
         extra = Course(level_id=level_b_id, title="Concurrently Added", display_order=1)
         courses_module.db.session.add(extra)
         courses_module.db.session.commit()
-        return original_lock(pid)
+        return original_hierarchy(*args, **kwargs)
 
-    monkeypatch.setattr(courses_module, "lock_course_for_write", add_another_course_then_lock)
+    monkeypatch.setattr(courses_module, "lock_academic_hierarchy", add_another_course_then_lock)
 
     resp = client.post(
         f"/admin/courses/{public_id}/edit",
@@ -1251,7 +1254,9 @@ def test_course_reset_occurs_before_course_lock_as_first_query(app, client):
         )
 
     assert resp.status_code == 302
-    assert events == ["reset", "lock:Course"]
+    # Part M07C3 global lock order: one reset, then the (single, since
+    # source == target) Level row, then the Course row.
+    assert events == ["reset", "lock:Level", "lock:Course"]
 
 
 def test_course_reference_check_occurs_after_course_lock(app, client):
@@ -1270,7 +1275,7 @@ def test_course_reference_check_occurs_after_course_lock(app, client):
     snapshot = _get_course_edit_snapshot(client, public_id)
 
     events = []
-    original_lock = courses_module.lock_course_for_write
+    original_lock = courses_module.lock_course_in_open_transaction
     original_reference_check = courses_module.course_has_group_reference
 
     def lock_spy(pid):
@@ -1281,7 +1286,9 @@ def test_course_reference_check_occurs_after_course_lock(app, client):
         events.append("reference_check")
         return original_reference_check(cid)
 
-    with patch.object(courses_module, "lock_course_for_write", side_effect=lock_spy), patch.object(
+    with patch.object(
+        courses_module, "lock_course_in_open_transaction", side_effect=lock_spy
+    ), patch.object(
         courses_module, "course_has_group_reference", side_effect=reference_check_spy
     ):
         client.post(
@@ -1291,23 +1298,29 @@ def test_course_reference_check_occurs_after_course_lock(app, client):
 
     # Two preview-time (early, non-authoritative) checks happen first --
     # one to compute `level_locked` for template rendering, one inside
-    # `_course_level_change_error`'s early call -- then the lock, then
-    # the single authoritative recheck immediately after it.
+    # `_course_level_change_error`'s early call -- then (after the
+    # Part M07C3 Level locks) the Course lock, then the single
+    # authoritative recheck immediately after it.
     assert events == ["reference_check", "reference_check", "lock", "reference_check"]
 
 
 def test_group_create_and_course_edit_share_the_course_transactions_module(app, client):
-    """Structural: Group create/retarget and Course edit lock the target
-    Course through primitives defined in the same
-    app/services/course_transactions.py module, not separate,
-    independently-drifting implementations."""
+    """Structural: Course edit and every Group/Course path that must lock
+    a Course go through the same `app/services/course_transactions.py`
+    primitive -- directly (`course_edit`) or via the shared
+    `academic_hierarchy_transactions` helper (Part M07C3), never a
+    separately-drifting copy."""
     import app.blueprints.admin.courses as courses_module
-    import app.blueprints.admin.groups as groups_module
+    import app.services.academic_hierarchy_transactions as hierarchy_module
     import app.services.course_transactions as course_transactions_module
 
-    assert courses_module.lock_course_for_write is course_transactions_module.lock_course_for_write
     assert (
-        groups_module.lock_course_for_write_by_id is course_transactions_module.lock_course_for_write_by_id
+        courses_module.lock_course_in_open_transaction
+        is course_transactions_module.lock_course_in_open_transaction
+    )
+    assert (
+        hierarchy_module.lock_course_in_open_transaction_by_id
+        is course_transactions_module.lock_course_in_open_transaction_by_id
     )
 
 
@@ -1340,16 +1353,16 @@ def test_course_level_change_catches_group_inserted_in_preview_to_lock_window(ap
     login(client, "admin@example.com")
     snapshot = _get_course_edit_snapshot(client, public_id)
 
-    original_lock = courses_module.lock_course_for_write
+    original_hierarchy = courses_module.lock_academic_hierarchy
 
-    def create_group_then_lock(pid):
+    def create_group_then_lock(*args, **kwargs):
         db.session.add(
             Group(academic_term_id=term_id, course_id=course_id, name="Race Group", capacity=10)
         )
         db.session.commit()
-        return original_lock(pid)
+        return original_hierarchy(*args, **kwargs)
 
-    monkeypatch.setattr(courses_module, "lock_course_for_write", create_group_then_lock)
+    monkeypatch.setattr(courses_module, "lock_academic_hierarchy", create_group_then_lock)
 
     resp = client.post(
         f"/admin/courses/{public_id}/edit",

@@ -9,8 +9,10 @@ from app.blueprints.admin.utils import move_within_siblings, normalize_optional_
 from app.extensions import db
 from app.models import AcademicStatus, Course, Level, UserRole
 from app.security.decorators import roles_required
+from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
+from app.services.academic_lifecycle import course_has_active_group
 from app.services.course_integrity import course_has_group_reference
-from app.services.course_transactions import lock_course_for_write
+from app.services.course_transactions import lock_course_in_open_transaction
 
 
 def _courses_query(level_id=None):
@@ -31,7 +33,7 @@ def _next_display_order(level_id):
 @roles_required(UserRole.ADMINISTRATOR.value)
 def courses_list():
     level_id = request.args.get("level_id", type=int)
-    courses = _courses_query(level_id).all()
+    courses = _courses_query(level_id).options(joinedload(Course.level)).all()
     levels = Level.query.order_by(Level.display_order, Level.id).all()
     return render_template(
         "admin/courses/list.html", courses=courses, levels=levels, selected_level_id=level_id
@@ -48,12 +50,35 @@ def course_create():
             form.level_id.data = preselect_level_id
 
     if form.validate_on_submit():
+        level_id = form.level_id.data
+        title = form.title.data.strip()
+        code = normalize_optional_text(form.code.data)
+        description = normalize_optional_text(form.description.data)
+
+        # Part M07C3 -- parent-first creation. Reset the transaction and
+        # lock the target Level as the first query, before inserting a
+        # Course under it, so this creation serializes against a
+        # concurrent Level archive (`level_toggle_status` locks the same
+        # Level row). A Course may not be created under an archived Level.
+        hierarchy = lock_academic_hierarchy(level_ids=[level_id])
+        level = hierarchy.level(level_id)
+        if level is None:
+            db.session.rollback()
+            form.level_id.errors.append("Selected level no longer exists.")
+            return render_template("admin/courses/form.html", form=form, course=None)
+        if level.status != AcademicStatus.ACTIVE.value:
+            db.session.rollback()
+            form.level_id.errors.append(
+                "A course cannot be created under an archived level. Reactivate the level first."
+            )
+            return render_template("admin/courses/form.html", form=form, course=None)
+
         course = Course(
-            level_id=form.level_id.data,
-            title=form.title.data.strip(),
-            code=normalize_optional_text(form.code.data),
-            description=normalize_optional_text(form.description.data),
-            display_order=_next_display_order(form.level_id.data),
+            level_id=level_id,
+            title=title,
+            code=code,
+            description=description,
+            display_order=_next_display_order(level_id),
         )
         db.session.add(course)
         db.session.commit()
@@ -67,21 +92,28 @@ def _load_course_for_display(public_id):
     used for the initial GET, and to refetch a display copy after a
     post-lock rejection has already released the write lock via
     `db.session.rollback()`. Never call this while a write lock from
-    `lock_course_for_write`/`_lock_course_or_404` is still held.
+    `_lock_levels_then_course_or_404` is still held.
     """
     return Course.query.options(joinedload(Course.level)).filter_by(public_id=public_id).first_or_404()
 
 
-def _lock_course_or_404(public_id):
-    """Thin, route-local 404 wrapper around the shared
-    `lock_course_for_write` primitive -- used by both `course_edit` and
-    `course_toggle_status` so a Course edit and a Course status toggle
-    serialize against each other through the exact same lock.
+def _lock_levels_then_course_or_404(public_id, level_ids):
+    """Part M07C3 lock step shared by `course_edit` and
+    `course_toggle_status`: reset the transaction once, lock the given
+    unique Level rows in ascending id order (via `lock_academic_hierarchy`),
+    then lock the Course row itself with no further reset -- the fixed
+    `Level -> Course` order of the global lock graph.
+
+    Returns `(hierarchy, course)`. A missing Course is a genuine 404 (the
+    URL's public_id no longer names a Course); the caller is responsible
+    for any Level-relationship recheck and for releasing the locks on a
+    business-rule rejection.
     """
-    course = lock_course_for_write(public_id)
+    hierarchy = lock_academic_hierarchy(level_ids=level_ids)
+    course = lock_course_in_open_transaction(public_id)
     if course is None:
         abort(404)
-    return course
+    return hierarchy, course
 
 
 def _course_level_change_error(current_course, requested_level_id):
@@ -243,7 +275,9 @@ def course_edit(public_id):
         if _course_edit_is_stale(preview_snapshot, public_id, preview_course):
             return _redirect_stale_course_edit(public_id)
 
-    form = CourseForm(obj=preview_course, course_id=preview_course.id)
+    form = CourseForm(
+        obj=preview_course, course_id=preview_course.id, current_level_id=preview_course.level_id
+    )
 
     if form.validate_on_submit():
         error = _course_level_change_error(preview_course, form.level_id.data)
@@ -259,17 +293,23 @@ def course_edit(public_id):
         code = normalize_optional_text(form.code.data)
         description = normalize_optional_text(form.description.data)
 
-        # Deliberate transaction-boundary reset then lock the *current*
-        # Course row -- the first query of this fresh transaction, and
-        # the same shared primitive Course edit and Course status toggle
-        # both lock the Course with, so they serialize against each
-        # other.
-        course = _lock_course_or_404(public_id)
+        # Part M07C3 -- deterministic `Level -> Course` locking. One
+        # deliberate reset, then the unique source + target Level rows in
+        # ascending id order, then the Course row (no second reset).
+        # `course_toggle_status` and every Group/Course mutation that
+        # touches these rows use the same order, so the lock graph has no
+        # reverse path.
+        hierarchy, course = _lock_levels_then_course_or_404(
+            public_id, [preview_course.level_id, level_id]
+        )
 
         # Staleness first, repeating the same check already performed
         # above against the preview read, now against the locked,
         # current one -- this is what closes the window between that
-        # earlier preview and this lock.
+        # earlier preview and this lock. `level_id` is a snapshot field,
+        # so a concurrent Course level-move (which would leave us holding
+        # the wrong source Level) is caught here as stale before any
+        # ancestor decision is made.
         snapshot = _load_course_edit_snapshot(submitted_snapshot_token)
         if _course_edit_is_stale(snapshot, public_id, course):
             # No rollback here: _redirect_stale_course_edit is the single
@@ -286,6 +326,24 @@ def course_edit(public_id):
         # rejection here never leaves a partial update -- either every
         # field below is written and committed together, or none are.
         moving_to_new_level = level_id != course.level_id
+        if moving_to_new_level:
+            # Parent-first (Part M07C3): a Course may not be *moved* to an
+            # archived Level. Submitting the Course's own unchanged
+            # current level_id is not a move and is exempt (legacy
+            # metadata-correction path), handled by the guard above.
+            target_level = hierarchy.level(level_id)
+            if target_level is None:
+                form.level_id.errors.append("Selected level no longer exists.")
+                return _render_course_edit_validation_failure(
+                    form, public_id, submitted_snapshot_token
+                )
+            if target_level.status != AcademicStatus.ACTIVE.value:
+                form.level_id.errors.append(
+                    "A course cannot be moved to an archived level. Reactivate that level first."
+                )
+                return _render_course_edit_validation_failure(
+                    form, public_id, submitted_snapshot_token
+                )
         course.title = title
         course.code = code
         course.description = description
@@ -336,12 +394,49 @@ def course_edit(public_id):
 @admin_bp.post("/courses/<public_id>/toggle-status")
 @roles_required(UserRole.ADMINISTRATOR.value)
 def course_toggle_status(public_id):
-    course = _lock_course_or_404(public_id)
-    course.status = (
-        AcademicStatus.ARCHIVED.value
-        if course.status == AcademicStatus.ACTIVE.value
-        else AcademicStatus.ACTIVE.value
-    )
+    # Part M07C3 -- guarded hierarchy. A non-locking preview discovers the
+    # Course's current Level id; the authoritative decision is made only
+    # after locking Level -> Course (the fixed global order).
+    preview = Course.query.filter_by(public_id=public_id).first()
+    if preview is None:
+        abort(404)
+
+    hierarchy, course = _lock_levels_then_course_or_404(public_id, [preview.level_id])
+    level = hierarchy.level(preview.level_id)
+    if level is None or course.level_id != level.id:
+        # A concurrent Course level-move changed the relationship between
+        # our preview and our lock -- we are holding the wrong Level.
+        # Bail safely; the Administrator retries against current state.
+        db.session.rollback()
+        flash(
+            "This course was changed by someone else. Please reload the courses list and try again.",
+            "danger",
+        )
+        return redirect(url_for("admin.courses_list"))
+
+    if course.status == AcademicStatus.ACTIVE.value:
+        if course_has_active_group(course.id):
+            db.session.rollback()
+            flash(
+                "This course cannot be archived while an active group still uses it. "
+                "Archive those groups first.",
+                "danger",
+            )
+            return redirect(url_for("admin.courses_list"))
+        course.status = AcademicStatus.ARCHIVED.value
+    else:
+        # Parent-first reactivation: a Course may not become active again
+        # while its Level is archived.
+        if level.status != AcademicStatus.ACTIVE.value:
+            db.session.rollback()
+            flash(
+                "This course cannot be reactivated while its level is archived. "
+                "Reactivate the level first.",
+                "danger",
+            )
+            return redirect(url_for("admin.courses_list"))
+        course.status = AcademicStatus.ACTIVE.value
+
     db.session.commit()
     flash(f"Course '{course.title}' is now {course.status}.", "success")
     return redirect(url_for("admin.courses_list"))

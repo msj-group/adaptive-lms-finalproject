@@ -10,9 +10,17 @@
 
   {{ macros.flash_messages() }}
 
+  {% set ancestor_archived = group.academic_term.status != "active"
+        or group.course.status != "active"
+        or group.course.level.status != "active" %}
   {% if group.status != "active" %}
   <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
     This group is archived. The roster below is read-only -- reactivate the group from its detail page to change Teacher or Student membership.
+    {% if ancestor_archived %} Its Academic Term, Course, or Level is also archived: reactivate every archived parent before the group itself.{% endif %}
+  </div>
+  {% elif ancestor_archived %}
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    This group is active while one of its academic parents (Academic Term, Course, or Level) is archived.
   </div>
   {% endif %}
 
@@ -22,13 +30,13 @@
       <dd style="margin:0">{{ group.code or "--" }}</dd>
 
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
-      <dd style="margin:0">{{ group.course.title }}</dd>
+      <dd style="margin:0">{{ group.course.title }}{% if group.course.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
 
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
-      <dd style="margin:0">{{ group.course.level.name }}</dd>
+      <dd style="margin:0">{{ group.course.level.name }}{% if group.course.level.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
 
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
-      <dd style="margin:0">{{ group.academic_term.name }}</dd>
+      <dd style="margin:0">{{ group.academic_term.name }}{% if group.academic_term.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
 
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Active Students</dt>
       <dd style="margin:0">{{ active_student_count }}/{{ group.capacity }} ({{ remaining_seats }} seat{{ "" if remaining_seats == 1 else "s" }} remaining)</dd>

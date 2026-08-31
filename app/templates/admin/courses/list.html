@@ -36,8 +36,13 @@
     <tbody>
       {% for course in courses %}
       <tr style="border-bottom:1px solid var(--color-border)">
-        <td style="padding: var(--space-3)">{{ course.title }}</td>
-        <td style="padding: var(--space-3)">{{ course.level.name }}</td>
+        <td style="padding: var(--space-3)">
+          {{ course.title }}
+          {% if course.status == "active" and course.level.status != "active" %}
+          <span class="badge badge--warning" title="This course's Level is archived">Level archived</span>
+          {% endif %}
+        </td>
+        <td style="padding: var(--space-3)">{{ course.level.name }}{% if course.level.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</td>
         <td style="padding: var(--space-3)">{{ course.code or "--" }}</td>
         <td style="padding: var(--space-3)">{{ macros.status_badge(course.status) }}</td>
         <td style="padding: var(--space-3)">{{ course.display_order }}</td>

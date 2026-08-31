@@ -64,11 +64,9 @@
       {{ form.capacity(class_="field__input") }}
       {% for error in form.capacity.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="margin-top: var(--space-4)">
-      {{ form.status.label(class_="field__label") }}
-      {{ form.status(class_="field__input") }}
-      {% for error in form.status.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
-    </div>
+    {# No Status control: a Group's active/archived status is changed only
+       through the Activate/Deactivate action on the Groups list/detail
+       pages (the `group_toggle_status` route). #}
     <div class="ds-row" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary", id="group-form-submit") }}
       <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Cancel</a>

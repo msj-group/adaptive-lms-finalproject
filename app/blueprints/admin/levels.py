@@ -6,6 +6,8 @@ from app.blueprints.admin.utils import move_within_siblings, normalize_optional_
 from app.extensions import db
 from app.models import AcademicStatus, Level, UserRole
 from app.security.decorators import roles_required
+from app.services.academic_lifecycle import level_has_active_course, level_has_active_group
+from app.services.level_transactions import lock_level_for_write
 
 
 def _ordered_levels():
@@ -55,12 +57,34 @@ def level_edit(public_id):
 @admin_bp.post("/levels/<public_id>/toggle-status")
 @roles_required(UserRole.ADMINISTRATOR.value)
 def level_toggle_status(public_id):
-    level = Level.query.filter_by(public_id=public_id).first_or_404()
-    level.status = (
-        AcademicStatus.ARCHIVED.value
-        if level.status == AcademicStatus.ACTIVE.value
-        else AcademicStatus.ACTIVE.value
-    )
+    # Part M07C3 -- guarded hierarchy. Lock this Level row as the first
+    # query of a fresh transaction; a concurrent Course create/move/
+    # reactivation or Group create/edit/reactivation that would place an
+    # active descendant under this Level locks this same Level row (via
+    # `lock_academic_hierarchy`) and so serializes against this toggle.
+    level = lock_level_for_write(public_id)
+    if level is None:
+        abort(404)
+
+    if level.status == AcademicStatus.ACTIVE.value:
+        # Both Level archive blockers: an active Course directly under
+        # this Level, OR an active Group under any Course of this Level
+        # regardless of that Course's own status (a legacy active Group
+        # beneath an archived Course still counts).
+        if level_has_active_course(level.id) or level_has_active_group(level.id):
+            db.session.rollback()
+            flash(
+                "This level cannot be archived while it still has an active course, or an "
+                "active group under any of its courses. Archive those first.",
+                "danger",
+            )
+            return redirect(url_for("admin.levels_list"))
+        level.status = AcademicStatus.ARCHIVED.value
+    else:
+        # Reactivating a Level: Level is the top of the Level/Course/Group
+        # subtree, so it has no ancestor to be blocked by.
+        level.status = AcademicStatus.ACTIVE.value
+
     db.session.commit()
     flash(f"Level '{level.name}' is now {level.status}.", "success")
     return redirect(url_for("admin.levels_list"))

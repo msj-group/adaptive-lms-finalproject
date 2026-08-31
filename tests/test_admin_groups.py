@@ -87,16 +87,23 @@ def _get_edit_snapshot(client, public_id):
     return match.group(1) if match else ""
 
 
-def _edit_post_data(term_id, course_id, name="Group A", code="", capacity="10", status="active", edit_snapshot=""):
-    return {
+def _edit_post_data(term_id, course_id, name="Group A", code="", capacity="10", edit_snapshot="", status=None):
+    """Model a real Group edit submission -- which no longer carries a
+    `status` field (Part M07C2). `status` is accepted only so the
+    dedicated tampering tests can forge one; normal submissions must not
+    pass it.
+    """
+    data = {
         "academic_term_id": term_id,
         "course_id": course_id,
         "name": name,
         "code": code,
         "capacity": capacity,
-        "status": status,
         "edit_snapshot": edit_snapshot,
     }
+    if status is not None:
+        data["status"] = status  # forged only -- the real form has no such control
+    return data
 
 
 def test_administrator_can_access_groups_list(app, client):
@@ -210,6 +217,36 @@ def test_admin_can_access_create_page(app, client):
     assert b"New Group" in resp.data
 
 
+def test_group_form_has_no_status_field(app):
+    """Part M07C2: `GroupForm` must not expose a status control -- Group
+    lifecycle status is owned solely by `group_toggle_status`."""
+    from app.blueprints.admin.forms import GroupForm
+
+    with app.app_context():
+        _make_term()
+        _make_course()
+        form = GroupForm()
+    assert not hasattr(form, "status")
+    assert "status" not in form._fields
+
+
+def test_create_and_edit_html_contain_no_status_control(app, client):
+    """Neither the create nor the edit Group form renders a control
+    named `status` (no select, no hidden field)."""
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        group = _make_group(name="Group A")
+        public_id = group.public_id
+    login(client, "admin@example.com")
+
+    create_html = client.get("/admin/groups/new").get_data(as_text=True)
+    edit_html = client.get(f"/admin/groups/{public_id}/edit").get_data(as_text=True)
+    for html in (create_html, create_html.lower(), edit_html, edit_html.lower()):
+        assert 'name="status"' not in html
+    assert "status" not in _parse_group_form(create_html).select_names
+    assert "status" not in _parse_group_form(edit_html).select_names
+
+
 def test_create_page_redirects_when_no_term_or_course_exists(app, client):
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
@@ -294,7 +331,10 @@ def test_correct_database_relationships_after_creation(app, client):
         assert group.course.level.name == "Level 9"
 
 
-def test_correct_status_handling(app, client):
+def test_create_always_active_regardless_of_forged_status(app, client):
+    """Part M07C2: every new Group is created `active`, decided
+    server-side. A crafted `status` field in the POST body -- `archived`,
+    `active`, or an invalid value -- never controls the stored status."""
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
         term = _make_term()
@@ -302,23 +342,25 @@ def test_correct_status_handling(app, client):
         term_id, course_id = term.id, course.id
     login(client, "admin@example.com")
 
-    resp = client.post(
-        "/admin/groups/new",
-        data={
-            "academic_term_id": term_id,
-            "course_id": course_id,
-            "name": "Archived Group",
-            "code": "",
-            "capacity": "10",
-            "status": "archived",
-        },
-        follow_redirects=True,
-    )
-    assert resp.status_code == 200
-
-    with app.app_context():
-        group = Group.query.filter_by(name="Archived Group").first()
-        assert group.status == "archived"
+    for forged, group_name in (("archived", "Forged Archived"), ("banana", "Forged Invalid")):
+        resp = client.post(
+            "/admin/groups/new",
+            data={
+                "academic_term_id": term_id,
+                "course_id": course_id,
+                "name": group_name,
+                "code": "",
+                "capacity": "10",
+                "status": forged,
+            },
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        assert b"created" in resp.data.lower()
+        with app.app_context():
+            group = Group.query.filter_by(name=group_name).first()
+            assert group is not None
+            assert group.status == "active"
 
 
 def test_required_field_validation(app, client):
@@ -831,26 +873,56 @@ def test_edit_can_move_group_to_different_term_and_course(app, client):
         assert group.course.level.name == "Level 2"
 
 
-def test_edit_status_can_be_changed(app, client):
+def test_edit_never_writes_status_even_with_forged_field(app, client):
+    """Part M07C2: `group_edit` no longer reads or writes status. A
+    crafted `status` field in an otherwise-valid edit POST must not
+    change the persisted status -- in either direction -- while every
+    genuine editable field still updates normally."""
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
         term = _make_term()
         course = _make_course()
-        group = _make_group(term=term, course=course, name="Group A")
-        public_id, term_id, course_id = group.public_id, term.id, course.id
+        active_group = _make_group(term=term, course=course, name="Active One", capacity=10)
+        archived_group = _make_group(term=term, course=course, name="Archived One", capacity=10)
+        archived_group.status = "archived"
+        db.session.commit()
+        active_pid, archived_pid = active_group.public_id, archived_group.public_id
+        term_id, course_id = term.id, course.id
 
     login(client, "admin@example.com")
-    snapshot = _get_edit_snapshot(client, public_id)
+
+    # Active Group + forged status=archived -> stays active; name/capacity update.
+    snapshot = _get_edit_snapshot(client, active_pid)
     resp = client.post(
-        f"/admin/groups/{public_id}/edit",
-        data=_edit_post_data(term_id, course_id, status="archived", edit_snapshot=snapshot),
+        f"/admin/groups/{active_pid}/edit",
+        data=_edit_post_data(
+            term_id, course_id, name="Active Renamed", capacity="12",
+            status="archived", edit_snapshot=snapshot,
+        ),
         follow_redirects=True,
     )
-    assert resp.status_code == 200
-
+    assert b"updated" in resp.data.lower()
     with app.app_context():
-        group = Group.query.filter_by(public_id=public_id).first()
-        assert group.status == "archived"
+        g = Group.query.filter_by(public_id=active_pid).first()
+        assert g.status == "active"
+        assert g.name == "Active Renamed"
+        assert g.capacity == 12
+
+    # Archived Group + forged status=active -> stays archived; code updates.
+    snapshot = _get_edit_snapshot(client, archived_pid)
+    resp = client.post(
+        f"/admin/groups/{archived_pid}/edit",
+        data=_edit_post_data(
+            term_id, course_id, name="Archived One", code="ARC",
+            status="active", edit_snapshot=snapshot,
+        ),
+        follow_redirects=True,
+    )
+    assert b"updated" in resp.data.lower()
+    with app.app_context():
+        g = Group.query.filter_by(public_id=archived_pid).first()
+        assert g.status == "archived"
+        assert g.code == "ARC"
 
 
 def test_csrf_protection_on_edit():
@@ -1833,7 +1905,7 @@ def test_edit_allows_other_fields_with_history(app, client):
     resp = client.post(
         f"/admin/groups/{public_id}/edit",
         data=_edit_post_data(
-            term_id, course_id, name="New Name", code="NEW", capacity="15", status="archived",
+            term_id, course_id, name="New Name", code="NEW", capacity="15",
             edit_snapshot=snapshot,
         ),
         follow_redirects=True,
@@ -1844,7 +1916,8 @@ def test_edit_allows_other_fields_with_history(app, client):
         assert group.name == "New Name"
         assert group.code == "NEW"
         assert group.capacity == 15
-        assert group.status == "archived"
+        # `group_edit` never touches status -- the Group keeps whatever it had.
+        assert group.status == "active"
 
 
 def test_edit_rejects_tampered_identity_post_despite_locked_ui(app, client):
@@ -2190,7 +2263,7 @@ def test_edit_capacity_rejection_leaves_name_code_status_unchanged(app, client):
     client.post(
         f"/admin/groups/{public_id}/edit",
         data=_edit_post_data(
-            term_id, course_id, name="Attempted Rename", code="NEWCODE", capacity="1", status="archived",
+            term_id, course_id, name="Attempted Rename", code="NEWCODE", capacity="1",
             edit_snapshot=snapshot,
         ),
     )
@@ -2256,7 +2329,7 @@ def test_edit_capacity_check_reflects_enrollment_created_before_lock(app, client
 
 
 def test_edit_valid_snapshot_does_not_bypass_authoritative_history_check(app, client, monkeypatch):
-    """A perfectly valid, non-stale edit_snapshot token only proves the 7
+    """A perfectly valid, non-stale edit_snapshot token only proves the 6
     snapshotted scalar Group fields have not changed -- it says nothing
     about related-table history (Enrollment/GroupTeacherAssignment rows)
     created in between. Even when the snapshot itself passes, the
@@ -2275,7 +2348,7 @@ def test_edit_valid_snapshot_does_not_bypass_authoritative_history_check(app, cl
         term_a_id, term_b_id, course_id = term_a.id, term_b.id, course.id
 
     login(client, "admin@example.com")
-    # Valid, matches the current (history-free) state -- none of the 7
+    # Valid, matches the current (history-free) state -- none of the 6
     # snapshotted fields are about to change.
     snapshot = _get_edit_snapshot(client, public_id)
 
@@ -2390,7 +2463,9 @@ def test_edit_page_locked_identity_semantic_contract(app, client):
     # Other editable controls remain real, non-hidden form fields.
     assert "name" in parser.select_names or 'name="name"' in html
     assert 'name="capacity"' in html
-    assert "status" in parser.select_names
+    # Part M07C2: the edit form owns no status control at all.
+    assert "status" not in parser.select_names
+    assert 'name="status"' not in html
 
 
 def test_edit_page_unlocked_identity_semantic_contract(app, client):
@@ -2411,6 +2486,9 @@ def test_edit_page_unlocked_identity_semantic_contract(app, client):
     assert "course_id" in parser.select_names
     assert parser.hidden_values("academic_term_id") == []
     assert parser.hidden_values("course_id") == []
+    # Part M07C2: no status control on the unlocked edit form either.
+    assert "status" not in parser.select_names
+    assert 'name="status"' not in html
 
 
 # ----------------------------------------------------------------------
@@ -2454,9 +2532,12 @@ def test_edit_stale_form_second_of_two_concurrent_submissions_rejected(app, clie
         assert group.name == "First Editor"
 
 
-def test_edit_stale_after_status_toggle(app, client):
-    """A status toggle performed after an edit form was opened makes that
-    open form stale, since `status` is one of the snapshotted fields."""
+def test_status_toggle_after_form_open_does_not_stale_edit_and_is_not_overwritten(app, client):
+    """Part M07C2 concurrency contract: a Group status toggle performed
+    after an edit form was opened must NOT invalidate that form when none
+    of the six editable fields changed. The subsequent metadata edit
+    succeeds, its change is saved, and the toggled status survives
+    untouched -- no stale-form message solely because status changed."""
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
         term = _make_term()
@@ -2465,24 +2546,29 @@ def test_edit_stale_after_status_toggle(app, client):
         public_id, term_id, course_id = group.public_id, term.id, course.id
 
     login(client, "admin@example.com")
+    # 1. Open the edit form and retain its valid snapshot.
     snapshot = _get_edit_snapshot(client, public_id)
 
+    # 2. Toggle the Group status through the real POST route.
     toggle_resp = client.post(f"/admin/groups/{public_id}/toggle-status", follow_redirects=True)
     assert b"archived" in toggle_resp.data.lower()
 
+    # 3. Submit a legitimate metadata edit with the previously opened snapshot.
     resp = client.post(
         f"/admin/groups/{public_id}/edit",
-        data=_edit_post_data(term_id, course_id, name="Attempted Rename", edit_snapshot=snapshot),
+        data=_edit_post_data(term_id, course_id, name="Renamed While Archived", capacity="20", edit_snapshot=snapshot),
         follow_redirects=True,
     )
-    assert b"changed by someone else" in resp.data.lower()
+    # 4/7. The edit succeeds; no stale-form message.
+    assert b"updated" in resp.data.lower()
+    assert b"changed by someone else" not in resp.data.lower()
 
     with app.app_context():
         group = Group.query.filter_by(public_id=public_id).first()
-        # The stale form's attempted rename must not apply, and the
-        # completed toggle's archived status must not be silently
-        # reverted back to active by the stale form's own status field.
-        assert group.name == "Group A"
+        # 5. The metadata change is saved.
+        assert group.name == "Renamed While Archived"
+        assert group.capacity == 20
+        # 6. The toggle's archived status is not overwritten by the edit.
         assert group.status == "archived"
 
 
@@ -2533,7 +2619,12 @@ def test_edit_fresh_reload_after_conflict_succeeds(app, client):
 
     login(client, "admin@example.com")
     stale_snapshot = _get_edit_snapshot(client, public_id)
-    client.post(f"/admin/groups/{public_id}/toggle-status")
+    # Something else changes a genuine snapshotted field (name), making
+    # the still-open form stale.
+    with app.app_context():
+        g = Group.query.filter_by(public_id=public_id).first()
+        g.name = "Changed Elsewhere"
+        db.session.commit()
 
     reject_resp = client.post(
         f"/admin/groups/{public_id}/edit",
@@ -2546,9 +2637,7 @@ def test_edit_fresh_reload_after_conflict_succeeds(app, client):
     assert fresh_snapshot != stale_snapshot
     resp = client.post(
         f"/admin/groups/{public_id}/edit",
-        data=_edit_post_data(
-            term_id, course_id, name="Accepted", status="archived", edit_snapshot=fresh_snapshot
-        ),
+        data=_edit_post_data(term_id, course_id, name="Accepted", edit_snapshot=fresh_snapshot),
         follow_redirects=True,
     )
     assert b"updated" in resp.data.lower()
@@ -2652,6 +2741,77 @@ def test_edit_wrong_shape_snapshot_rejected_without_mutation(app, client):
         assert group.name == "Group A"
 
 
+def test_group_edit_snapshot_payload_has_exactly_the_six_approved_fields(app, client):
+    """Part M07C2: the signed Group edit snapshot carries exactly the six
+    fields `group_edit` can write -- `status` is excluded because that
+    route no longer touches it."""
+    import app.blueprints.admin.groups as groups_module
+
+    assert groups_module._GROUP_EDIT_SNAPSHOT_FIELDS == (
+        "public_id",
+        "academic_term_id",
+        "course_id",
+        "name",
+        "code",
+        "capacity",
+    )
+
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        group = _make_group(name="Group A")
+        public_id = group.public_id
+    login(client, "admin@example.com")
+
+    token = _get_edit_snapshot(client, public_id)
+    with app.app_context():
+        payload = groups_module._group_edit_snapshot_serializer().loads(token)
+    assert set(payload) == {
+        "public_id",
+        "academic_term_id",
+        "course_id",
+        "name",
+        "code",
+        "capacity",
+    }
+    assert "status" not in payload
+
+
+def test_old_seven_field_snapshot_token_rejected_safely(app, client):
+    """A pre-deployment token still carrying the old seven-field shape
+    (with `status`) must fail through the existing wrong-shape/stale PRG
+    path and mutate nothing."""
+    import app.blueprints.admin.groups as groups_module
+
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        term = _make_term()
+        course = _make_course()
+        group = _make_group(term=term, course=course, name="Group A", capacity=10)
+        public_id, term_id, course_id = group.public_id, term.id, course.id
+        with app.app_context():
+            old_payload = {
+                "public_id": public_id,
+                "academic_term_id": term_id,
+                "course_id": course_id,
+                "name": "Group A",
+                "code": None,
+                "capacity": 10,
+                "status": "active",
+            }
+            old_token = groups_module._group_edit_snapshot_serializer().dumps(old_payload)
+
+    login(client, "admin@example.com")
+    resp = client.post(
+        f"/admin/groups/{public_id}/edit",
+        data=_edit_post_data(term_id, course_id, name="Should Not Apply", edit_snapshot=old_token),
+    )
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith(f"/admin/groups/{public_id}/edit")
+    with app.app_context():
+        group = Group.query.filter_by(public_id=public_id).first()
+        assert group.name == "Group A"
+
+
 # ----------------------------------------------------------------------
 # Stale-token-upgrade-after-rejection fix (final Part 7B0 correction)
 #
@@ -2736,7 +2896,11 @@ def test_edit_stale_token_with_invalid_form_field_still_treated_as_stale(app, cl
 
     login(client, "admin@example.com")
     stale_token = _get_edit_snapshot(client, public_id)
-    client.post(f"/admin/groups/{public_id}/toggle-status")
+    # A genuine snapshotted-field change (capacity) elsewhere makes the token stale.
+    with app.app_context():
+        g = Group.query.filter_by(public_id=public_id).first()
+        g.capacity = 25
+        db.session.commit()
 
     resp = client.post(
         f"/admin/groups/{public_id}/edit",
@@ -2751,7 +2915,7 @@ def test_edit_stale_token_with_invalid_form_field_still_treated_as_stale(app, cl
     with app.app_context():
         group = Group.query.filter_by(public_id=public_id).first()
         assert group.name == "Original"
-        assert group.status == "archived"
+        assert group.capacity == 25
 
 
 @pytest.mark.parametrize(
@@ -2931,9 +3095,7 @@ def test_edit_preserved_token_becomes_stale_if_group_changes_before_next_submiss
     preserved_token = re.search(r'name="edit_snapshot" value="([^"]*)"', resp.get_data(as_text=True)).group(1)
     assert preserved_token == token
 
-    # Something else changes the Group before the next submission.
-    client.post(f"/admin/groups/{public_id}/toggle-status")
-    client.post(f"/admin/groups/{public_id}/toggle-status")  # back to active, but status changed and reverted
+    # Something else changes a genuine snapshotted field before the next submission.
     with app.app_context():
         group = Group.query.filter_by(public_id=public_id).first()
         group.name = "Changed By Someone Else"
@@ -2954,7 +3116,7 @@ def test_edit_preserved_token_becomes_stale_if_group_changes_before_next_submiss
 
 def test_edit_late_stale_check_catches_group_field_changed_after_preview(app, client, monkeypatch):
     """The token is genuinely non-stale against the unlocked preview read
-    (so the early check passes), but one of the 7 snapshotted Group
+    (so the early check passes), but one of the 6 snapshotted Group
     fields (name) changes -- simulating a concurrent commit -- in the
     window between that preview and the fresh lock. The late,
     post-lock staleness recheck must still catch it and reject via PRG,
@@ -3134,13 +3296,11 @@ def test_edit_csrf_and_snapshot_enforcement():
 # ----------------------------------------------------------------------
 
 
-def test_edit_locks_course_then_group_in_order(app, client):
-    """Structural: the edit route must lock the *submitted target* Course
-    first, then the Group -- in that fixed order, and no other row --
-    matching the approved Course -> Group lock order (see
-    app/services/course_transactions.py and app/blueprints/admin/groups.py)
-    that lets a Group create/retarget serialize against a concurrent
-    Course-level change on the same Course."""
+def test_edit_locks_hierarchy_then_group_in_order(app, client):
+    """Structural (Part M07C3 global lock order): a metadata-only edit
+    (source == target term/course) locks the single AcademicTerm, then
+    the single Level, then the single Course, then the Group -- in that
+    fixed order and no other row."""
     from unittest.mock import patch
 
     from sqlalchemy.orm import Query
@@ -3169,21 +3329,19 @@ def test_edit_locks_course_then_group_in_order(app, client):
             data=_edit_post_data(term_id, course_id, edit_snapshot=snapshot),
         )
 
-    assert calls == ["Course", "Group"]
+    assert calls == ["AcademicTerm", "Level", "Course", "Group"]
 
 
 def test_edit_resets_transaction_before_lock_and_rechecks_after(app, client):
     """Structural: an early, unlocked has_history check runs first (used
-    only for friendly UX, never trusted for the decision), then the
-    deliberate transaction reset happens with nothing else in between (as
-    the first step of locking the submitted target Course), then the
-    Course lock is the first query of the fresh transaction, then the
-    Group lock follows immediately with no second reset in between, then
-    the authoritative has_history recheck runs immediately after that
-    Group lock (the staleness check in between compares only already-
-    loaded data, so it issues no additional query) -- in that exact
-    order. SQLite proves only that this sequence is requested, not that
-    it blocks a real concurrent MySQL transaction."""
+    only for friendly UX, never trusted for the decision), then exactly
+    one deliberate transaction reset (owned by `lock_academic_hierarchy`),
+    then the ancestor rows AcademicTerm -> Level -> Course, then the Group
+    lock with no second reset in between, then the authoritative
+    has_history recheck immediately after that Group lock -- in that
+    exact order (Part M07C3 global lock order). SQLite proves only that
+    this sequence is *requested*, not that it blocks a real concurrent
+    MySQL transaction."""
     from unittest.mock import patch
 
     from sqlalchemy.orm import Query
@@ -3230,7 +3388,15 @@ def test_edit_resets_transaction_before_lock_and_rechecks_after(app, client):
         )
 
     assert resp.status_code == 302
-    assert events == ["has_history_check", "reset", "lock:Course", "lock:Group", "has_history_check"]
+    assert events == [
+        "has_history_check",
+        "reset",
+        "lock:AcademicTerm",
+        "lock:Level",
+        "lock:Course",
+        "lock:Group",
+        "has_history_check",
+    ]
 
 
 def test_edit_identity_rejection_rolls_back_before_display_query(app, client, monkeypatch):
@@ -3312,7 +3478,12 @@ def test_edit_early_stale_rejection_rolls_back_and_runs_no_display_query(app, cl
 
     login(client, "admin@example.com")
     stale_snapshot = _get_edit_snapshot(client, public_id)
-    client.post(f"/admin/groups/{public_id}/toggle-status")
+    # A genuine snapshotted-field change elsewhere makes the token stale
+    # against the unlocked preview read.
+    with app.app_context():
+        g = Group.query.filter_by(public_id=public_id).first()
+        g.name = "Renamed Elsewhere"
+        db.session.commit()
 
     events, resp = _post_lock_rollback_before_display_events(
         client, public_id, _edit_post_data(term_id, course_id, edit_snapshot=stale_snapshot)
@@ -3325,11 +3496,10 @@ def test_edit_early_stale_rejection_rolls_back_and_runs_no_display_query(app, cl
 
 def test_edit_early_stale_rejection_never_reaches_the_lock(app, client, monkeypatch):
     """A token already stale against the unlocked preview read is
-    rejected before either write lock is ever acquired -- neither the
-    Course lock (the first one now taken, per the Course -> Group order)
-    nor the Group lock that would follow it -- so there is nothing for
-    the caller to release and `_redirect_stale_group_edit`'s own rollback
-    is the only one needed."""
+    rejected before any write lock is ever acquired -- the ancestor
+    `lock_academic_hierarchy` (which owns the one reset) is never called,
+    so there is nothing for the caller to release and
+    `_redirect_stale_group_edit`'s own rollback is the only one needed."""
     import app.blueprints.admin.groups as groups_module
 
     with app.app_context():
@@ -3341,16 +3511,20 @@ def test_edit_early_stale_rejection_never_reaches_the_lock(app, client, monkeypa
 
     login(client, "admin@example.com")
     stale_snapshot = _get_edit_snapshot(client, public_id)
-    client.post(f"/admin/groups/{public_id}/toggle-status")
+    # A genuine snapshotted-field change elsewhere makes the token stale.
+    with app.app_context():
+        g = Group.query.filter_by(public_id=public_id).first()
+        g.name = "Renamed Elsewhere"
+        db.session.commit()
 
     lock_calls = []
-    original_lock = groups_module._lock_course_or_404_by_id
+    original_hierarchy = groups_module.lock_academic_hierarchy
 
-    def lock_spy(cid):
-        lock_calls.append(cid)
-        return original_lock(cid)
+    def hierarchy_spy(*args, **kwargs):
+        lock_calls.append((args, kwargs))
+        return original_hierarchy(*args, **kwargs)
 
-    monkeypatch.setattr(groups_module, "_lock_course_or_404_by_id", lock_spy)
+    monkeypatch.setattr(groups_module, "lock_academic_hierarchy", hierarchy_spy)
 
     resp = client.post(
         f"/admin/groups/{public_id}/edit",
@@ -3434,8 +3608,8 @@ def test_edit_post_lock_stale_rejection_releases_lock_before_redirect(app, clien
 
 def test_toggle_status_uses_shared_group_lock_primitive(app, client):
     """Group status toggle must lock the Group through the exact same
-    shared `lock_group_for_write` primitive Group edit and every
-    membership mutation route use, so a concurrent edit/membership
+    shared `lock_group_in_open_transaction` primitive Group edit uses
+    (after the Part M07C3 ancestor locks), so a concurrent edit/membership
     change and a status toggle on the same Group serialize against each
     other."""
     from unittest.mock import patch
@@ -3450,13 +3624,13 @@ def test_toggle_status_uses_shared_group_lock_primitive(app, client):
     calls = {"n": 0}
     import app.blueprints.admin.groups as groups_module
 
-    original = groups_module.lock_group_for_write
+    original = groups_module.lock_group_in_open_transaction
 
     def spy(gpid):
         calls["n"] += 1
         return original(gpid)
 
-    with patch("app.blueprints.admin.groups.lock_group_for_write", side_effect=spy):
+    with patch("app.blueprints.admin.groups.lock_group_in_open_transaction", side_effect=spy):
         client.post(f"/admin/groups/{public_id}/toggle-status")
 
     assert calls["n"] == 1
@@ -3483,10 +3657,10 @@ def test_toggle_status_uses_shared_group_lock_primitive(app, client):
 # ======================================================================
 
 
-def test_create_locks_target_course_before_creating_group(app, client):
-    """Structural: group_create must lock the *target* Course -- the
-    first (and only, since creating a new Group is an INSERT, never an
-    UPDATE) row lock taken -- before the new Group is added."""
+def test_create_locks_hierarchy_before_creating_group(app, client):
+    """Structural (Part M07C3): group_create locks AcademicTerm -> Level
+    -> Course, in that fixed order and no other row, before the new Group
+    is inserted."""
     from unittest.mock import patch
 
     from sqlalchemy.orm import Query
@@ -3516,19 +3690,18 @@ def test_create_locks_target_course_before_creating_group(app, client):
                 "name": "Locked Create",
                 "code": "",
                 "capacity": "10",
-                "status": "active",
             },
             follow_redirects=True,
         )
 
     assert b"created" in resp.data.lower()
-    assert calls == ["Course"]
+    assert calls == ["AcademicTerm", "Level", "Course"]
 
 
-def test_create_resets_transaction_before_course_lock(app, client):
+def test_create_resets_transaction_before_hierarchy_lock(app, client):
     from unittest.mock import patch
 
-    import app.blueprints.admin.groups as groups_module
+    from sqlalchemy.orm import Query
 
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
@@ -3540,25 +3713,19 @@ def test_create_resets_transaction_before_course_lock(app, client):
 
     events = []
     original_rollback = db.session.rollback
+    original_with_for_update = Query.with_for_update
 
     def rollback_spy(*args, **kwargs):
         events.append("reset")
         return original_rollback(*args, **kwargs)
 
-    original_lock = groups_module.lock_course_for_write_by_id
-
-    def lock_spy(cid):
-        # `original_lock` itself performs the reset (as its first internal
-        # step) before locking -- appending the "lock:Course" event only
-        # *after* it returns keeps this event list in true chronological
-        # order (reset, then lock), rather than the call order of this
-        # wrapper (which would record lock before its own internal reset).
-        result = original_lock(cid)
-        events.append("lock:Course")
-        return result
+    def lock_spy(self, *args, **kwargs):
+        entity = self.column_descriptions[0]["entity"] if self.column_descriptions else None
+        events.append(f"lock:{getattr(entity, '__name__', '?')}")
+        return original_with_for_update(self, *args, **kwargs)
 
     with patch.object(db.session, "rollback", side_effect=rollback_spy), patch.object(
-        groups_module, "lock_course_for_write_by_id", side_effect=lock_spy
+        Query, "with_for_update", lock_spy
     ):
         client.post(
             "/admin/groups/new",
@@ -3568,19 +3735,18 @@ def test_create_resets_transaction_before_course_lock(app, client):
                 "name": "Reset Then Lock",
                 "code": "",
                 "capacity": "10",
-                "status": "active",
             },
         )
 
-    assert events == ["reset", "lock:Course"]
+    assert events == ["reset", "lock:AcademicTerm", "lock:Level", "lock:Course"]
 
 
 def test_create_rejects_when_target_course_vanishes_between_validation_and_lock(app, client, monkeypatch):
     """Exceedingly unlikely in practice (Courses are only ever archived,
     never hard-deleted, anywhere in this application), but handled
     gracefully -- a friendly re-rendered form error, not a crash -- if
-    the target Course lock comes back empty."""
-    import app.blueprints.admin.groups as groups_module
+    the locked target Course comes back empty."""
+    import app.services.academic_hierarchy_transactions as hierarchy_module
 
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
@@ -3589,7 +3755,9 @@ def test_create_rejects_when_target_course_vanishes_between_validation_and_lock(
         term_id, course_id = term.id, course.id
 
     login(client, "admin@example.com")
-    monkeypatch.setattr(groups_module, "lock_course_for_write_by_id", lambda course_id: None)
+    monkeypatch.setattr(
+        hierarchy_module, "lock_course_in_open_transaction_by_id", lambda cid: None
+    )
 
     resp = client.post(
         "/admin/groups/new",
@@ -3599,7 +3767,6 @@ def test_create_rejects_when_target_course_vanishes_between_validation_and_lock(
             "name": "Should Not Be Created",
             "code": "",
             "capacity": "10",
-            "status": "active",
         },
     )
     assert resp.status_code == 200
@@ -3608,10 +3775,10 @@ def test_create_rejects_when_target_course_vanishes_between_validation_and_lock(
         assert Group.query.filter_by(name="Should Not Be Created").first() is None
 
 
-def test_create_still_allows_selecting_an_archived_course(app, client):
-    """Approved scope: Part 7B1 does not change the existing policy that
-    an archived Course may still be selected when creating a Group --
-    only its *existence* is rechecked under the new Course lock."""
+def test_create_rejected_for_archived_course(app, client):
+    """Part M07C3 -- parent-first creation: a Group may not be created
+    under an archived Course. The server rejects it regardless of what
+    the (filtered) form choices contain."""
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
         term = _make_term()
@@ -3629,28 +3796,78 @@ def test_create_still_allows_selecting_an_archived_course(app, client):
             "name": "Archived Course Group",
             "code": "",
             "capacity": "10",
-            "status": "active",
         },
-        follow_redirects=True,
     )
     assert resp.status_code == 200
-    assert b"created" in resp.data.lower()
+    body = resp.data.lower()
+    assert b"archived" in body and b"active" in body
     with app.app_context():
-        group = Group.query.filter_by(name="Archived Course Group").first()
-        assert group is not None
-        assert group.course_id == course_id
+        assert Group.query.filter_by(name="Archived Course Group").first() is None
 
 
-def test_group_edit_retarget_races_with_course_level_move(app, client, monkeypatch):
-    """A Group with no membership history is being retargeted (via
-    group_edit) to reference a Course whose Level is concurrently being
-    changed (via course_edit). Locking the *target* Course first, before
-    the Group, means the two serialize: this test exercises the ordering
-    where the Course-level move commits first, so the Group's retarget
-    correctly proceeds referencing the Course's *new* Level. The reverse
-    ordering (Group reference commits first, so a concurrent Course move
-    then sees it and is rejected) is proven from the Course side in
-    test_admin_courses.py::test_course_level_change_catches_group_inserted_in_preview_to_lock_window."""
+def test_create_rejected_for_course_under_archived_level(app, client):
+    """The Level-active half of the parent-first create rule: even an
+    active Course cannot host a new Group while its Level is archived."""
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        term = _make_term()
+        course = _make_course()
+        course.level.status = "archived"
+        db.session.commit()
+        term_id, course_id = term.id, course.id
+
+    login(client, "admin@example.com")
+    resp = client.post(
+        "/admin/groups/new",
+        data={
+            "academic_term_id": term_id,
+            "course_id": course_id,
+            "name": "Archived Level Group",
+            "code": "",
+            "capacity": "10",
+        },
+    )
+    assert resp.status_code == 200
+    assert b"archived" in resp.data.lower()
+    with app.app_context():
+        assert Group.query.filter_by(name="Archived Level Group").first() is None
+
+
+def test_create_rejected_for_archived_academic_term(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        term = _make_term()
+        term.status = "archived"
+        course = _make_course()
+        db.session.commit()
+        term_id, course_id = term.id, course.id
+
+    login(client, "admin@example.com")
+    resp = client.post(
+        "/admin/groups/new",
+        data={
+            "academic_term_id": term_id,
+            "course_id": course_id,
+            "name": "Archived Term Group",
+            "code": "",
+            "capacity": "10",
+        },
+    )
+    assert resp.status_code == 200
+    assert b"archived" in resp.data.lower()
+    with app.app_context():
+        assert Group.query.filter_by(name="Archived Term Group").first() is None
+
+
+def test_group_edit_retarget_rejected_when_target_course_level_moves_in_preview_to_lock_window(
+    app, client, monkeypatch
+):
+    """Part M07C3: a Group with no history is retargeted to a Course
+    whose Level is concurrently moved (simulating a concurrent
+    course_edit) in the window between the preview that discovered the
+    target Level and the ancestor locks. The route must NOT continue
+    while holding the wrong Level -- it detects the mismatch and rejects
+    safely via PRG, leaving the Group unchanged."""
     import app.blueprints.admin.groups as groups_module
     from app.models import Level
 
@@ -3664,43 +3881,40 @@ def test_group_edit_retarget_races_with_course_level_move(app, client, monkeypat
         target_course = Course(level_id=level_a.id, title="Target Course", display_order=0)
         db.session.add(target_course)
         db.session.commit()
-        group = _make_group(term=term, course=_make_course(title="Other Course"), name="Unused Group")
+        original_course = _make_course(title="Other Course")
+        group = _make_group(term=term, course=original_course, name="Unused Group")
         public_id, term_id, target_course_id = group.public_id, term.id, target_course.id
-        level_b_id = level_b.id
+        original_course_id, level_b_id = original_course.id, level_b.id
 
     login(client, "admin@example.com")
     snapshot = _get_edit_snapshot(client, public_id)
 
-    original_lock = groups_module.lock_course_for_write_by_id
+    original_hierarchy = groups_module.lock_academic_hierarchy
 
-    def move_course_level_then_lock(course_id):
-        # Simulates a concurrent course_edit committing a Level move on
-        # the target Course right before this lock is acquired.
-        Course.query.filter_by(id=course_id).update({"level_id": level_b_id, "display_order": 0})
+    def move_target_level_then_lock(*args, **kwargs):
+        Course.query.filter_by(id=target_course_id).update({"level_id": level_b_id})
         db.session.commit()
-        return original_lock(course_id)
+        return original_hierarchy(*args, **kwargs)
 
-    monkeypatch.setattr(groups_module, "lock_course_for_write_by_id", move_course_level_then_lock)
+    monkeypatch.setattr(groups_module, "lock_academic_hierarchy", move_target_level_then_lock)
 
     resp = client.post(
         f"/admin/groups/{public_id}/edit",
         data=_edit_post_data(term_id, target_course_id, edit_snapshot=snapshot),
-        follow_redirects=True,
     )
-    assert b"updated" in resp.data.lower()
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith(f"/admin/groups/{public_id}/edit")
     with app.app_context():
         group = Group.query.filter_by(public_id=public_id).first()
-        assert group.course_id == target_course_id
-        course = Course.query.filter_by(id=target_course_id).first()
-        assert course.level_id == level_b_id
+        assert group.course_id == original_course_id  # retarget did NOT land
 
 
 def test_group_edit_rejects_when_target_course_vanishes_between_validation_and_lock(app, client, monkeypatch):
     """Exceedingly unlikely in practice (Courses are only ever archived,
     never hard-deleted), but handled gracefully -- a friendly re-rendered
-    form error, not a crash -- if the target Course lock comes back
+    form error, not a crash -- if the locked target Course comes back
     empty."""
-    import app.blueprints.admin.groups as groups_module
+    import app.services.academic_hierarchy_transactions as hierarchy_module
 
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
@@ -3711,7 +3925,9 @@ def test_group_edit_rejects_when_target_course_vanishes_between_validation_and_l
 
     login(client, "admin@example.com")
     snapshot = _get_edit_snapshot(client, public_id)
-    monkeypatch.setattr(groups_module, "lock_course_for_write_by_id", lambda course_id: None)
+    monkeypatch.setattr(
+        hierarchy_module, "lock_course_in_open_transaction_by_id", lambda cid: None
+    )
 
     resp = client.post(
         f"/admin/groups/{public_id}/edit",
