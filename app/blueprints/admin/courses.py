@@ -123,17 +123,19 @@ def _course_level_change_error(current_course, requested_level_id):
     Approved Part 7B1 Policy A (documented in docs/DECISIONS.md,
     "Course-level identity integrity (Phase 3, Part 7B1)"): once any
     Group -- active or archived, empty or with real
-    Enrollment/GroupTeacherAssignment history -- currently references
-    this Course, its level_id is frozen. A single Course can back many
-    Groups at once, so moving its level would silently reinterpret every
-    one of them simultaneously, unlike Group's own
-    academic_term_id/course_id freeze, which only ever needed to wait for
-    that one Group's own membership history (see
-    `group_has_membership_history`). Submitting the Course's own current
-    level_id back (no actual change) is always allowed regardless of any
-    Group reference; once no Group currently references the Course at
-    all, level_id remains freely editable -- see `course_has_group_reference`
-    for why this is a *current*-references check, not a historical one.
+    Enrollment/GroupTeacherAssignment/Schedule history -- currently
+    references this Course, its level_id is frozen. A single Course can
+    back many Groups at once, so moving its level would silently
+    reinterpret every one of them simultaneously, unlike Group's own
+    academic_term_id/course_id freeze, which only waits for that one
+    Group's own history -- Enrollment or teacher-assignment
+    (`group_has_membership_history`) or, since M08, a Schedule row, the
+    two combined in `_group_identity_frozen`. Submitting the Course's own
+    current level_id back (no actual change) is always allowed regardless
+    of any Group reference; once no Group currently references the Course
+    at all, level_id remains freely editable -- see
+    `course_has_group_reference` for why this is a *current*-references
+    check, not a historical one.
 
     Shared by the early, pre-lock friendly check and the authoritative
     post-lock recheck in `course_edit` so the rule cannot drift between

@@ -49,6 +49,7 @@ class Group(db.Model):
     course = db.relationship("Course", back_populates="groups")
     enrollments = db.relationship("Enrollment", back_populates="group")
     teacher_assignments = db.relationship("GroupTeacherAssignment", back_populates="group")
+    schedules = db.relationship("Schedule", back_populates="group")
 
     @validates("status")
     def validate_status(self, _key, value):

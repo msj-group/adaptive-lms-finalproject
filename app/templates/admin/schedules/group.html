@@ -1,0 +1,107 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ group.name }} — Schedule{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+    <h1 style="margin:0">{{ group.name }} — Manage Schedule</h1>
+    {{ macros.status_badge(group.status) }}
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  {% if not group_is_active %}
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    This group is archived. Its schedule slots below are historical and not operational.
+    Slots can still be archived, but new slots cannot be added and existing ones cannot be
+    edited or reactivated until the group is active again.
+  </div>
+  {% elif ancestor_archived %}
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    This group is active while one of its academic parents (Academic Term, Course, or Level)
+    is archived. Schedule slots are not operational and cannot be added, edited, or reactivated
+    until every parent is active.
+  </div>
+  {% endif %}
+
+  <div class="card" style="margin-bottom: var(--space-6)">
+    <dl style="display: grid; grid-template-columns: 160px 1fr; row-gap: var(--space-3); column-gap: var(--space-4); margin: 0;">
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
+      <dd style="margin:0">{{ group.course.title }} ({{ group.course.level.name }})</dd>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
+      <dd style="margin:0">{{ group.academic_term.name }} — {{ group.academic_term.start_date.isoformat() }} to {{ group.academic_term.end_date.isoformat() }}</dd>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Timezone</dt>
+      <dd style="margin:0">{{ app_timezone }} (weekly wall-clock times)</dd>
+    </dl>
+  </div>
+
+  <div class="ds-row" style="margin-bottom: var(--space-6)">
+    <a class="btn btn--secondary" href="{{ url_for('admin.group_detail', public_id=group.public_id) }}">Back to Group Details</a>
+    <a class="btn btn--secondary" href="{{ url_for('admin.schedules_overview', group_id=group.id) }}">Center Schedule Overview</a>
+    {% if can_create %}
+    <a class="btn btn--primary" href="{{ url_for('admin.group_schedule_create', group_public_id=group.public_id) }}">Add Schedule Slot</a>
+    {% endif %}
+  </div>
+
+  {% if schedules %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th style="padding: var(--space-3)">Day</th>
+        <th style="padding: var(--space-3)">Time</th>
+        <th style="padding: var(--space-3)">Effective Range</th>
+        <th style="padding: var(--space-3)">Location</th>
+        <th style="padding: var(--space-3)">Status</th>
+        <th style="padding: var(--space-3)">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for schedule in schedules %}
+      <tr style="border-bottom:1px solid var(--color-border)">
+        <td style="padding: var(--space-3)">{{ weekday_names[schedule.day_of_week] }}</td>
+        <td style="padding: var(--space-3)">{{ schedule.start_time.strftime("%H:%M") }}–{{ schedule.end_time.strftime("%H:%M") }}</td>
+        <td style="padding: var(--space-3)">{{ schedule.effective_start_date.isoformat() }} → {{ schedule.effective_end_date.isoformat() }}</td>
+        <td style="padding: var(--space-3)">{{ schedule.location or "—" }}</td>
+        <td style="padding: var(--space-3)">{{ macros.status_badge(schedule.status) }}</td>
+        <td style="padding: var(--space-3)">
+          <div class="ds-row" style="gap: var(--space-2)">
+            {% if group_is_active and not ancestor_archived and schedule.status == "active" %}
+            <a class="btn btn--secondary" href="{{ url_for('admin.group_schedule_edit', group_public_id=group.public_id, schedule_public_id=schedule.public_id) }}">Edit</a>
+            {% endif %}
+            <form method="post" action="{{ url_for('admin.group_schedule_toggle_status', group_public_id=group.public_id, schedule_public_id=schedule.public_id) }}"
+              {% if schedule.status == "active" %}data-confirm="Archive this {{ weekday_names[schedule.day_of_week] }} slot? It will no longer be operational."{% endif %}>
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              {% if schedule.status == "active" %}
+              <button type="submit" class="btn btn--danger-outline">Archive</button>
+              {% elif group_is_active and not ancestor_archived %}
+              <button type="submit" class="btn btn--secondary">Reactivate</button>
+              {% endif %}
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No schedule slots yet</div>
+    <div>Add a recurring weekly slot to record when this group meets.</div>
+    {% if can_create %}
+    <a class="btn btn--primary" style="margin-top: var(--space-4)" href="{{ url_for('admin.group_schedule_create', group_public_id=group.public_id) }}">Add Schedule Slot</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+<script>
+  document.querySelectorAll("form[data-confirm]").forEach(function (form) {
+    form.addEventListener("submit", function (event) {
+      if (!confirm(form.dataset.confirm)) {
+        event.preventDefault();
+      }
+    });
+  });
+</script>
+{% endblock %}

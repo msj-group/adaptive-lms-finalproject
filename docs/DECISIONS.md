@@ -6,13 +6,15 @@
 specific `AcademicTerm` -- e.g. "Group A" of "General English" in "Fall 2026".
 It is the entity that student enrollments, teacher assignments, schedules,
 and attendance attach to. Student enrollments (`Enrollment`) were added
-shortly after this step (migration `d6ae31e9754c`, commit `e329e34`), and
-teacher assignments (`GroupTeacherAssignment`) were added later still, in
-Phase 3, Part 6 (migration `c8e88a1ef64a`) -- see "Group-centered
-membership management (Phase 3, Part 6)" below for the full design of both
-as they exist today. Schedules and attendance remain future milestones. At
-the time this step was written, none of those relationships existed yet;
-this step was the database/model foundation only.
+shortly after this step (migration `d6ae31e9754c`, commit `e329e34`),
+teacher assignments (`GroupTeacherAssignment`) were added in Phase 3,
+Part 6 (migration `c8e88a1ef64a`) -- see "Group-centered membership
+management (Phase 3, Part 6)" below for the full design of both -- and
+recurring weekly schedules (`Schedule`) were added in Phase 3, Part M08
+(migration `adf4b5691a7a`) -- see "Recurring Group schedules (Phase 3,
+Part M08)" below. Attendance remains a future milestone. At the time this
+step was written, none of those relationships existed yet; this step was
+the database/model foundation only.
 
 **Group -> AcademicTerm.** Many-to-one, required (`academic_term_id`,
 `NOT NULL`, indexed FK to `academic_terms.id`). An `AcademicTerm` can have
@@ -78,12 +80,15 @@ Reasoning:
   history. Building it then, before there was anything to protect
   against, would have meant designing it twice.
 
-  `Enrollment` (migration `d6ae31e9754c`) and, later, `GroupTeacherAssignment`
-  (Phase 3, Part 6, migration `c8e88a1ef64a`) have since landed exactly the
-  way this reasoning anticipated: both hold a required, non-cascading
-  foreign key to `groups.id`, and neither introduced a cascade-delete or a
-  Group-deletion route. The original decision holds unchanged -- Group
-  archiving remains the only lifecycle transition.
+  `Enrollment` (migration `d6ae31e9754c`), `GroupTeacherAssignment`
+  (Phase 3, Part 6, migration `c8e88a1ef64a`), and `Schedule` (Phase 3,
+  Part M08, migration `adf4b5691a7a`) have since landed exactly the way
+  this reasoning anticipated: each holds a required, non-cascading
+  foreign key to `groups.id`, and none introduced a cascade-delete or a
+  Group-deletion route. Only Attendance/Grades remain future. The
+  original decision holds unchanged -- Group archiving remains the only
+  lifecycle transition, and archiving a Group never cascades to its
+  Schedule rows (see "Recurring Group schedules (Phase 3, Part M08)").
 - This mirrors the decision already made and shipped for `AcademicTerm`,
   `Level`, and `Course`: all three are archive-only, no delete route
   exists for any of them, and every admin list page already reads on
@@ -551,6 +556,27 @@ stales an open edit form and that edit can never overwrite the toggled
 status. The subsections below are updated to reflect this; M07C2 was
 also route/form/template-only -- **no model change and no migration**.
 
+**Part M08 amendment (Schedule history freezes identity too).** Since
+M08, a Group's academic identity (`academic_term_id` / `course_id`) is
+editable **only while the Group has no `Enrollment`, no
+`GroupTeacherAssignment`, and no `Schedule` history** -- any one row of
+any of the three, in any status, freezes it. `group_edit` now derives
+`has_history` from `_group_identity_frozen`
+(`app/blueprints/admin/groups.py`), which is
+`group_has_membership_history(group_id) or
+group_has_schedule_history(group_id)`. `group_has_membership_history`
+itself is unchanged and still means *only* Enrollment/GroupTeacherAssignment
+(section B); the Schedule half lives in
+`group_has_schedule_history` (`app/services/schedule_queries.py`). The
+reasoning is identical to section B's: every `Schedule` effective range
+was authored against the Group's *current* `AcademicTerm`, so retargeting
+the Group would silently reinterpret it. The user-facing message and the
+locked-identity form notice both now read "enrollment, teacher-assignment,
+or schedule history". Re-submitting the Group's own current Term + Course
+stays exempt. M08 also changed route/service/template logic here (plus
+the one new `schedules` table) -- see "Recurring Group schedules
+(Phase 3, Part M08)" for the whole Part.
+
 ### A. Group identity fields and when they become immutable
 
 - A Group's **academic identity** is the pair (`academic_term_id`,
@@ -559,8 +585,9 @@ also route/form/template-only -- **no model change and no migration**.
   identity. Level is not one of them; it is still derived through
   `Group -> Course -> Level`.
 - Those two fields are **freely editable while the Group has no
-  Enrollment or teacher-assignment history at all**, and **immutable once
-  any such history exists**.
+  Enrollment, teacher-assignment, or Schedule history at all** (the
+  Schedule half added in M08 -- see the M08 amendment above), and
+  **immutable once any such history exists**.
 - **Non-identity fields stay editable regardless of history:** `name`,
   `code`, and `capacity` can always be changed (subject to their own
   validation -- uniqueness, the capacity rule in section C). `status` is
@@ -573,14 +600,17 @@ also route/form/template-only -- **no model change and no migration**.
 - The rule is `_group_identity_change_error`
   (`app/blueprints/admin/groups.py`), shared by the early pre-lock
   friendly check and the authoritative post-lock recheck so the two
-  cannot drift.
+  cannot drift. Its `has_history` argument comes from
+  `_group_identity_frozen` (membership history **or** Schedule history);
+  the function itself only decides the unchanged-current-values exemption
+  and the message.
 
 ### B. What counts as Enrollment or teacher-assignment history
 
 `group_has_membership_history(group_id)`
-(`app/services/group_memberships.py`) returns true if **any**
-`Enrollment` **or** `GroupTeacherAssignment` row exists for the Group,
-deliberately **regardless of**:
+(`app/services/group_memberships.py`) is the **membership-only** helper:
+it returns true if **any** `Enrollment` **or** `GroupTeacherAssignment`
+row exists for the Group, deliberately **regardless of**:
 
 - **status** -- a `withdrawn` Enrollment or a `removed`
   `GroupTeacherAssignment` counts exactly like an `active` one; and
@@ -588,15 +618,24 @@ deliberately **regardless of**:
   `student_id`/`teacher_id` points at a non-Student / non-Teacher `User`
   (the foreign key to `users` cannot forbid this) still counts.
 
+It does **not** look at `Schedule`. Since M08 the identity freeze uses
+`_group_identity_frozen`, which ORs this helper with
+`group_has_schedule_history` (`app/services/schedule_queries.py`, true if
+**any** `Schedule` row exists for the Group, active or archived, on the
+same "history is history" principle). The split is deliberate:
+`group_has_membership_history` keeps its precise membership meaning for
+every other caller, and only the identity-freeze call site combines the
+two.
+
 Every one of those rows was created under this Group's Course/Term
-identity at the time, and the same-Course-same-Term Enrollment conflict
-rule (`conflicting_active_enrollment`, section D of the Part 6 section
-above) reads the Group's *current* `course_id`/`academic_term_id`, not
-the value in force when each row was written. Retargeting a Group with
-history would retroactively change what counts as a conflict for its
-existing enrollments. This is intentionally a looser test than the
-`active`/eligible counts used for capacity and teacher eligibility, and
-must stay looser.
+identity at the time. The same-Course-same-Term Enrollment conflict rule
+(`conflicting_active_enrollment`, section D of the Part 6 section above)
+reads the Group's *current* `course_id`/`academic_term_id`, not the value
+in force when each row was written, and every `Schedule` effective range
+is validated against the Group's *current* `AcademicTerm`. Retargeting a
+Group with history would retroactively change what those rows mean. This
+is intentionally a looser test than the `active`/eligible counts used for
+capacity and teacher eligibility, and must stay looser.
 
 ### C. Capacity enforcement
 
@@ -746,9 +785,10 @@ migration**.
   Course, `level_id` is frozen.
 - **Active, archived, empty, and historically used Groups all count**
   while they currently reference the Course. Unlike Group's own identity
-  freeze (which waits for *that one Group's* membership history), a
-  single Course can back many Groups at once, so moving its Level would
-  silently reinterpret all of them together.
+  freeze (which waits for *that one Group's* Enrollment, teacher-assignment,
+  or -- since M08 -- Schedule history), a single Course can back many
+  Groups at once, so moving its Level would silently reinterpret all of
+  them together.
 - **Same-Level submission remains allowed.** Posting the Course's own
   current `level_id` back (no actual change) is always accepted,
   regardless of any Group reference.
@@ -760,9 +800,10 @@ migration**.
   answers "does any Group reference this *now*", not "has one ever". If
   every Group that used to reference the Course is individually
   retargeted away (each only ever permitted while that Group itself had
-  no membership history), nothing derives the Course's Level any more
-  and it may move. This is a deliberate, accepted consequence -- there
-  is no place that records a Course's past Level associations.
+  no Enrollment, teacher-assignment, or Schedule history), nothing
+  derives the Course's Level any more and it may move. This is a
+  deliberate, accepted consequence -- there is no place that records a
+  Course's past Level associations.
 - The correction path for a misplaced referenced Course is: archive it,
   create a new Course under the correct Level.
 - The rule is `_course_level_change_error`
@@ -1027,4 +1068,227 @@ lock an ancestor, so they add no reverse path.
   explicit transaction primitive -- unchanged low-risk cosmetic concern.
 - Legacy inconsistent rows are left as-is; a separate read-only
   consistency report against the real database was not built here.
+- Attendance remains a future module.
+
+
+## Recurring Group schedules (Phase 3, Part M08)
+
+Administrator management of recurring **weekly** Group meeting slots.
+Adds one model (`Schedule`) and one additive migration
+(`adf4b5691a7a`, `Revises: c8e88a1ef64a`) that creates only the
+`schedules` table -- no existing table is touched. Also extends the
+Group-identity freeze and the AcademicTerm date-edit path (route/service
+only, no schema change beyond the new table).
+
+### A. Model -- `Schedule` as a child of `Group`
+
+`Schedule` belongs to exactly one `Group` (`group_id`, `NOT NULL`,
+indexed, plain non-cascading FK to `groups.id`). Like `Enrollment` and
+`GroupTeacherAssignment` it duplicates **nothing** the Group already
+determines -- Course, Level, Academic Term, Students and Teachers are all
+reachable through `schedule.group`, so none of them is stored again.
+
+Columns: `BigInteger` internal `id`; `String(36)` unique `public_id`
+(UUID); `group_id`; `day_of_week` (integer); `start_time` / `end_time`
+(`TIME`); `effective_start_date` / `effective_end_date` (`DATE`);
+optional normalized `location` (`String(255)`, `NULL` = not recorded);
+`status` (`String(32)`, reuses the shared `AcademicStatus`
+`active`/`archived`, indexed); UTC `created_at` / `updated_at` following
+the existing project convention.
+
+**Weekday convention.** `day_of_week` is an integer, **Monday = 0 ..
+Sunday = 6** -- identical to Python's `datetime.date.weekday()`, so no
+conversion is ever needed between the stored value and date arithmetic.
+
+**Recurrence / timezone semantics.** `start_time` / `end_time` are stored
+as local civil `TIME` values, interpreted through `APP_TIMEZONE`. There
+is **no timezone column** and weekly wall-clock values are **never**
+converted to UTC -- a 09:00 Monday slot stays "09:00 local" regardless of
+DST or where the reader is. Only the audit timestamps are UTC. Overnight
+slots are out of scope: every slot is `start_time < end_time` on one
+civil day.
+
+### B. Database constraints (the final defense only)
+
+On `schedules`:
+
+- `CHECK (day_of_week >= 0 AND day_of_week <= 6)`
+  (`ck_schedules_day_of_week_range`);
+- `CHECK (start_time < end_time)` (`ck_schedules_time_order`);
+- `CHECK (effective_start_date <= effective_end_date)`
+  (`ck_schedules_effective_date_order`);
+- `UNIQUE (group_id, day_of_week, start_time, end_time,
+  effective_start_date, effective_end_date)` (`uq_schedules_exact_slot`)
+  -- the database's final defense against a byte-for-byte duplicate row;
+- `UNIQUE (public_id)`; index on `group_id`; index on `status`.
+
+The model carries only a `@validates("status")` guard (matching every
+other academic model); weekday/time/date-range validity is left to the
+CHECK constraints and to the form + route, mirroring how `Group.capacity`
+and `AcademicTerm`'s date range are handled.
+
+### C. Containment and the operational overlap rule (authoritative in code)
+
+**Effective-range containment.** A slot's `[effective_start_date,
+effective_end_date]` must (1) lie entirely within its Group's
+`AcademicTerm` `[start_date, end_date]`, and (2) contain **at least one
+actual calendar occurrence** of its selected weekday (a Mon-only slot
+whose range is Tue..Sun is rejected).
+
+**Active overlap.** Two **active** slots in the same Group conflict only
+when ALL three hold:
+
+- the weekday is equal;
+- the half-open time intervals overlap -- `start < other_end and
+  end > other_start` -- so adjacent times (10:00-11:00 after 09:00-10:00)
+  are allowed;
+- their effective date ranges share **at least one actual calendar date
+  of that weekday** (not merely a date-range intersection -- an
+  intersection that lands only on other weekdays does not conflict).
+
+Archived rows never participate in overlap, in either direction. The
+exact-duplicate `UNIQUE` constraint is a separate, final defense; the
+cross-row overlap rule is authoritative **application** logic
+(`app/services/schedule_queries.py`), rechecked after locking.
+
+All of this lives as small, independently tested pure functions
+(`range_contains_weekday`, `term_contains_range`, `times_overlap`,
+`effective_ranges_share_weekday`) plus the group-scoped query
+`conflicting_active_schedule`; the `ScheduleForm` friendly pre-lock
+checks and the route's authoritative post-lock checks both call the same
+functions so the rule cannot drift.
+
+### D. Lifecycle and history policy
+
+- **Status is owned solely by the toggle route.** `ScheduleForm` and the
+  create/edit HTML carry no `status` control; `group_schedule_create`
+  always stores `active`; `group_schedule_edit` never reads or writes
+  `status` (its signed snapshot excludes it). Only
+  `POST /admin/groups/<gpid>/schedules/<spid>/toggle-status` changes it.
+- **No hard delete.** Reactivation reuses the same row.
+- **Creating / editing / reactivating** requires the Group **and** its
+  AcademicTerm / Course / Level ancestors all active (rechecked on the
+  locked rows).
+- **Archiving a Schedule is always allowed**, including when its Group or
+  an ancestor is already archived.
+- **Archiving a Group never cascades to Schedule rows** -- they stay as a
+  frozen historical record but are "not operational" while the Group is
+  archived. Group reactivation likewise never rewrites a Schedule row.
+- **Editing an archived Schedule** keeps it archived (status is never
+  assigned) and never silently reactivates it, but still requires an
+  active Group/ancestor chain.
+- **Reactivating a Schedule** re-checks the containment + weekday +
+  active-overlap rules against current rows; a slot that would now
+  overlap an active sibling stays archived.
+
+### E. Group-identity freeze extension
+
+Any Schedule row -- active or archived -- now freezes its Group's
+academic identity (`academic_term_id` / `course_id`) exactly like
+Enrollment / GroupTeacherAssignment history already did.
+`group_has_schedule_history` (`app/services/schedule_queries.py`) is
+OR-ed with `group_has_membership_history` in `_group_identity_frozen`
+(`app/blueprints/admin/groups.py`), used by both the pre-lock friendly
+check and the post-lock recheck; `group_has_membership_history` stays
+membership-only for every other caller. The user-facing error and the
+locked-identity form notice both read "enrollment, teacher-assignment, or
+schedule history". Re-submitting the Group's own current Term + Course,
+and every non-identity Group edit (name / code / capacity), remain
+allowed. See the "Part M08 amendment" under "Group edit integrity
+(Phase 3, Part 7B0)" above for how this slots into that section.
+
+### F. AcademicTerm date-edit guard
+
+`academic_term_edit` now locks the `AcademicTerm` row
+(`lock_academic_term_for_write`) before writing. When the submitted dates
+**differ** from the stored ones, it rejects the edit if **any** Schedule
+effective range in that Term -- **including archived schedules and
+schedules under archived Groups** (`term_schedule_range_outside`, no
+status filter) -- would fall outside the new range. A name-only edit
+(dates unchanged) skips the check, so a legacy inconsistency can still be
+corrected. AcademicTerm edit and Schedule create/edit serialize on the
+`AcademicTerm` lock (Schedule mutations take it first via
+`lock_academic_hierarchy`), so a concurrent Term shrink cannot invalidate
+a committed Schedule range.
+
+### G. Transactions, lock order, stale forms
+
+Every Schedule mutation follows the approved global order
+
+```
+AcademicTerm -> Level -> Course -> Group -> Schedule
+```
+
+via `lock_academic_hierarchy` (which owns the single deliberate
+`db.session.rollback()` before the first lock) -> a route-local
+`lock_group_in_open_transaction` 404 wrapper ->
+`lock_schedule_in_open_transaction_by_id`
+(`app/services/schedule_transactions.py`, no-reset only -- Schedule is
+last in the chain and never the first lock). Schedule is a new tail on
+the same graph, so it adds no reverse-order path. Preview reads only
+discover which rows to lock; existence, ancestor/Group/Schedule status,
+the signed snapshot, containment, and overlap are all rechecked
+post-lock, and nothing is written until every check passes (no partial
+mutation). `IntegrityError` at commit is caught, rolled back, and shown
+as a generic message with no SQL/driver text.
+
+Schedule creation and Group retargeting serialize on the same Group lock:
+if Schedule creation commits first, a later retarget sees Schedule
+history and is rejected by the identity freeze; if a retarget commits
+first, Schedule creation rechecks the current hierarchy after locking and
+proceeds (or bails safely if it moved).
+
+**Signed edit snapshot** (`admin.schedule-edit-snapshot.v1`,
+`itsdangerous.URLSafeSerializer`, app `SECRET_KEY`): covers every
+editable persisted field -- `day_of_week`, `start_time`, `end_time`,
+`effective_start_date`, `effective_end_date`, `location` -- plus
+`public_id` to bind the token to one Schedule. Times/dates are serialized
+as ISO strings for a deterministic token. `status` is **excluded** (edit
+never writes it), so a completed status toggle does not stale an open
+edit form and an edit can never overwrite the toggled status. A missing,
+malformed, wrong-signature, wrong-object, or value-mismatched token is
+rejected with a Post/Redirect/Get to a fresh GET (discarding submitted
+values); an ordinary WTForms failure or business-rule rejection
+re-embeds the *original* token unchanged. Same rules as the Group /
+Course edit snapshots.
+
+### H. Routing and UI
+
+- `GET /admin/schedules` -- center-wide read-only overview, filterable by
+  Group, Academic Term, Course, Level, weekday, status, and location
+  text, with distinct empty states. Eager-loaded (`joinedload`) so the
+  row count does not drive the query count. Shows `APP_TIMEZONE` and a
+  "Not operational" badge when a slot's Group or an ancestor is archived.
+- `GET /admin/groups/<group_public_id>/schedules` -- Group-centered
+  management page (list + Add / Edit / Archive / Reactivate actions,
+  honest parent-archived / non-operational banners).
+- `GET|POST .../schedules/new` and `.../schedules/<schedule_public_id>/edit`
+  -- nested create / edit.
+- `POST .../schedules/<schedule_public_id>/toggle-status` -- POST-only,
+  the sole owner of Schedule status.
+
+Every nested lookup is scoped to the Group in the URL and every object is
+addressed by `public_id` (nested-IDOR safe -- a schedule public_id valid
+only for another Group 404s). `roles_required(ADMINISTRATOR)`, Flask-WTF
+CSRF, safe 404s, no open redirects (fixed redirect targets only). A
+"Schedules" item was added to Administrator navigation and a "Manage
+Schedule" button to the Group detail page. No unrelated CSS/JS was added.
+
+### I. Honest limitations
+
+- SQLite (the test backend) has no `SELECT ... FOR UPDATE` and no
+  REPEATABLE READ snapshot isolation. The structural tests prove only the
+  *requested* single reset and lock order
+  (`AcademicTerm -> Level -> Course -> Group -> Schedule`) -- never that a
+  real InnoDB lock blocks a concurrent transaction. No safe real
+  two-session MySQL probe was executed for M08, so no real concurrency
+  blocking is claimed; the M08 migration was applied and verified on the
+  real MySQL database only at the schema level.
+- Out of scope and not built: Room / CalendarEvent / AttendanceSession
+  entities, teacher-to-slot assignment, holiday / one-off exception
+  handling, a calendar/day-grid rendering, notifications, and any hard
+  delete. Overnight (wrap-past-midnight) slots are not supported.
+- Legacy Schedule rows already outside their Term (only possible by
+  direct DB manipulation) are not auto-repaired; a name-only Term edit
+  stays allowed so they can be corrected.
 - Attendance remains a future module.

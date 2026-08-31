@@ -1,0 +1,127 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Schedules{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+    <h1 style="margin:0">Schedules</h1>
+  </div>
+  <p class="ds-section__desc">
+    Center-wide view of every recurring weekly group schedule. Times are local wall-clock values
+    in the center timezone (<strong>{{ app_timezone }}</strong>). Slots are created and changed from
+    each group's own schedule page.
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  <form method="get" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+    <label class="field__label" for="q" style="margin:0">Location:</label>
+    <input type="search" name="q" id="q" class="field__input" style="width:auto" placeholder="Location" value="{{ search }}">
+
+    <label class="field__label" for="term_id" style="margin:0">Term:</label>
+    <select name="term_id" id="term_id" class="field__input" style="width:auto">
+      <option value="">All Terms</option>
+      {% for term in terms %}
+        <option value="{{ term.id }}" {{ "selected" if selected_term_id == term.id else "" }}>{{ term.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label class="field__label" for="level_id" style="margin:0">Level:</label>
+    <select name="level_id" id="level_id" class="field__input" style="width:auto">
+      <option value="">All Levels</option>
+      {% for level in levels %}
+        <option value="{{ level.id }}" {{ "selected" if selected_level_id == level.id else "" }}>{{ level.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label class="field__label" for="course_id" style="margin:0">Course:</label>
+    <select name="course_id" id="course_id" class="field__input" style="width:auto">
+      <option value="">All Courses</option>
+      {% for course in courses %}
+        <option value="{{ course.id }}" {{ "selected" if selected_course_id == course.id else "" }}>{{ course.title }} ({{ course.level.name }})</option>
+      {% endfor %}
+    </select>
+
+    <label class="field__label" for="group_id" style="margin:0">Group:</label>
+    <select name="group_id" id="group_id" class="field__input" style="width:auto">
+      <option value="">All Groups</option>
+      {% for group in groups %}
+        <option value="{{ group.id }}" {{ "selected" if selected_group_id == group.id else "" }}>{{ group.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label class="field__label" for="day_of_week" style="margin:0">Day:</label>
+    <select name="day_of_week" id="day_of_week" class="field__input" style="width:auto">
+      <option value="">All Days</option>
+      {% for value, name in weekday_choices %}
+        <option value="{{ value }}" {{ "selected" if selected_day_of_week == value else "" }}>{{ name }}</option>
+      {% endfor %}
+    </select>
+
+    <label class="field__label" for="status" style="margin:0">Status:</label>
+    <select name="status" id="status" class="field__input" style="width:auto">
+      <option value="">All Statuses</option>
+      <option value="active" {{ "selected" if selected_status == "active" else "" }}>Active</option>
+      <option value="archived" {{ "selected" if selected_status == "archived" else "" }}>Archived</option>
+    </select>
+
+    <button type="submit" class="btn btn--secondary">Filter</button>
+    {% if has_filters %}
+      <a class="btn btn--secondary" href="{{ url_for('admin.schedules_overview') }}">Clear</a>
+    {% endif %}
+  </form>
+
+  {% if schedules %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th style="padding: var(--space-3)">Group</th>
+        <th style="padding: var(--space-3)">Course / Level</th>
+        <th style="padding: var(--space-3)">Term</th>
+        <th style="padding: var(--space-3)">Day</th>
+        <th style="padding: var(--space-3)">Time</th>
+        <th style="padding: var(--space-3)">Effective Range</th>
+        <th style="padding: var(--space-3)">Location</th>
+        <th style="padding: var(--space-3)">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for schedule in schedules %}
+      {% set group = schedule.group %}
+      {% set parent_archived = group.status != "active"
+            or group.academic_term.status != "active"
+            or group.course.status != "active"
+            or group.course.level.status != "active" %}
+      <tr style="border-bottom:1px solid var(--color-border)">
+        <td style="padding: var(--space-3)">
+          <a href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">{{ group.name }}</a>
+          {% if schedule.status == "active" and parent_archived %}
+          <span class="badge badge--warning" title="This group or one of its academic parents is archived">Not operational</span>
+          {% endif %}
+        </td>
+        <td style="padding: var(--space-3)">{{ group.course.title }} / {{ group.course.level.name }}</td>
+        <td style="padding: var(--space-3)">{{ group.academic_term.name }}</td>
+        <td style="padding: var(--space-3)">{{ weekday_names[schedule.day_of_week] }}</td>
+        <td style="padding: var(--space-3)">{{ schedule.start_time.strftime("%H:%M") }}–{{ schedule.end_time.strftime("%H:%M") }}</td>
+        <td style="padding: var(--space-3)">{{ schedule.effective_start_date.isoformat() }} → {{ schedule.effective_end_date.isoformat() }}</td>
+        <td style="padding: var(--space-3)">{{ schedule.location or "—" }}</td>
+        <td style="padding: var(--space-3)">{{ macros.status_badge(schedule.status) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% elif has_filters %}
+  <div class="empty-state">
+    <div class="empty-state__title">No schedules match your filters</div>
+    <div>Try different filters, or <a href="{{ url_for('admin.schedules_overview') }}">clear all filters</a>.</div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No schedules yet</div>
+    <div>Schedule slots will appear here once added from a group's schedule page.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

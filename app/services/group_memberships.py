@@ -84,11 +84,18 @@ def group_has_membership_history(group_id):
     a removed GroupTeacherAssignment, or even a corrupted row referencing
     a non-Student/non-Teacher User (the FK cannot prevent that) all still
     represent real relationship history that was created under this
-    Group's Course/AcademicTerm identity at the time. Used to decide
-    whether that identity may still be changed -- see the Group edit
-    route -- not whether a row currently counts toward capacity or
-    teacher eligibility, which is a different, stricter question answered
-    by the two functions above.
+    Group's Course/AcademicTerm identity at the time.
+
+    This is the **membership-only** history helper and it stays that way:
+    it never looks at `Schedule`. The Group identity-freeze decision
+    (`app/blueprints/admin/groups.py`) is made by `_group_identity_frozen`,
+    which ORs this with
+    `app.services.schedule_queries.group_has_schedule_history` (M08) -- a
+    Schedule row freezes identity on the same principle, but that check
+    lives in its own helper so this one keeps its precise membership
+    meaning for every other caller. Neither helper answers whether a row
+    currently counts toward capacity or teacher eligibility, which is a
+    different, stricter question answered by the two functions above.
     """
     has_enrollment = db.session.query(Enrollment.id).filter_by(group_id=group_id).first() is not None
     has_assignment = (

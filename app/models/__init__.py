@@ -6,6 +6,7 @@ from app.models.course import Course
 from app.models.group import Group
 from app.models.enrollment import Enrollment, EnrollmentStatus
 from app.models.group_teacher_assignment import GroupTeacherAssignment, GroupTeacherAssignmentStatus
+from app.models.schedule import Schedule
 
 __all__ = [
     "User",
@@ -20,4 +21,5 @@ __all__ = [
     "EnrollmentStatus",
     "GroupTeacherAssignment",
     "GroupTeacherAssignmentStatus",
+    "Schedule",
 ]

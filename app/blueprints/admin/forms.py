@@ -7,8 +7,17 @@ from wtforms import (
     StringField,
     SubmitField,
     TextAreaField,
+    TimeField,
 )
-from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional, ValidationError
+from wtforms.validators import (
+    DataRequired,
+    Email,
+    InputRequired,
+    Length,
+    NumberRange,
+    Optional,
+    ValidationError,
+)
 
 from app.extensions import db
 from app.models import (
@@ -21,6 +30,7 @@ from app.models import (
     GroupTeacherAssignment,
     GroupTeacherAssignmentStatus,
     Level,
+    Schedule,
     User,
     UserRole,
     UserStatus,
@@ -30,6 +40,24 @@ from app.services.group_memberships import (
     conflicting_active_enrollment,
     eligible_active_teacher_count,
 )
+from app.services.schedule_queries import (
+    conflicting_active_schedule,
+    range_contains_weekday,
+    term_contains_range,
+)
+
+# Recurring-schedule weekday convention: Monday=0 .. Sunday=6, matching
+# datetime.date.weekday(). Documented in docs/DECISIONS.md (M08).
+WEEKDAY_NAMES = (
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+)
+WEEKDAY_CHOICES = list(enumerate(WEEKDAY_NAMES))
 
 # Minimum/maximum length for administrator-set passwords on any
 # administrator-managed user account (currently Student and Teacher). No
@@ -385,6 +413,122 @@ class GroupTeacherAssignmentForm(FlaskForm):
                     "A removed assignment already exists for this teacher and group. "
                     "Reactivate it instead of creating a new one."
                 )
+
+
+class ScheduleForm(FlaskForm):
+    """Administrator create/edit of one recurring weekly Group schedule
+    slot (M08).
+
+    No ``status`` field: a Schedule's active/archived status is owned
+    solely by the dedicated ``group_schedule_toggle_status`` route -- the
+    create/edit path never reads or writes it. Do not reintroduce a
+    status control (or a hidden field).
+
+    The target Group is not a form field (it comes from the URL route)
+    but is accepted as a constructor keyword so these validators can run
+    the friendly pre-lock checks -- weekday-in-range, time order,
+    effective-date order, at-least-one-weekday-occurrence, Academic Term
+    containment, exact duplicate, and the active-overlap rule. Every one
+    of those is re-checked authoritatively in the route after the
+    ``AcademicTerm -> Level -> Course -> Group -> Schedule`` lock chain;
+    nothing here is trusted for the final decision.
+    """
+
+    day_of_week = SelectField(
+        "Day of Week", coerce=int, choices=WEEKDAY_CHOICES, validators=[InputRequired()]
+    )
+    start_time = TimeField("Start Time", validators=[DataRequired()], render_kw={"type": "time"})
+    end_time = TimeField("End Time", validators=[DataRequired()], render_kw={"type": "time"})
+    effective_start_date = DateField(
+        "Effective Start Date", validators=[DataRequired()], render_kw={"type": "date"}
+    )
+    effective_end_date = DateField(
+        "Effective End Date", validators=[DataRequired()], render_kw={"type": "date"}
+    )
+    location = StringField("Location", validators=[Optional(), Length(max=255)])
+    submit = SubmitField("Save Schedule")
+
+    def __init__(self, *args, group=None, schedule_id=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._group = group
+        self._schedule_id = schedule_id
+
+    def validate_day_of_week(self, field):
+        if field.data is None or field.data < 0 or field.data > 6:
+            raise ValidationError("Select a valid day of the week.")
+
+    def validate_end_time(self, field):
+        if self.start_time.data and field.data and field.data <= self.start_time.data:
+            raise ValidationError(
+                "End time must be after the start time. Overnight slots are not supported."
+            )
+
+    def validate_effective_end_date(self, field):
+        start = self.effective_start_date.data
+        end = field.data
+        if start and end and end < start:
+            raise ValidationError("Effective end date cannot be before the effective start date.")
+
+        # Composite friendly checks -- only once every field they depend
+        # on is present and individually valid.
+        if not (
+            self.day_of_week.data is not None
+            and self.start_time.data
+            and self.end_time.data
+            and self.end_time.data > self.start_time.data
+            and start
+            and end
+            and end >= start
+        ):
+            return
+
+        day = self.day_of_week.data
+        if not range_contains_weekday(day, start, end):
+            raise ValidationError(
+                f"The effective date range contains no {WEEKDAY_NAMES[day]}. "
+                "Widen the range or pick another day."
+            )
+
+        if self._group is None:
+            return
+        term = self._group.academic_term
+        if term is not None and not term_contains_range(
+            term.start_date, term.end_date, start, end
+        ):
+            raise ValidationError(
+                "The effective date range must fall within this group's academic term "
+                f"({term.start_date.isoformat()} to {term.end_date.isoformat()})."
+            )
+
+        duplicate = Schedule.query.filter_by(
+            group_id=self._group.id,
+            day_of_week=day,
+            start_time=self.start_time.data,
+            end_time=self.end_time.data,
+            effective_start_date=start,
+            effective_end_date=end,
+        )
+        if self._schedule_id is not None:
+            duplicate = duplicate.filter(Schedule.id != self._schedule_id)
+        if duplicate.first() is not None:
+            raise ValidationError("An identical schedule slot already exists for this group.")
+
+        conflict = conflicting_active_schedule(
+            self._group.id,
+            day,
+            self.start_time.data,
+            self.end_time.data,
+            start,
+            end,
+            exclude_schedule_id=self._schedule_id,
+        )
+        if conflict is not None:
+            raise ValidationError(
+                f"This slot overlaps an existing active {WEEKDAY_NAMES[day]} schedule "
+                f"({conflict.start_time.strftime('%H:%M')}-{conflict.end_time.strftime('%H:%M')}, "
+                f"effective {conflict.effective_start_date.isoformat()} to "
+                f"{conflict.effective_end_date.isoformat()}). Adjust the time or effective dates."
+            )
 
 
 def _normalize_email(raw_email):

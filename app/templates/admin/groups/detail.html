@@ -58,6 +58,7 @@
   <div class="ds-row" style="margin-top: var(--space-6)">
     <a class="btn btn--primary" href="{{ url_for('admin.group_edit', public_id=group.public_id) }}">Edit Group</a>
     <a class="btn btn--primary" href="{{ url_for('admin.group_members', group_public_id=group.public_id) }}">Manage Members</a>
+    <a class="btn btn--primary" href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">Manage Schedule</a>
     <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Back to Groups</a>
   </div>
 </div>

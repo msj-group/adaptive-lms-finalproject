@@ -1,0 +1,76 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ 'Edit Schedule' if schedule else 'New Schedule' }} — {{ group.name }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page" style="max-width: 560px">
+  <h1>{{ 'Edit Schedule Slot' if schedule else 'New Schedule Slot' }}</h1>
+  <p class="ds-section__desc">
+    {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    Times are local wall-clock values in the center timezone
+    (<strong>{{ app_timezone }}</strong>). Weekly slots are not converted between timezones.
+    {% if schedule and schedule.status != "active" %}
+    <br>This slot is currently <strong>archived</strong>. Saving keeps it archived — use the
+    Reactivate action on the schedules page to bring it back.
+    {% endif %}
+  </div>
+
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {% if schedule %}
+    <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
+    {% endif %}
+
+    <div class="field">
+      {{ form.day_of_week.label(class_="field__label") }}
+      {{ form.day_of_week(class_="field__input") }}
+      {% for error in form.day_of_week.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="ds-row" style="gap: var(--space-4); margin-top: var(--space-4)">
+      <div class="field" style="flex:1">
+        {{ form.start_time.label(class_="field__label") }}
+        {{ form.start_time(class_="field__input") }}
+        {% for error in form.start_time.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+      </div>
+      <div class="field" style="flex:1">
+        {{ form.end_time.label(class_="field__label") }}
+        {{ form.end_time(class_="field__input") }}
+        {% for error in form.end_time.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+      </div>
+    </div>
+    <div class="ds-row" style="gap: var(--space-4); margin-top: var(--space-4)">
+      <div class="field" style="flex:1">
+        {{ form.effective_start_date.label(class_="field__label") }}
+        {{ form.effective_start_date(class_="field__input") }}
+        {% for error in form.effective_start_date.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+      </div>
+      <div class="field" style="flex:1">
+        {{ form.effective_end_date.label(class_="field__label") }}
+        {{ form.effective_end_date(class_="field__input") }}
+        {% for error in form.effective_end_date.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+      </div>
+    </div>
+    <p class="ds-section__desc" style="margin-top: var(--space-3)">
+      The effective range must fall inside the academic term
+      ({{ group.academic_term.start_date.isoformat() }} to {{ group.academic_term.end_date.isoformat() }})
+      and must include at least one occurrence of the chosen weekday.
+    </p>
+    <div class="field" style="margin-top: var(--space-4)">
+      {{ form.location.label(class_="field__label") }}
+      {{ form.location(class_="field__input") }}
+      {% for error in form.location.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    {# No Status control: a schedule's active/archived status is changed only
+       through the Archive/Reactivate action on the group schedules page. #}
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary") }}
+      <a class="btn btn--secondary" href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

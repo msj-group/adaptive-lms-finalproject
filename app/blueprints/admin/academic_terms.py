@@ -7,6 +7,7 @@ from app.models import AcademicStatus, AcademicTerm, UserRole
 from app.security.decorators import roles_required
 from app.services.academic_lifecycle import academic_term_has_active_group
 from app.services.academic_term_transactions import lock_academic_term_for_write
+from app.services.schedule_queries import term_schedule_range_outside
 
 
 @admin_bp.get("/academic-terms")
@@ -36,16 +37,56 @@ def academic_term_create():
 @admin_bp.route("/academic-terms/<public_id>/edit", methods=["GET", "POST"])
 @roles_required(UserRole.ADMINISTRATOR.value)
 def academic_term_edit(public_id):
-    term = AcademicTerm.query.filter_by(public_id=public_id).first_or_404()
-    form = AcademicTermForm(obj=term, term_id=term.id)
+    # Ordinary, non-locking lookup -- 404 handling and form population.
+    # The authoritative date-containment decision is made below, only
+    # after the fresh AcademicTerm lock.
+    preview_term = AcademicTerm.query.filter_by(public_id=public_id).first_or_404()
+    form = AcademicTermForm(obj=preview_term, term_id=preview_term.id)
     if form.validate_on_submit():
-        term.name = form.name.data.strip()
-        term.start_date = form.start_date.data
-        term.end_date = form.end_date.data
+        name = form.name.data.strip()
+        new_start = form.start_date.data
+        new_end = form.end_date.data
+
+        # M08 -- an AcademicTerm date edit must not orphan any existing
+        # Schedule effective range in this Term (including archived
+        # schedules and schedules under archived Groups). Lock the Term
+        # first so a concurrent Schedule create/edit -- which locks this
+        # same Term row via `lock_academic_hierarchy` -- serializes
+        # against this edit, then re-check containment against the
+        # locked, current rows. A metadata-only edit that does not move
+        # either date skips the check (legacy rows are not auto-repaired).
+        term = lock_academic_term_for_write(public_id)
+        if term is None:
+            abort(404)
+
+        if new_start != term.start_date or new_end != term.end_date:
+            offending = term_schedule_range_outside(term.id, new_start, new_end)
+            if offending is not None:
+                # Archiving that schedule would NOT help: the guard
+                # (`term_schedule_range_outside`) deliberately counts
+                # archived schedules and schedules under archived Groups
+                # too, so the only remedies are to shorten the schedule's
+                # effective range or to choose term dates that still
+                # contain it.
+                db.session.rollback()
+                form.start_date.errors.append(
+                    "These dates would leave an existing group schedule's effective range "
+                    f"({offending.effective_start_date.isoformat()} to "
+                    f"{offending.effective_end_date.isoformat()}) outside the term. Adjust that "
+                    "schedule's effective range to fit, or choose term dates that still contain "
+                    "it. Archived schedules still count."
+                )
+                return render_template(
+                    "admin/academic_terms/form.html", form=form, term=preview_term
+                )
+
+        term.name = name
+        term.start_date = new_start
+        term.end_date = new_end
         db.session.commit()
         flash(f"Academic term '{term.name}' updated.", "success")
         return redirect(url_for("admin.academic_terms_list"))
-    return render_template("admin/academic_terms/form.html", form=form, term=term)
+    return render_template("admin/academic_terms/form.html", form=form, term=preview_term)
 
 
 @admin_bp.post("/academic-terms/<public_id>/toggle-status")
