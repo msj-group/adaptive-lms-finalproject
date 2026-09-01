@@ -1,0 +1,131 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_dashboard_macros.html" as dash %}
+{% block title %}{{ group.name }} — Units{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+  <h1 style="margin:0">{{ group.name }} — Units</h1>
+  {{ dash.operational_badge(operational) }}
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
+    <dd style="margin:0">{{ group.course.title }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
+    <dd style="margin:0">{{ group.course.level.name }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
+    <dd style="margin:0">{{ group.academic_term.name }} ({{ group.academic_term.start_date.isoformat() }} – {{ group.academic_term.end_date.isoformat() }})</dd>
+  </dl>
+</div>
+
+{% if not operational %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
+  This group is not operational: the {{ archived_labels | join(", ") }} {{ "is" if archived_labels|length == 1 else "are" }} archived.
+  Units below are read-only history — you cannot add, edit, reorder, or reactivate them, but active units can still be archived for cleanup.
+</div>
+{% endif %}
+
+<div class="ds-row" style="margin-bottom: var(--space-6)">
+  <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
+  {% if operational %}
+  <a class="btn btn--primary" href="{{ url_for('teacher.unit_create', group_public_id=group.public_id) }}">Add Unit</a>
+  {% endif %}
+</div>
+
+<section class="dash-section" style="margin-top: 0">
+  <h2>Active units <span class="badge badge--neutral">{{ active_units|length }}</span></h2>
+  {% if active_units %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr><th style="width:3rem">#</th><th>Title</th><th>Description</th><th style="width:14rem">Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for unit in active_units %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td><strong>{{ unit.title }}</strong></td>
+        <td>{{ (unit.description or "")|truncate(90) }}</td>
+        <td>
+          <div class="ds-row" style="gap: var(--space-2)">
+            {% if operational %}
+            <a class="btn btn--secondary" href="{{ url_for('teacher.unit_edit', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Edit</a>
+            {% if not loop.first %}
+            <form method="post" action="{{ url_for('teacher.unit_move_up', group_public_id=group.public_id, unit_public_id=unit.public_id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--secondary" aria-label="Move up">↑</button>
+            </form>
+            {% endif %}
+            {% if not loop.last %}
+            <form method="post" action="{{ url_for('teacher.unit_move_down', group_public_id=group.public_id, unit_public_id=unit.public_id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--secondary" aria-label="Move down">↓</button>
+            </form>
+            {% endif %}
+            {% endif %}
+            <form method="post" action="{{ url_for('teacher.unit_toggle_status', group_public_id=group.public_id, unit_public_id=unit.public_id) }}"
+              data-confirm="Archive unit '{{ unit.title }}'? It will move out of the teaching order.">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--danger-outline">Archive</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No active units yet</div>
+    <div>{% if operational %}Add the first unit to start building this group's teaching order.{% else %}This group has no active units.{% endif %}</div>
+  </div>
+  {% endif %}
+</section>
+
+{% if archived_units %}
+<section class="dash-section">
+  <h2>Archived units <span class="badge badge--neutral">{{ archived_units|length }}</span></h2>
+  <p class="ds-section__desc">Archived units keep their stored order and are not part of the teaching sequence.</p>
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead><tr><th>Title</th><th>Description</th><th style="width:14rem">Actions</th></tr></thead>
+    <tbody>
+      {% for unit in archived_units %}
+      <tr>
+        <td>{{ unit.title }}</td>
+        <td>{{ (unit.description or "")|truncate(90) }}</td>
+        <td>
+          {% if operational %}
+          <form method="post" action="{{ url_for('teacher.unit_toggle_status', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn--secondary">Reactivate</button>
+          </form>
+          {% else %}
+          <span class="badge badge--neutral">Read-only</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+<script>
+  document.querySelectorAll("form[data-confirm]").forEach(function (form) {
+    form.addEventListener("submit", function (event) {
+      if (!confirm(form.dataset.confirm)) { event.preventDefault(); }
+    });
+  });
+</script>
+{% endblock %}

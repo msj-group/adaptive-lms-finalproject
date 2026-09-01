@@ -23,10 +23,10 @@ def course_has_group_reference(course_id):
     integrity (Phase 3, Part 7B1)"): unlike Group's own
     academic_term_id/course_id freeze, which waits for real history on
     that one Group -- Enrollment or teacher-assignment
-    (`app.services.group_memberships.group_has_membership_history`) or,
-    since M08, a Schedule row
-    (`app.services.schedule_queries.group_has_schedule_history`), the two
-    combined in `app.blueprints.admin.groups._group_identity_frozen` -- a
+    (`app.services.group_memberships.group_has_membership_history`), a
+    Schedule row (M08, `app.services.schedule_queries.group_has_schedule_history`),
+    or a Unit row (M10, `app.services.unit_queries.group_has_unit_history`),
+    all combined in `app.blueprints.admin.groups._group_identity_frozen` -- a
     Course's level_id freezes on the mere *existence* of any current
     Group reference. A single Course can back many Groups at once, so
     moving its level would silently reinterpret every one of them
@@ -42,7 +42,7 @@ def course_has_group_reference(course_id):
     "ever referenced" question -- there is no audit trail for that. If
     every Group that used to reference this Course has since been
     individually retargeted away (each only ever allowed while that
-    Group itself had no Enrollment, teacher-assignment, or Schedule
+    Group itself had no Enrollment, teacher-assignment, Schedule, or Unit
     history -- the combined `_group_identity_frozen` test), nothing in
     the system's data derives this Course's level any more, and the
     Course may move again.

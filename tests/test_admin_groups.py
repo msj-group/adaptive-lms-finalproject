@@ -2451,7 +2451,7 @@ def test_edit_page_locked_identity_semantic_contract(app, client):
 
     assert (
         "Academic Term and Course are locked because this group already has enrollment, "
-        "teacher-assignment, or schedule history"
+        "teacher-assignment, schedule, or unit history"
         in html
     )
     parser = _parse_group_form(html)
@@ -2480,7 +2480,7 @@ def test_edit_page_unlocked_identity_semantic_contract(app, client):
 
     assert (
         "Academic Term and Course are locked because this group already has enrollment, "
-        "teacher-assignment, or schedule history"
+        "teacher-assignment, schedule, or unit history"
         not in html
     )
     parser = _parse_group_form(html)

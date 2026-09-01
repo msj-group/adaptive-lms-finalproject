@@ -123,14 +123,14 @@ def _course_level_change_error(current_course, requested_level_id):
     Approved Part 7B1 Policy A (documented in docs/DECISIONS.md,
     "Course-level identity integrity (Phase 3, Part 7B1)"): once any
     Group -- active or archived, empty or with real
-    Enrollment/GroupTeacherAssignment/Schedule history -- currently
+    Enrollment/GroupTeacherAssignment/Schedule/Unit history -- currently
     references this Course, its level_id is frozen. A single Course can
     back many Groups at once, so moving its level would silently
     reinterpret every one of them simultaneously, unlike Group's own
     academic_term_id/course_id freeze, which only waits for that one
     Group's own history -- Enrollment or teacher-assignment
-    (`group_has_membership_history`) or, since M08, a Schedule row, the
-    two combined in `_group_identity_frozen`. Submitting the Course's own
+    (`group_has_membership_history`), a Schedule row (M08), or a Unit row
+    (M10), all combined in `_group_identity_frozen`. Submitting the Course's own
     current level_id back (no actual change) is always allowed regardless
     of any Group reference; once no Group currently references the Course
     at all, level_id remains freely editable -- see

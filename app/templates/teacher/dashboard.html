@@ -72,6 +72,10 @@
       {% else %}
       <p class="card__body" style="margin-top: var(--space-3)">No active schedule for this group yet.</p>
       {% endif %}
+
+      <div class="ds-row" style="margin-top: var(--space-4)">
+        <a class="btn btn--secondary" href="{{ url_for('teacher.group_units', group_public_id=card.group_public_id) }}">Manage Units</a>
+      </div>
     </div>
     {% endfor %}
   </div>

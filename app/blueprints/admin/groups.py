@@ -33,19 +33,28 @@ from app.services.group_memberships import (
 )
 from app.services.group_transactions import lock_group_in_open_transaction
 from app.services.schedule_queries import group_has_schedule_history
+from app.services.unit_queries import group_has_unit_history
 
 
 def _group_identity_frozen(group_id):
     """A Group's academic identity (academic_term_id / course_id) is
-    frozen once it has ANY Enrollment or GroupTeacherAssignment history
-    (`group_has_membership_history`) OR any Schedule row, active or
-    archived (`group_has_schedule_history`, M08). Every one of those rows
-    was authored against this Group's Term/Course, so retargeting the
-    Group afterwards would silently reinterpret it. Same-Term/same-Course
-    resubmissions and non-identity edits stay allowed -- that exemption
-    lives in `_group_identity_change_error`.
+    frozen once it has ANY of:
+
+    - Enrollment or GroupTeacherAssignment history
+      (`group_has_membership_history`);
+    - a Schedule row, active or archived (`group_has_schedule_history`, M08);
+    - a Unit row, active or archived (`group_has_unit_history`, M10).
+
+    Every one of those rows was authored against this Group's Term/Course,
+    so retargeting the Group afterwards would silently reinterpret it.
+    Same-Term/same-Course resubmissions and non-identity edits stay
+    allowed -- that exemption lives in `_group_identity_change_error`.
     """
-    return group_has_membership_history(group_id) or group_has_schedule_history(group_id)
+    return (
+        group_has_membership_history(group_id)
+        or group_has_schedule_history(group_id)
+        or group_has_unit_history(group_id)
+    )
 
 
 def _course_choices():
@@ -242,24 +251,25 @@ def _group_identity_change_error(current_group, has_history, academic_term_id, c
     Academic Term and Course are this Group's academic identity (see
     "Group model" and the Group-centered membership management sections
     in docs/DECISIONS.md). Once any Enrollment or GroupTeacherAssignment
-    row -- or, since M08, any Schedule row -- has ever existed for the
-    Group (active, withdrawn/removed/archived, or even one referencing a
-    corrupted non-Student/non-Teacher User, all equally count as real
-    history), that history was created under this specific
-    Course/AcademicTerm combination, and changing either field afterward
-    would silently reinterpret it: the same-Course-same-Term Enrollment
-    conflict rule (`conflicting_active_enrollment`) reads the Group's
-    *current* course_id/academic_term_id, not whatever it was when each
-    row was created, and every Schedule effective range is validated
-    against the Group's *current* AcademicTerm, so retargeting the Group
-    would retroactively change what those rows mean. Posting the Group's
-    own current values back (no actual change) is always allowed, and
-    while no such history exists at all, both fields remain freely
-    editable.
+    row -- or, since M08, any Schedule row, or, since M10, any Unit row --
+    has ever existed for the Group (active, withdrawn/removed/archived, or
+    even one referencing a corrupted non-Student/non-Teacher User, all
+    equally count as real history), that history was created under this
+    specific Course/AcademicTerm combination, and changing either field
+    afterward would silently reinterpret it: the same-Course-same-Term
+    Enrollment conflict rule (`conflicting_active_enrollment`) reads the
+    Group's *current* course_id/academic_term_id, every Schedule effective
+    range is validated against the Group's *current* AcademicTerm, and
+    every Unit is teaching content authored for this Group's *current*
+    Course -- so retargeting the Group would retroactively change what
+    those rows mean. Posting the Group's own current values back (no
+    actual change) is always allowed, and while no such history exists at
+    all, both fields remain freely editable.
 
     `has_history` is supplied by the caller from `_group_identity_frozen`
-    (membership history OR Schedule history); this function only decides
-    the "unchanged current values" exemption and the message.
+    (membership history OR Schedule history OR Unit history); this
+    function only decides the "unchanged current values" exemption and
+    the message.
 
     Shared by the early, pre-lock friendly check and the authoritative
     post-lock recheck in `group_edit` so the rule cannot drift between
@@ -271,7 +281,8 @@ def _group_identity_change_error(current_group, has_history, academic_term_id, c
         return None
     return (
         "Academic Term and Course cannot be changed once this group has enrollment, "
-        "teacher-assignment, or schedule history. Create a new group instead and archive this one."
+        "teacher-assignment, schedule, or unit history. Create a new group instead and "
+        "archive this one."
     )
 
 

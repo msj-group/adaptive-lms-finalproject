@@ -580,12 +580,29 @@ itself is unchanged and still means *only* Enrollment/GroupTeacherAssignment
 `group_has_schedule_history` (`app/services/schedule_queries.py`). The
 reasoning is identical to section B's: every `Schedule` effective range
 was authored against the Group's *current* `AcademicTerm`, so retargeting
-the Group would silently reinterpret it. The user-facing message and the
-locked-identity form notice both now read "enrollment, teacher-assignment,
-or schedule history". Re-submitting the Group's own current Term + Course
-stays exempt. M08 also changed route/service/template logic here (plus
-the one new `schedules` table) -- see "Recurring Group schedules
-(Phase 3, Part M08)" for the whole Part.
+the Group would silently reinterpret it. Re-submitting the Group's own
+current Term + Course stays exempt. M08 also changed route/service/template
+logic here (plus the one new `schedules` table) -- see "Recurring Group
+schedules (Phase 3, Part M08)" for the whole Part.
+
+**Part M10 amendment (Unit history freezes identity too).** Since M10,
+`_group_identity_frozen` also ORs in
+`group_has_unit_history` (`app/services/unit_queries.py`, true if **any**
+`Unit` row exists for the Group, active or archived). A Unit is teaching
+content authored for the Group's *current* Course, so retargeting a Group
+that has Units would reattach that content to a different Course.
+`group_has_membership_history` stays membership-only; each other kind of
+history lives in its own helper and only the identity-freeze call site
+combines them. The user-facing message and the locked-identity form
+notice now read "enrollment, teacher-assignment, schedule, or unit
+history". Teacher Unit creation
+(`app/blueprints/teacher/units.py`) and admin Group retarget
+(`group_edit`) both take the same Group row lock
+(`lock_group_in_open_transaction` after `lock_academic_hierarchy`), so a
+Unit committed first makes the retarget's post-lock recheck reject, and a
+retarget committed first makes Unit creation re-check the current
+hierarchy -- neither can bypass the freeze. See "Group-owned Units
+(Phase 3, Part M10)" for the whole Part.
 
 ### A. Group identity fields and when they become immutable
 
@@ -595,9 +612,10 @@ the one new `schedules` table) -- see "Recurring Group schedules
   identity. Level is not one of them; it is still derived through
   `Group -> Course -> Level`.
 - Those two fields are **freely editable while the Group has no
-  Enrollment, teacher-assignment, or Schedule history at all** (the
-  Schedule half added in M08 -- see the M08 amendment above), and
-  **immutable once any such history exists**.
+  Enrollment, teacher-assignment, Schedule, or Unit history at all**
+  (the Schedule half added in M08, the Unit half in M10 -- see the M08
+  and M10 amendments above), and **immutable once any such history
+  exists**.
 - **Non-identity fields stay editable regardless of history:** `name`,
   `code`, and `capacity` can always be changed (subject to their own
   validation -- uniqueness, the capacity rule in section C). `status` is
@@ -611,9 +629,9 @@ the one new `schedules` table) -- see "Recurring Group schedules
   (`app/blueprints/admin/groups.py`), shared by the early pre-lock
   friendly check and the authoritative post-lock recheck so the two
   cannot drift. Its `has_history` argument comes from
-  `_group_identity_frozen` (membership history **or** Schedule history);
-  the function itself only decides the unchanged-current-values exemption
-  and the message.
+  `_group_identity_frozen` (membership history **or** Schedule history
+  **or** Unit history); the function itself only decides the
+  unchanged-current-values exemption and the message.
 
 ### B. What counts as Enrollment or teacher-assignment history
 
@@ -628,14 +646,15 @@ row exists for the Group, deliberately **regardless of**:
   `student_id`/`teacher_id` points at a non-Student / non-Teacher `User`
   (the foreign key to `users` cannot forbid this) still counts.
 
-It does **not** look at `Schedule`. Since M08 the identity freeze uses
-`_group_identity_frozen`, which ORs this helper with
-`group_has_schedule_history` (`app/services/schedule_queries.py`, true if
-**any** `Schedule` row exists for the Group, active or archived, on the
-same "history is history" principle). The split is deliberate:
-`group_has_membership_history` keeps its precise membership meaning for
-every other caller, and only the identity-freeze call site combines the
-two.
+It does **not** look at `Schedule` or `Unit`. Since M08 the identity
+freeze uses `_group_identity_frozen`, which ORs this helper with
+`group_has_schedule_history` (`app/services/schedule_queries.py`) and,
+since M10, `group_has_unit_history` (`app/services/unit_queries.py`) --
+each true if **any** row of its kind exists for the Group, active or
+archived, on the same "history is history" principle. The split is
+deliberate: `group_has_membership_history` keeps its precise membership
+meaning for every other caller, and only the identity-freeze call site
+combines them.
 
 Every one of those rows was created under this Group's Course/Term
 identity at the time. The same-Course-same-Term Enrollment conflict rule
@@ -1200,12 +1219,14 @@ Enrollment / GroupTeacherAssignment history already did.
 OR-ed with `group_has_membership_history` in `_group_identity_frozen`
 (`app/blueprints/admin/groups.py`), used by both the pre-lock friendly
 check and the post-lock recheck; `group_has_membership_history` stays
-membership-only for every other caller. The user-facing error and the
-locked-identity form notice both read "enrollment, teacher-assignment, or
-schedule history". Re-submitting the Group's own current Term + Course,
-and every non-identity Group edit (name / code / capacity), remain
-allowed. See the "Part M08 amendment" under "Group edit integrity
-(Phase 3, Part 7B0)" above for how this slots into that section.
+membership-only for every other caller. M10 extended the same OR chain
+with `group_has_unit_history`, so the user-facing error and the
+locked-identity form notice now read "enrollment, teacher-assignment,
+schedule, or unit history". Re-submitting the Group's own current Term +
+Course, and every non-identity Group edit (name / code / capacity),
+remain allowed. See the "Part M08 amendment" / "Part M10 amendment" under
+"Group edit integrity (Phase 3, Part 7B0)" above for how this slots into
+that section.
 
 ### F. AcademicTerm date-edit guard
 
@@ -1332,7 +1353,10 @@ migration** -- route, service, template, and narrowly-scoped CSS only.
   operational state, the active eligible enrolled-student **count** (no
   student identities), active schedules + location + timezone, and the
   current/next + upcoming-class lists. No roster page, no mutation
-  routes, no Units/Lessons/Attendance/reviews/announcements/messages.
+  routes, no Lessons/Attendance/reviews/announcements/messages. (M10
+  added a per-card **"Manage Units"** link; the dashboard route itself
+  stays read-only -- Unit management lives on its own group-centered
+  pages, see "Group-owned Units (Phase 3, Part M10)".)
 - **Student** (new `student` blueprint, `GET /student/dashboard`): only
   data derived from the authenticated Student's own **ACTIVE**
   `Enrollment` rows -- enrolled Group/Course/Level/Term, operational
@@ -1499,3 +1523,178 @@ migration** -- route, service, template, and narrowly-scoped CSS only.
   used in assertions (every occurrence test injects `now`); browser
   verification of the three dashboards was performed only to the extent
   noted in the M09 report.
+
+
+## Group-owned Units (Phase 3, Part M10)
+
+Teacher management of **Units** -- the structural teaching container one
+level below Group in the hierarchy
+(`AcademicTerm -> Level -> Course -> Group -> Unit`). Adds one model
+(`Unit`) and one additive migration (`c3e39736023a`,
+`Revises: adf4b5691a7a`) that creates only the `units` table. Lessons
+(M11) and content/materials (M12) are deliberately out of scope.
+
+### A. Model -- a Unit belongs directly to a Group
+
+`Unit` has a required, non-cascading `group_id` FK and **nothing else
+that ties it to the hierarchy** -- no `course_id` / `level_id` /
+`academic_term_id` (all reachable via `unit.group`), and no `teacher_id`
+/ `created_by` (every active assigned Teacher is an equal collaborator,
+so ownership is the Group, not a person). This mirrors how `Enrollment`,
+`GroupTeacherAssignment`, and `Schedule` each avoid duplicating what the
+Group already determines.
+
+Columns: `BigInteger` id; `String(36)` unique `public_id` (the only
+identifier that ever crosses a request boundary); `group_id`;
+`title` (`String(150)`, required); optional `description` (`Text`);
+`display_order` (`Integer`, server-owned); `status` (`String(32)`,
+reuses the shared `AcademicStatus` `active` / `archived`); UTC
+`created_at` / `updated_at`.
+
+Constraints / indexes on `units`: `UNIQUE (group_id, title)` (a teaching
+order never has two same-named Units -- archived Units count, so a title
+can't be "freed" by archiving); `UNIQUE (public_id)`;
+`CHECK (display_order >= 0)`; and `group_id` / `status` / `display_order`
+indexes. There is deliberately **no** uniqueness constraint on
+`display_order` -- gaps are fine and the reorder logic never renumbers.
+
+**Lifecycle is `active` / `archived` only.** A Unit is a container, so it
+has no draft/published state -- that belongs to Lesson (M11). No hard
+delete; reactivation reuses the same row. `status` is owned solely by the
+toggle route; the create/edit form carries neither `status` nor
+`display_order`.
+
+### B. Authorization and co-teacher semantics
+
+- `roles_required(TEACHER)` gives the standard role guard: anonymous ->
+  login redirect, any non-Teacher role -> 403.
+- **Object authorization is server-side and non-disclosing.** The current
+  Teacher must hold an **active** `GroupTeacherAssignment` to the Group
+  named in the URL. An unassigned Teacher, a `removed` assignment, a Unit
+  `public_id` that belongs to another Group, a bad UUID, or a missing
+  object all return **404** -- never 403, and never any hint that the
+  object exists (`_teacher_group_or_404` / `_unit_for_group_or_404` in
+  `app/blueprints/teacher/units.py`).
+- **Co-teachers are equal.** Any number of active assigned Teachers may
+  view and manage the same Group's Units; there is no "owner".
+- **GET stays available under an archived Group / ancestor** for an
+  actively assigned Teacher, so historical Units can be read
+  (`_teacher_group_or_404` checks the assignment, never the Group's own
+  status).
+- All routes are group-centered (`/teacher/groups/<group_public_id>/units/...`);
+  there is **no** flat `/teacher/units` collection. No internal numeric id
+  appears in any URL, form value, or rendered page.
+
+### C. Lifecycle rules for mutations
+
+- **Create / edit / reorder / reactivate** require, re-checked against
+  the locked rows: an active Teacher account with role `teacher`, an
+  **active** assignment to the Group, an **active** Group, and an active
+  AcademicTerm, Course, and Level.
+- **Archiving** is allowed while the assignment is active **even under an
+  archived Group / ancestor** -- so a Teacher can always clean up.
+- Editing an archived Unit keeps it archived (`status` is never assigned
+  by the edit route); a Group / ancestor archive or reactivation **never**
+  cascades into Unit status; nothing is ever hard-deleted.
+
+### D. Ordering
+
+- A new Unit gets `display_order = MAX(display_order over all the Group's
+  Units) + 1`, or `0` for the first (`next_unit_display_order`). A
+  reactivated Unit is appended the same way -- it goes after everything
+  currently in the Group, active or archived.
+- Only **active** Units have move controls, and move-up / move-down swap
+  `display_order` with the **nearest active sibling** (archived Units are
+  filtered out of the ordered list, so they are skipped over and keep
+  their stored order). Reordering an archived Unit is rejected.
+- A boundary move (already first / already last) is a safe no-op with a
+  clear flash and a Post/Redirect/Get -- not an error.
+- Gaps in `display_order` are acceptable and never repaired.
+- `display_order` is never a client-controlled field: the move routes are
+  bodyless `POST` (CSRF token only).
+
+### E. Concurrency, locking, and the stale edit form
+
+Every Unit mutation follows the canonical lock order
+
+```
+AcademicTerm -> Level -> Course -> Group -> Teacher User ->
+GroupTeacherAssignment -> Unit rows (ascending internal id)
+```
+
+`lock_academic_hierarchy` owns the single deliberate transaction reset
+and takes the AcademicTerm/Level/Course locks; then
+`lock_group_in_open_transaction`, then `SELECT ... FOR UPDATE` on the
+Teacher `User` row, the `(group_id, teacher_id)` `GroupTeacherAssignment`
+row, and any Unit rows -- for a reorder, the target Unit **and** its swap
+neighbour, locked lowest-id-first. The **held Group lock serializes every
+same-Group create / reorder / toggle** (and admin Group edit / status
+toggle / membership routes, which lock the same row), so a plain re-read
+of the teaching order under that lock is consistent. After the locks,
+authorization, the operational hierarchy, and (for edit) the signed
+snapshot are all re-checked against the locked rows before any write.
+
+**Signed edit snapshot** (`teacher.unit-edit-snapshot.v1`,
+`itsdangerous.URLSafeSerializer`, app `SECRET_KEY`): covers `title`,
+`description`, and `public_id` -- everything the edit route can write,
+plus the object binding. `status` and `display_order` are excluded (edit
+writes neither). A missing / malformed / wrong-signature / wrong-object /
+value-mismatched token is rejected with a PRG to a fresh GET (discarding
+the submitted values); an ordinary WTForms failure re-embeds the
+original token. This stops one co-teacher from unknowingly overwriting
+another's completed edit -- the row lock alone cannot, because the two
+submissions never overlap in time. Same rules as the Group / Course /
+Schedule edit snapshots.
+
+`IntegrityError` (e.g. a racing duplicate `(group_id, title)`) is caught,
+rolled back, and reported with a generic message -- no SQL, no internal
+id, no driver text.
+
+### F. Group identity freeze extension
+
+The existence of **any** Unit row -- active or archived -- now counts as
+history that freezes the Group's `academic_term_id` / `course_id`
+(`group_has_unit_history` OR-ed into `_group_identity_frozen`; see the
+"Part M10 amendment" under "Group edit integrity (Phase 3, Part 7B0)").
+A Unit is content authored for the Group's *current* Course, so a
+retarget would silently reattach it elsewhere. Teacher Unit creation and
+admin Group retarget take a compatible Group lock, so a concurrent Unit
+create cannot slip past the freeze. Non-identity Group fields
+(`name` / `code` / `capacity`) are not affected.
+
+### G. UI
+
+- A "Manage Units" link on each Teacher-dashboard Group card, scoped by
+  `group_public_id` (a Teacher never sees a link to a Group they are not
+  assigned to).
+- Group-centered Units pages on the existing portal layout: Group /
+  Course / Level / AcademicTerm context; active Units in teaching order
+  with edit / archive / move-up / move-down; archived Units in a separate
+  read-only-ish section with reactivate; clear operational vs
+  historical explanations; clear empty states; CSRF-protected `POST`
+  actions; no internal ids anywhere.
+
+### H. Deliberate deferrals
+
+- **Lessons** and their draft/published lifecycle -- M11.
+- **Materials / uploads / content**, student content pages, completion
+  tracking -- M12+.
+- No Course-level Unit templates, no Unit copying, no drag-and-drop
+  ordering, no Administrator Unit management, no Unit search, no
+  notifications. Students get no Unit pages in M10 -- student content
+  access begins only when the Lesson/content model exists.
+
+### I. Honest limitations
+
+- SQLite (the test backend) has no `SELECT ... FOR UPDATE` and no
+  REPEATABLE READ isolation. The structural tests prove only the
+  *requested* single reset and lock order -- never that a real InnoDB
+  lock blocks a concurrent transaction. The M10 migration was applied and
+  verified on the real MySQL database at the schema level (engine, FK
+  rule, CHECK, unique constraints, indexes, unchanged existing row
+  counts); no safe real two-session concurrency probe was run.
+- `UNIQUE (group_id, title)` is case-insensitive on MySQL
+  (`utf8mb4_0900_ai_ci`) and case-sensitive on SQLite -- the same
+  portability nuance the project already has for Group name / Course
+  title. The friendly form check compares exact stripped strings; the DB
+  constraint is the final defense.

@@ -562,7 +562,7 @@ def test_schedule_only_history_group_identity_error_text_is_accurate(app, client
 
     resp = _edit_group(client, gpid, term_b_id, course_id, name="G")
     body = resp.data.lower()
-    assert b"schedule history" in body
+    assert b"schedule" in body and b"unit history" in body  # M10: "..., schedule, or unit history"
     assert b"cannot be changed" in body
 
 
@@ -577,7 +577,7 @@ def test_schedule_only_history_group_form_locked_notice_is_accurate(app, client)
 
     html = client.get(f"/admin/groups/{gpid}/edit").get_data(as_text=True).lower()
     assert "locked because this group already has enrollment" in html
-    assert "schedule history" in html
+    assert "schedule, or unit history" in html  # M10 extended the triad
 
 
 # ===========================================================================

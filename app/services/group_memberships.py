@@ -87,11 +87,12 @@ def group_has_membership_history(group_id):
     Group's Course/AcademicTerm identity at the time.
 
     This is the **membership-only** history helper and it stays that way:
-    it never looks at `Schedule`. The Group identity-freeze decision
-    (`app/blueprints/admin/groups.py`) is made by `_group_identity_frozen`,
-    which ORs this with
-    `app.services.schedule_queries.group_has_schedule_history` (M08) -- a
-    Schedule row freezes identity on the same principle, but that check
+    it never looks at `Schedule` or `Unit`. The Group identity-freeze
+    decision (`app/blueprints/admin/groups.py`) is made by
+    `_group_identity_frozen`, which ORs this with
+    `app.services.schedule_queries.group_has_schedule_history` (M08) and
+    `app.services.unit_queries.group_has_unit_history` (M10) -- a Schedule
+    or Unit row freezes identity on the same principle, but each check
     lives in its own helper so this one keeps its precise membership
     meaning for every other caller. Neither helper answers whether a row
     currently counts toward capacity or teacher eligibility, which is a
