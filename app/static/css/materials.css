@@ -1,0 +1,86 @@
+/* ==========================================================================
+   Adaptive English LMS -- Lesson Materials (M12)
+   Narrowly scoped to the small local rich-text editor toolbar and the
+   Student-facing material widgets. Everything else reuses base.css /
+   dashboard.css / portal.css tokens and components.
+   ========================================================================== */
+
+.rte-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.rte-toolbar__btn {
+  min-width: 2.25rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.rte-toolbar__btn:hover {
+  background: var(--color-bg-subtle);
+}
+
+.rte-editor {
+  min-height: 220px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--color-bg-surface);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+}
+
+.rte-editor:focus {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.rte-editor p:first-child {
+  margin-top: 0;
+}
+
+/* ---- Student-facing material widgets ---- */
+
+.material-block {
+  margin-bottom: var(--space-6);
+}
+
+.material-block__title {
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-2);
+}
+
+.material-rich-text {
+  line-height: var(--line-height-relaxed);
+}
+
+.material-rich-text blockquote {
+  margin: var(--space-3) 0;
+  padding-left: var(--space-4);
+  border-left: 3px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.material-rich-text pre,
+.material-rich-text code {
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-1);
+}
+
+.material-rich-text pre {
+  padding: var(--space-3);
+  overflow-x: auto;
+}
+
+.material-media {
+  max-width: 100%;
+  border-radius: var(--radius-md);
+}

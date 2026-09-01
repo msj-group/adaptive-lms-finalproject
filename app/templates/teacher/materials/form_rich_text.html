@@ -1,0 +1,77 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ 'Edit Material' if material else 'New Rich Text Material' }} — {{ lesson.title }}{% endblock %}
+{% block extra_head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/materials.css') }}">
+{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+<div class="ds-page" style="max-width: 720px; padding: 0">
+  <h1>{{ 'Edit Rich Text Material' if material else 'New Rich Text Material' }}</h1>
+  <p class="ds-section__desc">
+    {{ group.name }} — {{ unit.title }} — {{ lesson.title }}
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  {% if lesson.status == "published" %}
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    This lesson is published. Saving an active material here makes it immediately visible to enrolled students.
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {{ form.hidden_tag() }}
+    {% if material %}
+    <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
+    {% else %}
+    <input type="hidden" name="create_token" value="{{ create_token }}">
+    {% endif %}
+
+    <div class="field" style="max-width:none">
+      {{ form.title.label(class_="field__label") }}
+      {{ form.title(class_="field__input") }}
+      {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.content_html.label(class_="field__label") }}
+      <div data-rte-root>
+        <div class="rte-toolbar" role="toolbar" aria-label="Formatting">
+          <button type="button" class="rte-toolbar__btn" data-command="bold"><strong>B</strong></button>
+          <button type="button" class="rte-toolbar__btn" data-command="italic"><em>I</em></button>
+          <button type="button" class="rte-toolbar__btn" data-command="underline"><u>U</u></button>
+          <button type="button" class="rte-toolbar__btn" data-command="formatBlock" data-value="h2">H2</button>
+          <button type="button" class="rte-toolbar__btn" data-command="formatBlock" data-value="h3">H3</button>
+          <button type="button" class="rte-toolbar__btn" data-command="formatBlock" data-value="p">¶</button>
+          <button type="button" class="rte-toolbar__btn" data-command="insertUnorderedList">• List</button>
+          <button type="button" class="rte-toolbar__btn" data-command="insertOrderedList">1. List</button>
+          <button type="button" class="rte-toolbar__btn" data-command="formatBlock" data-value="blockquote">Quote</button>
+          <button type="button" class="rte-toolbar__btn" data-command="formatBlock" data-value="pre">Code</button>
+          <button type="button" class="rte-toolbar__btn" data-command="insertHorizontalRule">―</button>
+          <button type="button" class="rte-toolbar__btn" data-command="createLink">Link</button>
+        </div>
+        <div class="rte-editor" contenteditable="true" aria-label="Material content"></div>
+        {{ form.content_html() }}
+      </div>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Only a small set of formatting is kept (headings, emphasis, lists, quotes, code, links). Links must be HTTPS.
+        Images, audio, and video are added as separate File materials, not embedded here.
+      </span>
+      {% for error in form.content_html.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary") }}
+      <a class="btn btn--secondary" href="{{ url_for('teacher.lesson_materials', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+<script src="{{ url_for('static', filename='js/material_editor.js') }}"></script>
+{% endblock %}

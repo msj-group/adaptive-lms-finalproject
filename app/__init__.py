@@ -5,12 +5,35 @@ from flask import Flask
 from app.config import config_by_name
 from app.extensions import csrf, db, limiter, login_manager, migrate
 from app.errors import register_error_handlers
+from app.services.material_config import resolve_material_config
 
 
-def create_app(config_name=None):
+def create_app(config_name=None, **config_overrides):
+    """Build the Flask application.
+
+    ``config_overrides`` lets a caller (in practice, only the test suite)
+    override individual config keys after the named config class is
+    loaded -- e.g. pointing ``MATERIAL_STORAGE_ROOT`` at an isolated
+    ``tmp_path`` per test, per Part M12 section 12 ("Tests must use
+    isolated temporary storage, not the real development material
+    directory").
+    """
     app = Flask(__name__)
     config_name = config_name or os.environ.get("FLASK_ENV", "development")
     app.config.from_object(config_by_name.get(config_name, config_by_name["development"]))
+    if config_overrides:
+        app.config.update(config_overrides)
+
+    # M12: resolve + validate the Material storage configuration once at
+    # start-up. Fail closed -- MaterialConfigError propagates and the
+    # application refuses to start rather than run with a guessed or
+    # partially-valid storage configuration. Never touches the
+    # filesystem beyond a read-only existence check (see
+    # resolve_material_config's docstring).
+    project_root = os.path.dirname(app.root_path)
+    material_config = resolve_material_config(app.config, project_root)
+    app.extensions["material_config"] = material_config
+    app.config["MAX_CONTENT_LENGTH"] = material_config.max_content_length
 
     db.init_app(app)
     migrate.init_app(app, db)

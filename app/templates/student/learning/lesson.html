@@ -1,5 +1,9 @@
 {% extends "layouts/portal_base.html" %}
 {% block title %}{{ lesson_title }} — {{ group_name }}{% endblock %}
+{% block extra_head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/materials.css') }}">
+{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('student.dashboard') }}">Dashboard</a>
 {% endblock %}
@@ -14,7 +18,7 @@
   <a class="btn btn--secondary" href="{{ url_for('student.dashboard') }}">Dashboard</a>
 </div>
 
-<div class="card">
+<div class="card" style="margin-bottom: var(--space-6)">
   {% if lesson_description %}
   {# Plain text: line breaks preserved via CSS, never via |safe or stored HTML. #}
   <div style="white-space: pre-wrap; word-break: break-word;">{{ lesson_description }}</div>
@@ -22,4 +26,55 @@
   <p class="ds-section__desc" style="margin: 0">This lesson has no description yet.</p>
   {% endif %}
 </div>
+
+<section>
+  <h2>Materials</h2>
+  {% if not materials %}
+  <div class="empty-state">
+    <div class="empty-state__title">No materials yet</div>
+    <div>Your teacher has not added any materials to this lesson yet.</div>
+  </div>
+  {% else %}
+  {% for material in materials %}
+  <div class="material-block card">
+    <div class="material-block__title">{{ material.title }}</div>
+
+    {% if material.kind == "rich_text" %}
+    {# The only |safe in the Student app: content_html was sanitized on
+       save AND re-sanitized just before this render
+       (app/services/material_queries.student_visible_materials) --
+       never raw database input. #}
+    <div class="material-rich-text">{{ material.content_html | safe }}</div>
+
+    {% elif material.kind == "external_link" %}
+    <p style="margin:0">
+      <a href="{{ material.external_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ material.external_url }}</a>
+    </p>
+
+    {% elif material.kind == "file" and material.category == "image" %}
+    <img class="material-media" src="{{ url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" alt="{{ material.title }}">
+
+    {% elif material.kind == "file" and material.category == "audio" %}
+    <audio class="material-media" controls preload="none">
+      <source src="{{ url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" type="{{ material.content_type }}">
+      Your browser does not support inline audio playback.
+    </audio>
+
+    {% elif material.kind == "file" and material.category == "video" %}
+    <video class="material-media" controls preload="none">
+      <source src="{{ url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" type="{{ material.content_type }}">
+      Your browser does not support inline video playback.
+    </video>
+
+    {% elif material.kind == "file" %}
+    <p class="ds-section__desc" style="margin: 0 0 var(--space-2)">{{ material.original_filename }} &middot; {{ material.extension|upper }}</p>
+    <a class="btn btn--secondary" href="{{ url_for('student.material_download', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}">Download</a>
+
+    {% else %}
+    <p class="ds-section__desc" style="margin:0">This material is not available.</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+</section>
 {% endblock %}

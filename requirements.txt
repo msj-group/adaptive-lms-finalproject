@@ -26,6 +26,9 @@ Flask-Limiter==4.1.1
 # ---- Configuration ----
 python-dotenv==1.2.2
 
+# ---- Content sanitization (Phase 3, Part M12: Lesson Materials) ----
+nh3==0.3.7
+
 # ---- Testing ----
 pytest==9.1.1
 pytest-cov==7.1.0

@@ -67,6 +67,21 @@
   {% endif %}
 {%- endmacro %}
 
+{# M12: a small, consistent type badge for one Material row. `material`
+   is a plain presentation dict carrying `kind` and, for file Materials,
+   `category` and `extension` -- no ORM navigation. #}
+{% macro material_kind_badge(material) -%}
+  {%- if material.kind == "rich_text" -%}
+    <span class="badge badge--primary">Rich Text</span>
+  {%- elif material.kind == "external_link" -%}
+    <span class="badge badge--primary">External Link</span>
+  {%- elif material.kind == "file" -%}
+    <span class="badge badge--primary">File &middot; {{ material.category|capitalize }} ({{ material.extension|upper }})</span>
+  {%- else -%}
+    <span class="badge badge--neutral">Unknown</span>
+  {%- endif -%}
+{%- endmacro %}
+
 {% macro next_class_line(occ, now, tz_name) -%}
   {%- if occ -%}
     {%- if occ.start <= now and now < occ.end -%}

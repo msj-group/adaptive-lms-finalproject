@@ -1995,3 +1995,373 @@ dependency was added for any future rich-content feature.
   constraint is the final defense.
 - The status/`published_at` consistency CHECK uses portable SQL
   (`IS NULL` / `IS NOT NULL`) enforced on both SQLite and MySQL 8.
+
+
+## Materials -- secure Lesson content and file storage (Phase 3, Part M12)
+
+Lesson-owned learning **Materials** in three kinds (`rich_text`,
+`external_link`, `file`), Teacher management, authorized file serving
+with an append-only audit trail, and Student rendering on the existing
+M11 Lesson page. Adds three models (`UploadedFile`, `Material`,
+`FileAccessLog`), one additive migration (`8319232a5609`,
+`Revises: cb9112548dd6`), one direct dependency (`nh3==0.3.7`), and a
+private on-disk file store outside `app/static`.
+
+### A. Domain and ownership
+
+- A `Material` belongs **directly** to exactly one `Lesson`
+  (`lesson_id`, required, non-cascading FK). Unit / Group / Course /
+  Level / AcademicTerm are all reachable via
+  `material.lesson.unit.group`; every active assigned Teacher of the
+  owning Group is an equal collaborator, so there is **no** per-Material
+  owner column -- the same reasoning as Enrollment / GroupTeacherAssignment
+  / Schedule / Unit / Lesson.
+- `kind` (`rich_text` / `external_link` / `file`) is **immutable after
+  creation**: no route writes it, and the payload CHECK rejects
+  switching kind without also switching payload
+  (`ck_materials_payload_matches_kind`): `rich_text` -> `content_html`
+  only; `external_link` -> `external_url` only; `file` ->
+  `uploaded_file_id` only.
+- `UploadedFile` holds server-validated metadata for one physical file:
+  a random unguessable `storage_key` (the on-disk name), the normalized
+  `original_filename` (display / `Content-Disposition` only -- never a
+  path), the validated `extension`, the server-derived `category`
+  (`document` / `image` / `audio` / `video`), the server-determined
+  canonical `content_type`, a positive `byte_size`, the streamed
+  `sha256`, the uploader, and a UTC `created_at`. `materials.uploaded_file_id`
+  is `UNIQUE` -- one file backs exactly one Material.
+- `FileAccessLog` is an append-only audit row (`upload` / `inline` /
+  `download`), with **no** IP address and **no** user-agent column.
+- `Lesson.materials` is the only new relationship; **no schema change to
+  `lessons` or `units`**.
+
+### B. Lifecycle, ordering, and visibility
+
+- A Material reuses the shared `AcademicStatus` (`active` / `archived`),
+  starts `active`, and follows the **M10 Unit pattern** (not the M11
+  Lesson draft/published pattern): archive keeps the row **and** the
+  physical file; reactivation appends the Material to the end of the
+  active list; move-up / move-down operate only on active Materials and
+  skip archived rows; a boundary move is a safe no-op. `display_order`
+  is server-owned and **positive** (`>= 1`, scoped to the Lesson); gaps
+  are fine and never renumbered; there is no hard delete and no cascade.
+- `title` is unique within the Lesson, including archived Materials.
+- Rich-text edits change title + content; external-link edits change
+  title + URL; **file edits change title only** -- uploaded bytes and
+  kind are immutable, and replacing a wrong file means archiving the old
+  Material and creating a new one.
+- **Effective Student visibility** extends the M11 formula with two
+  terms: a Material is visible iff the M11 Lesson formula holds (own
+  active Enrollment; active AcademicTerm / Level / Course / Group / Unit;
+  **published** Lesson) **and** `Material.status == active`. A new active
+  Material on an active published Lesson is therefore immediately visible
+  to enrolled Students -- the Teacher UI warns before submission.
+
+### C. Rich-text sanitisation (nh3)
+
+- `app/services/material_content.sanitize_rich_text_html` runs `nh3`
+  against a small explicit allowlist: `p br h2 h3 strong b em u ul ol li
+  blockquote code pre hr a`, `href` on `<a>` only. `script` / `style` /
+  `iframe` / `object` / `embed` / `form` / `noscript` / `svg` /
+  `template` are removed with their content. Links: `url_schemes={https}`
+  + `url_relative='deny'` (relative and non-HTTPS hrefs are stripped),
+  `link_rel="noopener noreferrer nofollow"`. No `style` / `id` / `class`
+  / event-handler attribute survives on any tag. Content that is
+  effectively empty after sanitising (a lone `<hr>` excepted) is
+  **rejected**, not stored as blank.
+- Only the sanitised result is persisted. It is **re-sanitised at the
+  rendering boundary** (`student_visible_materials`) as defense in depth,
+  and only that result is marked safe for the one `| safe` in the
+  Student template. No template applies `| safe` to a raw database value.
+- Images / audio / video are always separate `file` Materials, never
+  rich-text embeds.
+
+### D. External-link policy
+
+`validate_external_url` performs **structural validation only -- no
+network I/O** (no DNS resolution, no fetch, no redirect-following, no
+preview, no iframe, no proxy): HTTPS scheme only; a valid host; no
+`user:password` userinfo; rejects `localhost` / `*.localhost`; rejects
+loopback / private / link-local / multicast / unspecified / reserved IP
+literals (v4 and v6) via `ipaddress`; rejects control characters,
+whitespace, malformed URLs, and over-length input. The link renders as a
+normal external anchor with `target="_blank"
+rel="noopener noreferrer nofollow"`.
+
+### E. File allowlist and validation
+
+- Hard supported set (never expandable by config):
+  `pdf docx png jpg jpeg gif webp mp3 wav mp4 webm`.
+  `MATERIAL_ALLOWED_EXTENSIONS` may only *narrow* it.
+- Validation pipeline (`app/services/file_validation.py` +
+  `file_storage.py`): normalize the filename to a safe basename (strip
+  any Windows/POSIX directory component, control chars, CR/LF; never a
+  path); validate the extension against the configured allowlist; derive
+  the category; cross-check the browser-declared MIME against a small
+  vetted alias map (a generic / missing declared type defers to the
+  signature; any other mismatch is rejected); stream the body in 1 MiB
+  chunks to a random `.part` file, computing size + SHA-256 and capturing
+  the leading bytes, aborting the moment the category size cap is
+  exceeded; reject an empty file; verify the binary signature/container
+  for the claimed extension.
+- **DOCX** is inspected as a ZIP **without extraction**
+  (`inspect_docx_zip`, central-directory metadata only): must be a real
+  ZIP (rejects a legacy binary `.doc`); must contain every required part
+  (`[Content_Types].xml`, `_rels/.rels`, `word/document.xml` -- rejects a
+  generic ZIP or a different Office package); no member name may be
+  absolute or contain a `..` segment; **no member may be encrypted**
+  (flag bit 0 -- a plain `.docx` never is); **a non-empty member may not
+  report a zero compressed size** (a physically impossible,
+  crafted-central-directory value). Zip-bomb protection is enforced at
+  **two levels**: (1) per-member -- the entry count, each member's
+  uncompressed size, and each member's decompression ratio each stay
+  under a conservative cap; **and (2) aggregate -- the total uncompressed
+  size across all members, and the whole-archive decompression ratio,
+  each stay under a conservative cap**, so an archive whose members each
+  pass individually but together expand hugely is still rejected. No
+  `word/vbaProject.bin` (rejects a macro-enabled `.docm` renamed to
+  `.docx`). All caps are module-level constants in `file_validation.py`
+  (a real Word document is orders of magnitude smaller than every one of
+  them) so a test can monkeypatch a tiny value instead of allocating a
+  real large archive.
+- Rejected: empty files, extension/MIME/signature mismatches,
+  unsupported formats, SVG, HTML, legacy DOC, macro Office files,
+  executables, malformed containers.
+- `validate_signature` / `inspect_docx_zip` is the **explicit seam for a
+  future real malware scanner** -- nothing here claims to *be* one; it
+  only proves container/byte structure.
+
+### F. Storage and configuration
+
+- `MATERIAL_STORAGE_ROOT` (relative resolves from the project root) is a
+  **private, non-executable directory outside `app/static`**. The final
+  stored name is `token_hex(24).<ext>`; the `.part` temp file lives in
+  the **same directory** so `os.replace` is an atomic same-filesystem
+  move. Every filesystem operation goes through `resolve_within_root`,
+  which refuses a path that escapes the root. Restrictive permissions
+  are applied best-effort (a no-op on Windows dev). **On any handled
+  failure -- validation error, containment error, stale form,
+  authorization failure, replay loss, or DB rollback -- deletion of the
+  temp file and the just-written final file is *attempted* before the
+  exception propagates.** `_safe_unlink` returns a success flag, **never
+  raises**, and logs any OS-level deletion failure (with a traceback)
+  through the `file_storage` module logger; `_cleanup_orphan_upload`
+  adds one request-context line naming a key that could not be removed.
+  So a cleanup failure can neither mask the original exception nor reach
+  an HTTP response, and a rare undeletable file is visible in the server
+  log for reconciliation -- the atomicity of the OS `unlink` itself is
+  not something application code can absolutely guarantee.
+- `resolve_material_config` validates the configuration **at start-up
+  and fails closed** (`MaterialConfigError` -> the app refuses to start):
+  root non-empty and not inside `app/static`; allowed extensions a
+  non-empty subset of the hard set; positive size limits; the root's
+  nearest existing ancestor usable as a directory. It **never creates a
+  directory** (lazy `mkdir` on first upload), so a fresh checkout or a
+  non-uploading test never gains a filesystem side effect.
+- Flask `MAX_CONTENT_LENGTH` = the largest per-file limit **among the
+  categories that actually have an enabled extension** + a small fixed
+  64 KiB multipart overhead. A configured-but-disabled category never
+  inflates the request limit -- e.g. with only `pdf` enabled the limit
+  is the document limit, not the (disabled) video limit. Every size key
+  is still validated as a positive integer at start-up even when its
+  category is disabled (fail closed on a bad value). A friendly
+  `errors/413.html` handles an over-limit body.
+- **Honest limitation (deferred):** there is a small, unavoidable crash
+  window between the atomic `os.replace` and the caller's DB commit -- a
+  crash there leaves an unreferenced file with no `UploadedFile` row.
+  M12 deliberately does **not** implement a reconciliation / retention
+  cleanup job; it is recorded here as future work.
+
+### G. Authorized serving and audit
+
+- Separate fully-nested **Teacher** and **Student** routes for
+  `.../materials/<material_public_id>/open` and `/download`. Teacher
+  routes reuse M11's historical-access policy (available under an
+  archived Unit/Group/ancestor while the assignment is active). Student
+  routes require the full effective-visibility formula, SQL-scoped in
+  `student_lessons.student_file_material` -- an archived Material, a
+  draft Lesson, a non-`file` Material's public_id, a withdrawn/absent
+  Enrollment, cross-group access, or a mismatched nested id all yield no
+  row and a non-disclosing 404.
+- `serve_uploaded_file` (shared core): `/download` always sends
+  `as_attachment`; `/open` sends inline only for `image` / `audio` /
+  `video` -- `document` (PDF/DOCX) always downloads as an attachment,
+  even via `/open`. `Content-Type` comes from the stored server-validated
+  metadata; the disposition filename uses Flask's RFC-safe
+  `download_name`; `X-Content-Type-Options: nosniff` and
+  `Cache-Control: private, no-store, max-age=0` are always set; HTTP
+  Range requests are supported via `send_file(conditional=True)`.
+- **Audit.** The initial `upload` log is written in the *same
+  transaction* as the `UploadedFile` + `Material`. Every authorized
+  serve writes exactly one row per HTTP request (`inline` for an inline
+  response, `download` for an attachment, including a Range request).
+  A missing physical file 404s **without a success log** and without
+  leaking the path; if the audit row cannot be committed the file is
+  **not served** (fail closed). Unauthorized requests never reach the
+  logging path.
+
+### H. Locking and idempotency
+
+- Every Material mutation extends the M11 canonical lock order with two
+  links:
+  `AcademicTerm -> Level -> Course -> Group -> Teacher User ->
+  GroupTeacherAssignment -> Unit -> Lesson -> Material rows (ascending
+  id)`, under the **same single** `lock_academic_hierarchy` reset. The
+  locked **Lesson** row serialises same-Lesson Material creation and
+  ordering and is compatible with M11's own Lesson lock
+  (publish/unpublish). A reorder re-reads the active order under the held
+  locks, then locks the target + neighbour Material lowest-id-first
+  before swapping. Authorization + the operational chain (M11's
+  `_operational_block`) are re-checked against the locked rows before any
+  write.
+- **A file is streamed and validated to disk BEFORE any DB lock is
+  taken** -- streaming a large upload must never hold a write lock. Once
+  a final file exists, the route runs its lock / re-validate / insert
+  under a `try/except/finally` gated by a `committed` flag: **every exit
+  before a confirmed `db.session.commit()` -- a blocked redirect, a
+  post-lock 404, a replay-loss redirect, an `IntegrityError`, an
+  unexpected lock/DB error, or a rollback -- *attempts* deletion of the
+  just-stored file** (containment-checked; `_safe_unlink` never raises
+  and logs an OS-level failure, and `_cleanup_orphan_upload` logs one
+  request-context line if the key could not be removed), while a
+  successful commit leaves it untouched. Only
+  a user-caused `FileValidationError` from `store_validated_upload` is
+  caught and shown (its message is deliberately safe); any other
+  exception from storage propagates, is logged by Flask, and surfaces as
+  a generic 500 -- **never** as a flashed `str(exc)` that could leak a
+  path, SQL, or driver text.
+- **Creation idempotency.** Every create form carries a signed one-time
+  token binding a random nonce to the Teacher + Lesson + kind
+  (`materials.creation_nonce` `UNIQUE`). An ordinary replay (the nonce
+  already names a committed Material) redirects to it and creates
+  nothing -- checked as an early fast path *before* the form is even
+  validated. A genuinely concurrent replay is caught: the post-lock
+  re-check (or, failing that, the `UNIQUE` constraint at commit) makes
+  the loser roll back, delete its own just-written file, and resolve to
+  the winner's Material. Exactly one Material, one `UploadedFile`, one
+  `upload` access log, and one physical file result system-wide.
+- **Stale-edit snapshot** (`teacher.material-edit-snapshot.v1`): covers
+  `public_id` + `title` + (per immutable kind) `content_html` /
+  `external_url` / nothing more. `status`, `display_order`, and the
+  uploaded-file metadata are excluded -- a completed archive / reorder by
+  a co-teacher never stales an open edit form. Same PRG rejection /
+  original-token-re-embed rules as the Group / Course / Schedule / Unit /
+  Lesson snapshots.
+- `IntegrityError` is caught, rolled back (with file cleanup where a file
+  was written), and reported generically -- no SQL, no internal id, no
+  driver text.
+
+### I. UI
+
+- Teacher: a "Manage Materials" link on every Lesson row (active and
+  archived, historical access); a Materials page with ordered active
+  Materials, a separate archived section, create (Rich Text / External
+  Link / File), edit, archive/reactivate, move-up/down, open/download,
+  clear type/category/status labels, empty states, and the
+  published-visibility warning. A small **local** `contenteditable`
+  editor (`app/static/js/material_editor.js`, `css/materials.css`) -- no
+  CDN, no external editor library; the server sanitises regardless.
+- Student: the M11 Lesson page renders active Materials in order --
+  sanitised rich text, inline `<img>` / `<audio controls>` /
+  `<video controls>`, external HTTPS links, and PDF/DOCX download
+  actions -- with an honest empty state. No internal ids, no filesystem
+  info, and no Teacher identity in any HTML / URL / flash / error.
+- **Both** the Student Lesson page and the Teacher Materials list page
+  receive plain view dicts from a scoped query layer -- the templates
+  navigate no ORM relationship. `teacher_lesson_materials_view` returns
+  a context dict of display strings + public ids plus the active and
+  archived Materials each as plain dicts (`uploaded_file` joined once per
+  list, no storage key / path / internal id), so the list-page query
+  count stays bounded regardless of Material count.
+
+### J. Migration and MySQL
+
+`8319232a5609` (`Revises: cb9112548dd6`) creates only `uploaded_files`,
+`file_access_logs`, and `materials` -- FKs, the payload/kind/status/size
+CHECKs, the `(lesson_id, title)` + `public_id` + `creation_nonce` +
+`uploaded_file_id` unique constraints, and the
+`lesson_id` / `status` / `display_order` / file-history / actor-history /
+time indexes. It alters no existing table. Applied and verified on the
+real development MySQL database at the schema level (InnoDB, FK rules,
+CHECK expressions, unique constraints, indexes, collation) with the
+existing academic-table row counts unchanged.
+
+### K. Dependency
+
+`nh3==0.3.7` -- the only direct dependency added, used solely for
+server-side HTML sanitisation. No `python-magic` (signature checks are
+hand-rolled against a small vetted table); no rich-text editor library.
+
+### L. Deliberate deferrals (M12+ / later)
+
+Lesson/Material **completion, progress, and "recently opened" tracking**;
+search; notifications; assignments / quizzes / activities; student
+uploads; media transcoding / thumbnails / OCR; external embeds; an
+Administrator Material-management UI; the storage reconciliation /
+retention cleanup job (section F). No dependency was added for any of
+these.
+
+### M. Honest limitations
+
+- SQLite (the test backend) has no `SELECT ... FOR UPDATE` and no
+  REPEATABLE READ isolation -- the structural tests prove only the
+  *requested* single reset + lock order, never real InnoDB blocking. No
+  safe two-session MySQL concurrency probe was run for M12; the lock
+  chain is the M11 pattern with a Lesson + Material tail, and existing
+  rows were left untouched.
+- `UNIQUE (lesson_id, title)` is case-insensitive on MySQL
+  (`utf8mb4_0900_ai_ci`) and case-sensitive on SQLite -- the same
+  portability nuance already noted for Group / Course / Unit / Lesson.
+- Restrictive filesystem permissions are best-effort and largely inert
+  on the Windows development host; path containment + application
+  authorization + the audit log are the real boundary, not POSIX mode
+  bits.
+- Signature/container validation is **not** malware scanning; the
+  validation-service boundary is where a real scanner would be inserted.
+- A two-session MySQL race probe was still not run in the review pass;
+  the loser-path cleanup and idempotency are covered by controlled
+  race-path / mocked-branch tests, and the honest limitation above
+  stands.
+
+### N. Review-correction pass (post-M12, uncommitted)
+
+A focused review-correction pass hardened the M12 implementation without
+any schema change (migration stays `8319232a5609`; `flask db current` /
+`heads` / `check` clean):
+
+1. The Teacher file-create route no longer catches arbitrary
+   `Exception` and flashes `str(exc)`: only a user-caused
+   `FileValidationError` is shown; every other failure propagates to the
+   generic 500 handler and is logged server-side (no path / SQL / driver
+   text in the response).
+2. Post-storage cleanup is now *attempted* for **every** handled failure
+   before a confirmed commit via a `committed`-gated
+   `try/except/finally` -- lock/DB failure, post-lock rejection, replay
+   loss, `IntegrityError`, other commit exceptions, and rollback paths
+   all delete the just-stored file; a successful upload's file is never
+   removed.
+7. `_safe_unlink` now returns a success flag, never raises, and logs any
+   OS-level deletion failure (with a traceback) through the
+   `file_storage` module logger; `delete_stored_file` propagates that
+   flag and `_cleanup_orphan_upload` logs one request-context line when a
+   key could not be removed. Cleanup failures are therefore visible in
+   server logs, never reach an HTTP response, and never mask the original
+   validation/database exception -- but application code does not claim
+   that the OS deletion is absolutely guaranteed (docstrings and section
+   F reworded accordingly).
+3. DOCX ZIP-bomb validation gained aggregate caps (total uncompressed
+   bytes, whole-archive compression ratio), plus rejection of encrypted
+   members and of a non-empty member reporting zero compressed size --
+   all alongside the existing per-entry / entry-count / traversal /
+   required-entry / macro checks (section E).
+4. `MaterialConfig.max_upload_bytes` / `max_content_length` now consider
+   only categories with an enabled extension (section F).
+5. The Teacher Materials list page moved behind a plain-dict
+   presentation boundary (`teacher_lesson_materials_view`) -- no ORM
+   navigation in the template, bounded query count (section I).
+6. Added deterministic coverage: undisclosed-exception upload,
+   post-storage cleanup on a non-`IntegrityError` failure, fail-closed
+   serving when the audit log cannot persist, no success log on a denied
+   file request, the concurrent-replay loser resolving to the winner and
+   cleaning its own file, reactivation acquiring the Lesson + Material
+   locks, and the list-page query-count bound.

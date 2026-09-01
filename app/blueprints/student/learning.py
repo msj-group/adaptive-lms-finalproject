@@ -60,4 +60,9 @@ def lesson_detail(group_public_id, unit_public_id, lesson_public_id):
     )
     if data is None:
         abort(404)
-    return render_template("student/learning/lesson.html", **data)
+    return render_template(
+        "student/learning/lesson.html",
+        unit_public_id=unit_public_id,
+        lesson_public_id=lesson_public_id,
+        **data,
+    )

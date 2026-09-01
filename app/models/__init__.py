@@ -1,5 +1,11 @@
 from app.models.user import User, UserRole, UserStatus
-from app.models.enums import AcademicStatus, LessonStatus
+from app.models.enums import (
+    AcademicStatus,
+    FileAccessAction,
+    FileCategory,
+    LessonStatus,
+    MaterialKind,
+)
 from app.models.academic_term import AcademicTerm
 from app.models.level import Level
 from app.models.course import Course
@@ -9,6 +15,9 @@ from app.models.group_teacher_assignment import GroupTeacherAssignment, GroupTea
 from app.models.schedule import Schedule
 from app.models.unit import Unit
 from app.models.lesson import Lesson
+from app.models.uploaded_file import UploadedFile
+from app.models.material import Material
+from app.models.file_access_log import FileAccessLog
 
 __all__ = [
     "User",
@@ -16,6 +25,9 @@ __all__ = [
     "UserStatus",
     "AcademicStatus",
     "LessonStatus",
+    "MaterialKind",
+    "FileCategory",
+    "FileAccessAction",
     "AcademicTerm",
     "Level",
     "Course",
@@ -27,4 +39,7 @@ __all__ = [
     "Schedule",
     "Unit",
     "Lesson",
+    "UploadedFile",
+    "Material",
+    "FileAccessLog",
 ]

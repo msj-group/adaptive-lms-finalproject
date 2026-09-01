@@ -89,6 +89,7 @@ class Lesson(db.Model):
     )
 
     unit = db.relationship("Unit", back_populates="lessons")
+    materials = db.relationship("Material", back_populates="lesson")
 
     @validates("status")
     def validate_status(self, _key, value):

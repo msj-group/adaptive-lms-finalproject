@@ -30,6 +30,20 @@ class Config:
 
     RATELIMIT_STORAGE_URI = "memory://"
 
+    # ---- M12: Lesson Materials -- secure file storage ----
+    # Resolved and validated once at start-up by
+    # app.services.material_config.resolve_material_config (fail-closed:
+    # an invalid value refuses to start the application rather than
+    # silently narrowing/repairing it). See docs/DECISIONS.md, Part M12.
+    MATERIAL_STORAGE_ROOT = os.environ.get("MATERIAL_STORAGE_ROOT", "storage/materials")
+    MATERIAL_ALLOWED_EXTENSIONS = os.environ.get(
+        "MATERIAL_ALLOWED_EXTENSIONS", "pdf,docx,png,jpg,jpeg,gif,webp,mp3,wav,mp4,webm"
+    )
+    MATERIAL_MAX_DOCUMENT_BYTES = os.environ.get("MATERIAL_MAX_DOCUMENT_BYTES", "26214400")
+    MATERIAL_MAX_IMAGE_BYTES = os.environ.get("MATERIAL_MAX_IMAGE_BYTES", "10485760")
+    MATERIAL_MAX_AUDIO_BYTES = os.environ.get("MATERIAL_MAX_AUDIO_BYTES", "52428800")
+    MATERIAL_MAX_VIDEO_BYTES = os.environ.get("MATERIAL_MAX_VIDEO_BYTES", "104857600")
+
 
 class DevelopmentConfig(Config):
     DEBUG = True

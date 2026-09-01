@@ -33,12 +33,17 @@ from app.models import (
     Lesson,
     LessonStatus,
     Level,
+    Material,
+    MaterialKind,
     Unit,
+    UploadedFile,
 )
+from app.services.material_queries import student_visible_materials
 
 _ACTIVE = AcademicStatus.ACTIVE.value
 _ENROLLMENT_ACTIVE = EnrollmentStatus.ACTIVE.value
 _PUBLISHED = LessonStatus.PUBLISHED.value
+_FILE = MaterialKind.FILE.value
 
 
 def student_outline_group(student_id, group_public_id):
@@ -162,4 +167,46 @@ def student_lesson_detail(student_id, group_public_id, unit_public_id, lesson_pu
         "unit_title": unit.title,
         "lesson_title": lesson.title,
         "lesson_description": lesson.description,
+        "materials": student_visible_materials(lesson.id),
     }
+
+
+def student_file_material(student_id, group_public_id, unit_public_id, lesson_public_id, material_public_id):
+    """One SQL query: the ``(Material, UploadedFile)`` pair for a `file`
+    Material a Student may open/download right now, or ``None``.
+
+    Mirrors :func:`student_lesson_detail`'s full authorization chain
+    (own active Enrollment; active AcademicTerm / Level / Course / Group
+    / Unit; published Lesson) plus two more conditions specific to file
+    serving: ``Material.status == active`` and ``Material.kind ==
+    'file'`` -- an archived Material or a non-file Material's public_id
+    (rich_text / external_link have no bytes to serve) both yield no row.
+    """
+    return (
+        db.session.query(Material, UploadedFile)
+        .join(UploadedFile, Material.uploaded_file_id == UploadedFile.id)
+        .join(Lesson, Material.lesson_id == Lesson.id)
+        .join(Unit, Lesson.unit_id == Unit.id)
+        .join(Group, Unit.group_id == Group.id)
+        .join(Course, Group.course_id == Course.id)
+        .join(Level, Course.level_id == Level.id)
+        .join(AcademicTerm, Group.academic_term_id == AcademicTerm.id)
+        .join(Enrollment, Enrollment.group_id == Group.id)
+        .filter(
+            Material.public_id == material_public_id,
+            Material.kind == _FILE,
+            Material.status == _ACTIVE,
+            Lesson.public_id == lesson_public_id,
+            Lesson.status == _PUBLISHED,
+            Unit.public_id == unit_public_id,
+            Unit.status == _ACTIVE,
+            Group.public_id == group_public_id,
+            Group.status == _ACTIVE,
+            Course.status == _ACTIVE,
+            Level.status == _ACTIVE,
+            AcademicTerm.status == _ACTIVE,
+            Enrollment.student_id == student_id,
+            Enrollment.status == _ENROLLMENT_ACTIVE,
+        )
+        .first()
+    )

@@ -22,6 +22,26 @@ def client(app):
     return app.test_client()
 
 
+@pytest.fixture
+def material_app(tmp_path):
+    """Like `app`, but with MATERIAL_STORAGE_ROOT pointed at an isolated
+    per-test `tmp_path` directory (M12) -- never the real development
+    `storage/materials` tree. Use this (and `material_client`) for any
+    test that actually uploads/stores a file."""
+    app = create_app("testing", MATERIAL_STORAGE_ROOT=str(tmp_path / "materials"))
+    with app.app_context():
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
+        db.engine.dispose()
+
+
+@pytest.fixture
+def material_client(material_app):
+    return material_app.test_client()
+
+
 def make_user(email, role, status=UserStatus.ACTIVE.value, password="Sup3rSecret!123", full_name="Test User"):
     user = User(
         email=email,

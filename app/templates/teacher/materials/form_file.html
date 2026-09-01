@@ -1,0 +1,50 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}New File Material — {{ lesson.title }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+<div class="ds-page" style="max-width: 560px; padding: 0">
+  <h1>New File Material</h1>
+  <p class="ds-section__desc">
+    {{ group.name }} — {{ unit.title }} — {{ lesson.title }}
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  {% if lesson.status == "published" %}
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    This lesson is published. Saving an active material here makes it immediately visible to enrolled students.
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {{ form.hidden_tag() }}
+    <input type="hidden" name="create_token" value="{{ create_token }}">
+
+    <div class="field" style="max-width:none">
+      {{ form.title.label(class_="field__label") }}
+      {{ form.title(class_="field__input") }}
+      {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.file.label(class_="field__label") }}
+      {{ form.file(class_="field__input") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Supported: PDF, DOCX, PNG, JPG/JPEG, GIF, WebP, MP3, WAV, MP4, WebM. The file cannot be changed after saving —
+        to replace it, archive this material and add a new one.
+      </span>
+      {% for error in form.file.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary") }}
+      <a class="btn btn--secondary" href="{{ url_for('teacher.lesson_materials', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

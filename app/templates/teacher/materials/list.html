@@ -1,0 +1,173 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_dashboard_macros.html" as dash %}
+{% block title %}{{ ctx.lesson_title }} — Materials{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+{% set gp = ctx.group_public_id %}{% set up = ctx.unit_public_id %}{% set lp = ctx.lesson_public_id %}
+<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+  <h1 style="margin:0">{{ ctx.lesson_title }} — Materials</h1>
+  {{ dash.operational_badge(can_manage) }}
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
+    <dd style="margin:0">{{ ctx.group_name }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
+    <dd style="margin:0">{{ ctx.course_title }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
+    <dd style="margin:0">{{ ctx.level_name }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
+    <dd style="margin:0">{{ ctx.term_name }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Unit</dt>
+    <dd style="margin:0">{{ ctx.unit_title }}{% if not ctx.unit_active %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Lesson</dt>
+    <dd style="margin:0">
+      {{ ctx.lesson_title }}
+      {% if ctx.lesson_published %}<span class="badge badge--success">Published</span>{% else %}<span class="badge badge--neutral">Draft</span>{% endif %}
+    </dd>
+  </dl>
+</div>
+
+{% if not operational %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
+  This group is not operational: the {{ archived_labels | join(", ") }} {{ "is" if archived_labels|length == 1 else "are" }} archived.
+  Active materials here are currently <strong>hidden from students</strong>, but the files and content are preserved. You cannot add,
+  edit, reorder, or reactivate materials until every parent is active again.
+</div>
+{% elif not unit_active %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
+  This unit is archived. Its materials are <strong>hidden from students</strong> for as long as the unit stays archived — nothing is
+  deleted, and reactivating the unit restores visibility. You cannot add, edit, reorder, or reactivate materials until then.
+</div>
+{% elif not ctx.lesson_published %}
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  This lesson is still a draft: its materials are visible to teachers only until the lesson is published.
+</div>
+{% else %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
+  This lesson is published: any active material you add here becomes <strong>immediately visible</strong> to enrolled students.
+</div>
+{% endif %}
+
+<div class="ds-row" style="margin-bottom: var(--space-6); flex-wrap: wrap;">
+  <a class="btn btn--secondary" href="{{ url_for('teacher.group_lessons', group_public_id=gp, unit_public_id=up) }}">Back to Lessons</a>
+  {% if can_manage %}
+  <a class="btn btn--primary" href="{{ url_for('teacher.material_create_rich_text', group_public_id=gp, unit_public_id=up, lesson_public_id=lp) }}">Add Rich Text</a>
+  <a class="btn btn--primary" href="{{ url_for('teacher.material_create_external_link', group_public_id=gp, unit_public_id=up, lesson_public_id=lp) }}">Add External Link</a>
+  <a class="btn btn--primary" href="{{ url_for('teacher.material_create_file', group_public_id=gp, unit_public_id=up, lesson_public_id=lp) }}">Add File</a>
+  {% endif %}
+</div>
+
+<section class="dash-section" style="margin-top: 0">
+  <h2>Active materials <span class="badge badge--neutral">{{ active_materials|length }}</span></h2>
+  {% if active_materials %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th style="width:3rem">#</th>
+        <th>Title</th>
+        <th style="width:10rem">Type</th>
+        <th style="width:22rem">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for material in active_materials %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td><strong>{{ material.title }}</strong></td>
+        <td>{{ dash.material_kind_badge(material) }}</td>
+        <td>
+          <div class="ds-row" style="gap: var(--space-2)">
+            {% if material.kind == "file" %}
+            <a class="btn btn--secondary" href="{{ url_for('teacher.material_open', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" target="_blank" rel="noopener">Open</a>
+            <a class="btn btn--secondary" href="{{ url_for('teacher.material_download', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}">Download</a>
+            {% elif material.kind == "external_link" %}
+            <a class="btn btn--secondary" href="{{ material.external_url }}" target="_blank" rel="noopener noreferrer nofollow">Visit</a>
+            {% endif %}
+            {% if can_manage %}
+            <a class="btn btn--secondary" href="{{ url_for('teacher.material_edit', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}">Edit</a>
+            {% if not loop.first %}
+            <form method="post" action="{{ url_for('teacher.material_move_up', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--secondary" aria-label="Move up">↑</button>
+            </form>
+            {% endif %}
+            {% if not loop.last %}
+            <form method="post" action="{{ url_for('teacher.material_move_down', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--secondary" aria-label="Move down">↓</button>
+            </form>
+            {% endif %}
+            {% endif %}
+            <form method="post" action="{{ url_for('teacher.material_toggle_status', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}"
+              data-confirm="Archive material '{{ material.title }}'? It will be hidden from students. Nothing is deleted.">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--danger-outline">Archive</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No materials yet</div>
+    <div>{% if can_manage %}Add rich text, an external link, or a file to start building this lesson.{% else %}This lesson has no materials.{% endif %}</div>
+  </div>
+  {% endif %}
+</section>
+
+{% if archived_materials %}
+<section class="dash-section">
+  <h2>Archived materials <span class="badge badge--neutral">{{ archived_materials|length }}</span></h2>
+  <p class="ds-section__desc">Archived materials keep their stored order and content — nothing is deleted. Reactivating one appends it to the end of the active list.</p>
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead><tr><th>Title</th><th style="width:10rem">Type</th><th style="width:14rem">Actions</th></tr></thead>
+    <tbody>
+      {% for material in archived_materials %}
+      <tr>
+        <td>{{ material.title }}</td>
+        <td>{{ dash.material_kind_badge(material) }}</td>
+        <td>
+          <div class="ds-row" style="gap: var(--space-2)">
+            {% if material.kind == "file" %}
+            <a class="btn btn--secondary" href="{{ url_for('teacher.material_open', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" target="_blank" rel="noopener">Open</a>
+            {% endif %}
+            {% if can_manage %}
+            <form method="post" action="{{ url_for('teacher.material_toggle_status', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--secondary">Reactivate</button>
+            </form>
+            {% else %}
+            <span class="badge badge--neutral">Read-only</span>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+<script>
+  document.querySelectorAll("form[data-confirm]").forEach(function (form) {
+    form.addEventListener("submit", function (event) {
+      if (!confirm(form.dataset.confirm)) { event.preventDefault(); }
+    });
+  });
+</script>
+{% endblock %}

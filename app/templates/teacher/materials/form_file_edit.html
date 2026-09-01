@@ -1,0 +1,51 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Edit Material — {{ lesson.title }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+<div class="ds-page" style="max-width: 560px; padding: 0">
+  <h1>Edit File Material</h1>
+  <p class="ds-section__desc">
+    {{ group.name }} — {{ unit.title }} — {{ lesson.title }}
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    The uploaded file cannot be changed here — only the title. To replace the wrong file, archive this material
+    (Materials page) and add a new File material.
+  </div>
+
+  {% if material and material.uploaded_file %}
+  <div class="card" style="margin-bottom: var(--space-4)">
+    <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">File</dt>
+      <dd style="margin:0">{{ material.uploaded_file.original_filename }}</dd>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Type</dt>
+      <dd style="margin:0">{{ material.uploaded_file.category|capitalize }} ({{ material.uploaded_file.extension|upper }})</dd>
+    </dl>
+  </div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
+
+    <div class="field" style="max-width:none">
+      {{ form.title.label(class_="field__label") }}
+      {{ form.title(class_="field__input") }}
+      {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary") }}
+      <a class="btn btn--secondary" href="{{ url_for('teacher.lesson_materials', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
