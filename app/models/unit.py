@@ -33,6 +33,12 @@ class Unit(db.Model):
     -- so a teaching order never has two same-named Units. The same title
     is fine in a different Group. The DB ``UniqueConstraint`` is the final
     defense; the write path also checks it and catches ``IntegrityError``.
+
+    ``search_keywords`` (M13) is an optional Teacher-authored, canonical
+    comma-and-space separated string (or ``NULL``) used only to widen
+    Student content search. It is normalised/validated by
+    ``app.services.search_terms.normalize_search_keywords`` at the form
+    layer and rendered only as escaped plain text -- never HTML.
     """
 
     __tablename__ = "units"
@@ -51,6 +57,7 @@ class Unit(db.Model):
     )
     title = db.Column(db.String(150), nullable=False)
     description = db.Column(db.Text, nullable=True)
+    search_keywords = db.Column(db.String(500), nullable=True)
     display_order = db.Column(db.Integer, nullable=False, default=0, index=True)
     status = db.Column(db.String(32), nullable=False, default=AcademicStatus.ACTIVE.value, index=True)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))

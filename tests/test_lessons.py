@@ -193,6 +193,7 @@ def test_lessons_table_shape(app):
         columns = {c["name"] for c in insp.get_columns("lessons")}
         assert columns == {
             "id", "public_id", "unit_id", "title", "description",
+            "search_keywords",  # M13
             "display_order", "status", "published_at", "created_at", "updated_at",
         }
         for forbidden in (

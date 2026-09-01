@@ -1,0 +1,8 @@
+{# Shared Student portal navigation (M13). A caller sets `active_nav` to
+   'dashboard' or 'search' before including this; other Student pages
+   leave it unset. Teacher / Administrator pages are unaffected -- they
+   define their own `portal_nav` block and never include this file. #}
+<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'dashboard' else '' }}"
+   href="{{ url_for('student.dashboard') }}">Dashboard</a>
+<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'search' else '' }}"
+   href="{{ url_for('student.search') }}">Search</a>

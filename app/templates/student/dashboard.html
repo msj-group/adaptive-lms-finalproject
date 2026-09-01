@@ -1,9 +1,7 @@
 {% extends "layouts/portal_base.html" %}
 {% import "_dashboard_macros.html" as dash %}
 {% block title %}Student Dashboard{% endblock %}
-{% block portal_nav %}
-  <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('student.dashboard') }}">Dashboard</a>
-{% endblock %}
+{% block portal_nav %}{% set active_nav = 'dashboard' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
 <h1>Welcome, {{ current_user.full_name }}</h1>
 <p class="ds-section__desc">

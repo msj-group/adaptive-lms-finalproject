@@ -243,6 +243,7 @@ def lesson_create(group_public_id, unit_public_id):
     if form.validate_on_submit():
         title = form.title.data.strip()
         description = normalize_optional_text(form.description.data)
+        search_keywords = form.search_keywords.data  # canonical str or None
         term_id = preview_group.academic_term_id
         level_id = preview_group.course.level_id
         course_id = preview_group.course_id
@@ -266,6 +267,7 @@ def lesson_create(group_public_id, unit_public_id):
             unit_id=unit.id,
             title=title,
             description=description,
+            search_keywords=search_keywords,
             display_order=next_lesson_display_order(unit.id),
             status=_DRAFT,
             published_at=None,
@@ -310,7 +312,7 @@ def _render_lesson_form(form, group_public_id, unit_public_id, lesson, snapshot_
 # ----------------------------------------------------------------------
 
 _LESSON_EDIT_SNAPSHOT_SALT = "teacher.lesson-edit-snapshot.v1"
-_LESSON_EDIT_SNAPSHOT_FIELDS = ("public_id", "title", "description")
+_LESSON_EDIT_SNAPSHOT_FIELDS = ("public_id", "title", "description", "search_keywords")
 
 
 def _lesson_snapshot_serializer():
@@ -397,6 +399,7 @@ def lesson_edit(group_public_id, unit_public_id, lesson_public_id):
     if form.validate_on_submit():
         title = form.title.data.strip()
         description = normalize_optional_text(form.description.data)
+        search_keywords = form.search_keywords.data  # canonical str or None
         term_id = preview_group.academic_term_id
         level_id = preview_group.course.level_id
         course_id = preview_group.course_id
@@ -431,6 +434,7 @@ def lesson_edit(group_public_id, unit_public_id, lesson_public_id):
         # reorders or re-times it.
         lesson.title = title
         lesson.description = description
+        lesson.search_keywords = search_keywords
         try:
             db.session.commit()
         except IntegrityError:

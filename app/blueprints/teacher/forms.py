@@ -9,12 +9,38 @@ from app.services.material_content import (
     sanitize_rich_text_html,
     validate_external_url,
 )
+from app.services.search_terms import SearchKeywordsError, normalize_search_keywords
 
 
-class UnitForm(FlaskForm):
-    """Teacher create/edit of one Group-owned Unit (M10).
+class _SearchKeywordsMixin:
+    """Shared optional ``search_keywords`` field + validator (M13) for the
+    Teacher Unit / Lesson / Material create/edit forms.
 
-    Carries only the editable fields: ``title`` and ``description``.
+    Raw input is comma- or newline-separated. ``validate_search_keywords``
+    runs the shared pure normaliser and, on success, replaces
+    ``field.data`` with the canonical ``", "``-joined string (or
+    ``None``) so the route always persists exactly what was validated.
+    There is deliberately no ``Optional()`` validator -- the normaliser
+    itself turns an empty submission into ``None``. Templates place the
+    field explicitly, so its declaration order here does not matter.
+    """
+
+    search_keywords = TextAreaField(
+        "Search keywords (optional)", validators=[Length(max=2000)]
+    )
+
+    def validate_search_keywords(self, field):
+        try:
+            field.data = normalize_search_keywords(field.data)
+        except SearchKeywordsError as exc:
+            raise ValidationError(str(exc)) from exc
+
+
+class UnitForm(_SearchKeywordsMixin, FlaskForm):
+    """Teacher create/edit of one Group-owned Unit (M10, + M13 keywords).
+
+    Carries only the editable fields: ``title``, ``description``, and the
+    optional M13 ``search_keywords``.
     There is **no** ``status`` control (owned by the dedicated toggle
     route) and **no** ``display_order`` control (server-owned; new /
     reactivated Units append after the Group's highest order, move-up /
@@ -45,11 +71,12 @@ class UnitForm(FlaskForm):
             raise ValidationError("A unit with this title already exists in this group.")
 
 
-class LessonForm(FlaskForm):
-    """Teacher create/edit of one Unit-owned Lesson (M11).
+class LessonForm(_SearchKeywordsMixin, FlaskForm):
+    """Teacher create/edit of one Unit-owned Lesson (M11, + M13 keywords).
 
-    Carries only the editable fields: ``title`` and plain-text
-    ``description`` (5000-character form boundary). There is **no**
+    Carries only the editable fields: ``title``, plain-text
+    ``description`` (5000-character form boundary), and the optional M13
+    ``search_keywords``. There is **no**
     ``status`` control (publication is owned by the dedicated
     toggle-publication route) and **no** ``display_order`` control
     (server-owned; new Lessons append after the Unit's highest order,
@@ -80,11 +107,13 @@ class LessonForm(FlaskForm):
             raise ValidationError("A lesson with this title already exists in this unit.")
 
 
-class _MaterialTitleForm(FlaskForm):
-    """Shared title field + uniqueness check for every Material kind
-    (M12). ``kind`` itself is never a form field -- it is immutable after
-    creation and decided entirely by which concrete form/route handles
-    the request."""
+class _MaterialTitleForm(_SearchKeywordsMixin, FlaskForm):
+    """Shared title field + optional M13 ``search_keywords`` + uniqueness
+    check for every Material kind (M12). ``kind`` itself is never a form
+    field -- it is immutable after creation and decided entirely by which
+    concrete form/route handles the request. ``search_keywords`` is
+    editable for every kind, **including** ``file`` (whose bytes and
+    ``kind`` stay immutable)."""
 
     title = StringField("Title", validators=[DataRequired(), Length(max=150)])
 
@@ -150,8 +179,10 @@ class FileMaterialForm(_MaterialTitleForm):
 
 
 class FileMaterialEditForm(_MaterialTitleForm):
-    """Edit a ``file`` Material: title only. Uploaded file bytes and kind
-    are immutable -- replacing a wrong file means archiving this Material
-    and creating a new one."""
+    """Edit a ``file`` Material: the editable fields are ``title`` and the
+    optional M13 ``search_keywords`` (both inherited via
+    ``_MaterialTitleForm`` / ``_SearchKeywordsMixin``). The uploaded file
+    bytes and ``kind`` stay immutable -- replacing a wrong file means
+    archiving this Material and creating a new one."""
 
     submit = SubmitField("Save Material")

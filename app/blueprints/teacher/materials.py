@@ -387,6 +387,7 @@ def material_create_rich_text(group_public_id, unit_public_id, lesson_public_id)
     if form.validate_on_submit():
         title = form.title.data.strip()
         content_html = form.content_html.data  # already sanitized by validate_content_html
+        search_keywords = form.search_keywords.data  # canonical str or None
 
         result = _lock_and_authorize_for_create(
             group_public_id, unit_public_id, lesson_public_id, group, unit, lesson
@@ -407,6 +408,7 @@ def material_create_rich_text(group_public_id, unit_public_id, lesson_public_id)
             title=title,
             kind=_RICH_TEXT,
             content_html=content_html,
+            search_keywords=search_keywords,
             status=_ACTIVE,
             display_order=next_material_display_order(locked_lesson.id),
             creation_nonce=nonce,
@@ -468,6 +470,7 @@ def material_create_external_link(group_public_id, unit_public_id, lesson_public
     if form.validate_on_submit():
         title = form.title.data.strip()
         external_url = form.external_url.data  # already validated + cleaned
+        search_keywords = form.search_keywords.data  # canonical str or None
 
         result = _lock_and_authorize_for_create(
             group_public_id, unit_public_id, lesson_public_id, group, unit, lesson
@@ -488,6 +491,7 @@ def material_create_external_link(group_public_id, unit_public_id, lesson_public
             title=title,
             kind=_EXTERNAL_LINK,
             external_url=external_url,
+            search_keywords=search_keywords,
             status=_ACTIVE,
             display_order=next_material_display_order(locked_lesson.id),
             creation_nonce=nonce,
@@ -548,6 +552,7 @@ def material_create_file(group_public_id, unit_public_id, lesson_public_id):
     form = FileMaterialForm(lesson_id=lesson.id)
     if form.validate_on_submit():
         title = form.title.data.strip()
+        search_keywords = form.search_keywords.data  # canonical str or None
 
         # Stream + validate + store the file to disk BEFORE taking any
         # database lock (Part M12 section 7/12) -- never hold a write
@@ -607,6 +612,7 @@ def material_create_file(group_public_id, unit_public_id, lesson_public_id):
                 title=title,
                 kind=_FILE,
                 uploaded_file=uploaded_file,
+                search_keywords=search_keywords,
                 status=_ACTIVE,
                 display_order=next_material_display_order(locked_lesson.id),
                 creation_nonce=nonce,
@@ -719,10 +725,10 @@ _EDIT_TEMPLATE_BY_KIND = {
 
 def _snapshot_fields(kind):
     if kind == _RICH_TEXT:
-        return ("public_id", "title", "content_html")
+        return ("public_id", "title", "content_html", "search_keywords")
     if kind == _EXTERNAL_LINK:
-        return ("public_id", "title", "external_url")
-    return ("public_id", "title")
+        return ("public_id", "title", "external_url", "search_keywords")
+    return ("public_id", "title", "search_keywords")
 
 
 def _edit_snapshot_serializer():
@@ -850,8 +856,10 @@ def material_edit(group_public_id, unit_public_id, lesson_public_id, material_pu
         # `kind`, `status`, `display_order`, and the uploaded file are
         # never assigned here -- kind is immutable, publication-visible
         # status/order are owned by the toggle/move routes, and file
-        # bytes never change after creation.
+        # bytes never change after creation. `search_keywords` (M13) is
+        # editable for every kind, including `file`.
         material.title = title
+        material.search_keywords = form.search_keywords.data
         if kind == _RICH_TEXT:
             material.content_html = form.content_html.data
         elif kind == _EXTERNAL_LINK:

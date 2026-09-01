@@ -41,6 +41,16 @@
       {% for error in form.file.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.search_keywords.label(class_="field__label") }}
+      {{ form.search_keywords(class_="field__input", rows="2") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Optional. Extra words students can search this material by — separate them with commas or new lines.
+        Up to 20 keywords, 50 characters each.
+      </span>
+      {% for error in form.search_keywords.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
     <div class="ds-row" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
       <a class="btn btn--secondary" href="{{ url_for('teacher.lesson_materials', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">Cancel</a>

@@ -45,6 +45,15 @@
       </span>
       {% for error in form.description.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.search_keywords.label(class_="field__label") }}
+      {{ form.search_keywords(class_="field__input", rows="2") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Optional. Extra words students can search this lesson by — separate them with commas or new lines.
+        Up to 20 keywords, 50 characters each.
+      </span>
+      {% for error in form.search_keywords.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
 
     {# No Status or Order control: publication is changed only via
        Publish / Unpublish, and lesson order only via move-up / move-down. #}

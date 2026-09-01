@@ -39,6 +39,12 @@ class Lesson(db.Model):
     fine in a different Unit. The DB ``UniqueConstraint`` is the final
     defense; the write path also checks it and catches ``IntegrityError``.
 
+    ``search_keywords`` (M13) is an optional Teacher-authored, canonical
+    comma-and-space separated string (or ``NULL``) used only to widen
+    Student content search -- normalised by
+    ``app.services.search_terms.normalize_search_keywords`` and rendered
+    only as escaped plain text.
+
     Database invariants (final defense only):
 
     - ``display_order >= 0``;
@@ -75,6 +81,7 @@ class Lesson(db.Model):
     )
     title = db.Column(db.String(150), nullable=False)
     description = db.Column(db.Text, nullable=True)
+    search_keywords = db.Column(db.String(500), nullable=True)
     display_order = db.Column(db.Integer, nullable=False, default=0, index=True)
     status = db.Column(
         db.String(32), nullable=False, default=LessonStatus.DRAFT.value, index=True

@@ -1646,6 +1646,12 @@ another's completed edit -- the row lock alone cannot, because the two
 submissions never overlap in time. Same rules as the Group / Course /
 Schedule edit snapshots.
 
+> **M13 amendment.** The Unit edit route also writes `search_keywords`,
+> so the snapshot now covers `("public_id", "title", "description",
+> "search_keywords")`. A pre-M13 three-field token is wrong-shaped and
+> rejected with the same PRG-to-fresh-GET path. See "Authorized learning
+> content search (Phase 3, Part M13)".
+
 `IntegrityError` (e.g. a racing duplicate `(group_id, title)`) is caught,
 rolled back, and reported with a generic message -- no SQL, no internal
 id, no driver text.
@@ -1954,6 +1960,11 @@ ordinary WTForms failure or a caught `IntegrityError` re-embeds the
 *original* token unchanged. Same rules as the Group / Course / Schedule /
 Unit edit snapshots.
 
+> **M13 amendment.** The Lesson edit route also writes `search_keywords`,
+> so the snapshot now covers `("public_id", "title", "description",
+> "search_keywords")`; a pre-M13 token is wrong-shaped and rejected the
+> same way. See "Authorized learning content search (Phase 3, Part M13)".
+
 `IntegrityError` (e.g. a racing duplicate `(unit_id, title)`, or the
 status/`published_at` CHECK as a last-resort defense) is caught, rolled
 back, and reported with a generic message -- no SQL, no internal id, no
@@ -2050,6 +2061,9 @@ private on-disk file store outside `app/static`.
   title + URL; **file edits change title only** -- uploaded bytes and
   kind are immutable, and replacing a wrong file means archiving the old
   Material and creating a new one.
+  > **M13 amendment.** Every kind's edit -- `file` included -- also
+  > writes the optional `search_keywords` field. The uploaded bytes and
+  > `kind` stay immutable; a `file` edit is now "title + keywords".
 - **Effective Student visibility** extends the M11 formula with two
   terms: a Material is visible iff the M11 Lesson formula holds (own
   active Enrollment; active AcademicTerm / Level / Course / Group / Unit;
@@ -2247,6 +2261,13 @@ rel="noopener noreferrer nofollow"`.
   a co-teacher never stales an open edit form. Same PRG rejection /
   original-token-re-embed rules as the Group / Course / Schedule / Unit /
   Lesson snapshots.
+  > **M13 amendment.** `search_keywords` is editable for every kind
+  > (including `file` -- title + keywords now, still not the bytes/kind),
+  > so each kind's snapshot tuple gains `search_keywords`
+  > (`rich_text` -> `+content_html`; `external_link` -> `+external_url`;
+  > `file` -> title + keywords only). A pre-M13 token is wrong-shaped and
+  > rejected the same way. See "Authorized learning content search
+  > (Phase 3, Part M13)".
 - `IntegrityError` is caught, rolled back (with file cleanup where a file
   was written), and reported generically -- no SQL, no internal id, no
   driver text.
@@ -2365,3 +2386,177 @@ any schema change (migration stays `8319232a5609`; `flask db current` /
    file request, the concurrent-replay loser resolving to the winner and
    cleaning its own file, reactivation acquiring the Lesson + Material
    locks, and the list-page query-count bound.
+
+
+## Authorized learning content search (Phase 3, Part M13)
+
+A secure, **GET-only** Student search across the learning content that
+already exists through M12 -- Courses, Units, Lessons, Materials -- plus
+optional Teacher-authored search keywords on Teacher-managed Units,
+Lessons, and Materials. Adds one nullable column to each of three tables
+(`search_keywords`), one additive migration (`ed1e6c7c2548`,
+`Revises: 8319232a5609`), three small services
+(`app/services/search_terms.py`, `app/services/search_queries.py`,
+`app/blueprints/student/search.py`), one Student template + one scoped
+CSS file, and the keyword field on the existing Teacher forms. **No new
+dependency, no Full-Text index, no new lifecycle.**
+
+### A. Scope and role boundary
+
+- The global search page is **Student-only**: `GET /student/search`.
+  Anonymous users get the standard login redirect; every other
+  authenticated role (`teacher` / `administrator` / `researcher`) gets
+  **403** via `roles_required(STUDENT)`. There is deliberately **no**
+  Teacher / Administrator / Researcher global-search page, and the
+  existing Administrator resource-list searches (students, teachers,
+  courses, ...) are untouched.
+- Searchable content is exactly the four existing types. Assignments,
+  Quizzes, Announcements, Phase 6 research events, adaptive
+  help/spelling intervention, and any future content are **out of scope**
+  -- no placeholder model, route, navigation, counter, or UI was added
+  for them.
+- Teachers may set search keywords only while creating/editing their
+  assigned Groups' Units / Lessons / Materials, through the **existing**
+  authorization, lifecycle, transaction, locking, and stale-form rules
+  (M10 §E, M11 §I, M12 §H) -- M13 adds a field, not a new mutation path.
+
+### B. Authorization and visibility (SQL-scoped, keyed by `current_user.id`)
+
+Every result query enforces authorization **in the SQL `WHERE` clause**
+(`app/services/search_queries.py`) -- content is never loaded broadly and
+filtered in Python, and no template navigates an ORM relationship. A
+result is visible to a Student **iff** all hold:
+
+- their own **active** `Enrollment` for the exact Group;
+- active `AcademicTerm`, `Level`, `Course`, `Group`;
+- active `Unit` (for Unit / Lesson / Material results);
+- **published** `Lesson` (for Lesson / Material results);
+- active `Material` (for Material results).
+
+This is exactly the M11/M12 effective-visibility formula. Student search
+**does not** depend on a `Schedule` or on any current Teacher assignment.
+Unauthorized, withdrawn, archived, draft, cross-Group, mismatched, and
+non-existent content never affects results, ranking, snippets, filter
+choices, or the `has_more` indicator.
+
+A **Course result is Group-contextual**, not globally de-duplicated: the
+same Course appears once per authorized enrolled Group, because its
+destination (that Group's learning outline) and breadcrumb differ.
+
+### C. Teacher-defined keywords -- `search_keywords`
+
+- Nullable `search_keywords VARCHAR(500)` on `units`, `lessons`,
+  `materials` (migration `ed1e6c7c2548`). **Not** on `courses` -- a
+  Course is Administrator-owned and already searchable by title, code,
+  and description.
+- One shared pure helper,
+  `app/services/search_terms.normalize_search_keywords`: accepts comma-
+  or newline-separated input; trims and collapses internal whitespace;
+  drops empty entries; **rejects control characters**; de-duplicates
+  case-insensitively keeping the first spelling; **rejects** more than 20
+  keywords, any keyword over 50 characters, or a canonical string over
+  500 characters; stores a canonical `", "`-separated string or `NULL`.
+- The field is on every relevant Unit / Lesson / Material create **and**
+  edit form (`_SearchKeywordsMixin` in
+  `app/blueprints/teacher/forms.py`), rendered only as autoescaped plain
+  text -- never HTML, never `| safe`. It is editable for **every**
+  Material kind, **including `file`** (whose bytes and `kind` stay
+  immutable) -- this extends the M12 "file edit changes title only" line
+  to "title + keywords".
+- `search_keywords` is included in every relevant signed stale-edit
+  snapshot (`_UNIT_EDIT_SNAPSHOT_FIELDS`,
+  `_LESSON_EDIT_SNAPSHOT_FIELDS`, and each branch of the Material
+  `_snapshot_fields(kind)`), so a concurrent keyword edit by a
+  co-teacher cannot be silently overwritten. A pre-M13 snapshot token
+  (missing `search_keywords`) is wrong-shaped and rejected with the
+  existing PRG-to-fresh-GET path -- the same precedent as M07C2's Group
+  snapshot field-count change. Lifecycle, ownership, ordering,
+  publication, archiving, file, and lock semantics are unchanged.
+
+### D. Query normalisation and matching
+
+`app/services/search_terms.normalize_query` deterministically: strips and
+collapses whitespace; truncates to 100 characters; requires at least 2
+characters before a search runs (`too_short`); splits into at most 8
+lower-cased whitespace tokens. Matching is **AND across tokens, OR across
+the authorized fields of one result type**, case-insensitive
+(`func.lower(col).like(...)` with both sides lower-cased for
+SQLite/MySQL portability). `%`, `_`, and the escape character are
+neutralised by `escape_like` so they match **literally**; every value is
+bound through SQLAlchemy -- there is no raw SQL fragment.
+
+Searchable fields: Course = title, code, description; Unit = title,
+description, keywords; Lesson = title, description, keywords; Material =
+title, keywords, external URL, and the joined `UploadedFile`
+`original_filename`. Raw rich-text HTML, physical file contents, storage
+keys, hashes, paths, uploader identity, access logs, and internal numeric
+ids are **never** searched or exposed. No PDF/DOCX/image/audio/video
+content is parsed or OCR'd.
+
+### E. Ranking, bounds, and filters
+
+- Deterministic relevance bucket (`sqlalchemy.case`, lower is better):
+  1 exact title/code; 2 title/code prefix; 3 every token within
+  title/code/keywords; 4 otherwise (matched only description / Material
+  metadata). Tie-breaks -- hierarchy `display_order` then internal `id`
+  -- are used **only inside `ORDER BY`**, never selected or exposed.
+- Fixed cap of **20 results per type**; each query fetches `limit + 1` to
+  derive a non-disclosing `has_more` -- no separate COUNT query, no
+  unbounded search. The query count is **bounded**: one
+  `authorized_search_groups` query plus one query per requested content
+  type (so 2 when a type filter is set, at most 5 otherwise), regardless
+  of result volume.
+- Filters: content type (all/course/unit/lesson/material); one Group,
+  chosen only from the Student's authorized active enrollments by
+  **public id**; Material kind (all/rich_text/external_link/file).
+  Invalid `type` / `kind` values normalise to `all`. An unknown or
+  unauthorized `group` value produces an **empty, non-disclosing** result
+  (the route short-circuits without revealing whether the Group exists).
+
+### F. Presentation and navigation
+
+- Results are grouped by content type; each result carries an escaped
+  title, a type badge, a hierarchy breadcrumb, a safe plain-text snippet
+  (built around the first token hit; may quote a matched Teacher
+  keyword), and an authorized destination. Destinations: Course -> the
+  Student Group learning outline; Unit -> its `#unit-<public_id>` anchor
+  on that outline; Lesson -> the Student Lesson detail page; Material ->
+  its `#material-<public_id>` anchor on that page. Anchors use **public
+  ids only**.
+- The Student portal header gains a shared **Search** link
+  (`app/templates/student/_portal_nav.html`, included by the Student
+  dashboard / outline / lesson / search templates). Teacher and
+  Administrator navigation is unchanged.
+- States: initial (before a valid query); too-short guidance; no-results;
+  clear-filters (preserves `q`); clear-search; static search tips; and a
+  refine-search notice when a type group is capped. No personalized
+  spelling suggestion or adaptive intervention -- deferred.
+- Responses are `Cache-Control: private, no-store` and `Vary: Cookie`.
+
+### G. Migration and MySQL
+
+`ed1e6c7c2548` (`Revises: 8319232a5609`) adds only the three nullable
+`search_keywords VARCHAR(500)` columns (`units`, `lessons`, `materials`)
+and nothing else -- no constraint, index, or existing-row change.
+Existing rows stay valid with `NULL`; there is no content backfill.
+`UNIQUE`/`LIKE` case behaviour follows the project's existing MySQL
+(`utf8mb4_0900_ai_ci`, case-insensitive) vs SQLite (case-sensitive)
+portability nuance; the query layer lower-cases both sides so matching is
+case-insensitive on both engines.
+
+### H. Deliberate deferrals and limitations
+
+- The bounded `LIKE`/`ILIKE` implementation is deliberate for the current
+  center scale and SQLite/MySQL portability. A dedicated indexed search
+  projection (or Full-Text index) may replace it **if measured data
+  volume later warrants it** -- no dependency or index was added now.
+- Deferred: search over Assignments / Quizzes / Announcements / research
+  events / adaptive interventions; personalized spelling suggestions;
+  completion / progress / "recently opened" signals in results;
+  relevance tuning beyond the four fixed buckets; a non-Student search
+  surface.
+- SQLite (the test backend) is case-sensitive for `LIKE` and lacks
+  MySQL's collation; the query layer's explicit `lower()` on both sides
+  is what makes the tests meaningful for matching behaviour. Real MySQL
+  collation/'`A1`'/literal-`%` behaviour was checked with a
+  rollback-only smoke probe (see the M13 report).

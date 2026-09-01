@@ -268,6 +268,7 @@ def unit_create(group_public_id):
     if form.validate_on_submit():
         title = form.title.data.strip()
         description = normalize_optional_text(form.description.data)
+        search_keywords = form.search_keywords.data  # canonical str or None
         term_id = preview_group.academic_term_id
         level_id = preview_group.course.level_id
         course_id = preview_group.course_id
@@ -289,6 +290,7 @@ def unit_create(group_public_id):
             group_id=group.id,
             title=title,
             description=description,
+            search_keywords=search_keywords,
             display_order=next_unit_display_order(group.id),
             status=_ACTIVE,
         )
@@ -330,7 +332,7 @@ def _render_unit_form(form, group_public_id, unit, snapshot_token):
 # ----------------------------------------------------------------------
 
 _UNIT_EDIT_SNAPSHOT_SALT = "teacher.unit-edit-snapshot.v1"
-_UNIT_EDIT_SNAPSHOT_FIELDS = ("public_id", "title", "description")
+_UNIT_EDIT_SNAPSHOT_FIELDS = ("public_id", "title", "description", "search_keywords")
 
 
 def _unit_snapshot_serializer():
@@ -412,6 +414,7 @@ def unit_edit(group_public_id, unit_public_id):
     if form.validate_on_submit():
         title = form.title.data.strip()
         description = normalize_optional_text(form.description.data)
+        search_keywords = form.search_keywords.data  # canonical str or None
         term_id = preview_group.academic_term_id
         level_id = preview_group.course.level_id
         course_id = preview_group.course_id
@@ -441,6 +444,7 @@ def unit_edit(group_public_id, unit_public_id):
         # an archived Unit keeps it archived, and never reorders.
         unit.title = title
         unit.description = description
+        unit.search_keywords = search_keywords
         try:
             db.session.commit()
         except IntegrityError:

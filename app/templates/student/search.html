@@ -1,0 +1,145 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Search{% endblock %}
+{% block extra_head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
+{% endblock %}
+{% block portal_nav %}{% set active_nav = 'search' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+
+{%- macro destination(item) -%}
+  {%- if item.type == 'course' -%}
+    {{ url_for('student.group_units', group_public_id=item.group_public_id) }}
+  {%- elif item.type == 'unit' -%}
+    {{ url_for('student.group_units', group_public_id=item.group_public_id) }}#unit-{{ item.unit_public_id }}
+  {%- elif item.type == 'lesson' -%}
+    {{ url_for('student.lesson_detail', group_public_id=item.group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.lesson_public_id) }}
+  {%- elif item.type == 'material' -%}
+    {{ url_for('student.lesson_detail', group_public_id=item.group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.lesson_public_id) }}#material-{{ item.material_public_id }}
+  {%- endif -%}
+{%- endmacro -%}
+
+<h1>Search learning content</h1>
+<p class="ds-section__desc">
+  Search the courses, units, lessons, and materials you are enrolled in. Try a course
+  code, a title, or a keyword your teacher added.
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<form class="search-form" method="get" action="{{ url_for('student.search') }}" role="search">
+  <div class="field search-form__query">
+    <label class="field__label" for="search-q">Search</label>
+    <input class="field__input" type="search" id="search-q" name="q" value="{{ q }}"
+           maxlength="100" autocomplete="off" placeholder="e.g. ENG101, present perfect, homework">
+  </div>
+
+  <div class="search-form__filters">
+    <div class="field">
+      <label class="field__label" for="search-type">Type</label>
+      <select class="field__input" id="search-type" name="type">
+        {% for value, label in content_type_choices %}
+        <option value="{{ value }}" {{ 'selected' if content_type == value else '' }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="search-group">Group</label>
+      <select class="field__input" id="search-group" name="group">
+        <option value="">All my groups</option>
+        {% for g in groups %}
+        <option value="{{ g.public_id }}"
+                {{ 'selected' if selected_group and selected_group.public_id == g.public_id else '' }}>
+          {{ g.name }} — {{ g.course_title }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="search-kind">Material kind</label>
+      <select class="field__input" id="search-kind" name="kind">
+        {% for value, label in material_kind_choices %}
+        <option value="{{ value }}" {{ 'selected' if material_kind == value else '' }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="ds-row search-form__actions">
+    <button type="submit" class="btn btn--primary">Search</button>
+    {% if content_type != 'all' or group_param or material_kind != 'all' %}
+    <a class="btn btn--secondary" href="{{ url_for('student.search', q=q) }}">Clear filters</a>
+    {% endif %}
+    {% if has_query %}
+    <a class="btn btn--secondary" href="{{ url_for('student.search') }}">Clear search</a>
+    {% endif %}
+  </div>
+</form>
+
+{% if not searched %}
+  {% if too_short %}
+  <div class="empty-state">
+    <div class="empty-state__title">Keep typing</div>
+    <div>Enter at least {{ min_query_length }} characters to search.</div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">Search your learning content</div>
+    <div>Enter a word or phrase above to search across your courses, units, lessons, and materials.</div>
+  </div>
+  <div class="search-tips card">
+    <div class="card__title">Search tips</div>
+    <ul>
+      <li>Use a course code, a course or lesson title, or a teacher-added keyword.</li>
+      <li>Add more words to narrow the results — every word must match.</li>
+      <li>Use the filters to limit results to one content type, one group, or one material kind.</li>
+    </ul>
+  </div>
+  {% endif %}
+{% else %}
+  {% if not any_results %}
+  <div class="empty-state">
+    <div class="empty-state__title">No matching content</div>
+    <div>Nothing in your enrolled courses matches “{{ q }}”. Try a different word, remove a filter, or check the spelling.</div>
+  </div>
+  {% else %}
+    {% set type_headings = {'course': 'Courses', 'unit': 'Units', 'lesson': 'Lessons', 'material': 'Materials'} %}
+    {% for type_name in ['course', 'unit', 'lesson', 'material'] %}
+      {% set section = results.get(type_name) %}
+      {% if section and section['items'] %}
+      <section class="search-results" aria-label="{{ type_headings[type_name] }} results">
+        <h2>{{ type_headings[type_name] }}</h2>
+        <ul class="search-results__list">
+          {% for item in section['items'] %}
+          <li class="search-result card">
+            <div class="search-result__head">
+              <span class="badge badge--primary">{{ item.badge }}</span>
+              <a class="search-result__title" href="{{ destination(item) | trim }}">{{ item.title }}</a>
+            </div>
+            {% if item.breadcrumb %}
+            <div class="search-result__crumb">{{ item.breadcrumb | join(' › ') }}</div>
+            {% endif %}
+            {% if item.snippet %}
+            <div class="search-result__snippet">{{ item.snippet }}</div>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% if section['has_more'] %}
+        <p class="search-results__more">
+          Showing the first {{ section['items'] | length }} {{ type_headings[type_name] | lower }}. Add another word or a filter to narrow this list.
+        </p>
+        {% endif %}
+      </section>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endif %}
+
+{% endblock %}

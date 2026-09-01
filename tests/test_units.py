@@ -128,6 +128,7 @@ def test_units_table_shape(app):
         columns = {c["name"] for c in insp.get_columns("units")}
         assert columns == {
             "id", "public_id", "group_id", "title", "description",
+            "search_keywords",  # M13
             "display_order", "status", "created_at", "updated_at",
         }
         for forbidden in ("teacher_id", "course_id", "level_id", "academic_term_id", "created_by"):

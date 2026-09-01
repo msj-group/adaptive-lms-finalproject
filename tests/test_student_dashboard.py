@@ -249,8 +249,12 @@ def test_no_other_students_or_internal_ids_exposed(app, client):
     # no classmate identity on the dashboard
     assert "classmate@example.com" not in html
     assert "classmate" not in html
-    # no internal numeric object ids in URLs / markup
-    for leaked in (f"/groups/{gid}", f"/schedules/{sid}", f'href="/student/{uid}"'):
+    # no internal numeric object ids in URLs / markup. The trailing slash
+    # keeps these from matching a random UUID public_id that happens to
+    # begin with the same digits (e.g. "/groups/1" inside
+    # "/groups/1a2b-...."): a real numeric id in a path is always a whole
+    # segment.
+    for leaked in (f"/groups/{gid}/", f"/schedules/{sid}/", f'href="/student/{uid}"'):
         assert leaked not in html
 
 

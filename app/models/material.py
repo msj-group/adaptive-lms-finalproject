@@ -38,6 +38,13 @@ class Material(db.Model):
     (``display_order`` then ``id``); move-up / move-down operate only on
     active Materials and skip archived rows.
 
+    ``search_keywords`` (M13) is an optional Teacher-authored, canonical
+    comma-and-space separated string (or ``NULL``) used only to widen
+    Student content search -- normalised by
+    ``app.services.search_terms.normalize_search_keywords`` and rendered
+    only as escaped plain text. It is editable for every kind, including
+    ``file`` (whose bytes and ``kind`` stay immutable).
+
     ``title`` is unique within the Lesson, including archived Materials.
     ``creation_nonce`` is a random per-request value carried by the
     signed create token; it is ``UNIQUE`` so an ordinary or concurrent
@@ -82,6 +89,7 @@ class Material(db.Model):
     )
     title = db.Column(db.String(150), nullable=False)
     kind = db.Column(db.String(32), nullable=False)
+    search_keywords = db.Column(db.String(500), nullable=True)
     content_html = db.Column(db.Text, nullable=True)
     external_url = db.Column(db.String(2048), nullable=True)
     uploaded_file_id = db.Column(

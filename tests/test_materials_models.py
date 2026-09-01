@@ -400,6 +400,7 @@ def test_m12_tables_shape(app):
         assert mat_cols == {
             "id", "public_id", "lesson_id", "title", "kind", "content_html", "external_url",
             "uploaded_file_id", "status", "display_order", "creation_nonce",
+            "search_keywords",  # M13
             "created_at", "updated_at",
         }
         mat_fks = {(f["referred_table"], tuple(f["constrained_columns"])) for f in insp.get_foreign_keys("materials")}
@@ -430,17 +431,20 @@ def test_lesson_materials_relationship(app):
 
 
 def test_no_schema_change_to_existing_tables(app):
-    """M12 adds Lesson.materials as an ORM relationship only -- the
-    `lessons` and `units` tables keep exactly their M10/M11 columns."""
+    """M12 added no column to `lessons` / `units` (only the ORM
+    `Lesson.materials` relationship). M13 then adds exactly one nullable
+    `search_keywords` column to each -- and nothing else."""
     with app.app_context():
         insp = inspect(db.engine)
         lesson_cols = {c["name"] for c in insp.get_columns("lessons")}
         assert lesson_cols == {
             "id", "public_id", "unit_id", "title", "description",
+            "search_keywords",  # M13
             "display_order", "status", "published_at", "created_at", "updated_at",
         }
         unit_cols = {c["name"] for c in insp.get_columns("units")}
         assert unit_cols == {
             "id", "public_id", "group_id", "title", "description",
+            "search_keywords",  # M13
             "display_order", "status", "created_at", "updated_at",
         }
