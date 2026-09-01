@@ -1,0 +1,31 @@
+{% extends "layouts/base.html" %}
+{% block extra_head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/portal.css') }}">
+{% endblock %}
+{% block content %}
+<div class="portal-shell">
+  <header class="portal-header">
+    <div class="portal-header__brand">
+      <img class="portal-header__logo" src="{{ url_for('static', filename='images/center_logo.svg') }}" alt="Center logo">
+      <span class="portal-header__brand-name">Youth Center</span>
+    </div>
+    <nav class="portal-nav" aria-label="Primary">
+      {% block portal_nav %}{% endblock %}
+    </nav>
+    <div class="portal-header__user">
+      <span class="portal-header__name">{{ current_user.full_name }}</span>
+      <span class="badge badge--primary">{{ current_user.role|capitalize }}</span>
+      <form method="post" action="{{ url_for('auth.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn--secondary">Logout</button>
+      </form>
+    </div>
+  </header>
+  <div class="portal-main">
+    <div class="ds-page">
+      {% block portal_content %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% endblock %}

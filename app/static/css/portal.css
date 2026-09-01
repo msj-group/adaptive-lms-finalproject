@@ -1,0 +1,93 @@
+/* ==========================================================================
+   Adaptive English LMS -- Teacher / Student portal shell (top bar)
+   Narrowly scoped to the responsive header bar the shared design tokens
+   and base.css cannot already express. Dashboard grids/tables live in
+   dashboard.css (shared with the Administrator dashboard).
+   ========================================================================== */
+
+.portal-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.portal-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--space-8);
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.portal-header__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.portal-header__logo {
+  height: 32px;
+  width: auto;
+}
+
+.portal-header__brand-name {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
+}
+
+.portal-nav {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.portal-nav__link {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.portal-nav__link:hover {
+  background: var(--color-bg-subtle);
+  color: var(--color-text-primary);
+}
+
+.portal-nav__link--active {
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+}
+
+.portal-header__user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+.portal-header__name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.portal-main {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .portal-header {
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .portal-header__user {
+    margin-left: 0;
+  }
+}

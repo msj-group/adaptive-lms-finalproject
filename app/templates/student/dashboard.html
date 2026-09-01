@@ -1,0 +1,79 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_dashboard_macros.html" as dash %}
+{% block title %}Student Dashboard{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('student.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+<h1>Welcome, {{ current_user.full_name }}</h1>
+<p class="ds-section__desc">
+  Your active enrollments. Class times are shown in the center timezone
+  (<strong>{{ tz_name }}</strong>).
+</p>
+
+{% if not cards %}
+<div class="empty-state">
+  <div class="empty-state__title">No active enrollments</div>
+  <div>When an administrator enrolls you in a group, it will appear here.</div>
+</div>
+{% else %}
+
+<div class="dash-section">
+  <h2>Next class</h2>
+  <p>{{ dash.next_class_line(next_class, now, tz_name) }}</p>
+</div>
+
+<div class="dash-section">
+  <h2>Upcoming classes (next 7 days)</h2>
+  {{ dash.upcoming_table(upcoming, now, tz_name, show_group=True) }}
+</div>
+
+<div class="dash-section">
+  <h2>Your groups</h2>
+  <div class="dash-card-list">
+    {% for card in cards %}
+    <div class="card">
+      <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
+        <div>
+          <div class="card__title" style="margin-bottom: var(--space-1)">{{ card.group_name }}</div>
+          <div class="card__body">{{ card.course_title }} &middot; {{ card.level_name }}</div>
+          <div class="card__body">{{ card.term_name }} ({{ card.term_start.isoformat() }} &ndash; {{ card.term_end.isoformat() }})</div>
+        </div>
+        {{ dash.operational_badge(card.operational) }}
+      </div>
+
+      {% if not card.operational %}
+      <div class="alert alert--warning" style="margin-top: var(--space-3)">
+        Not operational: {{ card.archived_labels | join(", ") }} archived. This enrollment is kept
+        as historical context and produces no upcoming class.
+      </div>
+      {% endif %}
+
+      <dl style="display:grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: var(--space-3) 0 0;">
+        <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Next class</dt>
+        <dd style="margin:0">{{ dash.next_class_line(card.next_class, now, tz_name) }}</dd>
+      </dl>
+
+      {% if card.schedules %}
+      <table class="dash-table" style="margin-top: var(--space-3)">
+        <thead><tr><th>Day</th><th>Time ({{ tz_name }})</th><th>Location</th></tr></thead>
+        <tbody>
+          {% for s in card.schedules %}
+          <tr>
+            <td>{{ dash.weekday_name(s.day_of_week) }}</td>
+            <td>{{ dash.time_range(s.start_time, s.end_time) }}</td>
+            <td>{{ s.location or "—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="card__body" style="margin-top: var(--space-3)">No active schedule for this group yet.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

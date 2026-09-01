@@ -163,7 +163,37 @@ def test_login_unsafe_next_falls_back_to_correct_role_home_for_non_admin(app, cl
         follow_redirects=False,
     )
     assert resp.status_code == 302
-    # Students have no dedicated dashboard yet -> DEFAULT_HOME_ENDPOINT.
+    # M09: Students now have a dedicated dashboard.
+    assert resp.headers["Location"] == "/student/dashboard"
+
+
+def test_login_unsafe_next_falls_back_to_role_home_for_teacher(app, client):
+    with app.app_context():
+        make_user("teacher@example.com", UserRole.TEACHER.value, password=PASSWORD)
+
+    target = quote("//evil.example/", safe="")
+    resp = client.post(
+        f"/auth/login?next={target}",
+        data={"email": "teacher@example.com", "password": PASSWORD},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/teacher/dashboard"
+    assert "evil.example" not in resp.headers["Location"]
+
+
+def test_researcher_still_falls_back_to_default_home(app, client):
+    """The Researcher dashboard is deferred to Phase 6, so Researcher
+    keeps the DEFAULT_HOME_ENDPOINT fallback."""
+    with app.app_context():
+        make_user("researcher@example.com", UserRole.RESEARCHER.value, password=PASSWORD)
+
+    resp = client.post(
+        "/auth/login",
+        data={"email": "researcher@example.com", "password": PASSWORD},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
     assert resp.headers["Location"] == "/design-system/"
 
 
@@ -212,6 +242,18 @@ def test_existing_login_success_without_next_still_works(app, client):
     )
     assert resp.status_code == 302
     assert resp.headers["Location"] == "/admin/dashboard"
+
+
+def test_authenticated_user_visiting_login_is_sent_to_role_home(app, client):
+    """An already-authenticated user who loads /auth/login is redirected
+    to their own role home -- for every role, not just Administrator."""
+    with app.app_context():
+        make_user("teacher@example.com", UserRole.TEACHER.value, password=PASSWORD)
+    client.post("/auth/login", data={"email": "teacher@example.com", "password": PASSWORD})
+
+    resp = client.get("/auth/login", follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/teacher/dashboard"
 
 
 def test_existing_logout_still_works(app, client):

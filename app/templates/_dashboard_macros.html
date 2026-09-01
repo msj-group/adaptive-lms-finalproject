@@ -1,0 +1,83 @@
+{# Shared dashboard rendering helpers (Administrator + Teacher + Student).
+   Presentation only -- no database access. #}
+
+{% set _WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] %}
+
+{% macro weekday_name(n) -%}
+  {{- _WEEKDAYS[n] if n is not none and 0 <= n <= 6 else "?" -}}
+{%- endmacro %}
+
+{% macro time_range(start, end) -%}
+  {{- start.strftime("%H:%M") }}–{{ end.strftime("%H:%M") -}}
+{%- endmacro %}
+
+{% macro operational_badge(is_operational) -%}
+  {%- if is_operational -%}
+    <span class="badge badge--success">Operational</span>
+  {%- else -%}
+    <span class="badge badge--neutral">Not operational</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{# A concise current/upcoming class table. `rows` is a list of
+   schedule_occurrences.Occurrence namedtuples whose `.ref` is the
+   dashboard context dict built in dashboard_queries._schedule_context. #}
+{% macro upcoming_table(rows, now, tz_name, show_group=True) -%}
+  {% if rows %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        {% if show_group %}<th>Group</th><th>Course</th>{% endif %}
+        <th>Day</th>
+        <th>Date</th>
+        <th>Time ({{ tz_name }})</th>
+        <th>Location</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for occ in rows %}
+      <tr>
+        {% if show_group %}
+        <td>{{ occ.ref.group_name }}</td>
+        <td>{{ occ.ref.course_title }} ({{ occ.ref.level_name }})</td>
+        {% endif %}
+        <td>{{ weekday_name(occ.ref.day_of_week) }}</td>
+        <td>{{ occ.start.strftime("%Y-%m-%d") }}</td>
+        <td>{{ time_range(occ.start, occ.end) }}</td>
+        <td>{{ occ.ref.location or "—" }}</td>
+        <td>
+          {%- if occ.start <= now and now < occ.end -%}
+            <span class="badge badge--success">In progress</span>
+          {%- else -%}
+            <span class="badge badge--primary">Upcoming</span>
+          {%- endif -%}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No classes in the next 7 days</div>
+    <div>Nothing scheduled to meet within a week from now.</div>
+  </div>
+  {% endif %}
+{%- endmacro %}
+
+{% macro next_class_line(occ, now, tz_name) -%}
+  {%- if occ -%}
+    {%- if occ.start <= now and now < occ.end -%}
+      <strong>In progress now</strong>:
+    {%- else -%}
+      <strong>Next</strong>:
+    {%- endif -%}
+    {{ " " }}{{ weekday_name(occ.ref.day_of_week) }} {{ occ.start.strftime("%Y-%m-%d") }},
+    {{ time_range(occ.start, occ.end) }} ({{ tz_name }})
+    {%- if occ.ref.location %} &mdash; {{ occ.ref.location }}{% endif -%}
+  {%- else -%}
+    <span class="badge badge--neutral">No upcoming class</span>
+  {%- endif -%}
+{%- endmacro %}

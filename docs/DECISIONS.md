@@ -155,14 +155,24 @@ blocklisting known-compromised or common passwords, and a password
 strength meter/feedback at input time. The maximum exists only to bound
 the input size reaching Argon2id, not as a usability restriction.
 
-**No `must_change_password` flag.** A forced first-login password change
-would need a student-facing login/dashboard flow to redirect into, and
-that does not exist yet. Adding the column now without anywhere to act on
-it would be a half-finished control. Recorded here as a follow-up once
-the Student dashboard exists: the Administrator currently hands the
-temporary password to the student out of band (never by email -- no
-email service is approved), and the student keeps using it until an
+**No `must_change_password` flag.** Adding the column without a control
+that acts on it would be a half-finished feature. The Administrator
+currently hands the temporary password to the student out of band (never
+by email -- no email service is approved), and it stays valid until an
 administrator resets it.
+
+M09 added Student and Teacher dashboards, but a dashboard is only a
+landing page -- it is **not** the forced-change flow, and this note must
+not be read as "the dashboard resolves this". A real temporary-password
+workflow is a separate, still-deferred **account-security** design
+requiring an explicit decision across three layers at once: schema (a
+`must_change_password` / credential-age column or equivalent), session
+(how a not-yet-changed session is quarantined and where it is forced to
+redirect), and password policy (self-service change form, current-password
+re-entry, reuse rules, and the `bump_auth_version` interaction). None of
+that is in scope for M09, which deliberately adds no `must_change_password`
+column, no self-service password-mutation route, and no migration. See
+"Role dashboards (Phase 3, Part M09)" for the boundary.
 
 **Student delete policy.** Same reasoning as Groups: student accounts use
 the Active/Suspended lifecycle only, there is no delete route or button.
@@ -1292,3 +1302,200 @@ Schedule" button to the Group detail page. No unrelated CSS/JS was added.
   direct DB manipulation) are not auto-repaired; a name-only Term edit
   stays allowed so they can be corrected.
 - Attendance remains a future module.
+
+
+## Role dashboards (Phase 3, Part M09)
+
+Real, server-authorized dashboards for Administrator, Teacher, and
+Student, built **only** on the domain that exists through M08
+(`AcademicTerm -> Level -> Course -> Group -> Enrollment /
+GroupTeacherAssignment / Schedule`). **No model change and no database
+migration** -- route, service, template, and narrowly-scoped CSS only.
+
+### A. Boundaries -- what each dashboard is, and is not
+
+- Every dashboard is a **read-only landing page**. No dashboard route
+  takes a lock, writes a row, or exposes a mutation. Mutations stay where
+  they already live (the Administrator section).
+- **Administrator** (`GET /admin/dashboard`, unchanged URL, still
+  Administrator-only): the existing academic-structure counts, plus
+  people counts (Student/Teacher total/active/suspended), Group counts,
+  clearly-labelled *active Enrollment-row* and *active
+  Teacher-assignment-row* counts, a current/upcoming operational class
+  list, and setup indicators for active Groups missing an eligible active
+  teacher or an active Schedule. Direct links point only to pages that
+  exist. No Attendance / Grades / Payments / announcements / messages /
+  charts / fabricated data.
+- **Teacher** (new `teacher` blueprint, `GET /teacher/dashboard`): only
+  data derived from the authenticated Teacher's own **ACTIVE**
+  `GroupTeacherAssignment` rows -- assigned Group/Course/Level/Term,
+  operational state, the active eligible enrolled-student **count** (no
+  student identities), active schedules + location + timezone, and the
+  current/next + upcoming-class lists. No roster page, no mutation
+  routes, no Units/Lessons/Attendance/reviews/announcements/messages.
+- **Student** (new `student` blueprint, `GET /student/dashboard`): only
+  data derived from the authenticated Student's own **ACTIVE**
+  `Enrollment` rows -- enrolled Group/Course/Level/Term, operational
+  state, active schedules + location + timezone, and the current/next +
+  upcoming-class lists. Never exposes other students, withdrawn
+  enrollments, unauthorized Groups, or internal numeric IDs in object
+  URLs. No Assignments/Grades/Attendance/progress/Lessons/Materials/
+  announcements/messages/calendar-event entities.
+- **Researcher** keeps the `DEFAULT_HOME_ENDPOINT` (`design_system.index`)
+  fallback -- its dashboard is deferred to Phase 6.
+
+### B. Ownership and operational-status semantics
+
+- **Ownership is enforced in SQL**, never by filtering an unscoped
+  result in a template: the Teacher/Student queries filter
+  `GroupTeacherAssignment.teacher_id == current_user.id` /
+  `Enrollment.student_id == current_user.id` **and** `status == active`
+  in the query itself.
+- **A row is *operational* only when the whole chain is active** --
+  Schedule, Group, AcademicTerm, Course, and Level. A legacy
+  inconsistent ancestor (e.g. an active Group under an archived Course)
+  is treated honestly as **non-operational**: the assignment/enrollment
+  still shows as historical context with a clear "Not operational" badge,
+  but it contributes **no** current/next/upcoming occurrence.
+- **"Eligible" counts require role + active account.** The Teacher
+  dashboard's enrolled-student count is `Enrollment.status == active AND
+  User.role == student AND User.status == active` -- stricter than M08's
+  `active_student_enrollment_count` (which does not check `User.status`),
+  because a dashboard headline number should reflect students who can
+  actually attend. A suspended student's active enrollment is therefore
+  excluded from this figure (it still occupies a seat for capacity
+  purposes elsewhere -- the two questions differ). The
+  "missing eligible teacher" indicator reuses M08's
+  `eligible_active_teacher_count == 0` definition unchanged.
+
+### C. Recurring occurrence / timezone semantics
+
+- `app/services/schedule_occurrences.py` is a Flask-independent,
+  stdlib-only island of pure functions over **naive local wall-clock
+  datetimes**. `day_of_week` stays Monday=0 .. Sunday=6; effective date
+  ranges stay inclusive at both ends; one occurrence is the half-open
+  interval `[combine(date, start_time), combine(date, end_time))` on a
+  single civil day (overnight slots remain out of scope, per M08).
+- `current_or_next_occurrence(spec, now)` returns the single earliest
+  occurrence whose `end > now` -- "current" when `start <= now < end`,
+  "next" otherwise -- or `None` when the effective range holds no such
+  occurrence (it has ended, or never contained the weekday).
+- `upcoming_occurrences(specs, now, horizon=7d, cap)` returns a sorted,
+  capped list of occurrences with `end > now` and `start <= now +
+  horizon`. `earliest_occurrence(specs, now)` is the combined
+  no-horizon "next class" across a member's operational schedules.
+- **`now` is injectable** -- the real callers pass
+  `app_now(APP_TIMEZONE)`; every occurrence test injects a fixed `now`,
+  and every date-dependent *route* test monkeypatches the route module's
+  own `app_now` binding to a fixed local `NOW`, so no dashboard test
+  depends on the wall clock (they stay valid after 2026).
+- **Timezone resolution (`to_app_local`) -- fail-closed.** Weekly
+  `start_time` / `end_time` are local civil values and are never
+  converted to UTC (the M08 decision). `to_app_local(tz_name,
+  utc_moment)` resolves in this order:
+    1. an **explicit fixed-offset spec** -- `UTC` / `GMT`, `UTC+2` /
+       `GMT-05:30`, `+02:00` / `-0530` / `+2`. An offset that is
+       malformed, or beyond ±14:00 (including ±14 with non-zero
+       minutes), raises `TimezoneConfigError` -- it is not passed on as
+       an IANA name.
+    2. a **named IANA zone** the host's `zoneinfo` can load (production
+       Linux, or any host with the `tzdata` package). This is attempted
+       **before** any deployment fallback, so a resolvable IANA value
+       always wins.
+    3. **only if step 2 could not resolve it**: a small
+       deployment-specific fixed-offset table -- currently just
+       `Africa/Tripoli -> +02:00` (Libya abolished DST in 2013, so the
+       offset is constant year-round) -- so occurrence math stays
+       deterministic on a host without an IANA database (e.g. Windows
+       dev without `tzdata`).
+    4. **otherwise `TimezoneConfigError`.** An empty, unknown, or
+       unresolvable `APP_TIMEZONE` is a configuration bug that must be
+       fixed (install `tzdata`, or set `APP_TIMEZONE` to `UTC` / an
+       explicit offset) -- it is **never** silently reinterpreted as
+       UTC, because a dashboard whose "now" is wrong by the center's
+       real offset on every request is worse than a loud, obvious
+       failure. `app_now` propagates the error.
+  No new dependency was added.
+
+### D. Query / performance strategy
+
+- `Group -> Course -> Level` and `Group -> AcademicTerm` are always
+  eager-loaded (`joinedload`).
+- No per-row membership or schedule query: the Teacher/Student dashboards
+  issue one scoped assignment/enrollment query, one batched
+  `Schedule ... WHERE group_id IN (...)` query, and (Teacher) one grouped
+  `COUNT ... GROUP BY group_id` aggregate -- the SELECT count does not
+  grow with the number of assigned/enrolled Groups. `admin_setup_indicators`
+  is at most three fixed queries regardless of Group count; the same
+  operational-active-Group list it already fetches yields
+  `operational_group_count`, so the dashboard can honestly distinguish
+  "no operational active groups yet" (neutral empty state) from "every
+  operational active group is fully configured" (success) from "some are
+  missing a teacher / schedule" (the warning lists) -- an empty center is
+  never described as fully configured.
+- Templates receive plain dicts / `Occurrence` namedtuples and **never
+  touch the ORM** -- all display strings (`group_name`, `course_title`,
+  `location`, ...) are materialized in the query layer.
+- Occurrence arithmetic is pure Python over already-fetched rows; it
+  issues no queries and is bounded (`window / 7 + 1` iterations per
+  slot).
+
+### E. Authentication / authorization
+
+- `ROLE_HOME_ENDPOINT` gained `teacher -> teacher.dashboard` and
+  `student -> student.dashboard`; the `_home_endpoint_for` /
+  safe-`next` login logic is otherwise unchanged, so it applies both
+  after a successful login and when an already-authenticated user loads
+  `/auth/login`. Researcher still falls through to
+  `DEFAULT_HOME_ENDPOINT`.
+- Each dashboard is guarded by `roles_required(<its role>)`: anonymous
+  access redirects to login (preserving `?next=`), and every other
+  authenticated role gets 403. Changing the URL or a query parameter
+  cannot surface another Teacher's or Student's data because the scoping
+  is in the SQL `WHERE`, keyed off `current_user.id`, not off any
+  request input. The existing safe-`next` and logout-CSRF tests are
+  preserved.
+
+### F. UI
+
+- A shared responsive `layouts/portal_base.html` (top bar: brand,
+  role-appropriate nav, current user name + role badge, CSRF-protected
+  POST logout) for the Teacher/Student portal, using the existing design
+  tokens and brand logo. The Administrator shell is untouched.
+- New CSS is deliberately minimal: `portal.css` (the header/shell only)
+  and `dashboard.css` (stat grid, dashboard tables -- shared with the
+  Administrator dashboard, which pulls it in via `{{ super() }}` in its
+  `extra_head`). No unrelated redesign. No "Soon" / dead links for
+  unimplemented features anywhere on the new pages.
+
+### G. Deferred
+
+- **Researcher dashboard** -- Phase 6.
+- **Temporary-password / forced-change workflow** -- still deferred, and
+  M09 does **not** resolve it. It is a separate account-security design
+  spanning schema + session + password policy (see the amended
+  "No `must_change_password` flag" note in the Student account
+  management section). M09 adds no `must_change_password` column, no
+  self-service password-mutation route, and no migration.
+- Attendance, Grades, Payments, Assignments/Lessons/Materials,
+  announcements, messages, progress/Continue-Learning, and
+  calendar-event entities -- all remain future modules and appear on no
+  dashboard.
+
+### H. Honest limitations
+
+- `APP_TIMEZONE` resolution is **fail-closed** (section C): a host that
+  can neither load the configured IANA zone via `zoneinfo` nor fall back
+  through the small deployment table raises `TimezoneConfigError` on the
+  first dashboard request instead of silently pretending the center runs
+  on UTC. The operator's fix is to install `tzdata` or set a fixed
+  offset. The configured `Africa/Tripoli` resolves on production Linux
+  (real zone) and on a bare Windows dev box (deployment fallback).
+- Wall-clock occurrence arithmetic does not model a DST transition that
+  lands on a class hour. `Africa/Tripoli` has no DST, so this is inert
+  for the configured deployment; a future multi-timezone or DST-observing
+  center would need explicit handling.
+- The automated suite runs on SQLite and a real wall clock is never
+  used in assertions (every occurrence test injects `now`); browser
+  verification of the three dashboards was performed only to the extent
+  noted in the M09 report.

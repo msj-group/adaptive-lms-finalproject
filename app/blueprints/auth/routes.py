@@ -10,9 +10,13 @@ from app.security.redirects import get_safe_redirect_target
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 # Only roles with a real dashboard get a dedicated entry here. Other roles
-# fall back to DEFAULT_HOME_ENDPOINT until their dashboards are built.
+# (currently only Researcher) fall back to DEFAULT_HOME_ENDPOINT until
+# their dashboards are built -- the Researcher dashboard is deferred to
+# Phase 6 (see docs/DECISIONS.md, "Role dashboards (Phase 3, Part M09)").
 ROLE_HOME_ENDPOINT = {
     UserRole.ADMINISTRATOR.value: "admin.dashboard",
+    UserRole.TEACHER.value: "teacher.dashboard",
+    UserRole.STUDENT.value: "student.dashboard",
 }
 DEFAULT_HOME_ENDPOINT = "design_system.index"
 
