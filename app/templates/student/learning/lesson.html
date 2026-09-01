@@ -1,0 +1,25 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ lesson_title }} — {{ group_name }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('student.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+<p class="ds-section__desc" style="margin-bottom: var(--space-2)">
+  {{ group_name }} &middot; {{ course_title }} &middot; {{ level_name }} &middot; {{ term_name }} &middot; {{ unit_title }}
+</p>
+<h1 style="margin-top: 0">{{ lesson_title }}</h1>
+
+<div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
+  <a class="btn btn--secondary" href="{{ url_for('student.group_units', group_public_id=group_public_id) }}">Back to Lessons</a>
+  <a class="btn btn--secondary" href="{{ url_for('student.dashboard') }}">Dashboard</a>
+</div>
+
+<div class="card">
+  {% if lesson_description %}
+  {# Plain text: line breaks preserved via CSS, never via |safe or stored HTML. #}
+  <div style="white-space: pre-wrap; word-break: break-word;">{{ lesson_description }}</div>
+  {% else %}
+  <p class="ds-section__desc" style="margin: 0">This lesson has no description yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

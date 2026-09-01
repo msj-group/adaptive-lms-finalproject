@@ -57,6 +57,7 @@
         <td>{{ (unit.description or "")|truncate(90) }}</td>
         <td>
           <div class="ds-row" style="gap: var(--space-2)">
+            <a class="btn btn--secondary" href="{{ url_for('teacher.group_lessons', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Manage Lessons</a>
             {% if operational %}
             <a class="btn btn--secondary" href="{{ url_for('teacher.unit_edit', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Edit</a>
             {% if not loop.first %}
@@ -73,7 +74,7 @@
             {% endif %}
             {% endif %}
             <form method="post" action="{{ url_for('teacher.unit_toggle_status', group_public_id=group.public_id, unit_public_id=unit.public_id) }}"
-              data-confirm="Archive unit '{{ unit.title }}'? It will move out of the teaching order.">
+              data-confirm="Archive unit '{{ unit.title }}'? It moves out of the teaching order and its lessons become unavailable to students. Lesson publication statuses are preserved and no content is deleted — reactivating the unit restores visibility.">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--danger-outline">Archive</button>
             </form>
@@ -95,7 +96,7 @@
 {% if archived_units %}
 <section class="dash-section">
   <h2>Archived units <span class="badge badge--neutral">{{ archived_units|length }}</span></h2>
-  <p class="ds-section__desc">Archived units keep their stored order and are not part of the teaching sequence.</p>
+  <p class="ds-section__desc">Archived units keep their stored order and are not part of the teaching sequence. Their lessons are hidden from students while the unit stays archived; publication statuses are preserved and nothing is deleted. Reactivating a unit restores its lessons to students without rewriting any status.</p>
   <div class="dash-scroll">
   <table class="dash-table">
     <thead><tr><th>Title</th><th>Description</th><th style="width:14rem">Actions</th></tr></thead>
@@ -105,14 +106,17 @@
         <td>{{ unit.title }}</td>
         <td>{{ (unit.description or "")|truncate(90) }}</td>
         <td>
-          {% if operational %}
-          <form method="post" action="{{ url_for('teacher.unit_toggle_status', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn--secondary">Reactivate</button>
-          </form>
-          {% else %}
-          <span class="badge badge--neutral">Read-only</span>
-          {% endif %}
+          <div class="ds-row" style="gap: var(--space-2)">
+            <a class="btn btn--secondary" href="{{ url_for('teacher.group_lessons', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Manage Lessons</a>
+            {% if operational %}
+            <form method="post" action="{{ url_for('teacher.unit_toggle_status', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--secondary">Reactivate</button>
+            </form>
+            {% else %}
+            <span class="badge badge--neutral">Read-only</span>
+            {% endif %}
+          </div>
         </td>
       </tr>
       {% endfor %}

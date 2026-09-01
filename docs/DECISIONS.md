@@ -1676,13 +1676,26 @@ create cannot slip past the freeze. Non-identity Group fields
 
 ### H. Deliberate deferrals
 
-- **Lessons** and their draft/published lifecycle -- M11.
-- **Materials / uploads / content**, student content pages, completion
-  tracking -- M12+.
+> **M11 amendment (honest wording).** M11 has since landed
+> `Lesson` and its draft/published lifecycle, the Teacher Lesson
+> management pages, **and** the first authorized Student Lesson
+> navigation (a Group learning outline plus a single Lesson page) with a
+> **plain-text** Lesson description. So the M10 line "Students get no Unit
+> pages in M10 -- student content access begins only when the
+> Lesson/content model exists" is now fulfilled *for Lessons*: students
+> read only published Lessons under an active Unit and active hierarchy.
+> Still deferred to M12+: **rich HTML / a rich-text editor, Materials,
+> file uploads and downloads, external links, PDF/Word/image/audio/video,
+> file storage, and any Lesson completion / progress / recently-opened
+> tracking.** See "Lesson content and navigation (Phase 3, Part M11)"
+> below.
+
+- **Lessons** and their draft/published lifecycle -- M11 (done).
+- **Materials / uploads / rich content**, completion / progress tracking
+  -- M12+.
 - No Course-level Unit templates, no Unit copying, no drag-and-drop
   ordering, no Administrator Unit management, no Unit search, no
-  notifications. Students get no Unit pages in M10 -- student content
-  access begins only when the Lesson/content model exists.
+  notifications.
 
 ### I. Honest limitations
 
@@ -1698,3 +1711,287 @@ create cannot slip past the freeze. Non-identity Group fields
   portability nuance the project already has for Group name / Course
   title. The friendly form check compares exact stripped strings; the DB
   constraint is the final defense.
+
+
+## Lesson content and navigation (Phase 3, Part M11)
+
+Ordered **Lessons** inside a Unit, Teacher draft/publication management,
+and the first authorization-safe Student Lesson navigation. Adds one
+model (`Lesson`) and one additive migration (`cb9112548dd6`,
+`Revises: c3e39736023a`) that creates only the `lessons` table. Rich
+content, Materials, uploads/downloads, and completion/progress tracking
+are deliberately out of scope (M12+).
+
+### A. Model -- a Lesson belongs directly to a Unit
+
+`Lesson` has a required, non-cascading `unit_id` FK and **nothing else
+that ties it to the hierarchy** -- no `group_id` / `course_id` /
+`level_id` / `academic_term_id` (all reachable via `lesson.unit.group`),
+and no `teacher_id` / `created_by` (every active assigned Teacher of the
+Group is an equal collaborator). This mirrors how `Enrollment`,
+`GroupTeacherAssignment`, `Schedule`, and `Unit` each avoid duplicating
+what the parent already determines.
+
+Columns: `BigInteger` id; `String(36)` unique `public_id` (the only
+identifier that ever crosses a request boundary); `unit_id`;
+`title` (`String(150)`, required); optional plain-text `description`
+(`Text`; 5000-character form boundary); `display_order` (`Integer`,
+server-owned); `status` (`String(32)`, the **Lesson-specific**
+`LessonStatus` `draft` / `published` -- *not* the academic
+`active`/`archived` enum); nullable `published_at` (UTC); UTC
+`created_at` / `updated_at`.
+
+Constraints / indexes on `lessons`:
+
+- `UNIQUE (unit_id, title)` (`uq_lessons_unit_title`) -- an ordered Unit
+  never has two same-named Lessons; draft Lessons count, so a title
+  cannot be "freed" by leaving a Lesson unpublished. The same title is
+  fine in a different Unit.
+- `UNIQUE (public_id)`.
+- `CHECK (display_order >= 0)` (`ck_lessons_display_order_non_negative`).
+- `CHECK (status IN ('draft','published'))` (`ck_lessons_status_valid`).
+- `CHECK ((status='draft' AND published_at IS NULL) OR (status='published'
+  AND published_at IS NOT NULL))`
+  (`ck_lessons_status_published_at_consistency`) -- a draft always has a
+  NULL timestamp, a published Lesson always has one.
+- `unit_id` / `status` / `display_order` indexes.
+
+There is deliberately **no** uniqueness constraint on `display_order` --
+gaps are fine and the reorder logic never renumbers.
+
+`Unit.lessons` <-> `Lesson.unit` is the only new relationship; **no
+schema change was made to `units`**.
+
+### B. Draft / published lifecycle and `published_at` semantics
+
+- A new Lesson always starts `draft` with `published_at` NULL.
+- **publish**: `status='published'`, `published_at` = current UTC moment.
+- **unpublish**: `status='draft'`, `published_at` cleared. Unpublishing
+  returns a Lesson to draft -- there is no archived Lesson state and no
+  hard delete in M11.
+- **republish**: `status='published'` with a **new** current timestamp.
+- **editing never touches `status`, `published_at`, or `display_order`**
+  -- editing a published Lesson keeps it published at its existing
+  timestamp and position; editing a draft keeps it a draft.
+- A Unit / Group / academic-ancestor lifecycle change **never** rewrites
+  a Lesson's `status` or `published_at`. A published Lesson under an
+  inactive Unit or ancestor is *effectively unavailable* to Students
+  (section E) but stays `published` in the row; reactivating the chain
+  restores visibility with no status rewrite.
+- Publication status is owned solely by the `toggle-publication` route;
+  `LessonForm` and the create/edit HTML carry neither `status` nor
+  `display_order`.
+
+### C. Teacher authorization and co-teacher behavior
+
+- Group- and Unit-centered routes only, all under
+  `/teacher/groups/<group_public_id>/units/<unit_public_id>/lessons/...`
+  -- there is **no** flat `/teacher/lessons` collection, and no internal
+  numeric id appears in any URL, form value, or rendered page.
+- `roles_required(TEACHER)` gives the standard role guard (anonymous ->
+  login, any non-Teacher role -> 403).
+- **Object authorization is server-side and nested.** The current Teacher
+  must hold an **active** `GroupTeacherAssignment` to the Group in the
+  URL; the Unit must belong to that Group; the Lesson must belong to that
+  Unit. An unassigned Teacher, a `removed` assignment, a Unit public_id
+  from another Group, a Lesson public_id from another Unit, a bad UUID,
+  or a missing object all return **404** -- never 403, never any hint the
+  object exists. The teacher lessons module reuses M10's
+  `_teacher_group_or_404` / `_unit_for_group_or_404` (imported from
+  `app/blueprints/teacher/units.py`, the natural home for "this
+  Teacher's access to a Group + its Units") and adds
+  `_lesson_for_unit_or_404`.
+- **Co-teachers are equal.** Any number of active assigned Teachers may
+  view and manage the same Unit's Lessons; there is no "owner". The
+  signed edit snapshot (section F) is what stops one co-teacher silently
+  overwriting another's completed edit.
+- **GET stays available** to an actively assigned Teacher even when the
+  Unit, Group, or an academic ancestor is archived, so historical
+  Lessons can be read. A **"Manage Lessons"** link is added to every Unit
+  row -- active and archived -- on the M10 Teacher Units page.
+
+### D. Lifecycle rules for Lesson mutations
+
+Re-checked against the **locked** rows:
+
+- **Create / edit / reorder / publish** require: an active Teacher
+  account with role `teacher`, an **active** assignment to the Group, an
+  active AcademicTerm / Level / Course / Group, **and an active Unit**
+  belonging to that Group.
+- **Unpublish** is allowed while the assignment is active **even when the
+  Unit, Group, or an ancestor is archived** -- published content can
+  always be withdrawn. This is the one asymmetry: the
+  `toggle-publication` route, when the Lesson is currently `published`,
+  takes the locks, confirms Teacher/assignment, and unpublishes without
+  the operational-hierarchy check; when the Lesson is `draft` it applies
+  the full check before publishing.
+- Teacher assignment controls **management**, not continued Student
+  visibility (section E) -- a Student keeps reading a published Lesson
+  after every Teacher assignment is removed.
+
+### E. Effective Student-visibility formula
+
+A Lesson is visible to a Student **iff all** of:
+
+```
+Enrollment(student, group).status == active
+  AND AcademicTerm.status == active
+  AND Level.status          == active
+  AND Course.status         == active
+  AND Group.status          == active
+  AND Unit.status           == active
+  AND Lesson.status         == published
+```
+
+Any archived link in the chain makes every published Lesson under it
+*effectively unavailable* without changing a single `lessons` row;
+reactivating the chain restores visibility. Draft Lessons are never
+visible to Students -- their titles and descriptions never reach a
+Student response (the queries filter `status == 'published'`, so a draft
+is never loaded).
+
+### F. Ordering across draft and published Lessons
+
+- All Lessons in a Unit -- draft and published -- share **one**
+  Teacher-visible order (`display_order` then `id`). `display_order` is
+  **server-owned**: a new Lesson gets `MAX(display_order over ALL the
+  Unit's Lessons) + 1`, or `0` for the first
+  (`next_lesson_display_order`). The client cannot set it -- the create
+  form has no such field, and the move routes are bodyless `POST`
+  (CSRF token only).
+- **move-up / move-down** swap `display_order` with the nearest Lesson
+  **regardless of draft/published status** (unlike M10 Units, where an
+  archived Unit is skipped -- a Lesson has no archived state, so every
+  sibling participates).
+- A boundary move (already first / already last) is a safe no-op with a
+  clear flash and a Post/Redirect/Get -- not an error.
+- Gaps in `display_order` are acceptable and never repaired; there is no
+  DB uniqueness constraint on it.
+- Students see published Lessons in their relative position within the
+  complete Teacher order -- the Student view
+  (`published_lessons_ordered`) is a filtered subsequence of
+  `lessons_ordered`.
+
+### G. Student active-Enrollment authorization
+
+- `GET /student/groups/<group_public_id>/units` -- the Student learning
+  outline (active Units in Unit order, each with only its published
+  Lessons in Lesson order; an active Unit with no published Lesson shows
+  an honest empty state).
+- `GET /student/groups/<group_public_id>/units/<unit_public_id>/lessons/<lesson_public_id>`
+  -- one Lesson page: the authorized hierarchy context, the Lesson
+  title, and the safely-escaped plain-text description (line breaks
+  preserved with CSS `white-space: pre-wrap` -- **never** Jinja `|safe`,
+  never stored HTML).
+- **All authorization is SQL-scoped** to `current_user.id` in
+  `app/services/student_lessons.py` -- an object is never loaded broadly
+  and authorized afterwards, and no ORM-driven authorization runs in a
+  template. Every failure -- withdrawn / missing Enrollment, a different
+  Group, mismatched nested ids, an inactive Unit or ancestor, a draft or
+  non-existent Lesson -- yields **no row** and the route returns a
+  non-disclosing 404.
+- The outline issues a **bounded** query count: one for the authorized
+  Group, one for its active Units, one batched
+  `Lesson ... WHERE unit_id IN (...) AND status='published'` -- never one
+  query per Unit. Templates receive plain view dicts only.
+- Student access **does not depend on Schedule existence or on any
+  current Teacher assignment**.
+- An **"Open Lessons"** link is added to *operational* Group cards on the
+  Student dashboard only; historical / non-operational cards carry no
+  active content link.
+
+### H. Lifecycle non-cascade behavior
+
+Consistent with every earlier academic entity: archiving/reactivating a
+Unit, Group, or ancestor **never** archives, deletes, publishes,
+unpublishes, or otherwise rewrites a Lesson. Nothing is hard-deleted.
+Archiving a Unit makes its Lessons effectively unavailable to Students
+while preserving every publication status; reactivating restores
+visibility. The M10 Unit lifecycle semantics are unchanged -- only the
+confirmation/wording was extended to say so.
+
+### I. Stale-edit snapshot and the canonical lock policy
+
+Every Lesson mutation follows the canonical M11 lock order
+
+```
+AcademicTerm -> Level -> Course -> Group -> Teacher User ->
+GroupTeacherAssignment -> Unit -> Lesson rows (ascending internal id)
+```
+
+`lock_academic_hierarchy` owns the single deliberate transaction reset
+and takes the AcademicTerm/Level/Course locks; then
+`lock_group_in_open_transaction`, then `SELECT ... FOR UPDATE` on the
+Teacher `User` row, the `(group_id, teacher_id)` `GroupTeacherAssignment`
+row, the **Unit** row, and any Lesson rows -- for a reorder the target
+Lesson **and** its swap neighbour, locked lowest-id-first after the full
+Lesson order is re-read under the held Group + Unit locks. **The locked
+Unit row serializes same-Unit Lesson creation, ordering, and
+publication** (and the compatible M10 Unit lifecycle operations, which
+take the same Group + Unit locks under the same single reset). This is a
+new tail on the M10 graph, so it adds no reverse-order path. After the
+locks, authorization, the operational hierarchy + active Unit, and (for
+edit) the signed snapshot are all re-checked against the locked rows
+before any write; nothing is written until every check passes (no partial
+mutation).
+
+**M11 deliberately adds no new Group identity-freeze helper.** Every
+Lesson requires a Unit, and the existence of that Unit row already
+freezes the Group's `academic_term_id` / `course_id`
+(`group_has_unit_history`, M10). A Lesson under it changes nothing about
+that.
+
+**Signed edit snapshot** (`teacher.lesson-edit-snapshot.v1`,
+`itsdangerous.URLSafeSerializer`, app `SECRET_KEY`): covers `public_id`,
+`title`, and `description` -- everything the edit route can write, plus
+the object binding. `status`, `published_at`, and `display_order` are
+**excluded** because the edit route must never write them, so a completed
+publish / unpublish / reorder by a co-teacher does not stale an open edit
+form and an edit can never overwrite those. A missing / malformed /
+wrong-signature / wrong-object / value-mismatched token is rejected with
+a Post/Redirect/Get to a fresh GET that discards the submitted values; an
+ordinary WTForms failure or a caught `IntegrityError` re-embeds the
+*original* token unchanged. Same rules as the Group / Course / Schedule /
+Unit edit snapshots.
+
+`IntegrityError` (e.g. a racing duplicate `(unit_id, title)`, or the
+status/`published_at` CHECK as a last-resort defense) is caught, rolled
+back, and reported with a generic message -- no SQL, no internal id, no
+driver text.
+
+### J. Migration and MySQL
+
+`cb9112548dd6` (`Revises: c3e39736023a`) creates only the `lessons`
+table -- columns, the FK to `units.id`, the three CHECKs, the
+`(unit_id, title)` + `public_id` unique constraints, and the
+`unit_id` / `status` / `display_order` indexes. It alters no existing
+table. Applied and verified on the real development MySQL database at the
+schema level (InnoDB engine, FK, CHECK expressions, unique constraints,
+indexes) with the existing table row counts unchanged.
+
+### K. Deliberate M12+ deferrals
+
+Rich HTML and a rich-text editor; Materials; uploads and downloads; PDF /
+Word / images / audio / video / external links; file storage; Lesson
+completion, "recently opened", and progress calculations; assignments /
+quizzes / activities; Lesson copying; drag-and-drop ordering;
+Administrator Lesson management; Lesson search; notifications. No
+dependency was added for any future rich-content feature.
+
+### L. Honest limitations
+
+- SQLite (the test backend) has no `SELECT ... FOR UPDATE` and no
+  REPEATABLE READ isolation. The structural tests prove only the
+  *requested* single reset and lock order -- never that a real InnoDB
+  lock blocks a concurrent transaction. No safe real two-session MySQL
+  concurrency probe was run for M11; the M11 lock chain is the M10
+  pattern with a Unit + Lesson tail, and existing rows were left
+  untouched rather than exercised with a probe. The migration was
+  verified on the real MySQL database at the schema level only.
+- `UNIQUE (unit_id, title)` is case-insensitive on MySQL
+  (`utf8mb4_0900_ai_ci`) and case-sensitive on SQLite -- the same
+  portability nuance already noted for Group name / Course title / Unit
+  title. The friendly form check compares exact stripped strings; the DB
+  constraint is the final defense.
+- The status/`published_at` consistency CHECK uses portable SQL
+  (`IS NULL` / `IS NOT NULL`) enforced on both SQLite and MySQL 8.

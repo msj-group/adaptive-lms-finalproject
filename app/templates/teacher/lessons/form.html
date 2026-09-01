@@ -1,0 +1,57 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ 'Edit Lesson' if lesson else 'New Lesson' }} — {{ unit.title }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+<div class="ds-page" style="max-width: 640px; padding: 0">
+  <h1>{{ 'Edit Lesson' if lesson else 'New Lesson' }}</h1>
+  <p class="ds-section__desc">
+    {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }} — Unit: {{ unit.title }}
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  {% if lesson and lesson.status == "published" %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    This lesson is published. Saving keeps it published and does not change its position — use Unpublish on the lessons page to withdraw it.
+  </div>
+  {% elif lesson %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    This lesson is a draft. Saving does not publish it — use Publish on the lessons page when it is ready for students.
+  </div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {% if lesson %}
+    <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
+    {% endif %}
+
+    <div class="field" style="max-width:none">
+      {{ form.title.label(class_="field__label") }}
+      {{ form.title(class_="field__input") }}
+      {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.description.label(class_="field__label") }}
+      {{ form.description(class_="field__input", rows="8") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Plain text only. Line breaks are preserved when students read the lesson. Up to 5000 characters.
+      </span>
+      {% for error in form.description.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    {# No Status or Order control: publication is changed only via
+       Publish / Unpublish, and lesson order only via move-up / move-down. #}
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary") }}
+      <a class="btn btn--secondary" href="{{ url_for('teacher.group_lessons', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

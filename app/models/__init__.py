@@ -1,5 +1,5 @@
 from app.models.user import User, UserRole, UserStatus
-from app.models.enums import AcademicStatus
+from app.models.enums import AcademicStatus, LessonStatus
 from app.models.academic_term import AcademicTerm
 from app.models.level import Level
 from app.models.course import Course
@@ -8,12 +8,14 @@ from app.models.enrollment import Enrollment, EnrollmentStatus
 from app.models.group_teacher_assignment import GroupTeacherAssignment, GroupTeacherAssignmentStatus
 from app.models.schedule import Schedule
 from app.models.unit import Unit
+from app.models.lesson import Lesson
 
 __all__ = [
     "User",
     "UserRole",
     "UserStatus",
     "AcademicStatus",
+    "LessonStatus",
     "AcademicTerm",
     "Level",
     "Course",
@@ -24,4 +26,5 @@ __all__ = [
     "GroupTeacherAssignmentStatus",
     "Schedule",
     "Unit",
+    "Lesson",
 ]

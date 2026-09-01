@@ -1,0 +1,45 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ group_name }} — Lessons{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('student.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+<h1>{{ group_name }} — Lessons</h1>
+<p class="ds-section__desc">
+  {{ course_title }} &middot; {{ level_name }} &middot; {{ term_name }}
+</p>
+
+<div class="ds-row" style="margin-bottom: var(--space-6)">
+  <a class="btn btn--secondary" href="{{ url_for('student.dashboard') }}">Back to Dashboard</a>
+</div>
+
+{% if not units %}
+<div class="empty-state">
+  <div class="empty-state__title">No lessons available yet</div>
+  <div>Your teacher has not published any lessons for this group yet. Check back later.</div>
+</div>
+{% else %}
+{% for unit in units %}
+<section class="dash-section" style="{% if loop.first %}margin-top: 0{% endif %}">
+  <h2>{{ unit.title }}</h2>
+  {% if unit.lessons %}
+  <ul style="list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2);">
+    {% for lesson in unit.lessons %}
+    <li>
+      <a class="card" style="display:block; text-decoration:none;"
+         href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">
+        <span class="card__title">{{ lesson.title }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No lessons in this unit yet</div>
+    <div>This unit does not have any published lessons at the moment.</div>
+  </div>
+  {% endif %}
+</section>
+{% endfor %}
+{% endif %}
+{% endblock %}

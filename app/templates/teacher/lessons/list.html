@@ -1,0 +1,151 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_dashboard_macros.html" as dash %}
+{% block title %}{{ unit.title }} — Lessons{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+  <h1 style="margin:0">{{ unit.title }} — Lessons</h1>
+  {{ dash.operational_badge(operational and unit_active) }}
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
+    <dd style="margin:0">{{ group.name }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
+    <dd style="margin:0">{{ group.course.title }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
+    <dd style="margin:0">{{ group.course.level.name }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
+    <dd style="margin:0">{{ group.academic_term.name }} ({{ group.academic_term.start_date.isoformat() }} – {{ group.academic_term.end_date.isoformat() }})</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Unit</dt>
+    <dd style="margin:0">{{ unit.title }}{% if not unit_active %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
+  </dl>
+</div>
+
+{% if not operational %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
+  This group is not operational: the {{ archived_labels | join(", ") }} {{ "is" if archived_labels|length == 1 else "are" }} archived.
+  Published lessons here are currently <strong>hidden from students</strong>. Publication statuses are preserved, and reactivating the
+  chain restores visibility without rewriting any status. You can still unpublish a lesson, but cannot add, edit, reorder, or publish
+  until every parent is active again.
+</div>
+{% elif not unit_active %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
+  This unit is archived. Its published lessons are <strong>hidden from students</strong> for as long as the unit stays archived —
+  their publication statuses are kept unchanged, and reactivating the unit restores visibility. You can still unpublish a lesson,
+  but cannot add, edit, reorder, or publish lessons until the unit is reactivated.
+</div>
+{% else %}
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  <strong>Student visibility:</strong> enrolled students see only <em>published</em> lessons in this unit, in the order below, while
+  the unit and its whole academic chain stay active. Draft lessons are visible to teachers only. Editing a lesson never changes its
+  publication status or its position.
+</div>
+{% endif %}
+
+<div class="ds-row" style="margin-bottom: var(--space-6)">
+  <a class="btn btn--secondary" href="{{ url_for('teacher.group_units', group_public_id=group.public_id) }}">Back to Units</a>
+  {% if can_manage %}
+  <a class="btn btn--primary" href="{{ url_for('teacher.lesson_create', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Add Lesson</a>
+  {% endif %}
+</div>
+
+<section class="dash-section" style="margin-top: 0">
+  <h2>Lessons <span class="badge badge--neutral">{{ lessons|length }}</span></h2>
+  {% if lessons %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th style="width:3rem">#</th>
+        <th>Title</th>
+        <th style="width:8rem">Status</th>
+        <th style="width:14rem">Student visibility</th>
+        <th style="width:20rem">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lesson in lessons %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td><strong>{{ lesson.title }}</strong></td>
+        <td>
+          {% if lesson.status == "published" %}
+          <span class="badge badge--success">Published</span>
+          {% else %}
+          <span class="badge badge--neutral">Draft</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if lesson.status == "published" and can_manage %}
+          <span class="badge badge--success">Visible to students</span>
+          {% elif lesson.status == "published" %}
+          <span class="badge badge--warning">Hidden (parent archived)</span>
+          {% else %}
+          <span class="badge badge--neutral">Not visible (draft)</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="ds-row" style="gap: var(--space-2)">
+            {% if can_manage %}
+            <a class="btn btn--secondary" href="{{ url_for('teacher.lesson_edit', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">Edit</a>
+            {% if not loop.first %}
+            <form method="post" action="{{ url_for('teacher.lesson_move_up', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--secondary" aria-label="Move up">↑</button>
+            </form>
+            {% endif %}
+            {% if not loop.last %}
+            <form method="post" action="{{ url_for('teacher.lesson_move_down', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--secondary" aria-label="Move down">↓</button>
+            </form>
+            {% endif %}
+            {% endif %}
+            {% if lesson.status == "published" %}
+            <form method="post" action="{{ url_for('teacher.lesson_toggle_publication', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}"
+              data-confirm="Unpublish lesson '{{ lesson.title }}'? Students will no longer see it. It returns to draft.">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--danger-outline">Unpublish</button>
+            </form>
+            {% elif can_manage %}
+            <form method="post" action="{{ url_for('teacher.lesson_toggle_publication', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}"
+              data-confirm="Publish lesson '{{ lesson.title }}'? Enrolled students will be able to open it.">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--primary">Publish</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No lessons yet</div>
+    <div>
+      {% if can_manage %}Add the first lesson to start building this unit. New lessons begin as drafts.
+      {% else %}This unit has no lessons.{% endif %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+<script>
+  document.querySelectorAll("form[data-confirm]").forEach(function (form) {
+    form.addEventListener("submit", function (event) {
+      if (!confirm(form.dataset.confirm)) { event.preventDefault(); }
+    });
+  });
+</script>
+{% endblock %}
