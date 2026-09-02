@@ -79,6 +79,7 @@ from app.security.decorators import roles_required
 from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
 from app.services.group_transactions import lock_group_in_open_transaction
 from app.services.lesson_queries import lessons_ordered, next_lesson_display_order
+from app.services.notification_delivery import notify_lesson_published
 
 _ACTIVE = AcademicStatus.ACTIVE.value
 _DRAFT = LessonStatus.DRAFT.value
@@ -523,8 +524,18 @@ def lesson_toggle_publication(group_public_id, unit_public_id, lesson_public_id)
         flash("This lesson could not be published. Please reload and try again.", "danger")
         return _redirect_lessons(group_public_id, unit_public_id)
 
+    # M14: the publication is committed and the response is already
+    # decided. Capture the plain id, build the response, and only then
+    # attempt best-effort delivery in its own transaction. The producer
+    # re-derives the audience itself (own active Enrollment + fully
+    # active Term/Level/Course/Group/Unit + published Lesson), so nothing
+    # about who can see this Lesson is decided here. Unpublishing above
+    # deliberately notifies nobody.
+    published_lesson_id = lesson.id
     flash(f"Lesson '{lesson.title}' published.", "success")
-    return _redirect_lessons(group_public_id, unit_public_id)
+    response = _redirect_lessons(group_public_id, unit_public_id)
+    notify_lesson_published(published_lesson_id)
+    return response
 
 
 # ----------------------------------------------------------------------

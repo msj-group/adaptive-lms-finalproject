@@ -9,6 +9,7 @@ independent authenticated sessions cannot be exercised inside one test
 test ``app`` fixture holds that context open).
 """
 
+import re
 from datetime import date, datetime, time
 
 import pytest
@@ -285,6 +286,27 @@ def test_portal_logout_requires_csrf_and_post():
             db.engine.dispose()
 
 
+def _leaks_id_as_path_segment(html, prefix, numeric_id):
+    """True when `numeric_id` appears in `html` right after `prefix` as a
+    **complete** URL path segment.
+
+    A plain substring test is a false positive here: internal ids start at
+    1, and every object in a URL is addressed by a random UUID
+    ``public_id``, so ``"/groups/1"`` matches the perfectly legitimate
+    ``"/groups/1100f4bf-1b3f-..."`` roughly one run in sixteen. The
+    negative lookahead requires the id to end the segment -- followed by
+    ``/``, a quote, ``?``, ``#``, or end of string -- which is exactly how
+    a real leaked numeric id would appear, and never how a UUID continues
+    (UUIDs continue with hex digits or ``-``).
+
+    This is the same whole-segment intent as the neighbouring Student
+    dashboard test, expressed so it also catches an id at the very end of
+    a URL, which a trailing-slash check would miss.
+    """
+    pattern = re.escape(prefix) + re.escape(str(numeric_id)) + r"(?![0-9A-Za-z_-])"
+    return re.search(pattern, html) is not None
+
+
 def test_no_internal_numeric_ids_in_html(app, client):
     with app.app_context():
         teacher = _user("teach@example.com", UserRole.TEACHER.value)
@@ -296,8 +318,25 @@ def test_no_internal_numeric_ids_in_html(app, client):
     login(client, "teach@example.com")
 
     html = client.get("/teacher/dashboard").get_data(as_text=True)
-    for leaked in (f"/groups/{gid}", f'value="{gid}"', f"/schedules/{sid}", f"/teacher/{tid}"):
-        assert leaked not in html
+
+    # The detector must still be able to fail: a genuine whole-segment
+    # leak is caught, and a UUID that merely starts with the same digits
+    # is not. Without this, a broken matcher would silently turn the
+    # assertions below into a no-op.
+    assert _leaks_id_as_path_segment(f'href="/groups/{gid}/units"', "/groups/", gid)
+    assert _leaks_id_as_path_segment(f'href="/groups/{gid}"', "/groups/", gid)
+    assert not _leaks_id_as_path_segment(
+        f'href="/groups/{gid}a2b3c4d5-0000-0000-0000-000000000000/units"', "/groups/", gid
+    )
+
+    for prefix, internal_id in (
+        ("/groups/", gid),
+        ("/schedules/", sid),
+        ("/teacher/", tid),
+    ):
+        assert not _leaks_id_as_path_segment(html, prefix, internal_id), (prefix, internal_id)
+    # Form values are already exactly delimited by their quotes.
+    assert f'value="{gid}"' not in html
 
 
 def test_dashboard_query_count_is_bounded(app, client):

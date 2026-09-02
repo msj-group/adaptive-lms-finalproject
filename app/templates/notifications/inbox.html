@@ -1,0 +1,120 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Notifications{% endblock %}
+{#- The inbox is shared by both portal roles, so it is the one page whose
+    `portal_nav` has to branch: a Student keeps the established Dashboard +
+    Search links (the same partial every other Student page includes) and a
+    Teacher keeps the established Dashboard link. `active_nav` is left unset
+    so neither is marked current -- the shared layout appends the active
+    Notifications link itself, exactly once, right after this block.
+    Administrator and Researcher never reach this template (403). -#}
+{% block portal_nav %}
+  {%- if current_user.role == 'student' -%}
+    {% include "student/_portal_nav.html" %}
+  {%- elif current_user.role == 'teacher' -%}
+    <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  {%- endif -%}
+{% endblock %}
+{% block portal_content %}
+{#- M14 inbox. `notifications` is a list of plain presentation dicts built by
+    app.services.notification_queries.build_inbox_view -- no ORM row reaches
+    this template, so nothing here can lazy-load or make an authorization
+    decision. The stored target is deliberately absent from the page: Open is
+    a POST to a notification-owned route that re-validates and re-authorizes
+    the destination. -#}
+
+<h1>Notifications</h1>
+<p class="ds-section__desc">
+  Updates about your groups, classes, and learning content. Times are shown in the
+  center timezone (<strong>{{ tz_name }}</strong>).
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="notif-toolbar">
+  <nav class="notif-filters" aria-label="Notification filters">
+    {#- `aria-current` is emitted as literal template text, not as a quoted
+        string expression: autoescaping would turn the latter's quotes into
+        &#34; and produce a broken attribute. -#}
+    <a class="notif-filter{{ ' notif-filter--active' if filter_name == 'all' else '' }}"
+       href="{{ url_for('notifications.inbox') }}"
+       {%- if filter_name == 'all' %} aria-current="page"{% endif %}>All</a>
+    <a class="notif-filter{{ ' notif-filter--active' if filter_name == 'unread' else '' }}"
+       href="{{ url_for('notifications.inbox', filter='unread') }}"
+       {%- if filter_name == 'unread' %} aria-current="page"{% endif %}>
+      Unread{% if unread_total %} ({{ unread_total }}){% endif %}
+    </a>
+  </nav>
+
+  {% if unread_total %}
+  <form method="post" action="{{ url_for('notifications.read_all') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="filter" value="{{ filter_name }}">
+    <input type="hidden" name="page" value="{{ page }}">
+    <button type="submit" class="btn btn--secondary">Mark all read</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if not notifications %}
+  {% if filter_name == 'unread' %}
+  <div class="empty-state">
+    <div class="empty-state__title">No unread notifications</div>
+    <div>You are all caught up. Switch to <a href="{{ url_for('notifications.inbox') }}">All</a> to see earlier updates.</div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No notifications yet</div>
+    <div>Updates about your groups, class times, and new learning content will appear here.</div>
+  </div>
+  {% endif %}
+{% else %}
+<ul class="notif-list">
+  {% for item in notifications %}
+  <li class="notif-item card{{ ' notif-item--unread' if item.is_unread else '' }}">
+    <div class="notif-item__head">
+      <span class="badge {{ 'badge--primary' if item.is_unread else 'badge--neutral' }}">{{ item.kind_label }}</span>
+      <span class="notif-item__title">{{ item.title }}</span>
+      {% if item.is_unread %}<span class="badge badge--success">Unread</span>{% endif %}
+    </div>
+    <p class="notif-item__message">{{ item.message }}</p>
+    <div class="notif-item__foot">
+      <span class="notif-item__time">{{ item.created_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</span>
+      <div class="notif-item__actions">
+        <form method="post" action="{{ url_for('notifications.open_notification', public_id=item.public_id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="filter" value="{{ filter_name }}">
+          <input type="hidden" name="page" value="{{ page }}">
+          <button type="submit" class="btn btn--primary">Open</button>
+        </form>
+        {% if item.is_unread %}
+        <form method="post" action="{{ url_for('notifications.read_notification', public_id=item.public_id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="filter" value="{{ filter_name }}">
+          <input type="hidden" name="page" value="{{ page }}">
+          <button type="submit" class="btn btn--secondary">Mark read</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+
+{% if has_prev or has_next %}
+<nav class="notif-pagination" aria-label="Notification pages">
+  {% if has_prev %}
+  <a class="btn btn--secondary" href="{{ url_for('notifications.inbox', filter=filter_name, page=page - 1) }}">Previous</a>
+  {% endif %}
+  <span class="notif-pagination__page">Page {{ page }}</span>
+  {% if has_next %}
+  <a class="btn btn--secondary" href="{{ url_for('notifications.inbox', filter=filter_name, page=page + 1) }}">Next</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% endif %}
+
+{% endblock %}

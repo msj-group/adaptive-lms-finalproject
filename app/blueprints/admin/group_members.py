@@ -20,6 +20,10 @@ from app.models import (
 from app.security.decorators import roles_required
 from app.services.group_memberships import active_student_enrollment_count, eligible_active_teacher_count
 from app.services.group_transactions import lock_group_for_write
+from app.services.notification_delivery import (
+    notify_teacher_assignment_activated,
+    notify_teacher_assignment_removed,
+)
 
 
 def _get_group_locked_or_404(group_public_id):
@@ -183,8 +187,16 @@ def group_teacher_assign(group_public_id):
         flash("This teacher is already assigned to this group.", "danger")
         return _redirect_to_group_members(group)
 
+    # M14: the assignment is committed and the response is already
+    # decided. Capture plain scalars, build the response, and only then
+    # attempt best-effort notification delivery in its own transaction --
+    # a notification failure never turns this successful assignment into
+    # an error, and no ORM row is touched afterwards.
+    teacher_id, group_name = teacher.id, group.name
     flash(f"Teacher '{teacher.full_name}' assigned to '{group.name}'.", "success")
-    return _redirect_to_group_members(group)
+    response = _redirect_to_group_members(group)
+    notify_teacher_assignment_activated(teacher_id, group_name)
+    return response
 
 
 @admin_bp.post("/groups/<group_public_id>/teachers/<assignment_public_id>/remove")
@@ -235,8 +247,15 @@ def group_teacher_remove(group_public_id, assignment_public_id):
 
     assignment.status = GroupTeacherAssignmentStatus.REMOVED.value
     db.session.commit()
+    # M14 post-commit delivery -- see group_teacher_assign. A corrupted
+    # assignment (referencing a non-Teacher) can legitimately be removed
+    # here; the producer's own role/account re-check is what keeps it
+    # from producing a notification for a non-Teacher recipient.
+    teacher_id, group_name = assignment.teacher_id, group.name
     flash(f"Teacher '{assignment.teacher.full_name}' removed from '{group.name}'.", "success")
-    return _redirect_to_group_members(group)
+    response = _redirect_to_group_members(group)
+    notify_teacher_assignment_removed(teacher_id, group_name)
+    return response
 
 
 @admin_bp.post("/groups/<group_public_id>/teachers/<assignment_public_id>/reactivate")
@@ -271,5 +290,9 @@ def group_teacher_reactivate(group_public_id, assignment_public_id):
 
     assignment.status = GroupTeacherAssignmentStatus.ACTIVE.value
     db.session.commit()
+    # M14 post-commit delivery -- see group_teacher_assign.
+    teacher_id, group_name = teacher.id, group.name
     flash(f"Teacher '{assignment.teacher.full_name}' reactivated for '{group.name}'.", "success")
-    return _redirect_to_group_members(group)
+    response = _redirect_to_group_members(group)
+    notify_teacher_assignment_activated(teacher_id, group_name)
+    return response

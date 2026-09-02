@@ -2,6 +2,7 @@
 {% block extra_head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/portal.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css') }}">
 {% endblock %}
 {% block content %}
 <div class="portal-shell">
@@ -12,6 +13,21 @@
     </div>
     <nav class="portal-nav" aria-label="Primary">
       {% block portal_nav %}{% endblock %}
+      {#- M14: the Notifications link and unread badge are part of the shared
+          portal header, so every Student / Teacher page carries them without
+          each page's own `portal_nav` block having to remember. The helper
+          returns nothing at all for Administrator / Researcher / anonymous
+          (they have no inbox), and it fails open to a zero count so a
+          notification-table problem can never break this page. -#}
+      {% set notif = notification_header() %}
+      {% if notif %}
+      <a class="portal-nav__link{{ ' portal-nav__link--active' if request.blueprint == 'notifications' else '' }}"
+         href="{{ url_for('notifications.inbox') }}"
+         {%- if notif.unread_count %} aria-label="Notifications, {{ notif.unread_count }} unread"{% endif %}>
+        Notifications
+        {%- if notif.unread_count %}<span class="notif-badge" aria-hidden="true">{{ notif.unread_label }}</span>{% endif %}
+      </a>
+      {% endif %}
     </nav>
     <div class="portal-header__user">
       <span class="portal-header__name">{{ current_user.full_name }}</span>

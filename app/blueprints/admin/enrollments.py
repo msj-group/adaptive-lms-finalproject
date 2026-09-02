@@ -13,6 +13,10 @@ from app.services.group_memberships import (
     conflicting_active_enrollment,
     eligible_active_teacher_count,
 )
+from app.services.notification_delivery import (
+    notify_enrollment_activated,
+    notify_enrollment_withdrawn,
+)
 
 
 def _get_group_or_404(group_public_id):
@@ -228,8 +232,16 @@ def group_enrollment_create(group_public_id):
         flash("Student is already enrolled in this group.", "danger")
         return _redirect_to_group_members(group)
 
+    # M14: the domain mutation is committed and its response is already
+    # decided. Capture plain scalars, build the response, and only then
+    # attempt best-effort notification delivery in its own transaction --
+    # so a notification failure can never turn this successful enrollment
+    # into an error, and no ORM row is touched afterwards.
+    student_id, group_name = student.id, group.name
     flash(f"Student '{student.full_name}' enrolled in '{group.name}'.", "success")
-    return _redirect_to_group_members(group)
+    response = _redirect_to_group_members(group)
+    notify_enrollment_activated(student_id, group_name)
+    return response
 
 
 @admin_bp.post("/groups/<group_public_id>/enrollments/<enrollment_public_id>/withdraw")
@@ -269,8 +281,12 @@ def group_enrollment_withdraw(group_public_id, enrollment_public_id):
 
     enrollment.status = EnrollmentStatus.WITHDRAWN.value
     db.session.commit()
+    # M14 post-commit delivery -- see group_enrollment_create.
+    student_id, group_name = student.id, group.name
     flash(f"Enrollment for '{enrollment.student.full_name}' withdrawn.", "success")
-    return _redirect_to_group_members(group)
+    response = _redirect_to_group_members(group)
+    notify_enrollment_withdrawn(student_id, group_name)
+    return response
 
 
 @admin_bp.post("/groups/<group_public_id>/enrollments/<enrollment_public_id>/reactivate")
@@ -313,5 +329,9 @@ def group_enrollment_reactivate(group_public_id, enrollment_public_id):
 
     enrollment.status = EnrollmentStatus.ACTIVE.value
     db.session.commit()
+    # M14 post-commit delivery -- see group_enrollment_create.
+    student_id, group_name = student.id, group.name
     flash(f"Enrollment for '{enrollment.student.full_name}' reactivated.", "success")
-    return _redirect_to_group_members(group)
+    response = _redirect_to_group_members(group)
+    notify_enrollment_activated(student_id, group_name)
+    return response

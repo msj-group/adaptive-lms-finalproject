@@ -30,6 +30,7 @@ from app.models import AcademicStatus, AcademicTerm, Course, Group, Level, Sched
 from app.security.decorators import roles_required
 from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
 from app.services.group_transactions import lock_group_in_open_transaction
+from app.services.notification_delivery import notify_schedule_changed
 from app.services.schedule_queries import (
     conflicting_active_schedule,
     range_contains_weekday,
@@ -328,8 +329,16 @@ def group_schedule_create(group_public_id):
             )
             return _render_create(form, group_public_id)
 
+        # M14: the Schedule is committed and the response is already
+        # decided. Capture plain scalars, build the response, and only
+        # then attempt best-effort delivery to the Group's currently
+        # active members in its own transaction -- a notification failure
+        # never turns this successful schedule change into an error.
+        notify_group_id, notify_group_name = group.id, group.name
         flash("Schedule slot added.", "success")
-        return _redirect_to_group_schedules(group_public_id)
+        response = _redirect_to_group_schedules(group_public_id)
+        notify_schedule_changed(notify_group_id, notify_group_name, "created")
+        return response
 
     return _render_create(form, group_public_id)
 
@@ -564,8 +573,12 @@ def group_schedule_edit(group_public_id, schedule_public_id):
                 form, group_public_id, schedule_public_id, submitted_snapshot_token
             )
 
+        # M14 post-commit delivery -- see group_schedule_create.
+        notify_group_id, notify_group_name = group.id, group.name
         flash("Schedule slot updated.", "success")
-        return _redirect_to_group_schedules(group_public_id)
+        response = _redirect_to_group_schedules(group_public_id)
+        notify_schedule_changed(notify_group_id, notify_group_name, "updated")
+        return response
 
     edit_snapshot_token = (
         submitted_snapshot_token
@@ -622,8 +635,12 @@ def group_schedule_toggle_status(group_public_id, schedule_public_id):
         # not operational.
         schedule.status = AcademicStatus.ARCHIVED.value
         db.session.commit()
+        # M14 post-commit delivery -- see group_schedule_create.
+        notify_group_id, notify_group_name = group.id, group.name
         flash("Schedule slot archived.", "success")
-        return _redirect_to_group_schedules(group_public_id)
+        response = _redirect_to_group_schedules(group_public_id)
+        notify_schedule_changed(notify_group_id, notify_group_name, "archived")
+        return response
 
     # Reactivation -- parent-first, then re-check the operational rules
     # against current active rows.
@@ -655,8 +672,12 @@ def group_schedule_toggle_status(group_public_id, schedule_public_id):
 
     schedule.status = AcademicStatus.ACTIVE.value
     db.session.commit()
+    # M14 post-commit delivery -- see group_schedule_create.
+    notify_group_id, notify_group_name = group.id, group.name
     flash("Schedule slot reactivated.", "success")
-    return _redirect_to_group_schedules(group_public_id)
+    response = _redirect_to_group_schedules(group_public_id)
+    notify_schedule_changed(notify_group_id, notify_group_name, "reactivated")
+    return response
 
 
 # ----------------------------------------------------------------------

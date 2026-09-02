@@ -5,6 +5,7 @@ from app.models.enums import (
     FileCategory,
     LessonStatus,
     MaterialKind,
+    NotificationKind,
 )
 from app.models.academic_term import AcademicTerm
 from app.models.level import Level
@@ -18,6 +19,7 @@ from app.models.lesson import Lesson
 from app.models.uploaded_file import UploadedFile
 from app.models.material import Material
 from app.models.file_access_log import FileAccessLog
+from app.models.notification import Notification
 
 __all__ = [
     "User",
@@ -26,6 +28,7 @@ __all__ = [
     "AcademicStatus",
     "LessonStatus",
     "MaterialKind",
+    "NotificationKind",
     "FileCategory",
     "FileAccessAction",
     "AcademicTerm",
@@ -42,4 +45,5 @@ __all__ = [
     "UploadedFile",
     "Material",
     "FileAccessLog",
+    "Notification",
 ]

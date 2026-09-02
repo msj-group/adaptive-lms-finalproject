@@ -62,12 +62,30 @@ def create_app(config_name=None, **config_overrides):
     from app.blueprints.admin.routes import admin_bp
     from app.blueprints.teacher import teacher_bp
     from app.blueprints.student import student_bp
+    from app.blueprints.notifications import notifications_bp
 
     app.register_blueprint(design_system_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(teacher_bp)
     app.register_blueprint(student_bp)
+    app.register_blueprint(notifications_bp)
+
+    # M14: the shared Student/Teacher portal header renders a
+    # Notifications link and unread badge. This injects a *callable*, not
+    # a value, so a template that never calls it (every Administrator
+    # page, the login page, the error pages) costs no query at all; the
+    # helper itself is role-gated and memoised on the request object, so
+    # a Student or Teacher request pays for at most one bounded count no
+    # matter how many templates it renders. It fails open to zero -- see
+    # app/services/notification_queries.py.
+    @app.context_processor
+    def inject_notification_header():
+        from flask_login import current_user
+
+        from app.services.notification_queries import header_badge
+
+        return {"notification_header": lambda: header_badge(current_user)}
 
     register_error_handlers(app)
 

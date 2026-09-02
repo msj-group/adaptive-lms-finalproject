@@ -94,6 +94,7 @@ from app.services.material_queries import (
     teacher_lesson_materials_view,
 )
 from app.services.material_serving import serve_uploaded_file
+from app.services.notification_delivery import notify_material_available
 
 _ACTIVE = AcademicStatus.ACTIVE.value
 _RICH_TEXT = MaterialKind.RICH_TEXT.value
@@ -433,9 +434,19 @@ def material_create_rich_text(group_public_id, unit_public_id, lesson_public_id)
                 _make_create_token(current_user.id, lesson.id, _RICH_TEXT, nonce),
             )
 
+        # M14: the Material is committed and the response is already
+        # decided. Capture the plain id, build the response, and only
+        # then attempt best-effort delivery in its own transaction. The
+        # producer re-derives the audience itself and yields nobody
+        # unless the owning Lesson is published and the whole Student
+        # visibility chain is currently active -- a draft Lesson's new
+        # material notifies no one.
+        new_material_id = material.id
         flash(f"Material '{material.title}' created.", "success")
         _warn_if_published(lesson)
-        return _redirect_materials(group_public_id, unit_public_id, lesson_public_id)
+        response = _redirect_materials(group_public_id, unit_public_id, lesson_public_id)
+        notify_material_available(new_material_id)
+        return response
 
     token = submitted_token or _make_create_token(current_user.id, lesson.id, _RICH_TEXT)
     return _render_material_form("form_rich_text.html", form, group, unit, lesson, None, token)
@@ -516,9 +527,13 @@ def material_create_external_link(group_public_id, unit_public_id, lesson_public
                 _make_create_token(current_user.id, lesson.id, _EXTERNAL_LINK, nonce),
             )
 
+        # M14 post-commit delivery -- see material_create_rich_text.
+        new_material_id = material.id
         flash(f"Material '{material.title}' created.", "success")
         _warn_if_published(lesson)
-        return _redirect_materials(group_public_id, unit_public_id, lesson_public_id)
+        response = _redirect_materials(group_public_id, unit_public_id, lesson_public_id)
+        notify_material_available(new_material_id)
+        return response
 
     token = submitted_token or _make_create_token(current_user.id, lesson.id, _EXTERNAL_LINK)
     return _render_material_form("form_link.html", form, group, unit, lesson, None, token)
@@ -661,9 +676,19 @@ def material_create_file(group_public_id, unit_public_id, lesson_public_id):
             if not committed:
                 _cleanup_orphan_upload(material_config, stored.storage_key)
 
+        # M14: reached only with `committed` True -- the Material, its
+        # UploadedFile row, and the upload audit entry are all committed
+        # and the file has survived the `finally` cleanup gate above.
+        # Delivery happens strictly after that point and in its own
+        # transaction, so a notification failure can never delete a
+        # committed file, roll back the upload, or be reported to the
+        # Teacher as a failed upload.
+        new_material_id = material.id
         flash(f"Material '{material.title}' created.", "success")
         _warn_if_published(lesson)
-        return _redirect_materials(group_public_id, unit_public_id, lesson_public_id)
+        response = _redirect_materials(group_public_id, unit_public_id, lesson_public_id)
+        notify_material_available(new_material_id)
+        return response
 
     token = submitted_token or _make_create_token(current_user.id, lesson.id, _FILE)
     return _render_material_form("form_file.html", form, group, unit, lesson, None, token)
@@ -951,9 +976,15 @@ def material_toggle_status(group_public_id, unit_public_id, lesson_public_id, ma
         flash("This material could not be reactivated. Please reload and try again.", "danger")
         return _redirect_materials(group_public_id, unit_public_id, lesson_public_id)
 
+    # M14 post-commit delivery -- reactivation makes a Material visible
+    # again, so it notifies exactly like creation. Archiving above
+    # deliberately notifies nobody.
+    reactivated_material_id = material.id
     flash(f"Material '{material.title}' reactivated.", "success")
     _warn_if_published(lesson)
-    return _redirect_materials(group_public_id, unit_public_id, lesson_public_id)
+    response = _redirect_materials(group_public_id, unit_public_id, lesson_public_id)
+    notify_material_available(reactivated_material_id)
+    return response
 
 
 # ----------------------------------------------------------------------

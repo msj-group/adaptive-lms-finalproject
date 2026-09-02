@@ -2560,3 +2560,373 @@ case-insensitive on both engines.
   is what makes the tests meaningful for matching behaviour. Real MySQL
   collation/'`A1`'/literal-`%` behaviour was checked with a
   rollback-only smoke probe (see the M13 report).
+
+## Stored in-app notifications (Phase 3, Part M14)
+
+A **stored, server-authorized in-app notification inbox** for Student and
+Teacher users, generated automatically from the high-signal domain events
+that already exist through M13. Adds one table (`notifications`), one
+additive migration (`023a5f5814a8`, `Revises: ed1e6c7c2548`), one shared
+blueprint (`/notifications`), three services
+(`app/services/notification_targets.py`,
+`app/services/notification_delivery.py`,
+`app/services/notification_queries.py`), one template, one scoped CSS
+file, and a Notifications link + unread badge in the shared portal
+header. **No new dependency, no scheduler, no worker, no queue, no
+polling, no WebSocket, no email, no browser push.**
+
+### A. What M14 is -- and what it is deliberately not
+
+- A notification is an **automatic, personal, historical record** of
+  something that already happened: it is written once, immediately after
+  a domain mutation has committed, and afterwards only its `read_at` ever
+  changes.
+- M14 is **not Announcements**. There is no way for any human to compose,
+  address, schedule, edit, or broadcast a message. Administrator-authored
+  Announcements remain a Phase 4 module with its own model, authoring UI,
+  audience rules, and lifecycle; nothing here is a placeholder for it.
+- M14 is also not messaging, email, browser push, WebSockets, polling,
+  scheduled reminders, notification preferences, or an activity/audit
+  log. The append-only `file_access_logs` audit trail (M12) stays a
+  separate, operator-facing concern and is untouched.
+- **Recipients are Students and Teachers only.** Administrator and
+  Researcher have no inbox: the blueprint returns **403** for them, no
+  producer ever selects them, and the shared header helper returns
+  nothing for them (Administrator pages use `admin_base.html` and issue
+  no notification query at all).
+
+### B. Model -- `notifications`
+
+`Notification` (`app/models/notification.py`): `id`, UUID `public_id`
+(UNIQUE), `recipient_id` (FK to `users.id`, `NOT NULL`), `kind`
+(VARCHAR(48), CHECK-constrained), plain-text `title` (VARCHAR(150)) and
+`message` (VARCHAR(500)), `target_path` (VARCHAR(512), `NOT NULL`), UTC
+`created_at` (`NOT NULL`), nullable UTC `read_at`.
+
+- **Kinds are a closed set**, enforced twice from one source: the
+  `NotificationKind` enum drives a SQLAlchemy `@validates` guard *and* is
+  rendered into the `ck_notifications_kind_valid` CHECK constraint, so
+  application and schema cannot drift. The seven kinds are
+  `enrollment_activated`, `enrollment_withdrawn`,
+  `teacher_assignment_activated`, `teacher_assignment_removed`,
+  `schedule_changed`, `lesson_published`, `material_available`. There is
+  no generic "other" kind and no placeholder for a future module.
+- **Content is plain text and self-contained.** No HTML, no serialized
+  ORM row, no JSON payload, no `source_type`/`source_id` polymorphic
+  pointer, no `actor_id` -- a notification never says *who* did something,
+  only *what* is now true, and it names a place rather than a row. Only
+  object *names* the recipient may already see (Group name, Lesson /
+  Material title) appear in text; no internal numeric id ever does.
+- **Role integrity boundary.** `recipient_id` is a plain FK into the
+  shared `users` table, so -- exactly as already documented for
+  `Enrollment.student_id` and `GroupTeacherAssignment.teacher_id` -- it
+  proves existence only, never role or active status. Every producer
+  re-verifies role **and** active account in the SQL that selects
+  recipients.
+- **No cascade, no hard delete, no deletion route** (single or bulk).
+  Archiving a Group, withdrawing an Enrollment, or unpublishing a Lesson
+  never rewrites or removes a notification.
+- **Two** composite indexes, because the two inbox filters sort on
+  different key suffixes and one index cannot serve both without a sort
+  step:
+  - `ix_notifications_recipient_unread_created` (`recipient_id`,
+    `read_at`, `created_at`) -- covers the header unread `COUNT`
+    outright and orders the newest-first `unread` filter;
+  - `ix_notifications_recipient_created_id` (`recipient_id`,
+    `created_at`, `id`) -- orders the newest-first `all` filter. The
+    unread index cannot do this: `read_at` sits between the
+    `recipient_id` equality and the `created_at`/`id` sort columns, so
+    MySQL resolves `ORDER BY created_at DESC, id DESC` against it with
+    `Using filesort` (measured -- see §I).
+
+  Their shared `recipient_id` leftmost prefix is also what the
+  `recipient_id` foreign key uses, so no separate single-column index is
+  declared for it.
+
+### C. Event matrix
+
+Notifications are produced **only** after these existing mutations
+succeed:
+
+| # | Event | Recipients | Target |
+|---|---|---|---|
+| 1 | Enrollment created or reactivated | that Student | Student dashboard |
+| 2 | Enrollment withdrawn | that Student | Student dashboard |
+| 3 | Teacher assignment created or reactivated | that Teacher | Teacher dashboard |
+| 4 | Teacher assignment removed | that Teacher | Teacher dashboard |
+| 5 | Schedule created / edited / archived / reactivated | every currently active, eligible Student **and** Teacher of that Group | each recipient's own role dashboard |
+| 6 | Lesson published or republished | Students who can effectively reach the Lesson now | that Student Lesson page |
+| 7 | Material created or reactivated | Students who can effectively see it now (requires a **published** Lesson) | that Lesson page, anchored `#material-<public_id>` |
+
+Deliberately **not** producers: Unit create / edit / reorder / archive;
+Lesson create, edit, reorder, or **unpublish**; Material edit, archive, or
+reorder; a Material on a **draft** Lesson; account changes; and every
+read, search, dashboard, or blocked/rolled-back mutation. A rejected
+mutation writes nothing and therefore reaches no producer at all -- there
+is no separate "was it blocked?" check that could fall out of sync.
+
+A Material has no standalone Student page (rich text and external links
+render inline on the Lesson page, and a `file` Material is opened from
+there), so event 7's target is the Lesson page plus a `#material-`
+anchor -- the same destination M13 search already uses for a Material
+result.
+
+The Schedule message names *what kind of* change happened ("A class time
+was added / changed / removed / restored") but never the weekday, time,
+or location: the dashboard is the single source of truth for the current
+timetable, and a stored message must not become a stale second copy of
+it.
+
+### D. Effective visibility -- reused, not re-invented
+
+Recipient selection is **SQL-scoped, bounded, deterministic, and
+de-duplicated** (`app/services/notification_delivery.py`). It never loads
+rows broadly and filters in Python, and it never trusts its caller for
+who may see what:
+
+- events 1-4 re-check the single recipient's **role** and **active
+  account**;
+- event 5 requires an ACTIVE `Enrollment` (Student) or ACTIVE
+  `GroupTeacherAssignment` (Teacher) **plus** the matching role **plus**
+  an ACTIVE account -- the same "valid active seat / eligible teacher"
+  definitions as `app/services/group_memberships.py`;
+- events 6-7 apply the full M11/M12/M13 effective-visibility formula in
+  one `WHERE` clause: own ACTIVE `Enrollment`, ACTIVE `AcademicTerm` /
+  `Level` / `Course` / `Group` / `Unit`, **published** `Lesson`, and (for
+  a Material) ACTIVE `Material`, plus Student role and ACTIVE account.
+
+Consequences: a suspended account, a withdrawn Student, a removed
+Teacher, a corrupted membership row referencing the wrong role, a Student
+in another Group, and anything under an archived link of the chain are
+all excluded. Recipients are never exposed to one another, and a Teacher
+never learns Student identities from a notification.
+
+### E. Failure isolation -- post-commit, best effort, **not exactly-once**
+
+Notification delivery is never inside the locked core domain
+transaction. Every producer call site follows the same shape:
+
+1. the domain mutation commits with its **existing, unchanged** locking,
+   validation, stale-form, and error handling -- no lock order was
+   changed and no lock set was widened;
+2. the route captures plain scalars (ids, public ids, display names) --
+   never an ORM row carried across the transaction boundary;
+3. the route builds its response;
+4. delivery runs last, in its own new transaction, taking no domain
+   locks;
+5. any failure rolls back only that transaction, logs server-side, and is
+   swallowed -- `_deliver` never raises.
+
+So a notification failure can never turn a successful enrollment,
+assignment, schedule change, lesson publication, or material creation
+into an error. **File materials get particular care**: delivery happens
+strictly after `committed = True` and after the `finally` block that owns
+orphan-file cleanup, so a delivery failure can never delete a committed
+file, roll back the `UploadedFile` / `FileAccessLog` rows, or be reported
+to the Teacher as a failed upload.
+
+When a producer selects no recipients it writes nothing and deliberately
+leaves its read-only transaction to ordinary request teardown rather than
+issuing an explicit rollback: the M08/M11/M12 lock-order regression tests
+assert that a mutation request performs exactly **one** deliberate
+transaction reset (the one owned by `lock_academic_hierarchy` /
+`lock_group_for_write`), and no lock is held by the time a producer runs.
+
+**Honest limitation.** This synchronous, post-commit design is *at most
+once*, not exactly once: a process crash, lost connection, or database
+error in the window between the domain commit and the notification commit
+loses that notification permanently. There is no retry, outbox,
+dead-letter, or reconciliation job. The alternative -- writing
+notifications inside the domain transaction -- would let an optional
+convenience feature roll back real academic work, which is strictly
+worse. A durable transactional outbox is **deferred**.
+
+### F. Target safety -- generated once, validated twice
+
+`app/services/notification_targets.py` is the only source of a
+`target_path` and the only validator of one.
+
+- Targets are built from already-known **public ids** through the
+  application's own URL map -- not by string concatenation (a route
+  rename would silently break it) and not through Flask's request-bound
+  URL helper (a post-commit producer must not depend on an active request
+  context, or a future non-request caller would lose every notification
+  silently).
+- `validate_notification_target(role, candidate)` is **fail-closed** and
+  rejects, with no attempt to repair: a role with no inbox; absolute and
+  protocol-relative URLs; any scheme or network location; backslashes;
+  control characters; a query string; `.` / `..` segments and doubled or
+  trailing slashes; an unexpected fragment; anything over the column
+  width; and anything outside the recipient role's own namespace
+  (Student -> `/student/`, Teacher -> `/teacher/`, including lookalike
+  prefixes such as `/studentx/`). This is deliberately stricter than
+  `app.security.redirects.get_safe_redirect_target`, which answers a
+  different question (may I follow a *user-supplied* `next` value?) and
+  has no role namespace. The `..` rule matters concretely: Werkzeug does
+  not escape `/` inside a string URL parameter, so a hostile value
+  reaching a builder would otherwise produce a path a browser normalises
+  out of the namespace.
+- A stored target is **never rendered as a link**. Opening a notification
+  POSTs to a notification-owned route, which marks the row read, commits,
+  re-validates the stored value against the *current* recipient's role,
+  and only then redirects. An invalid stored value (hand-edited in the
+  database, or written by a future bug) logs server-side and falls back
+  to the inbox with a generic message.
+- **Passing validation is not authorization.** The destination route
+  enforces its own current rules, so a notification is never proof of
+  access: after a withdrawal, an unpublish, or an archive, the redirect
+  is still issued but the destination returns its usual non-disclosing
+  404.
+
+### G. Inbox and routes
+
+Shared blueprint under `/notifications`, `roles_required(STUDENT,
+TEACHER)`:
+
+- `GET /notifications` -- newest-first (`created_at DESC`, then `id
+  DESC`, so rows written in one transaction still page stably),
+  `all` / `unread` filters, fixed pages of **20** (fetching `limit + 1`
+  to derive a non-disclosing "next page" without a COUNT), explicit empty
+  states per filter, `Cache-Control: private, no-store`, `Vary: Cookie`.
+  A page past the end shows page 1. Unknown `filter` / `page` values
+  normalise instead of erroring.
+- `POST /notifications/<public_id>/open` -- mark read, re-validate,
+  redirect.
+- `POST /notifications/<public_id>/read` -- mark read, stay in the inbox.
+- `POST /notifications/read-all` -- one bounded UPDATE scoped to the
+  recipient.
+
+**GET never writes.** All three mutations are POST-only, CSRF-protected,
+and idempotent (a second `open` / `read` never moves the original read
+time; a second `read-all` matches nothing). Every per-notification lookup
+includes `recipient_id == current_user.id`, so a missing `public_id` and
+another recipient's `public_id` produce the identical **404**. Only
+`public_id` appears in URLs and HTML. Times are stored UTC and rendered
+in `APP_TIMEZONE` via the M09 `to_app_local` utility, with the timezone
+label shown; templates receive plain presentation dicts, never ORM rows.
+
+### H. Shared header and the unread badge
+
+`layouts/portal_base.html` -- used by Student and Teacher pages only --
+carries the Notifications link and unread badge, so every portal page
+gets them without each page's `portal_nav` block opting in. The context
+processor injects a **callable**, so a template that never calls it
+(every Administrator page, login, the error pages) costs no query at all.
+
+- `header_badge(user)` returns `None` for anonymous users and for every
+  role without an inbox, with **no** query.
+- For a Student or Teacher it issues exactly **one** bounded, indexed
+  `COUNT`, memoised on the request object so a request rendering several
+  templates still pays once. (Memoised on the request rather than on
+  `flask.g`: `g` is app-context scoped and an app context can outlive a
+  request, and an identity-based key would be unreliable because CPython
+  reuses object addresses.)
+- The display caps at `99+`; unread state in the list is carried by an
+  explicit "Unread" badge and a bolder title, not by colour alone.
+- **The count fails open to zero.** It runs on its **own** connection
+  checked out from the shared engine, never through `db.session`, so a
+  missing table during a partial deploy, a broken query, or a lock
+  timeout cannot poison the request session and take the dashboard,
+  lesson, material, or search page down with it. Any exception is logged
+  server-side and the badge simply disappears; no driver or SQL detail
+  reaches the page.
+
+Existing bounded-query regression tests (Student dashboard, Teacher
+dashboard, Student outline) still pass **unchanged**: the single header
+query fits inside their existing bounds, so no bound was loosened and no
+N+1 behaviour is masked.
+
+### I. Migration and MySQL
+
+`023a5f5814a8` (`Revises: ed1e6c7c2548`) creates `notifications` and its
+two indexes, and nothing else -- no existing table, column, index,
+constraint, or row is touched, and there is **no data backfill**.
+Notifications describe only events that happen after the migration runs,
+so pre-existing Enrollments, assignments, Schedules, Lessons, and
+Materials deliberately produce no historical rows. The downgrade is
+symmetric: both indexes are dropped in the reverse of their creation
+order, then the table. Engine, charset, and collation follow the existing
+project defaults (InnoDB, `utf8mb4_0900_ai_ci`); isolation remains
+REPEATABLE-READ.
+
+Measured on the development MySQL 8.0 database with real `EXPLAIN`.
+With only the unread index present, the `all` filter's
+`WHERE recipient_id = ? ORDER BY created_at DESC, id DESC LIMIT 21`
+planned as `ref` on `ix_notifications_recipient_unread_created` with
+**`Using filesort`** — `read_at` sits between the equality column and the
+sort columns, so that index cannot supply the ordering. Forcing the
+`all` query onto it still reports `Using filesort` at **every** data
+size tested, which is the direct evidence that a second index was
+needed.
+
+Plans after adding `ix_notifications_recipient_created_id` (probe rows
+inserted inside a rolled-back transaction; one recipient holding ~10% of
+the table, which is the production shape):
+
+| Query | Chosen index | `Extra` | filesort |
+|---|---|---|---|
+| `all` page (≥ ~1 000 rows for that recipient) | `ix_notifications_recipient_created_id` | `Using index condition; Backward index scan` | no |
+| `unread` page | `ix_notifications_recipient_unread_created` | `Using where; Backward index scan` | no |
+| header unread count | `ix_notifications_recipient_unread_created` | `Using where; Using index` | no |
+
+**Honest qualification.** Below roughly a thousand notifications for one
+recipient the optimizer still chooses the unread index and sorts, because
+sorting a few hundred rows really is cheaper than the extra index scan —
+that is the cost model working correctly, not a missing index. Forcing
+the new index at those sizes confirms it produces `Backward index scan`
+with no sort. The index therefore removes the *unbounded* growth in sort
+cost as a recipient's history accumulates, which is what matters; it is
+not expected to change the plan for a nearly empty inbox.
+
+The table carries exactly these two secondary indexes plus the
+`public_id` UNIQUE; the `recipient_id -> users.id` foreign key uses their
+shared leftmost prefix rather than a duplicate of its own, which is why
+the model deliberately does **not** also mark `recipient_id` as
+`index=True`.
+
+Revision `023a5f5814a8` was already applied when the second index was
+added, so the index was brought to the existing development table with a
+single additive, inspect-first, idempotent `CREATE INDEX` (no downgrade,
+no table recreation, no row touched); `flask db check` then reported no
+new operations, confirming model and schema agree.
+
+### J. Deliberate deferrals
+
+Deferred to later phases, with no placeholder model, route, column,
+navigation entry, or counter added now: Administrator-authored
+**Announcements** (Phase 4); real-time delivery (WebSocket / SSE /
+polling); email and browser push; scheduled or digest reminders;
+per-user notification preferences, mute, or unsubscribe; grouping,
+collapsing, or de-duplicating repeated events; notification deletion,
+bulk deletion, or retention/pruning; a durable transactional outbox with
+retry and dead-lettering; Administrator or Researcher inboxes; and
+producers for Assignments, Quizzes, Attendance, Grades, Payments,
+Calendar, Research events, and messaging.
+
+### K. Honest limitations
+
+- Delivery is **at most once** (see §E) -- a rare post-commit failure
+  loses a notification silently, visible only in the server log.
+- Automated tests run on SQLite in memory. They prove the application
+  logic, the SQL scoping, the query structure, and the model/schema
+  alignment; they do **not** prove MySQL/InnoDB blocking, isolation,
+  collation, or that the migration runs on MySQL. Migration and schema
+  behaviour were verified separately against the real development MySQL
+  database (see the M14 report).
+- The header count's failure isolation depends on a genuinely separate
+  pooled connection. That holds on MySQL; on the SQLite in-memory test
+  backend the engine uses `StaticPool`, so the "separate" connection is
+  physically the same DBAPI connection and the tests exercise the
+  isolation only structurally -- the same class of limitation already
+  recorded for `SELECT ... FOR UPDATE`.
+- Targets assume the application is mounted at the URL root. A deployment
+  under a path prefix would produce targets outside the role namespace,
+  which the validator rejects **fail-closed** -- notifications would stop
+  opening rather than redirect somewhere unsafe.
+- A notification's stored text is a snapshot. If a Group, Lesson, or
+  Material is later renamed, older notifications keep the old wording on
+  purpose: they are history, not a live view.
+- Notifications remain visible after the recipient loses access to what
+  they describe. That is intended (they are personal records), and it
+  means an old notification's *text* can still name a Group or Lesson the
+  recipient can no longer open.
