@@ -1,6 +1,7 @@
 from app.models.user import User, UserRole, UserStatus
 from app.models.enums import (
     AcademicStatus,
+    AssignmentStatus,
     FileAccessAction,
     FileCategory,
     LessonStatus,
@@ -20,12 +21,14 @@ from app.models.uploaded_file import UploadedFile
 from app.models.material import Material
 from app.models.file_access_log import FileAccessLog
 from app.models.notification import Notification
+from app.models.assignment import Assignment
 
 __all__ = [
     "User",
     "UserRole",
     "UserStatus",
     "AcademicStatus",
+    "AssignmentStatus",
     "LessonStatus",
     "MaterialKind",
     "NotificationKind",
@@ -46,4 +49,5 @@ __all__ = [
     "Material",
     "FileAccessLog",
     "Notification",
+    "Assignment",
 ]

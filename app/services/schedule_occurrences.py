@@ -46,6 +46,32 @@ class TimezoneConfigError(RuntimeError):
     """
 
 
+class LocalTimeError(ValueError):
+    """A naive *local wall-clock* value that ``APP_TIMEZONE`` cannot map
+    to exactly one UTC instant (Phase 4 / M01).
+
+    Raised by :func:`from_app_local` for the two DST edge cases a real
+    IANA zone produces, and only for those:
+
+    - a **nonexistent** local time -- the hour skipped by a spring-forward
+      transition, which no UTC instant maps back to;
+    - an **ambiguous** local time -- the hour repeated by a fall-back
+      transition, which two different UTC instants map to.
+
+    Deliberately separate from :class:`TimezoneConfigError`: that one
+    means the *deployment* is misconfigured and nothing can be rendered,
+    while this one means *this submitted value* is not a usable moment
+    and the person filling the form must pick another. It is a
+    ``ValueError`` subclass carrying a message safe to show verbatim as a
+    form validation error -- no timezone-database internals, no offsets,
+    no driver text.
+
+    The helper never resolves either case by guessing a ``fold``. A
+    silently chosen fold would place a deadline an hour away from what
+    the Teacher typed, in the one direction nobody would check.
+    """
+
+
 # The maximum real UTC offset (ISO 8601 / IANA tz database bound): ±14:00.
 _MAX_OFFSET_MINUTES = 14 * 60
 
@@ -162,6 +188,108 @@ def app_now(tz_name, utc_now=None):
     Propagates :class:`TimezoneConfigError` from :func:`to_app_local`.
     """
     return to_app_local(tz_name, utc_now or datetime.now(timezone.utc))
+
+
+def from_app_local(tz_name, local_moment):
+    """The inverse of :func:`to_app_local`: take a **naive local
+    wall-clock** ``datetime`` in `tz_name` and return the naive **UTC**
+    ``datetime`` that is the same instant (Phase 4 / M01).
+
+    This is what turns what a Teacher typed into a form -- always a local
+    civil time, shown with its timezone label -- into the canonical UTC
+    value stored in ``assignments.opens_at`` / ``due_at``. It deliberately
+    reuses this module's *existing* resolution policy rather than
+    re-implementing it, so the fixed-offset parser, the IANA lookup, the
+    deployment fallback table, and the fail-closed
+    :class:`TimezoneConfigError` behave identically in both directions:
+
+    1. an explicit fixed-offset spec (``UTC`` / ``GMT`` / ``UTC+2`` /
+       ``+02:00`` ...) -- subtract the offset; a fixed offset has no DST,
+       so every local value maps to exactly one instant;
+    2. a named IANA zone the host's ``zoneinfo`` can load -- see the DST
+       handling below;
+    3. only if step 2 could not resolve it: the same small
+       deployment-specific fixed-offset table
+       (``Africa/Tripoli`` -> +02:00), treated exactly like step 1;
+    4. otherwise :class:`TimezoneConfigError`.
+
+    **DST is never guessed.** For a real IANA zone the value is
+    interpreted at both folds and validated by round trip:
+
+    - if converting back from the ``fold=0`` instant does not reproduce
+      the submitted wall clock, the local time **does not exist** (it
+      falls in a spring-forward gap) -- :class:`LocalTimeError`;
+    - otherwise, if the two folds land on **different** UTC instants, the
+      local time is genuinely **ambiguous** (a fall-back repeat) --
+      :class:`LocalTimeError`.
+
+    The order matters: both cases produce two different instants, and
+    only the round trip separates a gap from a repeat. Neither is
+    resolved by silently picking a fold.
+
+    `local_moment` must be naive. An aware value is rejected with
+    ``ValueError`` rather than being "helpfully" converted: it carries a
+    timezone of its own, so treating it as a wall clock in `tz_name`
+    would silently discard that information, and every caller in this
+    project supplies a naive value parsed from a form.
+    """
+    if local_moment.tzinfo is not None:
+        raise ValueError(
+            "from_app_local expects a naive local wall-clock datetime; "
+            "an aware value already knows its own offset."
+        )
+    if not tz_name or not tz_name.strip():
+        raise TimezoneConfigError(
+            "APP_TIMEZONE is empty -- set a real timezone (e.g. 'Africa/Tripoli', 'UTC', "
+            "or an explicit offset like '+02:00')."
+        )
+
+    fixed = _parse_fixed_offset_minutes(tz_name)
+    if fixed is not None:
+        return local_moment - timedelta(minutes=fixed)
+
+    tz = _resolve_zoneinfo(tz_name)
+    if tz is not None:
+        first_utc = local_moment.replace(tzinfo=tz, fold=0).astimezone(timezone.utc)
+        second_utc = local_moment.replace(tzinfo=tz, fold=1).astimezone(timezone.utc)
+        if first_utc.astimezone(tz).replace(tzinfo=None) != local_moment:
+            raise LocalTimeError(
+                "That date and time does not exist in the center timezone -- the clocks move "
+                "forward across it. Please choose a different time."
+            )
+        if first_utc != second_utc:
+            raise LocalTimeError(
+                "That date and time happens twice in the center timezone -- the clocks move "
+                "back across it. Please choose a different time."
+            )
+        return first_utc.replace(tzinfo=None)
+
+    fallback = _DEPLOYMENT_FIXED_OFFSET_MINUTES.get(tz_name.strip().lower())
+    if fallback is not None:
+        return local_moment - timedelta(minutes=fallback)
+
+    raise TimezoneConfigError(
+        f"APP_TIMEZONE={tz_name!r} could not be resolved: it is not a fixed offset, this "
+        "host has no IANA time-zone database entry for it, and it is not a known deployment "
+        "fallback. Install `tzdata`, or set APP_TIMEZONE to 'UTC' or an explicit offset."
+    )
+
+
+def utc_reference_now(utc_now=None):
+    """The single naive-UTC reference moment for one request or test.
+
+    Phase 4 / M01 compares ``opens_at`` / ``due_at`` -- stored naive UTC
+    -- in several places within one response (the visibility gate, the
+    ordering, the derived Scheduled / Open / Past-due label). Every one
+    of them must use the *same* instant, so a request that straddles a
+    deadline can never render a self-contradictory page. Routes call this
+    exactly once and pass the result down; tests inject `utc_now`
+    (aware or naive-UTC) to make the whole page deterministic.
+    """
+    moment = utc_now or datetime.now(timezone.utc)
+    if moment.tzinfo is not None:
+        moment = moment.astimezone(timezone.utc)
+    return moment.replace(tzinfo=None)
 
 
 # ---------------------------------------------------------------------------

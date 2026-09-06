@@ -67,3 +67,23 @@ class NotificationKind(str, enum.Enum):
     SCHEDULE_CHANGED = "schedule_changed"
     LESSON_PUBLISHED = "lesson_published"
     MATERIAL_AVAILABLE = "material_available"
+
+
+class AssignmentStatus(str, enum.Enum):
+    """Publication lifecycle of a Group-owned Assignment (Phase 4 / M01).
+
+    Deliberately its own closed set rather than a reuse of
+    ``LessonStatus``: the two objects publish independently and a future
+    change to one must never silently redefine the other. It is equally
+    deliberately *not* ``AcademicStatus`` -- an Assignment is a draft or
+    it is published; it is never archived, and Phase 4 / M01 has no hard
+    delete.
+
+    ``Scheduled`` / ``Open`` / ``Past due`` are **not** members here.
+    They are derived at read time from ``opens_at`` / ``due_at`` against
+    one injected reference moment, never stored, so time passing can
+    never leave a stale status behind.
+    """
+
+    DRAFT = "draft"
+    PUBLISHED = "published"

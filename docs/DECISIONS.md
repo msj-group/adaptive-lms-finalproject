@@ -2930,3 +2930,462 @@ Calendar, Research events, and messaging.
   they describe. That is intended (they are personal records), and it
   means an old notification's *text* can still name a Group or Lesson the
   recipient can no longer open.
+
+
+## Group-owned Assignments (Phase 4, Part M01)
+
+The first Assignments milestone: assigned Teachers author, edit, publish
+and unpublish Group-owned Assignments; authorized Students see the ones
+that are published **and** already open, plus a bounded list of upcoming
+deadlines on their dashboard. Submissions, uploads, feedback, grading,
+quizzes, notifications, search, calendar and progress are deliberately
+absent -- see §L.
+
+### A. Direct Group ownership, and the columns that are not there
+
+An `Assignment` belongs **directly** to exactly one `Group`, through a
+required, non-cascading `group_id`.
+
+- No `course_id` / `level_id` / `academic_term_id`: all three are already
+  determined by the Group (`assignment.group.course.level`,
+  `assignment.group.academic_term`). Storing them again would create a
+  second, divergable source of truth -- the same reasoning already
+  applied to Enrollment, GroupTeacherAssignment, Schedule, Unit and
+  Lesson.
+- No `unit_id` / `lesson_id`. An Assignment is **Group work**, not a
+  child of one teaching Lesson. Attaching it to a Unit or Lesson would
+  make its visibility depend on that container's lifecycle, and would
+  force a Teacher to invent a Lesson before setting any task.
+- No `teacher_id` / `created_by_id`. Every **active** assigned Teacher of
+  the Group is an equal collaborator: co-teachers list, create, edit,
+  publish and unpublish each other's Assignments identically. An owner
+  column would either be decorative (never enforced) or would silently
+  lock a colleague out when a Teacher's assignment is removed. The Group
+  is the unit of responsibility, and `GroupTeacherAssignment` already
+  records who is currently responsible for it.
+- No `display_order`. Assignment presentation is **time-driven**; the
+  internal `id` breaks ordering ties inside SQL only and is never
+  exposed in a URL, a form value, or the rendered HTML.
+
+`Group.assignments` / `Assignment.group` are the ORM inverse of that one
+foreign key, so the `groups` table needs no schema change (§J).
+
+### B. Schema and constraints
+
+`assignments`: BigInteger `id` (SQLite `Integer` variant), unique
+non-null UUID `public_id`, `group_id`, `title` `String(150)`, required
+plain-text `instructions` `Text`, naive-UTC `opens_at` / `due_at`,
+`status`, nullable UTC `published_at`, UTC `created_at` / `updated_at`.
+
+Four named constraints are the **final** integrity defense; every one is
+also checked in the application first, so the database is never the
+mechanism that produces a user-facing message:
+
+- `uq_assignments_group_title` -- one title per Group, **drafts
+  included**, so a teaching plan never carries two same-named
+  Assignments. The same title in another Group is fine.
+- `ck_assignments_opens_before_due` -- `opens_at < due_at`; equal and
+  reversed windows are rejected outright.
+- `ck_assignments_status_valid` -- the closed `draft` / `published` set,
+  rendered into the constraint from the enum itself so the
+  `@validates` guard and the schema cannot drift.
+- `ck_assignments_status_published_at_consistency` -- a draft has
+  `published_at IS NULL`; a published row has it NOT NULL.
+
+`instructions` is plain text in an unbounded `Text` column. The finite
+boundary that actually protects a request is the form's
+`Length(max=10000)` in `AssignmentForm`; it is rendered autoescaped with
+line breaks preserved by CSS and **never** through `|safe`.
+
+**Indexes.** Exactly two, each driven by a real M01 query shape:
+
+- `ix_assignments_group_due_id` (`group_id`, `due_at`, `id`) -- the
+  Teacher list, which is a **single-Group** equality on `group_id`
+  ordered by deadline, so the ordering columns follow the equality column
+  directly. It lists draft **and** published rows together, which is why
+  `status` is deliberately *not* in the middle: that is precisely the
+  shape M14 measured resolving as `Using filesort` on `notifications`,
+  because a column between the equality column and the sort columns
+  cannot supply the ordering.
+- `ix_assignments_group_status_opens_due` (`group_id`, `status`,
+  `opens_at`, `due_at`) -- the Student visibility **filter**: equality on
+  `group_id` + `status`, then the `opens_at <= now` range.
+
+**What the second index is not claimed to do.** It does **not** supply
+the Student list's or dashboard's global `due_at` ordering, for three
+independent reasons: `opens_at` is a *range* predicate, so columns after
+it cannot generally be assumed to provide ordering; the Student list
+spans **every** Group the Student is enrolled in rather than one; and the
+list's current/history ordering is a `CASE` expression (§G), which
+requires a sort of its own. Those reads are expected to sort, and the
+index earns its place by narrowing what has to be sorted.
+
+Both indexes and `uq_assignments_group_title` begin with `group_id`, so
+the `group_id` foreign key already has a usable leftmost prefix and
+**no** separate single-column index is declared for it -- the same
+reasoning M14 applied to `notifications.recipient_id`.
+
+**No MySQL execution plan has been measured for this table.** Unlike M14,
+whose two `notifications` indexes were chosen from real `EXPLAIN` output,
+both index choices here are a *reasoned design* pending an authorized
+real `EXPLAIN` (§K). Nothing in the schema was changed on speculation.
+
+### C. Time: UTC in the database, local only at the edges
+
+`opens_at`, `due_at` and `published_at` are stored as **naive UTC**.
+They are entered and rendered in `APP_TIMEZONE`, and every page showing
+one also shows the timezone label.
+
+`app/services/schedule_occurrences.py` -- the module that already owns
+`to_app_local` / `app_now` -- gains the inverse rather than a second
+implementation, so the fixed-offset parser, the IANA lookup, the
+deployment fallback table (`Africa/Tripoli` -> +02:00) and the
+fail-closed `TimezoneConfigError` behave identically in both directions:
+
+- `from_app_local(tz_name, local_moment)` takes a **naive local
+  wall-clock** value and returns naive UTC. An **aware** value is
+  rejected with `ValueError`: it already carries its own offset, and
+  reinterpreting it as a wall clock in `APP_TIMEZONE` would discard that
+  silently.
+- `utc_reference_now(utc_now=None)` yields the single naive-UTC
+  reference moment for one request or test.
+
+**DST is never guessed.** For a real IANA zone the value is interpreted
+at both folds and validated by round trip: if converting back from the
+`fold=0` instant does not reproduce the submitted wall clock, the time
+falls in a spring-forward **gap** and does not exist; otherwise, if the
+two folds land on different UTC instants, it is a fall-back **repeat**
+and is genuinely ambiguous. Both raise `LocalTimeError`, a `ValueError`
+subclass whose message is safe to render verbatim as a form validation
+error. The order matters -- both cases produce two instants, and only the
+round trip separates a gap from a repeat. Silently choosing `fold=0` or
+`fold=1` would place a deadline an hour from what the Teacher typed, in
+the one direction nobody would check. `LocalTimeError` is deliberately
+distinct from `TimezoneConfigError`: the latter means the deployment is
+misconfigured and nothing can render at all.
+
+**One reference moment per request.** Routes call `utc_reference_now()`
+exactly once and pass the result down through the query layer and the
+presentation builders; nothing below the route reads a clock. The Student
+dashboard derives *both* its local schedule `now` and its UTC deadline
+reference from one `datetime.now(timezone.utc)` call, so a response that
+straddles a deadline can never contradict itself. Tests inject the moment
+and move time instead of waiting.
+
+**Seconds survive an edit round trip.** The columns are `DATETIME`, so
+they carry seconds, and the `datetime-local` controls render
+`%Y-%m-%dT%H:%M:%S` with `step="1"`. WTForms renders using the *first*
+accepted format, so a minute-only render would have let a Teacher who
+only fixed a typo in the title silently truncate a stored `08:00:37` to
+`08:00`. The invalid shape for `datetime-local` is the *space*
+separator -- not seconds -- and WTForms' own default starts with a
+space-separated format, which is why the list is set explicitly. Ordinary
+minute-only input stays accepted. No offset is ever put into a
+`datetime-local` value, and the schema is unchanged.
+
+Schedule wall-clock storage semantics (the M08 decision -- weekly
+`start_time` / `end_time` are local civil values, never converted to UTC)
+are **unchanged**.
+
+Assignment times are deliberately **not** constrained to the
+AcademicTerm's date range. A deadline after the formal end of a term is
+legitimate, and no such business rule is approved.
+
+### D. Derived states -- computed, never stored
+
+`AssignmentStatus` is its own closed set (`draft`, `published`) --
+separate from `LessonStatus` so the two can never be redefined by
+accident, and emphatically not `AcademicStatus`: an Assignment is never
+*archived*.
+
+Presentation states are derived from the reference moment and are **not**
+enum members and **not** columns:
+
+- **Scheduled** (Teacher-only): published, but `now < opens_at`;
+- **Open**: `opens_at <= now < due_at`;
+- **Past due**: `now >= due_at`.
+
+Because they are computed, the passage of time can never leave a stale
+status in a row, and no scheduled job is needed to "flip" anything.
+
+A published Assignment is **not** Student-visible before `opens_at`, and
+**remains** visible at and after `due_at`. M01 has no submission route,
+so "Past due" is informational only -- withdrawing the row at the
+deadline would hide the record of what was set.
+
+### E. Lifecycle
+
+Create always starts `draft` with `published_at = NULL` -- both set from
+constants in the route, never from the request, so a forged `status` or
+`published_at` field has nowhere to land. Publish stamps the current UTC
+moment; unpublish returns it to `draft` and clears the stamp; republish
+stamps a fresh one. There is no archived state and no hard delete: the
+blueprint exposes no delete route and no route accepts `DELETE`.
+
+Editing never writes `status` or `published_at`, and a Group or ancestor
+lifecycle change never rewrites either -- archiving hides an Assignment
+from Students without touching the row, and reactivating restores
+visibility without rewriting anything.
+
+Create, edit and publish require -- re-checked against the **locked**
+rows -- an active Teacher account with role `teacher`, an active
+`GroupTeacherAssignment` to the exact Group, and an active
+AcademicTerm / Level / Course / Group. **Unpublish stays available**
+while the assignment is active even under an archived Group or ancestor,
+so published work can always be withdrawn.
+
+In M01 every editable field may be edited while those preconditions hold,
+because no Submission rows exist yet. Post-submission edit and
+immutability policy is **not** invented here.
+
+### F. Teacher authorization and routes
+
+Group-centered, public-id-only:
+
+- `GET  /teacher/groups/<gpid>/assignments`
+- `GET|POST /teacher/groups/<gpid>/assignments/new`
+- `GET|POST /teacher/groups/<gpid>/assignments/<apid>/edit`
+- `POST /teacher/groups/<gpid>/assignments/<apid>/toggle-publication`
+
+`roles_required(TEACHER)` handles anonymous (login redirect) and
+non-Teacher (403). Object authorization is then server-side: an **active**
+`GroupTeacherAssignment` to the Group in the URL, and every nested lookup
+constrained with `Assignment.group_id == group.id`. A missing Group, a
+missing Assignment, another Group's Assignment `public_id`, an unassigned
+Teacher and a removed assignment all return the identical non-disclosing
+**404**. The GET list stays available under an archived Group/ancestor so
+history can be read; publication changes are POST-only and CSRF
+protected; the list is paginated in fixed pages of **20** (fetching
+`limit + 1` to derive "next page" without a COUNT), and invalid, zero,
+negative and absurd `page` values normalise to 1 rather than reaching the
+database as an offset. Each Teacher dashboard Group card carries a
+working **Manage Assignments** link.
+
+### G. Student effective visibility -- proven by the SQL itself
+
+- `GET /student/assignments`
+- `GET /student/groups/<gpid>/assignments/<apid>`
+
+A Student receives a row only when the query itself proves:
+
+```text
+User is the authenticated Student
+AND User role/status are valid
+AND Enrollment(student, group).status == active
+AND AcademicTerm.status == active
+AND Level.status  == active
+AND Course.status == active
+AND Group.status  == active
+AND Assignment.status == published
+AND Assignment.opens_at <= reference UTC time
+```
+
+All of it lives in one shared base query in
+`app/services/assignment_queries.py`, keyed off `current_user.id` -- the
+list, the detail page and the dashboard section are built from that same
+query, so a future change cannot tighten one path and leave another open.
+An Assignment is never loaded broadly and filtered in Python.
+
+The `users` join is not redundant with the session: a foreign key into
+`users` proves the row exists, never that it is still a Student or still
+active -- the project rule already applied to Enrollment and
+GroupTeacherAssignment.
+
+Visibility does **not** depend on a Schedule existing, nor on any current
+Teacher assignment; those answer different questions. Every failure --
+draft, not-yet-open, withdrawn or absent Enrollment, archived ancestor,
+cross-Group pairing, mismatched nested ids, non-existent id -- yields no
+row and the identical non-disclosing 404. A suspended Student cannot hold
+a session at all, and the query re-proves role and status regardless.
+
+**List ordering: current work first, history after it.** A single
+`due_at ASC` sequence was wrong and was corrected before acceptance.
+Past-due Assignments stay visible on purpose, so the oldest deadline in a
+Student's whole history sorted *first*, and one full page of old work
+could push an Assignment whose deadline is approaching onto a later page
+-- the opposite of what the page says it shows. The order is now, in one
+SQL `ORDER BY` against the single injected reference moment:
+
+1. bucket -- open (`due_at > reference`) before past due;
+2. inside the open bucket, `due_at ASC` (nearest deadline first);
+3. inside the past-due bucket, `due_at DESC` (most recent history first);
+4. `Assignment.id ASC` as the deterministic final tie-break.
+
+Two opposite directions cannot be one sort key, so terms 2 and 3 are
+complementary `CASE` expressions: within either bucket exactly one of
+them is non-NULL for every row of that bucket, so NULL ordering can never
+mix the buckets. The bucket boundary matches the derived state exactly --
+`now == due_at` is **past due**. Bucketing, ordering, offset and limit
+all happen in that one statement; nothing is fetched broadly and
+reordered in Python. Pages stay fixed at 20 with the same `limit + 1` and
+`page` normalisation as the Teacher list, and the page copy states the
+real behaviour rather than "nearest deadline first".
+
+The Student templates receive plain presentation dicts throughout --
+never an ORM row -- so rendering cannot lazy-load or make an
+authorization decision, and no internal id reaches the HTML. (The
+*Teacher* list is narrower: its Assignment rows are dicts, but the route
+also hands that template the eagerly loaded `Group` object for the page
+header, and the template says so.)
+
+Both responses -- **and the Student dashboard**, which now carries the
+same personal, time-gated Assignment data -- return
+`Cache-Control: private, no-store` and `Vary: Cookie`: these pages are
+per-Student and time-gated, so a shared or reused cache entry could show
+one Student another's list, or an Assignment after it stopped being
+visible. The one wrapper that sets both lives in `student/routes.py` and
+is imported by `student/assignments.py`; `routes.py` imports nothing
+back, so there is no cycle. The shared Student portal navigation gains an
+**Assignments** entry.
+
+### H. Student dashboard deadlines
+
+A bounded "Upcoming assignment deadlines" section: the same visibility
+query plus `due_at > now`, ordered nearest-first with the `id` tie-break,
+capped at **5**. It is deliberately **stricter** than the list, which
+keeps past-due rows as history -- so the §G bucketing would be a no-op
+here and a plain `due_at ASC, id ASC` is the whole ordering. It is exactly **one** additional query regardless of how
+many Groups or Assignments the Student has -- no per-Group or
+per-Assignment follow-up read -- so a deadline can never appear for
+something the Student could not open, and there is no N+1. Draft,
+not-yet-open, past-due, withdrawn and archived-chain rows are excluded by
+that query, not by the template. An honest empty state is shown when
+nothing is upcoming. The existing M09 schedule sections are unchanged and
+still use their injected local moment.
+
+The Teacher dashboard gains **only** the Manage Assignments link. There
+is no "Pending reviews" data: submissions and reviews do not exist yet.
+
+### I. Concurrency and stale-edit protection
+
+Every Teacher mutation follows one lock order in one transaction:
+
+    AcademicTerm -> Level -> Course  (via lock_academic_hierarchy, which
+    owns the single deliberate reset)
+    -> Group -> Teacher User -> GroupTeacherAssignment
+    -> Assignment rows (ascending internal id)
+
+with **no** second reset. After locking, the Group's Course / Level /
+AcademicTerm identity is re-checked, along with Teacher role, account
+status, the active assignment, nested Assignment ownership, and the
+hierarchy's status. No model field is assigned until every one of those
+passes, so a rejection leaves no partial mutation. `IntegrityError` is
+caught, rolled back before rendering or redirecting, and reported as
+generic prose with no SQL, parameters, internal ids, or driver text.
+
+The Group lock is what serializes same-Group Assignment creation against
+an Administrator Group **retarget**, which takes the same Group lock --
+so a new Assignment cannot slip past the identity freeze (§J).
+
+**Signed stale-edit snapshot**, salt
+`teacher.assignment-edit-snapshot.phase4-m01.v1`, covering exactly
+`public_id`, `title`, `instructions`, and the canonical UTC `opens_at` /
+`due_at` serialized with a fixed `%Y-%m-%dT%H:%M:%S` format so a token
+round trip compares byte-for-byte. `status`, `published_at`,
+`created_at` and `updated_at` are **excluded**, which is what makes a
+concurrent publish or unpublish *not* stale an open edit form: the edit
+route cannot overwrite those fields, so there is nothing to protect.
+
+Following the established Group / Course / Schedule / Unit / Lesson
+behaviour: a missing, malformed, invalidly signed, wrong-shaped or
+cross-Assignment token is stale; so is one whose editable values no
+longer match the current **locked** row (the check runs both before and
+after the locks). A stale rejection is Post/Redirect/Get and discards
+every attempted value, reloading current persisted state with a freshly
+paired token -- a fresh token is never paired with stale attempted
+values. An ordinary WTForms or business-rule failure re-embeds the
+**original** still-valid token unchanged, for the same reason.
+
+### J. Group identity freeze
+
+`group_has_assignment_history(group_id)` returns true when **any**
+Assignment row exists for the Group, draft or published, and joins
+membership, Schedule and Unit history in
+`app.blueprints.admin.groups._group_identity_frozen`. Publication status
+is irrelevant: even a draft was authored against this Group's current
+Course and AcademicTerm, so retargeting afterwards would silently
+reinterpret it. The Administrator wording, help text, early pre-lock
+check and authoritative post-lock recheck all now read "enrollment,
+teacher-assignment, schedule, unit, or assignment history".
+
+This is an identity freeze **only**. It adds no new ancestor archive
+blocker, does not block archiving a Group that has Assignments, does not
+cascade any lifecycle change into an Assignment, and changes no
+Course-level identity rule beyond the wording.
+
+### K. Migration and MySQL
+
+`4f7c1d9b2e30` (`Revises: 023a5f5814a8`) creates `assignments`, its four
+named constraints and its two indexes, and nothing else. No existing
+table, column, index, constraint or row is touched -- `groups` in
+particular is untouched -- and there is **no data backfill**: an
+Assignment is authored work, so pre-existing Groups, Units, Lessons and
+Enrollments deliberately produce no historical rows. The downgrade is
+symmetric: both indexes are dropped in the reverse of their creation
+order, then the table. Engine, charset and collation follow the existing
+project defaults (InnoDB, `utf8mb4_0900_ai_ci`).
+
+**The migration was not applied to any real database in this Part.** It
+was verified by repository-only Alembic head/history inspection (single
+head, linear chain) and by running `upgrade()` then `downgrade()` against
+an **isolated temporary SQLite file**, which proves the operations are
+internally consistent and genuinely reversible. It proves nothing about
+MySQL/InnoDB DDL, and unlike M14 there is no real `EXPLAIN` evidence
+behind the two index choices (§B) -- they are reasoned from the query
+shapes and from M14's measured `filesort` result, not measured here. The
+correction pass that fixed the list ordering deliberately left both
+indexes and every migration operation untouched: changing DDL on
+speculation, with no authorized `EXPLAIN`, would be worse than an
+honestly documented open question.
+
+### L. Deliberate deferrals
+
+No placeholder table, column, route, UI element, enum value, counter or
+TODO was added for any of the following.
+
+Later Assignment milestones: `Submission`, submission attempts and
+revisions, submission history, Student comments, duplicate-submit /
+attempt nonces, submission states, late policy and late-until timestamps,
+attempt limits, resubmission rules, allowed file types, maximum file size
+and count, Teacher starter attachments, Student uploads, submission-file
+storage / access logs / cleanup, teacher review state, and feedback.
+
+Grades: numeric score, maximum points, categories, weighting, official
+grade records, grade publication, Administrator grade reports.
+
+Quizzes: quiz models, questions, answer options, attempts, saved answers,
+timers, automatic grading, and any generic Activity superclass.
+
+Integrations: Assignment search, Assignment notification kinds or
+producers (`NotificationKind`, the notifications CHECK, the notifications
+migration, delivery and targets are all untouched), deadline reminders,
+scheduled jobs, Calendar events, Student progress/completion, and Teacher
+pending-review dashboard data.
+
+### M. Honest limitations
+
+- Automated tests run on SQLite in memory. They prove the application
+  logic, the SQL scoping, the query structure, the model/schema
+  alignment and the *requested* lock order -- they do **not** prove
+  MySQL/InnoDB row blocking, isolation, collation, index plans, or that
+  the migration runs on MySQL. No real database was contacted.
+- The development host has no IANA time-zone database, which is exactly
+  why the deployment fixed-offset fallback exists. The real-IANA DST
+  tests are therefore skipped there and run only where `tzdata` is
+  installed; to keep the gap/repeat logic covered on every host, the same
+  code path is additionally exercised against a purpose-built fold-aware
+  `tzinfo` injected in place of the zone lookup.
+- Rejecting ambiguous and nonexistent local times is deliberately strict:
+  in a DST-observing deployment a Teacher genuinely cannot set a deadline
+  inside the transition hour and must pick another time. On a fixed-offset
+  deployment (including this project's `Africa/Tripoli`, +02:00
+  year-round since 2013) the case cannot arise at all.
+- Mid-session account suspension cannot be exercised faithfully in the
+  test suite: the SQLite `StaticPool` backend makes every request reuse
+  the fixture's session, so a row mutated from a nested app context is
+  not re-read by the user loader. The tested contract is the real one --
+  a suspended account cannot obtain a session at all.
+- "Past due" is informational. M01 has no submission route, so nothing
+  enforces the deadline; that enforcement arrives with Submissions.
+- No browser, accessibility, responsive or real-concurrency verification
+  was performed in this Part.

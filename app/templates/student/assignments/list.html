@@ -1,0 +1,76 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Assignments{% endblock %}
+{% block portal_nav %}{% set active_nav = 'assignments' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M01. `assignments` is a list of plain presentation dicts built by
+    app.services.assignment_queries.build_student_view -- every row already
+    passed the full effective-visibility formula in SQL, and no ORM row reaches
+    this template. Public ids only. -#}
+<h1>Assignments</h1>
+<p class="ds-section__desc">
+  Assignments from your active groups. Open assignments are shown by nearest deadline. Past-due
+  assignments follow, most recent first. Times are shown in the center timezone
+  (<strong>{{ tz_name }}</strong>).
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+{% if not assignments %}
+<div class="empty-state">
+  <div class="empty-state__title">No assignments yet</div>
+  <div>
+    When a teacher publishes an assignment for one of your groups and its opening time has passed,
+    it will appear here.
+  </div>
+</div>
+{% else %}
+<div class="dash-scroll">
+<table class="dash-table">
+  <thead>
+    <tr>
+      <th>Assignment</th>
+      <th>Group</th>
+      <th>Course</th>
+      <th style="width:12rem">Due ({{ tz_name }})</th>
+      <th style="width:8rem">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in assignments %}
+    <tr>
+      <td>
+        <a href="{{ url_for('student.assignment_detail', group_public_id=item.group_public_id, assignment_public_id=item.public_id) }}">{{ item.title }}</a>
+      </td>
+      <td>{{ item.group_name }}</td>
+      <td>{{ item.course_title }} ({{ item.level_name }})</td>
+      <td>{{ item.due_local.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td>
+        {% if item.state == "open" %}
+        <span class="badge badge--success">Open</span>
+        {% else %}
+        <span class="badge badge--neutral">Past due</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if has_prev or has_next %}
+<nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Assignment pages">
+  {% if has_prev %}
+  <a class="btn btn--secondary" href="{{ url_for('student.assignments_list', page=page - 1) }}">Previous</a>
+  {% endif %}
+  <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+  {% if has_next %}
+  <a class="btn btn--secondary" href="{{ url_for('student.assignments_list', page=page + 1) }}">Next</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% endif %}
+{% endblock %}

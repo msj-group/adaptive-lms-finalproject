@@ -75,6 +75,10 @@
 
       <div class="ds-row" style="margin-top: var(--space-4)">
         <a class="btn btn--secondary" href="{{ url_for('teacher.group_units', group_public_id=card.group_public_id) }}">Manage Units</a>
+        {#- Phase 4 / M01: the assignments list stays reachable for an actively
+            assigned Teacher even under an archived group/ancestor, so history
+            can always be read and published work can always be withdrawn. -#}
+        <a class="btn btn--secondary" href="{{ url_for('teacher.group_assignments', group_public_id=card.group_public_id) }}">Manage Assignments</a>
       </div>
     </div>
     {% endfor %}

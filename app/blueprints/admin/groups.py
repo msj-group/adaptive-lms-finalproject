@@ -23,6 +23,7 @@ from app.models import (
 )
 from app.security.decorators import roles_required
 from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
+from app.services.assignment_queries import group_has_assignment_history
 from app.services.group_memberships import (
     active_student_enrollment_count,
     active_student_enrollment_rows,
@@ -43,17 +44,28 @@ def _group_identity_frozen(group_id):
     - Enrollment or GroupTeacherAssignment history
       (`group_has_membership_history`);
     - a Schedule row, active or archived (`group_has_schedule_history`, M08);
-    - a Unit row, active or archived (`group_has_unit_history`, M10).
+    - a Unit row, active or archived (`group_has_unit_history`, M10);
+    - an Assignment row, draft or published
+      (`group_has_assignment_history`, Phase 4 / M01).
 
     Every one of those rows was authored against this Group's Term/Course,
     so retargeting the Group afterwards would silently reinterpret it.
-    Same-Term/same-Course resubmissions and non-identity edits stay
-    allowed -- that exemption lives in `_group_identity_change_error`.
+    An Assignment's publication status is deliberately irrelevant for the
+    same reason a draft Unit still freezes identity: the work was already
+    written for *this* Course in *this* Term.
+
+    This is an identity freeze only. It deliberately adds **no** new
+    archive blocker: a Group with Assignments can still be archived, and
+    a Group or ancestor lifecycle change never cascades into an
+    Assignment. Same-Term/same-Course resubmissions and non-identity
+    edits stay allowed -- that exemption lives in
+    `_group_identity_change_error`.
     """
     return (
         group_has_membership_history(group_id)
         or group_has_schedule_history(group_id)
         or group_has_unit_history(group_id)
+        or group_has_assignment_history(group_id)
     )
 
 
@@ -267,9 +279,9 @@ def _group_identity_change_error(current_group, has_history, academic_term_id, c
     all, both fields remain freely editable.
 
     `has_history` is supplied by the caller from `_group_identity_frozen`
-    (membership history OR Schedule history OR Unit history); this
-    function only decides the "unchanged current values" exemption and
-    the message.
+    (membership history OR Schedule history OR Unit history OR Assignment
+    history); this function only decides the "unchanged current values"
+    exemption and the message.
 
     Shared by the early, pre-lock friendly check and the authoritative
     post-lock recheck in `group_edit` so the rule cannot drift between
@@ -281,8 +293,8 @@ def _group_identity_change_error(current_group, has_history, academic_term_id, c
         return None
     return (
         "Academic Term and Course cannot be changed once this group has enrollment, "
-        "teacher-assignment, schedule, or unit history. Create a new group instead and "
-        "archive this one."
+        "teacher-assignment, schedule, unit, or assignment history. Create a new group "
+        "instead and archive this one."
     )
 
 

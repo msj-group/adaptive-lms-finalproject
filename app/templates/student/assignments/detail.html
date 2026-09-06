@@ -1,0 +1,47 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ assignment.title }} — {{ assignment.group_name }}{% endblock %}
+{% block portal_nav %}{% set active_nav = 'assignments' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M01. `assignment` is a plain presentation dict; the row behind it
+    already satisfied the whole visibility formula in SQL. -#}
+<p class="ds-section__desc" style="margin-bottom: var(--space-2)">
+  {{ assignment.group_name }} &middot; {{ assignment.course_title }} &middot; {{ assignment.level_name }} &middot; {{ assignment.term_name }}
+</p>
+<div class="ds-row" style="justify-content: space-between; align-items: flex-start; gap: var(--space-4)">
+  <h1 style="margin-top: 0">{{ assignment.title }}</h1>
+  {% if assignment.state == "open" %}
+  <span class="badge badge--success">Open</span>
+  {% else %}
+  <span class="badge badge--neutral">Past due</span>
+  {% endif %}
+</div>
+
+<div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
+  <a class="btn btn--secondary" href="{{ url_for('student.assignments_list') }}">Back to Assignments</a>
+  <a class="btn btn--secondary" href="{{ url_for('student.group_units', group_public_id=assignment.group_public_id) }}">Open Lessons</a>
+</div>
+
+<div class="card" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
+    <dd style="margin:0">{{ assignment.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
+    <dd style="margin:0">{{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+  </dl>
+</div>
+
+{% if assignment.state == "past_due" %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
+  The deadline for this assignment has passed. It stays here for your reference.
+</div>
+{% endif %}
+
+<section>
+  <h2>Instructions</h2>
+  <div class="card">
+    {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
+       assignment instructions are Teacher-typed text, never stored HTML. #}
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ assignment.instructions }}</div>
+  </div>
+</section>
+{% endblock %}

@@ -51,6 +51,7 @@ class Group(db.Model):
     teacher_assignments = db.relationship("GroupTeacherAssignment", back_populates="group")
     schedules = db.relationship("Schedule", back_populates="group")
     units = db.relationship("Unit", back_populates="group")
+    assignments = db.relationship("Assignment", back_populates="group")
 
     @validates("status")
     def validate_status(self, _key, value):
