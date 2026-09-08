@@ -3920,3 +3920,450 @@ dashboard data, exports, analytics and ML.
   they cannot pass or fail on the fixture identity map.
 - No browser, accessibility, responsive or real-concurrency verification
   was performed in this Part.
+
+## Teacher feedback on Submissions (Phase 4, Part M03)
+
+M03 adds one coherent capability on top of the M02 Submission
+foundation: an actively assigned Teacher writes, and later revises, **one
+shared plain-text feedback record** on a Student's immutable Submission,
+and the Student sees the latest saved text on their own receipt whenever
+that receipt is currently authorized.
+
+**Feedback is a comment, not a grade.** No score, grade, maximum points,
+rubric, pass/fail, review-status enum, publication state, attempt counter
+or historical-version table was added, and no placeholder column, route,
+enum value, template hook or TODO was left for any of them. Every page
+that shows feedback says in words that it is a written comment and does
+**not** mean marked, passed, completed or officially approved. Grades
+remain an undecided module.
+
+### A. Latest text only, and no publication state
+
+One row per Submission (`uq_submission_feedback_submission`). A revision
+overwrites `feedback_text` **in place**; earlier wordings are not stored
+anywhere and cannot be recovered, and the Teacher editor states that
+before a save. There is deliberately no `submission_history`-style table,
+no draft column and no publish/unpublish action: saving *is* publishing.
+The moment a save commits, the text is visible to an eligible Student, so
+there is no state in which feedback exists but is deliberately hidden
+from the Student it is about.
+
+**The success message says exactly that, and no more.** Because a save is
+deliberately permitted on genuinely historical work -- a withdrawn or
+suspended Student, an unpublished Assignment -- the Student in question
+may not be able to open the receipt at all at that moment. The wording is
+therefore conditional ("visible to the student whenever they can open
+this submission") rather than a claim about current access; an earlier
+draft promised "the student can see it now", which was false in exactly
+those cases, and it has been corrected.
+
+Feedback cannot be deleted in this milestone. There is no delete route,
+no soft-delete column, and both foreign keys are plain references with no
+`ON DELETE` behaviour, so no lifecycle change anywhere in the hierarchy
+can remove feedback either.
+
+### B. Last-editor attribution, not authorship
+
+`reviewer_id` names the Teacher who **last changed** the text, not
+whoever created it. Every actively assigned co-teacher of the Group is an
+equal collaborator on the *same* record -- exactly as they already are on
+the Assignment itself -- so feedback is never privately owned by its
+first reviewer. The Teacher pages and the Student receipt both show that
+last editor's display name and the localized `updated_at` with its
+timezone label, so "who said this, and when" is always answerable without
+a history table.
+
+`created_at` is preserved across revisions and is never displayed; it
+exists so the record's own age stays truthful.
+
+### C. Co-teacher collaboration and no-op semantics
+
+An authorized save whose **normalized** text equals the stored text is a
+no-op: `version`, `updated_at` and `reviewer_id` are all left alone.
+Re-saving unchanged wording is not an edit, and it must not take
+attribution away from the Teacher who actually wrote it. The no-op still
+has to pass every authorization check and a non-stale token first -- it
+is a decision not to write, not a shortcut around the checks.
+
+Normalization is a plain `.strip()`: leading and trailing whitespace is
+removed, and internal line breaks, blank lines, indentation and a
+browser's `\r\n` pairs are stored exactly as typed. The value is plain
+text throughout -- never HTML, never Markdown, escaped on every page and
+never rendered with `|safe`. The form's `Length(max=10_000)` is applied
+to the **raw** submitted value, before stripping, so padding cannot be
+used to slip a longer body past it; `DataRequired` rejects an empty
+answer and a whitespace-only one alike.
+
+### D. Versioned stale-form protection
+
+A signed `itsdangerous` token (salt
+`teacher.submission-feedback-state.phase4-m03.v1`) binds each open form
+to the acting Teacher's `public_id`, the Group, Assignment and Submission
+`public_id`s, and **either** the existing feedback's `public_id` **and
+`version`**, or an explicit *expected-absence* state (both fields
+`null`). Only public identifiers appear: a signed token is authenticated,
+not encrypted, so no internal id and no feedback text is ever placed in
+one.
+
+**The version, not a timestamp, is the staleness signal.** Whole-second
+timestamps cannot separate two edits landing inside one second, and text
+comparison cannot detect an A -> B -> A round trip that returns the
+wording to what an older form was opened against. The version detects
+both. The token is validated for exact shape and types (`bool` is
+excluded explicitly -- it is an `int` subclass in Python, and `True` must
+not be accepted as version 1; a half-absence payload is rejected), and it
+is re-checked against the **locked** current row immediately before any
+write.
+
+Consequences, all covered by tests: two co-teachers opening an empty form
+resolve as "first save wins, second is told to reload" -- never an
+overwrite and never a second row; two editors on the same version resolve
+the same way; replaying a successful form cannot cause a second update or
+version increment; and a missing, malformed, invalidly signed,
+wrong-shaped, cross-user or cross-object token fails with no mutation.
+
+A stale rejection is a safe Post/Redirect/Get that **discards the
+attempted text** and reloads the current persisted feedback. It never
+pairs a freshly minted token with attempted values, which is precisely
+the bypass the rejection exists to close (the same reasoning as the M01
+Assignment edit snapshot and the M02 submission context). An *ordinary*
+validation failure with a still-valid context does the opposite: it keeps
+the attempted text and re-embeds the **original** token, so the expected
+version is never silently refreshed underneath the Teacher.
+
+### E. Student versus Teacher visibility
+
+**Student.** Feedback is an extension of the existing receipt, not a
+route of its own. The full M02 visibility formula is proved first -- an
+active authenticated Student with a valid role, an active Enrollment to
+the exact Group, an active hierarchy and Group, a published Assignment
+whose `opens_at` has been reached, and a Submission belonging to **both**
+that Assignment and this Student -- and only then is feedback fetched,
+for that exact Submission id. It therefore cannot carry a classmate's
+text. It stays readable after `due_at`, and withdrawal, suspension,
+unpublishing or ancestor archival hide the receipt and the feedback
+together, **without deleting** either. A reviewer's later suspension or
+removal from the Group is deliberately *not* a visibility condition:
+their current status is not a historical-read condition, and treating it
+as one would erase valid history for an irrelevant reason.
+
+There is no Student write path at all: no feedback endpoint, no reply, no
+comment, no attachment, no edit. Feedback was deliberately **not** added
+to the Student Assignment list or the dashboard in this Part.
+
+**Teacher.** Reads follow M02 exactly and stay available under an
+archived hierarchy, an unpublished Assignment, a passed deadline, and for
+a Student who has since been withdrawn or suspended. Writing
+additionally requires -- re-checked against the locked rows -- an active
+Teacher account, an active `GroupTeacherAssignment` to the exact Group,
+and an active AcademicTerm / Level / Course / Group. Writing deliberately
+does **not** require the Student's account or Enrollment to be currently
+active, the Assignment to be published or open, or a Schedule to exist:
+genuine historical work must remain reviewable. Under an archived chain
+the page renders read-only and explains why, and a forged POST is
+rejected server-side against the locked rows, never by the template.
+
+Unassigned or removed Teachers, wrong nested identifiers, missing objects
+and cross-Group attempts all keep the established non-disclosing 404.
+
+**Conditional role integrity, in both directions.** A foreign key into
+`users` proves a row exists, never its role. The Submission owner must
+still be a Student for the row to be presented as Student work (M02's
+rule, unchanged). New in M03: a feedback row whose `reviewer_id` does not
+name a Teacher **fails closed** -- its text is never rendered on any
+page, and it is reported as its own integrity state, never as "no
+feedback yet" and never as "awaiting feedback". That distinction matters
+twice: it stops private content being shown under a broken record, and it
+stops a Teacher being invited to write a duplicate the unique constraint
+would reject anyway. The write path refuses such a row rather than
+silently overwriting it, which would destroy the record while pretending
+to repair it; the message names no reviewer, quotes no text, and promises
+no automatic repair.
+
+### F. Route-specific lock order
+
+The feedback POST uses one transaction with **one** deliberate reset
+(owned by `lock_academic_hierarchy`, the first lock of the request):
+
+    AcademicTerm -> Level -> Course -> Group
+      -> the involved User rows in ascending internal id
+         (acting Teacher and Submission owner)
+      -> the acting Teacher's GroupTeacherAssignment
+      -> Assignment -> Submission
+      -> the existing SubmissionFeedback for that Submission, if any
+
+Every scalar the request needs later is captured **before** that reset,
+so nothing between the reset and the required locks triggers a lazy ORM
+or `current_user` reload that would establish a fresh read snapshot ahead
+of the locks. There is no second reset and no reverse-order path; a
+rejection rolls back once more to *release* the locks, which is not a
+second lock-taking reset.
+
+This is the shared hierarchy/Group prefix every Group-affecting mutation
+already uses, extended with the rows this workflow decides on, and it
+keeps the project-wide "User rows in ascending internal id" rule the
+Administrator membership and account write paths rely on -- which is why
+two co-teachers reviewing two different Students cannot deadlock against
+each other or against a membership change. No existing route-specific
+contract was redesigned. The route is therefore serialized against
+Teacher Assignment edits and publication toggles (same Group, same
+Assignment row), against the Student submission path, against membership
+changes and against Group lifecycle/identity operations (same Group row).
+
+**What actually serializes two co-teachers racing to write the first
+feedback** is the chain of locks on rows that already exist: both
+requests take the same Group, Assignment and Submission row locks
+*before* either reads or inserts feedback, so the second waits for the
+first to commit and then re-reads a row that is no longer missing. That
+is the serialization this transaction design relies on.
+
+The last statement locks by `submission_id`
+(`uq_submission_feedback_submission`), which for a missing row can only
+take a gap/next-key lock. **A gap lock is not a mutex.** MySQL/InnoDB
+documents that gap locks on the same gap may be held by several
+transactions at once and do not block one another
+(<https://dev.mysql.com/doc/refman/8.0/en/innodb-locking.html>), so
+acquiring one is not by itself what makes competing creators mutually
+exclusive, and a missing feedback row is not a guaranteed mutex. The
+statement is issued to read the current row inside the same transaction,
+not as the exclusion mechanism. An earlier draft of this section claimed
+gap locking as the serialization mechanism; that claim was wrong and has
+been corrected.
+
+`uq_submission_feedback_submission` remains the **final duplicate
+defense** behind both of those, and the signed version token is what
+turns a losing race into an explicit "reload and review" rejection rather
+than an overwrite. None of this is claimed to be measured: the SQLite
+test backend can demonstrate none of it.
+
+After locking and before any mutation the route re-proves, against the
+locked rows: the exact hierarchy identities and linkages, every ancestor
+and Group status, the acting Teacher's role and account status, the exact
+active `GroupTeacherAssignment`, the Assignment's nested Group ownership
+and its own `public_id`, the Submission's nested Assignment ownership and
+its own `public_id`, the Submission owner's identity and Student role,
+the existing feedback row's identity, its reviewer's role integrity, the
+signed token, and finally ordinary field validity. **No field is assigned
+until every one of them has passed**, so a rejection never leaves a
+partial update -- not even a moved `updated_at`.
+
+One deliberate exception is documented in the code
+(`_existing_reviewer_is_teacher`): the *existing* row's reviewer role is
+re-read as a bare column with an **ordinary `SELECT`** -- not
+`SELECT ... FOR UPDATE` -- inside the open transaction, rather than by
+locking a third User row. Taking that lock would break the ascending-id
+rule that keeps this route deadlock-compatible with the membership and
+account write paths.
+
+That read **is an integrity gate on write eligibility**: a negative
+result refuses the save. What it guarantees is that the role is read from
+current committed state inside this transaction, as a bare column, so the
+identity map cannot answer it from a row read before the locks. What it
+does **not** guarantee is exclusion: the reviewer's `users` row is not
+locked, so a role change committing between this read and this request's
+commit is not excluded. That window's consequences are bounded and
+non-destructive -- a save may be refused on a row that has just become
+valid again, or may proceed on a row whose reviewer lost the role in that
+instant, in which case the save reassigns `reviewer_id` to the acting
+Teacher and the next read is consistent. Neither outcome deletes or
+discloses anything, and no real-MySQL behaviour is claimed.
+
+**Fresh authorization after a rollback.** `roles_required` runs once,
+before the view, and a cached `current_user` object is not a current
+read. Any path that rolls back has released its locks, so the acting
+Teacher's account or assignment may have changed in exactly that window;
+`_teacher_group_or_404` alone would not notice, because it proves an
+active `GroupTeacherAssignment` but never re-reads the actor's own `role`
+and `status`. A correction pass added `_fresh_teacher_authorization`,
+which re-proves -- from current database state, keyed on a **scalar actor
+id captured before the reset** rather than on `current_user` -- that the
+acting User exists, is a Teacher, is active, holds an active
+`GroupTeacherAssignment` to the exact Group, and that the Assignment and
+Submission nest correctly with an owner who is still a Student. It runs
+on the editor render, the ordinary-validation re-render and the
+`IntegrityError` recovery, **before** any private answer or feedback body
+is fetched, any token is minted, or any recovery response is chosen, and
+it fails with the established non-disclosing 404.
+
+It is deliberately scoped to M03 rather than folded into the shared
+`_teacher_group_or_404`, which every other Teacher route uses: widening
+that helper would change behaviour well outside this Part. It checks the
+**acting** Teacher only -- it does not require the historical reviewer to
+remain active or assigned, does not require an active hierarchy (archived
+historical reads stay readable), and does not require the Assignment to
+be published or open.
+
+The write timestamp is sampled **after** all required locks and truncated
+to a whole second, so a request that waited behind a competing co-teacher
+records the moment it actually wrote. `created_at` and `updated_at` are
+the *same* value on creation. The column carries no `onupdate` hook: an
+implicit one would bypass that truncation and fire on writes M03 does not
+want timestamped.
+
+`IntegrityError` is caught, rolled back, and then -- because a
+rolled-back read is not authorization evidence, and whatever caused the
+conflict may also have ended this Teacher's access -- the whole
+authorization chain is re-established from scratch before any response is
+chosen. The message is generic: a constraint failure is never reported as
+success, nothing is retried, and no co-teacher's winning text is
+overwritten. No SQL, driver text, parameter or internal id reaches the
+page.
+
+### G. Query bounds and index rationale
+
+Every read is bounded, selects explicit **columns** rather than ORM
+entities, and returns plain presentation dicts, so no template can
+lazy-load anything or make an authorization decision.
+
+- **Teacher list.** M02's `teacher_submissions_page` projection is
+  unchanged -- fixed page size 20, `submitted_at DESC, id DESC` in SQL,
+  `LIMIT PAGE_SIZE + 1` for the non-disclosing has-next flag, the same
+  page normalization and past-the-end fallback, no COUNT and no total
+  counter. The M03 indicator comes from **one** additional bounded
+  page-level query keyed by the page's Submission `public_id`s (at most
+  20, so the `IN` list is bounded by construction), mirroring exactly how
+  `assignment_ids_with_submissions` supplies the M02 freeze badge. It is
+  merged onto the already-built rows afterwards, which is why M02's
+  projection contract did not have to change. That query selects a public
+  id and a role *comparison* -- it fetches no `feedback_text`, no
+  `answer_text`, no password hash, no email and no other `users` column.
+  The indicator is **derived from row existence**, never from a stored
+  status column: none exists.
+- **Teacher detail and editor.** One additional bounded lookup for one
+  Submission, resolved by `uq_submission_feedback_submission`. The editor
+  also shows the answer read-only, from the same single row M02's detail
+  query already fetches.
+- **Student receipt.** One fixed, bounded lookup by the same unique key,
+  and only after the receipt itself is authorized. No history load.
+
+Two index objects, each with a distinct justification:
+
+- `uq_submission_feedback_submission` (`submission_id`) -- the required
+  uniqueness invariant, *and* the exact shape of every M03 read, all of
+  which resolve feedback for one already-known Submission. Being a
+  single-column unique index it also gives the `submission_id` foreign
+  key the index InnoDB requires, so no separate one is declared.
+- `ix_submission_feedback_reviewer_id` -- declared for the `reviewer_id`
+  **foreign key**, not for a query shape. Nothing else leads with it, and
+  declaring it explicitly keeps the model, the migration and the real
+  schema in agreement instead of letting MySQL create an auto-named one.
+
+No speculative reporting index was added: there is no feedback-by-Teacher
+page, no review queue and no aggregate counter in this milestone, so
+there is no read shape for one to serve.
+
+**No MySQL execution plan has been measured for this table.** As with
+M01's and M02's indexes, this is a reasoned design pending an authorized
+real `EXPLAIN`.
+
+All feedback-bearing pages -- the Teacher list, detail and editor, the
+editor's form-error re-render, and the Student receipt -- carry
+`Cache-Control: private, no-store` and `Vary: Cookie`.
+
+### H. Migration
+
+One additive revision, `b26b20c3d20d`, whose `down_revision` is
+`6b1f0ad74c92`. It creates exactly one table, `submission_feedback`, with
+only its own constraints and indexes. No existing table, column, index,
+constraint or row is touched -- `submissions` and `users` appear only as
+foreign-key targets -- and there is no data backfill and no seeded row:
+feedback is a Teacher's own act, so pre-existing Submissions deliberately
+produce no historical rows. The downgrade is symmetric: the index is
+dropped, then the table, and nothing else. No existing revision file was
+modified.
+
+Types follow the project conventions: `BIGINT AUTO_INCREMENT` primary key
+(SQLite `Integer` variant), `VARCHAR(36)` UUID `public_id`, `TEXT` body,
+`INTEGER` version, `DATETIME` timestamps. Engine, charset and collation
+follow the existing project defaults (InnoDB, `utf8mb4_0900_ai_ci`),
+exactly as every earlier revision leaves them to the server/database
+default. The positive-version rule is a plain comparison `CHECK`,
+enforced by MySQL 8 and the SQLite test backend alike.
+
+### I. Deliberate deferrals
+
+No placeholder table, column, route, UI element, enum value, counter or
+TODO was added for any of the following.
+
+Grading: scores, grades, rubrics, pass/fail, maximum points, grade
+categories, grade publication, Administrator grade reports.
+
+Feedback workflow: drafts, publish/unpublish, delete or soft delete,
+historical-version storage, per-version rows, feedback on anything other
+than a Submission, private teacher-only notes, feedback templates,
+attempt-nonce tables and general audit frameworks.
+
+Student interaction: replies, comments, threads, attachments, read
+receipts, and feedback anywhere outside the Student's own submission
+receipt (the list and the dashboard were deliberately left untouched).
+
+Submission workflow: editing, resubmission, attempts, autosave, late
+policies, uploads, storage and downloads.
+
+Everything else: notifications, email, search, reminders, background
+jobs, review queues, aggregate counters, dashboard metrics, progress and
+completion, exports, analytics and ML.
+
+### J. Tests actually performed, and honest limitations
+
+- Automated tests run on SQLite in memory. They prove the application
+  logic, the SQL scoping, the query structure, the model/schema alignment
+  and the *requested* lock order -- they do **not** prove MySQL/InnoDB
+  row blocking, isolation, collation, index plans, or that the migration
+  runs on MySQL. **No real database was contacted in this Part**, and the
+  migration was **not** applied to the real application database.
+- The migration's `upgrade()` and `downgrade()` were executed against an
+  explicitly isolated temporary SQLite file holding only the two
+  prerequisite foreign-key target tables, each with a row. That proves
+  the operations are internally consistent, that the downgrade is
+  genuinely reversible, and that the prerequisite tables and rows survive
+  untouched. **SQLite migration execution does not prove MySQL DDL or
+  InnoDB behaviour.** The MySQL `CREATE TABLE` was additionally rendered
+  *offline* (dialect-only, no connection) and inspected; that is
+  generated text, not execution.
+- The concurrency tests are structural. SQLite has no
+  `SELECT ... FOR UPDATE` and no REPEATABLE READ snapshot isolation, so
+  they assert the *requested* reset and lock order and exercise the
+  post-lock recheck logic by injecting a state change at a chosen point
+  (a removed teaching assignment, a suspended Teacher, an archival, a
+  demoted Submission owner, a competing first feedback). They are **not**
+  a demonstration of real concurrent InnoDB blocking, and the expectation
+  that the final unique-index lock serializes competing *first* feedback
+  on InnoDB is reasoned, not measured.
+- Time is injected rather than waited for, so the "two edits inside one
+  whole second" and "a co-teacher committed while this request waited"
+  cases are exact rather than probabilistic. That proves the decision
+  logic, not real-world clock skew between application servers.
+- The `IntegrityError` tests inject the failure and the access-losing
+  change at a chosen point inside one SQLite request. They prove the
+  recovery path re-authorizes and what it answers; they are not a
+  demonstration of real concurrent InnoDB conflict resolution.
+- A test-harness artifact was found and worked around rather than
+  papered over: the shared `app` fixture keeps **one** app context open
+  for a whole test, and Flask reuses an already-pushed app context per
+  test request, so `flask.g` -- where Flask-Login caches the loaded user
+  -- survives between requests. Without clearing it, a second test
+  client's request silently runs as the *first* client's user, which
+  would make every "two co-teachers" assertion pass vacuously. The M03
+  tests clear that cache explicitly before each request
+  (`_fresh_identity`). This is a fixture artifact, not application
+  behaviour: in production every request gets its own app context.
+- Mid-session account suspension still cannot be exercised faithfully
+  (the M01/M02 limitation is unchanged): a suspended account cannot
+  obtain a session at all, which is the contract actually tested.
+- The 10,000-character limit is a form boundary on a `TEXT` column. On
+  MySQL, `TEXT` holds 65,535 **bytes**, which is above 10,000 utf8mb4
+  characters at any encoding width -- but that headroom has not been
+  measured against a real MySQL insert in this Part.
+- Two M02 tests were updated because this Part explicitly changes their
+  documented behavior: the Teacher submission pages now legitimately
+  carry a feedback indicator and a link to the editor (they still carry
+  no form of their own and no grade/publish/delete control), and one
+  nested `/submissions` route now accepts POST. A third was rewritten
+  because it pinned the repository's Alembic head to the M02 revision;
+  it now asserts the chain's shape and M02's place in it, and the head
+  identity is pinned in this Part's own test module. No test was
+  weakened to accommodate M03, and no skip was introduced -- the four
+  baseline skips are unchanged.
+- No browser, accessibility, responsive or real-concurrency verification
+  was performed in this Part.

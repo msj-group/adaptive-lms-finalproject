@@ -4,12 +4,15 @@
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
-{#- Phase 4 / M02, read only. `assignment` and `submission` are plain
-    presentation dicts; the route already proved this Teacher's active
+{#- Phase 4 / M02 + M03. `assignment`, `submission` and `feedback` are
+    plain presentation dicts; the route already proved this Teacher's active
     assignment to the Group, the Assignment's ownership by that Group, and
-    the Submission's ownership by that Assignment. There is deliberately no
-    edit, delete, score, review, feedback or approval control here -- none
-    exists server-side either. -#}
+    the Submission's ownership by that Assignment. The student answer below
+    stays read only and immutable. `can_write_feedback` was decided
+    server-side and is re-proved against locked rows by the editor itself,
+    so this template never decides authorization. There is deliberately no
+    score, grade, rubric, pass/fail, publish, delete or resubmit control
+    here -- none exists server-side either. -#}
 <h1 style="margin-top: 0">{{ submission.student_name }}</h1>
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   {{ assignment.title }} &middot; {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
@@ -29,6 +32,12 @@
   </dl>
 </div>
 
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
 <section>
   <h2>Answer</h2>
   <div class="card">
@@ -37,5 +46,41 @@
        or Markdown. #}
     <div style="white-space: pre-wrap; word-break: break-word;">{{ submission.answer_text }}</div>
   </div>
+</section>
+
+<section style="margin-top: var(--space-6)">
+  <h2>Feedback</h2>
+
+  {% if feedback.state == "present" %}
+  <div class="card" style="margin-bottom: var(--space-4)">
+    <p class="ds-section__desc" style="margin-top: 0">
+      Last changed by {{ feedback.reviewer_name }} on {{ feedback.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+      The student sees this text whenever they can open this assignment.
+    </p>
+    {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe. #}
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
+  </div>
+
+  {% elif feedback.state == "invalid" %}
+  {#- Fails closed: the stored text is deliberately NOT rendered, and this
+      state is never reported as "no feedback yet". -#}
+  <div class="alert alert--danger" style="margin-bottom: var(--space-4)">
+    The saved feedback on this submission is linked to an account that is no longer a teacher, so it cannot be shown or changed
+    here. Nothing has been deleted. Please ask an administrator to review this record.
+  </div>
+
+  {% else %}
+  <div class="empty-state" style="margin-bottom: var(--space-4)">
+    <div class="empty-state__title">Awaiting feedback</div>
+    <div>No teacher has written feedback on this submission yet.</div>
+  </div>
+  {% endif %}
+
+  {% if can_write_feedback %}
+  <a class="btn btn--primary"
+     href="{{ url_for('teacher.submission_feedback', group_public_id=group.public_id, assignment_public_id=assignment.public_id, submission_public_id=submission.public_id) }}">
+    {% if feedback.state == "present" %}Edit Feedback{% else %}Add Feedback{% endif %}
+  </a>
+  {% endif %}
 </section>
 {% endblock %}

@@ -34,6 +34,19 @@ withdraws is the ability to submit, never the record.
 ``app/services/submission_queries.student_submission``). ``submissions``
 is never joined by ``assignment_id`` alone on a Student page.
 
+**Teacher feedback (Phase 4 / M03) is an extension of that receipt, not a
+route of its own.** It is read only after the full visibility formula has
+already yielded this Student's own Submission, and only for that exact
+Submission id, so withdrawal, suspension, unpublishing or ancestor
+archival hide it exactly as they hide the receipt -- without deleting
+either. It stays readable after ``due_at``. A reviewing Teacher's later
+suspension or removal from the Group is deliberately **not** a condition:
+that would erase valid history for an irrelevant reason. What *is* still
+enforced is conditional role integrity on the stored ``reviewer_id`` --
+a row naming a non-Teacher fails closed and is reported as an integrity
+problem, never rendered and never shown as "no feedback yet". There is no
+Student write path: no reply, no comment, no edit.
+
 ``roles_required(STUDENT)`` gives the role guard (anonymous -> login, any
 other role -> 403); a suspended Student cannot hold a session at all (the
 Flask-Login ``user_loader`` rejects it), and the queries re-prove role and
@@ -79,6 +92,7 @@ from app.services.assignment_queries import (
     student_assignments_page,
 )
 from app.services.group_transactions import lock_group_in_open_transaction
+from app.services.submission_feedback_queries import build_feedback_panel, student_feedback
 from app.services.submission_queries import build_student_receipt, student_submission
 from app.services.schedule_occurrences import utc_reference_now
 
@@ -267,6 +281,19 @@ def _render_assignment_detail(
     submission = student_submission(assignment.id, current_user.id)
     item = build_student_item(row, tz_name, reference_utc)
 
+    # Teacher feedback (Phase 4 / M03) is fetched ONLY after the whole
+    # visibility formula above has already produced this Student's own
+    # submission, and ONLY for that exact Submission id -- so it rides
+    # entirely on the receipt's authorization and can never be reached
+    # through a classmate's row. One fixed, bounded lookup by the
+    # `uq_submission_feedback_submission` unique key; no history load, and
+    # nothing at all when there is no submission to attach it to.
+    feedback = (
+        build_feedback_panel(student_feedback(submission.id), tz_name)
+        if submission is not None
+        else None
+    )
+
     # The answer form appears only when there is nothing submitted yet
     # AND the Assignment is currently open. A past-due Assignment with no
     # submission stays readable and shows "Not submitted" instead.
@@ -287,6 +314,7 @@ def _render_assignment_detail(
         assignment=item,
         tz_name=tz_name,
         submission=build_student_receipt(submission, tz_name),
+        feedback=feedback,
         form=form,
         can_submit=can_submit,
         submission_context_token=context_token,

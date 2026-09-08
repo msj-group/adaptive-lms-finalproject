@@ -4,13 +4,16 @@
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
-{#- Phase 4 / M02, read only. `assignment` and every entry of `submissions`
-    are plain presentation dicts, so no Submission or User ORM row reaches
-    this template and rendering a row cannot lazy-load anything. `group` IS
-    the eagerly loaded Group ORM object (the route already proved this
-    Teacher's active assignment to it) and is used only for the header.
-    There is deliberately no edit, delete, score, review, feedback or
-    approval control anywhere on this page -- none exists server-side. -#}
+{#- Phase 4 / M02 + M03, read only. `assignment` and every entry of
+    `submissions` are plain presentation dicts, so no Submission, Feedback
+    or User ORM row reaches this template and rendering a row cannot
+    lazy-load anything. `group` IS the eagerly loaded Group ORM object (the
+    route already proved this Teacher's active assignment to it) and is
+    used only for the header. `feedback_state` was derived by the route
+    from ONE bounded page-level query -- it is not a stored status column,
+    and this page fetches no feedback text at all. There is deliberately no
+    edit, delete, score, grade, publish or approval control anywhere on
+    this page -- none exists server-side. -#}
 <h1 style="margin:0">{{ assignment.title }} — Submissions</h1>
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
@@ -40,6 +43,7 @@
   Submissions are <strong>final</strong>: a student submits one plain-text answer once, before the deadline, and can never edit
   or replace it. This page is read only. Submissions stay readable here after the deadline, after the assignment is unpublished,
   after the group or its academic chain is archived, and after a student is withdrawn or suspended.
+  Written feedback is a comment, not a grade &mdash; &ldquo;Feedback provided&rdquo; does not mean marked, passed, or approved.
 </div>
 
 <div class="ds-row" style="margin-bottom: var(--space-6)">
@@ -55,6 +59,7 @@
       <tr>
         <th>Student</th>
         <th style="width:14rem">Submitted ({{ tz_name }})</th>
+        <th style="width:12rem">Feedback</th>
         <th style="width:10rem"></th>
       </tr>
     </thead>
@@ -63,6 +68,14 @@
       <tr>
         <td><strong>{{ item.student_name }}</strong></td>
         <td>{{ item.submitted_local.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>
+          {#- Derived from whether a feedback row exists, never from a stored
+              status. A row whose reviewer is no longer a teacher is reported
+              as its own state, never as "awaiting". -#}
+          {% if item.feedback_state == "present" %}<span class="badge badge--success">Feedback provided</span>
+          {% elif item.feedback_state == "invalid" %}<span class="badge badge--danger">Needs admin review</span>
+          {% else %}<span class="badge badge--neutral">Awaiting feedback</span>{% endif %}
+        </td>
         <td>
           <a class="btn btn--secondary"
              href="{{ url_for('teacher.submission_detail', group_public_id=group.public_id, assignment_public_id=assignment.public_id, submission_public_id=item.public_id) }}">Read answer</a>

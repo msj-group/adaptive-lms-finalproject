@@ -95,6 +95,13 @@ from app.services.assignment_queries import (
 )
 from app.services.group_transactions import lock_group_in_open_transaction
 from app.services.schedule_occurrences import to_app_local, utc_reference_now
+from app.services.submission_feedback_queries import (
+    FEEDBACK_INVALID,
+    attach_feedback_states,
+    build_feedback_panel,
+    feedback_states_for_page,
+    teacher_feedback,
+)
 from app.services.submission_queries import (
     assignment_has_submissions,
     assignment_ids_with_submissions,
@@ -684,12 +691,19 @@ def assignment_toggle_publication(group_public_id, assignment_public_id):
 
 
 # ----------------------------------------------------------------------
-# Read-only submission views (Phase 4 / M02)
+# Read-only submission views (Phase 4 / M02, + the M03 feedback surface)
 # ----------------------------------------------------------------------
 #
-# GET only, and read only. There is deliberately no edit, delete, score,
-# review, feedback or approval control on either page, and no route
-# accepts anything but GET -- M02 delivers reading, not grading.
+# Both routes here are still GET only and still read only: neither ever
+# writes anything, and the Student's answer stays immutable and
+# uneditable. Phase 4 / M03 adds two derived, read-only feedback surfaces
+# to them -- a "Feedback provided" / "Awaiting feedback" indicator on the
+# list and the current feedback with its last-editor attribution on the
+# detail page -- plus a LINK to the separate feedback editor
+# (`app/blueprints/teacher/feedback.py`), which is the only route that
+# writes. There is still deliberately no score, grade, rubric, pass/fail,
+# publish, delete or resubmit control anywhere, and neither indicator is
+# read from a stored review-status column: none exists.
 #
 # Authorization reuses the exact same two steps every other nested
 # Teacher route uses: `_teacher_group_or_404` proves an ACTIVE
@@ -708,7 +722,9 @@ def assignment_toggle_publication(group_public_id, assignment_public_id):
 # is conditional User role integrity -- a row whose `student_id` points
 # at a non-Student User is excluded from both reads, because it is not
 # Student work, even though it still counts for the Assignment edit
-# freeze.
+# freeze. The same rule is applied a second time in M03 to a feedback
+# row's `reviewer_id`: such a row fails closed, and is never reported as
+# "awaiting feedback".
 
 
 def _submissions_url(group_public_id, assignment_public_id):
@@ -743,11 +759,22 @@ def assignment_submissions(group_public_id, assignment_public_id):
         page = 1
         rows, has_next = teacher_submissions_page(assignment.id, page)
 
+    # ONE extra bounded query for the whole page (Phase 4 / M03): which of
+    # these at most PAGE_SIZE Submissions already carry feedback, and
+    # whether each such row is intact. Asking per row would be an N+1, and
+    # the indicator is derived from that existence -- there is no stored
+    # review-status column anywhere.
+    feedback_states = feedback_states_for_page(
+        assignment.id, [row.public_id for row in rows]
+    )
+
     return _private_no_store(
         "teacher/submissions/list.html",
         group=group,
         assignment=build_teacher_view([assignment], tz_name, utc_reference_now())[0],
-        submissions=build_teacher_submission_view(rows, tz_name),
+        submissions=attach_feedback_states(
+            build_teacher_submission_view(rows, tz_name), feedback_states
+        ),
         tz_name=tz_name,
         page=page,
         has_next=has_next,
@@ -777,11 +804,25 @@ def submission_detail(group_public_id, assignment_public_id, submission_public_i
     if row is None:
         abort(404)
 
+    # ONE extra bounded lookup (Phase 4 / M03) for this one Submission's
+    # feedback, by its own unique constraint. The Add/Edit control is
+    # offered only when a write could actually succeed -- an archived
+    # chain, or a role-inconsistent existing row, hides it -- but the
+    # editor re-proves both against locked rows regardless, so this is
+    # presentation, never authorization.
+    feedback = build_feedback_panel(
+        teacher_feedback(assignment.id, submission_public_id), tz_name
+    )
+
     return _private_no_store(
         "teacher/submissions/detail.html",
         group=group,
         assignment=build_teacher_view([assignment], tz_name, utc_reference_now())[0],
         submission=build_teacher_submission_item(row, tz_name, include_answer=True),
+        feedback=feedback,
+        can_write_feedback=(
+            _group_is_operational(group) and feedback["state"] != FEEDBACK_INVALID
+        ),
         tz_name=tz_name,
         submissions_url=_submissions_url(group_public_id, assignment_public_id),
     )

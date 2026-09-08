@@ -4,7 +4,7 @@ from wtforms import StringField, SubmitField, TextAreaField
 from wtforms.fields import DateTimeLocalField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
 
-from app.models import Assignment, Lesson, Material, Unit
+from app.models import FEEDBACK_MAX_LENGTH, Assignment, Lesson, Material, Unit
 from app.services.material_content import (
     ExternalUrlError,
     sanitize_rich_text_html,
@@ -314,3 +314,64 @@ class FileMaterialEditForm(_MaterialTitleForm):
     archiving this Material and creating a new one."""
 
     submit = SubmitField("Save Material")
+
+
+class SubmissionFeedbackForm(FlaskForm):
+    """One Teacher's plain-text feedback on one immutable Submission
+    (Phase 4 / M03).
+
+    The form carries **only** ``feedback_text``. There is deliberately no
+    reviewer, Submission, Assignment, Group, version, timestamp or status
+    field: the reviewer is the authenticated session, the Submission /
+    Assignment / Group are the authorized nested public identifiers in the
+    URL, ``version`` is derived from the locked row, and both timestamps
+    are the request's post-lock authoritative moment -- so a forged field
+    in the POST body has nowhere to land. The signed stale-form token
+    travels as its own hidden input rather than as a form field, exactly
+    like the M01 Teacher edit snapshot and the M02 Student submission
+    context.
+
+    There is likewise **no** score, grade, rubric, pass/fail or publish
+    control: saving feedback is not grading, and it has no draft state to
+    publish out of.
+
+    **Validation contract**
+
+    - ``DataRequired`` rejects empty *and* whitespace-only text: WTForms
+      treats a string that is falsy after ``.strip()`` as missing, so
+      "   " and "\\n\\n" never reach the database.
+    - ``Length(max=FEEDBACK_MAX_LENGTH)`` is the finite boundary that
+      protects the request; ``submission_feedback.feedback_text`` is an
+      unbounded ``Text`` column. The limit is applied to the **raw**
+      submitted value, before normalization, so trimming can never be
+      used to slip a longer body past it.
+
+    **Normalization contract** -- :meth:`normalized_feedback`
+
+    Leading and trailing whitespace is removed (a plain ``.strip()``, the
+    same treatment ``SubmissionForm`` gives an answer). Nothing else is
+    touched: internal line breaks, blank lines, indentation and a
+    browser's ``\\r\\n`` pairs are stored exactly as typed. The value is
+    plain text throughout -- never HTML, never Markdown, never rendered
+    with ``|safe``.
+
+    The **normalized** value is also what decides the no-op: a save whose
+    normalized text equals the stored text changes nothing at all, so
+    re-saving unchanged wording cannot bump the version or steal
+    attribution.
+    """
+
+    #: The finite input boundary for the unbounded ``feedback_text`` Text
+    #: column. Imported from the model so the two cannot drift.
+    FEEDBACK_MAX = FEEDBACK_MAX_LENGTH
+
+    feedback_text = TextAreaField(
+        "Feedback for this student",
+        validators=[DataRequired(), Length(max=FEEDBACK_MAX_LENGTH)],
+    )
+    submit = SubmitField("Save Feedback")
+
+    def normalized_feedback(self):
+        """The exact string that will be persisted -- see the class
+        docstring's normalization contract."""
+        return (self.feedback_text.data or "").strip()

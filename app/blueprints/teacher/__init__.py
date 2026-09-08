@@ -7,3 +7,4 @@ from app.blueprints.teacher import units  # noqa: E402,F401
 from app.blueprints.teacher import lessons  # noqa: E402,F401
 from app.blueprints.teacher import materials  # noqa: E402,F401
 from app.blueprints.teacher import assignments  # noqa: E402,F401
+from app.blueprints.teacher import feedback  # noqa: E402,F401

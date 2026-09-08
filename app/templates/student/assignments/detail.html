@@ -2,10 +2,13 @@
 {% block title %}{{ assignment.title }} — {{ assignment.group_name }}{% endblock %}
 {% block portal_nav %}{% set active_nav = 'assignments' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-{#- Phase 4 / M01 + M02. `assignment` and `submission` are plain presentation
-    dicts; the rows behind them already satisfied the whole visibility formula
-    in SQL, and `submission` was looked up by this Assignment AND this
-    authenticated Student together -- never by assignment_id alone. -#}
+{#- Phase 4 / M01 + M02 + M03. `assignment`, `submission` and `feedback` are
+    plain presentation dicts; the rows behind them already satisfied the whole
+    visibility formula in SQL, and `submission` was looked up by this
+    Assignment AND this authenticated Student together -- never by
+    assignment_id alone. `feedback` is read only for that exact Submission, so
+    it can never carry a classmate's text, and it is read-only here: there is
+    no reply, comment or edit control, and none exists server-side. -#}
 <p class="ds-section__desc" style="margin-bottom: var(--space-2)">
   {{ assignment.group_name }} &middot; {{ assignment.course_title }} &middot; {{ assignment.level_name }} &middot; {{ assignment.term_name }}
 </p>
@@ -80,6 +83,34 @@
     {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe. #}
     <div style="white-space: pre-wrap; word-break: break-word;">{{ submission.answer_text }}</div>
   </div>
+</section>
+
+<section style="margin-top: var(--space-6)">
+  <h2>Teacher Feedback</h2>
+  {% if feedback and feedback.state == "present" %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    Written by {{ feedback.reviewer_name }} on {{ feedback.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+    This is your teacher's written comment on your answer &mdash; it is not a grade or a pass mark.
+  </div>
+  <div class="card">
+    {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe --
+       feedback is Teacher-typed text, never stored HTML or Markdown. #}
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
+  </div>
+
+  {% elif feedback and feedback.state == "invalid" %}
+  {#- Fails closed: the stored text is deliberately NOT rendered, and this
+      state is never shown as "no feedback yet". -#}
+  <div class="alert alert--warning">
+    Feedback on this submission cannot be shown right now. Nothing has been deleted. Please contact the center.
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No teacher feedback yet</div>
+    <div>Your teacher has not written feedback on this answer yet. It will appear here once they do.</div>
+  </div>
+  {% endif %}
 </section>
 
 {% elif can_submit %}

@@ -405,9 +405,18 @@ def test_revision_identifiers():
     assert module.depends_on is None
 
 
-def test_the_repository_has_one_linear_alembic_head_ending_here():
-    """Every revision file's parentage forms one chain, and this revision
-    is its only head."""
+def test_the_repository_alembic_chain_is_linear_and_contains_this_revision():
+    """Every revision file's parentage forms one single-rooted,
+    single-headed chain that includes this revision with its documented
+    parent.
+
+    Which revision is the current *head* moves with every additive Part --
+    Phase 4 / M03 added ``submission_feedback`` directly after this one --
+    so the head identity is asserted in that Part's own test module
+    (``tests/test_submission_feedback_model.py``) rather than re-pinned here on
+    each milestone. What must stay true here is the shape of the chain and
+    this revision's exact place in it.
+    """
     parents, revisions = {}, set()
     for path in _MIGRATIONS.glob("*.py"):
         source = path.read_text(encoding="utf-8")
@@ -416,12 +425,14 @@ def test_the_repository_has_one_linear_alembic_head_ending_here():
         revisions.add(rev)
         parents[rev] = down
 
+    assert _REVISION in revisions
+    assert parents[_REVISION] == _DOWN_REVISION
+    # Exactly one head, exactly one root.
     heads = revisions - {d for d in parents.values() if d is not None}
-    assert heads == {_REVISION}
+    assert len(heads) == 1
     # Linear: every parent is claimed exactly once, and exactly one root.
     claimed = [d for d in parents.values() if d is not None]
     assert len(claimed) == len(set(claimed))
-    assert [r for r, d in parents.items() if d is None] != []
     assert len([r for r, d in parents.items() if d is None]) == 1
 
 

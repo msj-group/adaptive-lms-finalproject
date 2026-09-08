@@ -146,6 +146,74 @@ def _assignments_url(gpid):
     return f"/teacher/groups/{gpid}/assignments"
 
 
+# ---------------------------------------------------------------------------
+# Effective request identity
+# ---------------------------------------------------------------------------
+#
+# The `app` fixture keeps ONE app context open for the whole test, and Flask
+# reuses an already-pushed app context per test request instead of pushing a
+# new one. `flask.g` therefore survives between requests -- including
+# Flask-Login's `g._login_user` cache. Without clearing it, a second test
+# client's request silently runs as the FIRST client's user, and every
+# "two teachers" assertion passes vacuously. This is a fixture artifact, not
+# application behaviour: in production each request gets its own app context.
+# It is corrected here in the tests, never by changing authentication.
+
+
+def _fresh_identity():
+    """Drop Flask-Login's per-app-context user cache before a request."""
+    from flask import g, has_app_context
+
+    if has_app_context():
+        g.pop("_login_user", None)
+
+
+def _login_as(client, email):
+    _fresh_identity()
+    return login(client, email)
+
+
+def _get(client, url):
+    _fresh_identity()
+    return client.get(url)
+
+
+def _assert_authenticated_as(client, user_id):
+    """The client really holds its OWN authenticated session cookie.
+
+    User.get_id() is "<id>.<auth_version>", so the identity is the
+    part before the dot; the version suffix is not what this asserts.
+    """
+    with client.session_transaction() as session:
+        stored = session.get("_user_id")
+        assert stored is not None, "the client is not authenticated at all"
+        assert stored.split(".")[0] == str(user_id), stored
+
+
+def _assert_anonymous(client):
+    with client.session_transaction() as session:
+        assert session.get("_user_id") is None, session.get("_user_id")
+
+
+def _capture_actor_ids():
+    """Record the EFFECTIVE authenticated user id *inside* each request.
+
+    Wraps the object-authorization helper the nested Teacher routes call,
+    so what is asserted is the identity the request actually ran as -- not
+    merely that two client objects were constructed.
+    """
+    seen = []
+    original = teacher_mod._teacher_group_or_404
+
+    def spy(group_public_id):
+        from flask_login import current_user
+
+        seen.append(getattr(current_user, "id", None))
+        return original(group_public_id)
+
+    return seen, patch.object(teacher_mod, "_teacher_group_or_404", side_effect=spy)
+
+
 def _get_edit_snapshot(client, gpid, apid):
     html = client.get(f"{_assignments_url(gpid)}/{apid}/edit").get_data(as_text=True)
     match = re.search(r'name="edit_snapshot" value="([^"]*)"', html)
@@ -187,20 +255,67 @@ def test_an_actively_assigned_teacher_can_list_and_read(app, client):
 
 
 def test_all_active_co_teachers_have_equal_read_access(app, client):
+    """Two DIFFERENT actively assigned Teachers can each list and read the
+    same Submission.
+
+    Asserted three ways, because the fixture artifact described above once
+    made this test pass while every request ran as Teacher #1: each client
+    holds its own authenticated session cookie, each request is observed
+    from inside to have run as the expected user id, and an unassigned
+    Teacher plus an anonymous client act as negative controls that cannot
+    inherit the preceding client's identity.
+    """
     with app.app_context():
-        _, group = _setup()
+        first, group = _setup()
         second = _user("co@example.com", UserRole.TEACHER.value)
         _assign(group, second)
+        outsider = _user("outsider@example.com", UserRole.TEACHER.value)  # unassigned
         assignment = _assignment(group)
         student = _enrolled_student(group, "s@example.com", full_name="Sara Student")
         submission = _submit(assignment, student)
         gpid, apid, spid = group.public_id, assignment.public_id, submission.public_id
+        first_id, second_id, outsider_id = first.id, second.id, outsider.id
 
-    for email in ("teacher@example.com", "co@example.com"):
-        fresh = app.test_client()
-        login(fresh, email)
-        assert fresh.get(_list_url(gpid, apid)).status_code == 200
-        assert fresh.get(_detail_url(gpid, apid, spid)).status_code == 200
+    assert first_id != second_id != outsider_id
+
+    seen, capture = _capture_actor_ids()
+    with capture:
+        for email, expected_id in (
+            ("teacher@example.com", first_id),
+            ("co@example.com", second_id),
+        ):
+            fresh = app.test_client()
+            _login_as(fresh, email)
+            _assert_authenticated_as(fresh, expected_id)
+            assert _get(fresh, _list_url(gpid, apid)).status_code == 200
+            assert _get(fresh, _detail_url(gpid, apid, spid)).status_code == 200
+
+        # Negative control 1: an authenticated Teacher with no assignment
+        # to this Group. It must run as ITSELF and be refused.
+        stranger = app.test_client()
+        _login_as(stranger, "outsider@example.com")
+        _assert_authenticated_as(stranger, outsider_id)
+        assert _get(stranger, _list_url(gpid, apid)).status_code == 404
+        assert _get(stranger, _detail_url(gpid, apid, spid)).status_code == 404
+
+        # Negative control 2: an anonymous client, which must not inherit
+        # the identity of any client used above.
+        anonymous = app.test_client()
+        _assert_anonymous(anonymous)
+        _fresh_identity()
+        resp = anonymous.get(_list_url(gpid, apid))
+        assert resp.status_code == 302
+        assert "/auth/login" in resp.headers["Location"]
+        _assert_anonymous(anonymous)
+
+    # The identity each request ACTUALLY ran as. The anonymous request is
+    # refused by the role guard before object authorization, so it
+    # contributes no entry.
+    assert seen == [
+        first_id, first_id,
+        second_id, second_id,
+        outsider_id, outsider_id,
+    ]
 
 
 def test_anonymous_is_redirected_to_login(app, client):
@@ -292,12 +407,26 @@ def test_cross_group_and_cross_assignment_pairings_all_404(app, client):
     assert client.get(_detail_url(first_pid, mine_pid, spid)).status_code == 200
 
 
-def test_both_submission_routes_are_get_only(app):
-    rules = [r for r in app.url_map.iter_rules()
-             if "/submissions" in str(r) and r.endpoint.startswith("teacher.")]
-    assert len(rules) == 2
-    for rule in rules:
-        assert rule.methods & {"POST", "PUT", "PATCH", "DELETE"} == set()
+def test_the_two_submission_read_routes_are_still_get_only(app):
+    """M02's two read pages never gained a write method. Phase 4 / M03
+    added exactly one nested Teacher route under ``/submissions`` that
+    accepts POST -- the feedback editor -- and nothing else did."""
+    rules = {
+        r.endpoint: r for r in app.url_map.iter_rules()
+        if "/submissions" in str(r) and r.endpoint.startswith("teacher.")
+    }
+    assert set(rules) == {
+        "teacher.assignment_submissions",
+        "teacher.submission_detail",
+        "teacher.submission_feedback",
+    }
+    for endpoint in ("teacher.assignment_submissions", "teacher.submission_detail"):
+        assert rules[endpoint].methods & {"POST", "PUT", "PATCH", "DELETE"} == set()
+    # The one writer accepts POST, and still never PUT/PATCH/DELETE:
+    # feedback cannot be deleted in this milestone.
+    feedback_methods = rules["teacher.submission_feedback"].methods
+    assert "POST" in feedback_methods
+    assert feedback_methods & {"PUT", "PATCH", "DELETE"} == set()
 
 
 # ===========================================================================
@@ -640,7 +769,12 @@ def test_both_pages_are_private_no_store_and_vary_on_cookie(app, client):
         assert "Cookie" in resp.headers["Vary"]
 
 
-def test_no_edit_delete_score_or_review_control_is_rendered(app, client):
+def test_no_grade_delete_or_approval_control_is_rendered(app, client):
+    """Both M02 read pages stay read-only. Phase 4 / M03 added a feedback
+    *indicator* to the list and a feedback panel plus a LINK to the
+    separate editor on the detail page -- neither page gained a form of
+    its own, and neither gained a grade, score, approval, publish or
+    delete control, because none of those exists server-side."""
     with app.app_context():
         _, group = _setup()
         assignment = _assignment(group)
@@ -650,10 +784,11 @@ def test_no_edit_delete_score_or_review_control_is_rendered(app, client):
     login(client, "teacher@example.com")
     for url in (_list_url(gpid, apid), _detail_url(gpid, apid, spid)):
         html = client.get(url).get_data(as_text=True)
-        # No form at all on either page beyond the shared header's logout.
+        # Still no form at all on either page beyond the shared header's
+        # logout: the M03 editor is its own page, reached by a link.
         forms = re.findall(r'<form[^>]*action="([^"]*)"', html)
         assert all("logout" in action for action in forms), forms
-        for word in ("Grade", "Score", "Feedback", "Approve", "Delete this"):
+        for word in ("Grade", "Score", "Approve", "Delete this", "Resubmit"):
             assert word not in html, word
 
 
