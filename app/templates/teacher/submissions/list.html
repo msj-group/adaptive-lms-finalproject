@@ -1,0 +1,95 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ assignment.title }} — Submissions{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M02, read only. `assignment` and every entry of `submissions`
+    are plain presentation dicts, so no Submission or User ORM row reaches
+    this template and rendering a row cannot lazy-load anything. `group` IS
+    the eagerly loaded Group ORM object (the route already proved this
+    Teacher's active assignment to it) and is used only for the header.
+    There is deliberately no edit, delete, score, review, feedback or
+    approval control anywhere on this page -- none exists server-side. -#}
+<h1 style="margin:0">{{ assignment.title }} — Submissions</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens ({{ tz_name }})</dt>
+    <dd style="margin:0">{{ assignment.opens_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due ({{ tz_name }})</dt>
+    <dd style="margin:0">{{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Status</dt>
+    <dd style="margin:0">
+      {% if assignment.is_published %}<span class="badge badge--success">Published</span>
+      {% else %}<span class="badge badge--neutral">Draft</span>{% endif %}
+    </dd>
+  </dl>
+</div>
+
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  Submissions are <strong>final</strong>: a student submits one plain-text answer once, before the deadline, and can never edit
+  or replace it. This page is read only. Submissions stay readable here after the deadline, after the assignment is unpublished,
+  after the group or its academic chain is archived, and after a student is withdrawn or suspended.
+</div>
+
+<div class="ds-row" style="margin-bottom: var(--space-6)">
+  <a class="btn btn--secondary" href="{{ url_for('teacher.group_assignments', group_public_id=group.public_id) }}">Back to Assignments</a>
+</div>
+
+<section class="dash-section" style="margin-top: 0">
+  <h2>Submissions</h2>
+  {% if submissions %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th style="width:14rem">Submitted ({{ tz_name }})</th>
+        <th style="width:10rem"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in submissions %}
+      <tr>
+        <td><strong>{{ item.student_name }}</strong></td>
+        <td>{{ item.submitted_local.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>
+          <a class="btn btn--secondary"
+             href="{{ url_for('teacher.submission_detail', group_public_id=group.public_id, assignment_public_id=assignment.public_id, submission_public_id=item.public_id) }}">Read answer</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if has_prev or has_next %}
+  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Submission pages">
+    {% if has_prev %}
+    <a class="btn btn--secondary" href="{{ url_for('teacher.assignment_submissions', group_public_id=group.public_id, assignment_public_id=assignment.public_id, page=page - 1) }}">Previous</a>
+    {% endif %}
+    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+    {% if has_next %}
+    <a class="btn btn--secondary" href="{{ url_for('teacher.assignment_submissions', group_public_id=group.public_id, assignment_public_id=assignment.public_id, page=page + 1) }}">Next</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No submissions yet</div>
+    <div>No student has submitted an answer to this assignment.</div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

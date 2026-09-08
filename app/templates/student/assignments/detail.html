@@ -2,8 +2,10 @@
 {% block title %}{{ assignment.title }} — {{ assignment.group_name }}{% endblock %}
 {% block portal_nav %}{% set active_nav = 'assignments' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-{#- Phase 4 / M01. `assignment` is a plain presentation dict; the row behind it
-    already satisfied the whole visibility formula in SQL. -#}
+{#- Phase 4 / M01 + M02. `assignment` and `submission` are plain presentation
+    dicts; the rows behind them already satisfied the whole visibility formula
+    in SQL, and `submission` was looked up by this Assignment AND this
+    authenticated Student together -- never by assignment_id alone. -#}
 <p class="ds-section__desc" style="margin-bottom: var(--space-2)">
   {{ assignment.group_name }} &middot; {{ assignment.course_title }} &middot; {{ assignment.level_name }} &middot; {{ assignment.term_name }}
 </p>
@@ -16,6 +18,12 @@
   {% endif %}
 </div>
 
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
 <div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('student.assignments_list') }}">Back to Assignments</a>
   <a class="btn btn--secondary" href="{{ url_for('student.group_units', group_public_id=assignment.group_public_id) }}">Open Lessons</a>
@@ -27,12 +35,25 @@
     <dd style="margin:0">{{ assignment.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
     <dd style="margin:0">{{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submission</dt>
+    <dd style="margin:0">
+      {% if submission %}
+      <span class="badge badge--success">Submitted</span>
+      {% else %}
+      <span class="badge badge--neutral">Not submitted</span>
+      {% endif %}
+    </dd>
   </dl>
 </div>
 
-{% if assignment.state == "past_due" %}
+{% if not submission and assignment.state == "past_due" %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
-  The deadline for this assignment has passed. It stays here for your reference.
+  The deadline for this assignment has passed and you did not submit an answer. It stays here for your reference, but it can no
+  longer be submitted.
+</div>
+{% elif assignment.state == "past_due" %}
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  The deadline for this assignment has passed. Your submitted answer is shown below for your reference.
 </div>
 {% endif %}
 
@@ -44,4 +65,63 @@
     <div style="white-space: pre-wrap; word-break: break-word;">{{ assignment.instructions }}</div>
   </div>
 </section>
+
+{% if submission %}
+{#- The immutable receipt. Only THIS Student's own answer is ever rendered
+    here, and there is deliberately no edit control, no delete control and no
+    resubmit control anywhere on the page -- none exists server-side either. -#}
+<section style="margin-top: var(--space-6)">
+  <h2>Your Answer</h2>
+  <div class="alert alert--success" style="margin-bottom: var(--space-4)">
+    <strong>Submitted</strong> on {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+    This submission is final: it cannot be edited, replaced, or submitted again.
+  </div>
+  <div class="card">
+    {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe. #}
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ submission.answer_text }}</div>
+  </div>
+</section>
+
+{% elif can_submit %}
+<section style="margin-top: var(--space-6)">
+  <h2>Your Answer</h2>
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    <strong>You can submit once.</strong> When you submit, your answer becomes final immediately — it cannot be edited,
+    replaced, or submitted again, and there is no draft to come back to. Please read your answer carefully before submitting.
+    Submissions close at {{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+  </div>
+  <form method="post"
+        action="{{ url_for('student.assignment_submit', group_public_id=assignment.group_public_id, assignment_public_id=assignment.public_id) }}"
+        novalidate
+        data-confirm="Submit this answer? It is final and cannot be edited or resubmitted.">
+    {{ form.hidden_tag() }}
+    {#- The signed submission-context token. It binds this answer to the exact
+        wording and time window shown above, so an answer written before a
+        teacher edit is rejected instead of being silently accepted against a
+        different task. It carries public identifiers only. -#}
+    <input type="hidden" name="submission_context" value="{{ submission_context_token }}">
+
+    <div class="field" style="max-width:none">
+      {{ form.answer_text.label(class_="field__label") }}
+      {{ form.answer_text(class_="field__input", rows="14") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Plain text only. Line breaks are preserved. Up to {{ form.ANSWER_MAX }} characters.
+      </span>
+      {% for error in form.answer_text.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary") }}
+      <a class="btn btn--secondary" href="{{ url_for('student.assignments_list') }}">Cancel</a>
+    </div>
+  </form>
+</section>
+<script>
+  document.querySelectorAll("form[data-confirm]").forEach(function (form) {
+    form.addEventListener("submit", function (event) {
+      if (!confirm(form.dataset.confirm)) { event.preventDefault(); }
+    });
+  });
+</script>
+{% endif %}
 {% endblock %}

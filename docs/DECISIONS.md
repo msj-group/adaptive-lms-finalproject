@@ -3109,9 +3109,13 @@ Because they are computed, the passage of time can never leave a stale
 status in a row, and no scheduled job is needed to "flip" anything.
 
 A published Assignment is **not** Student-visible before `opens_at`, and
-**remains** visible at and after `due_at`. M01 has no submission route,
-so "Past due" is informational only -- withdrawing the row at the
-deadline would hide the record of what was set.
+**remains** visible at and after `due_at` -- withdrawing the row at the
+deadline would hide the record of what was set. In M01 "Past due" was
+purely informational because there was no submission route; **since Phase
+4 / M02 the deadline is enforced for submitting and only for submitting**:
+no first submission is accepted at or after `due_at`, while the
+Assignment itself, and any receipt already earned, stay readable
+indefinitely.
 
 ### E. Lifecycle
 
@@ -3134,9 +3138,12 @@ AcademicTerm / Level / Course / Group. **Unpublish stays available**
 while the assignment is active even under an archived Group or ancestor,
 so published work can always be withdrawn.
 
-In M01 every editable field may be edited while those preconditions hold,
-because no Submission rows exist yet. Post-submission edit and
-immutability policy is **not** invented here.
+In M01 every editable field could be edited while those preconditions
+held, because no Submission rows existed yet. **Phase 4 / M02 resolves
+that deferred policy**: once *any* Submission exists for an Assignment,
+its `title`, `instructions`, `opens_at` and `due_at` are frozen -- see
+"Immutable text Submissions (Phase 4, Part M02)" below. Publication and
+unpublication are deliberately *not* frozen.
 
 ### F. Teacher authorization and routes
 
@@ -3254,7 +3261,9 @@ nothing is upcoming. The existing M09 schedule sections are unchanged and
 still use their injected local moment.
 
 The Teacher dashboard gains **only** the Manage Assignments link. There
-is no "Pending reviews" data: submissions and reviews do not exist yet.
+is no "Pending reviews" data: review state does not exist, and M02
+deliberately added no submission counter or pending-review metric to any
+dashboard -- the submission list lives behind its own bounded route.
 
 ### I. Concurrency and stale-edit protection
 
@@ -3385,7 +3394,529 @@ pending-review dashboard data.
   the fixture's session, so a row mutated from a nested app context is
   not re-read by the user loader. The tested contract is the real one --
   a suspended account cannot obtain a session at all.
-- "Past due" is informational. M01 has no submission route, so nothing
-  enforces the deadline; that enforcement arrives with Submissions.
+- "Past due" was informational in M01, which had no submission route, so
+  nothing enforced the deadline. That enforcement arrived with Phase 4 /
+  M02; this limitation is recorded as the historical M01 state.
+- No browser, accessibility, responsive or real-concurrency verification
+  was performed in this Part.
+
+---
+
+## Immutable text Submissions (Phase 4, Part M02)
+
+M02 delivers one coherent workflow on top of the M01 Assignment
+foundation: an eligible Student opens a visible Assignment, submits
+**one** final plain-text answer before its deadline, and afterwards sees
+only their own immutable receipt; an actively assigned Teacher can read
+every submission for that Assignment; and an Assignment that has any
+submission history can no longer have its authored content or its time
+window edited.
+
+**Text only.** File uploads, attachments, storage and downloads are out
+of scope and no column, route, template hook, enum value or TODO was
+added for them.
+
+### A. Normalized, immutable ownership
+
+`submissions` carries exactly six columns: `id`, `public_id`,
+`assignment_id`, `student_id`, `answer_text`, `submitted_at`.
+
+Ownership is **Assignment + Student and nothing else**. `group_id`,
+`course_id`, `level_id`, `academic_term_id`, `teacher_id` and
+`enrollment_id` are all reachable through `Assignment -> Group -> ...`
+and through the Student, so duplicating any of them would let the copies
+disagree with nothing in the schema to prevent it -- the same
+single-source-of-truth reasoning already applied to Enrollment,
+GroupTeacherAssignment, Schedule, Unit, Lesson and Assignment. There is
+no generic Activity superclass.
+
+**Row existence is the entire state machine.** A row means "Submitted";
+its absence means "Not submitted". There is deliberately no `status` /
+`state` / draft column, no `attempt` / `version`, no `grade` / `score` /
+`feedback` / `reviewed_at`, and no late-policy or grace-period column.
+
+**Immutability is enforced by the absence of write paths**, not by a
+database trigger and not by a general audit/history system. The Student
+blueprint exposes exactly one POST endpoint and it only ever INSERTs;
+there is no update, delete or resubmit route anywhere, and no route
+accepts `PUT`, `PATCH` or `DELETE`. The
+`UNIQUE(assignment_id, student_id)` constraint is the final defense, not
+the only one.
+
+**No ORM relationship is declared in either direction.** That is
+deliberate on two counts: every read joins explicitly and returns plain
+presentation dicts, so rendering a submission cannot lazy-load; and there
+is no `cascade` / `delete-orphan` configuration anywhere that could
+remove submission history. Both foreign keys are plain references with
+**no** `ON DELETE` behaviour, so no lifecycle change anywhere in the
+hierarchy can cascade into a submission.
+
+### B. Answer text: limit and normalization
+
+`answer_text` is required plain text in an unbounded `Text` column
+(65,535 bytes on MySQL, comfortably above 10,000 utf8mb4 characters). The
+finite boundary that actually protects the request is `SubmissionForm`'s
+`Length(max=10000)`, mirrored by `app.models.submission.ANSWER_MAX_LENGTH`
+so the two cannot drift.
+
+- Empty and whitespace-only answers are rejected: WTForms' `DataRequired`
+  treats a string that is falsy after stripping as missing.
+- The length limit is applied to the **raw** submitted value, *before*
+  normalization, so padding an over-limit answer with whitespace cannot
+  slip it past.
+- **Normalization is exactly one strip** -- leading and trailing
+  whitespace only, the same treatment `AssignmentForm` gives `title` and
+  `instructions`. Nothing inside is touched: internal line breaks, blank
+  lines, indentation and a browser's CRLF pairs are stored exactly as
+  submitted, because they are the Student's own formatting of their
+  answer.
+- The value is plain text throughout: never HTML, never Markdown, never
+  rendered with the `safe` filter. Jinja autoescapes it and CSS
+  `white-space: pre-wrap` supplies the line breaks -- no `<br>` is ever
+  injected.
+
+### C. Student visibility versus Teacher historical access
+
+These answer different questions and are deliberately scoped differently.
+
+**The Student receipt** is looked up by the authorized `assignment_id`
+**and** the authenticated `student_id` together
+(`submission_queries.student_submission`). `submissions` is never joined
+by `assignment_id` alone on a Student page -- that is precisely how one
+Student's answer would reach another's screen. The pair is exactly
+`uq_submissions_assignment_student`, so it is a unique lookup by its own
+constraint.
+
+The Student detail page shows exactly one of three states:
+
+1. **visible, open, nothing submitted** -- the answer form, with an
+   explicit warning that submission is final and cannot be edited or
+   resubmitted;
+2. **visible, already submitted** -- only that Student's persisted
+   answer, its localized `submitted_at`, and "Submitted". No editable
+   form is rendered, because none exists server-side either;
+3. **visible, past due, nothing submitted** -- the Assignment stays
+   readable, labelled "Not submitted" with a clear deadline-passed
+   message, and no form.
+
+When the Assignment stops being visible (withdrawal, suspension,
+unpublishing, ancestor archival) both the page and the submit endpoint
+return M01's identical non-disclosing **404**. An existing row buys no
+access whatsoever -- and is left completely intact.
+
+**Teacher history reads** are scoped to one `assignment_id` the route has
+already authorized through an *active* `GroupTeacherAssignment` to that
+exact Group. They are deliberately **not** filtered by current Enrollment
+or by the Student's current account status, and they stay readable while
+the Group or an ancestor is archived, while the Assignment is
+unpublished, and after the deadline: a Teacher must be able to read work
+that was really done, whatever has happened since.
+
+They **are** filtered by `User.role == 'student'`. A foreign key into
+`users` proves the row exists, never that it belongs to a Student, so a
+corrupted row is excluded from anything presented as Student work. Note
+the deliberate asymmetry: **that same invalid-role row still counts for
+the Assignment edit freeze** (section G) -- it is not displayable as
+Student work, but it is still evidence the Assignment was acted on.
+
+The Student list, the dashboard deadline section, their ordering,
+pagination and cap are **unchanged**. M02 added no per-Assignment
+submission query to either: neither becomes an outstanding-work tracker,
+which would be a per-row read on every page load.
+
+### D. The deadline boundary and the post-lock acceptance moment
+
+A **first** submission is accepted only when
+
+    opens_at <= authoritative_now < due_at
+
+At exactly `due_at` the deadline has passed -- the same boundary
+`derived_state` and the list ordering already use.
+
+`submitted_at` is generated on the server and never read from the
+request; a forged `submitted_at` field has nowhere to land, because the
+form carries only `answer_text`.
+
+**The authoritative moment is read *after* every potentially blocking
+lock**, not at request arrival. A request that arrived comfortably in
+time but waited behind another transaction until after the deadline must
+be rejected; reusing the pre-lock preview timestamp would silently accept
+it. The same moment is used for the acceptance decision **and** persisted
+as `submitted_at`, so a receipt can never claim a time the decision did
+not use.
+
+GET rendering keeps M01's single injected reference moment per response,
+so a page can never straddle a deadline and contradict itself.
+
+**Canonical precision: whole seconds.** `submitted_at` is a plain
+`DateTime` like every other timestamp in this project, which on MySQL is
+`DATETIME` with fractional precision **0** -- and MySQL *rounds* an
+excess fraction rather than truncating it. An acceptance decided at
+`11:59:59.900000` against a `12:00:00` deadline would therefore be judged
+in time by the application and then persisted *at* `12:00:00`: a receipt
+claiming the exact moment this project defines as past due. The route
+therefore truncates its authoritative moment to whole seconds **before**
+both the comparisons and the write (`_acceptance_moment` in
+`app/blueprints/student/assignments.py`), and the model's fallback
+default does the same. The instant that decided acceptance is byte-for-
+byte the instant stored, on MySQL and on the SQLite test backend alike.
+
+Truncation **floors**, never rounds, so it can only ever make a request
+*earlier*: it fails closed at `opens_at` (a microsecond before the
+opening time stays invisible) and stays honest at `due_at` (the whole
+final second remains usable, and `12:00:00.999999` is still refused).
+Assignment `opens_at` / `due_at` already carry no microseconds --
+`AssignmentForm` parses to second precision -- so both comparisons happen
+entirely in whole seconds.
+
+This is deliberately local to the submission route: it wraps the shared
+`utc_reference_now` rather than changing it, so M01's read paths and
+every other module keep their existing clock behaviour. The column type,
+the migration and the server SQL mode are untouched.
+
+Second precision is also exactly why every ordering over this column
+carries the internal `id` as a deterministic tie-break.
+
+### E. Duplicates are an authorized no-op
+
+The order of the post-lock checks is itself a decision:
+
+1. **Authorization and visibility first**, against the locked rows -- so a
+   hidden Assignment fails identically whether or not a row exists.
+2. **An existing submission then short-circuits to its receipt** via
+   Post/Redirect/Get with an "already submitted" message. A duplicate
+   needs no deadline, context or answer validation, which is what makes a
+   double click, a replay, a *changed* payload and a late retry all safe.
+   Nothing is rewritten: not the answer, not the timestamp, not
+   `public_id`, not any other field.
+3. Only a **first** insertion is validated further. Within that
+   first-insert validation the stale-context check runs *before* the
+   deadline check, so a Teacher edit is always reported as a changed
+   Assignment rather than as whatever that edit did to the window.
+
+There is no upsert, no replace, no merge-to-overwrite and no "update the
+existing submission" fallback anywhere.
+
+`IntegrityError` is caught and the transaction rolled back **first**.
+Recovery then re-establishes authorization from scratch before any row is
+allowed to influence the response:
+
+1. roll back -- everything read before this point is discarded state and
+   is **not** authorization evidence;
+2. re-prove the whole SQL-scoped Student visibility formula, with a fresh
+   reference moment and the **original nested public identifiers**;
+3. if that fails, return the established non-disclosing 404 -- with no
+   "already submitted" and no success message.
+
+That third step is not theoretical. The concurrent change that caused the
+conflict may equally have *ended* this Student's access -- a withdrawal,
+an unpublish, an ancestor archival, a suspension, a role change. A pair
+lookup on (assignment, student) proves ownership and existence only; it
+proves nothing about current visibility, active Enrollment, account
+status or role. Answering "already submitted" there would disclose both
+that the Assignment exists and that work was submitted for it, to someone
+whose GET of the very same page correctly 404s.
+
+Only **after** successful fresh authorization may an existing row for
+both that Assignment and this Student produce the duplicate receipt
+redirect. With no row proven, the response stays the generic safe
+failure. It is never blindly labelled a duplicate, nothing is written,
+overwritten or deleted on this path, and no SQL, driver text, parameter
+or internal id ever reaches the Student.
+
+Successful submissions and duplicate responses are both Post/Redirect/Get.
+
+### F. The signed submission-context snapshot
+
+Row locks alone cannot protect a form opened before a Teacher edits the
+Assignment: the lock the POST takes would happily accept an answer to a
+question that no longer exists. A signed snapshot (itsdangerous
+`URLSafeSerializer`, the same dependency and pattern as the M01 Teacher
+edit snapshot) binds the answer to what the Student actually read.
+
+Bound fields: Student `public_id`, Group `public_id`, Assignment
+`public_id`, `title`, `instructions`, and the canonical UTC `opens_at` /
+`due_at` formatted deterministically as `%Y-%m-%dT%H:%M:%S`.
+
+Dedicated salt: `student.assignment-submission-context.phase4-m02.v1`, so
+a Teacher edit-snapshot token cannot be replayed here even though both
+use the same `SECRET_KEY`.
+
+**Only public identifiers appear.** A signed token is authenticated, not
+encrypted -- anyone holding it can read its payload -- so no internal
+database id is ever placed in it.
+
+`status` and `published_at` are deliberately **excluded**: a
+publication-only toggle changes nothing the Student read, so it must not
+invalidate an unchanged form. Current publication and visibility are
+authoritatively re-checked against the locked rows regardless, so
+excluding them weakens nothing.
+
+Validation happens against the **locked** Assignment, not the pre-lock
+preview -- that is what catches an edit landing between the two. Missing,
+malformed, invalidly signed, wrong-shaped, cross-Student, cross-Group,
+cross-Assignment and genuinely outdated tokens are all rejected
+identically.
+
+A stale rejection is a Post/Redirect/Get that **discards every attempted
+value** and reloads the current persisted ones through a fresh GET. It
+never pairs a freshly generated token with the answer written against the
+old wording -- that is exactly the bypass the rejection exists to close,
+and it matches the established stale-edit contract. For an *ordinary*
+validation failure where the context is still valid, the original token
+and the attempted answer are both preserved so the Student can fix the
+answer without losing it.
+
+CSRF (global `CSRFProtect`) and this snapshot are separate protections;
+neither replaces the other, and neither replaces authorization or row
+locks. No attempt-nonce table and no resubmission framework was added.
+
+### G. The Assignment edit freeze
+
+This Part resolves M01's deferred post-submission edit policy.
+
+Once **any** Submission exists for an Assignment, `title`,
+`instructions`, `opens_at` and `due_at` are frozen.
+
+It is **historical existence, not current eligibility**. A withdrawn
+Student's row freezes it. A suspended Student's row freezes it. A hidden
+or unpublished Assignment stays frozen. Even a row with broken
+conditional Student-role integrity freezes it -- excluded from the
+Teacher's *display* (section C) but still evidence the wording and the
+window were acted on. `assignment_has_submissions` therefore applies no
+role, Enrollment, account-status or visibility filter at all.
+
+Enforcement is server-side and two-layered:
+
+- a **helpful early check** that refuses the edit form and the POST
+  before any work is done, so a bookmarked edit URL cannot render a form
+  that could never save;
+- the **authoritative check**, a current read taken while the Assignment
+  row is locked, immediately before any field assignment. A forged POST
+  or a form opened before the first submission cannot get past it, and
+  because it runs before any assignment a rejected edit leaves every
+  column -- including `updated_at` -- exactly as it was.
+
+The first-submission-versus-Teacher-edit race serializes on the existing
+shared lock order: both take the same Group lock and the same Assignment
+row lock, so whichever commits first is what the other sees.
+
+The Teacher Assignment list replaces the Edit control with a
+"Locked (submitted)" badge and carries a standing explanation. That flag
+costs **one** bounded query for a whole page
+(`assignment_ids_with_submissions` over at most `PAGE_SIZE` ids), never a
+per-row lookup.
+
+The M01 stale-edit snapshot is **preserved**, not replaced: an Assignment
+without submissions is still protected against a time-separated
+co-teacher overwrite.
+
+**Publication lifecycle is untouched.** Publishing keeps its existing
+active-chain requirement; unpublishing stays available to an actively
+assigned Teacher under an archived chain; neither deletes a submission
+nor lifts the freeze. Lifecycle changes never cascade into `submissions`.
+No new ancestor-archive blocker or Group identity rule was needed:
+`group_has_assignment_history` already freezes the Group's academic
+identity as soon as any Assignment exists, submissions or not.
+
+### H. Routes
+
+Student -- one new endpoint, POST only, nested under the M01 detail page:
+
+- `POST /student/groups/<gpid>/assignments/<apid>/submit`
+
+Teacher -- two new endpoints, GET only, read only:
+
+- `GET /teacher/groups/<gpid>/assignments/<apid>/submissions`
+- `GET /teacher/groups/<gpid>/assignments/<apid>/submissions/<spid>`
+
+Every object is addressed by `public_id`; no internal numeric id appears
+in a URL, a form value or the rendered HTML. Nothing about ownership is
+taken from the request: the Student is the authenticated session, the
+Assignment and Group are the authorized nested public identifiers,
+`submitted_at` is server-generated and `public_id` is model-generated.
+
+All three nested identifiers must name the same chain on the Teacher
+detail route. An unassigned or removed Teacher, a wrong Group /
+Assignment / Submission pairing, a cross-Group attempt and a missing
+object all return the same non-disclosing **404**. All actively assigned
+co-teachers have equal read access. Anonymous and non-Teacher behaviour
+is M01's unchanged (login redirect / 403). Neither Teacher page carries
+an edit, delete, score, review, feedback or approval control -- none
+exists server-side either, and no total counter or pending-review metric
+was added.
+
+Every personalized response added here -- the Student form page, its
+form-error re-render, the receipt, and both Teacher pages -- carries
+`Cache-Control: private, no-store` and `Vary: Cookie`.
+
+### I. Route-specific lock order
+
+The submission POST uses one transaction with **one** deliberate reset
+(owned by `lock_academic_hierarchy`, the first lock of the request):
+
+    AcademicTerm -> Level -> Course -> Group -> Student User
+      -> Enrollment -> Assignment -> the existing Submission for this
+         Assignment + Student, if any
+
+Every scalar the request needs later is captured **before** that reset,
+so nothing between the reset and the required locks triggers a lazy ORM
+or `current_user` reload that would establish a fresh read snapshot ahead
+of the locks. There is no second reset.
+
+This is the shared hierarchy/Group prefix every Group-affecting mutation
+already uses, extended with the two rows this workflow decides on. It is
+therefore serialized against Teacher Assignment edits and publication
+toggles (same Group, same Assignment row), against membership changes and
+against Group lifecycle/identity operations (same Group row). No existing
+route-specific contract was redesigned.
+
+After locking and before any mutation the route re-proves, against the
+locked rows: the exact hierarchy identities and linkages, every ancestor
+and Group status, the Student's role and account status, the exact
+Enrollment ownership and its active status, the Assignment's existence
+and nested Group ownership, publication and opening visibility, the
+existing submission, and then -- for a first insertion only -- the
+stale-context token, the deadline and the answer. A missing or invalid
+locked authorization fails safely with no partial write of any kind.
+
+### J. Query bounds and index rationale
+
+Every read is bounded. The Teacher list fetches `PAGE_SIZE + 1` (20 + 1)
+rows and drops the extra, so "is there a next page" costs no second query
+and discloses no total count; ordering is `submitted_at DESC, id DESC` in
+SQL; page inputs are normalized exactly as M01 normalizes them, and a
+page past the end falls back to page 1. Nothing calls unbounded `.all()`
+on a history, sorts in Python, or lazy-loads per row -- the Student
+display name comes from the same joined statement.
+
+**Bounded rows, not just bounded row counts.** Both Teacher reads select
+explicit **columns** rather than whole ORM entities. The list projects
+only `submissions.public_id`, `submissions.submitted_at` and
+`users.full_name` -- it renders a name, a time and a link, so pulling
+`answer_text` and every `users` column (`password_hash`, `email`,
+`auth_version`, ...) for twenty rows a page would be fetching secrets and
+bodies nothing displays. The detail query adds `answer_text` and is the
+only read that fetches a body, for exactly one row. Because both select
+plain columns, there is no deferred attribute left behind that a template
+could touch and turn into a second query.
+
+`Submission.id` is deliberately **not** projected. It is still used
+inside the SQL as the list's final `ORDER BY` tie-break -- ordering by an
+unselected column is ordinary SQL here, no `DISTINCT` is involved -- so
+the internal id orders the statement without ever leaving it.
+
+Three index objects, each with a distinct justification:
+
+- `uq_submissions_assignment_student` (`assignment_id`, `student_id`) --
+  the required uniqueness invariant, *and* the exact shape of the Student
+  receipt lookup, which constrains both columns. Leading with
+  `assignment_id` also gives that foreign key a usable leftmost prefix.
+- `ix_submissions_assignment_submitted_id` (`assignment_id`,
+  `submitted_at`, `id`) -- the Teacher list: a single-Assignment equality
+  followed *directly* by the two ordering columns, the shape M14
+  established on `notifications` and M01 on `assignments`.
+- `ix_submissions_student_id` -- declared for the `student_id`
+  **foreign key**, not for a query shape. Nothing above leads with
+  `student_id` and InnoDB requires an index on a referencing column;
+  declaring it keeps the model, the migration and the real schema in
+  agreement instead of letting MySQL create an auto-named one.
+
+No separate single-column index is created for `assignment_id`.
+
+**No MySQL execution plan has been measured for this table.** As with
+M01's `assignments` indexes, this is a reasoned design pending an
+authorized real `EXPLAIN`.
+
+### K. Migration
+
+One additive revision, `6b1f0ad74c92`, whose `down_revision` is
+`4f7c1d9b2e30`. It creates exactly one table, `submissions`, with only
+its own constraints and indexes. No existing table, column, index,
+constraint or row is touched -- `assignments` and `users` appear only as
+foreign-key targets -- and there is no data backfill and no seeded row: a
+Submission is a Student's own act, so pre-existing Assignments and
+Enrollments deliberately produce no historical rows. The downgrade is
+symmetric: both indexes dropped in the reverse of their creation order,
+then the table, and nothing else. No existing revision file was modified.
+
+Types follow the project conventions: `BIGINT AUTO_INCREMENT` primary
+key (SQLite `Integer` variant), `VARCHAR(36)` UUID `public_id`, `TEXT`
+answer, `DATETIME` timestamp. Engine, charset and collation follow the
+existing project defaults (InnoDB, `utf8mb4_0900_ai_ci`), exactly as
+every earlier revision leaves them to the server/database default.
+
+### L. Deliberate deferrals
+
+No placeholder table, column, route, UI element, enum value, counter or
+TODO was added for any of the following.
+
+File work: uploads, Teacher starter attachments, storage, downloads,
+file scanning, submission-file access logs and cleanup.
+
+Submission workflow: drafts, autosave, attempts, resubmissions,
+revisions, submission history tables, submission comments,
+attempt-nonce tables, late submissions, grace periods, extensions and
+attempt limits.
+
+Review and grading: feedback, review state, rubrics, grades, scores,
+grade publication, Administrator grade reports.
+
+Quizzes, generic activity abstractions, Submission search, submission
+notification kinds or producers, deadline reminders, background jobs,
+calendar integration, progress/completion metrics, pending-review
+dashboard data, exports, analytics and ML.
+
+### M. Honest limitations
+
+- Automated tests run on SQLite in memory. They prove the application
+  logic, the SQL scoping, the query structure, the model/schema
+  alignment and the *requested* lock order -- they do **not** prove
+  MySQL/InnoDB row blocking, isolation, collation, index plans, or that
+  the migration runs on MySQL. **No real database was contacted in this
+  Part**, and the migration was **not** applied to the real application
+  database.
+- The migration's `upgrade()` and `downgrade()` were executed against an
+  explicitly isolated temporary SQLite file (holding only the two
+  prerequisite foreign-key target tables, each with a row), which proves
+  the operations are internally consistent, that the downgrade is
+  genuinely reversible, and that the prerequisite tables and rows survive
+  untouched. **SQLite migration execution does not prove MySQL DDL or
+  InnoDB behaviour.** The MySQL DDL was additionally rendered *offline*
+  (dialect-only, no connection) and inspected; that is generated text,
+  not execution.
+- The concurrency tests are structural: SQLite has no
+  `SELECT ... FOR UPDATE` and no REPEATABLE READ snapshot isolation, so
+  they assert the *requested* reset and lock order and exercise the
+  post-lock recheck logic by injecting a state change at a chosen point.
+  They are **not** a demonstration of real concurrent InnoDB blocking.
+- Time is injected in tests rather than waited for, so the `opens_at`
+  and `due_at` boundaries and the "waited past the deadline while
+  locking" case are exact rather than probabilistic. That proves the
+  decision logic, not real-world clock skew between application servers.
+- Mid-session account suspension still cannot be exercised faithfully
+  (the M01 limitation is unchanged): the SQLite `StaticPool` backend
+  makes every request reuse the fixture's session. The tested contract is
+  the real one -- a suspended account cannot obtain a session at all.
+  Changing a session Student's `role` mid-test is therefore caught by
+  `roles_required` before the query layer; both outcomes are refusals and
+  neither writes anything.
+- The 10,000-character limit is a form boundary on a `TEXT` column. On
+  MySQL, `TEXT` holds 65,535 **bytes**, which is above 10,000 utf8mb4
+  characters at any encoding width -- but that headroom has not been
+  measured against a real MySQL insert in this Part.
+- The whole-second acceptance contract is verified by SQLite tests plus
+  dialect **compilation** (`DATETIME` with no `fsp`). MySQL's actual
+  rounding of an excess fraction, and the behaviour of the server's
+  `SQL_MODE` around it, were **not** exercised against a real server --
+  the fix removes the fractional value before it can ever reach the
+  driver, which is why that server behaviour no longer matters, but that
+  reasoning is stated rather than measured.
+- The `IntegrityError` recovery tests inject the competing write and the
+  access-losing state change at a chosen point inside one SQLite request.
+  They prove the recovery path re-authorizes and what it answers; they
+  are **not** a demonstration of real concurrent InnoDB conflict
+  resolution. They read the stored row back through an expired session so
+  they cannot pass or fail on the fixture identity map.
 - No browser, accessibility, responsive or real-concurrency verification
   was performed in this Part.

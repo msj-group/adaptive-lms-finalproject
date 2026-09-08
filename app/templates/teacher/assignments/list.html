@@ -53,6 +53,13 @@
 </div>
 {% endif %}
 
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  <strong>Submissions are final.</strong> A student submits one plain-text answer once, before the deadline, and can never edit or
+  replace it. As soon as an assignment has <em>any</em> submission its title, instructions, opening time and deadline are locked,
+  because students answered exactly that wording within exactly that window. Publishing and unpublishing stay available and never
+  remove a submission.
+</div>
+
 <div class="ds-row" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_units', group_public_id=group.public_id) }}">Manage Units</a>
@@ -73,7 +80,7 @@
         <th style="width:11rem">Student visibility</th>
         <th style="width:12rem">Opens ({{ tz_name }})</th>
         <th style="width:12rem">Due ({{ tz_name }})</th>
-        <th style="width:16rem">Actions</th>
+        <th style="width:22rem">Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -104,9 +111,17 @@
         <td>{{ item.due_local.strftime("%Y-%m-%d %H:%M") }}</td>
         <td>
           <div class="ds-row" style="gap: var(--space-2)">
-            {% if operational %}
+            {#- Phase 4 / M02: `has_submissions` comes from ONE bounded query for
+                the whole page, never a per-row lookup. Hiding Edit is a
+                courtesy; the freeze itself is enforced server-side, and again
+                against the locked row, so a bookmarked or forged edit request
+                is rejected too. -#}
+            {% if item.has_submissions %}
+            <span class="badge badge--neutral" title="This assignment has student submissions and can no longer be edited.">Locked (submitted)</span>
+            {% elif operational %}
             <a class="btn btn--secondary" href="{{ url_for('teacher.assignment_edit', group_public_id=group.public_id, assignment_public_id=item.public_id) }}">Edit</a>
             {% endif %}
+            <a class="btn btn--secondary" href="{{ url_for('teacher.assignment_submissions', group_public_id=group.public_id, assignment_public_id=item.public_id) }}">Submissions</a>
             {% if item.is_published %}
             <form method="post" action="{{ url_for('teacher.assignment_toggle_publication', group_public_id=group.public_id, assignment_public_id=item.public_id) }}"
               data-confirm="Unpublish assignment '{{ item.title }}'? Students will no longer see it. It returns to draft.">

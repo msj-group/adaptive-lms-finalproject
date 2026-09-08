@@ -53,7 +53,16 @@ back, and reported generically.
 
 from datetime import datetime, timezone
 
-from flask import abort, current_app, flash, redirect, render_template, request, url_for
+from flask import (
+    abort,
+    current_app,
+    flash,
+    make_response,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 from flask_login import current_user
 from itsdangerous import BadSignature, URLSafeSerializer
 from sqlalchemy.exc import IntegrityError
@@ -86,6 +95,14 @@ from app.services.assignment_queries import (
 )
 from app.services.group_transactions import lock_group_in_open_transaction
 from app.services.schedule_occurrences import to_app_local, utc_reference_now
+from app.services.submission_queries import (
+    assignment_has_submissions,
+    assignment_ids_with_submissions,
+    build_teacher_submission_item,
+    build_teacher_submission_view,
+    teacher_submission,
+    teacher_submissions_page,
+)
 
 _ACTIVE = AcademicStatus.ACTIVE.value
 _DRAFT = AssignmentStatus.DRAFT.value
@@ -94,6 +111,37 @@ _PUBLISHED = AssignmentStatus.PUBLISHED.value
 
 def _tz_name():
     return current_app.config.get("APP_TIMEZONE", "UTC")
+
+
+#: The one Teacher-facing sentence for the Phase 4 / M02 edit freeze, used
+#: by every rejection path so the early check and the authoritative
+#: post-lock check can never explain the same rule differently.
+_FROZEN_MESSAGE = (
+    "This assignment has student submissions, so its title, instructions, and time window "
+    "can no longer be changed. Students answered exactly this wording within exactly this "
+    "window, and rewriting it afterwards would change what their work was for. You can still "
+    "publish or unpublish it, and you can read every submission."
+)
+
+
+def _private_no_store(template, **context):
+    """Render a **personalized** Teacher page with the two headers it must
+    carry (Phase 4 / M02).
+
+    ``private, no-store`` because a submission list and a submission body
+    are one Group's Students' work, shown only to that Group's actively
+    assigned Teachers -- a shared or reused cache entry could serve them
+    to somebody whose assignment has since been removed.
+    ``Vary: Cookie`` so a cache can never hand one session's page to
+    another. Same contract as the Student pages
+    (``app/blueprints/student/routes.private_no_store``), applied
+    here rather than imported across blueprints, matching how
+    ``student/search.py`` and ``notifications/routes.py`` already set it.
+    """
+    response = make_response(render_template(template, **context))
+    response.headers["Cache-Control"] = "private, no-store"
+    response.vary.add("Cookie")
+    return response
 
 
 # ----------------------------------------------------------------------
@@ -211,10 +259,15 @@ def group_assignments(group_public_id):
         page = 1
         rows, has_next = teacher_assignments_page(group.id, page)
 
+    # ONE extra bounded query for the whole page (Phase 4 / M02): which of
+    # these at most PAGE_SIZE Assignments already have submission history,
+    # and are therefore frozen. Asking per row would be an N+1.
+    frozen_ids = assignment_ids_with_submissions([row.id for row in rows])
+
     return render_template(
         "teacher/assignments/list.html",
         group=group,
-        assignments=build_teacher_view(rows, tz_name, reference_utc),
+        assignments=build_teacher_view(rows, tz_name, reference_utc, frozen_ids),
         operational=operational,
         archived_labels=[] if operational else _archived_chain_labels(group),
         tz_name=tz_name,
@@ -436,6 +489,16 @@ def assignment_edit(group_public_id, assignment_public_id):
         )
         return _redirect_assignments(group_public_id)
 
+    # Helpful early check (Phase 4 / M02): keeps a Teacher from writing a
+    # revision that will be rejected anyway, and keeps a bookmarked edit
+    # URL from silently rendering a form that can no longer save. It is
+    # deliberately NOT the enforcement point -- a submission can arrive
+    # between here and the locks, so the authoritative current-read check
+    # below runs inside the locked transaction.
+    if assignment_has_submissions(preview_assignment.id):
+        flash(_FROZEN_MESSAGE, "danger")
+        return _redirect_assignments(group_public_id)
+
     submitted_token = None
     if request.method == "POST":
         submitted_token = request.form.get("edit_snapshot", "")
@@ -493,6 +556,21 @@ def assignment_edit(group_public_id, assignment_public_id):
         if blocked is not None:
             db.session.rollback()
             flash(blocked, "danger")
+            return _redirect_assignments(group_public_id)
+
+        # THE authoritative edit freeze (Phase 4 / M02). It is a current
+        # read taken while this Assignment row is locked, so a first
+        # submission -- which locks the same Group and the same Assignment
+        # row before it inserts -- either committed before this
+        # transaction acquired the lock and is seen here, or waits behind
+        # it and finds the edit already applied. A forged POST or a form
+        # opened before the first submission cannot get past this: it is
+        # checked here, not in the template, and it runs BEFORE any field
+        # is assigned, so a rejected edit leaves every column -- including
+        # `updated_at` -- exactly as it was.
+        if assignment_has_submissions(assignment.id):
+            db.session.rollback()
+            flash(_FROZEN_MESSAGE, "danger")
             return _redirect_assignments(group_public_id)
 
         # No field is assigned until every check above has passed, so a
@@ -603,3 +681,107 @@ def assignment_toggle_publication(group_public_id, assignment_public_id):
 
     flash(f"Assignment '{assignment.title}' published.", "success")
     return _redirect_assignments(group_public_id)
+
+
+# ----------------------------------------------------------------------
+# Read-only submission views (Phase 4 / M02)
+# ----------------------------------------------------------------------
+#
+# GET only, and read only. There is deliberately no edit, delete, score,
+# review, feedback or approval control on either page, and no route
+# accepts anything but GET -- M02 delivers reading, not grading.
+#
+# Authorization reuses the exact same two steps every other nested
+# Teacher route uses: `_teacher_group_or_404` proves an ACTIVE
+# GroupTeacherAssignment to the Group in the URL (so all actively
+# assigned co-teachers have equal access, and an unassigned or removed
+# Teacher gets a non-disclosing 404), and `_assignment_for_group_or_404`
+# constrains the Assignment to that Group. The submission queries are
+# then scoped to that verified internal Assignment id, so a Submission
+# public id from another Assignment -- or another Group -- finds nothing
+# and 404s identically.
+#
+# History stays readable when the Group or an ancestor is archived, when
+# the Assignment is unpublished, after the deadline, and when the
+# submitting Student has since been withdrawn or suspended: none of those
+# is a reason to hide work that was really done. What IS still enforced
+# is conditional User role integrity -- a row whose `student_id` points
+# at a non-Student User is excluded from both reads, because it is not
+# Student work, even though it still counts for the Assignment edit
+# freeze.
+
+
+def _submissions_url(group_public_id, assignment_public_id):
+    return url_for(
+        "teacher.assignment_submissions",
+        group_public_id=group_public_id,
+        assignment_public_id=assignment_public_id,
+    )
+
+
+@teacher_bp.get("/groups/<group_public_id>/assignments/<assignment_public_id>/submissions")
+@roles_required(UserRole.TEACHER.value)
+def assignment_submissions(group_public_id, assignment_public_id):
+    """One bounded page of an Assignment's submissions, newest first.
+
+    Fixed page size, SQL ordering (``submitted_at DESC, id DESC``), SQL
+    ``LIMIT PAGE_SIZE + 1`` for the has-next flag, and the same page
+    normalization and past-the-end fallback the other lists use. The
+    Student display name comes from the same joined statement, so the
+    page costs a fixed number of queries no matter how many rows it
+    shows. No answer body is loaded here.
+    """
+    group = _teacher_group_or_404(group_public_id)
+    assignment = _assignment_for_group_or_404(group, assignment_public_id)
+    tz_name = _tz_name()
+    page = normalize_page(request.args.get("page"))
+
+    rows, has_next = teacher_submissions_page(assignment.id, page)
+    if not rows and page > 1:
+        # A page past the end (a stale bookmark) shows page 1 rather than
+        # a confusing empty page with a "Previous" button.
+        page = 1
+        rows, has_next = teacher_submissions_page(assignment.id, page)
+
+    return _private_no_store(
+        "teacher/submissions/list.html",
+        group=group,
+        assignment=build_teacher_view([assignment], tz_name, utc_reference_now())[0],
+        submissions=build_teacher_submission_view(rows, tz_name),
+        tz_name=tz_name,
+        page=page,
+        has_next=has_next,
+        has_prev=page > 1,
+        page_size=PAGE_SIZE,
+    )
+
+
+@teacher_bp.get(
+    "/groups/<group_public_id>/assignments/<assignment_public_id>"
+    "/submissions/<submission_public_id>"
+)
+@roles_required(UserRole.TEACHER.value)
+def submission_detail(group_public_id, assignment_public_id, submission_public_id):
+    """One submission, read only, or a non-disclosing 404.
+
+    All three public ids must name the same nested chain: the Group must
+    be one this Teacher is actively assigned to, the Assignment must
+    belong to that Group, and the Submission must belong to that
+    Assignment. Any other combination produces no row and the same 404.
+    """
+    group = _teacher_group_or_404(group_public_id)
+    assignment = _assignment_for_group_or_404(group, assignment_public_id)
+    tz_name = _tz_name()
+
+    row = teacher_submission(assignment.id, submission_public_id)
+    if row is None:
+        abort(404)
+
+    return _private_no_store(
+        "teacher/submissions/detail.html",
+        group=group,
+        assignment=build_teacher_view([assignment], tz_name, utc_reference_now())[0],
+        submission=build_teacher_submission_item(row, tz_name, include_answer=True),
+        tz_name=tz_name,
+        submissions_url=_submissions_url(group_public_id, assignment_public_id),
+    )

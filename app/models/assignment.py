@@ -49,8 +49,11 @@ class Assignment(db.Model):
     - *Past due*: ``now >= due_at``.
 
     A published Assignment is **not** Student-visible before
-    ``opens_at``, and **remains** visible at and after ``due_at``. M01
-    has no submission route, so "Past due" is informational only.
+    ``opens_at``, and **remains** visible at and after ``due_at``. Since
+    Phase 4 / M02 the deadline is enforced for **submitting**, not for
+    reading: a past-due Assignment stays fully readable, and a Student
+    who submitted in time keeps their receipt, but no first submission is
+    accepted at or after ``due_at``.
 
     Lifecycle is ``draft`` / ``published`` (the Assignment-specific
     :class:`AssignmentStatus`, never the academic active/archived enum).

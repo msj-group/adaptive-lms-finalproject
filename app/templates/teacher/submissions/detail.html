@@ -1,0 +1,41 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ submission.student_name }} — {{ assignment.title }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M02, read only. `assignment` and `submission` are plain
+    presentation dicts; the route already proved this Teacher's active
+    assignment to the Group, the Assignment's ownership by that Group, and
+    the Submission's ownership by that Assignment. There is deliberately no
+    edit, delete, score, review, feedback or approval control here -- none
+    exists server-side either. -#}
+<h1 style="margin-top: 0">{{ submission.student_name }}</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  {{ assignment.title }} &middot; {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
+</p>
+
+<div class="ds-row" style="margin-bottom: var(--space-6)">
+  <a class="btn btn--secondary" href="{{ submissions_url }}">Back to Submissions</a>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.group_assignments', group_public_id=group.public_id) }}">Back to Assignments</a>
+</div>
+
+<div class="card" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submitted</dt>
+    <dd style="margin:0">{{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
+    <dd style="margin:0">{{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+  </dl>
+</div>
+
+<section>
+  <h2>Answer</h2>
+  <div class="card">
+    {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
+       a student answer is untrusted text and is never interpreted as HTML
+       or Markdown. #}
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ submission.answer_text }}</div>
+  </div>
+</section>
+{% endblock %}

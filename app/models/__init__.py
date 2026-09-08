@@ -22,6 +22,7 @@ from app.models.material import Material
 from app.models.file_access_log import FileAccessLog
 from app.models.notification import Notification
 from app.models.assignment import Assignment
+from app.models.submission import ANSWER_MAX_LENGTH, Submission
 
 __all__ = [
     "User",
@@ -50,4 +51,6 @@ __all__ = [
     "FileAccessLog",
     "Notification",
     "Assignment",
+    "Submission",
+    "ANSWER_MAX_LENGTH",
 ]

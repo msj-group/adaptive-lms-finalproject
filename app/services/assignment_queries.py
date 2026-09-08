@@ -175,7 +175,7 @@ def teacher_assignments_page(group_id, page):
     return rows[:PAGE_SIZE], has_next
 
 
-def build_teacher_view(rows, tz_name, reference_utc):
+def build_teacher_view(rows, tz_name, reference_utc, frozen_assignment_ids=frozenset()):
     """Plain presentation dicts for the Teacher **Assignment rows** --
     localized times, the derived state, and public ids only; no
     Assignment ORM row and no internal id is carried in them.
@@ -184,6 +184,14 @@ def build_teacher_view(rows, tz_name, reference_utc):
     the eagerly loaded ``Group`` ORM object to its template for the page
     header, so that template does receive one ORM object. Only the
     Student pages receive plain dicts throughout.
+
+    `frozen_assignment_ids` (Phase 4 / M02) is the set of internal ids
+    that already have submission history, resolved by the route in **one**
+    bounded query for the whole page
+    (``submission_queries.assignment_ids_with_submissions``) rather than
+    per row. It becomes the ``has_submissions`` flag, which is what the
+    list uses to replace the Edit control with a read-only notice. The
+    ids are consumed here and never placed in the resulting dict.
     """
     view = []
     for row in rows:
@@ -191,6 +199,7 @@ def build_teacher_view(rows, tz_name, reference_utc):
         view.append(
             {
                 "public_id": row.public_id,
+                "has_submissions": row.id in frozen_assignment_ids,
                 "title": row.title,
                 "status": row.status,
                 "is_published": row.status == _PUBLISHED,
@@ -296,9 +305,10 @@ def student_assignments_page(student_id, reference_utc, page):
     there a next page" costs no second query and discloses no total
     count.
 
-    A past-due Assignment stays in the list on purpose: M01 has no
-    submission route, so "Past due" is informational and withdrawing the
-    row would hide the record of what was set.
+    A past-due Assignment stays in the list on purpose: withdrawing the
+    row would hide the record of what was set, and (since Phase 4 / M02)
+    a Student who submitted in time must still be able to reach their own
+    receipt. The deadline stops submitting, never reading.
     """
     rows = (
         _visible_assignment_query(student_id, reference_utc)
