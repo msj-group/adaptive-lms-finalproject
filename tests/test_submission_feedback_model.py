@@ -403,9 +403,12 @@ def test_revision_identifiers():
     assert module.depends_on is None
 
 
-def test_the_repository_has_one_linear_alembic_head_ending_here():
-    """Every revision file's parentage forms one chain, and this revision
-    is its only head."""
+def test_the_repository_has_one_linear_alembic_chain_containing_this_revision():
+    """Every revision remains on one chain and M03 keeps its place in it.
+
+    A later milestone owns the current head assertion; an older migration
+    must not pin the repository forever to itself.
+    """
     parents, revisions = {}, set()
     for path in _MIGRATIONS.glob("*.py"):
         source = path.read_text(encoding="utf-8")
@@ -415,7 +418,8 @@ def test_the_repository_has_one_linear_alembic_head_ending_here():
         parents[rev] = down
 
     heads = revisions - {d for d in parents.values() if d is not None}
-    assert heads == {_REVISION}
+    assert len(heads) == 1
+    assert _REVISION in revisions
     # Linear: every parent is claimed exactly once, and exactly one root.
     claimed = [d for d in parents.values() if d is not None]
     assert len(claimed) == len(set(claimed))

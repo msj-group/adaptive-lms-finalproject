@@ -2451,7 +2451,7 @@ def test_edit_page_locked_identity_semantic_contract(app, client):
 
     assert (
         "Academic Term and Course are locked because this group already has enrollment, "
-        "teacher-assignment, schedule, unit, or assignment history"
+        "teacher-assignment, schedule, unit, assignment, or quiz history"
         in html
     )
     parser = _parse_group_form(html)
@@ -2480,7 +2480,7 @@ def test_edit_page_unlocked_identity_semantic_contract(app, client):
 
     assert (
         "Academic Term and Course are locked because this group already has enrollment, "
-        "teacher-assignment, schedule, unit, or assignment history"
+        "teacher-assignment, schedule, unit, assignment, or quiz history"
         not in html
     )
     parser = _parse_group_form(html)
@@ -4028,7 +4028,11 @@ def test_assignment_history_freezes_group_identity(app, client, assignment_statu
     resp = _retarget(client, public_id, term_b_id, course_id)
     assert resp.status_code == 200
     assert b"cannot be changed" in resp.data
-    assert b"assignment history" in resp.data
+    # The rejection must still name assignment history as one of the kinds
+    # that froze this group. Phase 4 / M04A extended the enumeration to
+    # "...unit, assignment, or quiz history", so the message is matched
+    # through that phrase rather than the older standalone wording.
+    assert b"unit, assignment, or quiz history" in resp.data
     with app.app_context():
         assert Group.query.filter_by(public_id=public_id).first().academic_term_id == term_a_id
 
@@ -4132,7 +4136,7 @@ def test_locked_notice_mentions_assignment_history(app, client):
     html = client.get(f"/admin/groups/{public_id}/edit").get_data(as_text=True)
     assert (
         "Academic Term and Course are locked because this group already has enrollment, "
-        "teacher-assignment, schedule, unit, or assignment history"
+        "teacher-assignment, schedule, unit, assignment, or quiz history"
         in html
     )
     parser = _parse_group_form(html)
@@ -4184,6 +4188,222 @@ def test_post_lock_recheck_detects_newly_created_assignment_history(app, client)
 
     with patch.object(
         groups_module, "lock_group_in_open_transaction", side_effect=create_assignment_then_lock
+    ):
+        resp = client.post(
+            f"/admin/groups/{public_id}/edit",
+            data=_edit_post_data(term_b_id, course_id, edit_snapshot=snapshot),
+            follow_redirects=True,
+        )
+
+    assert resp.status_code == 200
+    assert b"cannot be changed" in resp.data
+    with app.app_context():
+        assert Group.query.filter_by(public_id=public_id).first().academic_term_id == term_a_id
+
+
+# ----------------------------------------------------------------------
+# Phase 4 / M04A -- Quiz history extends the Group identity freeze
+# ----------------------------------------------------------------------
+
+
+def _make_quiz(group, title="Unit 1 check", instructions="Answer every question."):
+    """One Group-owned quiz draft. Every Quiz is a draft in M04A, and an
+    EMPTY one (no questions exist at all yet) still counts as history."""
+    from datetime import datetime
+
+    from app.models import Quiz
+
+    row = Quiz(
+        group_id=group.id,
+        title=title,
+        instructions=instructions,
+        version=1,
+        created_at=datetime(2026, 5, 1, 8, 0),
+        updated_at=datetime(2026, 5, 1, 8, 0),
+    )
+    db.session.add(row)
+    db.session.commit()
+    return row
+
+
+def test_quiz_history_freezes_group_identity(app, client):
+    """An empty quiz draft freezes identity exactly like a draft Unit or a
+    draft Assignment: its title and instructions were already authored
+    against this Group's current Course and Term."""
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        term_a = _make_term(name="Term A")
+        term_b = _make_term(name="Term B")
+        course = _make_course()
+        group = _make_group(term=term_a, course=course, name="Group A")
+        _make_quiz(group)
+        # The quiz is the ONLY history row of any kind.
+        assert Enrollment.query.count() == 0
+        assert GroupTeacherAssignment.query.count() == 0
+        public_id, term_a_id, term_b_id, course_id = (
+            group.public_id, term_a.id, term_b.id, course.id
+        )
+
+    login(client, "admin@example.com")
+    resp = _retarget(client, public_id, term_b_id, course_id)
+    assert resp.status_code == 200
+    assert b"cannot be changed" in resp.data
+    assert b"quiz history" in resp.data
+    with app.app_context():
+        assert Group.query.filter_by(public_id=public_id).first().academic_term_id == term_a_id
+
+
+def test_quiz_history_freezes_the_course_too(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        term = _make_term()
+        course_a = _make_course(level_name="Level A", title="Course A")
+        course_b = _make_course(level_name="Level B", title="Course B")
+        group = _make_group(term=term, course=course_a, name="Group A")
+        _make_quiz(group)
+        public_id, term_id, course_a_id, course_b_id = (
+            group.public_id, term.id, course_a.id, course_b.id
+        )
+
+    login(client, "admin@example.com")
+    resp = _retarget(client, public_id, term_id, course_b_id)
+    assert resp.status_code == 200
+    assert b"cannot be changed" in resp.data
+    with app.app_context():
+        assert Group.query.filter_by(public_id=public_id).first().course_id == course_a_id
+
+
+def test_same_identity_resubmission_remains_allowed_with_quiz_history(app, client):
+    """Posting the Group's own current Term and Course back is not a
+    retarget, so the freeze must not block an ordinary metadata edit."""
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        term = _make_term()
+        course = _make_course()
+        group = _make_group(term=term, course=course, name="Group A", capacity=20)
+        _make_quiz(group)
+        public_id, term_id, course_id = group.public_id, term.id, course.id
+
+    login(client, "admin@example.com")
+    resp = _retarget(client, public_id, term_id, course_id, name="Renamed", capacity="30")
+    assert resp.status_code == 200
+    with app.app_context():
+        group = Group.query.filter_by(public_id=public_id).first()
+        assert group.name == "Renamed" and group.capacity == 30
+        assert group.academic_term_id == term_id and group.course_id == course_id
+
+
+def test_group_status_toggle_remains_allowed_with_quiz_history(app, client):
+    """The freeze is about identity only -- it adds no archive blocker,
+    and archiving never cascades into the quiz draft."""
+    from app.models import Quiz
+
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        group = _make_group(name="Group A")
+        _make_quiz(group, title="Kept", instructions="Kept body")
+        public_id = group.public_id
+
+    login(client, "admin@example.com")
+    resp = client.post(f"/admin/groups/{public_id}/toggle-status", follow_redirects=True)
+    assert resp.status_code == 200
+    with app.app_context():
+        assert Group.query.filter_by(public_id=public_id).first().status == "archived"
+        row = Quiz.query.one()
+        assert row.title == "Kept" and row.instructions == "Kept body"
+        assert row.version == 1
+
+
+def test_quiz_history_adds_no_new_ancestor_archive_blocker(app, client):
+    """Quizzes must not change ancestor archiving at all. Two identical
+    AcademicTerms -- one whose Group carries a quiz draft, one whose Group
+    does not -- must produce the *same* outcome, whatever the pre-existing
+    M07C3 rules decide it is."""
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        plain_term = _make_term(name="Plain Term")
+        _make_group(term=plain_term, course=_make_course(level_name="L1", title="C1"),
+                    name="Plain Group")
+        with_term = _make_term(name="Quiz Term")
+        with_group = _make_group(term=with_term, course=_make_course(level_name="L2", title="C2"),
+                                 name="Quiz Group")
+        _make_quiz(with_group)
+        plain_pid, with_pid = plain_term.public_id, with_term.public_id
+
+    login(client, "admin@example.com")
+    plain = client.post(f"/admin/academic-terms/{plain_pid}/toggle-status", follow_redirects=True)
+    loaded = client.post(f"/admin/academic-terms/{with_pid}/toggle-status", follow_redirects=True)
+
+    assert plain.status_code == loaded.status_code
+    with app.app_context():
+        plain_status = AcademicTerm.query.filter_by(public_id=plain_pid).first().status
+        loaded_status = AcademicTerm.query.filter_by(public_id=with_pid).first().status
+    assert plain_status == loaded_status
+
+
+def test_locked_notice_mentions_quiz_history(app, client):
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        group = _make_group(name="Group A")
+        _make_quiz(group)
+        public_id = group.public_id
+
+    login(client, "admin@example.com")
+    html = client.get(f"/admin/groups/{public_id}/edit").get_data(as_text=True)
+    assert (
+        "Academic Term and Course are locked because this group already has enrollment, "
+        "teacher-assignment, schedule, unit, assignment, or quiz history"
+        in html
+    )
+    parser = _parse_group_form(html)
+    assert "academic_term_id" not in parser.select_names
+    assert "course_id" not in parser.select_names
+
+
+def test_post_lock_recheck_detects_newly_created_quiz_history(app, client):
+    """The pre-lock preview sees no history and the form renders unlocked,
+    but a quiz draft is created before the Group lock is taken. The
+    authoritative post-lock recheck must catch it -- this is the race the
+    shared Group lock exists to serialize."""
+    import app.blueprints.admin.groups as groups_module
+    from unittest.mock import patch
+
+    with app.app_context():
+        make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
+        term_a = _make_term(name="Term A")
+        term_b = _make_term(name="Term B")
+        course = _make_course()
+        group = _make_group(term=term_a, course=course, name="Group A")
+        public_id, group_id, term_a_id, term_b_id, course_id = (
+            group.public_id, group.id, term_a.id, term_b.id, course.id
+        )
+
+    login(client, "admin@example.com")
+    # Fetched while the Group genuinely has no history at all.
+    snapshot = _get_edit_snapshot(client, public_id)
+
+    from datetime import datetime
+
+    from app.models import Quiz
+
+    original = groups_module.lock_group_in_open_transaction
+
+    def create_quiz_then_lock(pid):
+        """Stand in for a co-teacher committing a quiz draft in the window
+        between the unlocked preview read and the Group lock."""
+        db.session.add(Quiz(
+            group_id=group_id,
+            title="Raced in",
+            instructions="Answer every question.",
+            version=1,
+            created_at=datetime(2026, 5, 1, 8, 0),
+            updated_at=datetime(2026, 5, 1, 8, 0),
+        ))
+        db.session.commit()
+        return original(pid)
+
+    with patch.object(
+        groups_module, "lock_group_in_open_transaction", side_effect=create_quiz_then_lock
     ):
         resp = client.post(
             f"/admin/groups/{public_id}/edit",

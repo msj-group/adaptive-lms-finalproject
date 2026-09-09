@@ -79,6 +79,11 @@
             assigned Teacher even under an archived group/ancestor, so history
             can always be read and published work can always be withdrawn. -#}
         <a class="btn btn--secondary" href="{{ url_for('teacher.group_assignments', group_public_id=card.group_public_id) }}">Manage Assignments</a>
+        {#- Phase 4 / M04A: the quiz list stays reachable for an actively
+            assigned Teacher even under an archived group/ancestor, so existing
+            drafts can always be read back. Every quiz there is a draft that no
+            student can see. -#}
+        <a class="btn btn--secondary" href="{{ url_for('teacher.group_quizzes', group_public_id=card.group_public_id) }}">Manage Quizzes</a>
       </div>
     </div>
     {% endfor %}

@@ -4367,3 +4367,1065 @@ completion, exports, analytics and ML.
   baseline skips are unchanged.
 - No browser, accessibility, responsive or real-concurrency verification
   was performed in this Part.
+
+
+## Group-owned quiz drafts (Phase 4, Part M04A)
+
+M04A delivers the first bounded step of the approved M04 scope: an
+actively assigned Teacher creates, lists, reads and edits **Group-owned
+quiz drafts**, collaboratively with every co-teacher of the same Group.
+
+Question authoring was the next bounded step and was **not** implemented
+in M04A. Publication, Student attempts, timers, grading and results are
+deferred beyond it. Nothing in this Part is a placeholder for any of them.
+
+> **Superseded in part by Phase 4 / M04B.** Ordered multiple-choice
+> questions and their answer options now exist -- see
+> "Multiple-choice question authoring (Phase 4, Part M04B)" below.
+> Everything M04A decided about Group ownership, draft-by-construction
+> semantics, authorization, locking, stale-form handling, query bounds and
+> the Group identity freeze is unchanged and still current; only the
+> statements that *no question surface exists* are superseded, and they
+> were true of the M04A candidate that was verified and accepted. This
+> section is not rewritten as if M04A had implemented questions.
+
+### A. A draft by construction, not a draft by status
+
+There is no `status` column, no `published_at`, no opening or closing
+time and no timer on `quizzes` -- not as a disabled control, not as an
+enum value, not as a nullable column. A Quiz is a draft because **nothing
+in the application can publish one**: there is no publication route, no
+Student list, detail, search projection, notification or dashboard read,
+and no Administrator or Researcher quiz surface. Every Teacher page says
+"Draft" and states in words that Students cannot see it, open it or
+answer it.
+
+**A draft with no questions is a legitimate state.** M04A has no
+questions at all, so an empty draft is not incomplete work waiting to be
+finished -- it is the whole of what this Part delivers. No page describes
+one as ready, complete, graded, approved or available.
+
+In M04A the Teacher pages carried **no question section of any kind** --
+not an empty list, not a disabled control, and not a notice announcing
+when question authoring would arrive. A page that advertises absent
+functionality is a placeholder in prose, and it dates the product the
+moment the plan changes.
+
+**Superseded by M04B**, which makes the question section real
+functionality rather than a placeholder: the detail page now lists the
+draft's questions, or shows an ordinary empty state with an Add Question
+action. The rule that produced the M04A wording still stands and is why
+that empty state describes what a Teacher can do *now* rather than what is
+coming: the pages carry no development-roadmap language about releases,
+phases or next steps. What a Teacher needs to know is the draft's status,
+that Students cannot see it, that co-teachers share it, and that it
+becomes read-only under an archived hierarchy.
+
+Deferring publication this way is deliberate: adding a `status` column
+now would require deciding what publishing *means* for a quiz -- when
+Students may open it, whether a timer starts, what happens to an attempt
+in progress, whether answers are released -- and none of that is decided.
+A column added before its rule is a rule invented by omission.
+
+### B. Ownership is the Group, and collaboration is equal
+
+A Quiz belongs directly to exactly one Group. Course, Level and
+AcademicTerm are reachable through `quiz.group` and are **not**
+duplicated on the row -- the same single-source-of-truth reasoning
+already applied to Enrollment, GroupTeacherAssignment, Schedule, Unit,
+Lesson, Assignment and Submission. There is no `unit_id` / `lesson_id`
+(a quiz is Group work, not a child of one teaching Lesson) and no
+`teacher_id` / `created_by` / `owner_id`: **every active assigned Teacher
+of the Group is an equal collaborator**, exactly as they already are on
+the Group's Assignments. A draft is never privately owned by whoever
+wrote it first, and no route restricts an action to a "creator".
+
+`Group.quizzes` exists so the relationship has its inverse and carries no
+cascade in either direction. It is deliberately never iterated: every
+read goes through the bounded, column-projected queries in
+`app/services/quiz_queries.py`, so rendering a page cannot trigger an
+unbounded load of a Group's whole quiz history.
+
+Nothing is ever hard-deleted. There is no delete route, no archive-Quiz
+route, no soft-delete column, and the `group_id` foreign key is a plain
+reference with no `ON DELETE` behaviour, so no Group or ancestor
+lifecycle change can remove a draft.
+
+### C. `version` is the concurrency signal, not a revision history
+
+`version` starts at 1 and increases by **exactly one** per *meaningful*
+edit. It exists so a signed co-teacher form token can detect that the row
+changed under it -- including an A -> B -> A round trip that leaves the
+values identical to what a third form was opened against, and including
+two edits landing inside the same whole second, neither of which a
+timestamp comparison could catch. It is never displayed as a revision
+number, no row is kept per version, and it is never placed in a page as a
+value: the signed token carries it instead, where it is authenticated and
+bound to the acting Teacher.
+
+Earlier wordings are **not** retained anywhere. M04A stores the current
+title and instructions and nothing else; there is no history table and no
+per-version row.
+
+### D. The no-op: an unchanged save is not an edit
+
+An authorized, non-stale save whose **normalized** title and instructions
+both equal the stored ones is a no-op: nothing is written, `version` does
+not move, and `updated_at` does not move. Re-saving unchanged values is
+not an edit, and it must not make a draft look freshly touched to a
+co-teacher reading the list.
+
+The no-op still has to pass every authorization, lifecycle and staleness
+check first -- it is a decision *not to write*, not a shortcut around the
+checks.
+
+Normalization is a plain `.strip()` on both fields, applied **after** the
+length validators have already run against the raw submitted value.
+Internal line breaks, blank lines, indentation and a browser's `\r\n`
+pairs are stored exactly as typed. Both values are plain text throughout
+-- never HTML, never Markdown, never rendered with `|safe`, always
+autoescaped and laid out with CSS.
+
+### E. Versioned stale-form protection, with a dedicated M04 salt
+
+Row locks alone cannot protect an edit form: a co-teacher may have
+rewritten the draft minutes after the form was rendered, and the lock the
+POST takes would happily overwrite their wording with a revision of an
+older one. The edit form therefore carries a signed token bound to
+exactly five things:
+
+- the **acting Teacher's** `public_id`;
+- the **Group's** `public_id`;
+- the **Quiz's** `public_id`;
+- the **expected `version`**;
+- an explicit **purpose** marker, `quiz-edit`.
+
+The salt is dedicated to M04 (`teacher.quiz-edit-state.phase4-m04.v1`),
+so a validly signed M01 assignment snapshot or M03 feedback token -- all
+signed with the same application `SECRET_KEY` -- fails signature
+verification here. The purpose marker is the second guard: a future M04
+token of a different shape, minted under the same salt, still cannot be
+replayed against this route.
+
+The payload check is **exact and typed**, not merely "is a dict": the key
+set must match exactly, the purpose must be the M04A edit purpose, the
+three identifiers must be strings, and `version` must be a positive
+`int`. `bool` is excluded explicitly -- it is a subclass of `int` in
+Python, and `True` must not be accepted as version 1.
+
+`updated_at` is deliberately **not** bound: whole-second timestamps
+cannot separate two edits inside one second, and `version` can. The
+authored text is not bound either -- instructions can be 10,000
+characters, a signed token is authenticated but readable, and the version
+already identifies the exact row state. Only **public** identifiers
+appear in the token: no internal database id and no quiz content is ever
+placed in it.
+
+**The authoritative staleness check runs against the locked row.** The
+pre-lock check is a courtesy; the one that decides runs inside the locked
+transaction, which is what closes the window between the form's GET and
+the locks, and what turns a losing co-teacher race into an explicit
+"reload and review" rejection rather than a silent overwrite.
+
+Following M03's safe form handling:
+
+- A **stale rejection** discards every submitted value and reloads the
+  current persisted ones through a fresh GET (Post/Redirect/Get). It
+  never pairs a freshly generated token with the attempted values, which
+  is precisely the bypass the rejection exists to close.
+- An **ordinary validation error** retains the attempted values with the
+  **original** token, so the Teacher can fix the field without losing
+  what they wrote and without the expected version being silently
+  refreshed underneath them.
+- A **fresh token may only ever pair with freshly loaded persisted
+  values.**
+
+### F. Authorization, non-disclosure, and read versus write
+
+`roles_required(TEACHER)` handles anonymous (login redirect) and
+non-Teacher (403). Object authorization is then server-side and reuses
+the exact helpers every other nested Teacher route uses:
+`_teacher_group_or_404` proves an **active** `GroupTeacherAssignment` to
+the Group in the URL, and every nested Quiz lookup is constrained with
+`Quiz.group_id == group.id`.
+
+A missing Group, a missing Quiz, a Quiz `public_id` belonging to another
+Group, an internal numeric id submitted in place of a public id, an
+unassigned Teacher and a removed assignment all produce the **same
+non-disclosing 404** -- never a 403, and never a hint that the object
+exists. A foreign key into `users` proves a row exists, never that it is
+a Teacher's or that the account is active: both are re-read.
+
+**Reading is historical; writing is not.** The list and the detail page
+stay available to an actively assigned Teacher when the Group or an
+academic ancestor is archived, so a draft can always be read back.
+Creating and editing additionally require an operational Group -- an
+active AcademicTerm, Level, Course and Group -- re-checked against the
+*locked* rows. Archiving neither deletes nor rewrites a draft, and adds
+no new blocker anywhere else.
+
+**A path that has rolled back needs its own evidence.** `roles_required`
+runs once, before the view, and a cached `current_user` is not a current
+read. Every post-rollback path -- the edit render, the
+ordinary-validation re-render, and the `IntegrityError` recovery alike --
+goes through `_fresh_quiz_authorization`, which re-proves the actor's own
+`role` and `status`, the active assignment, and the Quiz's ownership from
+**current** state, using a scalar id captured *before* the reset, before
+any authored content is rendered or any token is minted. It is scoped to
+M04A rather than folded into the shared `_teacher_group_or_404`, which
+would change behaviour well outside this Part.
+
+Every content-bearing response -- the list, the detail page, both forms,
+**and a form re-rendered with validation errors** -- carries
+`Cache-Control: private, no-store` and `Vary: Cookie`. The helper is
+imported from `app/blueprints/teacher/assignments.py` rather than
+re-implemented, so the header set cannot drift between Teacher surfaces.
+
+### G. Lock order, single reset, and post-lock rechecks
+
+Every mutation follows the established Teacher authoring lock order in
+one open transaction:
+
+    AcademicTerm -> Level -> Course   (via lock_academic_hierarchy,
+                                       which owns the single deliberate
+                                       reset)
+    -> Group -> acting Teacher User -> GroupTeacherAssignment
+    -> Quiz row, when it already exists
+
+This is the exact prefix M01's `_lock_assignment_chain` and M10's
+`_lock_unit_chain` already use, with the target Quiz taking the place of
+the target Assignment / Unit. No existing route's contract is redesigned,
+and the project-wide "User rows in ascending internal id" rule is
+preserved (there is only one User row in this chain: the acting Teacher).
+There is **no second reset**.
+
+Because a Unit write, an Assignment write, a feedback write, every
+membership mutation and the Administrator Group retarget all lock the
+**same** Group row, a quiz write serializes against all of them rather
+than racing -- which is what stops a new draft from slipping past the
+Group identity freeze.
+
+Every scalar the request needs is captured **before** the reset, so
+nothing between that reset and the required locks triggers a lazy ORM or
+`current_user` reload that would establish a fresh read snapshot ahead of
+the locks.
+
+After locking, and **before any model field is assigned**, the write path
+re-checks:
+
+1. the acting Teacher's role, account status and active assignment;
+2. the locked Quiz's ownership by this exact Group and its own
+   `public_id`;
+3. the academic identity and operational state of the locked
+   AcademicTerm / Level / Course / Group;
+4. the signed token against the locked row's `version`;
+5. ordinary field validation (computed pre-lock, *applied* post-lock, so
+   a rejection order can never depend on it);
+6. the no-op comparison;
+7. the duplicate title, against the locked Group.
+
+Every failure leaves no partial write. `IntegrityError` is caught, rolled
+back **first**, re-authorized from scratch through
+`_fresh_quiz_authorization`, and reported with a generic safe message --
+no SQL, driver text, parameter or internal id ever reaches the page, and
+the failed save is never reported as success.
+
+### H. Query bounds and index rationale
+
+The Teacher list is the only read shape in M04A: a single-Group equality
+ordered `created_at DESC, id DESC`, fully deterministic. It fetches
+`PAGE_SIZE + 1` (21) rows and drops the extra, so "is there a next page"
+costs no second query and discloses no total count. Page values are
+normalized -- missing, non-numeric, zero, negative or absurdly large all
+become page 1 -- and a page past the end falls back to page 1 rather than
+rendering a confusing empty page with a "Previous" button.
+
+`normalize_page` and `PAGE_SIZE` are declared in `quiz_queries` rather
+than imported from `assignment_queries`, following the convention that
+module already states: **each feature owns its own bounds**, so
+tightening one list can never silently change another. The rule and the
+limits are identical today on purpose.
+
+**The list is bounded in columns, not only in rows.** It selects explicit
+columns and deliberately omits `instructions`, which is up to 10,000
+characters of body text a list preview has no use for; the detail route
+fetches the body once, for the one Quiz actually being read. Every row
+returned by this module is converted to a plain presentation dict before
+it reaches a template, so rendering can never trigger a lazy load. The
+internal `id` orders the SQL only and is never placed in a dict, a URL,
+a form value or the rendered HTML.
+
+Two index objects, each with a distinct justification and no redundancy:
+
+- `uq_quizzes_group_title` (`group_id`, `title`) -- the uniqueness
+  invariant, and the exact shape of the duplicate-title check the write
+  path performs twice (friendly pre-lock, authoritative post-lock), with
+  the constraint itself as the final defense.
+- `ix_quizzes_group_created_id` (`group_id`, `created_at`, `id`) -- the
+  list read, whose ordering columns follow the `group_id` equality
+  directly. No column sits between them, which is exactly the shape M14
+  measured resolving as `Using filesort` on `notifications` when one did.
+
+Both start with `group_id`, so the foreign key already has a usable
+leftmost prefix and **no** separate single-column index is declared. No
+speculative index is declared: there is no quiz search, no cross-Group
+listing and no counter in this milestone, so there is no read shape for
+one to serve.
+
+**No MySQL execution plan has been measured for this table.** As with
+M01's, M02's and M03's indexes, this is a reasoned design pending an
+authorized real `EXPLAIN`.
+
+Title uniqueness is scoped to the Group: the same title in **another**
+Group is allowed. Comparison is left to the database, so the effective
+case- and accent-sensitivity is the column's collation
+(`utf8mb4_0900_ai_ci` on MySQL, binary on the SQLite test backend). That
+difference is inherited from the project's existing title checks rather
+than introduced here, and has **not** been measured against real MySQL in
+this Part.
+
+### I. Quiz history extends the Group identity freeze
+
+Any Quiz row -- **including an empty draft** -- freezes the Group's
+academic identity (`academic_term_id` / `course_id`), joining Enrollment
+/ GroupTeacherAssignment, Schedule, Unit and Assignment history in
+`app.blueprints.admin.groups._group_identity_frozen` via the bounded
+`quiz_queries.group_has_quiz_history`.
+
+The reasoning is the one that already makes a draft Unit and a draft
+Assignment freeze identity: the title and instructions were **already
+written for this Course in this Term**, so retargeting the Group
+afterwards would silently reinterpret what that work is for. Waiting for
+questions would be worse than useless here -- M04A has no questions at
+all, so it would leave every M04A draft unprotected.
+
+Both the early feedback check and the **authoritative post-lock recheck**
+in `group_edit` see quiz history, so a draft committed in the window
+between the unlocked preview read and the Group lock is still caught --
+that race is exactly what the shared Group lock serializes. The
+Administrator wording and the locked-identity help text now name quiz
+history alongside the rest.
+
+**This is an identity guard only:**
+
+- posting the Group's own current Term and Course back (no actual change)
+  stays allowed, as do all non-identity edits -- name, code, capacity;
+- **no** new ancestor-archive blocker is added: a Group with quiz drafts
+  archives exactly as one without them does, and an AcademicTerm's toggle
+  behaves identically either way;
+- **no** cascade of any kind is introduced, and archiving never rewrites
+  a draft;
+- membership, capacity and transaction rules are untouched.
+
+### J. Approved remaining M04 work (M04B) -- since implemented
+
+The owner approved the following as the next bounded step. When M04A was
+written **none of it existed in the code**: there was no question or
+option table, column, route, form field, template hook, enum value or TODO
+anywhere in it. That was true of the accepted M04A candidate.
+
+**It has since been implemented in Phase 4 / M04B** exactly as listed
+below; the section for that Part records how. The list is kept here
+unchanged because it is the record of what was approved and of the
+boundary M04A stopped at.
+
+- Ordered multiple-choice questions belonging to a quiz.
+- A **single-answer** mode with exactly one correct option.
+- A **multiple-answer** mode with at least two correct options.
+- Clear Teacher selection of the mode and of the correct-answer set.
+- Server-side validation of the complete question together with its
+  options.
+- **No automatic conversion or truncation** of multiple correct answers
+  when a question is changed to single-answer mode: the Teacher decides
+  explicitly, and correct answers are never silently dropped.
+
+This approval carries **no** decision about Student attempts, a scoring
+rule, partial credit, a pass/fail policy, an answer-release policy, or
+any publication behaviour. Those remain undecided after M04B as well, and
+no placeholder is left for them.
+
+### K. Deliberate deferrals
+
+No placeholder table, column, route, UI element, enum value, counter or
+TODO was added for any of the following.
+
+Quiz lifecycle: publication, unpublication, scheduling, opening and
+closing times, timers, availability windows, delete, soft delete,
+archiving, duplication, templates, import/export and question banks.
+
+Questions and answers: question rows, option rows, ordering columns and
+correct-answer keys were deferred by M04A and are **implemented in M04B**.
+Question types beyond multiple choice, media in questions and
+per-question feedback remain deferred in both Parts, with no placeholder
+for any of them.
+
+Attempts and grading: Student attempts, attempt limits, autosave,
+in-progress state, submissions, scores, partial credit, pass/fail,
+grade release, retakes, results pages and Administrator grade reports.
+
+Student surface: any Student list, detail, search projection,
+notification, dashboard section or receipt mentioning a quiz.
+
+Everything else: email, reminders, background jobs, review queues,
+aggregate counters, dashboard metrics, progress and completion, exports,
+analytics and ML.
+
+### L. Verification ownership, and honest limitations
+
+**Claude implemented M04A and wrote the test code. Claude did not run
+pytest, any browser check, any migration check, or any real-database
+check**, and performed no baseline audit and no repeated
+checkpoint/hash/status routine.
+
+What Claude *did* execute, stated precisely so the record is not
+overclaimed in either direction: an initial read-only Git write-safety
+inspection before the first edit (`git status --porcelain`,
+`git rev-parse HEAD`, `git log -1`); Python `ast.parse` syntax parsing of
+the files Claude itself authored, which checks syntax only and neither
+imports the application nor touches a database; text-editing scripts
+applied to those same authored files; and the `git diff --check` and
+final `git status` inspection required by `AGENTS.md` section 6. None of
+those is a test, and none of them exercises application behaviour.
+
+Codex owns focused verification, relevant regressions and acceptance.
+Except where a Codex result is explicitly recorded below, the statements
+in this section describe what the written tests are *designed* to
+establish, not results that have been observed.
+
+**Historical PRE-CORRECTION Codex evidence.** On the first M04A
+candidate, Codex reported **424 passed, 2 failed, exit 1** (Python
+3.14.6, SQLite in memory, strict warnings), with both failures in the
+parametrized `test_assignment_history_freezes_group_identity`
+(draft and published) in `tests/test_admin_groups.py`: that test still
+required the pre-M04A wording `assignment history`, which this Part's
+extended enumeration no longer contains. A subsequent CORRECTION Part
+updated that assertion, removed the deferred-question placeholder section
+and the development-roadmap prose from the quiz templates, updated the
+one detail-render test that pinned the removed copy, and corrected this
+subsection. **That earlier run predates those corrections: it is not
+evidence that the corrected files pass, the full strict suite has not
+been run on the corrected candidate, and Codex has not accepted M04A.**
+
+- **No migration was generated, edited or applied in this Part, and no
+  real database was contacted.** The real MySQL database does **not**
+  have a `quizzes` table. `db.create_all()` succeeding on the SQLite test
+  backend is not evidence that it does, and nothing in the code calls
+  `create_all` or suppresses a database error to work around the missing
+  migration. A test in `tests/test_quizzes_model.py` asserts that no
+  migration file mentions the table, so the absence stays deliberate
+  rather than drifting. Creating and applying the revision is a separate
+  authorized Part.
+- Automated tests run on SQLite in memory. They can validate application
+  logic, SQL scoping, query structure, model/schema alignment and the
+  *requested* lock order -- they do **not** prove MySQL/InnoDB row
+  blocking, isolation, collation, index plans, or that a future migration
+  runs on MySQL.
+- The concurrency tests are **structural**. SQLite has no
+  `SELECT ... FOR UPDATE` and no REPEATABLE READ snapshot isolation, so
+  they assert the requested reset and lock order and exercise the
+  post-lock recheck logic by injecting a state change at an exact
+  transaction boundary (a removed teaching assignment, a suspended or
+  demoted Teacher, an archived ancestor, a raced duplicate title, a
+  deleted Quiz, a competing version bump). They are **not** a
+  demonstration of real concurrent InnoDB blocking.
+- Time is injected rather than waited for, so the "two edits inside one
+  whole second" case is exact rather than probabilistic. That proves the
+  decision logic, not real-world clock skew between application servers.
+- The `IntegrityError` tests inject the failure and the access-losing
+  change at a chosen point inside one SQLite request. They prove the
+  recovery path re-authorizes and what it answers; they are not a
+  demonstration of real concurrent InnoDB conflict resolution.
+- The test-harness artifact documented in M03 applies here too: the
+  shared `app` fixture keeps **one** app context open for a whole test,
+  so `flask.g` -- where Flask-Login caches the loaded user -- survives
+  between requests. Without clearing it, a second test client's request
+  silently runs as the *first* client's user, which would make every "two
+  co-teachers" assertion pass vacuously. The M04A tests clear that cache
+  explicitly before each request (`_fresh_identity`) and additionally
+  assert each client's own session identity. This is a fixture artifact,
+  not application behaviour.
+- Mid-session account suspension still cannot be exercised faithfully
+  (the M01/M02/M03 limitation is unchanged): a suspended account cannot
+  obtain a session at all, which is the contract actually tested. The
+  post-lock and post-rollback paths are exercised by injection instead.
+- The 10,000-character limit is a form boundary on a `TEXT` column. On
+  MySQL, `TEXT` holds 65,535 **bytes**, which is above 10,000 utf8mb4
+  characters at any encoding width -- but that headroom has not been
+  measured against a real MySQL insert in this Part.
+- Existing assertions that pinned the **exact wording** of the
+  Administrator locked-identity notice and the identity-change message
+  were updated, because this Part explicitly changes that wording: both
+  now enumerate quiz history alongside enrollment, teacher-assignment,
+  schedule, unit and assignment history. The affected assertions live in
+  `tests/test_admin_groups.py`, `tests/test_admin_schedules.py` and
+  `tests/test_teacher_units.py`, and each still asserts exactly what it
+  asserted before -- that the message truthfully names the kind of
+  history that froze the Group -- matched against the extended sentence
+  instead of the older one. No count is given here on purpose: it would
+  be a fragile fact about the test files rather than a decision, and the
+  authoritative list is the diff. No test was weakened, no behaviour was
+  removed, and no skip was introduced.
+- No browser, accessibility, responsive, real-MySQL or real-concurrency
+  verification was performed in this Part.
+
+
+## Multiple-choice question authoring (Phase 4, Part M04B)
+
+M04B completes the approved M04 scope on top of the accepted M04A
+foundation: an actively assigned Teacher authors **ordered multiple-choice
+questions** inside a Group-owned quiz draft, collaboratively with every
+co-teacher of the same Group.
+
+Publication, Student visibility, attempts, saved answers, timers,
+submissions, results, scores, partial credit, grading, pass/fail,
+gradebook integration, answer release, randomization, question banks,
+copying, importing, exporting, media, other question types, and question
+deletion or archiving are all **out of scope and absent from the code**.
+No placeholder table, column, route, enum value, form field, template hook
+or TODO is left for any of them.
+
+**`is_correct` is the Teacher's authored answer key for a draft, and
+nothing else.** It carries no score, weight or partial-credit meaning; no
+Student can reach it; and no attempt, marking or answer-release path
+exists to give it one. Reading any scoring semantics into that column
+would be inventing a rule nobody approved.
+
+### A. Ownership: Group -> Quiz -> Question -> Option
+
+A question belongs directly to exactly one Quiz; an option belongs
+directly to exactly one Question. Group, Course, Level and AcademicTerm
+are reachable through `question.quiz.group` and are **not** duplicated on
+either row -- the same single-source-of-truth reasoning already applied to
+Enrollment, GroupTeacherAssignment, Schedule, Unit, Lesson, Assignment,
+Submission and Quiz. There is no `teacher_id` / `created_by` on either
+table: **every active assigned Teacher of the Quiz's Group is an equal
+collaborator**, exactly as they already are on the Quiz itself.
+
+Because a question cannot exist without its Quiz, and **every** Quiz row
+already freezes the Group's academic identity (M04A), question and option
+rows need no identity-freeze integration of their own. The Administrator
+Group identity logic is deliberately **not** touched again by this Part.
+
+Nothing is ever hard-deleted. Both foreign keys are plain references with
+no `ON DELETE` behaviour, and no relationship carries a `delete` or
+`delete-orphan` cascade, so no Group, Quiz or hierarchy lifecycle change
+can remove a question or an option. **Questions cannot be removed,
+retired or deleted at all in this Part** -- there is no such route and no
+such column.
+
+### B. Two answer modes, and switching never guesses
+
+`answer_mode` is a **cardinality rule, not a question type**: every
+question in M04B is multiple choice.
+
+- **`single`** -- exactly one active option is correct.
+- **`multiple`** -- at least two active options are correct. **Every
+  active option being correct is legitimate.** No distractor is required,
+  because no such business rule was approved, and inventing one would
+  reject a perfectly reasonable "which of these are all true?" item.
+
+The enum is closed and rendered once into the
+`ck_quiz_questions_answer_mode_valid` CHECK, so the application
+`@validates` guard and the schema cannot drift and an unrecognised mode
+cannot be inserted by application code or by a manual row.
+
+**Switching modes never silently changes an answer key.** Changing
+multiple -> single while several options are still marked correct is
+**rejected**, with the Teacher's attempted values retained, so they clear
+the wrong ones themselves. Changing single -> multiple with one option
+marked is rejected until they select another; nothing is auto-selected.
+Both directions keep the decision with the Teacher, because silently
+truncating or inventing a correct answer would destroy authored work
+without saying so.
+
+Both modes use **checkboxes**, in both the markup and the JavaScript, for
+exactly that reason: a radio group would discard the extra selections in
+the browser before the server ever saw them. The client-side script
+changes **only the explanatory help text** when the mode changes -- it
+never checks or unchecks anything, for any reason.
+
+### C. Options: 2..8 active, unique text, retirement in place
+
+A valid question has between **2 and 8 active options**. That rule counts
+rows, which a CHECK cannot express, so it is enforced by the application
+against the **locked** aggregate rather than by a constraint. Duplicate
+*normalized* active option text is likewise refused in the application and
+deliberately **not** by a `UNIQUE(question_id, option_text)`: such a
+constraint would also forbid a retired row from sharing wording with a
+live one, which is exactly the history this design keeps.
+
+**What makes those application rules authoritative rather than hopeful is
+the lock order**: every question-option write locks the parent Quiz row
+first, so competing co-teacher writes on one draft serialize instead of
+interleaving. That is a reasoned property of the documented lock order.
+SQLite demonstrates none of it, and no real-MySQL concurrency test has
+been run.
+
+**Removal is retirement in place, never deletion.** An option the form no
+longer submits has `is_active` set to false and `retired_at` set to the
+request's authoritative post-lock moment, while its `option_text`,
+`is_correct`, `public_id`, `created_at` and stored `display_order` are all
+preserved as history. It is never rendered again, never accepted as an
+active answer, and re-submitting its identifier does not resurrect it.
+There is deliberately **no restoration UI and no un-retire route**:
+re-adding the wording creates a new option, so the record of what was
+actually authored stays intact.
+`ck_question_options_active_retired_consistency` is what stops the two
+columns from disagreeing -- an active option must have `retired_at` NULL
+and an inactive one must have it set; there is no third state.
+
+A question found holding a **structurally invalid** active set (more than
+8, or fewer than 2) is refused safely with a generic message. It is never
+truncated, padded or "repaired": guessing which authored options to drop
+would destroy work, and inventing one would fabricate it.
+
+### D. Ordering
+
+`display_order` is server-owned on both tables and is never taken from the
+browser.
+
+Questions **append** after the Quiz's current highest order, read under
+the held Quiz lock, so two concurrent creates append rather than collide.
+Move Up / Move Down swap a question with its **real** neighbour in the
+complete Quiz order, resolved by a bounded keyset lookup on exactly the
+`(display_order, id)` ordering the list uses. That makes a move correct
+across order gaps, correct when two rows share an order value, and correct
+**across page boundaries** -- the last question on page 1 and the first on
+page 2 are genuine neighbours and swap properly. Nothing loads the Quiz's
+whole question set to do it.
+
+Gaps are acceptable and there is deliberately **no** uniqueness constraint
+on `display_order`: renumbering a whole draft on every move would be both
+expensive and a lie about what changed. The internal `id` is the
+deterministic SQL tie-break and is never exposed. When two rows genuinely
+share a stored order, swapping identical values would change nothing, so
+exactly one row is nudged instead -- which is what makes the requested
+order real while keeping the value non-negative.
+
+**Active option order is normalized to `0..n-1`** on each successful
+aggregate save, in the order the Teacher submitted the rows. Retired rows
+keep whatever order they had when they were retired.
+
+The rendered list shows the question's **position**, not its
+`display_order`: the stored value is a storage detail that may legitimately
+contain gaps, and showing it would invite a Teacher to read it as the
+question number. Positions continue across pages rather than restarting at
+1 on page 2.
+
+### E. Versions: the parent draft and the question
+
+**`Quiz.version` now represents the current complete Teacher-authored
+draft** -- title, instructions, questions and options -- not only the
+metadata M04A could change. It increments **exactly once** for each
+successful:
+
+- question creation;
+- meaningful question edit;
+- order-changing move;
+- Quiz title/instructions edit (unchanged from M04A).
+
+It does **not** move for a rejected operation, a stale operation, a
+validation error, an authorized save that leaves the complete normalized
+question and active-option aggregate unchanged, or a boundary Move
+Up/Down that changes nothing.
+
+`QuizQuestion.version` moves alongside it: a question edit increments the
+Quiz once **and** that question once; a reorder increments the Quiz once
+and the version of **each question row whose stored `display_order`
+actually changed**, once each; a creation starts the new question at 1 and
+increments the Quiz once.
+
+Neither counter is a revision number, neither is displayed, and no row is
+kept per version. They exist so a signed form token can detect that the
+thing it was written against has changed -- including an A -> B -> A round
+trip and two edits inside one whole second, neither of which a timestamp
+comparison could catch.
+
+**`updated_at` moves only on the rows a request really changes.** One
+authoritative post-lock whole-second moment is sampled per request and
+assigned to every row that request touches, so a question, its changed
+options and its parent Quiz all carry the same instant. An option whose
+text, answer-key value and order are all unchanged is left completely
+alone. There is no `onupdate` hook on any of these columns: an implicit
+one would both bypass the whole-second truncation MySQL `DATETIME(0)`
+requires and fire on writes this Part defines as no-ops.
+
+A successful **no-op** preserves every version, every timestamp, every
+option row and every retirement state, and writes nothing at all. It still
+had to pass every authorization, lifecycle, ownership and staleness check
+first: it is a decision not to write, not a shortcut around the checks.
+
+### F. Signed tokens and stale actions
+
+Three dedicated M04B salts and three exact purpose markers -- create, edit
+and move. A token minted under any other salt (the M01 assignment
+snapshot, the M03 feedback state, the M04A quiz edit state) fails
+signature verification here even though all of them are signed with the
+same application `SECRET_KEY`, and a token minted under one M04B salt for
+another M04B purpose fails the purpose check.
+
+What each token binds:
+
+- **create** -- purpose, acting Teacher `public_id`, Group `public_id`,
+  Quiz `public_id`, expected `Quiz.version`. Binding the *Quiz* version is
+  what makes a create stale: if a co-teacher changed the draft while the
+  form was open, appending blindly would place the new question after work
+  the author never saw.
+- **edit** -- the above plus Question `public_id`, expected
+  `Question.version`, and the **ordered `public_id`s of the active options
+  the form actually showed**. That last field is the part row locks cannot
+  supply: two co-teachers can hold matching version expectations while one
+  has already retired an option, and replaying the other's form would
+  either re-create wording that was deliberately removed or silently drop
+  a row the second Teacher never saw.
+- **move** -- purpose **and direction**, the acting Teacher, Group, Quiz
+  and Question `public_id`s, both expected versions, and the normalized
+  return page. Binding the direction stops a Move Up token being replayed
+  as a Move Down; binding the page returns the Teacher to what they were
+  reading.
+
+Payloads are validated **exactly and by type**: the key set must match,
+the purpose and direction must be known values, identifiers must be
+strings, integers must be genuine positive `int`s -- `bool` is excluded
+explicitly, since it is an `int` subclass and `True` must never pass as
+version 1 -- and the option list must contain no duplicates and stay
+inside the approved 2..8 range.
+
+Only **public identifiers** appear. A signed token is authenticated, not
+encrypted: anyone holding it can read its payload, so no prompt text, no
+option text, no answer key, no internal database id and no private data is
+ever placed in one.
+
+**The authoritative staleness comparison runs against the locked rows.**
+Stale handling follows M03 and M04A exactly: discard the attempted values,
+roll back, and redirect through Post/Redirect/Get to freshly loaded
+persisted state. A **fresh token is paired only with freshly loaded
+persisted values** -- never with attempted ones, which is precisely the
+bypass the rejection exists to close. An ordinary validation failure with
+still-current authorization instead retains the attempted values and
+re-embeds the **original** token, so the expected versions are never
+silently refreshed underneath the Teacher.
+
+### G. Transaction and lock order
+
+Every M04B mutation extends the established Teacher authoring prefix by
+one or two levels, under **one deliberate reset** owned by
+`lock_academic_hierarchy`, with no second reset:
+
+    AcademicTerm -> Level -> Course
+    -> Group
+    -> acting Teacher User
+    -> GroupTeacherAssignment
+    -> Quiz
+    -> involved QuizQuestion rows, ascending internal id
+    -> involved active QuestionOption rows, ascending internal id
+
+M04A's `_lock_quiz_chain` is reused unchanged and the further rows are
+locked after it in the same open transaction, rather than the helper being
+redesigned.
+
+- **Creation** locks the parent Quiz before reading the next
+  `display_order`.
+- **Editing** locks the Quiz, then the Question, then all of its currently
+  active options -- the id read is capped at 9 rows, so a ninth is
+  *detected* as invalid state without an unbounded read, and the entities
+  the request decides on are the ones the `SELECT ... FOR UPDATE`
+  statements loaded.
+- **Reordering** locks the target and the swap neighbour in **ascending
+  internal id, never visual order**, which is the project-wide rule that
+  keeps two co-teachers moving adjacent questions from deadlocking.
+
+Every scalar the request needs is captured **before** the reset, so
+nothing between it and the locks triggers a lazy ORM or `current_user`
+reload that would establish a read snapshot ahead of them.
+
+After locking, and **before any field is assigned**, the write path
+re-checks the academic identity and operational state, the acting User's
+role and active status, the active `GroupTeacherAssignment`, the Quiz's
+ownership by the Group, the Question's ownership by the Quiz, the
+ownership of every submitted persisted option, the signed state and both
+versions, and the answer mode, option count, option uniqueness, ordering
+and correct-answer cardinality. A failure leaves **no partial write**.
+
+`IntegrityError` is caught, rolled back **first**, re-authorized from
+scratch through a fresh current-state check that uses a pre-reset scalar
+actor id, and only then reported with a generic safe message -- no SQL,
+parameters, driver output, internal id or existence disclosure ever
+reaches the page, and a failed save is never reported as success. The
+message is flashed only *after* re-authorization passes, so a request
+whose access ended in the same window 404s silently rather than leaving a
+message behind.
+
+### H. Query bounds and indexes
+
+Every read is bounded, in rows **and** in columns.
+
+- The question list fetches `QUESTION_PAGE_SIZE + 1` (21) rows for a
+  next-page flag with **no `COUNT`**, and selects a SQL-truncated
+  `SUBSTR` prompt preview rather than the whole 5,000-character prompt.
+- Per-question active/correct option counts come from **one** grouped
+  query over at most the 20 ids on the current page, never a lookup per
+  row.
+- A question's options are read with a hard `LIMIT` of 9 -- eight plus the
+  one that proves the set is invalid.
+- The move neighbour is a bounded keyset lookup returning at most one row.
+- `Quiz.questions` and `QuizQuestion.options` exist so the relationships
+  have their inverses and carry no cascade; **neither is ever iterated**.
+- No internal id reaches a presentation dictionary or a template; ids
+  order the SQL and resolve the counts, and versions reach the page only
+  inside signed tokens.
+
+One index per table, each with one justification and no redundancy:
+
+- `ix_quiz_questions_quiz_order_id` (`quiz_id`, `display_order`, `id`) --
+  the only question read shape: a single-Quiz equality ordered
+  `display_order ASC, id ASC`, serving the paginated list, the append
+  lookup and the neighbour lookup. The ordering columns follow the
+  equality column directly, with nothing between them.
+- `ix_question_options_question_active_order_id` (`question_id`,
+  `is_active`, `display_order`, `id`) -- the only option read shape: one
+  question's **active** options in authored order, with both equality
+  columns first.
+
+Each starts with its table's foreign-key column, so that key already has a
+usable leftmost prefix and **no** separate single-column index is
+declared. No speculative index exists: there is no question search, no
+cross-Quiz listing, no retired-option report and no counter.
+
+**No MySQL execution plan has been measured for either table.** As with
+M01's, M02's, M03's and M04A's indexes, this is a reasoned design pending
+an authorized real `EXPLAIN`.
+
+### I. Authorization, archived hierarchies, and the Student surface
+
+M04B reuses M04A's Teacher role boundary and active
+`GroupTeacherAssignment` proof unchanged. Every nested lookup proves, in
+the query or in the authoritative post-lock checks, that the Quiz belongs
+to the Group in the URL, the Question belongs to that Quiz, and every
+submitted persisted Option belongs to that Question.
+
+A missing object, a foreign nested `public_id`, an internal numeric id
+submitted in place of a public one, an unassigned or removed Teacher, and
+a suspended or demoted actor all produce the same **non-disclosing 404** --
+never a 403, and never a hint that the object exists.
+
+Every post-rollback path re-proves the whole chain from **current** state
+using a scalar actor id captured before the reset, because once the locks
+are released neither `roles_required` nor a cached `current_user` is
+current evidence, and the same concurrent change that forced the rollback
+may have ended the Teacher's access.
+
+**Reading is historical; writing is not.** An eligible assigned Teacher
+may read a draft's questions under an archived Group or ancestor.
+Creating, editing, changing options and reordering all require the Group
+and the complete academic hierarchy to be active, re-checked against the
+locked rows. Archiving:
+
+- does **not** rewrite or delete any Quiz, Question or Option row;
+- preserves the authored ordering and the answer key exactly;
+- makes the question surface read-only, which the page states plainly;
+- adds **no** new archive blocker anywhere.
+
+Every content-bearing response -- the detail page, both question forms,
+**and a form re-rendered with validation errors** -- carries
+`Cache-Control: private, no-store` and `Vary: Cookie`, reusing M04A's
+helper so the header set cannot drift between surfaces. An unpublished
+draft with its answer key is one Group's Teachers' working material and a
+shared or reused cache entry could serve it to somebody whose assignment
+has since been removed.
+
+**There is no Student surface at all.** No Student list, detail, search
+projection, notification, dashboard section or link mentions a question or
+an option, and no query in the service layer can produce one. All authored
+text is autoescaped and never rendered with `|safe`.
+
+### J. Client-side behaviour
+
+One small dedicated file, `app/static/js/quiz_question_editor.js`, with no
+dependency and no build step. It adds, removes and reorders option rows,
+keeps each row's hidden key and its checkbox value identical, enables and
+disables Add/Remove at the 2..8 bounds, and swaps the explanatory help
+text when the answer mode changes.
+
+Option rows are submitted as three parallel repeated fields --
+`option_key`, `option_text`, and `option_correct` carrying the **keys** of
+the correct rows. Sending the key as the checkbox value is what keeps the
+answer key attached to the right row when rows are added, removed or
+reordered: an unchecked checkbox submits nothing at all, so an index-based
+encoding would silently misalign. Row order is simply the order of
+`option_key` in the request body, so the browser never renumbers anything.
+A persisted row is identified by its `public_id`; a brand-new row carries
+a request-scoped `new:N` marker that is never stored and never trusted.
+
+**The script decides nothing.** Every rule -- row count, empty or
+duplicated wording, length, answer cardinality, and which options actually
+belong to the question -- is enforced again on the server against locked
+rows. With JavaScript disabled, blocked or tampered with, the form still
+submits and the server still decides. The script never checks or unchecks
+an option under any circumstances.
+
+### K. Migration boundary
+
+**No Alembic migration was generated, edited or applied in M04B, and no
+real database was contacted.** The real MySQL database has **neither** the
+M04A `quizzes` table **nor** the M04B `quiz_questions` and
+`question_options` tables. `db.create_all()` succeeding on the SQLite test
+backend is not evidence that it does, and nothing in the code calls
+`create_all` or suppresses a database error to work around the missing
+schema. The deliberate-no-migration tests were extended to cover all three
+tables, so the absence stays intentional rather than drifting. No existing
+revision was modified and the repository's Alembic head assertion was not
+advanced. Creating and applying the revisions is a separate authorized
+Part.
+
+> **Superseded after M04B by Phase 4 / M04C.** Revision `5d2c8a4e91f7`
+> now creates the three accepted tables together. The paragraph above remains
+> the accurate boundary of M04B itself; see the M04C section below for the
+> current repository migration state.
+
+### L. Deliberate deferrals
+
+No placeholder table, column, route, UI element, enum value, counter or
+TODO was added for any of the following.
+
+Publication and timing: quiz publication or publication states, scheduling,
+opening and closing times, timers, availability windows, and any Student
+visibility of a quiz, a question or an option.
+
+Attempts and results: Student attempts, attempt limits, saved answers,
+autosave, in-progress state, submissions, results pages and retakes.
+
+Scoring and grading: scores, points, weights, partial credit, grading,
+pass/fail, gradebook integration, progress calculations, answer release
+and per-question feedback.
+
+Question shapes: randomization, question banks, copying, importing,
+exporting, media in questions, listening questions, fill-in-the-blank,
+true/false, matching and short-answer types.
+
+Lifecycle: question deletion or archiving, option restoration, and any
+history or per-version table for either.
+
+Everything else: notifications, search, calendar, analytics, research
+events and ML.
+
+### M. Verification ownership, and honest limitations
+
+**Claude implemented M04B and wrote the test code. Claude did not run
+pytest, any browser or accessibility check, any migration check, or any
+real-database check**, and performed no baseline or full-suite
+verification and no repeated checkpoint/hash/status routine. The only
+commands executed were a single read-only Git working-tree inspection
+before the first edit and the `git diff --check` / final `git status`
+inspection required by `AGENTS.md` section 6, plus text-editing scripts
+applied to files Claude itself authored. None of those is a test and none
+exercises application behaviour.
+
+**Codex subsequently verified and accepted M04B.** The correction-focused
+check passed 13 tests, then the complete strict-warning suite passed 2,690
+tests with the same four inherited IANA-time-zone skips. The accepted
+candidate fingerprint and exact command ledger are recorded in the external
+M04B acceptance artifact.
+
+- Automated tests run on SQLite in memory. They can validate application
+  logic, SQL scoping, query structure, model/schema alignment and the
+  *requested* lock order -- they do **not** prove MySQL/InnoDB row
+  blocking, isolation, collation, index plans, or that a future migration
+  runs on MySQL.
+- The concurrency tests are **structural**. SQLite has no
+  `SELECT ... FOR UPDATE` and no REPEATABLE READ snapshot isolation, so
+  they assert the requested reset and lock order and exercise the
+  post-lock recheck logic by injecting a state change at an exact
+  transaction boundary (a removed assignment, a suspended or demoted
+  Teacher, an archived ancestor, a bumped Quiz or Question version, a
+  removed Question, a retired option corrupting the cardinality). They are
+  **not** a demonstration of real concurrent InnoDB blocking, and the
+  claim that the parent Quiz lock serializes competing option writes is
+  reasoned, not measured.
+- Time is injected rather than waited for, so the version and timestamp
+  assertions are exact rather than probabilistic. That proves the decision
+  logic, not real-world clock skew between application servers.
+- The `IntegrityError` tests inject the failure and the access-losing
+  change at a chosen point inside one SQLite request. They prove the
+  recovery path re-authorizes and what it answers; they are not a
+  demonstration of real concurrent InnoDB conflict resolution.
+- The M03 test-harness artifact still applies: the shared `app` fixture
+  keeps one app context open for a whole test, so `flask.g` -- where
+  Flask-Login caches the loaded user -- survives between requests. The
+  M04B tests clear it explicitly before each request and additionally
+  assert each client's own session identity, so a "two co-teachers"
+  assertion cannot pass vacuously.
+- **The client-side editor has not been exercised in a browser.** The
+  tests drive the server contract directly, which is deliberate -- the
+  server is the authority and must behave correctly with the script
+  disabled or tampered with -- but no browser, accessibility, keyboard or
+  responsive verification was performed, and the script's own behaviour is
+  therefore unverified by automated tests.
+- The 5,000- and 1,000-character limits are form boundaries on `TEXT`
+  columns. On MySQL, `TEXT` holds 65,535 **bytes**, comfortably above both
+  at any utf8mb4 width -- but that headroom has not been measured against
+  a real MySQL insert.
+- Duplicate active option text is compared by the application in Python
+  after normalization, so it is exactly case- and accent-sensitive
+  regardless of collation. That is deliberately **stricter and more
+  predictable** than the M04A quiz-title check, which delegates comparison
+  to the database; neither has been measured against real MySQL.
+- Existing M04A tests were updated only where M04B intentionally changes
+  their contract: the "no question endpoint" assertion, the Quiz detail
+  render and empty-state expectations, the Quiz relationship/cascade
+  expectations, and the deliberate-no-migration assertion. No unrelated
+  M04A security, authorization, query-bound, stale-form or lifecycle test
+  was weakened, and no skip was introduced.
+
+## Quiz aggregate migration (Phase 4, Part M04C)
+
+M04C makes the accepted M04A/M04B Quiz aggregate available to Alembic. It
+adds one linear revision, `5d2c8a4e91f7`, directly after the M03 head
+`b26b20c3d20d`. The revision creates exactly three tables in dependency
+order: `quizzes`, `quiz_questions`, then `question_options`.
+
+The migration is additive. Existing tables, columns, indexes, constraints,
+and rows are untouched; `groups` appears only as the parent foreign-key
+target. There is no backfill or seeded content because Quiz drafts and their
+questions are authored after the schema is available. Every foreign key is a
+plain reference without `ON DELETE`, preserving the accepted no-cascade and
+history rules.
+
+The downgrade is symmetric and dependency-safe: it drops each child index
+and table before its parent, ending with `quizzes`. It never alters or drops
+`groups` or another pre-existing object.
+
+Migration tests own the current Alembic-head assertion, compare migration
+columns and nullability with all three ORM models, inspect every named CHECK,
+unique constraint and composite index, and execute the revision's real
+`upgrade()` and `downgrade()` against an isolated temporary SQLite database.
+The M03 test now proves that M03 remains on one linear chain; it no longer
+incorrectly claims that M03 must remain the repository head.
+
+The MySQL dialect SQL is generated offline with no database connection. It
+shows `BIGINT AUTO_INCREMENT` keys, `VARCHAR(36)` public identifiers, `TEXT`
+authored content, whole-second `DATETIME`, `BOOL` option flags, the declared
+CHECK constraints and the three intended composite indexes. This is syntax
+generation only and does not prove execution, locking, collation, or query
+plans on MySQL.
+
+`migrations/env.py` now prefers Flask-SQLAlchemy's current `db.engine` API
+and falls back to `get_engine()` only for older releases. The previous order
+raised a deprecation warning as an error during strict offline migration
+checks; this compatibility change does not alter the selected database URL
+or migration behavior.
+
+M04C does not add publication, Student access, attempts, timing, scoring,
+grading, new question types, deletion, restoration, notifications, or search.
+The revision was applied to the development MySQL database from the expected
+M03 head `b26b20c3d20d`; `flask db current` then reported
+`5d2c8a4e91f7 (head)`. SQLAlchemy inspection of the real schema confirmed all
+three column sets, named CHECK constraints, unique/composite indexes and plain
+foreign keys with empty options (no cascade). No authored Quiz data was read
+or changed during that structural verification. Real InnoDB blocking and
+query plans remain unmeasured.
+
+The owner restored the pre-M4 working method for subsequent Parts: the agent
+implementing a Part also runs and reports its technically available checks.
+The temporary M4-only split between Claude implementation and Codex-owned
+verification no longer governs new work.

@@ -1,0 +1,127 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_dashboard_macros.html" as dash %}
+{% block title %}{{ group.name }} — Quizzes{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M04A. `quizzes` is a list of plain presentation dicts built by
+    app.services.quiz_queries.build_teacher_list_view, so no Quiz ORM row
+    reaches this template and rendering one cannot lazy-load or make an
+    authorization decision. The dicts deliberately carry no `instructions`:
+    the list query never fetched the body.
+    `group` IS the eagerly loaded Group ORM object -- the route loads its
+    course, level and academic_term up front for the header block below, and
+    the Teacher's access to it was already proven by the active
+    GroupTeacherAssignment check. Every destination uses public ids only. -#}
+<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+  <h1 style="margin:0">{{ group.name }} — Quizzes</h1>
+  {{ dash.operational_badge(operational) }}
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
+    <dd style="margin:0">{{ group.name }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
+    <dd style="margin:0">{{ group.course.title }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
+    <dd style="margin:0">{{ group.course.level.name }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
+    <dd style="margin:0">{{ group.academic_term.name }} ({{ group.academic_term.start_date.isoformat() }} – {{ group.academic_term.end_date.isoformat() }})</dd>
+  </dl>
+</div>
+
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  <strong>Every quiz here is a draft.</strong> Students cannot see these quizzes, cannot open them, and cannot answer them. A quiz
+  is shared working material for this group: every teacher currently assigned to it can create and edit these drafts, and no draft
+  belongs to whoever wrote it first. All times below are in the center timezone (<strong>{{ tz_name }}</strong>).
+</div>
+
+{% if not operational %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
+  This group is not operational: the {{ archived_labels | join(", ") }} {{ "is" if archived_labels|length == 1 else "are" }} archived.
+  Existing drafts stay readable and nothing has been deleted or rewritten, but you cannot add or edit a quiz until every parent is
+  active again.
+</div>
+{% endif %}
+
+<div class="ds-row" style="margin-bottom: var(--space-6)">
+  <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.group_units', group_public_id=group.public_id) }}">Manage Units</a>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.group_assignments', group_public_id=group.public_id) }}">Manage Assignments</a>
+  {% if operational %}
+  <a class="btn btn--primary" href="{{ url_for('teacher.quiz_create', group_public_id=group.public_id) }}">Add Quiz</a>
+  {% endif %}
+</div>
+
+<section class="dash-section" style="margin-top: 0">
+  <h2>Quizzes</h2>
+  {% if quizzes %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th style="width:8rem">Status</th>
+        <th style="width:11rem">Student visibility</th>
+        <th style="width:12rem">Created ({{ tz_name }})</th>
+        <th style="width:12rem">Last changed ({{ tz_name }})</th>
+        <th style="width:14rem">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in quizzes %}
+      <tr>
+        <td><strong>{{ item.title }}</strong></td>
+        <td><span class="badge badge--neutral">Draft</span></td>
+        <td><span class="badge badge--neutral">Not visible (draft)</span></td>
+        <td>{{ item.created_local.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>{{ item.updated_local.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>
+          <div class="ds-row" style="gap: var(--space-2)">
+            <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_detail', group_public_id=group.public_id, quiz_public_id=item.public_id) }}">Open</a>
+            {#- Hiding Edit under an archived chain is a courtesy; the rule is
+                enforced server-side and again against the locked rows, so a
+                bookmarked or forged edit request is rejected too. -#}
+            {% if operational %}
+            <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_edit', group_public_id=group.public_id, quiz_public_id=item.public_id) }}">Edit</a>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if has_prev or has_next %}
+  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Quiz pages">
+    {% if has_prev %}
+    <a class="btn btn--secondary" href="{{ url_for('teacher.group_quizzes', group_public_id=group.public_id, page=page - 1) }}">Previous</a>
+    {% endif %}
+    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+    {% if has_next %}
+    <a class="btn btn--secondary" href="{{ url_for('teacher.group_quizzes', group_public_id=group.public_id, page=page + 1) }}">Next</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No quizzes yet</div>
+    <div>
+      {% if operational %}Start the first quiz draft for this group. Students cannot see it, and every teacher assigned to this
+      group can work on it with you.
+      {% else %}This group has no quizzes.{% endif %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -52,6 +52,12 @@ class Group(db.Model):
     schedules = db.relationship("Schedule", back_populates="group")
     units = db.relationship("Unit", back_populates="group")
     assignments = db.relationship("Assignment", back_populates="group")
+    #: Phase 4 / M04A. Declared so the Quiz -> Group relationship has its
+    #: inverse and carries no cascade; it is deliberately never iterated.
+    #: Every Quiz read goes through the bounded, column-projected queries
+    #: in `app/services/quiz_queries.py`, so no page can trigger an
+    #: unbounded load of a Group's whole quiz history.
+    quizzes = db.relationship("Quiz", back_populates="group")
 
     @validates("status")
     def validate_status(self, _key, value):

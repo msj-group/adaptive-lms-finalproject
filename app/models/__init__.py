@@ -7,6 +7,7 @@ from app.models.enums import (
     LessonStatus,
     MaterialKind,
     NotificationKind,
+    QuestionAnswerMode,
 )
 from app.models.academic_term import AcademicTerm
 from app.models.level import Level
@@ -24,6 +25,18 @@ from app.models.notification import Notification
 from app.models.assignment import Assignment
 from app.models.submission import ANSWER_MAX_LENGTH, Submission
 from app.models.submission_feedback import FEEDBACK_MAX_LENGTH, SubmissionFeedback
+from app.models.quiz import (
+    QUIZ_INSTRUCTIONS_MAX_LENGTH,
+    QUIZ_TITLE_MAX_LENGTH,
+    Quiz,
+)
+from app.models.quiz_question import QUESTION_PROMPT_MAX_LENGTH, QuizQuestion
+from app.models.question_option import (
+    MAX_ACTIVE_OPTIONS,
+    MIN_ACTIVE_OPTIONS,
+    OPTION_TEXT_MAX_LENGTH,
+    QuestionOption,
+)
 
 __all__ = [
     "User",
@@ -56,4 +69,14 @@ __all__ = [
     "ANSWER_MAX_LENGTH",
     "SubmissionFeedback",
     "FEEDBACK_MAX_LENGTH",
+    "Quiz",
+    "QUIZ_INSTRUCTIONS_MAX_LENGTH",
+    "QUIZ_TITLE_MAX_LENGTH",
+    "QuestionAnswerMode",
+    "QuizQuestion",
+    "QUESTION_PROMPT_MAX_LENGTH",
+    "QuestionOption",
+    "OPTION_TEXT_MAX_LENGTH",
+    "MIN_ACTIVE_OPTIONS",
+    "MAX_ACTIVE_OPTIONS",
 ]

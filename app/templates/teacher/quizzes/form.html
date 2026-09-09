@@ -1,0 +1,79 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ 'Edit Quiz' if quiz else 'New Quiz' }} — {{ group.name }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M04A. `quiz` is None for create and a plain presentation dict
+    for edit. The form carries ONLY title and instructions: there is no
+    status, publication, timing, question, option, answer-key, score or
+    group-id control here, and none exists server-side either, so a forged
+    field in the POST body has nowhere to land. `edit_state_token` is the
+    signed, version-bound stale-form token; it is a hidden input rather than
+    a form field, exactly like the M01 assignment snapshot and the M03
+    feedback state token. -#}
+<div class="ds-page" style="max-width: 680px; padding: 0">
+  <div class="ds-row" style="justify-content: space-between; align-items: center;">
+    <h1 style="margin:0">{{ 'Edit Quiz' if quiz else 'New Quiz' }}</h1>
+    <span class="badge badge--neutral">Draft</span>
+  </div>
+  <p class="ds-section__desc">
+    {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  {% if quiz %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    This quiz is a draft and stays one when you save. Students cannot see it. Every teacher currently assigned to this group can
+    edit this same draft, so if someone else changes it while this form is open, your save is refused and you are shown their
+    version first — nothing is silently overwritten.
+  </div>
+  {% else %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    A new quiz is created as a draft. Students cannot see it, open it or answer it. Every teacher currently assigned to this group
+    can edit it with you.
+  </div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {% if quiz %}
+    <input type="hidden" name="edit_state" value="{{ edit_state_token }}">
+    {% endif %}
+
+    <div class="field" style="max-width:none">
+      {{ form.title.label(class_="field__label") }}
+      {{ form.title(class_="field__input") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Up to {{ form.TITLE_MAX }} characters. Two quizzes in the same group cannot share a title; another group may reuse it.
+      </span>
+      {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.instructions.label(class_="field__label") }}
+      {{ form.instructions(class_="field__input", rows="10") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Plain text only. Line breaks are preserved. Up to {{ form.INSTRUCTIONS_MAX }} characters.
+      </span>
+      {% for error in form.instructions.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    {# No status, publication, timing or question control: none exists
+       server-side either, so a forged field has nowhere to land. #}
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary") }}
+      {% if quiz %}
+      <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_detail', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">Cancel</a>
+      {% else %}
+      <a class="btn btn--secondary" href="{{ url_for('teacher.group_quizzes', group_public_id=group.public_id) }}">Cancel</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

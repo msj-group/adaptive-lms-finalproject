@@ -87,3 +87,31 @@ class AssignmentStatus(str, enum.Enum):
 
     DRAFT = "draft"
     PUBLISHED = "published"
+
+
+class QuestionAnswerMode(str, enum.Enum):
+    """How many options a Teacher-authored multiple-choice question counts
+    as correct (Phase 4 / M04B).
+
+    Deliberately its own closed set, and deliberately **not** a "question
+    type": every question in M04B is multiple choice. What this names is
+    the *answer cardinality rule* the Teacher chose, and the two members
+    are the two the owner approved:
+
+    - ``SINGLE`` -- exactly one active option is correct;
+    - ``MULTIPLE`` -- at least two active options are correct, and every
+      active option being correct is legitimate. No distractor is
+      required, because no such business rule was approved.
+
+    There is no ``TRUE_FALSE``, ``SHORT_ANSWER``, ``FILL_IN_BLANK`` or
+    ``MATCHING`` member and no placeholder for one: those are separate
+    question types, not answer modes, and none is approved. Adding a
+    member is a schema change (the ``quiz_questions.answer_mode`` CHECK),
+    which is the point -- an unrecognised mode can never be inserted by
+    application code or by a manual row.
+
+    Nothing here carries a score, a weight or any grading meaning.
+    """
+
+    SINGLE = "single"
+    MULTIPLE = "multiple"

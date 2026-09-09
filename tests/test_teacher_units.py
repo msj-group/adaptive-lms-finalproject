@@ -618,7 +618,8 @@ def test_unit_history_freezes_group_identity(app, client, unit_status):
     resp = _edit_group(client, gpid, term_b_id, course_id, name="GA")
     body = resp.data.lower()
     assert b"cannot be changed" in body
-    assert b"schedule, unit, or assignment history" in body
+    # Phase 4 / M01 and then Phase 4 / M04A each extended the enumeration.
+    assert b"schedule, unit, assignment, or quiz history" in body
     with app.app_context():
         assert Group.query.filter_by(public_id=gpid).first().academic_term_id != term_b_id
 
@@ -631,7 +632,8 @@ def test_group_form_locked_notice_mentions_unit_history(app, client):
         gpid = group.public_id
     login(client, "admin@example.com")
     html = client.get(f"/admin/groups/{gpid}/edit").get_data(as_text=True).lower()
-    assert "schedule, unit, or assignment history" in html
+    # Phase 4 / M01 and then Phase 4 / M04A each extended the enumeration.
+    assert "schedule, unit, assignment, or quiz history" in html
 
 
 def test_non_identity_group_edit_still_allowed_with_unit_history(app, client):
