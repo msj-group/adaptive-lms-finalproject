@@ -33,7 +33,11 @@ def _load_migration():
     return module, path.read_text(encoding="utf-8")
 
 
-def test_revision_identifiers_and_linear_head():
+def test_revision_identifiers_and_one_linear_chain():
+    """M04C's revision is no longer the repository head -- Phase 4 / M04D
+    adds one after it -- so this checks its **place in the chain** rather
+    than claiming it is last. The chain must still be linear: one root,
+    one head, and no revision claimed as the parent of two others."""
     module, _ = _load_migration()
     assert module.revision == _REVISION
     assert module.down_revision == _DOWN_REVISION
@@ -47,10 +51,14 @@ def test_revision_identifiers_and_linear_head():
         down = re.search(r"^down_revision = (?:'([^']+)'|None)", source, re.M).group(1)
         revisions.add(revision)
         parents[revision] = down
-    assert revisions - {p for p in parents.values() if p is not None} == {_REVISION}
+
     claimed = [p for p in parents.values() if p is not None]
-    assert len(claimed) == len(set(claimed))
-    assert len([r for r, p in parents.items() if p is None]) == 1
+    assert len(claimed) == len(set(claimed)), "a revision is claimed twice (branch)"
+    assert len([r for r, p in parents.items() if p is None]) == 1, "one root"
+    assert len(revisions - set(claimed)) == 1, "one head"
+    # This revision is in the chain and has exactly one child.
+    assert _REVISION in revisions
+    assert claimed.count(_REVISION) == 1
 
 
 def test_migration_is_additive_and_creates_only_the_quiz_aggregate():
@@ -153,7 +161,23 @@ def test_migration_applies_and_reverses_on_isolated_sqlite():
             engine.dispose()
 
 
+#: The columns Phase 4 / M04D adds to ``quizzes`` in its own revision.
+#: This revision creates the table without them, so the comparison below
+#: accounts for them explicitly rather than being loosened.
+_M04D_QUIZ_COLUMNS = {
+    "status", "opens_at", "closes_at", "time_limit_minutes",
+    "attempt_limit", "published_at",
+}
+
+
 def test_models_and_migration_agree_on_columns_and_nullability(app):
+    """Every column **this** revision declares must match the live model.
+
+    ``quizzes`` legitimately carries six more columns than this revision
+    creates, because M04D adds them in a later revision. Those are named
+    explicitly and checked to be exactly the difference -- so a column that
+    drifted for any *other* reason would still fail here.
+    """
     _, source = _load_migration()
     for table in (Quiz.__table__, QuizQuestion.__table__, QuestionOption.__table__):
         block = source.split(f"op.create_table('{table.name}',", 1)[1].split("\n    )", 1)[0]
@@ -165,7 +189,13 @@ def test_models_and_migration_agree_on_columns_and_nullability(app):
             }
         declared.pop("id", None)
         actual.pop("id", None)
-        assert declared == actual
+        extra = set(actual) - set(declared)
+        assert extra == (
+            _M04D_QUIZ_COLUMNS if table.name == "quizzes" else set()
+        ), (table.name, extra)
+        for name in extra:
+            actual.pop(name)
+        assert declared == actual, table.name
 
 
 def test_mysql_ddl_compiles_without_a_connection():

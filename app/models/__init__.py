@@ -8,6 +8,8 @@ from app.models.enums import (
     MaterialKind,
     NotificationKind,
     QuestionAnswerMode,
+    QuizAttemptStatus,
+    QuizStatus,
 )
 from app.models.academic_term import AcademicTerm
 from app.models.level import Level
@@ -26,6 +28,11 @@ from app.models.assignment import Assignment
 from app.models.submission import ANSWER_MAX_LENGTH, Submission
 from app.models.submission_feedback import FEEDBACK_MAX_LENGTH, SubmissionFeedback
 from app.models.quiz import (
+    MAX_ATTEMPT_LIMIT,
+    MAX_QUIZ_QUESTIONS,
+    MAX_TIME_LIMIT_MINUTES,
+    MIN_ATTEMPT_LIMIT,
+    MIN_TIME_LIMIT_MINUTES,
     QUIZ_INSTRUCTIONS_MAX_LENGTH,
     QUIZ_TITLE_MAX_LENGTH,
     Quiz,
@@ -37,6 +44,8 @@ from app.models.question_option import (
     OPTION_TEXT_MAX_LENGTH,
     QuestionOption,
 )
+from app.models.quiz_attempt import QuizAttempt
+from app.models.quiz_answer import QuizAnswer, QuizAnswerSelection
 
 __all__ = [
     "User",
@@ -79,4 +88,14 @@ __all__ = [
     "OPTION_TEXT_MAX_LENGTH",
     "MIN_ACTIVE_OPTIONS",
     "MAX_ACTIVE_OPTIONS",
+    "QuizStatus",
+    "MIN_TIME_LIMIT_MINUTES",
+    "MAX_TIME_LIMIT_MINUTES",
+    "MIN_ATTEMPT_LIMIT",
+    "MAX_ATTEMPT_LIMIT",
+    "MAX_QUIZ_QUESTIONS",
+    "QuizAttemptStatus",
+    "QuizAttempt",
+    "QuizAnswer",
+    "QuizAnswerSelection",
 ]

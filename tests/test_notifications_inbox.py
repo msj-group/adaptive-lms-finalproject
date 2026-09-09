@@ -611,8 +611,17 @@ def test_inbox_navigation_holds_exactly_the_expected_links(app, client, role_nam
     nav = _portal_nav(client.get(INBOX).get_data(as_text=True))
 
     expected = (
-        # Phase 4 / M01 added Assignments to the shared Student portal nav.
-        ["/student/dashboard", "/student/assignments", "/student/search", "/notifications"]
+        # Phase 4 / M01 added Assignments to the shared Student portal nav,
+        # and Phase 4 / M04D added Quizzes after it. The assertion stays
+        # exact: the inbox must hold these links, in this order, and no
+        # others -- one Notifications link included.
+        [
+            "/student/dashboard",
+            "/student/assignments",
+            "/student/quizzes",
+            "/student/search",
+            "/notifications",
+        ]
         if role_name == "student"
         else ["/teacher/dashboard", "/notifications"]
     )

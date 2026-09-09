@@ -645,8 +645,13 @@ def test_forged_fields_in_the_create_body_have_nowhere_to_land(app, client):
         assert quiz.version == 1
         assert quiz.public_id != "forged-public-id"
         assert quiz.id != 4242
-        assert not hasattr(quiz, "status")
-        assert not hasattr(quiz, "published_at")
+        # Phase 4 / M04D: `status` and `published_at` are real columns now,
+        # so the contract is no longer "they do not exist" -- it is that
+        # this form cannot reach them. Publication is owned solely by its
+        # own POST route, so a forged status in a create body publishes
+        # nothing.
+        assert quiz.status == "draft"
+        assert quiz.published_at is None
 
 
 def test_create_requires_csrf(app):
@@ -705,10 +710,15 @@ def test_authored_text_is_escaped_never_rendered_as_html(app, client):
         assert "&lt;script&gt;" in html, url
 
 
-def test_detail_offers_no_publish_delete_or_attempt_control(app, client):
-    """Phase 4 / M04B added an Add Question action to this page. Nothing
-    else it forbade has changed: there is still no publication, deletion,
-    archiving or attempt control anywhere on it."""
+def test_detail_offers_no_delete_grade_or_override_control(app, client):
+    """M04B added an Add Question action and M04D added publication and
+    attempt-review controls, so ``publish`` and ``attempt`` are no longer
+    forbidden words on this page.
+
+    What it still forbids is unchanged: there is no way to delete a quiz,
+    archive one, grade or re-grade anything, or override a score -- and no
+    such route exists server-side either.
+    """
     with app.app_context():
         _, group = _setup()
         quiz = _quiz_row(group)
@@ -716,10 +726,13 @@ def test_detail_offers_no_publish_delete_or_attempt_control(app, client):
     _login_as(client, "teacher@example.com")
     html = client.get(_detail_url(gpid, qpid)).get_data(as_text=True).lower()
     for absent in (
-        "publish", "unpublish", "delete", "archive quiz", "start quiz",
-        "grade", "score", "attempt",
+        "delete", "archive quiz", "start quiz", "override", "re-grade",
+        "regrade", "partial credit", "answer key",
     ):
         assert absent not in html, absent
+    # An unready draft is not offered a Publish control at all.
+    assert "not ready to publish yet" in html
+    assert 'action="/teacher/groups/%s/quizzes/%s/publish"' % (gpid, qpid) not in html
 
 
 # ===========================================================================
@@ -1681,25 +1694,41 @@ def test_quiz_history_is_scoped_to_its_own_group(app):
 # ===========================================================================
 
 
-def test_every_quiz_route_lives_under_teacher_and_is_group_scoped(app):
+def test_every_quiz_route_is_group_scoped_under_its_own_role_prefix(app):
+    """Phase 4 / M04D added the Student surface, so ``/teacher/...`` is no
+    longer the only prefix. Every quiz route is still nested under a Group
+    public identifier, and every one belongs to exactly one role's
+    prefix."""
     rules = [str(r) for r in app.url_map.iter_rules() if "quiz" in str(r).lower()]
     assert rules, "the quiz routes must exist"
+    teacher_prefix = "/teacher/groups/<group_public_id>/quizzes"
+    student_prefixes = ("/student/groups/<group_public_id>/quizzes", "/student/quizzes")
     for rule in rules:
-        assert rule.startswith("/teacher/groups/<group_public_id>/quizzes"), rule
+        assert rule.startswith(teacher_prefix) or rule.startswith(
+            student_prefixes
+        ), rule
+    # Both surfaces really exist.
+    assert any(r.startswith(teacher_prefix) for r in rules)
+    assert any(r.startswith(student_prefixes) for r in rules)
 
 
-def test_there_is_no_publication_attempt_or_delete_endpoint(app):
-    """Phase 4 / M04B added the question-authoring routes, so ``question``
-    is no longer a forbidden path segment. Everything else this test
-    guarded is unchanged: no publication, no attempt, no grading, no
-    deletion of a quiz or a question, and no DELETE method anywhere."""
+def test_there_is_no_delete_grade_or_answer_key_endpoint(app):
+    """M04B added question authoring and M04D added publication, attempts,
+    submission and results, so those words are no longer forbidden path
+    segments.
+
+    What stays forbidden is what was never approved: deleting a quiz,
+    question, option, attempt, answer or result; archiving any of them;
+    manual or re-grading; overriding a score; and releasing the answer key.
+    No route may accept DELETE.
+    """
     for rule in app.url_map.iter_rules():
         text = str(rule).lower()
         if "quiz" not in text:
             continue
         for forbidden in (
-            "publish", "toggle", "delete", "archive", "attempt", "grade",
-            "result", "score", "duplicate", "submit", "release",
+            "delete", "remove", "archive", "grade", "regrade", "override",
+            "answer-key", "release", "duplicate", "toggle",
         ):
             assert forbidden not in text, (text, forbidden)
         assert "DELETE" not in rule.methods

@@ -17,12 +17,30 @@ other's rows.
 import re
 
 from flask_wtf import FlaskForm
-from wtforms import RadioField, StringField, SubmitField, TextAreaField
-from wtforms.validators import DataRequired, Length, ValidationError
+from wtforms import (
+    IntegerField,
+    RadioField,
+    StringField,
+    SubmitField,
+    TextAreaField,
+)
+from wtforms.fields import DateTimeLocalField
+from wtforms.validators import (
+    DataRequired,
+    InputRequired,
+    Length,
+    NumberRange,
+    Optional,
+    ValidationError,
+)
 
 from app.models import (
     MAX_ACTIVE_OPTIONS,
+    MAX_ATTEMPT_LIMIT,
+    MAX_TIME_LIMIT_MINUTES,
     MIN_ACTIVE_OPTIONS,
+    MIN_ATTEMPT_LIMIT,
+    MIN_TIME_LIMIT_MINUTES,
     OPTION_TEXT_MAX_LENGTH,
     QUESTION_PROMPT_MAX_LENGTH,
     QUIZ_INSTRUCTIONS_MAX_LENGTH,
@@ -30,6 +48,7 @@ from app.models import (
     QuestionAnswerMode,
 )
 from app.services.quiz_queries import duplicate_title_exists
+from app.services.schedule_occurrences import LocalTimeError, from_app_local
 
 
 class QuizForm(FlaskForm):
@@ -477,3 +496,133 @@ def submitted_option_fields(formdata):
         formdata.getlist(OPTION_TEXT_FIELD),
         formdata.getlist(OPTION_CORRECT_FIELD),
     )
+
+
+# ===========================================================================
+# Phase 4 / M04D -- availability, timing and attempt settings
+# ===========================================================================
+
+
+class QuizSettingsForm(FlaskForm):
+    """The Quiz's availability window, optional time limit and attempt
+    limit (Phase 4 / M04D).
+
+    Deliberately a **separate** form from :class:`QuizForm`. Title and
+    instructions are what the Quiz *says*; these fields are when and how
+    often Students may take it. Keeping them apart means a metadata save
+    can never silently move an availability window, and this save can
+    never touch authored wording.
+
+    There is no ``status``, ``published_at``, question, option or score
+    field here: publication is owned solely by its own POST route, so a
+    forged ``status`` or ``published_at`` in the body has nowhere to land,
+    and grading policy does not exist anywhere to be configured.
+
+    **Times cross this boundary as local wall clocks.** Both datetime
+    fields are entered and rendered in ``APP_TIMEZONE`` (the template
+    shows the label) and :meth:`validate` converts them to the canonical
+    naive-UTC values the route persists, through the shared M09 timezone
+    policy. A nonexistent or ambiguous DST wall-clock value is rejected
+    with the helper's own safe message rather than resolved by guessing a
+    fold.
+
+    **Availability is a pair.** Either both moments are cleared -- a Quiz
+    still being written -- or both are present and ordered. A
+    half-configured window is exactly the state that would let publication
+    proceed with "until when?" undecided, so the form refuses it and
+    ``ck_quizzes_availability_window`` refuses it again.
+
+    ``attempt_limit`` is required and bounded 1..10; there is deliberately
+    no "unlimited" choice, because nobody decided what unlimited would
+    mean for a graded attempt. ``time_limit_minutes`` is genuinely
+    optional -- absent means the attempt simply ends when the Quiz closes
+    -- and bounded 1..300 when present.
+    """
+
+    MIN_TIME_LIMIT = MIN_TIME_LIMIT_MINUTES
+    MAX_TIME_LIMIT = MAX_TIME_LIMIT_MINUTES
+    MIN_ATTEMPTS = MIN_ATTEMPT_LIMIT
+    MAX_ATTEMPTS = MAX_ATTEMPT_LIMIT
+
+    #: The first format is what WTForms renders back into the control's
+    #: value and must be a valid HTML5 ``datetime-local`` value (the ``T``
+    #: separator); the rest are accepted on input only. Same reasoning as
+    #: ``AssignmentForm``.
+    _DATETIME_FORMATS = [
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+    ]
+
+    opens_at = DateTimeLocalField(
+        "Opens at", format=_DATETIME_FORMATS, validators=[Optional()]
+    )
+    closes_at = DateTimeLocalField(
+        "Closes at", format=_DATETIME_FORMATS, validators=[Optional()]
+    )
+    time_limit_minutes = IntegerField(
+        "Time limit in minutes (optional)",
+        validators=[
+            Optional(),
+            NumberRange(min=MIN_TIME_LIMIT_MINUTES, max=MAX_TIME_LIMIT_MINUTES),
+        ],
+    )
+    attempt_limit = IntegerField(
+        "Attempts allowed",
+        validators=[
+            InputRequired(),
+            NumberRange(min=MIN_ATTEMPT_LIMIT, max=MAX_ATTEMPT_LIMIT),
+        ],
+    )
+    submit = SubmitField("Save Settings")
+
+    def __init__(self, *args, tz_name=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._tz_name = tz_name
+        #: Canonical naive-UTC values, set by `validate` once both fields
+        #: parsed and converted. The route persists these -- never
+        #: `opens_at.data` / `closes_at.data`, which are local wall clocks.
+        self.opens_at_utc = None
+        self.closes_at_utc = None
+
+    def _to_utc(self, field):
+        try:
+            return from_app_local(self._tz_name, field.data)
+        except LocalTimeError as exc:
+            field.errors.append(str(exc))
+            return None
+
+    def validate(self, extra_validators=None):
+        """Ordinary field validation, then the availability-pair rule.
+
+        The ordering rule is checked against the **converted UTC** values,
+        not the local ones: that is the pair the database CHECK
+        constrains, and across a DST transition the two comparisons can
+        genuinely disagree.
+        """
+        if not super().validate(extra_validators=extra_validators):
+            return False
+
+        opens, closes = self.opens_at.data, self.closes_at.data
+        if opens is None and closes is None:
+            # A Quiz still being written. Publication will refuse it, and
+            # says so on its own page rather than here.
+            return True
+        if opens is None or closes is None:
+            missing = self.opens_at if opens is None else self.closes_at
+            missing.errors.append(
+                "Set both an opening time and a closing time, or leave both empty."
+            )
+            return False
+
+        self.opens_at_utc = self._to_utc(self.opens_at)
+        self.closes_at_utc = self._to_utc(self.closes_at)
+        if self.opens_at_utc is None or self.closes_at_utc is None:
+            return False
+        if self.opens_at_utc >= self.closes_at_utc:
+            self.closes_at.errors.append(
+                "The closing time must be after the opening time."
+            )
+            return False
+        return True

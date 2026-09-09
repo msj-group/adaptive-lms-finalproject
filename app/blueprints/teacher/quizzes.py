@@ -95,6 +95,7 @@ from app.blueprints.teacher.assignments import _private_no_store, _tz_name
 from app.blueprints.teacher.quiz_forms import (
     QuizForm,
     QuizQuestionForm,
+    QuizSettingsForm,
     submitted_option_fields,
 )
 from app.blueprints.teacher.units import (
@@ -107,6 +108,7 @@ from app.blueprints.teacher.units import (
 from app.extensions import db
 from app.models import (
     MAX_ACTIVE_OPTIONS,
+    MAX_QUIZ_QUESTIONS,
     MIN_ACTIVE_OPTIONS,
     AcademicStatus,
     Course,
@@ -117,6 +119,7 @@ from app.models import (
     QuestionOption,
     Quiz,
     QuizQuestion,
+    QuizStatus,
     User,
     UserRole,
     UserStatus,
@@ -125,6 +128,7 @@ from app.security.decorators import roles_required
 from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
 from app.services.group_transactions import lock_group_in_open_transaction
 from app.services.quiz_queries import (
+    ATTEMPT_PAGE_SIZE,
     MOVE_DIRECTIONS,
     MOVE_DOWN,
     MOVE_UP,
@@ -143,12 +147,24 @@ from app.services.quiz_queries import (
     next_question_display_order,
     normalize_page,
     normalize_question_page,
+    attempt_review_rows,
+    teacher_attempt,
+    teacher_attempts_page,
     teacher_question,
     teacher_questions_page,
     teacher_quiz,
     teacher_quizzes_page,
 )
-from app.services.schedule_occurrences import utc_reference_now
+from app.services.quiz_attempts import (
+    ATTEMPT_STATUS_LABELS,
+    STATE_LABELS,
+    availability_state,
+    percentage,
+    publication_blockers,
+    quiz_has_attempt_history,
+)
+from app.services.quiz_transactions import settle_due_attempts
+from app.services.schedule_occurrences import to_app_local, utc_reference_now
 
 _ACTIVE = AcademicStatus.ACTIVE.value
 _ASSIGNMENT_ACTIVE = GroupTeacherAssignmentStatus.ACTIVE.value
@@ -738,6 +754,17 @@ def quiz_detail(group_public_id, quiz_public_id):
                 question.public_id, row.version, question.version, page,
             )
 
+    # Phase 4 / M04D publication panel. `publication_blockers` is the
+    # SAME function the publish route runs against the locked rows, so
+    # the readiness a Teacher reads and the rule that decides can never
+    # disagree -- this call is read-only and simply renders it early.
+    published = row.status == _PUBLISHED
+    has_attempts = quiz_has_attempt_history(row.id)
+    frozen_message = _authoring_block(row)
+    reference_utc = utc_reference_now().replace(microsecond=0)
+    state = availability_state(row, reference_utc)
+    actor_public_id = current_user.public_id
+
     return _private_no_store(
         "teacher/quizzes/detail.html",
         group=group,
@@ -752,6 +779,42 @@ def quiz_detail(group_public_id, quiz_public_id):
         page_size=QUESTION_PAGE_SIZE,
         min_options=MIN_ACTIVE_OPTIONS,
         max_options=MAX_ACTIVE_OPTIONS,
+        published=published,
+        has_attempts=has_attempts,
+        frozen_message=frozen_message,
+        availability={
+            "opens_local": (
+                to_app_local(tz_name, row.opens_at) if row.opens_at else None
+            ),
+            "closes_local": (
+                to_app_local(tz_name, row.closes_at) if row.closes_at else None
+            ),
+            "time_limit_minutes": row.time_limit_minutes,
+            "attempt_limit": row.attempt_limit,
+            "published_local": (
+                to_app_local(tz_name, row.published_at) if row.published_at else None
+            ),
+            "state": state,
+            "state_label": STATE_LABELS.get(state),
+        },
+        readiness=[] if published else publication_blockers(row),
+        max_questions=MAX_QUIZ_QUESTIONS,
+        publish_token=(
+            _make_publication_token(
+                _PUBLISH_ACTION, actor_public_id, group_public_id, quiz_public_id,
+                row.version, row.status,
+            )
+            if operational and not published
+            else None
+        ),
+        unpublish_token=(
+            _make_publication_token(
+                _UNPUBLISH_ACTION, actor_public_id, group_public_id, quiz_public_id,
+                row.version, row.status,
+            )
+            if operational and published and not has_attempts
+            else None
+        ),
     )
 
 
@@ -951,6 +1014,13 @@ def _render_quiz_edit_page(
         flash(_NOT_OPERATIONAL_MESSAGE, "danger")
         return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
 
+    # A courtesy check with the same rule the write path enforces:
+    # never hand back a form whose save is already refused.
+    frozen = _authoring_block(quiz)
+    if frozen is not None:
+        flash(frozen, "danger")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
     tz_name = _tz_name()
     if form is None:
         form = QuizForm(
@@ -1056,6 +1126,17 @@ def quiz_edit(group_public_id, quiz_public_id):
     if blocked is not None:
         db.session.rollback()
         flash(blocked, "danger")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+    # THE authoring freeze, against the LOCKED Quiz row. Publishing
+    # makes the authored content read-only; the first attempt freezes
+    # it permanently. Checked here, not in the template, so a
+    # bookmarked or forged request is refused too -- and BEFORE any
+    # field is assigned, so a rejection leaves every row untouched.
+    frozen = _authoring_block(quiz)
+    if frozen is not None:
+        db.session.rollback()
+        flash(frozen, "danger")
         return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
 
     # The token is re-checked against the LOCKED current row -- this is
@@ -1703,6 +1784,13 @@ def _render_question_create_page(
         flash(_QUESTION_NOT_OPERATIONAL_MESSAGE, "danger")
         return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
 
+    # A courtesy check with the same rule the write path enforces:
+    # never hand back a form whose save is already refused.
+    frozen = _authoring_block(quiz)
+    if frozen is not None:
+        flash(frozen, "danger")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
     if form is None:
         form = QuizQuestionForm(
             formdata=None,
@@ -1785,6 +1873,17 @@ def quiz_question_create(group_public_id, quiz_public_id):
     if blocked is not None:
         db.session.rollback()
         flash(blocked, "danger")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+    # THE authoring freeze, against the LOCKED Quiz row. Publishing
+    # makes the authored content read-only; the first attempt freezes
+    # it permanently. Checked here, not in the template, so a
+    # bookmarked or forged request is refused too -- and BEFORE any
+    # field is assigned, so a rejection leaves every row untouched.
+    frozen = _authoring_block(quiz)
+    if frozen is not None:
+        db.session.rollback()
+        flash(frozen, "danger")
         return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
 
     if _create_token_is_stale(
@@ -1896,6 +1995,13 @@ def _render_question_edit_page(
         flash(message, "danger")
     if not _group_is_operational(group):
         flash(_QUESTION_NOT_OPERATIONAL_MESSAGE, "danger")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+    # A courtesy check with the same rule the write path enforces:
+    # never hand back a form whose save is already refused.
+    frozen = _authoring_block(quiz)
+    if frozen is not None:
+        flash(frozen, "danger")
         return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
 
     options = active_options_ordered(question.id)
@@ -2049,6 +2155,17 @@ def quiz_question_edit(group_public_id, quiz_public_id, question_public_id):
     if blocked is not None:
         db.session.rollback()
         flash(blocked, "danger")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+    # THE authoring freeze, against the LOCKED Quiz row. Publishing
+    # makes the authored content read-only; the first attempt freezes
+    # it permanently. Checked here, not in the template, so a
+    # bookmarked or forged request is refused too -- and BEFORE any
+    # field is assigned, so a rejection leaves every row untouched.
+    frozen = _authoring_block(quiz)
+    if frozen is not None:
+        db.session.rollback()
+        flash(frozen, "danger")
         return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
 
     locked_options = _lock_active_options(question.id)
@@ -2236,6 +2353,19 @@ def _move_question(group_public_id, quiz_public_id, question_public_id, directio
             _quiz_detail_page_url(group_public_id, quiz_public_id, return_page)
         )
 
+    # THE authoring freeze, against the LOCKED Quiz row. Publishing
+    # makes the authored content read-only; the first attempt freezes
+    # it permanently. Checked here, not in the template, so a
+    # bookmarked or forged request is refused too -- and BEFORE any
+    # field is assigned, so a rejection leaves every row untouched.
+    frozen = _authoring_block(quiz)
+    if frozen is not None:
+        db.session.rollback()
+        flash(frozen, "danger")
+        return redirect(
+            _quiz_detail_page_url(group_public_id, quiz_public_id, return_page)
+        )
+
     # A current read under the held Quiz lock, only to decide WHICH rows
     # to lock. Neither row is trusted until it has been locked below.
     target_preview = teacher_question(quiz.id, question_public_id)
@@ -2346,4 +2476,677 @@ def quiz_question_move_up(group_public_id, quiz_public_id, question_public_id):
 def quiz_question_move_down(group_public_id, quiz_public_id, question_public_id):
     return _move_question(
         group_public_id, quiz_public_id, question_public_id, MOVE_DOWN
+    )
+
+
+# ======================================================================
+# Phase 4 / M04D -- publication, availability settings, attempt review
+# ======================================================================
+#
+#     GET|POST  .../quizzes/<quiz_public_id>/settings
+#     POST      .../quizzes/<quiz_public_id>/publish
+#     POST      .../quizzes/<quiz_public_id>/unpublish
+#     GET       .../quizzes/<quiz_public_id>/attempts
+#     GET       .../quizzes/<quiz_public_id>/attempts/<attempt_public_id>
+#
+# There is still no delete route for a Quiz, a question, an option, an
+# attempt, an answer or a result; no score override; and no manual-grading
+# or answer-release path. A Teacher publishes, withdraws before anybody
+# has started, and reads what Students did -- nothing else.
+#
+# **Two freezes, and they are different.** Publishing makes the authored
+# Quiz read-only because Students may already be reading exactly that
+# wording. The **first attempt** freezes it permanently, because from then
+# on somebody's answers are answers *to* that wording; unpublishing is
+# refused from that moment on. Both are re-checked against the locked rows
+# in every mutation route, never only in a template.
+
+_PUBLISHED = QuizStatus.PUBLISHED.value
+_DRAFT_STATUS = QuizStatus.DRAFT.value
+
+#: Refusal sentences. Declared once so the early courtesy check and the
+#: authoritative post-lock check can never explain the same rule
+#: differently.
+_FROZEN_BY_ATTEMPTS_MESSAGE = (
+    "Students have already started this quiz, so its settings, questions, options, and answer "
+    "key can no longer be changed and it can no longer be withdrawn. Students answered exactly "
+    "this wording, and rewriting it afterwards would change what their attempts were for. You "
+    "can still read every attempt."
+)
+_FROZEN_BY_PUBLICATION_MESSAGE = (
+    "This quiz is published, so its settings, questions, options, and answer key are read-only. "
+    "Withdraw it first if you need to change something -- that is possible only while no "
+    "student has started it."
+)
+_ATTEMPTS_NOT_OPERATIONAL_MESSAGE = (
+    "This quiz can only be published or withdrawn while the group and its academic term, "
+    "course, and level are all active. Existing attempts stay readable."
+)
+
+_PUBLICATION_BLOCK_WORDING = (
+    "Quizzes can only be published or withdrawn",
+    "Existing attempts stay readable.",
+)
+
+
+def _authoring_block(quiz):
+    """``None`` when this Quiz's authored content may still be changed,
+    else the sentence explaining why not.
+
+    The attempt freeze is checked **first** because it is the stronger and
+    permanent one: a Teacher whose Quiz has attempts must not be told to
+    "withdraw it first", which would send them at a door that is already
+    locked.
+
+    Must be called against the **locked** Quiz row on every write path.
+    """
+    if quiz_has_attempt_history(quiz.id):
+        return _FROZEN_BY_ATTEMPTS_MESSAGE
+    if quiz.status == _PUBLISHED:
+        return _FROZEN_BY_PUBLICATION_MESSAGE
+    return None
+
+
+# ----------------------------------------------------------------------
+# URLs
+# ----------------------------------------------------------------------
+
+
+def _quiz_settings_url(group_public_id, quiz_public_id):
+    return url_for(
+        "teacher.quiz_settings",
+        group_public_id=group_public_id,
+        quiz_public_id=quiz_public_id,
+    )
+
+
+# ======================================================================
+# Signed settings and publication tokens
+# ======================================================================
+
+_QUIZ_SETTINGS_SALT = "teacher.quiz-settings.phase4-m04d.v1"
+_QUIZ_PUBLICATION_SALT = "teacher.quiz-publication.phase4-m04d.v1"
+
+_QUIZ_SETTINGS_PURPOSE = "quiz-settings"
+_QUIZ_PUBLICATION_PURPOSE = "quiz-publication"
+
+#: The two publication directions, bound into the token so a Publish
+#: control can never be replayed as a Withdraw.
+_PUBLISH_ACTION = "publish"
+_UNPUBLISH_ACTION = "unpublish"
+_PUBLICATION_ACTIONS = (_PUBLISH_ACTION, _UNPUBLISH_ACTION)
+
+_QUIZ_SETTINGS_FIELDS = (
+    "purpose",
+    "teacher_public_id",
+    "group_public_id",
+    "quiz_public_id",
+    "quiz_version",
+)
+_QUIZ_PUBLICATION_FIELDS = (
+    "purpose",
+    "action",
+    "teacher_public_id",
+    "group_public_id",
+    "quiz_public_id",
+    "quiz_version",
+    "quiz_status",
+)
+
+
+def _make_settings_token(teacher_public_id, group_public_id, quiz_public_id, version):
+    return _serializer(_QUIZ_SETTINGS_SALT).dumps(
+        {
+            "purpose": _QUIZ_SETTINGS_PURPOSE,
+            "teacher_public_id": teacher_public_id,
+            "group_public_id": group_public_id,
+            "quiz_public_id": quiz_public_id,
+            "quiz_version": version,
+        }
+    )
+
+
+def _load_settings_token(token):
+    if not token:
+        return None
+    try:
+        payload = _serializer(_QUIZ_SETTINGS_SALT).loads(token)
+    except BadSignature:
+        return None
+    if not isinstance(payload, dict) or set(payload) != set(_QUIZ_SETTINGS_FIELDS):
+        return None
+    if payload["purpose"] != _QUIZ_SETTINGS_PURPOSE:
+        return None
+    if not _all_strings([payload[f] for f in _QUIZ_SETTINGS_FIELDS[1:4]]):
+        return None
+    if not _positive_int(payload["quiz_version"]):
+        return None
+    return payload
+
+
+def _settings_token_is_stale(
+    token, teacher_public_id, group_public_id, quiz_public_id, quiz
+):
+    payload = _load_settings_token(token)
+    if payload is None:
+        return True
+    if payload["teacher_public_id"] != teacher_public_id:
+        return True
+    if payload["group_public_id"] != group_public_id:
+        return True
+    if payload["quiz_public_id"] != quiz_public_id:
+        return True
+    return payload["quiz_version"] != quiz.version
+
+
+def _make_publication_token(
+    action, teacher_public_id, group_public_id, quiz_public_id, version, status
+):
+    """A token for one Publish or Withdraw control on one rendered page.
+
+    ``action`` **and** the Quiz's current ``status`` are both bound: the
+    first stops a Publish token being replayed as a Withdraw, and the
+    second stops either being replayed once the Quiz has already moved.
+    """
+    return _serializer(_QUIZ_PUBLICATION_SALT).dumps(
+        {
+            "purpose": _QUIZ_PUBLICATION_PURPOSE,
+            "action": action,
+            "teacher_public_id": teacher_public_id,
+            "group_public_id": group_public_id,
+            "quiz_public_id": quiz_public_id,
+            "quiz_version": version,
+            "quiz_status": status,
+        }
+    )
+
+
+def _load_publication_token(token):
+    if not token:
+        return None
+    try:
+        payload = _serializer(_QUIZ_PUBLICATION_SALT).loads(token)
+    except BadSignature:
+        return None
+    if not isinstance(payload, dict) or set(payload) != set(_QUIZ_PUBLICATION_FIELDS):
+        return None
+    if payload["purpose"] != _QUIZ_PUBLICATION_PURPOSE:
+        return None
+    if payload["action"] not in _PUBLICATION_ACTIONS:
+        return None
+    if payload["quiz_status"] not in (_DRAFT_STATUS, _PUBLISHED):
+        return None
+    if not _all_strings([payload[f] for f in _QUIZ_PUBLICATION_FIELDS[2:5]]):
+        return None
+    if not _positive_int(payload["quiz_version"]):
+        return None
+    return payload
+
+
+def _publication_token_is_stale(
+    token, action, teacher_public_id, group_public_id, quiz_public_id, quiz
+):
+    payload = _load_publication_token(token)
+    if payload is None:
+        return True
+    if payload["action"] != action:
+        return True
+    if payload["teacher_public_id"] != teacher_public_id:
+        return True
+    if payload["group_public_id"] != group_public_id:
+        return True
+    if payload["quiz_public_id"] != quiz_public_id:
+        return True
+    if payload["quiz_version"] != quiz.version:
+        return True
+    return payload["quiz_status"] != quiz.status
+
+
+# ======================================================================
+# Availability settings
+# ======================================================================
+
+
+def _settings_defaults(quiz, tz_name):
+    """The local wall-clock values a GET of the settings form starts from
+    -- the stored UTC instants rendered through ``APP_TIMEZONE``, so what
+    the Teacher sees is what they originally entered."""
+    return {
+        "opens_at": to_app_local(tz_name, quiz.opens_at) if quiz.opens_at else None,
+        "closes_at": to_app_local(tz_name, quiz.closes_at) if quiz.closes_at else None,
+        "time_limit_minutes": quiz.time_limit_minutes,
+        "attempt_limit": quiz.attempt_limit,
+    }
+
+
+def _render_quiz_settings_page(
+    actor_id, actor_public_id, group_public_id, quiz_public_id,
+    form=None, state_token=None, message=None,
+):
+    """Render the settings form, redirect, or 404.
+
+    Rolls back first, re-proves the whole chain from current state, and
+    only then flashes, mints a token, or renders -- the rule every
+    post-rollback path in this module follows.
+    """
+    db.session.rollback()
+    group, quiz = _fresh_quiz_authorization(actor_id, group_public_id, quiz_public_id)
+    if message is not None:
+        flash(message, "danger")
+    if not _group_is_operational(group):
+        flash(_NOT_OPERATIONAL_MESSAGE, "danger")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+    frozen = _authoring_block(quiz)
+    if frozen is not None:
+        flash(frozen, "danger")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+    tz_name = _tz_name()
+    if form is None:
+        form = QuizSettingsForm(
+            formdata=None, data=_settings_defaults(quiz, tz_name), tz_name=tz_name
+        )
+    if state_token is None:
+        state_token = _make_settings_token(
+            actor_public_id, group_public_id, quiz_public_id, quiz.version
+        )
+
+    return _private_no_store(
+        "teacher/quizzes/settings.html",
+        form=form,
+        group=group,
+        quiz=build_quiz_detail(quiz, tz_name),
+        state_token=state_token,
+        tz_name=tz_name,
+    )
+
+
+@teacher_bp.route(
+    "/groups/<group_public_id>/quizzes/<quiz_public_id>/settings",
+    methods=["GET", "POST"],
+)
+@roles_required(UserRole.TEACHER.value)
+def quiz_settings(group_public_id, quiz_public_id):
+    """Set the availability window, optional time limit and attempt limit.
+
+    **Nothing about publication is taken from the request.** ``status``
+    and ``published_at`` are never assigned here -- they belong solely to
+    the publish/withdraw routes -- so a forged field of either name has
+    nowhere to land. Draft-only: a published Quiz's settings are read-only
+    because Students may already be planning around them.
+    """
+    if request.method == "GET":
+        return _render_quiz_settings_page(
+            current_user.id, current_user.public_id, group_public_id, quiz_public_id
+        )
+
+    preview_group = _teacher_group_or_404(group_public_id)
+    preview_quiz = _quiz_for_group_or_404(preview_group, quiz_public_id)
+
+    if not _group_is_operational(preview_group):
+        flash(_NOT_OPERATIONAL_MESSAGE, "danger")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+    tz_name = _tz_name()
+    form = QuizSettingsForm(tz_name=tz_name)
+    form_is_valid = form.validate_on_submit()
+
+    teacher_id = current_user.id
+    teacher_public_id = current_user.public_id
+    quiz_id = preview_quiz.id
+    term_id = preview_group.academic_term_id
+    level_id = preview_group.course.level_id
+    course_id = preview_group.course_id
+    submitted_token = request.form.get("quiz_state", "")
+
+    hierarchy, group, teacher, teacher_assignment, quizzes = _lock_quiz_chain(
+        group_public_id, term_id, level_id, course_id, teacher_id, quiz_ids=[quiz_id]
+    )
+    if _authz_broken(group, teacher, teacher_assignment):
+        db.session.rollback()
+        abort(404)
+
+    quiz = quizzes.get(quiz_id)
+    if _nested_ownership_broken(group, quiz, quiz_public_id):
+        db.session.rollback()
+        abort(404)
+
+    blocked = _operational_block(hierarchy, group, term_id, level_id, course_id)
+    if blocked is not None:
+        db.session.rollback()
+        flash(blocked, "danger")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+    frozen = _authoring_block(quiz)
+    if frozen is not None:
+        db.session.rollback()
+        flash(frozen, "danger")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+    if _settings_token_is_stale(
+        submitted_token, teacher_public_id, group_public_id, quiz_public_id, quiz
+    ):
+        db.session.rollback()
+        flash(_STALE_MESSAGE, "danger")
+        return redirect(_quiz_settings_url(group_public_id, quiz_public_id))
+
+    if not form_is_valid:
+        return _render_quiz_settings_page(
+            teacher_id, teacher_public_id, group_public_id, quiz_public_id,
+            form=form, state_token=submitted_token,
+        )
+
+    opens_at = form.opens_at_utc
+    closes_at = form.closes_at_utc
+    time_limit = form.time_limit_minutes.data
+    attempt_limit = form.attempt_limit.data
+
+    if (
+        quiz.opens_at == opens_at
+        and quiz.closes_at == closes_at
+        and quiz.time_limit_minutes == time_limit
+        and quiz.attempt_limit == attempt_limit
+    ):
+        db.session.rollback()
+        flash("These settings are unchanged, so nothing was saved.", "info")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+    now_utc = _write_moment()
+    quiz.opens_at = opens_at
+    quiz.closes_at = closes_at
+    quiz.time_limit_minutes = time_limit
+    quiz.attempt_limit = attempt_limit
+    quiz.version = quiz.version + 1
+    quiz.updated_at = now_utc
+    try:
+        db.session.commit()
+    except IntegrityError:
+        return _render_quiz_settings_page(
+            teacher_id, teacher_public_id, group_public_id, quiz_public_id,
+            form=form, state_token=submitted_token,
+            message=(
+                "These settings could not be saved. Someone may have just changed this quiz. "
+                "Please reload and try again."
+            ),
+        )
+
+    flash("Quiz settings saved. The quiz is still a draft.", "success")
+    return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+
+# ======================================================================
+# Publish and withdraw
+# ======================================================================
+
+
+def _publication_transition(group_public_id, quiz_public_id, action):
+    """The shared body of Publish and Withdraw.
+
+    One function so the two directions cannot drift in their
+    authorization, locking, freeze or staleness handling -- only the
+    decision they reach and the sentence they flash differ.
+    """
+    preview_group = _teacher_group_or_404(group_public_id)
+    preview_quiz = _quiz_for_group_or_404(preview_group, quiz_public_id)
+
+    if not _group_is_operational(preview_group):
+        flash(_ATTEMPTS_NOT_OPERATIONAL_MESSAGE, "danger")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+    teacher_id = current_user.id
+    teacher_public_id = current_user.public_id
+    quiz_id = preview_quiz.id
+    term_id = preview_group.academic_term_id
+    level_id = preview_group.course.level_id
+    course_id = preview_group.course_id
+    submitted_token = request.form.get("quiz_state", "")
+
+    hierarchy, group, teacher, teacher_assignment, quizzes = _lock_quiz_chain(
+        group_public_id, term_id, level_id, course_id, teacher_id, quiz_ids=[quiz_id]
+    )
+    if _authz_broken(group, teacher, teacher_assignment):
+        db.session.rollback()
+        abort(404)
+
+    quiz = quizzes.get(quiz_id)
+    if _nested_ownership_broken(group, quiz, quiz_public_id):
+        db.session.rollback()
+        abort(404)
+
+    blocked = _operational_block(
+        hierarchy, group, term_id, level_id, course_id,
+        wording=_PUBLICATION_BLOCK_WORDING,
+    )
+    if blocked is not None:
+        db.session.rollback()
+        flash(blocked, "danger")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+    if _publication_token_is_stale(
+        submitted_token, action, teacher_public_id, group_public_id,
+        quiz_public_id, quiz,
+    ):
+        db.session.rollback()
+        flash(_STALE_MESSAGE, "danger")
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+    now_utc = _write_moment()
+
+    if action == _PUBLISH_ACTION:
+        if quiz.status == _PUBLISHED:
+            db.session.rollback()
+            flash("This quiz is already published.", "info")
+            return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+        # THE authoritative readiness check, against the locked rows. The
+        # detail page runs the same function read-only, so the panel a
+        # Teacher reads and the rule that decides can never disagree.
+        blockers = publication_blockers(quiz)
+        if blockers:
+            db.session.rollback()
+            for sentence in blockers:
+                flash(sentence, "danger")
+            return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+        quiz.status = _PUBLISHED
+        quiz.published_at = now_utc
+    else:
+        if quiz.status != _PUBLISHED:
+            db.session.rollback()
+            flash("This quiz is already a draft.", "info")
+            return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+        # Withdrawal is permitted only while nobody has started. Once an
+        # attempt exists the Quiz is frozen permanently.
+        if quiz_has_attempt_history(quiz.id):
+            db.session.rollback()
+            flash(_FROZEN_BY_ATTEMPTS_MESSAGE, "danger")
+            return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+        quiz.status = _DRAFT_STATUS
+        quiz.published_at = None
+
+    quiz.version = quiz.version + 1
+    quiz.updated_at = now_utc
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        _fresh_quiz_authorization(teacher_id, group_public_id, quiz_public_id)
+        flash(
+            "This quiz could not be updated. Someone may have just changed it. Please reload "
+            "and try again.",
+            "danger",
+        )
+        return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+    flash(
+        "Quiz published. Enrolled students can open it once its opening time arrives."
+        if action == _PUBLISH_ACTION
+        else "Quiz withdrawn. It is a draft again and students cannot see it.",
+        "success",
+    )
+    return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
+
+
+@teacher_bp.post("/groups/<group_public_id>/quizzes/<quiz_public_id>/publish")
+@roles_required(UserRole.TEACHER.value)
+def quiz_publish(group_public_id, quiz_public_id):
+    return _publication_transition(group_public_id, quiz_public_id, _PUBLISH_ACTION)
+
+
+@teacher_bp.post("/groups/<group_public_id>/quizzes/<quiz_public_id>/unpublish")
+@roles_required(UserRole.TEACHER.value)
+def quiz_unpublish(group_public_id, quiz_public_id):
+    return _publication_transition(group_public_id, quiz_public_id, _UNPUBLISH_ACTION)
+
+
+# ======================================================================
+# Attempt review -- read only
+# ======================================================================
+
+
+def _build_attempt_summaries(rows, tz_name):
+    """Plain presentation dicts for the Teacher attempt list.
+
+    Public ids and display strings only. The percentage is derived from
+    the two stored integers at render time rather than stored as a third,
+    disagreeable copy.
+    """
+    summaries = []
+    for row in rows:
+        summaries.append(
+            {
+                "public_id": row.public_id,
+                "student_name": row.student_name,
+                "attempt_number": row.attempt_number,
+                "status": row.status,
+                "status_label": ATTEMPT_STATUS_LABELS.get(row.status, row.status),
+                "started_local": to_app_local(tz_name, row.started_at),
+                "deadline_local": to_app_local(tz_name, row.deadline_at),
+                "submitted_local": (
+                    to_app_local(tz_name, row.submitted_at)
+                    if row.submitted_at is not None
+                    else None
+                ),
+                "correct_count": row.correct_count,
+                "total_questions": row.total_questions,
+                "percentage": percentage(row.correct_count or 0, row.total_questions),
+            }
+        )
+    return summaries
+
+
+@teacher_bp.get("/groups/<group_public_id>/quizzes/<quiz_public_id>/attempts")
+@roles_required(UserRole.TEACHER.value)
+def quiz_attempts(group_public_id, quiz_public_id):
+    """One bounded page of a Quiz's attempts, newest first.
+
+    Read-only: a Teacher can see what Students did and cannot change any
+    of it. There is no score override, no manual grade and no delete.
+
+    **Expiry is settled here before anything is shown.** Any in-progress
+    attempt on this page whose deadline has passed is finalized and graded
+    under the required locks first, so a Teacher never reads a row that
+    claims to be running when its deadline is behind it.
+    """
+    # Authorize first, capture the scalars the settle step needs, and
+    # only then settle -- `settle_due_attempts` performs its own
+    # deliberate reset, so every ORM object read before it is expired and
+    # the display copies are re-read afterwards.
+    group = _teacher_group_or_404(group_public_id)
+    quiz = _quiz_for_group_or_404(group, quiz_public_id)
+    quiz_id = quiz.id
+    tz_name = _tz_name()
+    page = normalize_page(request.args.get("page"))
+
+    settle_due_attempts(group_public_id, quiz_id, _write_moment())
+
+    group = _teacher_group_or_404(group_public_id)
+    quiz = _quiz_for_group_or_404(group, quiz_public_id)
+
+    rows, has_next = teacher_attempts_page(quiz.id, page)
+    if not rows and page > 1:
+        page = 1
+        rows, has_next = teacher_attempts_page(quiz.id, page)
+
+    return _private_no_store(
+        "teacher/quizzes/attempts.html",
+        group=group,
+        quiz=build_quiz_detail(quiz, tz_name),
+        attempts=_build_attempt_summaries(rows, tz_name),
+        tz_name=tz_name,
+        page=page,
+        has_next=has_next,
+        has_prev=page > 1,
+        page_size=ATTEMPT_PAGE_SIZE,
+    )
+
+
+@teacher_bp.get(
+    "/groups/<group_public_id>/quizzes/<quiz_public_id>"
+    "/attempts/<attempt_public_id>"
+)
+@roles_required(UserRole.TEACHER.value)
+def quiz_attempt_detail(group_public_id, quiz_public_id, attempt_public_id):
+    """One attempt in full: the Student's saved selections **and** the
+    authored answer key, side by side.
+
+    All three public ids must name the same nested chain. A Teacher is
+    authorized to see the key; a Student never is, which is why this page
+    uses its own builder rather than a flag on the Student one.
+
+    Four bounded statements build the whole page -- never one per question
+    or per answer.
+    """
+    group = _teacher_group_or_404(group_public_id)
+    quiz = _quiz_for_group_or_404(group, quiz_public_id)
+    quiz_id = quiz.id
+    tz_name = _tz_name()
+
+    # Settle only THIS attempt, and only if it is overdue. Same reset
+    # caveat as the list route, so the display copies are re-read after.
+    preview_attempt = teacher_attempt(quiz_id, attempt_public_id)
+    if preview_attempt is None:
+        abort(404)
+    settle_due_attempts(
+        group_public_id, quiz_id, _write_moment(), attempt_ids=[preview_attempt.id]
+    )
+
+    group = _teacher_group_or_404(group_public_id)
+    quiz = _quiz_for_group_or_404(group, quiz_public_id)
+    attempt = teacher_attempt(quiz.id, attempt_public_id)
+    if attempt is None:
+        abort(404)
+    student = db.session.query(User.full_name, User.role).filter(
+        User.id == attempt.student_id
+    ).first()
+    if student is None or student.role != UserRole.STUDENT.value:
+        # A foreign key proves the row exists, never its role. A
+        # role-inconsistent attempt fails closed rather than being
+        # presented as Student work.
+        abort(404)
+
+    return _private_no_store(
+        "teacher/quizzes/attempt_detail.html",
+        group=group,
+        quiz=build_quiz_detail(quiz, tz_name),
+        attempt={
+            "public_id": attempt.public_id,
+            "student_name": student.full_name,
+            "attempt_number": attempt.attempt_number,
+            "status": attempt.status,
+            "status_label": ATTEMPT_STATUS_LABELS.get(attempt.status, attempt.status),
+            "started_local": to_app_local(tz_name, attempt.started_at),
+            "deadline_local": to_app_local(tz_name, attempt.deadline_at),
+            "submitted_local": (
+                to_app_local(tz_name, attempt.submitted_at)
+                if attempt.submitted_at is not None
+                else None
+            ),
+            "correct_count": attempt.correct_count,
+            "total_questions": attempt.total_questions,
+            "percentage": percentage(
+                attempt.correct_count or 0, attempt.total_questions
+            ),
+        },
+        review=attempt_review_rows(quiz.id, attempt.id),
+        tz_name=tz_name,
     )

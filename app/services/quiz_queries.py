@@ -15,13 +15,19 @@ functions only *find the quizzes for it*, and every nested lookup is
 constrained by that ``group_id`` so a Quiz ``public_id`` belonging to
 another Group can never resolve through another Group's URL.
 
-**There is deliberately no Student-facing read in this module.** Quizzes
-are drafts by construction: no Student list, detail, search projection,
-notification or dashboard read exists, and none is stubbed here. Adding
-one is not a matter of calling an existing helper with a different id --
-there is no helper to call. That is as true of the Phase 4 / M04B
-question and option reads at the bottom of this module as it is of the
-M04A quiz reads above them.
+**Student reads exist only from Phase 4 / M04D, and only for published
+Quizzes.** M04A and M04B had none at all, because a Quiz was a draft by
+construction. M04D adds publication, so an eligible Student can now list
+and open a published Quiz -- through the **one** fully scoped query
+``_student_visible_quiz_query`` at the bottom of this module, whose
+``WHERE`` clause is the authorization. A draft can never come out of it.
+
+**The authored answer key never reaches a Student read.** No Student-facing
+function here selects ``QuestionOption.is_correct``, and no dict they build
+carries it, so it cannot leak through a page, a form, a URL or a token --
+before, during or after the Quiz's window. The Teacher review builder is a
+separate function rather than a flag on a shared one, precisely so there
+is no argument anybody can pass the wrong way.
 
 **Every read is bounded, and the list is bounded in columns too.** The
 list fetches ``PAGE_SIZE + 1`` rows to derive a non-disclosing "there is
@@ -36,18 +42,37 @@ Ordering is always fully deterministic, tie-broken by the internal ``id``
 a template.
 """
 
+from collections import defaultdict
+
 from sqlalchemy import and_, case, func, or_
 
 from app.extensions import db
 from app.models import (
     MAX_ACTIVE_OPTIONS,
+    MAX_QUIZ_QUESTIONS,
     MIN_ACTIVE_OPTIONS,
+    AcademicStatus,
+    AcademicTerm,
+    Course,
+    Enrollment,
+    EnrollmentStatus,
+    Group,
+    Level,
     QuestionAnswerMode,
     QuestionOption,
     Quiz,
+    QuizAnswer,
+    QuizAnswerSelection,
+    QuizAttempt,
     QuizQuestion,
+    QuizStatus,
+    User,
+    UserRole,
+    UserStatus,
 )
 from app.services.schedule_occurrences import to_app_local
+
+_ACTIVE = AcademicStatus.ACTIVE.value
 
 #: Fixed page size for the Teacher quiz list. Not configurable and never
 #: client-supplied -- the explicit bound the Part requires instead of an
@@ -622,3 +647,470 @@ def build_question_editor(question, options):
         ),
         "options": build_option_rows(options),
     }
+
+
+# ===========================================================================
+# Phase 4 / M04D -- Student visibility, navigation, and Teacher attempt review
+# ===========================================================================
+#
+# The M04A/M04B statement that this module contains no Student-facing read
+# is **superseded here**: M04D publishes Quizzes, so eligible Students do
+# get reads -- but only through the one fully scoped query below, and
+# never one that could return a draft.
+#
+# The answer key is deliberately absent from every Student-facing function
+# and from every dict they build. A Student page cannot leak
+# `is_correct` because no Student read ever selects it.
+
+
+def _student_visible_quiz_query(student_id, reference_utc):
+    """The one shared, fully scoped base query behind every Student read.
+
+    **Authorization lives in the SQL ``WHERE`` clause**, exactly as it
+    does for M01 Assignments: a Quiz is never loaded broadly and filtered
+    in Python afterwards. Defining it once is deliberate -- the list, the
+    detail page and every attempt route must agree exactly on what
+    "visible" means, so a future change cannot tighten one path and leave
+    another open. The full formula is::
+
+        User is that Student, with the Student role and an active account
+        AND Enrollment(student, group).status == active
+        AND AcademicTerm / Level / Course / Group .status == active
+        AND Quiz.status == published
+        AND Quiz.opens_at <= reference moment
+
+    The ``users`` join is not redundant with the session: a foreign key
+    into ``users`` proves the row exists, never that it is still a Student
+    or still active.
+
+    A **closed** Quiz stays visible on purpose. What ``closes_at``
+    withdraws is the ability to *start* an attempt, never the ability to
+    reach a receipt -- the same rule M01 applies to a past-due Assignment.
+    """
+    return (
+        db.session.query(Quiz, Group, Course, Level, AcademicTerm)
+        .join(Group, Quiz.group_id == Group.id)
+        .join(Course, Group.course_id == Course.id)
+        .join(Level, Course.level_id == Level.id)
+        .join(AcademicTerm, Group.academic_term_id == AcademicTerm.id)
+        .join(Enrollment, Enrollment.group_id == Group.id)
+        .join(User, Enrollment.student_id == User.id)
+        .filter(
+            User.id == student_id,
+            User.role == UserRole.STUDENT.value,
+            User.status == UserStatus.ACTIVE.value,
+            Enrollment.status == EnrollmentStatus.ACTIVE.value,
+            AcademicTerm.status == _ACTIVE,
+            Level.status == _ACTIVE,
+            Course.status == _ACTIVE,
+            Group.status == _ACTIVE,
+            Quiz.status == QuizStatus.PUBLISHED.value,
+            Quiz.opens_at <= reference_utc,
+        )
+    )
+
+
+def student_quizzes_page(student_id, reference_utc, page):
+    """One bounded page of the Quizzes this Student may currently see.
+
+    Ordering is ``closes_at DESC, id DESC`` -- the work whose window is
+    still open or most recently closed first, which is what a Student
+    looking for "what do I have to do" needs. Fully deterministic.
+
+    Fetches ``PAGE_SIZE + 1`` rows and drops the extra, so "is there a
+    next page" costs no second query and discloses no total count.
+    """
+    rows = (
+        _student_visible_quiz_query(student_id, reference_utc)
+        .order_by(Quiz.closes_at.desc(), Quiz.id.desc())
+        .offset((page - 1) * PAGE_SIZE)
+        .limit(PAGE_SIZE + 1)
+        .all()
+    )
+    has_next = len(rows) > PAGE_SIZE
+    return rows[:PAGE_SIZE], has_next
+
+
+def student_quiz(student_id, group_public_id, quiz_public_id, reference_utc):
+    """One visible Quiz plus its authorized hierarchy context, or ``None``.
+
+    Adds only the two nested public-id predicates to the shared visibility
+    query, so a draft, a not-yet-open Quiz, a Quiz whose ``public_id``
+    belongs to another Group, a withdrawn or missing Enrollment, an
+    archived ancestor and a simply non-existent id all produce no row --
+    and the route turns every one of them into the identical
+    non-disclosing 404.
+    """
+    return (
+        _student_visible_quiz_query(student_id, reference_utc)
+        .filter(
+            Quiz.public_id == quiz_public_id,
+            Group.public_id == group_public_id,
+        )
+        .first()
+    )
+
+
+def attempt_counts_by_quiz(student_id, quiz_ids):
+    """``{quiz_id: attempt_count}`` for at most one page of Quizzes.
+
+    **One** grouped statement for the whole page rather than a lookup per
+    row, so the Student list's cost does not grow with how many Quizzes it
+    shows. Resolves through ``uq_quiz_attempts_quiz_student_number``'s
+    leftmost columns.
+    """
+    ids = [quiz_id for quiz_id in quiz_ids if quiz_id is not None]
+    if not ids:
+        return {}
+    rows = (
+        db.session.query(QuizAttempt.quiz_id, func.count(QuizAttempt.id))
+        .filter(QuizAttempt.quiz_id.in_(ids), QuizAttempt.student_id == student_id)
+        .group_by(QuizAttempt.quiz_id)
+        .all()
+    )
+    return {quiz_id: int(count) for quiz_id, count in rows}
+
+
+def build_student_quiz_item(row, tz_name, reference_utc, attempts_used=0):
+    """One plain presentation dict for a Student-visible Quiz.
+
+    Only display strings, localized times, public ids and the Student's
+    own attempt count. **No answer key, no question content, no
+    ``is_correct`` and no internal id** -- none of that is even selected
+    by the query behind it.
+    """
+    from app.services.quiz_attempts import STATE_LABELS, availability_state
+
+    quiz, group, course, level, term = row
+    state = availability_state(quiz, reference_utc)
+    return {
+        "public_id": quiz.public_id,
+        "group_public_id": group.public_id,
+        "title": quiz.title,
+        "group_name": group.name,
+        "course_title": course.title,
+        "level_name": level.name,
+        "term_name": term.name,
+        "opens_local": to_app_local(tz_name, quiz.opens_at),
+        "closes_local": to_app_local(tz_name, quiz.closes_at),
+        "time_limit_minutes": quiz.time_limit_minutes,
+        "attempt_limit": quiz.attempt_limit,
+        "attempts_used": attempts_used,
+        "attempts_left": max(quiz.attempt_limit - attempts_used, 0),
+        "state": state,
+        "state_label": STATE_LABELS.get(state),
+        "is_open": state == "open",
+    }
+
+
+def build_student_quiz_view(rows, tz_name, reference_utc, counts):
+    """:func:`build_student_quiz_item` over one page of rows."""
+    return [
+        build_student_quiz_item(row, tz_name, reference_utc, counts.get(row[0].id, 0))
+        for row in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Taking an attempt -- bounded navigation and one question at a time
+# ---------------------------------------------------------------------------
+
+
+def question_navigation(quiz_id, question_public_id):
+    """``(position, total, previous_public_id, next_public_id)`` for one
+    question, or ``None`` when it does not belong to this Quiz.
+
+    **One bounded statement** answers all four: at most
+    ``MAX_QUIZ_QUESTIONS + 1`` ``(id, public_id)`` pairs in authored
+    order. Position and neighbours are then list arithmetic, so Previous
+    and Next are correct across ``display_order`` gaps and across the
+    Teacher list's page boundaries alike -- they follow the complete
+    authored order, never the rendered page.
+
+    Nothing here loads a prompt or an option, and the internal ids never
+    leave this function.
+    """
+    rows = (
+        db.session.query(QuizQuestion.public_id)
+        .filter(QuizQuestion.quiz_id == quiz_id)
+        .order_by(QuizQuestion.display_order.asc(), QuizQuestion.id.asc())
+        .limit(MAX_QUIZ_QUESTIONS + 1)
+        .all()
+    )
+    public_ids = [row.public_id for row in rows]
+    try:
+        index = public_ids.index(question_public_id)
+    except ValueError:
+        return None
+    total = len(public_ids)
+    return (
+        index + 1,
+        total,
+        public_ids[index - 1] if index > 0 else None,
+        public_ids[index + 1] if index + 1 < total else None,
+    )
+
+
+def first_question_public_id(quiz_id):
+    """The Quiz's first question in authored order, or ``None``."""
+    row = (
+        db.session.query(QuizQuestion.public_id)
+        .filter(QuizQuestion.quiz_id == quiz_id)
+        .order_by(QuizQuestion.display_order.asc(), QuizQuestion.id.asc())
+        .limit(1)
+        .first()
+    )
+    return row.public_id if row is not None else None
+
+
+def attempt_selected_option_ids(attempt_id, question_id):
+    """The option ids this attempt currently has saved for one question.
+
+    Bounded by the option maximum, and restricted to **active** options so
+    a retired row could never be re-rendered as a live selection.
+    """
+    rows = (
+        db.session.query(QuizAnswerSelection.option_id)
+        .join(QuizAnswer, QuizAnswer.id == QuizAnswerSelection.answer_id)
+        .join(QuestionOption, QuestionOption.id == QuizAnswerSelection.option_id)
+        .filter(
+            QuizAnswer.attempt_id == attempt_id,
+            QuizAnswer.question_id == question_id,
+            QuestionOption.is_active.is_(True),
+        )
+        .limit(MAX_ACTIVE_OPTIONS + 1)
+        .all()
+    )
+    return {row.option_id for row in rows}
+
+
+def build_student_option_rows(options, selected_option_ids):
+    """The option rows a Student sees while answering.
+
+    **``is_correct`` is deliberately not read and not carried.** The
+    answer key never reaches a Student page, a form value, a URL or a
+    token -- not while the Quiz is open, and not after it closes.
+    """
+    return [
+        {
+            "public_id": option.public_id,
+            "text": option.option_text,
+            "selected": option.id in selected_option_ids,
+        }
+        for option in options
+    ]
+
+
+def answered_question_ids(attempt_id, question_ids):
+    """Which of these questions the attempt has a saved answer for.
+
+    One bounded statement over at most one Quiz's worth of ids, used for
+    the progress indicator and the unanswered-question confirmation.
+    """
+    if not question_ids:
+        return set()
+    rows = (
+        db.session.query(QuizAnswer.question_id)
+        .filter(
+            QuizAnswer.attempt_id == attempt_id,
+            QuizAnswer.question_id.in_(question_ids),
+        )
+        .all()
+    )
+    return {row.question_id for row in rows}
+
+
+# ---------------------------------------------------------------------------
+# Teacher attempt review
+# ---------------------------------------------------------------------------
+
+
+ATTEMPT_PAGE_SIZE = 20
+
+
+def teacher_attempts_page(quiz_id, page):
+    """One bounded page of a Quiz's attempts, newest first.
+
+    Returns ``(rows, has_next)`` where each row carries the attempt
+    columns **and** the Student's display name from the same joined
+    statement -- so the page costs a fixed number of queries no matter how
+    many attempts it shows, and never a name lookup per row.
+
+    Ordering is ``started_at DESC, id DESC``, mirroring
+    ``ix_quiz_attempts_quiz_started_id``. ``LIMIT ATTEMPT_PAGE_SIZE + 1``
+    supplies the has-next flag with no ``COUNT`` over a table that grows
+    with every attempt ever taken.
+
+    The ``users`` join also re-proves the row belongs to a Student: a
+    foreign key never proves a role.
+    """
+    rows = (
+        db.session.query(
+            QuizAttempt.public_id,
+            QuizAttempt.attempt_number,
+            QuizAttempt.status,
+            QuizAttempt.started_at,
+            QuizAttempt.deadline_at,
+            QuizAttempt.submitted_at,
+            QuizAttempt.correct_count,
+            QuizAttempt.total_questions,
+            User.full_name.label("student_name"),
+        )
+        .join(User, QuizAttempt.student_id == User.id)
+        .filter(
+            QuizAttempt.quiz_id == quiz_id,
+            User.role == UserRole.STUDENT.value,
+        )
+        .order_by(QuizAttempt.started_at.desc(), QuizAttempt.id.desc())
+        .offset((page - 1) * ATTEMPT_PAGE_SIZE)
+        .limit(ATTEMPT_PAGE_SIZE + 1)
+        .all()
+    )
+    has_next = len(rows) > ATTEMPT_PAGE_SIZE
+    return rows[:ATTEMPT_PAGE_SIZE], has_next
+
+
+def teacher_attempt(quiz_id, attempt_public_id):
+    """One attempt by its own ``public_id``, **constrained to `quiz_id`**,
+    or ``None``.
+
+    The Quiz constraint is the whole point: an attempt ``public_id`` valid
+    only under another Quiz produces no row, and the route turns that into
+    the same non-disclosing 404 a missing attempt produces.
+    """
+    return QuizAttempt.query.filter_by(
+        public_id=attempt_public_id, quiz_id=quiz_id
+    ).first()
+
+
+def attempt_review_rows(quiz_id, attempt_id):
+    """Everything the Teacher attempt-detail page renders, in **four**
+    bounded statements regardless of Quiz size.
+
+    Returns a list of per-question dicts carrying the prompt, the answer
+    mode, every active option with both what the Student selected **and**
+    what the Teacher authored as correct, and the derived per-question
+    result. A Teacher is authorized to see the answer key; a Student
+    never is, which is why this builder is separate from
+    :func:`build_student_option_rows` rather than a flag on it.
+
+    Never one query per question or per answer.
+    """
+    from app.models import QuestionAnswerMode
+    from app.services.quiz_attempts import (
+        correct_option_ids_by_question,
+        selected_option_ids_by_question,
+    )
+
+    questions = (
+        db.session.query(
+            QuizQuestion.id,
+            QuizQuestion.public_id,
+            QuizQuestion.prompt,
+            QuizQuestion.answer_mode,
+        )
+        .filter(QuizQuestion.quiz_id == quiz_id)
+        .order_by(QuizQuestion.display_order.asc(), QuizQuestion.id.asc())
+        .limit(MAX_QUIZ_QUESTIONS + 1)
+        .all()
+    )
+    question_ids = [question.id for question in questions]
+    if not question_ids:
+        return []
+
+    options_by_question = defaultdict(list)
+    option_rows = (
+        db.session.query(
+            QuestionOption.id,
+            QuestionOption.question_id,
+            QuestionOption.public_id,
+            QuestionOption.option_text,
+            QuestionOption.is_correct,
+        )
+        .filter(
+            QuestionOption.question_id.in_(question_ids),
+            QuestionOption.is_active.is_(True),
+        )
+        .order_by(QuestionOption.display_order.asc(), QuestionOption.id.asc())
+        .all()
+    )
+    for option in option_rows:
+        options_by_question[option.question_id].append(option)
+
+    answer_key = correct_option_ids_by_question(question_ids)
+    selected = selected_option_ids_by_question(attempt_id)
+
+    review = []
+    for position, question in enumerate(questions, start=1):
+        picked = selected.get(question.id, set())
+        expected = answer_key.get(question.id, set())
+        review.append(
+            {
+                "number": position,
+                "public_id": question.public_id,
+                "prompt": question.prompt,
+                "answer_mode": question.answer_mode,
+                "answer_mode_label": ANSWER_MODE_LABELS.get(
+                    question.answer_mode, question.answer_mode
+                ),
+                "answered": bool(picked),
+                "is_correct": bool(expected) and picked == expected,
+                "options": [
+                    {
+                        "public_id": option.public_id,
+                        "text": option.option_text,
+                        "selected": option.id in picked,
+                        "is_correct": bool(option.is_correct),
+                    }
+                    for option in options_by_question.get(question.id, [])
+                ],
+            }
+        )
+    return review
+
+
+def student_result_rows(quiz_id, attempt_id):
+    """The per-question result a **Student** may see for their own
+    finalized attempt.
+
+    Deliberately a different builder from :func:`attempt_review_rows`:
+    it reports whether each question was right or wrong and nothing else.
+    No option text, no ``is_correct`` flag, no selected/unselected marking
+    and no authored key -- so the answer key cannot leak through the
+    results page even after the Quiz closes. Making that a separate
+    function rather than a boolean argument is the point: there is no
+    flag anyone can pass the wrong way.
+
+    Three bounded statements regardless of Quiz size.
+    """
+    from app.services.quiz_attempts import (
+        correct_option_ids_by_question,
+        selected_option_ids_by_question,
+    )
+
+    questions = (
+        db.session.query(QuizQuestion.id)
+        .filter(QuizQuestion.quiz_id == quiz_id)
+        .order_by(QuizQuestion.display_order.asc(), QuizQuestion.id.asc())
+        .limit(MAX_QUIZ_QUESTIONS + 1)
+        .all()
+    )
+    question_ids = [question.id for question in questions]
+    if not question_ids:
+        return []
+
+    answer_key = correct_option_ids_by_question(question_ids)
+    selected = selected_option_ids_by_question(attempt_id)
+
+    rows = []
+    for position, question_id in enumerate(question_ids, start=1):
+        picked = selected.get(question_id, set())
+        expected = answer_key.get(question_id, set())
+        rows.append(
+            {
+                "number": position,
+                "answered": bool(picked),
+                "is_correct": bool(expected) and picked == expected,
+            }
+        )
+    return rows

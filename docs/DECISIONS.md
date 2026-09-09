@@ -4379,26 +4379,36 @@ Question authoring was the next bounded step and was **not** implemented
 in M04A. Publication, Student attempts, timers, grading and results are
 deferred beyond it. Nothing in this Part is a placeholder for any of them.
 
-> **Superseded in part by Phase 4 / M04B.** Ordered multiple-choice
-> questions and their answer options now exist -- see
-> "Multiple-choice question authoring (Phase 4, Part M04B)" below.
-> Everything M04A decided about Group ownership, draft-by-construction
-> semantics, authorization, locking, stale-form handling, query bounds and
-> the Group identity freeze is unchanged and still current; only the
-> statements that *no question surface exists* are superseded, and they
-> were true of the M04A candidate that was verified and accepted. This
-> section is not rewritten as if M04A had implemented questions.
+> **Superseded in part by Phase 4 / M04B and M04D.** Ordered
+> multiple-choice questions and their answer options now exist (M04B), and
+> so do publication, Student attempts, automatic grading and results
+> (M04D) -- see those sections below. Everything M04A decided about Group
+> ownership, Teacher authorization, locking, stale-form handling, query
+> bounds and the Group identity freeze is unchanged and still current.
+> What is superseded is narrower: the statements that *no question surface
+> exists*, that a Quiz is *a draft by construction* rather than by status,
+> and that *no Student can reach a Quiz at all*. Each was true of the
+> candidate that was verified and accepted at the time. These sections are
+> not rewritten as if M04A had implemented any of it.
 
 ### A. A draft by construction, not a draft by status
 
-There is no `status` column, no `published_at`, no opening or closing
-time and no timer on `quizzes` -- not as a disabled control, not as an
-enum value, not as a nullable column. A Quiz is a draft because **nothing
-in the application can publish one**: there is no publication route, no
-Student list, detail, search projection, notification or dashboard read,
-and no Administrator or Researcher quiz surface. Every Teacher page says
-"Draft" and states in words that Students cannot see it, open it or
-answer it.
+**Superseded by Phase 4 / M04D**, which adds the approved lifecycle:
+`status`, `opens_at`, `closes_at`, `time_limit_minutes`, `attempt_limit`
+and `published_at`. A Quiz is now a draft because its `status` says so,
+and it reaches Students only once a Teacher publishes it and its opening
+moment arrives. What M04A recorded, and why, is kept below because the
+reasoning still governs the **draft** state.
+
+In M04A there was no `status` column, no `published_at`, no opening or
+closing time and no timer on `quizzes` -- not as a disabled control, not
+as an enum value, not as a nullable column. A Quiz was a draft because
+**nothing in the application could publish one**: there was no
+publication route, no Student list, detail, search projection,
+notification or dashboard read, and no Administrator or Researcher quiz
+surface. Every Teacher page said "Draft" and stated in words that
+Students could not see it, open it or answer it. A **draft** Quiz is
+still exactly that today.
 
 **A draft with no questions is a legitimate state.** M04A has no
 questions at all, so an empty draft is not incomplete work waiting to be
@@ -4421,11 +4431,13 @@ phases or next steps. What a Teacher needs to know is the draft's status,
 that Students cannot see it, that co-teachers share it, and that it
 becomes read-only under an archived hierarchy.
 
-Deferring publication this way is deliberate: adding a `status` column
-now would require deciding what publishing *means* for a quiz -- when
-Students may open it, whether a timer starts, what happens to an attempt
-in progress, whether answers are released -- and none of that is decided.
-A column added before its rule is a rule invented by omission.
+Deferring publication that way was deliberate: adding a `status` column
+then would have required deciding what publishing *means* for a quiz --
+when Students may open it, whether a timer starts, what happens to an
+attempt in progress, whether answers are released -- and none of that was
+decided. A column added before its rule is a rule invented by omission.
+M04D decided each of those questions explicitly before adding the
+columns, which is the order this rule was protecting.
 
 ### B. Ownership is the Group, and collaboration is equal
 
@@ -4739,10 +4751,14 @@ boundary M04A stopped at.
   when a question is changed to single-answer mode: the Teacher decides
   explicitly, and correct answers are never silently dropped.
 
-This approval carries **no** decision about Student attempts, a scoring
+This approval carried **no** decision about Student attempts, a scoring
 rule, partial credit, a pass/fail policy, an answer-release policy, or
-any publication behaviour. Those remain undecided after M04B as well, and
-no placeholder is left for them.
+any publication behaviour; none of those existed after M04B either.
+
+Phase 4 / M04D subsequently decided and implemented publication, Student
+attempts and **whole-question exact-set scoring**. Partial credit, a
+pass/fail policy and any answer-release policy remain undecided and
+unimplemented, and no placeholder is left for them.
 
 ### K. Deliberate deferrals
 
@@ -4750,8 +4766,10 @@ No placeholder table, column, route, UI element, enum value, counter or
 TODO was added for any of the following.
 
 Quiz lifecycle: publication, unpublication, scheduling, opening and
-closing times, timers, availability windows, delete, soft delete,
-archiving, duplication, templates, import/export and question banks.
+closing times, timers and availability windows were deferred by M04A and
+are **implemented in M04D**. Delete, soft delete, archiving, duplication,
+templates, import/export and question banks remain deferred in every
+Part, with no placeholder for any of them.
 
 Questions and answers: question rows, option rows, ordering columns and
 correct-answer keys were deferred by M04A and are **implemented in M04B**.
@@ -4759,12 +4777,16 @@ Question types beyond multiple choice, media in questions and
 per-question feedback remain deferred in both Parts, with no placeholder
 for any of them.
 
-Attempts and grading: Student attempts, attempt limits, autosave,
-in-progress state, submissions, scores, partial credit, pass/fail,
-grade release, retakes, results pages and Administrator grade reports.
+Attempts and grading: Student attempts, attempt limits, in-progress
+state, submissions, whole-question scores, retakes and results pages were
+deferred by M04A and are **implemented in M04D**. Autosave, partial
+credit, pass/fail, grade release and Administrator grade reports remain
+deferred, with no placeholder for any of them.
 
-Student surface: any Student list, detail, search projection,
-notification, dashboard section or receipt mentioning a quiz.
+Student surface: M04A had none at all. **M04D adds the approved Student
+list, detail, attempt and result pages** for *published* quizzes only. A
+search projection, a notification and a dashboard section mentioning a
+quiz remain deferred, with no placeholder for any of them.
 
 Everything else: email, reminders, background jobs, review queues,
 aggregate counters, dashboard metrics, progress and completion, exports,
@@ -5288,16 +5310,21 @@ Part.
 No placeholder table, column, route, UI element, enum value, counter or
 TODO was added for any of the following.
 
-Publication and timing: quiz publication or publication states, scheduling,
-opening and closing times, timers, availability windows, and any Student
-visibility of a quiz, a question or an option.
+Publication and timing: publication, scheduling, opening and closing
+times, timers, availability windows and Student visibility of a published
+quiz were deferred by M04B and are **implemented in M04D**. A Student
+still never sees a draft, a question of a draft, or any option's
+correctness.
 
 Attempts and results: Student attempts, attempt limits, saved answers,
-autosave, in-progress state, submissions, results pages and retakes.
+in-progress state, submissions, results pages and retakes were deferred by
+M04B and are **implemented in M04D**. Autosave remains deferred.
 
-Scoring and grading: scores, points, weights, partial credit, grading,
-pass/fail, gradebook integration, progress calculations, answer release
-and per-question feedback.
+Scoring and grading: **whole-question, one-point exact-set scoring is
+implemented in M04D**. Points per option, weights, partial credit, manual
+grading, pass/fail, gradebook integration, progress calculations, answer
+release and per-question feedback all remain deferred, with no placeholder
+for any of them.
 
 Question shapes: randomization, question banks, copying, importing,
 exporting, media in questions, listening questions, fill-in-the-blank,
@@ -5429,3 +5456,432 @@ The owner restored the pre-M4 working method for subsequent Parts: the agent
 implementing a Part also runs and reports its technically available checks.
 The temporary M4-only split between Claude implementation and Codex-owned
 verification no longer governs new work.
+
+
+## End-to-end multiple-choice Quiz attempts and grading (Phase 4, Part M04D)
+
+M04D completes the approved multiple-choice Quiz track on top of the
+accepted M04A authoring foundation, the M04B question authoring and the
+M04C schema. A Teacher configures availability and publishes a valid
+authored Quiz; an eligible Student starts a bounded attempt, navigates the
+questions, saves selections and submits; the server grades automatically
+by exact-set matching; the Student sees a safe result; and an authorized
+Teacher reads the attempts.
+
+Deferred with **no** placeholder table, column, route, enum value, form
+field, template hook or TODO: true/false, fill-in-the-blank, short-answer,
+listening and media questions; manual grading; partial credit; releasing
+correct answers to Students; gradebook, certificates, progress metrics and
+notifications.
+
+### A. The publication lifecycle
+
+`QuizStatus` is a closed two-member set -- `draft` and `published`. It is
+deliberately its own enum rather than a reuse of `AssignmentStatus` or
+`LessonStatus`: the three objects publish independently, and a change to
+one must never silently redefine another. There is no `archived`,
+`closed` or `graded` member, because *closed* is a fact about the clock,
+not a stored state.
+
+New Quiz columns: `status`, `opens_at`, `closes_at`, `time_limit_minutes`,
+`attempt_limit`, `published_at`. Every existing Quiz became a `draft` with
+`published_at` NULL and `attempt_limit` 1.
+
+Row-local invariants are CHECK constraints, as the final defense behind
+the application rules:
+
+- `ck_quizzes_status_valid` -- the closed status set, rendered once from
+  the enum so the `@validates` guard and the schema cannot drift.
+- `ck_quizzes_availability_window` -- the window is a **pair**: either
+  both moments are absent, or both are present and `opens_at <
+  closes_at`. A half-configured window is exactly the state that would let
+  publication proceed with "until when?" undecided.
+- `ck_quizzes_time_limit_range` -- NULL, or 1..300 minutes. The ceiling is
+  deliberate rather than an unbounded integer: a typo must not create an
+  attempt that never ends.
+- `ck_quizzes_attempt_limit_range` -- 1..10, never NULL. There is
+  deliberately **no** "unlimited" value: nobody decided what unlimited
+  would mean for a graded attempt, and NULL would mean two things at once.
+- `ck_quizzes_status_published_at_consistency` -- a draft has no
+  publication time; a published Quiz has one.
+
+**Derived availability is never stored.** *Opens later* / *Open now* /
+*Closed* are computed from one injected reference moment per request, so
+the passage of time can never leave a stale value in a column. The
+boundaries are half-open and exact: `now == opens_at` is already open and
+`now == closes_at` is already closed -- the same convention M01 uses for
+`due_at`, and what makes the "at exactly this second" tests meaningful.
+
+**Publishing requires**, re-checked against the locked rows: an
+operational Group / Term / Course / Level chain, both availability
+moments, between 1 and `MAX_QUIZ_QUESTIONS` (100) questions, and every
+question structurally valid (2..8 active options) and satisfying its M04B
+answer-cardinality rule. `publication_blockers` returns **all** failures
+rather than the first, so a Teacher fixes one Quiz instead of
+rediscovering the next problem on each attempt -- and the read-only
+readiness panel calls exactly the same function the write path does, so
+the page a Teacher reads and the rule that decides cannot disagree.
+
+Publishing sets `status`, stamps `published_at` with a fresh whole-second
+UTC moment, and increments `Quiz.version` exactly once.
+
+### B. Two freezes, and they are different
+
+**Publication freezes the authored Quiz.** While published, the metadata,
+the availability settings, the questions and their order, the prompts, the
+options and their order, and the answer keys are all read-only, because
+Students may already be reading exactly that wording.
+
+**The first attempt freezes it permanently.** From the moment any attempt
+row exists, the Quiz can no longer be withdrawn or edited at all --
+somebody's answers are now answers *to* that wording, and rewriting it
+afterwards would change what their attempt was for. An expired attempt
+with no saved answers counts exactly like a submitted one: a Student still
+read that exact Quiz.
+
+Withdrawing is therefore permitted **only** while no attempt exists. It
+returns the Quiz to `draft`, clears `published_at` and increments
+`Quiz.version` once.
+
+`_authoring_block` checks the attempt freeze **first**, because it is the
+stronger and permanent one: a Teacher whose Quiz has attempts must not be
+told to "withdraw it first", which would send them at a door that is
+already locked. It is applied post-lock on every authoring route -- Quiz
+edit, settings, question create, question edit and both moves -- and again
+as a courtesy on the form-render paths, so a bookmarked or forged request
+is refused exactly like a clicked one.
+
+### C. Attempts
+
+`QuizAttemptStatus` is a closed three-member set: `in_progress`,
+`submitted`, `expired`. Both terminal states are graded and immutable and
+differ only in *how* the attempt ended, which both the Student and the
+Teacher deserve to know. There is no `abandoned`, `paused`, `graded` or
+`released` member: grading happens exactly once, at finalization.
+
+`QuizAttempt` belongs to one Quiz and one Student and stores
+`attempt_number`, `status`, the `quiz_version` it was started against,
+`started_at`, the authoritative `deadline_at`, a nullable `submitted_at`,
+and the nullable `correct_count` / `total_questions`.
+
+- `uq_quiz_attempts_quiz_student_number` is the final defense behind the
+  server-owned attempt number. Two concurrent starts cannot both claim the
+  same number; the loser catches the `IntegrityError`, re-reads, and
+  **returns the winner's attempt** rather than reporting a failure the
+  Student cannot act on.
+- **At most one `in_progress` attempt per Student and Quiz** is a
+  cross-row rule, so it is enforced against the locked rows rather than by
+  a partial unique index, which is not portable. A repeated valid start
+  returns the existing attempt instead of creating a duplicate.
+- `ck_quiz_attempts_status_finalization_consistency` ties the three states
+  to their columns: `in_progress` has no `submitted_at` and no counts;
+  `submitted` has both; `expired` has counts but **no** `submitted_at` --
+  an expired attempt was never submitted, and recording otherwise would
+  misreport what the Student did.
+- `ck_quiz_attempts_counts_range` keeps `0 <= correct_count <=
+  total_questions`.
+
+**Eligibility** is the SQL `WHERE` clause of one shared query,
+`_student_visible_quiz_query`, exactly as M01 does for Assignments: the
+acting user is that Student with the Student role and an active account,
+holds an **active** Enrollment in the Quiz's Group, the whole academic
+chain is active, the Quiz is `published`, and `opens_at` has been reached.
+A draft, a not-yet-open Quiz, another Group's public id, a withdrawn
+Enrollment, an archived ancestor and a nonexistent id all produce the
+identical non-disclosing 404. Every attempt lookup is additionally scoped
+to **both** the authorized Quiz and the authenticated `student_id`.
+
+**Reading survives `closes_at`; starting does not.** A closed Quiz stays
+visible so a Student can always reach their receipt, but no attempt may
+start at or after the closing moment.
+
+### D. Deadlines and request-driven expiry
+
+`deadline_at` is computed **once, at start**, and stored: without a Quiz
+time limit it equals `closes_at`; with one it is the **earlier** of
+`closes_at` and `started_at + time_limit_minutes`. A limit must never let
+an attempt run past the window, and the window must never extend a limit.
+Storing it means a later change to the Quiz could not move a running
+attempt's deadline -- and the Quiz cannot change anyway once an attempt
+exists, so the stored value and the rule agree by construction.
+
+**The server clock is authoritative.** When any authorized read or write
+observes an `in_progress` attempt at or past its deadline, it finalizes
+that attempt **once** as `expired` under the required locks and grades
+whatever was saved, counting unanswered questions as incorrect. That is
+what makes expiry request-driven rather than a background job: no page can
+show a Student or a Teacher an attempt that claims to be running when its
+deadline is behind it, and two observers of the same expiry cannot
+disagree. It is idempotent -- `finalize_attempt` refuses on an
+already-finalized attempt rather than overwriting -- and bounded to
+`SETTLE_BATCH` (20) attempts per request, so a long attempt history can
+never turn one GET into an unbounded write.
+
+`app/static/js/quiz_timer.js` renders the remaining time and visually
+disables the local controls at zero. It **never** decides expiry and never
+submits: auto-submitting from the browser would make the outcome depend on
+whether a tab was still open, and a Student whose clock is wrong, whose
+JavaScript is disabled, or who edits the file gains nothing at all.
+
+### E. Answers and selections
+
+A `QuizAnswer` is a container, not a value: which options were picked
+lives in `QuizAnswerSelection` rows beneath it, because a multiple-answer
+question legitimately holds several. A delimited string of ids in one
+column would be a second, unconstrained encoding of a relationship the
+database can already enforce.
+
+**A row exists only where the Student actually answered.** An unanswered
+question has no `QuizAnswer` at all -- not a row with an empty selection
+set -- so "did not answer" and "answered with nothing" never become two
+spellings of the same thing. Grading counts *questions*, not answers,
+which is exactly why an unanswered question costs what a wrong one does.
+
+Saving **replaces** the selection set atomically: the previous rows are
+deleted and the new ones inserted inside the **same** transaction, so no
+reader observes a half-replaced set and a failure leaves the previous set
+intact. That delete is the one place in the Quiz aggregate where rows are
+removed, and it is confined to selections of an attempt that is still
+`in_progress` -- it discards a draft answer the same Student is still
+editing, never authored content and never a finalized result.
+
+Only **active options of that exact question** are accepted, proved
+against the locked rows. A retired option, another question's option,
+another Quiz's option, a repeated identifier and an invented string are
+all refused identically and generically -- which one it was must not be
+distinguishable.
+
+Cardinality **while saving** is deliberately looser than grading: a
+single-answer question needs exactly one selection, a multiple-answer
+question at least one. Final correctness still requires the complete exact
+set. A Student is allowed to save a partial answer and come back to it;
+that is a saving rule, not a grading one.
+
+Once the attempt is `submitted` or `expired`, the attempt, its answers and
+its selections are immutable.
+
+### F. Grading
+
+**Exact-set matching, one point or zero.** A question is correct only when
+the set of active option ids the Student selected equals the authored
+correct active option id set, exactly. A subset, a superset, a different
+set of the same size and an unanswered question all score zero. A question
+whose authored key is empty scores zero too and never "matches" an
+unanswered question -- an empty intersection of two empty sets must not be
+read as a right answer.
+
+There is deliberately **no** partial credit, no per-option points, no
+penalty, no weighting, no rounding rule and no pass/fail: each would be a
+policy decision this Part is not entitled to invent.
+
+`correct_count` and `total_questions` are persisted as two integers; the
+percentage is **derived at read time**. Storing a rounded float as well
+would create a second source of truth that could disagree with the counts
+printed beside it.
+
+A successful submission stamps `submitted_at` with the authoritative
+whole-second UTC moment, sets `status`, persists the totals and freezes
+everything. **A replayed submission returns the existing result** and
+changes no timestamp, counter, answer, selection or grade.
+
+Unanswered questions are allowed but require an explicit confirmation, so
+nobody submits a half-finished attempt by reflex.
+
+### G. The answer key never reaches a Student
+
+No Student-facing query selects `QuestionOption.is_correct`, no dict a
+Student page builds carries it, and no token contains it -- so it cannot
+leak through a page, a form value, a URL, a token or a flash, before,
+during or **after** the Quiz closes.
+
+The Student result page reports the status, the counts, the derived
+percentage and, per question, only whether it was right or wrong. It shows
+no option text, no selected/unselected marking and no key.
+`student_result_rows` and `attempt_review_rows` are **separate functions**
+rather than one function with a flag, precisely so there is no argument
+anybody can pass the wrong way.
+
+A Teacher assigned to the Group is authorized to see the key, and does:
+paginated attempt summaries, attempt details, the Student's saved
+selections and the authored correct answers side by side. A Teacher
+**cannot** edit an attempt, override a score, grade manually or change a
+finalized selection -- no such route exists.
+
+### H. Locking
+
+The established single-reset academic prefix is preserved and extended
+deterministically, with `lock_academic_hierarchy` owning the one
+deliberate reset:
+
+    AcademicTerm -> Level -> Course -> Group -> acting User
+    -> Enrollment / GroupTeacherAssignment -> Quiz
+    -> QuizAttempt -> QuizQuestion -> QuestionOption
+    -> QuizAnswer -> QuizAnswerSelection
+
+Ascending internal id at every level, never visual or authored order.
+`app/services/quiz_transactions.py` exists so the Teacher and Student
+surfaces share one lock order -- the alternative was one Blueprint
+importing another Blueprint's private helpers, which would couple two
+independent surfaces through their internals.
+
+The **Quiz row is the serialization point** for its whole aggregate: every
+question, option, attempt, answer and selection write locks it first, so
+concurrent authoring, publication, attempt starts and answer saves on one
+Quiz serialize instead of racing. That is what makes the rules only a
+locked aggregate can express -- 1..100 questions, 2..8 options, at most one
+in-progress attempt, the attempt limit -- authoritative rather than
+hopeful.
+
+After locking and **before mutating**, every write path re-checks the
+actor's role and active status, the Enrollment or Teacher assignment,
+nested ownership, the academic operational state, the Quiz's publication
+and availability, the attempt's state, the deadline and the attempt limit.
+A failure leaves no partial write.
+
+`IntegrityError` is caught, rolled back **first**, re-authorized from
+current database state using a pre-reset scalar actor id, and only then
+answered with a generic safe message -- no SQL, parameters, driver output,
+internal id or existence disclosure.
+
+Locks and signed tokens solve different problems and both are kept: a lock
+serializes concurrent writers, a token detects that the state a form was
+written against has since changed.
+
+### I. Signed state
+
+Dedicated M04D salts and exact purpose markers, for settings, publication,
+answer saves and submission. A token minted under any other salt --
+including every earlier Part's -- fails signature verification.
+
+- **settings** binds the actor, Group, Quiz and expected `Quiz.version`.
+- **publication** additionally binds the **action** (publish / withdraw)
+  and the Quiz's current **status**, so a Publish control cannot be
+  replayed as a Withdraw, nor either replayed once the Quiz has moved.
+- **answer** binds the actor, Group, Quiz, attempt, question,
+  `Quiz.version` and the **attempt's status**. Binding the status is what
+  makes a form opened while the attempt was running fail closed once it
+  has been submitted or has expired -- a lock alone would happily write
+  into a finalized attempt.
+- **submission** binds the same minus the question.
+
+Payloads are validated exactly and by type: the key set must match, the
+purpose / action / status must be known values, identifiers must be
+strings, and versions must be genuine positive `int`s -- `bool` is
+excluded explicitly, since it is an `int` subclass and `True` must never
+pass as version 1.
+
+**Only public identifiers appear.** A signed token is authenticated, not
+encrypted, so no prompt text, option text, selected answer or
+correct-answer data is ever placed in one.
+
+Stale, malformed and replayed forms fail closed: the attempted values are
+discarded, the transaction is rolled back, and the Teacher or Student is
+redirected through Post/Redirect/Get to freshly loaded persisted state. A
+fresh token is paired only with freshly loaded values -- never with
+attempted ones.
+
+### J. Query bounds
+
+Fixed pagination of 20 with `LIMIT 21` for the next-page flag and **no**
+total-count query, on the Student Quiz list and the Teacher attempt list.
+Ordering is fully deterministic.
+
+The question-taking page fetches only the current question, its bounded
+active options, this attempt's saved selections for it, the two neighbour
+identifiers and a bounded progress count -- never the whole Quiz. One
+bounded statement over at most 101 `public_id`s answers position, total,
+previous and next together, so Previous/Next follow the complete authored
+order and are correct across `display_order` gaps and across page
+boundaries alike.
+
+The Teacher attempt list joins the Student name into the same statement.
+The Teacher attempt detail builds the whole page in four bounded reads,
+and the Student result page in three -- never one query per question or
+per answer. Two tests prove that by rendering the same page for a
+2-question and a 20-question Quiz and asserting the statement counts are
+**equal**, rather than merely small.
+
+Two new indexes, each with one justification:
+`ix_quizzes_group_status_opens_id` (`group_id`, `status`, `opens_at`,
+`id`) is the Student visibility read -- two equality columns, then the
+range, then the tie-break; `ix_quiz_attempts_quiz_started_id` (`quiz_id`,
+`started_at`, `id`) is the Teacher attempt list.
+`uq_quiz_attempts_quiz_student_number` doubles as the "this Student's
+attempts at this Quiz" read and gives `quiz_id` its foreign-key prefix;
+`student_id`, `question_id` and `option_id` carry their own indexes
+because nothing above leads with them.
+
+**No MySQL execution plan has been measured for any of these tables.** As
+with every earlier Part, this is a reasoned design pending an authorized
+real `EXPLAIN`.
+
+Every content-bearing Teacher and Student Quiz or attempt response --
+including form-error renders -- carries `Cache-Control: private, no-store`
+and `Vary: Cookie`. All authored text is autoescaped; nothing is rendered
+with `|safe`.
+
+### K. Migration
+
+One additive revision, `7a4f19c6b8de`, after `5d2c8a4e91f7`.
+
+`status` and `attempt_limit` are added with **temporary explicit server
+defaults**, because MySQL cannot add a NOT NULL column to a populated
+table without one; both defaults are dropped immediately afterwards, since
+the final models declare none and leaving one behind would let a future
+insert silently omit the value. Every pre-existing Quiz therefore ends up
+`draft` / `published_at` NULL / `attempt_limit` 1, with its title,
+version, timestamps and public id untouched -- which the isolated probe
+executes rather than asserts.
+
+No unrelated table is altered and no data is seeded. The downgrade
+reverses everything in exact reverse dependency order and returns
+`quizzes` to its M04C shape.
+
+**A note on the SQLite probe.** Adding a CHECK constraint or dropping a
+column on SQLite requires Alembic's batch mode to recreate the table, and
+a recreate with foreign keys enforced would trip the child tables that
+reference `quizzes`. The probe therefore uses SQLite's own documented
+table-rebuild procedure -- `PRAGMA foreign_keys=OFF` around the migration
+-- and then re-enables them and **verifies** with `PRAGMA
+foreign_key_check` that the rebuild left no dangling reference. MySQL, the
+real target, performs no rebuild at all: it adds and drops columns and
+constraints in place.
+
+### L. Verification actually performed, and honest limitations
+
+- The full strict-warning suite was executed once on the final candidate;
+  the exact result is recorded in the Part's handoff.
+- The migration was executed in **both** directions against an isolated
+  temporary SQLite database seeded with the prerequisite tables and a
+  representative existing Quiz row, and the MySQL DDL was compiled offline
+  (dialect-only, no connection) and inspected.
+- The migration was applied to the **development** MySQL database after
+  confirming it stood at the expected `5d2c8a4e91f7`, and the resulting
+  head, columns, constraints, indexes, foreign keys and the preservation
+  of existing Quiz rows were read back from that database. No other
+  database was contacted.
+- **Automated tests run on SQLite in memory.** They validate application
+  logic, SQL scoping, query structure, model/schema alignment and the
+  *requested* lock order. They do **not** prove MySQL/InnoDB row blocking,
+  isolation, collation or index plans.
+- The concurrency tests are **structural**: SQLite has no
+  `SELECT ... FOR UPDATE` and no REPEATABLE READ snapshot isolation, so
+  they assert the requested reset and lock order and exercise the
+  post-lock rechecks by injecting a state change at an exact transaction
+  boundary (a withdrawn Enrollment, a suspended or demoted Student, an
+  archived ancestor, a concurrent unpublish, a raced attempt start, an
+  attempt created inside the withdrawal window). The claim that the Quiz
+  lock serializes competing writers is reasoned, **not measured**.
+- Time is injected rather than waited for, so the availability boundaries,
+  the deadline arithmetic and the expiry cases are exact rather than
+  probabilistic. That proves the decision logic, not real-world clock skew
+  between application servers.
+- **No browser, accessibility, responsive, keyboard or real-concurrency
+  verification was performed**, and **no query plan was measured**. The
+  countdown script in particular is exercised only through the server
+  contract it cannot influence; its own behaviour is unverified by
+  automated tests, which is acceptable precisely because it decides
+  nothing.
+- The 100-question and 2..8-option bounds are row-count rules enforced in
+  the locked application transaction, not CHECK constraints. A stored
+  aggregate that violates them is refused loudly and **never** truncated.

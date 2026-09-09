@@ -104,15 +104,20 @@ def test_group_relationship_both_directions(app):
         assert [q.id for q in group.quizzes] == [quiz.id]
 
 
-def test_no_duplicated_hierarchy_owner_lifecycle_or_future_columns(app):
+def test_no_duplicated_hierarchy_owner_or_denormalized_columns(app):
     """Course / Level / AcademicTerm are reachable through ``quiz.group``
-    and must not be duplicated; there is no creator-owner column; and no
-    placeholder is left for publication, timing, attempts or grading.
+    and must not be duplicated, and there is no creator-owner column.
 
-    Phase 4 / M04B added questions as their own normalized table, so this
-    list still forbids a denormalized ``questions`` / ``question_count``
-    column on ``quizzes`` -- a stored counter would be a second source of
-    truth that every question write would have to keep in step.
+    Phase 4 / M04B added questions as their own normalized table and M04D
+    added the approved publication lifecycle, so ``status``,
+    ``published_at``, ``opens_at``, ``closes_at``, ``time_limit_minutes``
+    and ``attempt_limit`` are now legitimate columns -- the M04A version of
+    this test forbade them, and that is superseded.
+
+    What the list still forbids is unchanged in kind: duplicated hierarchy
+    identity, an owner column, a denormalized ``question_count``, and any
+    scoring or soft-delete placeholder. A stored counter or score would be
+    a second source of truth that every write would have to keep in step.
     """
     with app.app_context():
         columns = {c.name for c in Quiz.__table__.columns}
@@ -125,12 +130,17 @@ def test_no_duplicated_hierarchy_owner_lifecycle_or_future_columns(app):
             "version",
             "created_at",
             "updated_at",
+            "status",
+            "opens_at",
+            "closes_at",
+            "time_limit_minutes",
+            "attempt_limit",
+            "published_at",
         }
         for forbidden in (
             "course_id", "level_id", "academic_term_id", "unit_id", "lesson_id",
             "teacher_id", "created_by", "owner_id",
-            "status", "published_at", "opens_at", "due_at", "closes_at",
-            "time_limit", "time_limit_minutes", "duration_minutes",
+            "due_at", "time_limit", "duration_minutes",
             "question_count", "questions", "max_score", "total_points",
             "pass_mark", "attempts_allowed", "shuffle", "display_order",
             "is_deleted", "deleted_at", "archived_at",
@@ -286,18 +296,27 @@ def test_an_unknown_group_is_rejected(app):
 # ---------------------------------------------------------------------------
 
 
-def test_only_the_one_query_driven_index_exists(app):
-    """The Teacher list is the only read shape in M04A: a single-Group
-    equality ordered ``created_at DESC, id DESC``. No speculative index is
-    declared for a search, a cross-Group listing or a counter, because no
-    such read exists."""
+def test_only_the_two_query_driven_indexes_exist(app):
+    """Exactly one index per real read shape, and no speculative one.
+
+    ``ix_quizzes_group_created_id`` serves M04A's Teacher list (a
+    single-Group equality ordered ``created_at DESC, id DESC``).
+    Phase 4 / M04D added ``ix_quizzes_group_status_opens_id`` for the
+    Student visibility read -- two equality columns, then the
+    ``opens_at <= now`` range, then the deterministic tie-break. There is
+    still no index for a search, a cross-Group listing or a counter,
+    because no such read exists.
+    """
     with app.app_context():
         indexes = {
             i["name"]: list(i["column_names"])
             for i in inspect(db.engine).get_indexes("quizzes")
         }
         assert indexes == {
-            "ix_quizzes_group_created_id": ["group_id", "created_at", "id"]
+            "ix_quizzes_group_created_id": ["group_id", "created_at", "id"],
+            "ix_quizzes_group_status_opens_id": [
+                "group_id", "status", "opens_at", "id"
+            ],
         }
 
 

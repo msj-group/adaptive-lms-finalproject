@@ -1,0 +1,79 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}My Quizzes{% endblock %}
+{% block portal_nav %}
+  {% include "student/_portal_nav.html" %}
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M04D. Every entry is a plain presentation dict produced by the
+    one SQL-scoped Student visibility query, so a draft, a not-yet-open quiz
+    or another group's quiz cannot appear here at all. No answer key is read
+    or carried. Every authored string is autoescaped -- never |safe. -#}
+<h1 style="margin-top: 0">My Quizzes</h1>
+<p class="ds-section__desc">
+  Quizzes your teachers have published for your groups. Times are in the center timezone
+  (<strong>{{ tz_name }}</strong>).
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+{% if quizzes %}
+<div class="dash-scroll">
+<table class="dash-table">
+  <thead>
+    <tr>
+      <th>Quiz</th>
+      <th style="width:12rem">Group</th>
+      <th style="width:10rem">Availability</th>
+      <th style="width:12rem">Closes ({{ tz_name }})</th>
+      <th style="width:8rem">Attempts</th>
+      <th style="width:8rem"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in quizzes %}
+    <tr>
+      <td><strong>{{ item.title }}</strong></td>
+      <td>{{ item.group_name }} &middot; {{ item.course_title }}</td>
+      <td>
+        {% if item.state == "open" %}
+        <span class="badge badge--success">{{ item.state_label }}</span>
+        {% elif item.state == "scheduled" %}
+        <span class="badge badge--primary">{{ item.state_label }}</span>
+        {% else %}
+        <span class="badge badge--neutral">{{ item.state_label }}</span>
+        {% endif %}
+      </td>
+      <td>{{ item.closes_local.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td>{{ item.attempts_used }} of {{ item.attempt_limit }}</td>
+      <td>
+        <a class="btn btn--secondary" href="{{ url_for('student.quiz_detail', group_public_id=item.group_public_id, quiz_public_id=item.public_id) }}">Open</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if has_prev or has_next %}
+<nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Quiz pages">
+  {% if has_prev %}
+  <a class="btn btn--secondary" href="{{ url_for('student.quiz_list', page=page - 1) }}">Previous</a>
+  {% endif %}
+  <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+  {% if has_next %}
+  <a class="btn btn--secondary" href="{{ url_for('student.quiz_list', page=page + 1) }}">Next</a>
+  {% endif %}
+</nav>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">No quizzes yet</div>
+  <div>When a teacher publishes a quiz for one of your groups, it appears here once it opens.</div>
+</div>
+{% endif %}
+{% endblock %}

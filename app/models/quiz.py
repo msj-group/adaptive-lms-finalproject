@@ -1,6 +1,9 @@
 import uuid
 
+from sqlalchemy.orm import validates
+
 from app.extensions import db
+from app.models.enums import QuizStatus
 from app.models.submission_feedback import whole_second_utc
 
 #: The finite input boundary for the unbounded ``instructions`` Text
@@ -16,22 +19,68 @@ QUIZ_INSTRUCTIONS_MAX_LENGTH = 10000
 #: form's ``Length`` validator cannot disagree.
 QUIZ_TITLE_MAX_LENGTH = 150
 
+#: The approved bounds of the optional per-attempt time limit, in whole
+#: minutes (Phase 4 / M04D). 1 is the smallest limit that can mean
+#: anything; 300 (five hours) is a deliberate ceiling rather than an
+#: unbounded integer, so a typo cannot create an attempt that never ends.
+#: Enforced by the form, by the write path, and by
+#: ``ck_quizzes_time_limit_range`` as the final defense.
+MIN_TIME_LIMIT_MINUTES = 1
+MAX_TIME_LIMIT_MINUTES = 300
+
+#: The approved bounds of ``attempt_limit``. 1 is the default -- one
+#: attempt is the ordinary case -- and 10 is the ceiling. There is no
+#: "unlimited" value: an unbounded attempt count is a decision nobody
+#: made, and NULL would mean two different things at once.
+MIN_ATTEMPT_LIMIT = 1
+MAX_ATTEMPT_LIMIT = 10
+
+#: The most questions one Quiz may hold. A row-count rule, so it is
+#: enforced against the locked aggregate when a question is created and
+#: again when the Quiz is published -- never by a CHECK, which cannot
+#: count rows. A Quiz found holding more is refused safely and **never**
+#: silently truncated.
+MAX_QUIZ_QUESTIONS = 100
+
+#: The exact allowed ``status`` values, rendered once into the database
+#: CHECK below so the application ``@validates`` guard and the schema can
+#: never drift apart -- the same technique M01 uses for
+#: ``assignments.status``.
+_STATUS_VALUES = tuple(status.value for status in QuizStatus)
+_STATUS_CHECK_SQL = "status IN (" + ", ".join(
+    f"'{value}'" for value in _STATUS_VALUES
+) + ")"
+
 
 class Quiz(db.Model):
     """One Group-owned **draft** quiz (Phase 4 / M04A).
 
-    **Every Quiz in this milestone is a draft by construction.** There is
-    no ``status`` column, no ``published_at``, no opening or closing time
-    and no timer -- not because those are pending fields left blank, but
-    because nothing in M04A can publish anything. A Quiz row is Teacher
-    working material: no Student route, query, search projection,
-    notification or dashboard section can reach it, and the Teacher pages
-    say so in words. Publication, Student attempts, timers, grading and
-    results are deferred, and **no placeholder column, enum value, route
-    or TODO is left for any of them**.
+    **Superseded in part by Phase 4 / M04D.** In M04A every Quiz was a
+    draft *by construction*: there was no ``status`` column, no
+    ``published_at``, no availability window and no timer, because nothing
+    could publish anything. M04D adds the approved lifecycle -- ``status``,
+    ``opens_at`` / ``closes_at``, ``time_limit_minutes``,
+    ``attempt_limit`` and ``published_at`` -- so a Quiz is now a draft
+    because its ``status`` says so, and it becomes Student-visible only
+    once a Teacher publishes it and its opening moment arrives.
 
-    A draft with **no questions at all** is a legitimate state. Nothing
-    here means ready, complete, graded, approved or available.
+    Everything else M04A decided is unchanged: a **draft** Quiz is still
+    Teacher-only working material that no Student route, query, search
+    projection, notification or dashboard section can reach.
+
+    A **draft** with no questions at all is a legitimate state. Publishing
+    is what requires a complete, valid Quiz -- between 1 and
+    :data:`MAX_QUIZ_QUESTIONS` questions, each with a structurally valid
+    active option set satisfying its answer mode -- and a complete
+    availability window.
+
+    **Once published, the authored Quiz is read-only**: metadata,
+    availability, questions, ordering, prompts, options, option order and
+    answer keys all stop being editable, because Students may already be
+    reading exactly that wording. Unpublishing is permitted **only while
+    no attempt exists**; the moment the first attempt is started the Quiz
+    is frozen permanently, since rewriting it afterwards would change what
+    somebody's answers were answers *to*.
 
     **Since Phase 4 / M04B a Quiz owns ordered multiple-choice
     questions** (:class:`~app.models.quiz_question.QuizQuestion`) and
@@ -146,7 +195,37 @@ class Quiz(db.Model):
     __table_args__ = (
         db.UniqueConstraint("group_id", "title", name="uq_quizzes_group_title"),
         db.CheckConstraint("version > 0", name="ck_quizzes_version_positive"),
+        db.CheckConstraint(_STATUS_CHECK_SQL, name="ck_quizzes_status_valid"),
+        # Availability is a *pair*: either the Quiz has no window at all
+        # (a draft still being written) or it has a complete, ordered one.
+        # A half-configured window is the state that would let a
+        # publication check pass while leaving "until when?" undecided.
+        db.CheckConstraint(
+            "(opens_at IS NULL AND closes_at IS NULL) "
+            "OR (opens_at IS NOT NULL AND closes_at IS NOT NULL AND opens_at < closes_at)",
+            name="ck_quizzes_availability_window",
+        ),
+        db.CheckConstraint(
+            f"time_limit_minutes IS NULL OR (time_limit_minutes >= {MIN_TIME_LIMIT_MINUTES} "
+            f"AND time_limit_minutes <= {MAX_TIME_LIMIT_MINUTES})",
+            name="ck_quizzes_time_limit_range",
+        ),
+        db.CheckConstraint(
+            f"attempt_limit >= {MIN_ATTEMPT_LIMIT} AND attempt_limit <= {MAX_ATTEMPT_LIMIT}",
+            name="ck_quizzes_attempt_limit_range",
+        ),
+        db.CheckConstraint(
+            "(status = 'draft' AND published_at IS NULL) "
+            "OR (status = 'published' AND published_at IS NOT NULL)",
+            name="ck_quizzes_status_published_at_consistency",
+        ),
         db.Index("ix_quizzes_group_created_id", "group_id", "created_at", "id"),
+        # The Student list read: equality on `group_id` + `status`, then
+        # the `opens_at <= now` range, then the deterministic tie-break.
+        # Same shape as M01's `ix_assignments_group_status_opens_due`.
+        db.Index(
+            "ix_quizzes_group_status_opens_id", "group_id", "status", "opens_at", "id"
+        ),
     )
 
     id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
@@ -160,6 +239,24 @@ class Quiz(db.Model):
     )
     title = db.Column(db.String(QUIZ_TITLE_MAX_LENGTH), nullable=False)
     instructions = db.Column(db.Text, nullable=False)
+    #: Phase 4 / M04D. `draft` until a Teacher publishes a complete,
+    #: valid Quiz. Never `archived` -- see :class:`QuizStatus`.
+    status = db.Column(db.String(32), nullable=False, default=QuizStatus.DRAFT.value)
+    #: The availability window, naive UTC whole seconds. Both NULL while
+    #: the Quiz is still being written; both required to publish.
+    opens_at = db.Column(db.DateTime, nullable=True)
+    closes_at = db.Column(db.DateTime, nullable=True)
+    #: Optional per-attempt limit in whole minutes. NULL means "no limit
+    #: of its own" -- the attempt still ends at `closes_at`.
+    time_limit_minutes = db.Column(db.Integer, nullable=True)
+    #: How many attempts one Student may start. Never NULL and never
+    #: unlimited.
+    attempt_limit = db.Column(
+        db.Integer, nullable=False, default=MIN_ATTEMPT_LIMIT
+    )
+    #: Stamped when publication commits; cleared on an authorized
+    #: unpublish. NULL exactly while `status` is `draft`.
+    published_at = db.Column(db.DateTime, nullable=True)
     #: 1 on creation, +1 per meaningful edit. See the class docstring --
     #: this is the stale-form signal, not a revision history.
     version = db.Column(db.Integer, nullable=False, default=1)
@@ -177,3 +274,13 @@ class Quiz(db.Model):
     #: `app/services/quiz_queries.py`, so no page can trigger an
     #: unbounded load of a draft's whole question set.
     questions = db.relationship("QuizQuestion", back_populates="quiz")
+    #: Phase 4 / M04D. Declared for the inverse only, with no cascade, and
+    #: deliberately never iterated: every attempt read goes through the
+    #: bounded queries in `app/services/quiz_queries.py`.
+    attempts = db.relationship("QuizAttempt", back_populates="quiz")
+
+    @validates("status")
+    def validate_status(self, _key, value):
+        if value not in set(_STATUS_VALUES):
+            raise ValueError(f"Invalid status: {value}")
+        return value

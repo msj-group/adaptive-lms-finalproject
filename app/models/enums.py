@@ -115,3 +115,54 @@ class QuestionAnswerMode(str, enum.Enum):
 
     SINGLE = "single"
     MULTIPLE = "multiple"
+
+
+class QuizStatus(str, enum.Enum):
+    """Publication lifecycle of a Group-owned Quiz (Phase 4 / M04D).
+
+    Deliberately its own closed set rather than a reuse of
+    ``AssignmentStatus`` or ``LessonStatus``: the three objects publish
+    independently, and a future change to one must never silently
+    redefine another. It is equally deliberately *not* ``AcademicStatus``
+    -- a Quiz is a draft or it is published; it is never archived, and
+    there is no hard delete anywhere in the Quiz aggregate.
+
+    ``Scheduled`` / ``Open`` / ``Closed`` are **not** members here. They
+    are derived at read time from ``opens_at`` / ``closes_at`` against one
+    injected reference moment, never stored, so time passing can never
+    leave a stale status behind -- the same rule M01 applies to
+    Assignments.
+
+    There is no ``archived``, ``closed`` or ``graded`` member and no
+    placeholder for one.
+    """
+
+    DRAFT = "draft"
+    PUBLISHED = "published"
+
+
+class QuizAttemptStatus(str, enum.Enum):
+    """Lifecycle of one Student's attempt at a published Quiz
+    (Phase 4 / M04D).
+
+    - ``IN_PROGRESS`` -- the Student may still navigate questions and
+      replace saved selections. Exactly one such attempt may exist per
+      Student and Quiz.
+    - ``SUBMITTED`` -- the Student finalized it. Graded, frozen, and
+      never writable again.
+    - ``EXPIRED`` -- the authoritative deadline passed while it was still
+      in progress. Finalized **once** by the next request that observes
+      it under the required locks, graded on whatever was saved, and then
+      equally frozen. There is no background job.
+
+    Both terminal states are graded and immutable; they differ only in
+    *how* the attempt ended, which is information the Student and the
+    Teacher both deserve. There is deliberately no ``abandoned``,
+    ``paused``, ``graded`` or ``released`` member: grading happens
+    exactly once at finalization, and no manual-grading or answer-release
+    workflow exists.
+    """
+
+    IN_PROGRESS = "in_progress"
+    SUBMITTED = "submitted"
+    EXPIRED = "expired"

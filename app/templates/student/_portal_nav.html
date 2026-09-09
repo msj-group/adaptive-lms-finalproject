@@ -1,11 +1,13 @@
-{# Shared Student portal navigation (M13, extended Phase 4 / M01). A caller
-   sets `active_nav` to 'dashboard', 'assignments' or 'search' before
-   including this; other Student pages leave it unset. Teacher /
-   Administrator pages are unaffected -- they define their own `portal_nav`
-   block and never include this file. #}
+{# Shared Student portal navigation (M13, extended Phase 4 / M01 and M04D).
+   A caller sets `active_nav` to 'dashboard', 'assignments', 'quizzes' or
+   'search' before including this; other Student pages leave it unset.
+   Teacher / Administrator pages are unaffected -- they define their own
+   `portal_nav` block and never include this file. #}
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'dashboard' else '' }}"
    href="{{ url_for('student.dashboard') }}">Dashboard</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'assignments' else '' }}"
    href="{{ url_for('student.assignments_list') }}">Assignments</a>
+<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'quizzes' else '' }}"
+   href="{{ url_for('student.quiz_list') }}">Quizzes</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'search' else '' }}"
    href="{{ url_for('student.search') }}">Search</a>

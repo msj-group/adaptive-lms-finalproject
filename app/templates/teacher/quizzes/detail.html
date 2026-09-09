@@ -20,7 +20,14 @@
     authorization -- hiding a control here is a courtesy, not the rule. -#}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
   <h1 style="margin:0">{{ quiz.title }}</h1>
-  <span class="badge badge--neutral">Draft</span>
+  <span class="ds-row" style="gap: var(--space-2)">
+    {% if published %}
+    <span class="badge badge--success">Published</span>
+    {% if availability.state_label %}<span class="badge badge--neutral">{{ availability.state_label }}</span>{% endif %}
+    {% else %}
+    <span class="badge badge--neutral">Draft</span>
+    {% endif %}
+  </span>
 </div>
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
@@ -34,15 +41,80 @@
 
 <div class="ds-row" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_quizzes', group_public_id=group.public_id) }}">Back to Quizzes</a>
-  {% if operational %}
+  {#- Every control below is hidden purely as a courtesy: the same rules are
+      re-checked against the locked rows in each write route, so a bookmarked
+      or forged request is refused whatever this template shows. -#}
+  {% if operational and not frozen_message %}
   <a class="btn btn--primary" href="{{ url_for('teacher.quiz_edit', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">Edit Quiz</a>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_settings', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">Settings</a>
+  {% endif %}
+  <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_attempts', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">Attempts</a>
+  {% if publish_token and not readiness %}
+  <form method="post" action="{{ url_for('teacher.quiz_publish', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="quiz_state" value="{{ publish_token }}">
+    <button type="submit" class="btn btn--primary">Publish</button>
+  </form>
+  {% endif %}
+  {% if unpublish_token %}
+  <form method="post" action="{{ url_for('teacher.quiz_unpublish', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="quiz_state" value="{{ unpublish_token }}">
+    <button type="submit" class="btn btn--danger-outline">Withdraw</button>
+  </form>
   {% endif %}
 </div>
 
+{% if published %}
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  <strong>This quiz is published.</strong> Enrolled students can open it from
+  {{ availability.opens_local.strftime("%Y-%m-%d %H:%M") }} and can start an attempt until
+  {{ availability.closes_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}); after that they can still read
+  the attempts they already made. Each student may start
+  {{ availability.attempt_limit }} attempt{{ "" if availability.attempt_limit == 1 else "s" }}{% if availability.time_limit_minutes %},
+  each limited to {{ availability.time_limit_minutes }} minutes or the closing time, whichever comes first{% endif %}.
+  Attempts are graded automatically, one point per question, with no partial credit and no pass or fail.
+  Students never see which options are correct.
+</div>
+{% else %}
 <div class="alert alert--info" style="margin-bottom: var(--space-6)">
   <strong>This quiz is a draft.</strong> Students cannot see it, open it or answer it. Every teacher currently assigned to this
-  group can edit it. Times are shown in the center timezone (<strong>{{ tz_name }}</strong>).
+  group can edit it. Publishing needs a complete availability window and between 1 and {{ max_questions }} questions, each with a
+  valid set of answer options. Times are shown in the center timezone (<strong>{{ tz_name }}</strong>).
 </div>
+{% endif %}
+
+{% if frozen_message %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-6)">{{ frozen_message }}</div>
+{% endif %}
+
+{% if not published %}
+<div class="card" style="margin-bottom: var(--space-6)">
+  <div class="card__title" style="margin-bottom: var(--space-2)">Availability</div>
+  <dl style="display:grid; grid-template-columns: 160px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
+    <dd style="margin:0">{% if availability.opens_local %}{{ availability.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}){% else %}Not set{% endif %}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Closes</dt>
+    <dd style="margin:0">{% if availability.closes_local %}{{ availability.closes_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}){% else %}Not set{% endif %}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time limit</dt>
+    <dd style="margin:0">{% if availability.time_limit_minutes %}{{ availability.time_limit_minutes }} minutes{% else %}None{% endif %}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Attempts allowed</dt>
+    <dd style="margin:0">{{ availability.attempt_limit }}</dd>
+  </dl>
+  {% if readiness %}
+  <div class="alert alert--warning" style="margin-top: var(--space-3); margin-bottom: 0">
+    <strong>Not ready to publish yet:</strong>
+    <ul style="margin: var(--space-2) 0 0; padding-left: var(--space-4)">
+      {% for sentence in readiness %}<li>{{ sentence }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% elif operational %}
+  <div class="alert alert--success" style="margin-top: var(--space-3); margin-bottom: 0">
+    This quiz is ready to publish.
+  </div>
+  {% endif %}
+</div>
+{% endif %}
 
 {% if not operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">

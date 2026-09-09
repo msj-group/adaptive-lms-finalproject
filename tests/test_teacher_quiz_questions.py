@@ -1264,12 +1264,14 @@ def test_invalid_question_page_values_normalize_to_page_one(app, client, bad):
     assert "Only one" in resp.get_data(as_text=True)
 
 
-def test_the_detail_page_query_count_does_not_grow_with_the_draft(app, client):
-    """No N+1: option counts come from ONE grouped query for the whole
-    page, and no relationship is iterated."""
+def _detail_page_selects(app, client, question_count):
+    """Render the Quiz detail page for a draft holding `question_count`
+    questions and return how many SELECTs it took."""
     with app.app_context():
+        db.drop_all()
+        db.create_all()
         _, group, quiz = _setup()
-        for index in range(20):
+        for index in range(question_count):
             _question_with_options(
                 quiz, prompt=f"Q{index}", order=index,
                 options=(("A", True), ("B", False), ("C", False), ("D", False)),
@@ -1289,8 +1291,21 @@ def test_the_detail_page_query_count_does_not_grow_with_the_draft(app, client):
         event.remove(db.engine, "before_cursor_execute", _record)
 
     assert resp.status_code == 200
-    selects = [s for s in statements if s.strip().upper().startswith("SELECT")]
-    assert len(selects) <= 10, (len(selects), selects)
+    return len([s for s in statements if s.strip().upper().startswith("SELECT")])
+
+
+def test_the_detail_page_query_count_does_not_grow_with_the_draft(app, client):
+    """No N+1: option counts come from ONE grouped query for the whole
+    page, no relationship is iterated, and the M04D publication-readiness
+    panel is bounded the same way.
+
+    Comparing a 2-question draft with a 20-question one is the real proof
+    -- a fixed upper bound alone would pass even if the count crept up.
+    """
+    small = _detail_page_selects(app, client, 2)
+    large = _detail_page_selects(app, client, 20)
+    assert small == large, (small, large)
+    assert large <= 20, large
 
 
 @pytest.mark.parametrize("page", ["detail", "new", "edit"])
@@ -2221,24 +2236,38 @@ def test_integrity_recovery_re_authorizes_and_404s_when_access_ended(app, client
 
 
 def test_every_question_route_is_group_and_quiz_scoped(app):
+    """Phase 4 / M04D added the Student answer route, which is nested one
+    level deeper still -- under the attempt. Every route that names a
+    question remains scoped by Group **and** Quiz public identifiers."""
     rules = [
         str(r) for r in app.url_map.iter_rules() if "question" in str(r).lower()
     ]
     assert rules, "the question routes must exist"
+    teacher_prefix = (
+        "/teacher/groups/<group_public_id>/quizzes/<quiz_public_id>/questions"
+    )
+    student_prefix = (
+        "/student/groups/<group_public_id>/quizzes/<quiz_public_id>"
+        "/attempts/<attempt_public_id>/questions"
+    )
     for rule in rules:
-        assert rule.startswith(
-            "/teacher/groups/<group_public_id>/quizzes/<quiz_public_id>/questions"
-        ), rule
+        assert rule.startswith(teacher_prefix) or rule.startswith(student_prefix), rule
+    assert any(r.startswith(teacher_prefix) for r in rules)
+    assert any(r.startswith(student_prefix) for r in rules)
 
 
-def test_there_is_no_publication_attempt_grade_or_delete_endpoint(app):
+def test_there_is_no_grade_override_or_answer_key_endpoint(app):
+    """M04D added publication, attempts, submission and results, so those
+    words are no longer forbidden path segments. Deleting, archiving,
+    manual or re-grading, overriding a score and releasing the answer key
+    remain absent, and no route accepts DELETE."""
     for rule in app.url_map.iter_rules():
         text = str(rule).lower()
         if "quiz" not in text:
             continue
         for forbidden in (
-            "publish", "toggle", "delete", "archive", "attempt", "grade",
-            "result", "score", "duplicate", "submit", "answer-key", "release",
+            "delete", "remove", "archive", "grade", "regrade", "override",
+            "answer-key", "release", "duplicate", "toggle",
         ):
             assert forbidden not in text, (text, forbidden)
         assert "DELETE" not in rule.methods

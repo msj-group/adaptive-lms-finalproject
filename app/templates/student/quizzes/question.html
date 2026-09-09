@@ -1,0 +1,111 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Question {{ position }} — {{ quiz.title }}{% endblock %}
+{% block portal_nav %}
+  {% include "student/_portal_nav.html" %}
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M04D. One question at a time. The page carries only this
+    question, its active options, this attempt's saved selections for it and
+    the two neighbour identifiers -- never the whole quiz and never another
+    question's options.
+
+    The option rows carry NO correctness information: the query behind them
+    does not select `is_correct`, so the answer key cannot leak through this
+    page, its form values, its URLs or its tokens.
+
+    The countdown is display only. The server compares its own clock against
+    the stored deadline under locks; this page cannot make an attempt live
+    longer or end sooner. -#}
+<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
+  <h1 style="margin:0">{{ quiz.title }}</h1>
+  <span class="ds-row" style="gap: var(--space-3); align-items: center">
+    <span class="ds-section__desc" style="margin:0">Question {{ position }} of {{ total }}</span>
+    <span class="badge badge--neutral" data-quiz-timer data-deadline="{{ attempt.deadline_iso }}">
+      Time left: <span data-timer-remaining>&mdash;</span>
+    </span>
+  </span>
+</div>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  Attempt {{ attempt.attempt_number }} &middot; closes {{ attempt.deadline_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})
+  &middot; {{ answered_count }} of {{ total }} answered
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="alert alert--info" style="margin-bottom: var(--space-4)">
+  {% if question.is_multiple %}
+  <strong>This question has more than one correct answer.</strong> Select every option you think is
+  correct — you only get the point if your selection matches the correct set exactly. There is no
+  partial credit.
+  {% else %}
+  <strong>This question has one correct answer.</strong> Select exactly one option.
+  {% endif %}
+  Your answer is saved when you press Save; you can change it until you submit or the time runs out.
+</div>
+
+<form method="post" data-answer-form
+      action="{{ url_for('student.quiz_answer', group_public_id=group_public_id, quiz_public_id=quiz.public_id, attempt_public_id=attempt.public_id, question_public_id=question.public_id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="answer_state" value="{{ answer_token }}">
+
+  <div class="card" style="margin-bottom: var(--space-4)">
+    {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe. #}
+    <div style="white-space: pre-wrap; word-break: break-word; margin-bottom: var(--space-4)">{{ question.prompt }}</div>
+
+    {% for option in question.options %}
+    <label style="display:block; margin-bottom: var(--space-2)">
+      <input type="{{ 'checkbox' if question.is_multiple else 'radio' }}"
+             name="option" value="{{ option.public_id }}"
+             {% if option.selected %}checked{% endif %}>
+      {{ option.text }}
+    </label>
+    {% endfor %}
+  </div>
+
+  <div class="ds-row" style="gap: var(--space-2); margin-bottom: var(--space-6)">
+    <button type="submit" class="btn btn--primary">Save answer</button>
+    {% if next_public_id %}
+    <button type="submit" name="go" value="next" class="btn btn--secondary">Save and next</button>
+    {% endif %}
+  </div>
+</form>
+
+<nav class="ds-row" style="gap: var(--space-2); margin-bottom: var(--space-6)" aria-label="Question navigation">
+  {% if previous_public_id %}
+  <a class="btn btn--secondary" href="{{ url_for('student.quiz_question', group_public_id=group_public_id, quiz_public_id=quiz.public_id, attempt_public_id=attempt.public_id, question_public_id=previous_public_id) }}">Previous</a>
+  {% endif %}
+  {% if next_public_id %}
+  <a class="btn btn--secondary" href="{{ url_for('student.quiz_question', group_public_id=group_public_id, quiz_public_id=quiz.public_id, attempt_public_id=attempt.public_id, question_public_id=next_public_id) }}">Next</a>
+  {% endif %}
+</nav>
+
+<section class="card">
+  <div class="card__title" style="margin-bottom: var(--space-2)">Finish this attempt</div>
+  {% if unanswered_count %}
+  <p class="ds-section__desc">
+    You have not answered {{ unanswered_count }} question{{ "" if unanswered_count == 1 else "s" }}.
+    Unanswered questions are marked incorrect. Tick the box below to submit anyway.
+  </p>
+  {% else %}
+  <p class="ds-section__desc">You have answered every question. Submitting is final — you cannot change your answers afterwards.</p>
+  {% endif %}
+  <form method="post"
+        action="{{ url_for('student.quiz_submit', group_public_id=group_public_id, quiz_public_id=quiz.public_id, attempt_public_id=attempt.public_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="submit_state" value="{{ submit_token }}">
+    <input type="hidden" name="from_question" value="{{ question.public_id }}">
+    {% if unanswered_count %}
+    <label style="display:block; margin-bottom: var(--space-2)">
+      <input type="checkbox" name="confirm_unanswered" value="yes">
+      Submit with {{ unanswered_count }} unanswered question{{ "" if unanswered_count == 1 else "s" }}
+    </label>
+    {% endif %}
+    <button type="submit" class="btn btn--primary">Submit attempt</button>
+  </form>
+</section>
+<script src="{{ url_for('static', filename='js/quiz_timer.js') }}" defer></script>
+{% endblock %}
