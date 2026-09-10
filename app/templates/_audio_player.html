@@ -1,0 +1,55 @@
+{#- Shared Listening audio player (Phase 4 / M05).
+
+    The caller passes `player`, a plain dict carrying exactly two values:
+    `src` (an AUTHORIZED server route, never a public static URL) and
+    `label` (the activity title, autoescaped). It deliberately carries no
+    storage key, no filesystem path, no SHA-256 digest, no uploader, no
+    internal id, no transcript and no vocabulary text -- the player is
+    presentation, and it is handed nothing it does not need.
+
+    The <audio> element carries the native `controls` attribute, so play,
+    pause and seeking all work with JavaScript disabled. The extra
+    controls below ship `hidden` and are revealed only by
+    `static/js/audio_player.js`, so a JavaScript-disabled page never shows
+    a button that would do nothing.
+
+    Every button is a real <button type="button">, so it is reachable and
+    operable from the keyboard without any script of ours, and each speed
+    button carries `aria-pressed` which the script keeps in step with the
+    element's actual rate.
+
+    This player decides nothing: authorization, attempt state, deadlines,
+    completion and grading are all server decisions taken under locks, and
+    the audio route re-checks the whole nested chain on every request --
+    including every Range request the browser makes while seeking. -#}
+<div class="card" style="margin-bottom: var(--space-4)" data-audio-player>
+  <div class="card__title" style="margin-bottom: var(--space-2)">Recording</div>
+  <audio data-audio-element controls preload="metadata" style="width:100%"
+         src="{{ player.src }}"
+         aria-label="Audio recording for {{ player.label }}">
+    Your browser cannot play audio here.
+    <a href="{{ player.src }}">Open the recording</a>.
+  </audio>
+
+  <div class="ds-row" style="align-items:center; gap: var(--space-2); margin-top: var(--space-3); flex-wrap: wrap"
+       data-audio-controls hidden>
+    <button type="button" class="btn btn--primary" data-audio-toggle aria-pressed="false">Play</button>
+    <button type="button" class="btn btn--secondary" data-audio-replay>Replay from start</button>
+    <span class="ds-section__desc" style="margin:0 0 0 var(--space-3)" id="audio-speed-label">Speed</span>
+    <span role="group" aria-labelledby="audio-speed-label" class="ds-row" style="gap: var(--space-2)">
+      <button type="button" class="btn btn--secondary" data-audio-speed="0.75" aria-pressed="false">0.75&times;</button>
+      <button type="button" class="btn btn--secondary" data-audio-speed="1" aria-pressed="true">1&times;</button>
+      <button type="button" class="btn btn--secondary" data-audio-speed="1.25" aria-pressed="false">1.25&times;</button>
+      <button type="button" class="btn btn--secondary" data-audio-speed="1.5" aria-pressed="false">1.5&times;</button>
+    </span>
+    <span class="ds-section__desc" style="margin:0" aria-live="polite">
+      Current speed: <strong data-audio-current-speed>1&times;</strong>
+    </span>
+  </div>
+
+  <p class="ds-section__desc" style="margin: var(--space-3) 0 0">
+    You can play, pause, replay and change the speed as often as you like. There is no limit on
+    how many times you listen.
+  </p>
+</div>
+<script src="{{ url_for('static', filename='js/audio_player.js') }}" defer></script>

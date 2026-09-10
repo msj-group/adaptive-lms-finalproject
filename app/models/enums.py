@@ -166,3 +166,42 @@ class QuizAttemptStatus(str, enum.Enum):
     IN_PROGRESS = "in_progress"
     SUBMITTED = "submitted"
     EXPIRED = "expired"
+
+
+class TranscriptVisibility(str, enum.Enum):
+    """Who may read a Listening activity's authored transcript, and when
+    (Phase 4 / M05).
+
+    Deliberately its own closed set and deliberately **not** a boolean: a
+    Teacher who wants the transcript released only *after* a Student has
+    finished needs a third answer, and squeezing that into "shown / not
+    shown" would have meant inventing an implicit rule somewhere else.
+
+    - ``hidden`` -- Students never receive the transcript. It is not
+      rendered, not placed in a URL, a token, a hidden field or a
+      JavaScript value, and not returned by any audio response.
+    - ``after_submission`` -- Students receive it only on a **finalized**
+      attempt's own result page. An attempt still in progress is not a
+      finished one, so it does not qualify.
+    - ``always`` -- Students may read it on the Listening detail page and
+      while answering.
+
+    A Teacher assigned to the Group always sees the transcript they
+    configured, whatever this says: the policy governs Student access, not
+    authoring.
+
+    An **empty** transcript is legitimate under every member -- a Teacher
+    may set a policy before writing anything, and nothing is fabricated to
+    fill the gap.
+
+    There is no ``after_close``, ``on_request`` or per-Student member and
+    no placeholder for one. Adding a member is a schema change (the
+    ``listening_activities.transcript_visibility`` CHECK), which is the
+    point: an unrecognised policy can never be inserted by application
+    code or by a manual row, and never silently defaults to the most
+    permissive answer.
+    """
+
+    HIDDEN = "hidden"
+    AFTER_SUBMISSION = "after_submission"
+    ALWAYS = "always"

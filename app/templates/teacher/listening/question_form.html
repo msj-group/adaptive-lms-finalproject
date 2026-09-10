@@ -1,0 +1,157 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ 'Edit Question' if question else 'New Question' }} — {{ activity.title }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M05. The M04B question editor, reused for a Listening
+    activity: the same QuizQuestionForm, the same three parallel repeated
+    fields, the same client-side editor script and the same server rules. Only
+    the surrounding context, the hidden token's name and the cancel destination
+    differ, so the two surfaces cannot drift in what a question may be.
+
+    `activity` and `question` are plain presentation dicts;
+    `question` is None for a new question. The form carries ONLY the prompt,
+    the answer mode and the repeated option rows: there is no quiz id,
+    question id, display order, version, active/retired flag, score, timing,
+    publish or attempt control, and none exists server-side either, so a
+    forged field of any of those names has nowhere to land.
+
+    Option rows are submitted as three parallel repeated fields --
+    `option_key` (row identity for this request only), `option_text`, and
+    `option_correct` (the KEYS of the rows marked correct). Sending the key as
+    the checkbox value is what keeps the answer key unambiguous when rows are
+    added, removed or reordered in the browser: an unchecked checkbox submits
+    nothing at all, so an index-based encoding would silently misalign.
+
+    Every authored string below is autoescaped. Never |safe. -#}
+<div class="ds-page" style="max-width: 780px; padding: 0">
+  <div class="ds-row" style="justify-content: space-between; align-items: center;">
+    <h1 style="margin:0">{{ 'Edit Question' if question else 'New Question' }}</h1>
+    <span class="badge badge--neutral">Draft</span>
+  </div>
+  <p class="ds-section__desc">
+    Listening — {{ activity.title }} — {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    This question belongs to a draft listening activity. Students cannot see it, hear the recording or answer it. Every teacher
+    currently assigned to this group can edit it, so if someone else changes this question while this form is open, your save is
+    refused and you are shown their version first — nothing is silently overwritten.
+  </div>
+
+  {% if form.option_errors %}
+  <div class="alert alert--danger" style="margin-bottom: var(--space-4)">
+    <ul style="margin:0; padding-left: var(--space-4)">
+      {% for error in form.option_errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <form method="post" novalidate
+        data-question-editor
+        data-min-options="{{ form.MIN_OPTIONS }}"
+        data-max-options="{{ form.MAX_OPTIONS }}">
+    {{ form.hidden_tag() }}
+    <input type="hidden" name="listening_state" value="{{ state_token }}">
+
+    <div class="field" style="max-width:none">
+      {{ form.prompt.label(class_="field__label") }}
+      {{ form.prompt(class_="field__input", rows="5") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Plain text only. Line breaks are preserved. Up to {{ form.PROMPT_MAX }} characters.
+      </span>
+      {% for error in form.prompt.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <fieldset class="field" style="max-width:none; margin-top: var(--space-4); border:0; padding:0">
+      <legend class="field__label" style="padding:0">Answer mode</legend>
+      {% for subfield in form.answer_mode %}
+      <label style="display:block; margin-bottom: var(--space-1)">
+        {{ subfield() }} {{ subfield.label.text }}
+      </label>
+      {% endfor %}
+      {#- Only the explanatory text changes when the mode changes. No option is
+          ever checked or unchecked for the teacher, in either direction. -#}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)" data-mode-help="single">
+        Exactly one answer option must be marked correct. If several are marked, choose which one is right and clear the others —
+        nothing is cleared for you.
+      </span>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)" data-mode-help="multiple" hidden>
+        At least two answer options must be marked correct. Marking every option correct is allowed. Nothing is marked for you.
+      </span>
+      {% for error in form.answer_mode.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </fieldset>
+
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      <span class="field__label">Answer options</span>
+      <span class="ds-section__desc" style="display:block; margin-bottom: var(--space-2)">
+        Between {{ form.MIN_OPTIONS }} and {{ form.MAX_OPTIONS }} options, in the order students would read them. Each option is
+        plain text, up to {{ form.OPTION_TEXT_MAX }} characters, and no two options may repeat the same wording. Tick every option
+        that is correct.
+      </span>
+
+      <div data-option-list>
+        {% for row in form.option_rows %}
+        <div class="card" style="margin-bottom: var(--space-2)" data-option-row>
+          <input type="hidden" name="option_key" value="{{ row.key }}" data-option-key>
+          <div class="ds-row" style="align-items: center; gap: var(--space-3)">
+            <label style="white-space: nowrap">
+              <input type="checkbox" name="option_correct" value="{{ row.key }}" data-option-correct{% if row.is_correct %} checked{% endif %}>
+              Correct
+            </label>
+            <input type="text" class="field__input" style="flex:1; max-width:none"
+                   name="option_text" value="{{ row.text }}"
+                   maxlength="{{ form.OPTION_TEXT_MAX }}"
+                   aria-label="Answer option text">
+            <button type="button" class="btn btn--secondary" data-option-move-up aria-label="Move this option up">&uarr;</button>
+            <button type="button" class="btn btn--secondary" data-option-move-down aria-label="Move this option down">&darr;</button>
+            <button type="button" class="btn btn--danger-outline" data-option-remove>Remove</button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      {#- The blank row the script clones. It is inside <template>, so it is
+          never submitted and never rendered when JavaScript is unavailable. -#}
+      <template data-option-template>
+        <div class="card" style="margin-bottom: var(--space-2)" data-option-row>
+          <input type="hidden" name="option_key" value="" data-option-key>
+          <div class="ds-row" style="align-items: center; gap: var(--space-3)">
+            <label style="white-space: nowrap">
+              <input type="checkbox" name="option_correct" value="" data-option-correct>
+              Correct
+            </label>
+            <input type="text" class="field__input" style="flex:1; max-width:none"
+                   name="option_text" value=""
+                   maxlength="{{ form.OPTION_TEXT_MAX }}"
+                   aria-label="Answer option text">
+            <button type="button" class="btn btn--secondary" data-option-move-up aria-label="Move this option up">&uarr;</button>
+            <button type="button" class="btn btn--secondary" data-option-move-down aria-label="Move this option down">&darr;</button>
+            <button type="button" class="btn btn--danger-outline" data-option-remove>Remove</button>
+          </div>
+        </div>
+      </template>
+
+      <div class="ds-row" style="align-items: center; gap: var(--space-3); margin-top: var(--space-2)">
+        <button type="button" class="btn btn--secondary" data-option-add>Add option</button>
+        <span class="ds-section__desc" style="margin:0" data-option-count aria-live="polite"></span>
+      </div>
+    </div>
+
+    {# No status, publication, timing, scoring or attempt control: none exists
+       server-side either. #}
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary") }}
+      <a class="btn btn--secondary" href="{{ url_for('teacher.listening_detail', group_public_id=group.public_id, listening_public_id=activity.public_id) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+<script src="{{ url_for('static', filename='js/quiz_question_editor.js') }}" defer></script>
+{% endblock %}

@@ -59,6 +59,14 @@ class UploadedFile(db.Model):
 
     uploaded_by = db.relationship("User")
     material = db.relationship("Material", back_populates="uploaded_file", uselist=False)
+    #: Phase 4 / M05. The Listening activity this recording backs, or
+    #: ``None``. One-to-one (``listening_activities.audio_file_id`` is
+    #: UNIQUE) and no cascade, exactly like ``material`` above: an
+    #: UploadedFile backs at most one object, and replacing a wrong
+    #: recording means creating a new draft, never rewriting this row.
+    listening_activity = db.relationship(
+        "ListeningActivity", back_populates="audio_file", uselist=False
+    )
     access_logs = db.relationship("FileAccessLog", back_populates="uploaded_file")
 
     @validates("category")

@@ -5,6 +5,12 @@ Flask-independent -- no ``abort``, ``flash``, ``redirect`` or template
 rendering, exactly like ``app/services/group_transactions.py``. Route-level
 404 and error handling belongs in the Blueprint modules that call this.
 
+**Phase 4 / M05 extends this without forking it.** A Listening activity
+is one ordinary Quiz row plus a ``ListeningActivity`` extension row, so it
+reuses every primitive here unchanged and inserts exactly one new link --
+the extension row, locked immediately after its Quiz. Nothing about the
+attempt, answer, selection, grading or expiry path is duplicated for it.
+
 **This module exists so the Teacher and the Student surfaces can share one
 lock order.** Both must settle an overdue attempt before they read or
 write it, and both must take the same rows in the same sequence. Putting
@@ -21,6 +27,7 @@ deterministically:
     -> acting User
     -> Enrollment / GroupTeacherAssignment
     -> Quiz
+    -> ListeningActivity        (Phase 4 / M05, only on that surface)
     -> QuizAttempt rows, ascending internal id
     -> QuizQuestion rows, ascending internal id
     -> QuestionOption rows, ascending internal id
@@ -39,10 +46,13 @@ set and order (structural); they prove nothing about real InnoDB blocking.
 from app.extensions import db
 from app.models import (
     Group,
+    QuestionOption,
     QuizAnswer,
+    QuizAnswerSelection,
     QuizAttempt,
     QuizAttemptStatus,
     Quiz,
+    QuizQuestion,
 )
 from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
 from app.services.group_transactions import lock_group_in_open_transaction
@@ -90,6 +100,102 @@ def lock_answer_row(attempt_id, question_id):
         .with_for_update()
         .first()
     )
+
+
+def lock_question_row(question_id):
+    """Lock one QuizQuestion ``FOR UPDATE`` inside the already-open
+    transaction, or return ``None``.
+
+    Taken after the Quiz row and before that question's options, which is
+    the documented order. The caller must treat a ``None`` -- and a row
+    whose ``quiz_id`` is not the locked Quiz -- as a rejection, roll back
+    and 404; never as something to keep going past.
+    """
+    return QuizQuestion.query.filter_by(id=question_id).with_for_update().first()
+
+
+def lock_active_option_rows(question_id):
+    """Lock one question's **active** options and return them keyed by
+    ``public_id``.
+
+    Two statements' worth of shape, and deliberately so: an id-only read
+    decides *which* rows to lock, then each row is locked individually in
+    **ascending internal id** -- never in authored order -- which is the
+    project-wide rule that keeps two concurrent writers from deadlocking
+    against each other. The entities the caller then decides on are the
+    ones the ``SELECT ... FOR UPDATE`` statements loaded, not ones an
+    earlier read may have cached.
+
+    A row that stopped being active between the id read and its own lock
+    is dropped rather than silently treated as live. Keying by
+    ``public_id`` is what lets the caller match submitted identifiers
+    against the locked rows without ever exposing an internal id.
+
+    Shared by the ordinary Quiz and the Listening answer paths so the two
+    cannot drift in what they accept.
+    """
+    option_ids = [
+        row.id
+        for row in db.session.query(QuestionOption.id)
+        .filter(
+            QuestionOption.question_id == question_id,
+            QuestionOption.is_active.is_(True),
+        )
+        .order_by(QuestionOption.id.asc())
+        .all()
+    ]
+    locked = {}
+    for option_id in option_ids:
+        option = QuestionOption.query.filter_by(id=option_id).with_for_update().first()
+        if option is not None and option.is_active:
+            locked[option.public_id] = option
+    return locked
+
+
+def replace_answer_selections(attempt, question, chosen_options, moment):
+    """Persist one saved answer's complete selection set, replacing
+    whatever was there.
+
+    **Replacement, not accumulation**: the previous selection rows are
+    deleted and the new ones inserted inside the **same** transaction, so
+    no reader ever observes a half-replaced set and a failure leaves the
+    previous set intact. That delete is the one place in the Quiz
+    aggregate where rows are removed, and it is confined to the selections
+    of an attempt the same Student is still editing -- never authored
+    content and never a finalized result.
+
+    A question with no answer row yet gets one; the unique constraint
+    ``uq_quiz_answers_attempt_question`` remains the final defense behind
+    the locked lookup, and the caller catches the resulting
+    ``IntegrityError``.
+
+    The caller must already hold the Quiz, attempt, question and option
+    locks, must have proved every option belongs to this question's
+    **active** set, and must commit. Nothing here authorizes anything.
+    """
+    answer = lock_answer_row(attempt.id, question.id)
+    if answer is None:
+        answer = QuizAnswer(
+            attempt_id=attempt.id,
+            question_id=question.id,
+            created_at=moment,
+            updated_at=moment,
+        )
+        db.session.add(answer)
+        db.session.flush()
+    else:
+        QuizAnswerSelection.query.filter_by(answer_id=answer.id).delete(
+            synchronize_session=False
+        )
+        answer.updated_at = moment
+
+    for option in chosen_options:
+        db.session.add(
+            QuizAnswerSelection(
+                answer_id=answer.id, option_id=option.id, created_at=moment
+            )
+        )
+    return answer
 
 
 def lock_quiz_aggregate(group_public_id, term_id, level_id, course_id, actor_id):

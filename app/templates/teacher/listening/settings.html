@@ -1,0 +1,94 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Listening Settings — {{ activity.title }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M05. The SAME QuizSettingsForm the quiz surface uses -- reused
+    rather than restated, so a teacher meets one behaviour for availability,
+    timing and attempts across both surfaces.
+
+    Availability, timing and attempt settings only. There is deliberately no
+    status, published-at, transcript, vocabulary, audio, question, option or
+    score control here: publication is owned solely by its own POST route and
+    the content by its own form, so a forged field of any of those names has
+    nowhere to land. Draft-only -- a published activity's settings are
+    read-only, enforced against the locked row and not merely by hiding this
+    page. -#}
+<div class="ds-page" style="max-width: 680px; padding: 0">
+  <div class="ds-row" style="justify-content: space-between; align-items: center;">
+    <h1 style="margin:0">Listening Settings</h1>
+    <span class="badge badge--neutral">Draft</span>
+  </div>
+  <p class="ds-section__desc">
+    {{ activity.title }} — {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    Students can open this listening activity from its opening time until its closing time, and can
+    only <strong>start</strong> an attempt while it is open. After it closes they can still read the
+    attempts they already made. Both times are in the center timezone (<strong>{{ tz_name }}</strong>).
+    These settings can only be changed while the activity is a draft.
+  </div>
+
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <input type="hidden" name="listening_state" value="{{ state_token }}">
+
+    <div class="field" style="max-width:none">
+      {{ form.opens_at.label(class_="field__label") }}
+      {{ form.opens_at(class_="field__input", step="1") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Students cannot see this activity or hear its recording before this moment, even once it is
+        published.
+      </span>
+      {% for error in form.opens_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.closes_at.label(class_="field__label") }}
+      {{ form.closes_at(class_="field__input", step="1") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Must be after the opening time. No new attempt can start at or after this moment.
+        Set both times, or leave both empty while you are still writing.
+      </span>
+      {% for error in form.closes_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.time_limit_minutes.label(class_="field__label") }}
+      {{ form.time_limit_minutes(class_="field__input", type="number",
+                                 min=form.MIN_TIME_LIMIT, max=form.MAX_TIME_LIMIT) }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Between {{ form.MIN_TIME_LIMIT }} and {{ form.MAX_TIME_LIMIT }} minutes, or leave empty for no
+        limit of its own. Allow enough time for the recording to be played more than once. An attempt
+        always ends at the closing time as well — whichever comes first.
+      </span>
+      {% for error in form.time_limit_minutes.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.attempt_limit.label(class_="field__label") }}
+      {{ form.attempt_limit(class_="field__input", type="number",
+                            min=form.MIN_ATTEMPTS, max=form.MAX_ATTEMPTS) }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        How many attempts each student may start, from {{ form.MIN_ATTEMPTS }} to {{ form.MAX_ATTEMPTS }}.
+        There is no unlimited option. This does not limit how often the recording may be played
+        within an attempt — that is always unlimited.
+      </span>
+      {% for error in form.attempt_limit.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary") }}
+      <a class="btn btn--secondary" href="{{ url_for('teacher.listening_detail', group_public_id=group.public_id, listening_public_id=activity.public_id) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

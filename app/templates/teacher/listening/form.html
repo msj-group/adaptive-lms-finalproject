@@ -1,0 +1,140 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ 'Edit Listening Activity' if activity else 'New Listening Activity' }} — {{ group.name }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M05. `activity` is None on create and a plain presentation dict
+    on edit. The form carries ONLY the title, the instructions, the transcript,
+    the transcript setting, the vocabulary notes and -- on create only -- the
+    one audio file. There is no status, publication, timing, attempt-limit,
+    question, option, answer-key, score, group-id, quiz-id, audio-file-id,
+    storage-key or version control here, and none exists server-side either, so
+    a forged field of any of those names has nowhere to land.
+
+    On EDIT there is deliberately no file control at all: the recording is
+    immutable, and offering a control the server would refuse would be a lie
+    about what this page can do.
+
+    `state_token` is the signed, exactly-shaped stale-form token; it is a hidden
+    input rather than a form field, exactly like the M01 assignment snapshot and
+    the M04A quiz edit state. On create it carries the creation nonce, so
+    pressing Create twice resolves to the one activity that was made. -#}
+<div class="ds-page" style="max-width: 780px; padding: 0">
+  <div class="ds-row" style="justify-content: space-between; align-items: center;">
+    <h1 style="margin:0">{{ 'Edit Listening Activity' if activity else 'New Listening Activity' }}</h1>
+    <span class="badge badge--neutral">Draft</span>
+  </div>
+  <p class="ds-section__desc">
+    {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  {% if activity %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    This listening activity is a draft and stays one when you save. Students cannot see it. Every
+    teacher currently assigned to this group can edit this same activity, so if someone else changes
+    it while this form is open, your save is refused and you are shown their version first — nothing
+    is silently overwritten.
+  </div>
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    {{ audio_immutable_message }}
+    {% if audio %}The attached recording is <strong>{{ audio.filename }}</strong> ({{ audio.format }}).{% endif %}
+  </div>
+  {% else %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    A new listening activity is created as a draft. Students cannot see it, hear it or answer it
+    until you publish it and its opening time arrives. Every teacher currently assigned to this
+    group can edit it with you.
+  </div>
+  {% endif %}
+
+  <form method="post" novalidate {% if not activity %}enctype="multipart/form-data"{% endif %}>
+    {{ form.hidden_tag() }}
+    <input type="hidden" name="listening_state" value="{{ state_token }}">
+
+    <div class="field" style="max-width:none">
+      {{ form.title.label(class_="field__label") }}
+      {{ form.title(class_="field__input") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Up to {{ form.TITLE_MAX }} characters. Within one group, a listening activity and a quiz
+        cannot share a title; another group may reuse it.
+      </span>
+      {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    {% if not activity %}
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.audio.label(class_="field__label") }}
+      {{ form.audio(class_="field__input", accept=audio_accept) }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Supported formats: {{ supported_formats }}. {{ audio_immutable_message }}
+      </span>
+      {% for error in form.audio.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.instructions.label(class_="field__label") }}
+      {{ form.instructions(class_="field__input", rows="6") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Plain text only. Line breaks are preserved. Up to {{ form.INSTRUCTIONS_MAX }} characters.
+        Tell students what to listen for.
+      </span>
+      {% for error in form.instructions.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.vocabulary_notes.label(class_="field__label") }}
+      {{ form.vocabulary_notes(class_="field__input", rows="4") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Optional plain text, up to {{ form.VOCABULARY_MAX }} characters. Shown to students before and
+        while they answer — useful for words they will hear. Leave it empty to show nothing.
+      </span>
+      {% for error in form.vocabulary_notes.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.transcript.label(class_="field__label") }}
+      {{ form.transcript(class_="field__input", rows="10") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Optional plain text, up to {{ form.TRANSCRIPT_MAX }} characters. You can always read it
+        yourself; whether students ever see it is decided by the setting below. Leaving it empty is
+        allowed with every setting.
+      </span>
+      {% for error in form.transcript.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <fieldset class="field" style="max-width:none; margin-top: var(--space-4); border:0; padding:0">
+      <legend class="field__label" style="padding:0">{{ form.transcript_visibility.label.text }}</legend>
+      {% for subfield in form.transcript_visibility %}
+      <label style="display:block; margin-bottom: var(--space-1)">
+        {{ subfield() }} {{ subfield.label.text }}
+      </label>
+      {% endfor %}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        "Hidden" means students never receive the transcript at all. "Only after a student finishes
+        an attempt" shows it on that finished attempt's own result page. "Available at any time"
+        shows it on the activity page and while answering.
+      </span>
+      {% for error in form.transcript_visibility.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </fieldset>
+
+    {# No status, publication, timing, question or scoring control: none exists
+       server-side either, so a forged field has nowhere to land. #}
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary") }}
+      {% if activity %}
+      <a class="btn btn--secondary" href="{{ url_for('teacher.listening_detail', group_public_id=group.public_id, listening_public_id=activity.public_id) }}">Cancel</a>
+      {% else %}
+      <a class="btn btn--secondary" href="{{ url_for('teacher.group_listening', group_public_id=group.public_id) }}">Cancel</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

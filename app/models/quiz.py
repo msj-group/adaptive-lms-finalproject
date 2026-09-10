@@ -278,6 +278,17 @@ class Quiz(db.Model):
     #: deliberately never iterated: every attempt read goes through the
     #: bounded queries in `app/services/quiz_queries.py`.
     attempts = db.relationship("QuizAttempt", back_populates="quiz")
+    #: Phase 4 / M05. The Listening extension, or ``None`` for an ordinary
+    #: Quiz -- the presence of this row is exactly what makes this Quiz a
+    #: Listening activity. Declared for the inverse only, one-to-one, with
+    #: no cascade: nothing can be deleted through it, and no list read
+    #: iterates it. Every "is this a Listening activity?" decision on a
+    #: read path goes through the bounded, SQL-scoped queries in
+    #: ``app/services/listening_queries.py`` instead, so a page can never
+    #: pay a lazy load per row to answer it.
+    listening_activity = db.relationship(
+        "ListeningActivity", back_populates="quiz", uselist=False
+    )
 
     @validates("status")
     def validate_status(self, _key, value):

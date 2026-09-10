@@ -17,7 +17,7 @@ except their own selections on their own in-progress attempt.
 
 **Authorization is SQL-scoped**, exactly as it is for M01 Assignments: a
 Quiz reaches a Student only through
-``quiz_queries._student_visible_quiz_query``, whose ``WHERE`` clause is
+``quiz_queries.student_visible_quiz_query``, whose ``WHERE`` clause is
 the whole effective-visibility formula -- this Student, with the Student
 role and an active account, holding an **active** Enrollment in the Quiz's
 Group, with the AcademicTerm / Level / Course / Group all active, the Quiz
@@ -63,12 +63,8 @@ from app.models import (
     Enrollment,
     EnrollmentStatus,
     QuestionAnswerMode,
-    QuestionOption,
-    QuizAnswer,
-    QuizAnswerSelection,
     QuizAttempt,
     QuizAttemptStatus,
-    QuizQuestion,
     QuizStatus,
     UserRole,
     UserStatus,
@@ -105,10 +101,12 @@ from app.services.quiz_queries import (
     teacher_question,
 )
 from app.services.quiz_transactions import (
-    lock_answer_row,
+    lock_active_option_rows,
     lock_attempt_rows,
+    lock_question_row,
     lock_quiz_aggregate,
     lock_quiz_row,
+    replace_answer_selections,
     settle_due_attempts,
 )
 from app.services.schedule_occurrences import to_app_local, utc_reference_now
@@ -859,9 +857,7 @@ def quiz_answer(
     if question is None:
         db.session.rollback()
         abort(404)
-    locked_question = (
-        QuizQuestion.query.filter_by(id=question.id).with_for_update().first()
-    )
+    locked_question = lock_question_row(question.id)
     if locked_question is None or locked_question.quiz_id != quiz.id:
         db.session.rollback()
         abort(404)
@@ -880,24 +876,11 @@ def quiz_answer(
 
     # The authoritative option set: this question's ACTIVE options, locked
     # in ascending internal id. Nothing the browser sent is trusted until
-    # it has been matched against these rows.
-    option_ids = [
-        row.id
-        for row in db.session.query(QuestionOption.id)
-        .filter(
-            QuestionOption.question_id == locked_question.id,
-            QuestionOption.is_active.is_(True),
-        )
-        .order_by(QuestionOption.id.asc())
-        .all()
-    ]
-    locked_options = {}
-    for option_id in option_ids:
-        option = (
-            QuestionOption.query.filter_by(id=option_id).with_for_update().first()
-        )
-        if option is not None and option.is_active:
-            locked_options[option.public_id] = option
+    # it has been matched against these rows. Since Phase 4 / M05 the
+    # locking itself lives in `quiz_transactions.lock_active_option_rows`,
+    # shared verbatim with the Listening answer path so the two surfaces
+    # cannot drift in what they accept.
+    locked_options = lock_active_option_rows(locked_question.id)
 
     error = _validate_selection(submitted_options, locked_options, locked_question)
     if error is not None:
@@ -911,32 +894,10 @@ def quiz_answer(
 
     chosen = [locked_options[public_id] for public_id in dict.fromkeys(submitted_options)]
 
-    answer = lock_answer_row(attempt.id, locked_question.id)
-    if answer is None:
-        answer = QuizAnswer(
-            attempt_id=attempt.id,
-            question_id=locked_question.id,
-            created_at=reference_utc,
-            updated_at=reference_utc,
-        )
-        db.session.add(answer)
-        db.session.flush()
-    else:
-        # Replacement, not accumulation: the old selection rows go and the
-        # new ones arrive inside the SAME transaction, so no reader ever
-        # observes a half-replaced set and a failure leaves the previous
-        # set intact.
-        QuizAnswerSelection.query.filter_by(answer_id=answer.id).delete(
-            synchronize_session=False
-        )
-        answer.updated_at = reference_utc
-
-    for option in chosen:
-        db.session.add(
-            QuizAnswerSelection(
-                answer_id=answer.id, option_id=option.id, created_at=reference_utc
-            )
-        )
+    # Replacement, not accumulation, inside this one transaction -- see
+    # `quiz_transactions.replace_answer_selections`, which owns that rule
+    # for both the ordinary Quiz and the Listening surfaces.
+    replace_answer_selections(attempt, locked_question, chosen, reference_utc)
 
     try:
         db.session.commit()

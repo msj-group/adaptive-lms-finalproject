@@ -19,7 +19,7 @@ another Group can never resolve through another Group's URL.
 Quizzes.** M04A and M04B had none at all, because a Quiz was a draft by
 construction. M04D adds publication, so an eligible Student can now list
 and open a published Quiz -- through the **one** fully scoped query
-``_student_visible_quiz_query`` at the bottom of this module, whose
+``student_visible_quiz_query`` at the bottom of this module, whose
 ``WHERE`` clause is the authorization. A draft can never come out of it.
 
 **The authored answer key never reaches a Student read.** No Student-facing
@@ -58,6 +58,7 @@ from app.models import (
     EnrollmentStatus,
     Group,
     Level,
+    ListeningActivity,
     QuestionAnswerMode,
     QuestionOption,
     Quiz,
@@ -89,6 +90,59 @@ _MAX_PAGE = 10000
 MOVE_UP = "up"
 MOVE_DOWN = "down"
 MOVE_DIRECTIONS = (MOVE_UP, MOVE_DOWN)
+
+
+# ---------------------------------------------------------------------------
+# Ordinary Quiz versus Listening activity (Phase 4 / M05)
+# ---------------------------------------------------------------------------
+#
+# A Quiz is a **Listening activity** exactly when a
+# ``listening_activities`` row points at it, and an **ordinary Quiz**
+# exactly when none does. There is deliberately no discriminator column on
+# ``quizzes``: a nullable flag and that row could disagree, and then two
+# places would answer the same question differently.
+#
+# Both predicates are declared here, once, and every Quiz read in the
+# project applies one of them -- the ordinary Teacher list, the ordinary
+# Teacher lookup and the Student visibility query exclude Listening
+# activities; ``app/services/listening_queries.py`` requires them. Neither
+# surface can therefore reach the other's objects, and the rule is a
+# correlated ``EXISTS`` in SQL rather than a Python filter over rows that
+# were already loaded.
+
+
+def has_listening_extension():
+    """A correlated ``EXISTS`` that is true for a Quiz carrying a
+    Listening extension. Use it -- or its negation -- in a ``WHERE``
+    clause; never filter loaded rows in Python.
+
+    ``correlate(Quiz)`` is explicit rather than left to autocorrelation:
+    the Listening reads **join** ``listening_activities`` in their outer
+    query as well, and SQLAlchemy's automatic correlation would then
+    remove it from this subquery's own ``FROM`` and leave the statement
+    with none. Naming the one table this predicate correlates on keeps it
+    correct in both a query that joins the extension and one that does
+    not.
+    """
+    return (
+        db.session.query(ListeningActivity.id)
+        .filter(ListeningActivity.quiz_id == Quiz.id)
+        .correlate(Quiz)
+        .exists()
+    )
+
+
+def quiz_is_listening(quiz_id):
+    """True when this Quiz is a Listening activity.
+
+    Bounded by construction: it asks for one id and stops. Used by the
+    write paths, which have already locked the Quiz row and need the
+    classification as a scalar rather than as a query fragment.
+    """
+    return (
+        db.session.query(ListeningActivity.id).filter_by(quiz_id=quiz_id).first()
+        is not None
+    )
 
 
 def normalize_page(value):
@@ -212,7 +266,7 @@ def teacher_quizzes_page(group_id, page):
     """
     rows = (
         db.session.query(Quiz.public_id, Quiz.title, Quiz.created_at, Quiz.updated_at)
-        .filter(Quiz.group_id == group_id)
+        .filter(Quiz.group_id == group_id, ~has_listening_extension())
         .order_by(Quiz.created_at.desc(), Quiz.id.desc())
         .offset((page - 1) * PAGE_SIZE)
         .limit(PAGE_SIZE + 1)
@@ -253,7 +307,13 @@ def teacher_quiz(group_id, quiz_public_id):
     ``instructions``, and the edit path needs ``version`` -- so callers
     convert it with :func:`build_quiz_detail` before rendering.
     """
-    return Quiz.query.filter_by(public_id=quiz_public_id, group_id=group_id).first()
+    return (
+        Quiz.query.filter(
+            Quiz.public_id == quiz_public_id,
+            Quiz.group_id == group_id,
+            ~has_listening_extension(),
+        ).first()
+    )
 
 
 def build_quiz_detail(row, tz_name):
@@ -663,7 +723,7 @@ def build_question_editor(question, options):
 # `is_correct` because no Student read ever selects it.
 
 
-def _student_visible_quiz_query(student_id, reference_utc):
+def student_visible_quiz_query(student_id, reference_utc, listening=False):
     """The one shared, fully scoped base query behind every Student read.
 
     **Authorization lives in the SQL ``WHERE`` clause**, exactly as it
@@ -706,6 +766,14 @@ def _student_visible_quiz_query(student_id, reference_utc):
             Group.status == _ACTIVE,
             Quiz.status == QuizStatus.PUBLISHED.value,
             Quiz.opens_at <= reference_utc,
+            # Phase 4 / M05. The ONE formula, with the one scope that
+            # separates the two surfaces: `listening=False` is the
+            # ordinary Quiz surface and `listening=True` the Listening
+            # one. Parameterizing the shared query rather than writing a
+            # second one is deliberate -- two definitions of "visible"
+            # could be tightened separately and drift apart, which is
+            # exactly what this function exists to prevent.
+            has_listening_extension() if listening else ~has_listening_extension(),
         )
     )
 
@@ -721,7 +789,7 @@ def student_quizzes_page(student_id, reference_utc, page):
     next page" costs no second query and discloses no total count.
     """
     rows = (
-        _student_visible_quiz_query(student_id, reference_utc)
+        student_visible_quiz_query(student_id, reference_utc)
         .order_by(Quiz.closes_at.desc(), Quiz.id.desc())
         .offset((page - 1) * PAGE_SIZE)
         .limit(PAGE_SIZE + 1)
@@ -742,7 +810,7 @@ def student_quiz(student_id, group_public_id, quiz_public_id, reference_utc):
     non-disclosing 404.
     """
     return (
-        _student_visible_quiz_query(student_id, reference_utc)
+        student_visible_quiz_query(student_id, reference_utc)
         .filter(
             Quiz.public_id == quiz_public_id,
             Group.public_id == group_public_id,

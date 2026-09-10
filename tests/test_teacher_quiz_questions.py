@@ -2237,23 +2237,31 @@ def test_integrity_recovery_re_authorizes_and_404s_when_access_ended(app, client
 
 def test_every_question_route_is_group_and_quiz_scoped(app):
     """Phase 4 / M04D added the Student answer route, which is nested one
-    level deeper still -- under the attempt. Every route that names a
-    question remains scoped by Group **and** Quiz public identifiers."""
+    level deeper still -- under the attempt. Phase 4 / M05 added the
+    Listening surface, whose questions are the *same* QuizQuestion rows
+    reached through the Listening activity's own public identifier.
+
+    Every route that names a question is still scoped by a Group public
+    identifier **and** the public identifier of the object that owns the
+    question -- the Quiz on the quiz surface, the Listening activity on
+    the listening one. The assertion stays exhaustive: a question route
+    that fitted none of these four prefixes would fail here."""
     rules = [
         str(r) for r in app.url_map.iter_rules() if "question" in str(r).lower()
     ]
     assert rules, "the question routes must exist"
-    teacher_prefix = (
-        "/teacher/groups/<group_public_id>/quizzes/<quiz_public_id>/questions"
-    )
-    student_prefix = (
+    prefixes = (
+        "/teacher/groups/<group_public_id>/quizzes/<quiz_public_id>/questions",
         "/student/groups/<group_public_id>/quizzes/<quiz_public_id>"
-        "/attempts/<attempt_public_id>/questions"
+        "/attempts/<attempt_public_id>/questions",
+        "/teacher/groups/<group_public_id>/listening/<listening_public_id>/questions",
+        "/student/groups/<group_public_id>/listening/<listening_public_id>"
+        "/attempts/<attempt_public_id>/questions",
     )
     for rule in rules:
-        assert rule.startswith(teacher_prefix) or rule.startswith(student_prefix), rule
-    assert any(r.startswith(teacher_prefix) for r in rules)
-    assert any(r.startswith(student_prefix) for r in rules)
+        assert any(rule.startswith(prefix) for prefix in prefixes), rule
+    for prefix in prefixes:
+        assert any(r.startswith(prefix) for r in rules), prefix
 
 
 def test_there_is_no_grade_override_or_answer_key_endpoint(app):

@@ -5885,3 +5885,417 @@ constraints in place.
 - The 100-question and 2..8-option bounds are row-count rules enforced in
   the locked application transaction, not CHECK constraints. A stored
   aggregate that violates them is refused loudly and **never** truncated.
+
+
+## End-to-end Listening activities (Phase 4, Part M05)
+
+M05 adds the complete Listening track on top of the accepted M04 Quiz
+aggregate. An assigned Teacher creates a Group-owned Listening activity
+from one uploaded MP3 or WAV recording, writes ordered multiple-choice
+questions about it, optionally supplies vocabulary support and a
+transcript under a chosen release policy, configures availability and
+publishes it. An eligible Student opens it, listens with play/pause,
+replay and playback-speed controls, saves answers, navigates, submits,
+and receives an automatically graded result. An authorized Teacher reads
+every attempt.
+
+Deferred with **no** placeholder table, column, route, enum value, form
+field, template hook or TODO: Speaking, Attendance, Grades, Research and
+every later Phase 4 module; playback limits; forced sequential listening;
+DRM; waveform generation; audio transcoding; automatic transcription;
+speech recognition; playback analytics; background completion jobs; audio
+replacement; and any hard delete.
+
+### A. A Listening activity **is** a Quiz
+
+The central decision is that M05 introduces **no parallel system**. A
+Listening activity is one row in `quizzes` plus one row in the new
+`listening_activities` extension table, and it reuses `QuizQuestion`,
+`QuestionOption`, `QuizAttempt`, `QuizAnswer`, `QuizAnswerSelection`, the
+M04D lifecycle columns, the derived availability states, the deadline
+arithmetic, request-driven expiry, the attempt limit, exact-set grading,
+the publication readiness rules and both authoring freezes -- unchanged
+and *called*, never re-implemented.
+
+There is deliberately **no** `listening_questions`, `listening_options`,
+`listening_attempts`, `listening_answers` or `listening_scores` table, and
+no second completion or score record: a Listening activity is completed
+for a Student when a `QuizAttempt` becomes `submitted` or `expired` and
+receives its persisted totals, exactly like a Quiz.
+
+**Classification is the presence of the extension row, and nothing
+else.** There is no `kind` column on `quizzes` and no discriminator
+anywhere: a nullable flag and the extension row could disagree, and then
+two places would answer the same question differently. `quiz_queries`
+owns both predicates once -- `has_listening_extension()` as a correlated
+`EXISTS` and `quiz_is_listening()` as the scalar the write paths need --
+and every Quiz read applies one of them. The ordinary Teacher list, the
+ordinary Teacher lookup and the Student visibility query **exclude**
+Quizzes carrying the extension; `listening_queries` **requires** them.
+
+`correlate(Quiz)` on that `EXISTS` is explicit rather than left to
+SQLAlchemy's autocorrelation, because the Listening reads join
+`listening_activities` in their outer query as well and autocorrelation
+would otherwise strip the subquery's own `FROM`.
+
+**Every Quiz that existed before M05 stays an ordinary Quiz by
+construction** -- no backfill, no default, no migrated row.
+
+**Addressing.** A Listening activity is addressed in every URL by the
+**extension row's** own `public_id`, never the Quiz's. That makes "a
+Listening route can never reach an ordinary Quiz" a structural property
+rather than a check somebody could forget: an ordinary Quiz has no
+extension row, so its identifier resolves to nothing on any Listening
+route. The reverse holds through the excluded lookups. Standard Quiz
+behaviour and URLs are unchanged.
+
+**The one Student visibility formula is shared, not copied.**
+`quiz_queries.student_visible_quiz_query` gained a single `listening`
+scope parameter; `listening_queries.student_listening_query` is that same
+function with `listening=True`. A future tightening of "visible" cannot
+reach one surface and miss the other.
+
+### B. The `ListeningActivity` extension
+
+`listening_activities` holds `id`, `public_id`, `quiz_id`,
+`audio_file_id`, `transcript`, `transcript_visibility`,
+`vocabulary_notes`, `creation_nonce`, `created_at` and `updated_at`.
+
+- `quiz_id` and `audio_file_id` are each NOT NULL and **UNIQUE** -- one
+  extension per Quiz, one recording per activity -- and both are plain
+  references with **no** `ON DELETE`, so no Quiz, Group or file lifecycle
+  change can remove an activity. Those unique indexes also give both
+  foreign keys a usable index, so no separate single-column index is
+  declared.
+- `public_id` is NOT NULL and unique.
+- `creation_nonce` is NOT NULL and unique -- the final defense behind the
+  duplicate-request protection.
+- `ck_listening_activities_transcript_visibility_valid` is rendered once
+  from the enum, so the `@validates` guard and the schema cannot drift.
+- `transcript` and `vocabulary_notes` are NOT NULL `Text` columns with an
+  empty-string default: "nothing authored" has exactly **one** spelling,
+  so a NULL and an empty string can never come to mean two different
+  things. The finite input bounds are the form's (20,000 and 5,000
+  characters), applied to the **raw** value before trimming.
+- There is deliberately **no `version` column**. `Quiz.version` already
+  represents the complete authored activity -- title, instructions,
+  settings, questions, options and, since M05, the transcript, its policy
+  and the vocabulary notes -- and every M05 edit increments it exactly
+  once. A second counter could disagree with the first, and the signed
+  stale-form tokens would then have to decide which to believe.
+
+**The `audio` category is an application invariant, stated as one.** It
+is a cross-table condition a CHECK cannot express, so
+`audio_upload_for_activity` re-proves it on **every** audio request and
+**every** publication check, not only at creation. A foreign key proves
+the `uploaded_files` row exists; it never proves the row is a recording --
+the same reasoning that makes a foreign key into `users` no proof of a
+role.
+
+### C. Transcript visibility
+
+`TranscriptVisibility` is a closed three-member set: `hidden`,
+`after_submission`, `always`. It is deliberately not a boolean, because a
+Teacher who wants the transcript released only *after* a Student
+finishes needs a third answer, and squeezing that into "shown / not
+shown" would have meant inventing an implicit rule elsewhere. There is no
+`after_close`, `on_request` or per-Student member.
+
+`listening_queries.student_transcript` is the **single** place the policy
+is applied; every Student page asks it and renders exactly what it
+returns, instead of three templates re-deriving the rule:
+
+- `hidden` -- `None` everywhere;
+- `after_submission` -- released only on a **finalized** attempt's own
+  result page, and only after `is_finalized` has been proved; an attempt
+  still in progress is not a finished one;
+- `always` -- available on the detail and question pages too.
+
+The default is the **most restrictive** member, so a Teacher who never
+touches the setting has released nothing. An unknown stored policy --
+which the CHECK and the validator both forbid -- fails **closed**.
+
+An **empty** transcript is legitimate under every policy: "released but
+not written" returns `""` and renders as nothing, while "withheld"
+returns `None`. Those are different facts and only the second is `None`.
+
+A Teacher assigned to the Group always sees the transcript they
+configured: the policy governs Student access, not authoring.
+
+The transcript never appears in a URL, a signed token, a hidden form
+field, a JavaScript value, a flash message or an audio response under any
+policy. Pages are the only place it is ever rendered, always autoescaped,
+never `|safe`. `vocabulary_notes` has **no** policy of its own -- it is
+teaching support written *for* the Student to use while listening -- and
+is shown before and during an attempt whenever it was authored.
+
+### D. Audio lifecycle
+
+**One recording, created with the activity, immutable afterwards.** The
+upload is streamed, size-checked, extension-checked,
+declared-MIME-checked and signature-checked to private storage **before**
+any `SELECT ... FOR UPDATE` is taken -- Part M12's rule, preserved: a
+50 MB recording must never be streamed while a write lock is held. The
+`UploadedFile`, the `upload` `FileAccessLog` entry, the `Quiz` and the
+`ListeningActivity` then commit in **one** transaction, so an activity
+can never exist without its recording's metadata and vice versa.
+
+M05 adds **no** second upload or storage implementation: the existing
+file-size configuration, extension allowlist, binary-signature
+validation, streaming storage, random unguessable storage keys, SHA-256
+metadata, private non-public storage and orphan-cleanup behaviour are all
+reused. Supported formats stay exactly the existing MP3 and WAV. A cheap
+pre-check on the claimed extension refuses a document, an image or a
+video *before* its bytes are written at all; the stored category is
+re-asserted afterwards as defense in depth.
+
+**Every non-success exit before a confirmed commit deletes the file this
+request wrote** -- a validation failure, a blocked redirect, a post-lock
+404, a replay, an `IntegrityError` and an unexpected exception alike.
+
+There is **no replacement route and no hard delete**: an incorrect
+recording means creating another draft, which the create form, the edit
+form and the detail page each say in as many words. The edit form carries
+no file control at all, because offering a control the server would
+refuse would be a lie about what the page can do.
+
+**Duplicate-request protection** reuses M12's mechanism exactly: a signed
+creation token binds a random nonce to the Teacher, the Group and the
+Listening purpose, and `listening_activities.creation_nonce` is UNIQUE.
+An ordinary replay resolves before anything is streamed; a genuinely
+concurrent replay is caught by the post-lock re-check or, failing that,
+by the unique constraint, and the loser returns the winner's activity and
+deletes its own redundant file. A rejected create keeps the **same**
+nonce, so a Teacher's retry is still covered.
+
+**Publishing additionally requires a valid attached recording.**
+`listening_publication_blockers` *calls* `publication_blockers` for the
+whole M04D rule set and adds exactly that one requirement, so a future
+change to Quiz readiness reaches this surface automatically. The
+read-only readiness panel calls the identical function.
+
+### E. Audio serving
+
+Both audio endpoints go through the shared M12 serving core. Every
+request -- Teacher or Student, inline or download -- re-authorizes from
+current state rather than trusting that a page once rendered a link:
+
+- the Teacher route re-proves an active assignment, the Group, and the
+  activity's ownership by that Group;
+- the Student route re-evaluates the **whole** visibility formula in SQL;
+- both re-prove the `uploaded_files` row still exists with the
+  server-determined category `audio`.
+
+Any break yields the identical non-disclosing **404**: a Student of
+another Group, a withdrawn Enrollment, an ordinary Quiz's identifier, an
+upload identifier in the activity slot and a nonexistent id are all
+indistinguishable.
+
+The core resolves a containment-checked path from the random storage key
+(so a traversal or a direct storage path can never be requested), writes
+the `inline` / `download` `FileAccessLog` entry **before** any byte is
+sent and refuses to serve at all if that audit row cannot be committed,
+sends the stored canonical content type with
+`X-Content-Type-Options: nosniff`, and sets
+`Cache-Control: private, no-store, max-age=0`. Range requests are
+supported so seeking works, and each is one authorized request with one
+audit row.
+
+Nothing in any response discloses the storage key, the resolved
+filesystem path, the SHA-256 digest, the uploader's identity, an internal
+id, the transcript or the vocabulary notes. **Student inline playback
+needs no public static URL**: the bytes live outside `app/static` and are
+reachable only through the authorized route.
+
+A Student has **no** download endpoint -- inline playback only.
+
+### F. The audio player
+
+`app/static/js/audio_player.js` is a small dependency-free controller for
+play/pause, replay from the beginning, and the four approved playback
+speeds (0.75x, 1x, 1.25x, 1.5x), with the current speed visible as text
+and as `aria-pressed`. It listens to the element's own `play`, `pause`,
+`ended` and `ratechange` events, so its labels stay truthful when the
+native controls are used instead.
+
+The `<audio>` element carries the native `controls` attribute, so play,
+pause and seeking work with JavaScript disabled; the extra controls ship
+`hidden` and only this script reveals them, so a JavaScript-disabled page
+never shows an inert button. Every control is a real `<button
+type="button">`, reachable from the keyboard without any script of ours.
+
+**The player decides nothing.** It never fetches, never submits, and
+never touches authorization, attempt state, deadlines, completion or
+grading -- all of which are server decisions taken under locks. There is
+no playback limit, no forced sequential listening, no DRM, no waveform,
+no transcoding, no transcription, no speech recognition and no analytics;
+how often a Student played the recording is deliberately not recorded.
+
+### G. Security, locking and signed state
+
+The established single-reset academic lock hierarchy is preserved and
+extended by exactly **one** link -- the extension row, locked immediately
+after its Quiz, which stays the serialization point for the whole
+aggregate:
+
+    AcademicTerm -> Level -> Course -> Group -> acting User
+    -> Enrollment / GroupTeacherAssignment -> Quiz
+    -> ListeningActivity
+    -> QuizAttempt -> QuizQuestion -> QuestionOption
+    -> QuizAnswer -> QuizAnswerSelection
+
+Rows of one type are locked in ascending internal id, never in visual or
+authored order. `_lock_quiz_chain` is reused verbatim for the whole
+prefix, so a Listening write serializes against an Administrator Group
+retarget exactly as a Quiz write already does. **No database lock is held
+while an upload is streamed.**
+
+After locking and **before mutating**, every write path re-checks the
+actor's role and active status, the Enrollment or Teacher assignment, the
+academic operational state, Group ownership, Quiz ownership,
+ListeningActivity ownership, the UploadedFile association and category,
+the publication state, the attempt state, availability and the deadline,
+the attempt limit and the authoring freeze. A rejection leaves no partial
+write.
+
+`IntegrityError` is caught, rolled back **first**, re-authorized from
+current database state using a pre-reset scalar actor id, and only then
+answered generically -- no SQL, parameters, driver output, internal id or
+existence disclosure.
+
+**Signed state.** Seven dedicated Teacher salts and two Student salts,
+each with an exact purpose marker: create, content, settings,
+publication, question-create, question-edit, question-move, answer and
+submit. A token minted under any other salt -- including every M04 token --
+fails signature verification, and the reverse holds. Payloads are
+validated exactly and by type: the key set must match, enumerated fields
+must be known members, identifiers must be strings, and versions and page
+numbers must be genuine positive `int`s (`bool` excluded explicitly,
+since `True` must never pass as version 1). Publication binds the
+**action** and the current status; answer and submit bind the attempt's
+**status**, which is what makes a form opened while an attempt was
+running fail closed once it has been submitted or expired.
+
+**Only public identifiers, versions and known enumerated values appear in
+a token.** No audio metadata, transcript, vocabulary text, prompt, option
+text, selection or answer key is ever placed in one.
+
+Locks and tokens solve different problems and both are kept: a lock
+serializes concurrent writers, a token detects that the state a form was
+written against has since changed.
+
+### H. Reuse rather than duplication
+
+`teacher/listening.py` imports the M04 lock chain, operational block,
+fresh-authorization helper, question lock helpers, option-aggregate
+comparison, settings defaults and attempt-summary builder;
+`student/listening.py` imports the Student chain helpers and the
+selection validator. Three genuinely shared primitives were extracted
+into `app/services/quiz_transactions.py` -- `lock_question_row`,
+`lock_active_option_rows` and `replace_answer_selections` -- and the M04D
+Student answer route was refactored to call them, so the two surfaces
+cannot drift in what they accept or in how a selection set is replaced.
+`QuizSettingsForm` and `QuizQuestionForm` are reused unchanged rather
+than copied. Availability, timing and attempt settings therefore behave
+identically on both surfaces.
+
+Two existing regression contracts were **extended, not weakened**, for
+behaviour this Part explicitly changes: the question-route scoping test
+now names all four prefixes and stays exhaustive, and the M04D migration
+test now checks its **place in a linear chain** rather than claiming to
+be the repository head -- exactly as M04C's own test was relaxed when M04D
+landed after it. The current head is asserted by the newest revision's
+own test, which is the one place that claim belongs.
+
+### I. Query bounds
+
+Pagination is **reused, not re-declared**: a Listening activity is part
+of the Quiz aggregate, so a Teacher should not meet two different
+pagination behaviours inside one feature. Fixed pages of 20 with
+`LIMIT 21` for the next-page flag and **no** total-count query, on the
+Teacher activity list, the question list, the attempt list and the
+Student activity list. Ordering is fully deterministic.
+
+The Teacher list selects explicit columns and deliberately **not**
+`instructions`, `transcript` or `vocabulary_notes`, so the page's cost
+does not grow with how much has been written. The question-taking page
+fetches only the current question, its bounded active options, this
+attempt's saved selections for it, the two neighbour identifiers and a
+bounded progress count.
+
+Two tests prove that by rendering the same page for a 2-question and a
+20-question activity and asserting the statement counts are **equal**,
+rather than merely small, and the same for a 1-activity and a
+10-activity list.
+
+Every content-bearing Teacher and Student Listening response -- including
+form-error renders -- carries `Cache-Control: private, no-store` and
+`Vary: Cookie`. All authored text is autoescaped; nothing is rendered
+with `|safe`.
+
+**No index is added by M05.** Both foreign keys already have a usable
+unique index of their own, and the only reads are "the activity for this
+Quiz", "is this Quiz a Listening activity?" and the Group-scoped list,
+which resolves through `ix_quizzes_group_created_id` on the parent and a
+semi-join into the extension table.
+
+### J. Migration
+
+One additive revision, `3f81b0c7d942`, after `7a4f19c6b8de`. It creates
+exactly one table and alters nothing else: no `batch_alter_table`, no
+added or dropped column on any existing table, no data rewrite and no
+seeded row. `quizzes` and `uploaded_files` appear only as existing
+foreign-key targets, both without `ON DELETE`.
+
+Because classification is the presence of an extension row, an empty new
+table classifies nothing -- every existing Quiz remains ordinary with no
+backfill at all. The downgrade drops the one table it created.
+
+Unlike M04D, this revision needs no Alembic batch rebuild, so SQLite's
+table-rebuild procedure does not apply: the probe runs with foreign keys
+**enforced** throughout and asserts `PRAGMA foreign_key_check` after each
+direction.
+
+### K. Verification actually performed, and honest limitations
+
+- The migration was executed in **both** directions against an isolated
+  temporary SQLite database seeded with representative existing rows -- an
+  ordinary Quiz with a question, an option, an attempt, an answer and a
+  selection, plus an UploadedFile, a Material and a file access log -- and
+  every one of those rows was read back unchanged. The new table's three
+  uniqueness rules and its CHECK were each proved by a refused INSERT.
+- The MySQL DDL was compiled offline (dialect only, no connection) and
+  inspected: `BIGINT` keys, `VARCHAR(36)` public identifiers, `TEXT`
+  authored content, whole-second `DATETIME`, the named CHECK, the four
+  UNIQUE constraints and both plain foreign keys with no cascade.
+- The revision was applied to the **development** MySQL database after
+  confirming it stood at the expected `7a4f19c6b8de`, and the resulting
+  head, columns, constraints, indexes, foreign keys and the preservation
+  of existing Quiz, attempt, Material and upload rows were read back from
+  that database. No other database was contacted.
+- The full strict-warning suite was executed once on the final candidate;
+  the exact result is recorded in the Part's handoff.
+- **Automated tests run on SQLite in memory**, with per-test isolated
+  temporary storage for every upload -- never the real development
+  material directory. They validate application logic, SQL scoping, query
+  structure, model/schema alignment and the *requested* lock order. They
+  do **not** prove MySQL/InnoDB row blocking, isolation, collation or
+  index plans.
+- The concurrency tests are **structural**: they assert the requested
+  reset and lock order and exercise the post-lock rechecks by injecting a
+  state change at an exact transaction boundary (a removed assignment, a
+  withdrawn Enrollment, a competing create committed inside the upload
+  window, a raced attempt start). The claim that the Quiz lock serializes
+  competing writers is reasoned, **not measured**.
+- Time is injected rather than waited for, so the availability
+  boundaries, the deadline arithmetic and the expiry cases are exact
+  rather than probabilistic. That proves the decision logic, not
+  real-world clock skew.
+- **No browser, accessibility, responsive, keyboard, audio-playback,
+  audio-codec, real-concurrency or query-plan verification was
+  performed.** The audio-player assertions are structural contracts about
+  the rendered markup and the script's source -- that it renders the four
+  approved speeds, ships its extra controls hidden, and neither fetches
+  nor submits anything. Whether a given browser decodes a given MP3 or
+  WAV, and whether the controls read well to a screen reader, are not
+  claims these tests can make.

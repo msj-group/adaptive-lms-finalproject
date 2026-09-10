@@ -1,0 +1,110 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Result — {{ activity.title }}{% endblock %}
+{% block portal_nav %}
+  {% include "student/_portal_nav.html" %}
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M05. This page reports the score and, per question, only whether
+    it was right or wrong.
+
+    It deliberately shows NO option text, NO selected/unselected marking and NO
+    correct-answer information. The builder behind `results`
+    (`quiz_queries.student_result_rows`) never reads `is_correct` on an option
+    and never returns one, so the answer key cannot leak from here -- and that
+    stays true after the activity closes.
+
+    This is the ONE page where the "only after a student finishes an attempt"
+    transcript policy releases the transcript, and only because the attempt
+    rendered here has already been proved finalized. Under "hidden" the
+    `transcript` value is None and nothing below renders. -#}
+<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
+  <h1 style="margin:0">{{ activity.title }} — Result</h1>
+  <span class="badge badge--neutral">{{ attempt.status_label }}</span>
+</div>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">Listening &middot; Attempt {{ attempt.attempt_number }}</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="ds-row" style="margin-bottom: var(--space-6)">
+  <a class="btn btn--secondary" href="{{ url_for('student.listening_detail', group_public_id=group_public_id, listening_public_id=activity.public_id) }}">Back to Listening Activity</a>
+  <a class="btn btn--secondary" href="{{ url_for('student.listening_list') }}">My Listening</a>
+</div>
+
+<div class="card" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 170px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Score</dt>
+    <dd style="margin:0">
+      <strong>{{ attempt.correct_count }} / {{ attempt.total_questions }}</strong>{% if attempt.percentage is not none %} ({{ attempt.percentage }}%){% endif %}
+    </dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submitted</dt>
+    <dd style="margin:0">{% if attempt.submitted_local %}{{ attempt.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}){% else %}Not submitted — the time ran out{% endif %}</dd>
+  </dl>
+</div>
+
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  Each question is worth one point and there is no partial credit: for a question with several
+  correct answers you needed to select all of them and nothing else. Unanswered questions are
+  marked incorrect. The correct answers are not shown — ask your teacher if you want to go
+  through them.
+</div>
+
+{% if transcript %}
+<section style="margin-bottom: var(--space-6)">
+  <h2>Transcript</h2>
+  <div class="card">
+    {% if transcript_note %}<p class="ds-section__desc" style="margin-top:0">{{ transcript_note }}</p>{% endif %}
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ transcript }}</div>
+  </div>
+</section>
+{% endif %}
+
+{% if vocabulary %}
+<section style="margin-bottom: var(--space-6)">
+  <h2>Vocabulary</h2>
+  <div class="card">
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ vocabulary }}</div>
+  </div>
+</section>
+{% endif %}
+
+<section>
+  <h2>Questions</h2>
+  {% if results %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th style="width:6rem">Question</th>
+        <th style="width:10rem">Answered</th>
+        <th style="width:10rem">Result</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in results %}
+      <tr>
+        <td>{{ item.number }}</td>
+        <td>{% if item.answered %}Yes{% else %}No{% endif %}</td>
+        <td>
+          {% if item.is_correct %}
+          <span class="badge badge--success">Correct</span>
+          {% else %}
+          <span class="badge badge--neutral">Incorrect</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">Nothing to show</div>
+    <div>This listening activity has no questions.</div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

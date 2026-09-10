@@ -1,0 +1,134 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_dashboard_macros.html" as dash %}
+{% block title %}{{ group.name }} — Listening{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M05. `activities` is a list of plain presentation dicts built by
+    app.services.listening_queries.build_teacher_listening_list_view, so no ORM
+    row and no internal id reaches this template and rendering one cannot
+    lazy-load or make an authorization decision. The dicts deliberately carry no
+    instructions, no transcript and no vocabulary notes: the list query never
+    fetched them.
+    Every destination uses public ids only, and each activity is addressed by
+    its OWN public id -- an ordinary quiz's id resolves to nothing here. -#}
+<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+  <h1 style="margin:0">{{ group.name }} — Listening</h1>
+  {{ dash.operational_badge(operational) }}
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
+    <dd style="margin:0">{{ group.name }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
+    <dd style="margin:0">{{ group.course.title }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
+    <dd style="margin:0">{{ group.course.level.name }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
+    <dd style="margin:0">{{ group.academic_term.name }}</dd>
+  </dl>
+</div>
+
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  A listening activity is one audio recording with multiple-choice questions about it. Students
+  can play, pause, replay and slow down or speed up the recording as often as they like — there
+  is no listening limit. Attempts are graded automatically, one point per question, with no
+  partial credit and no pass or fail, and students never see which options are correct.
+  A new activity starts as a <strong>draft</strong> that no student can see. All times below are
+  in the center timezone (<strong>{{ tz_name }}</strong>).
+</div>
+
+{% if not operational %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
+  This group is not operational: the {{ archived_labels | join(", ") }} {{ "is" if archived_labels|length == 1 else "are" }} archived.
+  Existing listening activities stay readable and nothing has been deleted or rewritten, but you
+  cannot add or edit one until every parent is active again.
+</div>
+{% endif %}
+
+<div class="ds-row" style="margin-bottom: var(--space-6)">
+  <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.group_quizzes', group_public_id=group.public_id) }}">Manage Quizzes</a>
+  {% if operational %}
+  <a class="btn btn--primary" href="{{ url_for('teacher.listening_create', group_public_id=group.public_id) }}">Add Listening Activity</a>
+  {% endif %}
+</div>
+
+<section class="dash-section" style="margin-top: 0">
+  <h2>Listening activities</h2>
+  {% if activities %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th style="width:8rem">Status</th>
+        <th style="width:11rem">Student visibility</th>
+        <th style="width:14rem">Transcript</th>
+        <th style="width:12rem">Created ({{ tz_name }})</th>
+        <th style="width:9rem">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in activities %}
+      <tr>
+        <td><strong>{{ item.title }}</strong></td>
+        <td>
+          {% if item.status == "published" %}
+          <span class="badge badge--success">Published</span>
+          {% else %}
+          <span class="badge badge--neutral">Draft</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if item.status != "published" %}
+          <span class="badge badge--neutral">Not visible (draft)</span>
+          {% elif item.state_label %}
+          <span class="badge badge--primary">{{ item.state_label }}</span>
+          {% else %}
+          <span class="badge badge--neutral">Not scheduled</span>
+          {% endif %}
+        </td>
+        <td>{{ item.transcript_visibility_label }}</td>
+        <td>{{ item.created_local.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>
+          <a class="btn btn--secondary" href="{{ url_for('teacher.listening_detail', group_public_id=group.public_id, listening_public_id=item.public_id) }}">Open</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if has_prev or has_next %}
+  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Listening pages">
+    {% if has_prev %}
+    <a class="btn btn--secondary" href="{{ url_for('teacher.group_listening', group_public_id=group.public_id, page=page - 1) }}">Previous</a>
+    {% endif %}
+    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+    {% if has_next %}
+    <a class="btn btn--secondary" href="{{ url_for('teacher.group_listening', group_public_id=group.public_id, page=page + 1) }}">Next</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No listening activities yet</div>
+    <div>
+      {% if operational %}Upload an MP3 or WAV recording and write questions about it. Students
+      cannot see the activity until you publish it and its opening time arrives.
+      {% else %}This group has no listening activities.{% endif %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -10,6 +10,7 @@ from app.models.enums import (
     QuestionAnswerMode,
     QuizAttemptStatus,
     QuizStatus,
+    TranscriptVisibility,
 )
 from app.models.academic_term import AcademicTerm
 from app.models.level import Level
@@ -46,6 +47,11 @@ from app.models.question_option import (
 )
 from app.models.quiz_attempt import QuizAttempt
 from app.models.quiz_answer import QuizAnswer, QuizAnswerSelection
+from app.models.listening_activity import (
+    TRANSCRIPT_MAX_LENGTH,
+    VOCABULARY_NOTES_MAX_LENGTH,
+    ListeningActivity,
+)
 
 __all__ = [
     "User",
@@ -98,4 +104,8 @@ __all__ = [
     "QuizAttempt",
     "QuizAnswer",
     "QuizAnswerSelection",
+    "TranscriptVisibility",
+    "ListeningActivity",
+    "TRANSCRIPT_MAX_LENGTH",
+    "VOCABULARY_NOTES_MAX_LENGTH",
 ]

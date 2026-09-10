@@ -1,0 +1,98 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Attempts — {{ activity.title }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M05. The M04D attempt list, reused for a Listening activity:
+    the same attempt rows, the same three clearly labelled states (In progress,
+    Submitted, Time expired) and the same overdue-attempt settling before
+    anything is shown, so the two surfaces cannot describe one attempt
+    differently.
+
+    Read only: a teacher can see what students did and can
+    change none of it. There is no score override, no manual grade, no
+    delete and no re-open control, because none exists server-side either.
+    Every row is a plain presentation dict; no ORM row and no internal id
+    reaches this template. -#}
+<h1 style="margin-top: 0">{{ activity.title }} — Attempts</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="ds-row" style="margin-bottom: var(--space-6)">
+  <a class="btn btn--secondary" href="{{ url_for('teacher.listening_detail', group_public_id=group.public_id, listening_public_id=activity.public_id) }}">Back to Listening Activity</a>
+</div>
+
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  Attempts are graded automatically, one point per question and nothing else — no partial credit
+  and no pass or fail. A question is correct only when the student selected exactly the options
+  you marked correct. Unanswered questions count as incorrect. You cannot change a score here.
+  How often a student played the recording is deliberately not recorded. Times are in the center
+  timezone (<strong>{{ tz_name }}</strong>).
+</div>
+
+<section class="dash-section" style="margin-top: 0">
+  <h2>Attempts</h2>
+  {% if attempts %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th style="width:5rem">Attempt</th>
+        <th style="width:9rem">Status</th>
+        <th style="width:12rem">Started ({{ tz_name }})</th>
+        <th style="width:12rem">Submitted ({{ tz_name }})</th>
+        <th style="width:9rem">Score</th>
+        <th style="width:8rem">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in attempts %}
+      <tr>
+        <td>{{ item.student_name }}</td>
+        <td>{{ item.attempt_number }}</td>
+        <td><span class="badge badge--neutral">{{ item.status_label }}</span></td>
+        <td>{{ item.started_local.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>{% if item.submitted_local %}{{ item.submitted_local.strftime("%Y-%m-%d %H:%M") }}{% else %}&mdash;{% endif %}</td>
+        <td>
+          {% if item.total_questions is not none %}
+          {{ item.correct_count }} / {{ item.total_questions }}{% if item.percentage is not none %} ({{ item.percentage }}%){% endif %}
+          {% else %}&mdash;{% endif %}
+        </td>
+        <td>
+          <a class="btn btn--secondary" href="{{ url_for('teacher.listening_attempt_detail', group_public_id=group.public_id, listening_public_id=activity.public_id, attempt_public_id=item.public_id) }}">Open</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if has_prev or has_next %}
+  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attempt pages">
+    {% if has_prev %}
+    <a class="btn btn--secondary" href="{{ url_for('teacher.listening_attempts', group_public_id=group.public_id, listening_public_id=activity.public_id, page=page - 1) }}">Previous</a>
+    {% endif %}
+    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+    {% if has_next %}
+    <a class="btn btn--secondary" href="{{ url_for('teacher.listening_attempts', group_public_id=group.public_id, listening_public_id=activity.public_id, page=page + 1) }}">Next</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No attempts yet</div>
+    <div>No student has started this listening activity. You can still edit it while that is true.</div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

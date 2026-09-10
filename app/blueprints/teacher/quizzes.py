@@ -604,6 +604,27 @@ def _fresh_quiz_authorization(actor_id, group_public_id, quiz_public_id=None):
     which every other Teacher route shares: widening that helper would
     change behaviour well outside this Part.
     """
+    group = fresh_group_authorization(actor_id, group_public_id)
+    if quiz_public_id is None:
+        return group, None
+
+    quiz = teacher_quiz(group.id, quiz_public_id)
+    if quiz is None:
+        abort(404)
+    return group, quiz
+
+
+def fresh_group_authorization(actor_id, group_public_id):
+    """Steps 1-4 of :func:`_fresh_quiz_authorization` on their own: prove
+    from **current database state** that `actor_id` is an active Teacher
+    actively assigned to this Group, and return the eagerly loaded Group,
+    or abort with the established non-disclosing 404.
+
+    Split out in Phase 4 / M05 so the Listening surface can layer its own
+    nested lookup on the identical actor proof instead of re-implementing
+    it. ``_fresh_quiz_authorization`` above is unchanged in behaviour:
+    it is this function plus the ordinary-Quiz lookup.
+    """
     if actor_id is None:
         abort(404)
 
@@ -632,14 +653,7 @@ def _fresh_quiz_authorization(actor_id, group_public_id, quiz_public_id=None):
     ).scalar()
     if not still_assigned:
         abort(404)
-
-    if quiz_public_id is None:
-        return group, None
-
-    quiz = teacher_quiz(group.id, quiz_public_id)
-    if quiz is None:
-        abort(404)
-    return group, quiz
+    return group
 
 
 # ======================================================================

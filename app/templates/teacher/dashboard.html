@@ -84,6 +84,7 @@
             drafts can always be read back. Every quiz there is a draft that no
             student can see. -#}
         <a class="btn btn--secondary" href="{{ url_for('teacher.group_quizzes', group_public_id=card.group_public_id) }}">Manage Quizzes</a>
+        <a class="btn btn--secondary" href="{{ url_for('teacher.group_listening', group_public_id=card.group_public_id) }}">Manage Listening</a>
       </div>
     </div>
     {% endfor %}

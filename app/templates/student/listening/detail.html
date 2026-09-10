@@ -1,0 +1,147 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ activity.title }}{% endblock %}
+{% block portal_nav %}
+  {% include "student/_portal_nav.html" %}
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M05. Plain presentation dicts only. The answer key is never read
+    for this page, so it cannot leak from it.
+
+    `transcript` is whatever `listening_queries.student_transcript` returned for
+    THIS page: None under the "hidden" and "after a student finishes" policies,
+    and the text only under "available at any time". The template never decides
+    the policy itself and never receives a transcript it may not show, so there
+    is nothing here to get wrong.
+
+    Starting is a POST with a CSRF token; the server re-proves the window, the
+    attempt limit and the at-most-one-in-progress rule against locked rows, so
+    hiding the button here is only a courtesy. -#}
+<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
+  <h1 style="margin:0">{{ activity.title }}</h1>
+  {% if activity.state == "open" %}
+  <span class="badge badge--success">{{ activity.state_label }}</span>
+  {% elif activity.state == "scheduled" %}
+  <span class="badge badge--primary">{{ activity.state_label }}</span>
+  {% else %}
+  <span class="badge badge--neutral">{{ activity.state_label }}</span>
+  {% endif %}
+</div>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">Listening &middot; {{ activity.group_name }}</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="ds-row" style="margin-bottom: var(--space-6)">
+  <a class="btn btn--secondary" href="{{ url_for('student.listening_list') }}">Back to My Listening</a>
+  {% if can_start %}
+  <form method="post" action="{{ url_for('student.listening_start', group_public_id=group_public_id, listening_public_id=activity.public_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn--primary">
+      {% if open_attempt %}Continue attempt{% else %}Start attempt{% endif %}
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+{% include "_audio_player.html" %}
+
+<div class="card" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 170px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
+    <dd style="margin:0">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Closes</dt>
+    <dd style="margin:0">{{ activity.closes_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Questions</dt>
+    <dd style="margin:0">{{ question_total }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time limit</dt>
+    <dd style="margin:0">{% if activity.time_limit_minutes %}{{ activity.time_limit_minutes }} minutes per attempt{% else %}None{% endif %}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Attempts</dt>
+    <dd style="margin:0">{{ attempts_used }} used of {{ activity.attempt_limit }} allowed</dd>
+  </dl>
+</div>
+
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  You can start an attempt only while the activity is open — not before it opens, and not once it
+  closes. {% if activity.time_limit_minutes %}Each attempt lasts {{ activity.time_limit_minutes }} minutes, or until the activity
+  closes, whichever comes first.{% else %}An attempt lasts until the activity closes.{% endif %}
+  You may play the recording as many times as you like. You may leave questions unanswered, but
+  unanswered questions are marked incorrect. For questions with several correct answers you must
+  select <strong>all</strong> of them to get the point — there is no partial credit. Your results
+  show which questions you got right, but <strong>never which options were correct</strong>.
+</div>
+
+{% if activity.instructions %}
+<section style="margin-bottom: var(--space-6)">
+  <h2>Instructions</h2>
+  <div class="card">
+    {# Plain text: autoescaped and laid out by CSS. Never |safe. #}
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
+  </div>
+</section>
+{% endif %}
+
+{% if vocabulary %}
+<section style="margin-bottom: var(--space-6)">
+  <h2>Vocabulary</h2>
+  <div class="card">
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ vocabulary }}</div>
+  </div>
+</section>
+{% endif %}
+
+{% if transcript %}
+<section style="margin-bottom: var(--space-6)">
+  <h2>Transcript</h2>
+  <div class="card">
+    {% if transcript_note %}<p class="ds-section__desc" style="margin-top:0">{{ transcript_note }}</p>{% endif %}
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ transcript }}</div>
+  </div>
+</section>
+{% endif %}
+
+<section>
+  <h2>Your attempts</h2>
+  {% if attempts %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th style="width:5rem">Attempt</th>
+        <th style="width:10rem">Status</th>
+        <th style="width:12rem">Started ({{ tz_name }})</th>
+        <th style="width:9rem">Score</th>
+        <th style="width:9rem"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in attempts %}
+      <tr>
+        <td>{{ item.attempt_number }}</td>
+        <td><span class="badge badge--neutral">{{ item.status_label }}</span></td>
+        <td>{{ item.started_local.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>
+          {% if item.total_questions is not none %}
+          {{ item.correct_count }} / {{ item.total_questions }}{% if item.percentage is not none %} ({{ item.percentage }}%){% endif %}
+          {% else %}&mdash;{% endif %}
+        </td>
+        <td>
+          {% if item.is_finalized %}
+          <a class="btn btn--secondary" href="{{ url_for('student.listening_result', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=item.public_id) }}">Result</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No attempts yet</div>
+    <div>{% if can_start %}Listen first, then start your attempt when you are ready.{% else %}You cannot start an attempt right now.{% endif %}</div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
