@@ -1,0 +1,97 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ 'Edit Speaking Activity' if activity else 'New Speaking Activity' }} — {{ group.name }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M06. `activity` is a plain presentation dict (or None on create),
+    so no ORM row and no internal id reaches this template. `group` IS the
+    eagerly loaded Group ORM object, used only for the header; the Teacher's
+    access to it was already proven by the active GroupTeacherAssignment check.
+    There is deliberately NO file field on this form: the teacher authors the
+    task, the student records the answer. There is likewise no status,
+    published-at, version or public-id control -- publication is changed only
+    by its own POST routes. -#}
+<div class="ds-page" style="max-width: 680px; padding: 0">
+  <h1>{{ 'Edit Speaking Activity' if activity else 'New Speaking Activity' }}</h1>
+  <p class="ds-section__desc">
+    {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  {% if activity %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    This speaking activity is a draft. Saving does not publish it — use Publish on the activity
+    page when it is ready for students. Once a student has recorded an answer, nothing here can
+    be changed again.
+  </div>
+  {% else %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    New speaking activities are created as drafts. Students see nothing until you publish it
+    <em>and</em> its opening time has passed. Students record their answer in the browser and
+    submit it once; you do not upload anything here.
+  </div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {#- The signed state token. On create it carries a random nonce that makes a
+        double submission idempotent; on edit it carries the exact authored
+        values this form was opened against, so a co-teacher's change is
+        detected instead of being silently overwritten. It holds public
+        identifiers only. -#}
+    <input type="hidden" name="speaking_state" value="{{ state_token }}">
+
+    <div class="field" style="max-width:none">
+      {{ form.title.label(class_="field__label") }}
+      {{ form.title(class_="field__input") }}
+      {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.instructions.label(class_="field__label") }}
+      {{ form.instructions(class_="field__input", rows="10") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Plain text only. Line breaks are preserved when students read the task. Say clearly what
+        students should talk about and roughly how long they should speak. Up to
+        {{ form.INSTRUCTIONS_MAX }} characters.
+      </span>
+      {% for error in form.instructions.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    {#- step="1" on both datetime-local controls: the stored columns keep
+        seconds, and the form renders them, so the control must accept a
+        second-bearing value rather than round it away. -#}
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.opens_at.label(class_="field__label") }}
+      {{ form.opens_at(class_="field__input", step="1") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Center timezone (<strong>{{ tz_name }}</strong>). Students cannot see this activity
+        before this moment, even once it is published.
+      </span>
+      {% for error in form.opens_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+      {{ form.due_at.label(class_="field__label") }}
+      {{ form.due_at(class_="field__input", step="1") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        Center timezone (<strong>{{ tz_name }}</strong>). Must be after the opening time. No
+        recording is accepted at or after this moment, but the activity — and every recording
+        already handed in — stays readable afterwards.
+      </span>
+      {% for error in form.due_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary") }}
+      <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

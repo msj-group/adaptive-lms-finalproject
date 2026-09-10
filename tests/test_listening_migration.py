@@ -43,7 +43,17 @@ def _load_migration():
     return module, path.read_text(encoding="utf-8")
 
 
-def test_revision_identifiers_and_one_linear_head():
+def test_revision_identifiers_and_one_linear_chain():
+    """M05's revision is no longer the repository head -- Phase 4 / M06
+    adds one after it -- so this checks its **place in the chain** rather
+    than claiming it is last, exactly as M04C's and M04D's own tests were
+    relaxed when a later revision landed after each of them. The chain
+    must still be linear: one root, one head, and no revision claimed as
+    the parent of two others.
+
+    The current head is asserted by the newest revision's own test
+    (``tests/test_speaking_migration.py``), which is the one place that
+    claim belongs."""
     module, _ = _load_migration()
     assert module.revision == _REVISION
     assert module.down_revision == _DOWN_REVISION
@@ -57,13 +67,16 @@ def test_revision_identifiers_and_one_linear_head():
         down = re.search(r"^down_revision = (?:'([^']+)'|None)", source, re.M).group(1)
         revisions.add(revision)
         parents[revision] = down
-    # Exactly one head, and it is this revision.
-    assert revisions - {p for p in parents.values() if p is not None} == {_REVISION}
-    # No revision is claimed as the parent of two others (no branch).
+
     claimed = [p for p in parents.values() if p is not None]
-    assert len(claimed) == len(set(claimed))
-    # Exactly one root.
-    assert len([r for r, p in parents.items() if p is None]) == 1
+    # No revision is claimed as the parent of two others (no branch).
+    assert len(claimed) == len(set(claimed)), "a revision is claimed twice (branch)"
+    # Exactly one root and exactly one head.
+    assert len([r for r, p in parents.items() if p is None]) == 1, "one root"
+    assert len(revisions - set(claimed)) == 1, "one head"
+    # This revision is in the chain and has exactly one child.
+    assert _REVISION in revisions
+    assert claimed.count(_REVISION) == 1
 
 
 def test_migration_creates_exactly_one_table_and_alters_nothing_else():

@@ -409,11 +409,21 @@ def test_cross_group_and_cross_assignment_pairings_all_404(app, client):
 
 def test_the_two_submission_read_routes_are_still_get_only(app):
     """M02's two read pages never gained a write method. Phase 4 / M03
-    added exactly one nested Teacher route under ``/submissions`` that
-    accepts POST -- the feedback editor -- and nothing else did."""
+    added exactly one nested Teacher route under an Assignment's
+    ``/submissions`` that accepts POST -- the feedback editor -- and
+    nothing else did.
+
+    Scoped to the **Assignment** surface (Phase 4 / M06). M06 introduced a
+    parallel Speaking recording surface whose paths also contain
+    ``/submissions``; it is a different aggregate with its own routes, and
+    the test below asserts its shape separately rather than letting it
+    silently widen this one.
+    """
     rules = {
         r.endpoint: r for r in app.url_map.iter_rules()
-        if "/submissions" in str(r) and r.endpoint.startswith("teacher.")
+        if "/assignments/" in str(r)
+        and "/submissions" in str(r)
+        and r.endpoint.startswith("teacher.")
     }
     assert set(rules) == {
         "teacher.assignment_submissions",
@@ -425,6 +435,33 @@ def test_the_two_submission_read_routes_are_still_get_only(app):
     # The one writer accepts POST, and still never PUT/PATCH/DELETE:
     # feedback cannot be deleted in this milestone.
     feedback_methods = rules["teacher.submission_feedback"].methods
+    assert "POST" in feedback_methods
+    assert feedback_methods & {"PUT", "PATCH", "DELETE"} == set()
+
+
+def test_the_speaking_recording_surface_has_the_same_shape(app):
+    """Phase 4 / M06's parallel surface, asserted explicitly so the
+    Assignment contract above stays exact rather than broadened: the two
+    read routes are GET only, the feedback editor is the one writer, the
+    two audio routes are GET only, and nothing anywhere accepts PUT, PATCH
+    or DELETE."""
+    rules = {
+        r.endpoint: r for r in app.url_map.iter_rules()
+        if "/speaking/" in str(r)
+        and "/submissions" in str(r)
+        and r.endpoint.startswith("teacher.")
+    }
+    assert set(rules) == {
+        "teacher.speaking_submissions",
+        "teacher.speaking_submission_detail",
+        "teacher.speaking_submission_feedback",
+        "teacher.speaking_submission_audio",
+        "teacher.speaking_submission_audio_download",
+    }
+    read_only = set(rules) - {"teacher.speaking_submission_feedback"}
+    for endpoint in read_only:
+        assert rules[endpoint].methods & {"POST", "PUT", "PATCH", "DELETE"} == set()
+    feedback_methods = rules["teacher.speaking_submission_feedback"].methods
     assert "POST" in feedback_methods
     assert feedback_methods & {"PUT", "PATCH", "DELETE"} == set()
 

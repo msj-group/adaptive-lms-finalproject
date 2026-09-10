@@ -6299,3 +6299,422 @@ direction.
   nor submits anything. Whether a given browser decodes a given MP3 or
   WAV, and whether the controls read well to a screen reader, are not
   claims these tests can make.
+
+## End-to-end Speaking activities (Phase 4, Part M06)
+
+M06 adds the complete Speaking track on top of the accepted M01/M02/M03
+Assignment aggregate. An assigned Teacher creates a Group-owned Speaking
+activity, writes what students should say, sets an opening time and a
+deadline and publishes it. An eligible Student opens it, records a spoken
+answer **in the browser**, plays it back, re-records as often as they
+like, and finally submits exactly one recording, which is uploaded,
+validated and stored privately. The Student keeps an immutable receipt
+with authorized playback. An authorized Teacher lists the recordings,
+plays each one and writes one shared textual feedback record per
+recording, which the Student reads on their own receipt.
+
+Deferred with **no** placeholder table, column, route, enum value, form
+field, template hook or TODO: Attendance, Grades, Announcements, Research
+and every later Phase 4 module; any score, grade, rubric, pass/fail,
+pronunciation or fluency scale; automatic speech recognition;
+transcription; pronunciation analysis; waveform generation; transcoding;
+duration limits; recording-attempt history; peer review; resubmission;
+audio replacement; and any hard delete.
+
+### A. A Speaking activity **is** an Assignment
+
+The central decision is that M06 introduces **no parallel system**. A
+Speaking activity is one row in `assignments` plus one row in the new
+`speaking_activities` extension table, and it reuses Group ownership, the
+title, the instructions, `opens_at` / `due_at`, the `draft` / `published`
+lifecycle, `published_at`, the `opens_at < due_at` CHECK,
+`uq_assignments_group_title`, the derived Scheduled / Open / Past due
+states, the whole Student effective-visibility formula and the M01 form
+(including its `APP_TIMEZONE` conversion) -- unchanged and *called*, never
+re-implemented. `SpeakingActivityForm` **subclasses** `AssignmentForm`
+rather than copying it, so the ordering rule the database CHECK enforces
+has exactly one definition.
+
+There is deliberately **no** `speaking_prompts`, `speaking_attempts` or
+`speaking_scores` table, and no second completion record: a Speaking
+activity is completed for a Student when a `speaking_submissions` row
+exists.
+
+**Classification is the presence of the extension row, and nothing
+else.** There is no `kind` column on `assignments` and no discriminator
+anywhere: a nullable flag and the extension row could disagree, and then
+two places would answer the same question differently.
+`assignment_queries` owns both predicates once --
+`has_speaking_extension()` as a correlated `EXISTS` and
+`assignment_is_speaking()` as the scalar the write paths need -- and every
+Assignment read applies one of them. The ordinary Teacher list, the
+ordinary Teacher lookup (`_assignment_for_group_or_404`, which every
+ordinary Assignment route resolves through) and the shared Student
+visibility query **exclude** Assignments carrying the extension;
+`speaking_queries` **requires** them. This is the exact arrangement M05
+established between `quizzes` and `listening_activities`, and
+`correlate(Assignment)` is explicit for the same reason.
+
+One Assignment read deliberately does **not** apply the predicate:
+`group_has_assignment_history`, which decides whether a Group's academic
+identity is frozen. A Speaking activity *is* an Assignment authored
+against this Group's Course and AcademicTerm, so it must freeze the
+Group's identity exactly as an ordinary one does.
+
+**Every Assignment that existed before M06 stays an ordinary Assignment
+by construction** -- no backfill, no default, no migrated row.
+
+**Addressing.** A Speaking activity is addressed in every URL by the
+**extension row's** own `public_id`, never the Assignment's. That makes
+"a Speaking route can never reach an ordinary Assignment" a structural
+property rather than a check somebody could forget. The backing
+Assignment's `public_id` never appears in a Speaking URL or page.
+
+### B. Three new tables
+
+`speaking_activities` holds `id`, `public_id`, `assignment_id`,
+`creation_nonce`, `created_at`, `updated_at`.
+
+- `assignment_id` is NOT NULL and **UNIQUE** -- one extension per
+  Assignment -- and is a plain reference with **no** `ON DELETE`.
+- `creation_nonce` is NOT NULL and unique: the final defense behind the
+  duplicate-request protection on the create route.
+- There is deliberately **no `version`, `status`, `published_at`,
+  `title`, `instructions`, `opens_at`, `due_at`, `group_id` or
+  `audio_file_id` column**. The authored content and the lifecycle are the
+  Assignment's, the M01 signed edit snapshot already protects exactly
+  those fields, and a Speaking *activity* carries no audio at all -- that
+  is the whole difference from an M05 Listening activity, where the
+  Teacher supplies the recording.
+
+`speaking_submissions` holds `id`, `public_id`, `speaking_activity_id`,
+`student_id`, `audio_file_id`, `creation_nonce`, `submitted_at`.
+
+- `uq_speaking_submissions_activity_student` is the "exactly one final
+  recording per activity and Student" invariant, the Student receipt
+  lookup's own shape, and the leftmost prefix the `speaking_activity_id`
+  foreign key needs.
+- `audio_file_id` is NOT NULL and **UNIQUE**: one physical recording backs
+  exactly one submission, mirroring `materials.uploaded_file_id` and
+  `listening_activities.audio_file_id`.
+- `creation_nonce` is NOT NULL and unique -- the same duplicate-request
+  defense for the submit request.
+- **Row existence is the whole state machine.** There is no `status`,
+  `draft`, `attempt`, `version`, `score`, `grade`, `passed`,
+  `reviewed_at`, `duration_seconds` or `updated_at` column, and none is
+  wanted. Re-recording happens entirely in the browser, so a discarded
+  take leaves no history at all.
+- `ix_speaking_submissions_activity_submitted_id` serves the Teacher list
+  (equality on the activity, then the two ordering columns);
+  `ix_speaking_submissions_student_id` exists for the **foreign key**,
+  which InnoDB requires and nothing else leads with.
+- **A Speaking answer is deliberately not squeezed into `submissions`.**
+  `submissions.answer_text` is a NOT NULL text column for a typed answer;
+  forcing a recording into it would have meant either a fabricated answer
+  string or a nullable column meaning two different things. The M02 text
+  path is left exactly as it was.
+
+`speaking_feedback` holds `id`, `public_id`, `speaking_submission_id`,
+`reviewer_id`, `feedback_text`, `version`, `created_at`, `updated_at`.
+
+- `uq_speaking_feedback_submission` is one shared record per recording;
+  `ck_speaking_feedback_version_positive` is a plain comparison CHECK;
+  `ix_speaking_feedback_reviewer_id` exists for the foreign key.
+- **It is a separate table from `submission_feedback`, on purpose.** That
+  table is keyed by `submission_id` -- a *text* Submission -- and its
+  unique constraint, queries and token shape are written against it.
+  Reusing it would have meant either a nullable double foreign key (two
+  columns that can disagree about what a row is about) or a fabricated
+  text Submission to hang it from. What **is** reused is the design and
+  the presentation layer: the three derived states (`absent` / `present` /
+  `invalid`), the fail-closed reviewer-role rule and `build_feedback_panel`
+  all come from `submission_feedback_queries`, so a Teacher and a Student
+  never meet two vocabularies for one idea.
+- `reviewer_id` is the **last editor**, reassigned on every meaningful
+  edit; `version` is the concurrency signal, not a history counter; a save
+  with identical normalized text is a **no-op** (version, timestamp and
+  attribution all left alone); only the latest text is kept and nothing is
+  ever deleted.
+- **Feedback is a comment, not a grade.** There is no score, grade,
+  max_points, passed, rubric, review status or historical-version column,
+  and the Teacher UI says so before a save.
+
+**The `audio` category of a referenced upload is an application
+invariant, stated as one.** It is a cross-table condition a CHECK cannot
+express, so `audio_upload_for_submission` re-proves it on **every** audio
+request, not only at creation. A foreign key proves the `uploaded_files`
+row exists; it never proves the row is a recording -- the same reasoning
+that makes a foreign key into `users` no proof of a role, which is
+re-checked on every Teacher read of a recording and every feedback read.
+
+### C. Browser recording, and what the server does with it
+
+`app/static/js/speaking_recorder.js` is a small dependency-free
+`MediaRecorder` controller that **enhances a form that already works
+without it**: the server renders an ordinary `accept="audio/*"` file input
+and a real submit button, and the module hides that input and drives the
+recorder only when `navigator.mediaDevices`, `getUserMedia`,
+`MediaRecorder`, `Blob`, `URL.createObjectURL`, `DataTransfer` and `File`
+are all available. Otherwise the file input stays, with an explanation.
+
+- **Microphone permission is never requested on load** -- only from the
+  Start handler, and the page states beforehand what will be asked.
+- States are explicit and drive which controls are enabled: `ready`,
+  `requesting`, `recording`, `preview`, `uploading`, `unsupported`,
+  `error`. Impossible actions are disabled and hidden.
+- Every `MediaStream` track is stopped when a recording ends, on error and
+  on `pagehide`; superseded Blob object URLs are revoked immediately.
+- **Re-recording is purely local**: the previous Blob is dropped, its URL
+  revoked, the file input cleared, and the server is not contacted.
+- There is no `localStorage`, `sessionStorage`, IndexedDB, cookie,
+  logging, analytics or `fetch` anywhere in the module, and the preview
+  never autoplays.
+- On submit the recorded Blob is attached to the existing file input
+  through `DataTransfer` and the **ordinary multipart form** is submitted,
+  so the CSRF token and the signed submission token travel with the audio
+  unchanged. The filename is server-safe and generated from the negotiated
+  MIME type (`speaking-recording.<ext>`), never from anything typed.
+- MIME negotiation offers `audio/webm;codecs=opus`, `audio/webm`,
+  `audio/mp4;codecs=mp4a.40.2`, `audio/mp4`, `audio/mpeg`, `audio/wav` to
+  `MediaRecorder.isTypeSupported` and uses the first accepted one; if none
+  is accepted the recorder negotiates its own and its `mimeType` is read
+  back. A container the server does not accept falls back to the file
+  input rather than uploading something that can only be rejected.
+
+### D. The Speaking audio policy, and its honest limitation
+
+M12's Material pipeline maps `webm` and `mp4` to the **video** category,
+which is correct for a Lesson Material. A browser `MediaRecorder` produces
+audio in exactly those two containers (`audio/webm` on Chromium/Firefox,
+`audio/mp4` on Safari). `app/services/speaking_audio.py` is therefore the
+**smallest explicit Speaking path**:
+
+- the Material extension/category map, its size keys and every existing
+  Material behaviour are left unchanged (a `.webm` Material is still
+  stored as `video/webm`, category `video`);
+- Speaking owns one closed extension set (`webm`, `mp4`, `wav`, `mp3`),
+  one canonical **audio** content type per extension, and one
+  declared-MIME alias set;
+- the stored `FileCategory` is always `audio` and the stored
+  `content_type` always the canonical `audio/*` one -- never the browser's
+  declared value;
+- the byte limit is the configured **audio** limit
+  (`MATERIAL_MAX_AUDIO_BYTES`), whatever category M12 would have assigned;
+- the binary signature check is `file_validation.validate_signature`,
+  **reused** rather than re-implemented;
+- the streaming/hashing/publishing core is
+  `file_storage.stream_upload_to_storage`, extracted from
+  `store_validated_upload` so both paths share bounded chunked reads, the
+  size limit enforced *while* streaming, one-pass SHA-256, the atomic
+  publish under a fresh random key and deletion attempted on every
+  failure. `store_validated_upload`'s behaviour is unchanged.
+
+The Speaking extension allowlist is deliberately **independent of**
+`MATERIAL_ALLOWED_EXTENSIONS`: that setting narrows what a Teacher may
+attach to a Lesson Material, and narrowing it must not silently disable a
+Student's ability to hand in spoken work. The byte limit, which is a
+genuine deployment concern, *is* read from configuration.
+
+`video/webm` and `video/mp4` are accepted as **declared** types for their
+own extensions. WebM and ISO-BMFF are containers whose registered type is
+the video one, so a browser uploading an audio-only `.webm` through an
+ordinary file input declares `video/webm` -- it is guessing from the
+extension. Refusing that would break the fallback path while providing no
+protection, because the declared type is a client-supplied hint and is not
+what decides anything.
+
+**The limitation, stated rather than hidden:** a structural container
+check proves a file *is* a WebM (EBML) or ISO-BMFF container. It cannot
+prove the container carries **no video track** -- that needs a real media
+parser, and M06 installs no FFmpeg and no other dependency. What bounds
+the consequence is everything around it: the configured audio byte limit
+applies, the stored category is `audio`, the stored content type is
+`audio/*`, the file is served only from an authorized private route with
+`X-Content-Type-Options: nosniff`, and it is rendered only inside an
+`<audio>` element.
+
+### E. Secure upload, and what never happens under a lock
+
+The bytes are streamed, size-checked, extension-checked,
+declared-MIME-checked and signature-checked to private storage **before**
+any lock is taken -- Part M12's rule, and the Student submit route asserts
+that order structurally. After the locks, every authorization, ownership,
+lifecycle, deadline and duplicate rule is re-proved against the locked
+rows, and only then are `UploadedFile`, `FileAccessLog(upload)` and
+`SpeakingSubmission` committed together (the upload row is flushed inside
+the same open transaction to obtain its id, because `SpeakingSubmission`
+declares no ORM relationship).
+
+Every non-success exit before a confirmed commit deletes the file this
+request wrote, through the shared `_cleanup_orphan_upload`. On a
+concurrent uniqueness failure only the **losing** request's own,
+unreferenced file is removed; the winner's recording is never touched.
+An **ordinary replay is caught before a single byte is streamed** -- the
+already-submitted check runs first -- so a double-pressed button writes no
+file, no `UploadedFile`, no access-log row and no submission at all. A
+changed-payload replay likewise returns the existing immutable receipt.
+
+The one process-crash window M12 already documents (between the atomic
+`os.replace` and the database commit) is unchanged and still deferred.
+
+### F. Lifecycle, freezes and the acceptance window
+
+- A new activity is always a **draft**; `status` and `published_at` are
+  set from constants, never from the request.
+- Publishing requires an operational AcademicTerm / Level / Course /
+  Group, a title, instructions and a valid `opens_at < due_at` window, and
+  stamps a fresh authoritative **whole-second** UTC `published_at`. The
+  readiness panel calls the same function the publish route runs against
+  the locked rows.
+- Withdrawal returns the activity to draft and clears `published_at`, and
+  is permitted **only while no recording exists**.
+- **Two freezes.** Publication makes the authored activity read-only; the
+  **first recording** freezes it permanently and forbids withdrawal. The
+  submission freeze is checked first, because it is the stronger and
+  permanent one and a Teacher whose activity has recordings must not be
+  told to "withdraw it first".
+- A first submission is accepted only while
+  `opens_at <= authoritative_now < due_at`; at exactly `due_at` the
+  deadline has passed. The authoritative moment is read **after** every
+  potentially blocking lock and truncated to a whole second, and the same
+  value is persisted as `submitted_at`, so a receipt can never claim a
+  time the decision did not use.
+- Draft and scheduled activities are undisclosed; published ones become
+  visible at `opens_at` and **stay readable after `due_at`**. What the
+  deadline withdraws is the ability to hand in, never the record.
+
+### G. Signed tokens
+
+Five dedicated M06 salts and five exact purpose markers -- four Teacher
+(`speaking-create`, `speaking-edit`, `speaking-publication`,
+`speaking-feedback`) and one Student (`speaking-submission`). A token
+minted under any other salt fails signature verification even though every
+token in the project is signed with the same `SECRET_KEY`, and a token
+minted under an M06 salt for another M06 purpose fails the purpose check.
+Shape checks are exact and typed: the key set must match, identifiers must
+be strings, versions must be genuine positive `int`s (`bool` excluded, so
+`True` cannot pass as version 1), and enumerated fields must be known
+members.
+
+Every payload carries **public identifiers, versions, a nonce and known
+enumerated values only**. A signed token is authenticated, not encrypted:
+no recording bytes, filename, MIME type, storage key, digest, feedback
+text, Student answer or internal database id is ever placed in one. The
+feedback token binds Teacher, Group, Assignment, activity, submission,
+feedback public id and feedback version, with the last two **both** `None`
+-- together -- as the explicit, signed *expected absence* state, which a
+missing or malformed token can never be silently upgraded into.
+
+### H. Locking
+
+The established single-reset academic lock hierarchy is preserved and
+extended, never redesigned. Authoring reuses M01's `_lock_assignment_chain`
+verbatim for the whole prefix and locks the extension row **after** its
+Assignment:
+
+    AcademicTerm -> Level -> Course -> Group -> acting Teacher User
+    -> GroupTeacherAssignment -> Assignment -> SpeakingActivity
+
+Submission is M02's chain with the extension row inserted after its
+Assignment:
+
+    ... -> Group -> acting Student User -> Enrollment -> Assignment
+    -> SpeakingActivity -> the existing SpeakingSubmission, if any
+
+Feedback is M03's chain with the Speaking rows in place of the text
+Submission's, keeping the project-wide **User rows in ascending internal
+id** rule that makes it deadlock-compatible with the Administrator
+membership and account write paths:
+
+    ... -> Group -> involved User rows (ascending id)
+    -> GroupTeacherAssignment -> Assignment -> SpeakingActivity
+    -> SpeakingSubmission -> the existing SpeakingFeedback, if any
+
+Because the Teacher authoring, publication and feedback routes and the
+Student submit route all lock the **same** Group, Assignment and extension
+rows, and every membership and Group lifecycle mutation locks the same
+Group, they serialize against one another rather than racing. As M03
+already records, the last feedback statement's gap/next-key lock is **not**
+a mutex; the unique constraint is the final duplicate defense and the
+signed version token turns a losing race into an explicit "reload and
+review" rejection. None of that is measured here.
+
+Uploaded audio is streamed and validated entirely **before** these locks.
+Transaction locking and stale-form protection solve different problems and
+both are preserved: the locks decide against current rows, the signed
+tokens decide against the state the form was opened on.
+
+### I. Navigation and response behaviour
+
+- The shared Student portal nav gains **Speaking** between Listening and
+  Search; the Teacher dashboard's Group card gains **Manage Speaking**
+  after Manage Listening. The exact navigation-order contract in
+  `tests/test_notifications_inbox.py` was updated explicitly rather than
+  loosened. No placeholder for Attendance or Grades was added anywhere.
+- Every content-bearing Speaking page carries `Cache-Control: private,
+  no-store` and `Vary: Cookie`; every audio response carries
+  `Cache-Control: private, no-store, max-age=0`,
+  `X-Content-Type-Options: nosniff` and the stored canonical audio MIME.
+- Every mutation is POST with CSRF and a signed state token; unsupported
+  methods return 405. There is no hard-delete, replacement, manual-grade
+  or resubmit endpoint anywhere, and the Student surface has exactly
+  **one** POST route.
+- Every authored field is autoescaped and rendered with `white-space:
+  pre-wrap`; nothing is ever rendered with `|safe`.
+- Every audio route re-authorizes the actor, re-proves the complete nested
+  chain and re-proves the `audio` category on **every** request, and
+  writes its `inline` / `download` `FileAccessLog` entry before any byte
+  is sent, refusing to serve at all if that audit row cannot be committed.
+  A missing physical file 404s without exposing a path.
+
+### J. Verification performed, and what it does not prove
+
+- Six new suites (`tests/test_speaking_model.py`,
+  `tests/test_speaking_migration.py`, `tests/test_speaking_audio.py`,
+  `tests/test_teacher_speaking.py`, `tests/test_student_speaking.py`,
+  `tests/test_speaking_feedback.py`) plus a shared
+  `tests/speaking_fixtures.py`.
+- The migration was **executed in both directions** against an isolated
+  temporary SQLite database seeded with representative existing rows -- an
+  ordinary Assignment with a text Submission and its feedback, a Listening
+  activity's Quiz, an UploadedFile, a Material and a file access log --
+  and every one of those rows was read back unchanged. Each uniqueness
+  rule and the CHECK were proved by a refused INSERT.
+- The MySQL DDL was compiled offline (dialect only, no connection) and
+  inspected: `BIGINT` keys, `VARCHAR(36)` public identifiers, `TEXT`
+  feedback, whole-second `DATETIME`, the named CHECK, every UNIQUE
+  constraint and every foreign key with no cascade.
+- The revision was applied to the **development** MySQL database after
+  confirming it stood at the expected `3f81b0c7d942`, and the resulting
+  head, columns, constraints, indexes, foreign keys, engine, charset and
+  the preservation of existing rows were read back from that database. No
+  other database was contacted.
+- The full strict-warning suite was executed once on the final candidate;
+  the exact result is recorded in the Part's handoff.
+- **Automated tests run on SQLite in memory**, with per-test isolated
+  temporary storage for every upload -- never the real development
+  material directory. They validate application logic, SQL scoping, query
+  structure, model/schema alignment and the *requested* lock order. They
+  do **not** prove MySQL/InnoDB row blocking, isolation, collation or
+  index plans.
+- The concurrency tests are **structural**: they exercise the post-lock
+  rechecks by injecting a state change at an exact transaction boundary (a
+  withdrawn Enrollment, a recording arriving mid-edit, a competing create
+  or submission committed inside the upload window, a co-teacher winning a
+  feedback race). The claim that the Group/Assignment locks serialize
+  competing writers is reasoned, **not measured**.
+- Time is injected rather than waited for, so the visibility boundary
+  (`opens_at` to the exact second), the acceptance boundary (`due_at` to
+  the exact second) and the waited-behind-a-lock case are exact rather
+  than probabilistic. That proves the decision logic, not real-world clock
+  skew.
+- **No browser, microphone, real recording, audio-codec, audio-track,
+  accessibility, responsive, keyboard, real-concurrency or MySQL
+  query-plan verification was performed.** The recorder assertions are
+  structural contracts about the rendered markup and the module's source
+  -- which APIs it calls, which it never calls, that permission is
+  requested only from the Start handler, that tracks are stopped and
+  object URLs revoked. Whether a given browser grants microphone access,
+  which container it negotiates, whether an uploaded container carries a
+  video track, and whether the controls read well to a screen reader are
+  not claims these tests can make.

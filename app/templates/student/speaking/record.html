@@ -1,0 +1,136 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Record — {{ activity.title }}{% endblock %}
+{% block portal_nav %}{% set active_nav = 'speaking' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M06, the browser recording page.
+
+    `activity` is a plain presentation dict; the row behind it already
+    satisfied the whole visibility formula in SQL, and the route additionally
+    proved that this student has NOT submitted yet and that the activity is
+    currently open. Both of those are re-proved authoritatively under locks in
+    the POST, so nothing on this page is an authorization decision.
+
+    **This page works without JavaScript.** The form below is an ordinary
+    multipart POST with a real file input and a real submit button. When the
+    browser supports MediaRecorder, static/js/speaking_recorder.js hides the
+    file input and drives the recorder instead, attaching the recorded take to
+    that same input before the same form is submitted -- so the CSRF token and
+    the signed submission token travel with the audio unchanged either way.
+
+    Microphone permission is NOT requested when this page loads. It is
+    requested only after the student presses "Start recording", and the
+    guidance below says so before they do. -#}
+<p class="ds-section__desc" style="margin-bottom: var(--space-2)">
+  {{ activity.group_name }} &middot; {{ activity.course_title }} &middot; {{ activity.level_name }} &middot; {{ activity.term_name }}
+</p>
+<h1 style="margin-top: 0">{{ activity.title }}</h1>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
+  <a class="btn btn--secondary" href="{{ detail_url }}">Back to the activity</a>
+</div>
+
+<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
+  <strong>You can submit once, and it is final.</strong> Record as many times as you like and
+  listen back first — a recording you discard is never sent anywhere. Only the recording you
+  finally submit is uploaded, and after that it cannot be edited, replaced, or submitted again.
+  Recording closes at {{ activity.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+</div>
+
+<section style="margin-bottom: var(--space-6)">
+  <h2>What to say</h2>
+  <div class="card">
+    {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe. #}
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
+  </div>
+</section>
+
+<section>
+  <h2>Your recording</h2>
+
+  <div class="card" style="margin-bottom: var(--space-4)" data-speaking-recorder data-recorder-state="ready">
+    {#- Microphone guidance, shown BEFORE any permission is requested. It
+        starts hidden and is revealed by the recorder module, so a browser
+        that cannot record never shows instructions it cannot follow. -#}
+    <div data-recorder-guidance hidden>
+      <p style="margin-top: 0">
+        When you press <strong>Start recording</strong>, your browser will ask for permission to
+        use your microphone. Choose <strong>Allow</strong>. If you accidentally block it, you can
+        allow microphone access for this site again in your browser's site settings and then
+        press Start recording once more. Nothing is recorded before you press that button, and
+        nothing is sent to the center until you press Submit.
+      </p>
+    </div>
+
+    {#- The recorder's own controls. They start hidden and are revealed only
+        when navigator.mediaDevices, getUserMedia and MediaRecorder are all
+        available, so a JavaScript-disabled or unsupported browser never sees
+        a button that would do nothing. -#}
+    <div data-recorder-controls hidden>
+      <div class="ds-row" style="gap: var(--space-2); flex-wrap: wrap">
+        <button type="button" class="btn btn--primary" data-recorder-start>Start recording</button>
+        <button type="button" class="btn btn--secondary" data-recorder-stop disabled hidden>Stop recording</button>
+        <button type="button" class="btn btn--secondary" data-recorder-again disabled hidden>Record again</button>
+      </div>
+      <p class="ds-section__desc" style="margin: var(--space-3) 0 0" data-recorder-status role="status" aria-live="polite">
+        Press Start recording when you are ready.
+      </p>
+    </div>
+
+    {#- The local preview. `controls` only -- never autoplay, and the audio
+        never leaves the browser: its src is a local blob: URL that is revoked
+        as soon as it is replaced or discarded. -#}
+    <div data-recorder-preview-block hidden style="margin-top: var(--space-4)">
+      <div class="card__title" style="margin-bottom: var(--space-2)">Listen to your recording</div>
+      <audio data-recorder-preview controls preload="metadata" style="width:100%"
+             aria-label="Your recording, before you submit it"></audio>
+      <p class="ds-section__desc" style="margin: var(--space-2) 0 0">
+        This is only on your device. Press <strong>Record again</strong> to throw it away and
+        start over — nothing is sent until you submit.
+      </p>
+    </div>
+
+    <div class="alert alert--danger" style="margin-top: var(--space-4)" data-recorder-error hidden></div>
+
+    {#- Shown when the browser cannot record. The file input below is then the
+        only way in, and it is an ordinary one. -#}
+    <div class="alert alert--info" style="margin-top: var(--space-4)" data-recorder-unsupported>
+      Your browser cannot record audio on this page, or JavaScript is turned off. You can still
+      hand in your answer by choosing an audio file you recorded with another app
+      ({{ supported_formats }}).
+    </div>
+  </div>
+
+  <form method="post" action="{{ submit_url }}" enctype="multipart/form-data" novalidate
+        data-speaking-form
+        data-confirm="Submit this recording? It is final and cannot be edited or submitted again.">
+    {{ form.hidden_tag() }}
+    {#- The signed submission token. It binds this recording to the exact task
+        and time window shown above and carries a one-time random value, so a
+        double submission resolves to the one receipt instead of a second
+        recording. It carries public identifiers only -- never audio, a
+        filename, storage metadata or an internal id. -#}
+    <input type="hidden" name="speaking_submission" value="{{ submission_token }}">
+
+    <div class="field" style="max-width:none" data-speaking-fallback>
+      {{ form.audio.label(class_="field__label") }}
+      {{ form.audio(class_="field__input", accept=audio_accept, **{"data-speaking-file": "1"}) }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
+        {{ supported_formats }} audio files only. The file is checked on the server.
+      </span>
+      {% for error in form.audio.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      {{ form.submit(class_="btn btn--primary", **{"data-speaking-submit": "1"}) }}
+      <a class="btn btn--secondary" href="{{ detail_url }}">Cancel</a>
+    </div>
+  </form>
+</section>
+<script src="{{ url_for('static', filename='js/speaking_recorder.js') }}" defer></script>
+{% endblock %}

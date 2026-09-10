@@ -10,3 +10,4 @@ from app.blueprints.teacher import assignments  # noqa: E402,F401
 from app.blueprints.teacher import feedback  # noqa: E402,F401
 from app.blueprints.teacher import quizzes  # noqa: E402,F401
 from app.blueprints.teacher import listening  # noqa: E402,F401
+from app.blueprints.teacher import speaking  # noqa: E402,F401

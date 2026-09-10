@@ -9,3 +9,4 @@ from app.blueprints.student import search  # noqa: E402,F401
 from app.blueprints.student import assignments  # noqa: E402,F401
 from app.blueprints.student import quizzes  # noqa: E402,F401
 from app.blueprints.student import listening  # noqa: E402,F401
+from app.blueprints.student import speaking  # noqa: E402,F401

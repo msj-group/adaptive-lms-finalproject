@@ -1,0 +1,78 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Speaking{% endblock %}
+{% block portal_nav %}{% set active_nav = 'speaking' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M06. Every entry of `activities` is a plain presentation dict;
+    the rows behind them already satisfied the whole visibility formula in SQL,
+    and the Submitted / Not submitted badge came from ONE bounded query scoped
+    to THIS student -- it discloses nothing about anybody else. No ORM row and
+    no internal id reaches this template. -#}
+<h1 style="margin-top: 0">Speaking</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  Open speaking activities come first, by nearest deadline. Past-due activities follow, most
+  recent first — they stay here so you can always read them and listen back to what you handed in.
+  All times are in the center timezone (<strong>{{ tz_name }}</strong>).
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+{% if activities %}
+<div class="dash-scroll">
+<table class="dash-table">
+  <thead>
+    <tr>
+      <th>Activity</th>
+      <th style="width:16rem">Group</th>
+      <th style="width:12rem">Due ({{ tz_name }})</th>
+      <th style="width:9rem">Status</th>
+      <th style="width:10rem">Your answer</th>
+      <th style="width:8rem"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in activities %}
+    <tr>
+      <td><strong>{{ item.title }}</strong></td>
+      <td>{{ item.group_name }} &middot; {{ item.course_title }}</td>
+      <td>{{ item.due_local.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td>
+        {% if item.state == "open" %}<span class="badge badge--success">Open</span>
+        {% else %}<span class="badge badge--neutral">Past due</span>{% endif %}
+      </td>
+      <td>
+        {% if item.has_submitted %}<span class="badge badge--primary">Submitted</span>
+        {% else %}<span class="badge badge--neutral">Not submitted</span>{% endif %}
+      </td>
+      <td>
+        <a class="btn btn--secondary"
+           href="{{ url_for('student.speaking_detail', group_public_id=item.group_public_id, speaking_public_id=item.public_id) }}">Open</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if has_prev or has_next %}
+<nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Speaking pages">
+  {% if has_prev %}
+  <a class="btn btn--secondary" href="{{ url_for('student.speaking_list', page=page - 1) }}">Previous</a>
+  {% endif %}
+  <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+  {% if has_next %}
+  <a class="btn btn--secondary" href="{{ url_for('student.speaking_list', page=page + 1) }}">Next</a>
+  {% endif %}
+</nav>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">No speaking activities yet</div>
+  <div>When a teacher publishes a speaking activity for one of your groups, it appears here once it opens.</div>
+</div>
+{% endif %}
+{% endblock %}

@@ -43,13 +43,14 @@ def _load_migration():
 
 def test_revision_identifiers_and_one_linear_chain():
     """M04D's revision is no longer the repository head -- Phase 4 / M05
-    adds one after it -- so this checks its **place in the chain** rather
-    than claiming it is last, exactly as M04C's own test was relaxed when
-    M04D landed after it. The chain must still be linear: one root, one
-    head, and no revision claimed as the parent of two others.
+    adds one after it, and Phase 4 / M06 one after that -- so this checks
+    its **place in the chain** rather than claiming it is last, exactly as
+    M04C's own test was relaxed when M04D landed after it. The chain must
+    still be linear: one root, one head, and no revision claimed as the
+    parent of two others.
 
     The current head is asserted by the newest revision's own test
-    (``tests/test_listening_migration.py``), which is the one place that
+    (``tests/test_speaking_migration.py``), which is the one place that
     claim belongs."""
     module, _ = _load_migration()
     assert module.revision == _REVISION

@@ -1783,12 +1783,41 @@ def test_no_grade_publish_delete_or_resubmit_control_exists_anywhere(app, client
 
 
 def test_the_editor_route_is_the_only_feedback_writer(app):
+    """Scoped to the **Assignment** surface (Phase 4 / M06).
+
+    M06 added a Speaking recording aggregate with its own single feedback
+    writer; that is a different object with its own table, route and
+    token, so it is asserted separately below rather than being allowed to
+    widen this contract. Across the whole application there are exactly
+    two feedback writers, both POST-only, and neither accepts PUT, PATCH
+    or DELETE -- feedback is never deleted anywhere.
+    """
     writers = [
         r for r in app.url_map.iter_rules()
-        if "feedback" in str(r) and r.methods & {"POST", "PUT", "PATCH", "DELETE"}
+        if "feedback" in str(r)
+        and "/assignments/" in str(r)
+        and r.methods & {"POST", "PUT", "PATCH", "DELETE"}
     ]
     assert [r.endpoint for r in writers] == ["teacher.submission_feedback"]
     assert writers[0].methods & {"PUT", "PATCH", "DELETE"} == set()
+
+
+def test_every_feedback_writer_in_the_application_is_post_only(app):
+    writers = sorted(
+        (r.endpoint, frozenset(r.methods & {"POST", "PUT", "PATCH", "DELETE"}))
+        for r in app.url_map.iter_rules()
+        if "feedback" in str(r) and r.methods & {"POST", "PUT", "PATCH", "DELETE"}
+    )
+    assert writers == [
+        ("teacher.speaking_submission_feedback", frozenset({"POST"})),
+        ("teacher.submission_feedback", frozenset({"POST"})),
+    ]
+    # No Student surface can write feedback at all.
+    assert not any(
+        "/student/" in str(r)
+        for r in app.url_map.iter_rules()
+        if "feedback" in str(r)
+    )
 
 
 # ===========================================================================

@@ -18,6 +18,7 @@ Design rules (Part Phase 4 / M01):
       AND AcademicTerm / Level / Course / Group .status == active
       AND Assignment.status == published
       AND Assignment.opens_at <= reference UTC moment
+      AND NOT EXISTS (a speaking_activities row for it)   [Phase 4 / M06]
 
   The ``users`` join is not redundant with the session: a foreign key
   into ``users`` proves the row exists, never that it is still a Student
@@ -57,6 +58,7 @@ from app.models import (
     EnrollmentStatus,
     Group,
     Level,
+    SpeakingActivity,
     User,
     UserRole,
     UserStatus,
@@ -89,6 +91,69 @@ STATE_LABELS = {
     STATE_OPEN: "Open",
     STATE_PAST_DUE: "Past due",
 }
+
+
+# ---------------------------------------------------------------------------
+# Ordinary Assignment versus Speaking activity (Phase 4 / M06)
+# ---------------------------------------------------------------------------
+#
+# An Assignment is a **Speaking activity** exactly when a
+# ``speaking_activities`` row points at it, and an **ordinary Assignment**
+# exactly when none does. There is deliberately no discriminator column on
+# ``assignments``: a nullable flag and that row could disagree, and then
+# two places would answer the same question differently.
+#
+# Both predicates are declared here, once, and every Assignment read in
+# the project applies one of them -- the ordinary Teacher list, the
+# ordinary Teacher lookup and the Student visibility query exclude
+# Speaking activities; ``app/services/speaking_queries.py`` requires them.
+# Neither surface can therefore reach the other's objects, and the rule is
+# a correlated ``EXISTS`` in SQL rather than a Python filter over rows
+# that were already loaded. This is the exact arrangement M05 established
+# between ``quizzes`` and ``listening_activities``.
+#
+# What deliberately does **not** apply the predicate:
+# :func:`group_has_assignment_history` (a Speaking activity is still an
+# Assignment authored against this Group's Course and AcademicTerm, so it
+# must still freeze the Group's academic identity) and
+# ``submission_queries.assignment_has_submissions`` (a Speaking activity
+# has no text submissions, so the question answers itself).
+
+
+def has_speaking_extension():
+    """A correlated ``EXISTS`` that is true for an Assignment carrying a
+    Speaking extension. Use it -- or its negation -- in a ``WHERE``
+    clause; never filter loaded rows in Python.
+
+    ``correlate(Assignment)`` is explicit rather than left to
+    autocorrelation: the Speaking reads **join** ``speaking_activities``
+    in their outer query as well, and SQLAlchemy's automatic correlation
+    would then remove it from this subquery's own ``FROM`` and leave the
+    statement with none. Naming the one table this predicate correlates
+    on keeps it correct in both a query that joins the extension and one
+    that does not.
+    """
+    return (
+        db.session.query(SpeakingActivity.id)
+        .filter(SpeakingActivity.assignment_id == Assignment.id)
+        .correlate(Assignment)
+        .exists()
+    )
+
+
+def assignment_is_speaking(assignment_id):
+    """True when this Assignment is a Speaking activity.
+
+    Bounded by construction: it asks for one id and stops. Used by the
+    write paths, which have already locked the Assignment row and need
+    the classification as a scalar rather than as a query fragment.
+    """
+    return (
+        db.session.query(SpeakingActivity.id)
+        .filter_by(assignment_id=assignment_id)
+        .first()
+        is not None
+    )
 
 
 def normalize_page(value):
@@ -139,6 +204,12 @@ def group_has_assignment_history(group_id):
     *authored* against this Group's Course and AcademicTerm, so
     retargeting the Group afterwards would silently reinterpret what that
     work is for.
+
+    Phase 4 / M06's Speaking activities are deliberately **not** excluded
+    here: a Speaking activity *is* an Assignment row, authored against
+    exactly this Group's Course and AcademicTerm, so it freezes the
+    Group's academic identity for exactly the same reason an ordinary one
+    does. This is the one Assignment read that must see both kinds.
     """
     return db.session.query(Assignment.id).filter_by(group_id=group_id).first() is not None
 
@@ -163,9 +234,19 @@ def teacher_assignments_page(group_id, page):
     Authorization is **not** performed here: the Teacher routes have
     already proven an ACTIVE ``GroupTeacherAssignment`` to this exact
     Group before calling, and pass its internal id.
+
+    Since Phase 4 / M06 the list **excludes Speaking activities**: an
+    Assignment carrying a ``speaking_activities`` row belongs to the
+    Speaking surface, which has its own list, its own routes and its own
+    submission workflow. The exclusion is a correlated ``EXISTS`` in the
+    ``WHERE`` clause (:func:`has_speaking_extension`), not a Python
+    filter over rows that were already fetched, so the page size still
+    means what it says.
     """
     rows = (
-        Assignment.query.filter(Assignment.group_id == group_id)
+        Assignment.query.filter(
+            Assignment.group_id == group_id, ~has_speaking_extension()
+        )
         .order_by(Assignment.due_at.desc(), Assignment.id.desc())
         .offset((page - 1) * PAGE_SIZE)
         .limit(PAGE_SIZE + 1)
@@ -228,6 +309,14 @@ def _visible_assignment_query(student_id, reference_utc):
     Defining it once is deliberate: the list, the detail page, and the
     dashboard section must agree exactly on what "visible" means, so a
     future change cannot tighten one path and leave another open.
+
+    Since Phase 4 / M06 it also **excludes Speaking activities**
+    (:func:`has_speaking_extension`), so a Student's Assignment list, the
+    Assignment detail page, the text-submission endpoint and the
+    dashboard deadline section can never reach one. Speaking activities
+    are read through ``speaking_queries.student_speaking_query``, which
+    is this same formula scoped the other way -- the two are the same
+    rule, applied once each.
     """
     return (
         db.session.query(Assignment, Group, Course, Level, AcademicTerm)
@@ -248,6 +337,7 @@ def _visible_assignment_query(student_id, reference_utc):
             Group.status == _ACTIVE,
             Assignment.status == _PUBLISHED,
             Assignment.opens_at <= reference_utc,
+            ~has_speaking_extension(),
         )
     )
 

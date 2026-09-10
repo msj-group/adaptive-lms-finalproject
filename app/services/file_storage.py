@@ -141,31 +141,57 @@ def _safe_unlink(path):
         return False
 
 
-def store_validated_upload(material_config, file_storage, original_filename_raw):
-    """Stream `file_storage` (a Werkzeug ``FileStorage``-like object
-    exposing ``.stream`` and optionally ``.mimetype``) to a random
-    temporary ``.part`` file under the configured storage root, validate
-    it in full while streaming, and atomically move it to its final
-    random path.
+def stream_upload_to_storage(
+    material_config,
+    file_storage,
+    original_filename,
+    extension,
+    category,
+    content_type,
+    max_bytes,
+    validate_header,
+    oversize_message="This file is larger than allowed for its type.",
+    empty_message="The uploaded file is empty.",
+    signature_message=None,
+    inspect_stored_file=None,
+):
+    """The shared streaming/hashing/publishing core behind **every**
+    validated upload in this project.
 
-    Returns a :class:`StoredUpload` on success. Raises
+    Extracted (Phase 4 / M06) so the Speaking recording path can reuse
+    exactly this behaviour -- bounded chunked reads, a size limit enforced
+    *while* streaming, SHA-256 computed in one pass, a header captured for
+    the signature check, an atomic publish under a fresh random key, and
+    deletion attempted on every failure -- **without** re-implementing it
+    and without changing what a Material upload does. Every decision this
+    function does not make (which extensions are allowed, which category
+    and content type are stored, which byte limit applies, what the
+    signature check is) is the caller's, and each caller states its own.
+
+    `validate_header` is called with the first :data:`MIN_HEADER_BYTES`
+    actually read once the whole stream has landed, and must raise
+    :class:`~app.services.file_validation.FileValidationError` on a
+    mismatch. `inspect_stored_file`, when given, is called with the
+    complete temporary file's path for formats whose validation needs it
+    (DOCX). `signature_message`, when given, replaces a
+    `validate_header` failure's message with one safe generic sentence --
+    so a Student is never shown format-internals wording.
+
+    Returns a :class:`StoredUpload`. Raises
     :class:`FileValidationError` (bad content) or
-    :class:`StorageContainmentError` (should be unreachable) on failure.
-    **On any failure the temporary file, and the final file if it was
-    already created, have deletion *attempted* before the exception
-    propagates.** ``_safe_unlink`` never raises and logs any OS-level
-    deletion failure through this module's logger, so the original
-    exception is always the one that propagates and a rare
-    undeletable-file case is visible in the server log rather than
-    hidden -- the atomicity of the OS ``unlink`` itself is not something
-    application code can absolutely guarantee.
-    """
-    original_filename = normalize_original_filename(original_filename_raw)
-    extension = validate_extension(original_filename, material_config)
-    category = category_for_extension(extension, material_config)
-    validate_declared_mime(extension, getattr(file_storage, "mimetype", None))
-    max_bytes = material_config.max_bytes_for_category(category)
+    :class:`StorageContainmentError` (should be unreachable). **On any
+    failure the temporary file, and the final file if it was already
+    created, have deletion *attempted* before the exception propagates.**
+    ``_safe_unlink`` never raises and logs any OS-level deletion failure
+    through this module's logger, so the original exception is always the
+    one that propagates and a rare undeletable-file case is visible in
+    the server log rather than hidden -- the atomicity of the OS
+    ``unlink`` itself is not something application code can absolutely
+    guarantee.
 
+    **No database lock may be held while this runs** -- see the module
+    docstring.
+    """
     _ensure_root(material_config)
     temp_path = resolve_within_root(material_config, _random_key(suffix=".part"))
     final_path = None
@@ -182,7 +208,7 @@ def store_validated_upload(material_config, file_storage, original_filename_raw)
                     break
                 total += len(chunk)
                 if total > max_bytes:
-                    raise FileValidationError("This file is larger than allowed for its type.")
+                    raise FileValidationError(oversize_message)
                 if len(header) < MIN_HEADER_BYTES:
                     header += chunk[: MIN_HEADER_BYTES - len(header)]
                 hasher.update(chunk)
@@ -190,11 +216,16 @@ def store_validated_upload(material_config, file_storage, original_filename_raw)
         _apply_private_permissions(temp_path)
 
         if total == 0:
-            raise FileValidationError("The uploaded file is empty.")
+            raise FileValidationError(empty_message)
 
-        validate_signature(extension, header)
-        if extension == "docx":
-            inspect_docx_zip(temp_path)
+        try:
+            validate_header(header)
+        except FileValidationError:
+            if signature_message is None:
+                raise
+            raise FileValidationError(signature_message) from None
+        if inspect_stored_file is not None:
+            inspect_stored_file(temp_path)
 
         final_path = resolve_within_root(material_config, _random_key(suffix=f".{extension}"))
         os.replace(temp_path, final_path)  # atomic within the same directory/filesystem
@@ -212,9 +243,48 @@ def store_validated_upload(material_config, file_storage, original_filename_raw)
         original_filename=original_filename,
         extension=extension,
         category=category,
-        content_type=CANONICAL_CONTENT_TYPE[extension],
+        content_type=content_type,
         byte_size=total,
         sha256=hasher.hexdigest(),
+    )
+
+
+def store_validated_upload(material_config, file_storage, original_filename_raw):
+    """Stream `file_storage` (a Werkzeug ``FileStorage``-like object
+    exposing ``.stream`` and optionally ``.mimetype``) to a random
+    temporary ``.part`` file under the configured storage root, validate
+    it in full while streaming, and atomically move it to its final
+    random path.
+
+    This is the **Material** upload path (M12) and its behaviour is
+    unchanged: the configured extension allowlist, the configured
+    extension -> category map, the canonical Material content type and
+    the per-category byte limit all still decide what is stored. Phase 4
+    / M06 only moved the streaming/publishing mechanics into
+    :func:`stream_upload_to_storage` so a second, explicitly different
+    policy could reuse them.
+
+    Returns a :class:`StoredUpload` on success. Raises
+    :class:`FileValidationError` (bad content) or
+    :class:`StorageContainmentError` (should be unreachable) on failure,
+    with the same cleanup-on-failure contract described there.
+    """
+    original_filename = normalize_original_filename(original_filename_raw)
+    extension = validate_extension(original_filename, material_config)
+    category = category_for_extension(extension, material_config)
+    validate_declared_mime(extension, getattr(file_storage, "mimetype", None))
+    max_bytes = material_config.max_bytes_for_category(category)
+
+    return stream_upload_to_storage(
+        material_config,
+        file_storage,
+        original_filename=original_filename,
+        extension=extension,
+        category=category,
+        content_type=CANONICAL_CONTENT_TYPE[extension],
+        max_bytes=max_bytes,
+        validate_header=lambda header: validate_signature(extension, header),
+        inspect_stored_file=inspect_docx_zip if extension == "docx" else None,
     )
 
 

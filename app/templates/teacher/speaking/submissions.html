@@ -1,0 +1,108 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ activity.title }} — Recordings{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M06, read only. `activity` and every entry of `submissions` are
+    plain presentation dicts, so no ORM row reaches this template and rendering
+    a row cannot lazy-load anything. `feedback_state` was derived by the route
+    from ONE bounded page-level query -- it is not a stored status column, and
+    this page fetches no feedback text at all. Nothing here discloses a storage
+    key, a filesystem path, a digest, a byte size or any internal id. There is
+    deliberately no delete, replace, score, grade, publish or approval control
+    anywhere on this page -- none exists server-side either. -#}
+<h1 style="margin:0">{{ activity.title }} — Recordings</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens ({{ tz_name }})</dt>
+    <dd style="margin:0">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due ({{ tz_name }})</dt>
+    <dd style="margin:0">{{ activity.due_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Status</dt>
+    <dd style="margin:0">
+      {% if activity.is_published %}<span class="badge badge--success">Published</span>
+      {% else %}<span class="badge badge--neutral">Draft</span>{% endif %}
+    </dd>
+  </dl>
+</div>
+
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  Recordings are <strong>final</strong>: a student records one answer in the browser, submits it
+  once before the deadline, and can never edit or replace it. This page is read only. Recordings
+  stay here after the deadline, after the group or its academic chain is archived, and after a
+  student is withdrawn or suspended. Written feedback is a comment, not a grade &mdash;
+  &ldquo;Feedback provided&rdquo; does not mean marked, passed, or approved.
+</div>
+
+<div class="ds-row" style="margin-bottom: var(--space-6)">
+  <a class="btn btn--secondary" href="{{ back_url }}">Back to Activity</a>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.group_speaking', group_public_id=group.public_id) }}">Back to Speaking</a>
+</div>
+
+<section class="dash-section" style="margin-top: 0">
+  <h2>Recordings</h2>
+  {% if submissions %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th style="width:14rem">Submitted ({{ tz_name }})</th>
+        <th style="width:12rem">Feedback</th>
+        <th style="width:11rem"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in submissions %}
+      <tr>
+        <td><strong>{{ item.student_name }}</strong></td>
+        <td>{{ item.submitted_local.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>
+          {#- Derived from whether a feedback row exists, never from a stored
+              status. A row whose reviewer is no longer a teacher is reported
+              as its own state, never as "awaiting". -#}
+          {% if item.feedback_state == "present" %}<span class="badge badge--success">Feedback provided</span>
+          {% elif item.feedback_state == "invalid" %}<span class="badge badge--danger">Needs admin review</span>
+          {% else %}<span class="badge badge--neutral">Awaiting feedback</span>{% endif %}
+        </td>
+        <td>
+          <a class="btn btn--secondary"
+             href="{{ url_for('teacher.speaking_submission_detail', group_public_id=group.public_id, speaking_public_id=activity.public_id, submission_public_id=item.public_id) }}">Listen</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if has_prev or has_next %}
+  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Recording pages">
+    {% if has_prev %}
+    <a class="btn btn--secondary" href="{{ url_for('teacher.speaking_submissions', group_public_id=group.public_id, speaking_public_id=activity.public_id, page=page - 1) }}">Previous</a>
+    {% endif %}
+    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+    {% if has_next %}
+    <a class="btn btn--secondary" href="{{ url_for('teacher.speaking_submissions', group_public_id=group.public_id, speaking_public_id=activity.public_id, page=page + 1) }}">Next</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No recordings yet</div>
+    <div>No student has submitted a recording for this speaking activity.</div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

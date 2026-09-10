@@ -65,6 +65,20 @@ class Assignment(db.Model):
     lifecycle change never rewrites either -- archiving hides an
     Assignment from Students without touching the row.
 
+    **Since Phase 4 / M06 an Assignment may carry a Speaking
+    extension.** An Assignment is a *Speaking activity* exactly when a
+    ``speaking_activities`` row points at it, and an *ordinary
+    Assignment* exactly when none does. There is deliberately no ``kind``
+    column here: a nullable flag and that row could disagree, and then
+    two places would answer the same question differently. Nothing about
+    this row changes -- the ordinary Assignment reads simply exclude the
+    ones carrying the extension and the Speaking reads require them (see
+    ``app/services/assignment_queries.has_speaking_extension``), so every
+    Assignment that existed before M06 stays an ordinary Assignment by
+    construction, with no backfill and no default. ``uq_assignments_group_title``
+    spans both kinds, so one Group never carries an ordinary Assignment
+    and a Speaking activity with the same title either.
+
     ``title`` is unique within a Group -- **including** against drafts --
     so one Group never carries two same-named Assignments. The same title
     is fine in another Group. The DB ``UniqueConstraint`` is the final
@@ -169,6 +183,18 @@ class Assignment(db.Model):
     )
 
     group = db.relationship("Group", back_populates="assignments")
+    #: Phase 4 / M06. The Speaking extension that turns this Assignment
+    #: into a Speaking activity, or ``None`` for an ordinary Assignment.
+    #: One-to-one (``speaking_activities.assignment_id`` is UNIQUE) and
+    #: **no** cascade: the relationship exists so the inverse is declared
+    #: and is never iterated. It is deliberately not a discriminator that
+    #: any read consults -- ``assignment_queries.has_speaking_extension``
+    #: is the one correlated ``EXISTS`` every Assignment read applies,
+    #: because the classification belongs in the SQL ``WHERE`` clause and
+    #: not in a lazily loaded attribute.
+    speaking_activity = db.relationship(
+        "SpeakingActivity", back_populates="assignment", uselist=False
+    )
 
     @validates("status")
     def validate_status(self, _key, value):

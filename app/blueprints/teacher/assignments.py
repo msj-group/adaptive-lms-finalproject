@@ -90,6 +90,7 @@ from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
 from app.services.assignment_queries import (
     PAGE_SIZE,
     build_teacher_view,
+    has_speaking_extension,
     normalize_page,
     teacher_assignments_page,
 )
@@ -157,10 +158,25 @@ def _private_no_store(template, **context):
 
 
 def _assignment_for_group_or_404(group, assignment_public_id):
-    """An Assignment by its own public_id, constrained to `group`. An
-    Assignment public_id valid only for another Group 404s here."""
-    return Assignment.query.filter_by(
-        public_id=assignment_public_id, group_id=group.id
+    """An **ordinary** Assignment by its own public_id, constrained to
+    `group`. An Assignment public_id valid only for another Group 404s
+    here.
+
+    Since Phase 4 / M06 a **Speaking activity** 404s here too: an
+    Assignment carrying a ``speaking_activities`` row belongs to the
+    Speaking surface, which has its own detail, edit, publication and
+    submission routes and its own audio workflow. Excluding it in the
+    ``WHERE`` clause (``~has_speaking_extension()``) is what makes "the
+    ordinary Assignment routes can never reach a Speaking activity" a
+    structural property rather than a check somebody could forget --
+    including on the edit, publication-toggle, submission-list and
+    submission-detail routes, all of which resolve their Assignment
+    through this one helper.
+    """
+    return Assignment.query.filter(
+        Assignment.public_id == assignment_public_id,
+        Assignment.group_id == group.id,
+        ~has_speaking_extension(),
     ).first_or_404()
 
 

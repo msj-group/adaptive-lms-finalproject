@@ -1,0 +1,91 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ activity.title }} — {{ activity.group_name }}{% endblock %}
+{% block portal_nav %}{% set active_nav = 'speaking' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M06. `activity` and `submission` are plain presentation dicts;
+    the row behind them already satisfied the whole visibility formula in SQL,
+    and `submission` was looked up by this activity AND this authenticated
+    student together -- never by the activity alone. A GET never creates or
+    changes anything, and there is no edit, delete or resubmit control here --
+    none exists server-side either. -#}
+<p class="ds-section__desc" style="margin-bottom: var(--space-2)">
+  {{ activity.group_name }} &middot; {{ activity.course_title }} &middot; {{ activity.level_name }} &middot; {{ activity.term_name }}
+</p>
+<div class="ds-row" style="justify-content: space-between; align-items: flex-start; gap: var(--space-4)">
+  <h1 style="margin-top: 0">{{ activity.title }}</h1>
+  {% if activity.state == "open" %}
+  <span class="badge badge--success">Open</span>
+  {% else %}
+  <span class="badge badge--neutral">Past due</span>
+  {% endif %}
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
+  <a class="btn btn--secondary" href="{{ list_url }}">Back to Speaking</a>
+</div>
+
+<div class="card" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
+    <dd style="margin:0">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
+    <dd style="margin:0">{{ activity.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Your answer</dt>
+    <dd style="margin:0">
+      {% if submission %}<span class="badge badge--success">Submitted</span>
+      {% else %}<span class="badge badge--neutral">Not submitted</span>{% endif %}
+    </dd>
+  </dl>
+</div>
+
+{% if not submission and activity.state == "past_due" %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
+  The deadline for this speaking activity has passed and you did not submit a recording. It stays
+  here for your reference, but a recording can no longer be submitted.
+</div>
+{% elif submission and activity.state == "past_due" %}
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  The deadline for this speaking activity has passed. Your recording is safe and you can still
+  listen to it and read your teacher's feedback.
+</div>
+{% endif %}
+
+<section>
+  <h2>What to say</h2>
+  <div class="card">
+    {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
+       these are Teacher-typed instructions, never stored HTML. #}
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
+  </div>
+</section>
+
+{% if submission %}
+<section style="margin-top: var(--space-6)">
+  <h2>Your Recording</h2>
+  <div class="alert alert--success" style="margin-bottom: var(--space-4)">
+    <strong>Submitted</strong> on {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+    This recording is final: it cannot be edited, replaced, or submitted again.
+  </div>
+  <a class="btn btn--primary" href="{{ receipt_url }}">Listen to your recording and read feedback</a>
+</section>
+
+{% elif can_record %}
+<section style="margin-top: var(--space-6)">
+  <h2>Record Your Answer</h2>
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    <strong>You can submit once.</strong> You may record as many times as you like and listen back
+    before you hand anything in — nothing is sent to the center until you press the final submit
+    button. Once you submit, your recording becomes final immediately: it cannot be edited,
+    replaced, or submitted again. Recording closes at
+    {{ activity.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+  </div>
+  <a class="btn btn--primary" href="{{ record_url }}">Open the recorder</a>
+</section>
+{% endif %}
+{% endblock %}

@@ -85,6 +85,7 @@
             student can see. -#}
         <a class="btn btn--secondary" href="{{ url_for('teacher.group_quizzes', group_public_id=card.group_public_id) }}">Manage Quizzes</a>
         <a class="btn btn--secondary" href="{{ url_for('teacher.group_listening', group_public_id=card.group_public_id) }}">Manage Listening</a>
+        <a class="btn btn--secondary" href="{{ url_for('teacher.group_speaking', group_public_id=card.group_public_id) }}">Manage Speaking</a>
       </div>
     </div>
     {% endfor %}

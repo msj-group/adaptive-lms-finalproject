@@ -1,0 +1,88 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ submission.student_name }} — {{ activity.title }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M06. `activity`, `submission` and `feedback` are plain
+    presentation dicts; the route already proved this Teacher's active
+    assignment to the Group, the activity's ownership by that Group, the
+    recording's ownership by that activity, and that the referenced upload is
+    still an audio file. `player.src` is an AUTHORIZED server route which
+    re-checks the whole chain on every request -- never a public static URL,
+    never a storage key. Nothing here discloses the storage key, the resolved
+    path, the digest, the byte size, the uploader or any internal id.
+    `can_write_feedback` was decided server-side and is re-proved against
+    locked rows by the editor itself, so this template never decides
+    authorization. There is deliberately no score, grade, rubric, pass/fail,
+    delete, replace or resubmit control here -- none exists server-side
+    either. -#}
+<h1 style="margin-top: 0">{{ submission.student_name }}</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  {{ activity.title }} &middot; {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
+</p>
+
+<div class="ds-row" style="margin-bottom: var(--space-6)">
+  <a class="btn btn--secondary" href="{{ submissions_url }}">Back to Recordings</a>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.group_speaking', group_public_id=group.public_id) }}">Back to Speaking</a>
+</div>
+
+<div class="card" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submitted</dt>
+    <dd style="margin:0">{{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
+    <dd style="margin:0">{{ activity.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+  </dl>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<section>
+  <h2>Recording</h2>
+  {% include "_audio_player.html" %}
+  <div class="ds-row">
+    <a class="btn btn--secondary" href="{{ download_url }}">Download recording</a>
+  </div>
+</section>
+
+<section style="margin-top: var(--space-6)">
+  <h2>Feedback</h2>
+
+  {% if feedback.state == "present" %}
+  <div class="card" style="margin-bottom: var(--space-4)">
+    <p class="ds-section__desc" style="margin-top: 0">
+      Last changed by {{ feedback.reviewer_name }} on {{ feedback.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+      The student sees this text whenever they can open this speaking activity.
+    </p>
+    {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe. #}
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
+  </div>
+
+  {% elif feedback.state == "invalid" %}
+  {#- Fails closed: the stored text is deliberately NOT rendered, and this
+      state is never reported as "no feedback yet". -#}
+  <div class="alert alert--danger" style="margin-bottom: var(--space-4)">
+    The saved feedback on this recording is linked to an account that is no longer a teacher, so
+    it cannot be shown or changed here. Nothing has been deleted. Please ask an administrator to
+    review this record.
+  </div>
+
+  {% else %}
+  <div class="empty-state" style="margin-bottom: var(--space-4)">
+    <div class="empty-state__title">Awaiting feedback</div>
+    <div>No teacher has written feedback on this recording yet.</div>
+  </div>
+  {% endif %}
+
+  {% if can_write_feedback %}
+  <a class="btn btn--primary" href="{{ feedback_url }}">
+    {% if feedback.state == "present" %}Edit Feedback{% else %}Add Feedback{% endif %}
+  </a>
+  {% endif %}
+</section>
+{% endblock %}

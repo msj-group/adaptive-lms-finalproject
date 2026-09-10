@@ -1,0 +1,78 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Your recording — {{ activity.title }}{% endblock %}
+{% block portal_nav %}{% set active_nav = 'speaking' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M06, the immutable receipt. `activity`, `submission` and
+    `feedback` are plain presentation dicts. The recording was looked up by this
+    activity AND this authenticated student together, and `feedback` is read
+    only for that exact recording, so it can never carry a classmate's text.
+    `player.src` is an AUTHORIZED server route that re-checks the whole chain on
+    every request -- never a public static URL and never a storage key. Nothing
+    here discloses a storage key, a path, a digest, a byte size or an internal
+    id. There is deliberately no edit, delete, replace or resubmit control
+    anywhere on this page -- none exists server-side either. -#}
+<p class="ds-section__desc" style="margin-bottom: var(--space-2)">
+  {{ activity.group_name }} &middot; {{ activity.course_title }} &middot; {{ activity.level_name }} &middot; {{ activity.term_name }}
+</p>
+<h1 style="margin-top: 0">{{ activity.title }}</h1>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
+  <a class="btn btn--secondary" href="{{ detail_url }}">Back to the activity</a>
+  <a class="btn btn--secondary" href="{{ list_url }}">Back to Speaking</a>
+</div>
+
+<div class="alert alert--success" style="margin-bottom: var(--space-6)">
+  <strong>Submitted</strong> on {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+  This recording is final: it cannot be edited, replaced, or submitted again.
+</div>
+
+<section>
+  <h2>Your Recording</h2>
+  {% include "_audio_player.html" %}
+  <div class="ds-row">
+    <a class="btn btn--secondary" href="{{ download_url }}">Download your recording</a>
+  </div>
+</section>
+
+<section style="margin-top: var(--space-6)">
+  <h2>Teacher Feedback</h2>
+  {% if feedback and feedback.state == "present" %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    Written by {{ feedback.reviewer_name }} on {{ feedback.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+    This is your teacher's written comment on your recording &mdash; it is not a grade or a pass mark.
+  </div>
+  <div class="card">
+    {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe --
+       feedback is Teacher-typed text, never stored HTML or Markdown. #}
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
+  </div>
+
+  {% elif feedback and feedback.state == "invalid" %}
+  {#- Fails closed: the stored text is deliberately NOT rendered, and this
+      state is never shown as "no feedback yet". -#}
+  <div class="alert alert--warning">
+    Feedback on this recording cannot be shown right now. Nothing has been deleted. Please contact the center.
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No teacher feedback yet</div>
+    <div>Your teacher has not written feedback on this recording yet. It will appear here once they do.</div>
+  </div>
+  {% endif %}
+</section>
+
+<section style="margin-top: var(--space-6)">
+  <h2>What to say</h2>
+  <div class="card">
+    {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe. #}
+    <div style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
+  </div>
+</section>
+{% endblock %}

@@ -52,6 +52,12 @@ from app.models.listening_activity import (
     VOCABULARY_NOTES_MAX_LENGTH,
     ListeningActivity,
 )
+from app.models.speaking_activity import SpeakingActivity
+from app.models.speaking_submission import SpeakingSubmission
+from app.models.speaking_feedback import (
+    SPEAKING_FEEDBACK_MAX_LENGTH,
+    SpeakingFeedback,
+)
 
 __all__ = [
     "User",
@@ -108,4 +114,8 @@ __all__ = [
     "ListeningActivity",
     "TRANSCRIPT_MAX_LENGTH",
     "VOCABULARY_NOTES_MAX_LENGTH",
+    "SpeakingActivity",
+    "SpeakingSubmission",
+    "SpeakingFeedback",
+    "SPEAKING_FEEDBACK_MAX_LENGTH",
 ]
