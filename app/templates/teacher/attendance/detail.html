@@ -1,0 +1,103 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_attendance_macros.html" as att %}
+{% block title %}{{ group.name }} — Attendance {{ session.session_date.isoformat() }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link" href="{{ url_for('teacher.attendance_overview') }}">Attendance</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M07. READ ONLY. This page renders no form, no token and no
+    marking control of any kind; the only mutating route it can even lead to is
+    the separate marking page, and only while the session is a draft and the
+    chain is operational. It is equally the historical detail page for a
+    session whose schedule, group or academic ancestor has since been archived.
+    Student names and notes are autoescaped and never rendered with `|safe`. -#}
+<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+  <h1 style="margin:0">Attendance — {{ session.session_date.isoformat() }}</h1>
+  {{ att.state_badge(is_finalized) }}
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card" style="margin-bottom: var(--space-5)">
+  <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
+    <dd style="margin:0">{{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Class</dt>
+    <dd style="margin:0">{{ att.session_when(session, tz_name, weekday) }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Location</dt>
+    <dd style="margin:0">{{ session.location or "—" }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Marks</dt>
+    <dd style="margin:0">{{ att.count_summary(counts) }}</dd>
+  </dl>
+</div>
+
+{% if is_finalized %}
+<div class="alert alert--success" style="margin-bottom: var(--space-5)">
+  This attendance was finalized and is permanent. It can no longer be changed, reopened or
+  deleted, and there is no control on this page to do any of those — no such action exists.
+  Students can now see their own mark for this class.
+</div>
+{% elif mark_url %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-5)">
+  This attendance is still a <strong>draft</strong>. Students cannot see it, and every student
+  who has not been marked yet counts as absent. Finalize it when you are done.
+</div>
+{% else %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-5)">
+  This attendance is still a <strong>draft</strong>, and it cannot be changed or finalized right
+  now because the {{ archived_labels | join(", ") }} {{ "is" if archived_labels|length == 1 else "are" }} archived.
+  Nothing has been deleted or rewritten, and it stays readable here.
+</div>
+{% endif %}
+
+<div class="ds-row" style="margin-bottom: var(--space-5)">
+  <a class="btn btn--secondary" href="{{ list_url }}">Back to attendance</a>
+  {% if mark_url %}
+  <a class="btn btn--primary" href="{{ mark_url }}">Mark attendance</a>
+  {% endif %}
+</div>
+
+<section class="dash-section" style="margin-top: 0">
+  <h2>Students</h2>
+  <p class="ds-section__desc">
+    These are the students who were actively enrolled when this session was opened. The list is
+    fixed and does not change with later enrolments or withdrawals. Notes are private to
+    teachers and administrators — students never see them.
+  </p>
+  {% if records %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th style="width:9rem">Mark</th>
+        <th>Private note</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for record in records %}
+      <tr>
+        <td>{{ record.student_name }}</td>
+        <td>{{ att.status_badge(record.status, record.status_label) }}</td>
+        <td style="white-space: pre-wrap">{{ record.note or "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No students captured</div>
+    <div>
+      This session has no student records. Please ask an administrator to review it — nothing
+      has been deleted.
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

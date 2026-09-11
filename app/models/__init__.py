@@ -2,6 +2,7 @@ from app.models.user import User, UserRole, UserStatus
 from app.models.enums import (
     AcademicStatus,
     AssignmentStatus,
+    AttendanceStatus,
     FileAccessAction,
     FileCategory,
     LessonStatus,
@@ -58,6 +59,12 @@ from app.models.speaking_feedback import (
     SPEAKING_FEEDBACK_MAX_LENGTH,
     SpeakingFeedback,
 )
+from app.models.attendance_session import AttendanceSession
+from app.models.attendance_record import (
+    ATTENDANCE_NOTE_MAX_LENGTH,
+    DEFAULT_ATTENDANCE_STATUS,
+    AttendanceRecord,
+)
 
 __all__ = [
     "User",
@@ -65,6 +72,7 @@ __all__ = [
     "UserStatus",
     "AcademicStatus",
     "AssignmentStatus",
+    "AttendanceStatus",
     "LessonStatus",
     "MaterialKind",
     "NotificationKind",
@@ -118,4 +126,8 @@ __all__ = [
     "SpeakingSubmission",
     "SpeakingFeedback",
     "SPEAKING_FEEDBACK_MAX_LENGTH",
+    "AttendanceSession",
+    "AttendanceRecord",
+    "ATTENDANCE_NOTE_MAX_LENGTH",
+    "DEFAULT_ATTENDANCE_STATUS",
 ]

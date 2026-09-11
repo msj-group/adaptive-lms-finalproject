@@ -1,0 +1,54 @@
+{# Shared Attendance rendering helpers (Phase 4 / M07).
+   Presentation only -- no database access, no authorization decision, and
+   nothing here is ever rendered with `|safe`. Every value arrives as a plain
+   presentation dict built by app/services/attendance_queries.py. #}
+
+{% set _WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] %}
+
+{% macro weekday_name(n) -%}
+  {{- _WEEKDAYS[n] if n is not none and 0 <= n <= 6 else "?" -}}
+{%- endmacro %}
+
+{% macro time_range(start, end) -%}
+  {{- start.strftime("%H:%M") }}&ndash;{{ end.strftime("%H:%M") -}}
+{%- endmacro %}
+
+{# Draft versus finalized is the single source of truth `finalized_at`, so the
+   badge is derived from it and never from a second stored flag. #}
+{% macro state_badge(is_finalized) -%}
+  {%- if is_finalized -%}
+    <span class="badge badge--success">Finalized</span>
+  {%- else -%}
+    <span class="badge badge--warning">Draft</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro status_badge(status, label) -%}
+  {%- if status == "present" -%}
+    <span class="badge badge--success">{{ label }}</span>
+  {%- elif status == "late" -%}
+    <span class="badge badge--warning">{{ label }}</span>
+  {%- elif status == "excused" -%}
+    <span class="badge badge--primary">{{ label }}</span>
+  {%- else -%}
+    <span class="badge badge--neutral">{{ label }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{# Bounded aggregate counts for one session: always all four statuses, always
+   in the same order, with an explicit zero -- so a missing column can never be
+   misread as a missing record. Counts only: there is deliberately no
+   percentage, rate or score anywhere in M07. #}
+{% macro count_summary(counts) -%}
+  <span class="ds-row" style="gap: var(--space-2); flex-wrap: wrap">
+    {%- for item in counts -%}
+      {{ status_badge(item.status, item.label ~ " " ~ item.count) }}
+    {%- endfor -%}
+  </span>
+{%- endmacro %}
+
+{% macro session_when(session, tz_name, weekday) -%}
+  {{ session.session_date.isoformat() }}
+  {%- if weekday is not none %} ({{ weekday_name(weekday) }}){% endif %}
+  &middot; {{ time_range(session.start_time, session.end_time) }} ({{ tz_name }})
+{%- endmacro %}

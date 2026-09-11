@@ -1,0 +1,65 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Attendance{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.attendance_overview') }}">Attendance</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M07. `cards` is a list of plain presentation dicts built by
+    app.services.attendance_queries.teacher_group_cards, so no ORM row and no
+    internal id reaches this template and rendering one cannot lazy-load or
+    make an authorization decision. Every destination uses public ids only.
+    There is deliberately no delete, reopen, export or grade control anywhere
+    on this surface -- none exists server-side either. -#}
+<h1 style="margin-top: 0">Attendance</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  Attendance is recorded for a real meeting of one of the group's scheduled classes. Pick a
+  group to see what has already been recorded, or to open attendance for a class that has
+  happened. Class dates and times are local values in the center timezone
+  (<strong>{{ tz_name }}</strong>).
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+{% if cards %}
+<div class="dash-card-list">
+  {% for card in cards %}
+  <div class="card">
+    <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
+      <div>
+        <div class="card__title" style="margin-bottom: var(--space-1)">{{ card.group_name }}</div>
+        <div class="card__body">{{ card.course_title }} &middot; {{ card.level_name }}</div>
+        <div class="card__body">{{ card.term_name }}</div>
+      </div>
+      {% if card.operational %}
+      <span class="badge badge--success">Operational</span>
+      {% else %}
+      <span class="badge badge--neutral">Not operational</span>
+      {% endif %}
+    </div>
+
+    {% if not card.operational %}
+    <div class="alert alert--warning" style="margin-top: var(--space-3)">
+      Not operational: {{ card.archived_labels | join(", ") }} archived. Attendance already
+      recorded stays readable and nothing has been deleted, but no new session can be opened
+      and no draft can be saved or finalized until every parent is active again.
+    </div>
+    {% endif %}
+
+    <div class="ds-row" style="margin-top: var(--space-4)">
+      <a class="btn btn--primary" href="{{ url_for('teacher.group_attendance', group_public_id=card.group_public_id) }}">Open attendance</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">No teaching assignments</div>
+  <div>When an administrator assigns you to a group, its attendance appears here.</div>
+</div>
+{% endif %}
+{% endblock %}

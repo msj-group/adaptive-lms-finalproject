@@ -6718,3 +6718,419 @@ tokens decide against the state the form was opened on.
   which container it negotiates, whether an uploaded container carries a
   video track, and whether the controls read well to a screen reader are
   not claims these tests can make.
+
+## End-to-end Attendance (Phase 4, Part M07)
+
+M07 adds the complete Attendance track. An active, actively assigned
+Teacher opens attendance for a **real occurrence of one of the Group's own
+schedules**, the server captures that Group's active Student roster at
+that instant, the Teacher marks each captured Student present / absent /
+late / excused with an optional private note, saves as often as needed,
+and finally **finalizes** the session, which freezes it permanently. An
+Administrator reviews everything read-only. A Student reads only their own
+**finalized** records.
+
+Deferred with **no** placeholder table, column, route, enum value, form
+field, template hook or TODO: Grades, Announcements, Calendar, Messages,
+Discussions, Student-progress calculations and every later Phase 4 module;
+any attendance percentage, rate, score, grade, pass mark or penalty; any
+unscheduled / make-up / ad hoc / bulk-generated / recurring auto-created
+session; self check-in, GPS, biometrics, QR codes, late-minutes
+arithmetic, excuse documents, dispute workflows, reminders, exports and
+any hard delete, reopen, unlock, restore or duplicate action.
+
+### A. A session is a scheduled occurrence, and nothing else
+
+The central decision is that M07 introduces **no second calendar**. An
+`AttendanceSession` exists exactly when a Teacher opened attendance for a
+genuine occurrence of an existing **active** `Schedule` belonging to that
+exact Group. The occurrence rules are the M08/M09 ones, reused rather than
+reinvented: `day_of_week` is Monday=0..Sunday=6 as `date.weekday()`, the
+effective date range is inclusive at both ends, and "now" is a **local
+civil** value resolved through `APP_TIMEZONE` by
+`app/services/schedule_occurrences.py`.
+
+`occurrence_rejection` in `app/services/attendance_queries.py` is the one
+place those rules are stated, and it returns a short code rather than a
+sentence so the friendly pre-lock preview and the authoritative post-lock
+recheck can never explain the same rule differently. Five rules, and no
+others:
+
+1. the Schedule belongs to **exactly** this Group;
+2. the Schedule is `active` -- an archived slot produces no new meetings,
+   though sessions already recorded from it stay readable forever;
+3. the date's weekday equals `schedule.day_of_week`;
+4. the date lies inside `[effective_start_date, effective_end_date]`;
+5. the date is not **after** today's local civil date.
+
+**Today itself is allowed.** A Teacher records attendance during or right
+after the class; requiring the meeting to have *ended* would make the
+common case impossible. Nothing compares wall-clock times, so a session
+may legitimately be opened before that day's slot has finished. Comparing
+a local civil date against a UTC one is deliberately avoided: near
+midnight the two differ, and a Teacher would be told that today has not
+happened yet.
+
+**Creation is two explicit steps**, and that is a consequence of the
+signed-token requirement rather than a UI preference. The create token
+must bind the Teacher, the Group, the **Schedule** and the **selected
+local date**, and neither of the last two exists until the Teacher has
+chosen them. Step one (`GET|POST .../attendance/new`) validates the choice
+and renders a confirmation page carrying that exact-shape token; step two
+(`POST .../attendance/new/confirm`) takes the locks and writes. **Step one
+writes nothing and takes no lock**, so everything it decides -- including
+the roster size it shows -- is a preview that step two re-proves against
+the locked rows.
+
+### B. Two new tables
+
+`attendance_sessions` holds `id`, `public_id`, `group_id`, `schedule_id`,
+`session_date`, `start_time`, `end_time`, `location`, `version`,
+`finalized_at`, `created_at`, `updated_at`.
+
+- `group_id` and `schedule_id` are NOT NULL plain references with **no**
+  `ON DELETE` and **no** `ON UPDATE`. `group_id` is stored *as well as*
+  `schedule_id` because it is what every Group-scoped list and every
+  nested ownership check reads; "this Schedule belongs to exactly this
+  Group" is a cross-table condition no foreign key can express, so it is
+  an application invariant proved against the **locked** rows before the
+  insert and re-proved on every nested read.
+- **`session_date`, `start_time`, `end_time` and `location` are deliberate
+  history, not a cache.** They are copied once, at creation, and no route
+  ever rewrites them. A Schedule that is later edited, moved, relocated or
+  archived must not retroactively change what a recorded meeting was: the
+  attendance of 12 May keeps saying 12 May, 18:00-20:00, Room 3 forever.
+  They are **local civil** values, exactly like the Schedule they came
+  from; there is no timezone column and no UTC conversion.
+- **Draft versus finalized is `finalized_at`, and nothing else.** NULL
+  means draft; a value means frozen. There is deliberately no `status`
+  enum, no `is_final` flag and no second state column that could disagree
+  with the timestamp.
+- `version` starts at 1 and rises by exactly one per *meaningful* draft
+  save and once more at finalization. It is the stale-form signal, not a
+  revision history, and it catches two saves inside the same whole second
+  that a timestamp comparison could not.
+- `uq_attendance_sessions_schedule_date` is the "one session per scheduled
+  occurrence" invariant, the shape of the duplicate lookup, and the
+  leftmost prefix `schedule_id` needs.
+- `ck_attendance_sessions_version_positive` and
+  `ck_attendance_sessions_time_order` are plain comparison CHECKs; the
+  second mirrors `ck_schedules_time_order` on the row those values were
+  copied from.
+- There is deliberately **no `created_by`, `finalized_by`, `notes`,
+  `topic`, `cancelled`, `make_up`, `duration_minutes` or `status`
+  column**, and no session-level note.
+
+`attendance_records` holds `id`, `public_id`, `attendance_session_id`,
+`student_id`, `status`, `note`, `version`, `created_at`, `updated_at`.
+
+- `uq_attendance_records_session_student` is "exactly one record per
+  session and Student", the shape of every per-Student lookup inside a
+  session, and the index `attendance_session_id` needs.
+- `status` is NOT NULL, defaults to **`absent`**, and is guarded by both a
+  model validator and `ck_attendance_records_status` -- a literal `IN`
+  list, not a MySQL `ENUM`, the same convention every other status column
+  uses, so SQLite enforces it identically and adding a member stays a
+  visible schema change.
+- `note` is nullable `Text`, private to staff, bounded at **1,000
+  characters at the request boundary** (applied to the raw value, before
+  stripping, so whitespace padding cannot smuggle a longer one past it).
+- `version` starts at 1 and rises by exactly one per meaningful draft
+  update; a change to `status`, to `note`, or to both counts **once**.
+- `student_id` is a plain reference to `users.id` with no cascade and its
+  own `ix_attendance_records_student_id`, which InnoDB requires and which
+  the Student's own summary leads with.
+- There is deliberately **no `marked_by`, `marked_at`, `minutes_late`,
+  `excuse_document_id`, `acknowledged_at` or `score` column**.
+
+Indexes and their distinct read shapes, with no redundancy:
+`uq_attendance_sessions_schedule_date` (occurrence lookup + FK prefix),
+`ix_attendance_sessions_group_date_id` (the Teacher's Group-scoped list:
+equality on the Group then the two ordering columns, and the `group_id` FK
+index), `ix_attendance_sessions_date_id` (the Administrator's center-wide
+list), `uq_attendance_records_session_student`, and
+`ix_attendance_records_student_id`. **No MySQL execution plan has been
+measured**; this is a reasoned design pending an authorized real `EXPLAIN`.
+
+### C. The roster is captured once, and then frozen
+
+Creation inserts the session **and** one record per eligible active
+Student in the same transaction, every one of them `absent`, every one of
+them `version` 1, all carrying the same authoritative post-lock
+whole-second moment. "Eligible" is all four of: an `active` Enrollment, in
+**exactly** this Group, whose referenced User has role `student` and an
+`active` account. The `users` join is not redundant with the Enrollment
+row -- a foreign key proves a row exists, never that it is still a Student
+or still active.
+
+`eligible_roster_rows` is a **non-locking preview** that only discovers
+which ids to lock. `lock_creation_chain` then re-locks every User row
+(ascending internal id) and every Enrollment row (ascending internal id),
+and `eligible_locked_student_ids` re-applies all four conditions to the
+**locked** rows. A row that stopped being eligible in that window is
+dropped; a row that *became* eligible was never in the preview and is not
+captured. Both directions are deliberate: the roster is whatever the
+locked rows say at the instant of capture.
+
+**Afterwards the set never changes.** A Student who enrols later gets no
+record on an existing session; a Student who withdraws, is suspended, is
+re-assigned, or whose Schedule or Group is archived **keeps** theirs. An
+attendance record is a statement about who was expected at one meeting on
+one date, and re-deriving it later from today's membership would rewrite
+history. **A Group with no eligible active Student cannot open a session
+at all**, rather than producing an empty one.
+
+The consequence for reads is stated plainly rather than hidden:
+`session_records` deliberately does **not** re-filter on the Student's
+current role, account status or Enrollment. Those were all required at
+capture time against the locked rows; afterwards the record is history,
+and a later change must never make a recorded roster look incomplete --
+which is also what keeps the finalization roster-integrity check honest.
+
+### D. Draft saves, no-ops, and what a save may change
+
+A draft save changes **only** `status` and `note` values. The set of
+records is read from the database and the submitted field set is matched
+against it, never the other way round, so a request naming an extra
+record, omitting one, or renaming one adds, removes, replaces and reorders
+nothing. Each control is named after the record's own `public_id` -- never
+an internal id and never a row index, which a reordered page could
+silently re-point at another Student.
+
+**A no-op save is a no-op.** If every status and every normalised note is
+already what is stored, no record version moves, no session version moves,
+no timestamp moves, and the transaction is rolled back. Re-saving
+unchanged marks is not an edit. A whitespace-only note normalises to
+`None`, so "no note" and "a note made of spaces" are the same thing and
+cannot fake an edit.
+
+**A missing `note` field is a validation error, not "clear the note".** A
+`<textarea>` always submits a value, so a missing field means the request
+is not this form; treating it as a clear would let a partial or
+hand-built POST silently erase what a colleague wrote. An **empty** note
+field is an ordinary "no note" and clears it deliberately.
+
+**Ordinary validation runs before any lock.** A bad status or an oversized
+note re-renders the form with the Teacher's own submitted values and the
+same token, having taken no lock and written nothing -- so one long note
+never costs a Teacher the rest of their marking. Every authoritative
+condition is then re-checked against the locked rows.
+
+### E. Finalization, and the two things it is not
+
+Finalization is POST-only, CSRF-protected, and behind an explicit
+confirmation the Teacher must tick; it lives in its own form with its own
+token, so a draft save can never finalize by accident and a finalize can
+never carry marks. It requires the complete captured roster to still be
+intact (`_roster_broken`) and the signed finalize token to still describe
+the session's current version, so a co-teacher's save landing in between
+produces a "reload and review" rejection rather than a finalization of
+marks nobody read.
+
+It then sets one authoritative whole-second UTC `finalized_at`, increments
+`version` **once**, and writes nothing else. **A replay is safe**: a
+second finalization of an already-finalized session changes no timestamp,
+no version, no status and no note, and returns its detail page. A
+finalized session cannot be edited, reopened, deleted or duplicated --
+enforced by the **absence of write paths**, not by a trigger or an audit
+system.
+
+### F. Who may read what
+
+- **Teachers.** An actively assigned Teacher reads a Group's attendance
+  history, including finalized history under an archived Schedule, Group
+  or academic ancestor -- reading is historical. They cannot create, save
+  a draft or finalize once the operational chain is inactive.
+- **Administrators.** Everything, including drafts, historical sessions
+  and the Teacher-only private notes: an administrator investigating a
+  dispute must see exactly what the Teacher wrote. **There is no
+  administrator mutation endpoint in M07 at all** -- not hidden behind a
+  permission check, not disabled in a template: every attendance rule
+  under `/admin` is GET-only, so a POST returns 405 or 404.
+- **Students.** Their own **finalized** records only, keyed off
+  `current_user.id` with the acting account's role and status re-proved in
+  the same `WHERE` clause. A **draft** is invisible: it is a Teacher's
+  work in progress -- a roster that starts out entirely `absent` -- and
+  showing it would tell a Student they were marked absent for a class
+  nobody has finished recording. A withdrawn Student keeps reading their
+  own history. Notes, other Students, the Group roster, the Teacher's
+  identity and every internal id are excluded **by never being fetched**,
+  not by being hidden in a template.
+
+**Student totals are counts, never a score.** One bounded `GROUP BY`
+scoped to that Student and to finalized sessions, with an explicit zero
+per status. There is no percentage, no rate, no "attendance score" and no
+center-wide comparison: any of those would read as a grade, Grades are an
+undecided module, and a percentage over a partially recorded term would be
+actively misleading. Nothing in M07 touches the dashboard or any progress
+figure.
+
+### G. Locking, and what the tokens do instead
+
+Two chains, both in `app/services/attendance_transactions.py`, both
+extending the established academic prefix with the single deliberate
+reset owned by `lock_academic_hierarchy`:
+
+    creation:  AcademicTerm -> Level -> Course -> Group -> acting Teacher
+               -> GroupTeacherAssignment -> Schedule
+               -> eligible Student Users (asc id) -> active Enrollments (asc id)
+               -> AttendanceSession
+
+    draft/finalize:
+               AcademicTerm -> Level -> Course -> Group -> acting Teacher
+               -> GroupTeacherAssignment -> Schedule -> AttendanceSession
+               -> captured Student Users (asc id) -> captured records (asc id)
+
+Ascending internal id at every level -- never display order, never
+submission order -- is the project-wide rule that keeps two co-teachers,
+or a Teacher and an Administrator membership change, from deadlocking. The
+Group lock is the same one every Group-affecting mutation already takes,
+so an attendance write serializes against a Group retarget, a Schedule
+edit and an Enrollment change rather than racing them. The
+AttendanceSession is the serialization point for its own aggregate and is
+locked **before** the captured rows.
+
+The creation chain's last statement locates the session by
+`(schedule_id, session_date)`, which for a row that does not exist yet can
+only take a gap / next-key lock. **A gap lock is not a mutex**:
+MySQL/InnoDB documents that gap locks on the same gap can be held by
+several transactions at once and do not block one another, so acquiring
+one is not what makes two competing creators mutually exclusive. What
+serializes them is the chain of locks on rows that *do* exist -- above all
+the Group -- and `uq_attendance_sessions_schedule_date` remains the final
+duplicate defense, with the loser **resolved to the session that won**
+rather than shown an error.
+
+**Transaction locking and stale-form protection solve different problems
+and both are preserved.** The locks decide against the rows as they are
+now; the three signed exact-shape tokens decide against the state the form
+was opened on:
+
+- `attendance-create` binds Teacher, Group, Schedule and the selected
+  local date;
+- `attendance-draft` binds Teacher, Group, Session, the session's current
+  version **and** every captured record's public id and version -- the
+  session version alone would miss a co-teacher who changed one record,
+  and the records alone would miss a finalization;
+- `attendance-finalize` binds Teacher, Group, Session and the session's
+  current version.
+
+Each has its own M07 salt and purpose marker, so a token minted under any
+other milestone's salt, or under one of these for another purpose, fails
+even though every token in the project is signed with the same
+`SECRET_KEY`. The shape check is exact and typed: the key set must match,
+versions must be genuine positive `int`s (`bool` excluded explicitly), and
+the record state must be well-formed `[public_id, version]` pairs. A
+payload carries **public identifiers, versions, one date and a purpose
+only** -- never a Student name, a status, a note, a roster size, an
+internal id or any schedule detail. The record state is sorted by
+`public_id`, not by display order, so an administrator renaming an account
+between the GET and the POST cannot make an untouched form look stale.
+
+`IntegrityError` is caught, **rolled back first**, re-authorized from
+current state, and reported with one generic sentence -- never SQL, driver,
+parameter or transaction detail. Every post-rollback path re-proves the
+whole chain through `_fresh_attendance_authorization`, which reads the
+actor by a **scalar id captured before the reset** and re-reads their own
+`role` and `status`, because `roles_required` ran once before the view and
+the same concurrent change that forced the rollback may have ended access.
+
+### H. Query bounds, response behaviour and navigation
+
+- Every list is a fixed page of 20 with `LIMIT PAGE_SIZE + 1` for the
+  has-next flag and **no `COUNT`**: an exact total would be both an
+  unbounded scan and a disclosure of how much history exists beyond the
+  page. A page past the end falls back to page 1.
+- Ordering is deterministic in SQL and tie-broken by an internal id that
+  never reaches a template: `session_date DESC, id DESC` for both Teacher
+  and Administrator lists, `session_date DESC, record id DESC` for the
+  Student summary, and `(student name, record id)` for a session's
+  records.
+- **No N+1.** A whole page's status counts come from one `GROUP BY` keyed
+  by that page's session ids, bounded by 20 x 4 rows; asking per row would
+  be an N+1 on a page that already knows every id it cares about.
+- Administrator filters are validated into known shapes before reaching
+  SQL: a Group **public** id resolved by lookup (an unknown one narrows to
+  nothing rather than widening), a real ISO date, and exactly `final` or
+  `draft`. Anything else is dropped rather than guessed at.
+- Every content-bearing attendance response -- Teacher, Administrator and
+  Student alike -- carries `Cache-Control: private, no-store` and
+  `Vary: Cookie`.
+- Every mutation is POST with CSRF and a signed state token; unsupported
+  methods return 405. Every URL uses `public_id` only; no internal numeric
+  id appears in a URL, a form value, a token or the rendered HTML.
+- Student names and notes are autoescaped, rendered with
+  `white-space: pre-wrap`, and never rendered with `|safe`.
+- The shared Student portal nav gains **Attendance** between Speaking and
+  Search; the Teacher dashboard's Group card gains **Attendance** after
+  Manage Speaking, plus a flat `/teacher/attendance` overview of the
+  Teacher's assigned Groups; the Administrator nav's previously disabled
+  **Attendance** entry now points at the review surface. The exact
+  navigation-order contract in `tests/test_notifications_inbox.py` and the
+  disabled-nav contract in `tests/test_admin_dashboard.py` were updated
+  **explicitly** rather than loosened. Grades, Payments and Research stay
+  disabled with no endpoint.
+- **No notification producer was added.** `NotificationKind` is unchanged
+  and no `AttendanceStatus` value carries any ordering, weight, score or
+  pass/fail meaning anywhere.
+
+### I. Migration
+
+One additive revision, `9c4d7e2b6f15`, after `4e2c9b7f1a83`. It creates
+exactly two tables plus their CHECKs, UNIQUEs, foreign keys and indexes,
+and touches nothing else: no `batch_alter_table`, no `add_column`, no
+`alter_column`, no drop, no data rewrite, **no seeded attendance**. An
+attendance session exists only because a Teacher opened one for a real
+meeting, so a migration that creates empty tables states nothing about any
+past class. `groups`, `schedules` and `users` appear only as existing
+foreign-key targets, every reference plain. No `mysql_engine` /
+`mysql_charset` argument is declared: each table inherits the server's
+default exactly as every earlier table does.
+
+### J. Verification actually performed, and what it does not prove
+
+- Five new suites (`tests/test_attendance_model.py`,
+  `tests/test_attendance_migration.py`,
+  `tests/test_teacher_attendance.py`, `tests/test_admin_attendance.py`,
+  `tests/test_student_attendance.py`) plus a shared
+  `tests/attendance_fixtures.py`.
+- The migration was **executed in both directions** against an isolated
+  temporary SQLite database seeded with representative existing rows -- a
+  Group with a Schedule, an Enrollment and a teacher assignment, an
+  ordinary Assignment with a text Submission and its feedback, a Quiz, a
+  Speaking activity with a recording, an UploadedFile and a Material --
+  and every one of those rows was read back unchanged. Each uniqueness
+  rule and each CHECK was proved by a refused INSERT, all four statuses by
+  an accepted one, and every probe row was removed before the downgrade.
+- The MySQL DDL was compiled offline (dialect only, no connection) and
+  inspected: `BIGINT` keys, `VARCHAR(36)` public identifiers, `DATE` /
+  `TIME` civil columns, whole-second `DATETIME`, `TEXT` notes, both named
+  CHECKs, every UNIQUE constraint and every foreign key with no cascade,
+  and no MySQL `ENUM` column.
+- The revision was applied to the **development** MySQL database after
+  confirming it stood at the expected `4e2c9b7f1a83`, and the resulting
+  head, columns, constraints, indexes, foreign keys, engine, charset and
+  the preservation of existing row counts were read back from that
+  database. No other database was contacted.
+- The full strict-warning suite was executed once on the final candidate;
+  the exact result is recorded in the Part's handoff.
+- **Automated tests run on SQLite in memory.** They validate application
+  logic, SQL scoping, query structure, model/schema alignment and the
+  *requested* lock order. They do **not** prove MySQL/InnoDB row blocking,
+  isolation, collation or index plans.
+- The concurrency tests are **structural**: they exercise the post-lock
+  rechecks by injecting a state change at an exact transaction boundary (a
+  Schedule archived mid-request, an Enrollment withdrawn inside the create
+  window, a session finalized under a draft save, an assignment removed
+  under a write, a co-teacher winning a marking race). The claim that the
+  Group and session locks serialize competing writers is **reasoned, not
+  measured**; the lock-order suites assert what the chains *request*.
+- Time is injected rather than waited for, so "today", the future
+  boundary and the effective-range boundaries are exact rather than
+  probabilistic. That proves the decision logic, not real-world clock
+  skew.
+- **No browser, accessibility, responsive, keyboard, real-concurrency,
+  real-calendar, DST-transition or MySQL query-plan verification was
+  performed.** The center timezone in development is a fixed-offset zone,
+  so no DST transition was exercised at all, and the occurrence rules are
+  date-only arithmetic that never converts a civil date to an instant.

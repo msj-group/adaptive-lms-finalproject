@@ -86,6 +86,11 @@
         <a class="btn btn--secondary" href="{{ url_for('teacher.group_quizzes', group_public_id=card.group_public_id) }}">Manage Quizzes</a>
         <a class="btn btn--secondary" href="{{ url_for('teacher.group_listening', group_public_id=card.group_public_id) }}">Manage Listening</a>
         <a class="btn btn--secondary" href="{{ url_for('teacher.group_speaking', group_public_id=card.group_public_id) }}">Manage Speaking</a>
+        {#- Phase 4 / M07: attendance stays reachable for an actively assigned
+            Teacher even under an archived group/ancestor, so a recorded class
+            can always be read back. Only creating, saving a draft and
+            finalizing require an operational chain. -#}
+        <a class="btn btn--secondary" href="{{ url_for('teacher.group_attendance', group_public_id=card.group_public_id) }}">Attendance</a>
       </div>
     </div>
     {% endfor %}

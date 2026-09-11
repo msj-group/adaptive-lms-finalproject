@@ -50,7 +50,7 @@ def test_revision_identifiers_and_one_linear_chain():
     parent of two others.
 
     The current head is asserted by the newest revision's own test
-    (``tests/test_speaking_migration.py``), which is the one place that
+    (``tests/test_attendance_migration.py``), which is the one place that
     claim belongs."""
     module, _ = _load_migration()
     assert module.revision == _REVISION

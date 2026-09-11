@@ -1,0 +1,83 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% import "_attendance_macros.html" as att %}
+{% block title %}Attendance {{ session.session_date.isoformat() }} — {{ group.name }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 4 / M07. READ ONLY: no form, no token and no control of any kind,
+      because no administrator mutation endpoint exists to aim one at. Student
+      names and teacher notes are autoescaped and never rendered with `|safe`. -#}
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+    <h1 style="margin:0">Attendance — {{ session.session_date.isoformat() }}</h1>
+    {{ att.state_badge(is_finalized) }}
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  <div class="card" style="margin-bottom: var(--space-5)">
+    <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
+      <dd style="margin:0">{{ group.name }} &middot; {{ group.course_title }} &middot; {{ group.level_name }} &middot; {{ group.term_name }}</dd>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Class</dt>
+      <dd style="margin:0">{{ att.session_when(session, tz_name, weekday) }}</dd>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Location</dt>
+      <dd style="margin:0">{{ session.location or "—" }}</dd>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Marks</dt>
+      <dd style="margin:0">{{ att.count_summary(counts) }}</dd>
+    </dl>
+  </div>
+
+  {% if is_finalized %}
+  <div class="alert alert--success" style="margin-bottom: var(--space-5)">
+    This attendance was finalized by the group's teaching staff and is permanent. It cannot be
+    reopened, edited or deleted by anyone, including administrators.
+  </div>
+  {% else %}
+  <div class="alert alert--warning" style="margin-bottom: var(--space-5)">
+    This attendance is still a <strong>draft</strong>: the teacher has not finalized it, so
+    students cannot see it yet and any student not yet marked still counts as absent.
+  </div>
+  {% endif %}
+
+  <div class="ds-row" style="margin-bottom: var(--space-5)">
+    <a class="btn btn--secondary" href="{{ url_for('admin.group_attendance', group_public_id=group.public_id) }}">This group's attendance</a>
+    <a class="btn btn--secondary" href="{{ url_for('admin.attendance_overview') }}">All attendance</a>
+  </div>
+
+  <section class="dash-section" style="margin-top: 0">
+    <h2>Students</h2>
+    <p class="ds-section__desc">
+      The students who were actively enrolled when this session was opened. The list is fixed:
+      it does not change with later enrolments or withdrawals. Notes were written by the
+      teaching staff and are never shown to students.
+    </p>
+    {% if records %}
+    <div class="dash-scroll">
+    <table class="dash-table">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th style="width:9rem">Mark</th>
+          <th>Private note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for record in records %}
+        <tr>
+          <td>{{ record.student_name }}</td>
+          <td>{{ att.status_badge(record.status, record.status_label) }}</td>
+          <td style="white-space: pre-wrap">{{ record.note or "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state__title">No students captured</div>
+      <div>This session has no student records. Nothing has been deleted.</div>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

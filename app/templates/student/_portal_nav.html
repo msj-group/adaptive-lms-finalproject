@@ -1,7 +1,7 @@
-{# Shared Student portal navigation (M13, extended Phase 4 / M01, M04D, M05
-   and M06). A caller sets `active_nav` to 'dashboard', 'assignments',
-   'quizzes', 'listening', 'speaking' or 'search' before including this; other
-   Student pages leave it unset.
+{# Shared Student portal navigation (M13, extended Phase 4 / M01, M04D, M05,
+   M06 and M07). A caller sets `active_nav` to 'dashboard', 'assignments',
+   'quizzes', 'listening', 'speaking', 'attendance' or 'search' before
+   including this; other Student pages leave it unset.
    Teacher / Administrator pages are unaffected -- they define their own
    `portal_nav` block and never include this file. #}
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'dashboard' else '' }}"
@@ -14,5 +14,7 @@
    href="{{ url_for('student.listening_list') }}">Listening</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'speaking' else '' }}"
    href="{{ url_for('student.speaking_list') }}">Speaking</a>
+<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'attendance' else '' }}"
+   href="{{ url_for('student.attendance_list') }}">Attendance</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'search' else '' }}"
    href="{{ url_for('student.search') }}">Search</a>

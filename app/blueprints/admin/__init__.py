@@ -20,3 +20,4 @@ from app.blueprints.admin import teachers  # noqa: E402,F401
 from app.blueprints.admin import group_members  # noqa: E402,F401
 from app.blueprints.admin import enrollments  # noqa: E402,F401
 from app.blueprints.admin import schedules  # noqa: E402,F401
+from app.blueprints.admin import attendance  # noqa: E402,F401

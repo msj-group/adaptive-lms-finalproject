@@ -1,0 +1,129 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_attendance_macros.html" as att %}
+{% block title %}{{ group.name }} — Mark attendance {{ session.session_date.isoformat() }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link" href="{{ url_for('teacher.attendance_overview') }}">Attendance</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M07, the draft marking page. Reached only while the session is a
+    draft and the chain is operational.
+
+    Each control is named after the record's OWN public id -- never an internal
+    database id and never a row index, which a reordered page could silently
+    re-point at another student. The hidden `attendance_state` value is the
+    signed draft token binding the teacher, the group, the session, the
+    session's current version and every captured record's public id and
+    version; it carries no student name, no mark and no note.
+
+    The submitted field set is matched against the roster READ FROM THE
+    DATABASE, so a request naming an extra record, omitting one, or renaming
+    one adds, removes, replaces and reorders nothing. Student names and notes
+    are autoescaped and never rendered with `|safe`. -#}
+<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+  <h1 style="margin:0">Mark attendance — {{ session.session_date.isoformat() }}</h1>
+  {{ att.state_badge(false) }}
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card" style="margin-bottom: var(--space-5)">
+  <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
+    <dd style="margin:0">{{ group.name }} &middot; {{ group.course.title }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Class</dt>
+    <dd style="margin:0">{{ att.session_when(session, tz_name, weekday) }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Location</dt>
+    <dd style="margin:0">{{ session.location or "—" }}</dd>
+  </dl>
+</div>
+
+<div class="alert alert--warning" style="margin-bottom: var(--space-5)">
+  This is a <strong>draft</strong>. Students cannot see it. You can save it as often as you
+  like; saving again with nothing changed does not count as a change. Notes are private to
+  teachers and administrators and the student never sees them. When you finalize, this
+  attendance becomes <strong>permanent</strong> — it cannot be reopened, edited or deleted.
+</div>
+
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="attendance_state" value="{{ draft_token }}">
+
+  <section class="dash-section" style="margin-top: 0">
+    <h2>Students ({{ records | length }})</h2>
+    <div class="dash-scroll">
+    <table class="dash-table">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th style="width:26rem">Mark</th>
+          <th>Private note (optional)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for record in records %}
+        <tr>
+          <td>{{ record.student_name }}</td>
+          <td>
+            <fieldset style="border:0; margin:0; padding:0">
+              <legend style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap">Attendance for {{ record.student_name }}</legend>
+              <div class="ds-row" style="gap: var(--space-3); flex-wrap: wrap">
+                {% for status in status_order %}
+                <label class="ds-row" style="gap: var(--space-1); align-items:center; margin:0">
+                  <input type="radio"
+                         name="status__{{ record.public_id }}"
+                         value="{{ status }}"
+                         {{ "checked" if record.status == status else "" }}>
+                  <span>{{ status_labels[status] }}</span>
+                </label>
+                {% endfor %}
+              </div>
+            </fieldset>
+          </td>
+          <td>
+            <textarea class="field__input"
+                      name="note__{{ record.public_id }}"
+                      rows="2"
+                      maxlength="{{ note_max }}"
+                      aria-label="Private note for {{ record.student_name }}">{{ record.note or "" }}</textarea>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+
+    <div class="ds-row" style="margin-top: var(--space-5)">
+      <button type="submit" class="btn btn--primary">Save draft</button>
+      <a class="btn btn--secondary" href="{{ detail_url }}">Back to session</a>
+    </div>
+  </section>
+</form>
+
+{#- Finalization is a SEPARATE form with its own route, its own CSRF token,
+    its own signed finalize token and an explicit confirmation the teacher must
+    tick. A draft save can never finalize by accident, and a finalize can never
+    carry marks. -#}
+<section class="card" style="margin-top: var(--space-6); border-color: var(--color-danger)">
+  <h2 style="margin-top:0">Finalize this attendance</h2>
+  <p class="card__body">
+    Finalizing freezes this session and every mark and note on it <strong>permanently</strong>.
+    There is no way to reopen, edit or delete finalized attendance, and no such control exists
+    anywhere in the system. Students will then see their own mark for this class. Save your
+    marks first — finalizing does not save what is on the form above.
+  </p>
+  <form method="post" action="{{ finalize_url }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="attendance_state" value="{{ finalize_token }}">
+    <label class="ds-row" style="gap: var(--space-2); align-items:center; margin: var(--space-3) 0">
+      <input type="checkbox" name="confirm_finalize" value="yes">
+      <span>I have checked these marks and I understand that finalizing cannot be undone.</span>
+    </label>
+    <button type="submit" class="btn btn--danger-outline">Finalize attendance</button>
+  </form>
+</section>
+{% endblock %}

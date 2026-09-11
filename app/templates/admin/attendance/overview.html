@@ -1,0 +1,111 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% import "_attendance_macros.html" as att %}
+{% block title %}Attendance{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 4 / M07. READ ONLY. There is no create, edit, mark, finalize,
+      reopen, delete, export, bulk or grade control on this page, and none
+      behind it: no such administrator endpoint exists. Attendance is recorded
+      by the teacher who taught the class. -#}
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+    <h1 style="margin:0">Attendance</h1>
+  </div>
+  <p class="ds-section__desc">
+    Center-wide review of recorded attendance, most recent class date first. Class dates and
+    times are local values in the center timezone (<strong>{{ tz_name }}</strong>), stored with
+    each session exactly as its schedule read when it was opened. This page is read-only:
+    attendance is recorded and finalized by the group's assigned teachers.
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  <form method="get" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+    <label class="field__label" for="group" style="margin:0">Group ID:</label>
+    <input type="search" name="group" id="group" class="field__input" style="width:auto"
+           placeholder="Group public ID" value="{{ filter_group }}">
+
+    <label class="field__label" for="session_date" style="margin:0">Class date:</label>
+    <input type="date" name="session_date" id="session_date" class="field__input" style="width:auto"
+           value="{{ filter_date.isoformat() if filter_date else '' }}">
+
+    <label class="field__label" for="state" style="margin:0">State:</label>
+    <select name="state" id="state" class="field__input" style="width:auto">
+      <option value="">Final and draft</option>
+      <option value="final" {{ "selected" if filter_state == "final" else "" }}>Finalized only</option>
+      <option value="draft" {{ "selected" if filter_state == "draft" else "" }}>Drafts only</option>
+    </select>
+
+    <button type="submit" class="btn btn--secondary">Filter</button>
+    {% if filter_group or filter_date or filter_state %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.attendance_overview') }}">Clear</a>
+    {% endif %}
+  </form>
+
+  {% if filter_group_unknown %}
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    No group has that public ID, so nothing is listed.
+  </div>
+  {% elif filter_group_row %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    Showing attendance for <strong>{{ filter_group_row.name }}</strong> &middot;
+    {{ filter_group_row.course_title }} &middot; {{ filter_group_row.level_name }} &middot;
+    {{ filter_group_row.term_name }}.
+  </div>
+  {% endif %}
+
+  {% if sessions %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th style="width:11rem">Class date</th>
+        <th>Group</th>
+        <th style="width:11rem">Day &amp; time</th>
+        <th>Location</th>
+        <th style="width:8rem">State</th>
+        <th>Marks</th>
+        <th style="width:7rem"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in sessions %}
+      <tr>
+        <td><strong>{{ item.session_date.isoformat() }}</strong></td>
+        <td>{{ item.group_name }}<br>
+          <span class="ds-section__desc">{{ item.course_title }} &middot; {{ item.level_name }} &middot; {{ item.term_name }}</span>
+        </td>
+        <td>{{ att.weekday_name(item.day_of_week) }} &middot; {{ att.time_range(item.start_time, item.end_time) }}</td>
+        <td>{{ item.location or "—" }}</td>
+        <td>{{ att.state_badge(item.is_finalized) }}</td>
+        <td>{{ att.count_summary(item.counts) }}</td>
+        <td>
+          <a class="btn btn--secondary"
+             href="{{ url_for('admin.attendance_session_detail', group_public_id=item.group_public_id, session_public_id=item.public_id) }}">View</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if has_prev or has_next %}
+  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attendance pages">
+    {% if has_prev %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.attendance_overview', page=page - 1, group=filter_group, session_date=filter_date.isoformat() if filter_date else None, state=filter_state or None) }}">Previous</a>
+    {% endif %}
+    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+    {% if has_next %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.attendance_overview', page=page + 1, group=filter_group, session_date=filter_date.isoformat() if filter_date else None, state=filter_state or None) }}">Next</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No attendance to review</div>
+    <div>Nothing matches these filters. Teachers record attendance from their own group pages.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

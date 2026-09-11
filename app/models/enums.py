@@ -205,3 +205,40 @@ class TranscriptVisibility(str, enum.Enum):
     HIDDEN = "hidden"
     AFTER_SUBMISSION = "after_submission"
     ALWAYS = "always"
+
+
+class AttendanceStatus(str, enum.Enum):
+    """How one captured Student was marked for one attendance session
+    (Phase 4 / M07).
+
+    Exactly the four members the owner approved, and deliberately a
+    closed set: an unrecognised value can never be inserted by
+    application code or by a manual row, because the
+    ``attendance_records.status`` CHECK names these four and nothing
+    else. Adding a member is therefore a schema change, which is the
+    point.
+
+    - ``present`` -- the Student attended.
+    - ``absent`` -- the Student did not attend. This is also the
+      **default** every captured record starts at, so a session a Teacher
+      has opened but not yet worked through never silently claims that
+      somebody was there.
+    - ``late`` -- the Student attended, but not from the start. It is a
+      *mark*, nothing more: no minutes are stored, no lateness threshold
+      exists, and nothing derives a penalty from it.
+    - ``excused`` -- the Student did not attend and the Teacher recorded
+      that the absence was excused. It carries no approval workflow, no
+      document, no request record and no separate reviewer.
+
+    There is no ``unknown``, ``pending``, ``not_marked``, ``left_early``,
+    ``sick``, ``holiday`` or ``partial`` member and no placeholder for
+    one. There is equally deliberately **no ordering, weight, score,
+    percentage or pass/fail meaning** attached to any member here or
+    anywhere else: Grades are an undecided module, and nothing in M07
+    turns an attendance mark into a number that could look like one.
+    """
+
+    PRESENT = "present"
+    ABSENT = "absent"
+    LATE = "late"
+    EXCUSED = "excused"

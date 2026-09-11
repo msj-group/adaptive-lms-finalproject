@@ -1,0 +1,91 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_attendance_macros.html" as att %}
+{% block title %}Attendance{% endblock %}
+{% block portal_nav %}{% set active_nav = 'attendance' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M07. Every entry of `records` is a plain presentation dict whose
+    row already satisfied the whole visibility formula in SQL: this student's
+    own record, on a FINALIZED session, with the acting account's role and
+    status re-proved in the same WHERE clause.
+
+    What is not here is not hidden -- it was never fetched: no other student,
+    no teacher-only note, no draft session, no teacher identity, no group
+    roster and no internal id. The totals are plain counts of this student's
+    own finalized records; there is deliberately no percentage, rate or
+    attendance score anywhere. -#}
+<h1 style="margin-top: 0">Attendance</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  Your own attendance for classes your teacher has finished recording, most recent first. A
+  class only appears here once its attendance has been finalized. Dates and times are in the
+  center timezone (<strong>{{ tz_name }}</strong>).
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+{% if total_count %}
+<div class="card" style="margin-bottom: var(--space-5)">
+  <div class="card__title" style="margin-bottom: var(--space-2)">Your recorded classes</div>
+  <div class="ds-row" style="gap: var(--space-2); flex-wrap: wrap">
+    {% for item in totals %}
+      {{ att.status_badge(item.status, item.label ~ " " ~ item.count) }}
+    {% endfor %}
+  </div>
+  <p class="card__body" style="margin-top: var(--space-3)">
+    {{ total_count }} finalized class{{ "" if total_count == 1 else "es" }} in total. These are
+    counts of what has been recorded so far — they are not a score, a grade or a percentage.
+  </p>
+</div>
+{% endif %}
+
+{% if records %}
+<div class="dash-scroll">
+<table class="dash-table">
+  <thead>
+    <tr>
+      <th style="width:11rem">Class date ({{ tz_name }})</th>
+      <th>Group</th>
+      <th style="width:10rem">Time</th>
+      <th>Location</th>
+      <th style="width:9rem">Your mark</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in records %}
+    <tr>
+      <td><strong>{{ item.session_date.isoformat() }}</strong></td>
+      <td>{{ item.group_name }} &middot; {{ item.course_title }}</td>
+      <td>{{ att.time_range(item.start_time, item.end_time) }}</td>
+      <td>{{ item.location or "—" }}</td>
+      <td>{{ att.status_badge(item.status, item.status_label) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if has_prev or has_next %}
+<nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attendance pages">
+  {% if has_prev %}
+  <a class="btn btn--secondary" href="{{ url_for('student.attendance_list', page=page - 1) }}">Previous</a>
+  {% endif %}
+  <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+  {% if has_next %}
+  <a class="btn btn--secondary" href="{{ url_for('student.attendance_list', page=page + 1) }}">Next</a>
+  {% endif %}
+</nav>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">No attendance recorded yet</div>
+  <div>
+    Once a teacher finishes recording attendance for one of your classes, your own mark for it
+    appears here.
+  </div>
+</div>
+{% endif %}
+{% endblock %}
