@@ -85,10 +85,11 @@ Bounds, ordering and cost
   :data:`NAVIGATION_WINDOW_DAYS` either side of today. A malformed,
   reversed, oversized or absurd range normalises rather than reaching the
   database, and there is no unbounded historical or future scan.
-- Each source type costs **one** bounded query, ``LIMIT``ed to
-  :data:`SOURCE_ROW_CAP` source rows and narrowed by the range in SQL.
-  Nothing is asked per row, per Group or per day, so a calendar's cost
-  does not grow with how many entries it shows.
+- Each source type costs **one** bounded query, narrowed by the range in
+  SQL. It retains at most :data:`SOURCE_ROW_CAP` source rows and reads
+  one extra sentinel row so the page can report when that source had to
+  be cut. Nothing is asked per row, per Group or per day, so a
+  calendar's cost does not grow with how many entries it shows.
 - The merged result is capped at :data:`MAX_CALENDAR_ROWS` entries and
   reports whether it was cut, rather than silently showing part of a
   range as if it were all of it.
@@ -190,10 +191,10 @@ MAX_RANGE_DAYS = 62
 #: turn into an open-ended scan of the center's whole history.
 NAVIGATION_WINDOW_DAYS = 5 * 366
 
-#: How many **source rows** one calendar read fetches per source type.
-#: Every source query carries this ``LIMIT`` with a deterministic
-#: ``ORDER BY``, so a single request can never load an unbounded set of
-#: schedules, assignments, quizzes or events.
+#: How many **source rows** one calendar read retains per source type.
+#: Every source query reads at most one additional sentinel row with a
+#: deterministic ``ORDER BY``. That sentinel is never rendered; it only
+#: proves that the source was cut so the page can say so honestly.
 SOURCE_ROW_CAP = 400
 
 #: How many **calendar entries** one range renders after expansion and
@@ -311,28 +312,32 @@ def previous_range(a_range, today):
     day before it starts. Clamped into the navigable window, so
     "Previous" can never walk off the end of the calendar.
     """
+    lo = today - timedelta(days=NAVIGATION_WINDOW_DAYS)
+    hi = today + timedelta(days=NAVIGATION_WINDOW_DAYS)
+    if a_range.start <= lo:
+        return a_range
     if is_whole_month(a_range):
-        anchor = a_range.start - timedelta(days=1)
-        if anchor < today - timedelta(days=NAVIGATION_WINDOW_DAYS):
-            return a_range
-        return month_range(anchor)
+        target = month_range(a_range.start - timedelta(days=1))
+        return CalendarRange(max(target.start, lo), min(target.end, hi))
     days = span_days(a_range)
-    end = _clamp(a_range.start - timedelta(days=1), today)
-    start = _clamp(end - timedelta(days=days - 1), today)
+    end = a_range.start - timedelta(days=1)
+    start = max(end - timedelta(days=days - 1), lo)
     return CalendarRange(start, end)
 
 
 def next_range(a_range, today):
     """The range immediately after `a_range`. Mirror of
     :func:`previous_range`."""
+    lo = today - timedelta(days=NAVIGATION_WINDOW_DAYS)
+    hi = today + timedelta(days=NAVIGATION_WINDOW_DAYS)
+    if a_range.end >= hi:
+        return a_range
     if is_whole_month(a_range):
-        anchor = a_range.end + timedelta(days=1)
-        if anchor > today + timedelta(days=NAVIGATION_WINDOW_DAYS):
-            return a_range
-        return month_range(anchor)
+        target = month_range(a_range.end + timedelta(days=1))
+        return CalendarRange(max(target.start, lo), min(target.end, hi))
     days = span_days(a_range)
-    start = _clamp(a_range.end + timedelta(days=1), today)
-    end = _clamp(start + timedelta(days=days - 1), today)
+    start = a_range.end + timedelta(days=1)
+    end = min(start + timedelta(days=days - 1), hi)
     return CalendarRange(start, end)
 
 
@@ -524,6 +529,30 @@ def _group_context(row):
 # ---------------------------------------------------------------------------
 
 
+class _BoundedSourceRows(list):
+    """A list of retained source rows plus whether one more row existed.
+
+    Keeping the list interface preserves the small, useful source-query
+    API while carrying the one fact :func:`build_calendar` needs to avoid
+    silent truncation. The sentinel row itself is never expanded or
+    rendered.
+    """
+
+    __slots__ = ("truncated",)
+
+    def __init__(self, rows, truncated):
+        super().__init__(rows)
+        self.truncated = truncated
+
+
+def _bounded_source_rows(query):
+    """Execute one ordered source query with a single overflow sentinel."""
+    rows = query.limit(SOURCE_ROW_CAP + 1).all()
+    return _BoundedSourceRows(
+        rows[:SOURCE_ROW_CAP], truncated=len(rows) > SOURCE_ROW_CAP
+    )
+
+
 def _require_reference(student_id, reference_utc):
     """A Student read gates on "has this opened yet?", so it cannot
     proceed without the request's reference moment.
@@ -565,15 +594,13 @@ def schedule_source_rows(a_range, student_id=None, teacher_id=None):
         student_id,
         teacher_id,
     )
-    return (
+    return _bounded_source_rows(
         query.filter(
             Schedule.status == _ACTIVE,
             Schedule.effective_start_date <= a_range.end,
             Schedule.effective_end_date >= a_range.start,
         )
         .order_by(Schedule.id.asc())
-        .limit(SOURCE_ROW_CAP)
-        .all()
     )
 
 
@@ -613,7 +640,7 @@ def assignment_source_rows(a_range, student_id=None, teacher_id=None, reference_
     )
     if student_id is not None:
         query = query.filter(Assignment.opens_at <= reference_utc)
-    return query.order_by(Assignment.id.asc()).limit(SOURCE_ROW_CAP).all()
+    return _bounded_source_rows(query.order_by(Assignment.id.asc()))
 
 
 def _quiz_source_query(a_range, listening, student_id, teacher_id, reference_utc):
@@ -656,7 +683,7 @@ def _quiz_source_query(a_range, listening, student_id, teacher_id, reference_utc
     )
     if student_id is not None:
         query = query.filter(Quiz.opens_at <= reference_utc)
-    return query.order_by(Quiz.id.asc()).limit(SOURCE_ROW_CAP).all()
+    return _bounded_source_rows(query.order_by(Quiz.id.asc()))
 
 
 def quiz_source_rows(a_range, student_id=None, teacher_id=None, reference_utc=None):
@@ -708,10 +735,8 @@ def center_event_source_rows(a_range, include_cancelled=False):
     )
     if not include_cancelled:
         query = query.filter(CalendarEvent.status == _EVENT_SCHEDULED)
-    return (
+    return _bounded_source_rows(
         query.order_by(CalendarEvent.event_date.asc(), CalendarEvent.id.asc())
-        .limit(SOURCE_ROW_CAP)
-        .all()
     )
 
 
@@ -925,21 +950,41 @@ def build_calendar(
     showing one entry and a calendar showing hundreds cost the same
     number of statements.
 
-    ``truncated`` is ``True`` when the range holds more than
-    :data:`MAX_CALENDAR_ROWS` entries, so the page can say that it is
-    showing part of the range rather than pretending it is all of it.
+    ``truncated`` is ``True`` when the merged range exceeds
+    :data:`MAX_CALENDAR_ROWS` entries **or** any source query reaches its
+    own row cap. The latter is carried by one overflow sentinel per
+    query; without it, a range containing 401 center events would return
+    400 rows and incorrectly claim that nothing had been omitted.
     """
-    rows = []
-    rows.extend(
-        _class_rows(
-            a_range, schedule_source_rows(a_range, student_id, teacher_id)
+    schedule_rows = schedule_source_rows(a_range, student_id, teacher_id)
+    assignment_rows = assignment_source_rows(
+        a_range, student_id, teacher_id, reference_utc
+    )
+    quiz_rows = quiz_source_rows(a_range, student_id, teacher_id, reference_utc)
+    listening_rows = listening_source_rows(
+        a_range, student_id, teacher_id, reference_utc
+    )
+    event_rows = center_event_source_rows(
+        a_range, include_cancelled=include_cancelled_events
+    )
+    source_truncated = any(
+        getattr(source_rows, "truncated", False)
+        for source_rows in (
+            schedule_rows,
+            assignment_rows,
+            quiz_rows,
+            listening_rows,
+            event_rows,
         )
     )
+
+    rows = []
+    rows.extend(_class_rows(a_range, schedule_rows))
     rows.extend(
         _instant_rows(
             tz_name,
             a_range,
-            assignment_source_rows(a_range, student_id, teacher_id, reference_utc),
+            assignment_rows,
             _ASSIGNMENT_MOMENTS,
         )
     )
@@ -947,7 +992,7 @@ def build_calendar(
         _instant_rows(
             tz_name,
             a_range,
-            quiz_source_rows(a_range, student_id, teacher_id, reference_utc),
+            quiz_rows,
             _QUIZ_MOMENTS,
         )
     )
@@ -955,19 +1000,16 @@ def build_calendar(
         _instant_rows(
             tz_name,
             a_range,
-            listening_source_rows(a_range, student_id, teacher_id, reference_utc),
+            listening_rows,
             _LISTENING_MOMENTS,
         )
     )
-    rows.extend(
-        _center_rows(
-            center_event_source_rows(
-                a_range, include_cancelled=include_cancelled_events
-            )
-        )
-    )
+    rows.extend(_center_rows(event_rows))
     rows.sort(key=sort_key)
-    return rows[:MAX_CALENDAR_ROWS], len(rows) > MAX_CALENDAR_ROWS
+    return (
+        rows[:MAX_CALENDAR_ROWS],
+        source_truncated or len(rows) > MAX_CALENDAR_ROWS,
+    )
 
 
 def group_by_day(rows):

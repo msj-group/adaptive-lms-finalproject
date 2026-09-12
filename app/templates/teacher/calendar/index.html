@@ -34,8 +34,8 @@
 
 {% if truncated %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
-  This range holds more than {{ max_rows }} entries, so only the first {{ max_rows }} are
-  shown. Choose a shorter range to see the rest.
+  This range reached the calendar's safe display limit, so some entries may be omitted.
+  Choose a shorter range to make sure every entry is included.
 </div>
 {% endif %}
 

@@ -178,6 +178,32 @@ def test_navigation_never_leaves_the_navigable_window():
     assert cq.previous_range(early, today) == early
 
 
+def test_month_navigation_clamps_the_partial_month_at_each_window_edge():
+    """A server-generated month link must already be a legal range.
+
+    The five-year boundary usually falls in the middle of a month. Moving
+    into that month therefore returns only its legal portion, rather than
+    emitting a full-month URL which the next request would normalize.
+    """
+    today = date(2026, 5, 13)
+    lo = today - timedelta(days=cq.NAVIGATION_WINDOW_DAYS)
+    hi = today + timedelta(days=cq.NAVIGATION_WINDOW_DAYS)
+
+    month_before_hi = cq.month_range(hi.replace(day=1) - timedelta(days=1))
+    upper_edge = cq.next_range(month_before_hi, today)
+    assert upper_edge == cq.CalendarRange(hi.replace(day=1), hi)
+
+    month_after_lo = cq.month_range(cq.month_range(lo).end + timedelta(days=1))
+    lower_edge = cq.previous_range(month_after_lo, today)
+    assert lower_edge == cq.CalendarRange(lo, cq.month_range(lo).end)
+
+    for candidate in (lower_edge, upper_edge):
+        args = cq.range_args(candidate)
+        round_trip = cq.normalize_range(args["from"], args["to"], today)
+        assert round_trip.range == candidate
+        assert round_trip.normalized is False
+
+
 def test_navigation_urls_are_built_from_normalised_values():
     """Every link the application emits is one it would accept back
     unchanged -- no half-written, reversed or oversized range is ever
@@ -793,6 +819,32 @@ def test_build_calendar_reports_truncation_rather_than_hiding_it(app, monkeypatc
         )
     assert len(rows) == 3
     assert truncated is True
+
+
+@pytest.mark.parametrize(
+    "event_count, expected_truncated",
+    [(3, False), (4, True)],
+)
+def test_build_calendar_reports_the_source_row_cap(
+    app, monkeypatch, event_count, expected_truncated
+):
+    """The per-source limit must never omit its overflow row silently."""
+    with app.app_context():
+        creator = fx.admin()
+        group, student, _teacher = fx.setup_group("A")
+        for index in range(event_count):
+            fx.event(
+                creator,
+                title=f"Bounded event {index}",
+                event_date=date(2026, 5, 4 + index),
+            )
+        monkeypatch.setattr(cq, "SOURCE_ROW_CAP", 3)
+        rows, truncated = cq.build_calendar(
+            MAY, app.config["APP_TIMEZONE"], _reference(app), student_id=student.id
+        )
+
+    assert len(rows) == min(event_count, 3)
+    assert truncated is expected_truncated
 
 
 def test_build_calendar_does_not_report_truncation_when_nothing_was_cut(app):
