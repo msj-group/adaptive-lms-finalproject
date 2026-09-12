@@ -17,6 +17,11 @@ from app.services.announcement_queries import (
     student_dashboard_preview,
 )
 from app.services.dashboard_queries import student_dashboard
+from app.services.message_queries import (
+    DASHBOARD_RECENT_CAP,
+    build_inbox_view,
+    recent_conversations,
+)
 from app.services.schedule_occurrences import app_now, utc_reference_now
 
 
@@ -68,6 +73,13 @@ def dashboard():
     # sees the center's announcements, which is why this section is
     # rendered outside the "no active enrollments" branch.
     announcements = build_reader_view(student_dashboard_preview(current_user.id), tz_name)
+    # Phase 4 / M11: one more bounded query. Thread membership alone
+    # decides what appears, so a conversation whose academic relationship
+    # has ended stays listed -- which is also why it renders outside the
+    # "no active enrollments" branch.
+    conversations = build_inbox_view(
+        recent_conversations(current_user.id), current_user.id, tz_name
+    )
     return private_no_store(
         "student/dashboard.html",
         tz_name=tz_name,
@@ -76,5 +88,7 @@ def dashboard():
         deadline_cap=DASHBOARD_DEADLINE_CAP,
         announcements=announcements,
         announcement_cap=DASHBOARD_PREVIEW_CAP,
+        conversations=conversations,
+        conversation_cap=DASHBOARD_RECENT_CAP,
         **data,
     )

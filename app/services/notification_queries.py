@@ -45,6 +45,7 @@ KIND_LABELS = {
     NotificationKind.LESSON_PUBLISHED.value: "Lesson",
     NotificationKind.MATERIAL_AVAILABLE.value: "Material",
     NotificationKind.ANNOUNCEMENT_PUBLISHED.value: "Announcement",
+    NotificationKind.MESSAGE_RECEIVED.value: "Message",
 }
 
 #: Attribute name used to memoise the badge on the current request

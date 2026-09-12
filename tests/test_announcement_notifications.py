@@ -51,8 +51,11 @@ def _recipients():
 
 def test_exactly_one_new_notification_kind_was_added():
     values = [kind.value for kind in NotificationKind]
-    assert values[-1] == "announcement_published"
-    assert len(values) == 8
+    # M09 added exactly one kind, as the eighth. Phase 4 / M11 later
+    # appended `message_received` after it in its own revision.
+    assert values[7] == "announcement_published"
+    assert values[8:] == ["message_received"]
+    assert len(values) == 9
     assert "announcement_withdrawn" not in values
     assert "announcement_edited" not in values
 

@@ -1,6 +1,7 @@
 {% extends "layouts/portal_base.html" %}
 {% import "_dashboard_macros.html" as dash %}
 {% import "_announcement_macros.html" as ann %}
+{% import "_message_macros.html" as msg %}
 {% block title %}Student Dashboard{% endblock %}
 {% block portal_nav %}{% set active_nav = 'dashboard' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
@@ -47,6 +48,10 @@
   </div>
   {% endif %}
 </div>
+
+{#- Phase 4 / M11. Outside the enrollment branch on purpose: a conversation
+    stays listed after the shared group has ended. -#}
+{{ msg.recent_conversations(conversations, conversation_cap, "teachers") }}
 
 {% if not cards %}
 <div class="empty-state">

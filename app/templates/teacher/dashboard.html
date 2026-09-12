@@ -1,6 +1,7 @@
 {% extends "layouts/portal_base.html" %}
 {% import "_dashboard_macros.html" as dash %}
 {% import "_announcement_macros.html" as ann %}
+{% import "_message_macros.html" as msg %}
 {% block title %}Teacher Dashboard{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
@@ -51,6 +52,10 @@
   </div>
   {% endif %}
 </div>
+
+{#- Phase 4 / M11. Outside the assignment branch on purpose: a conversation
+    stays listed after the shared group has ended. -#}
+{{ msg.recent_conversations(conversations, conversation_cap, "students") }}
 
 {% if not cards %}
 <div class="empty-state">

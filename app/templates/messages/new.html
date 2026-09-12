@@ -1,0 +1,110 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_message_macros.html" as msg %}
+{% block title %}New message{% endblock %}
+{% block portal_nav %}{% include "messages/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M11. Two steps on one template.
+
+    "picker" lists only the people the server says this user may message right
+    now -- a bounded, de-duplicated list of display names; no email address,
+    no internal id. Each entry links to "compose" by public id.
+
+    "compose" is bound to exactly one recipient: the recipient's public id and a
+    signed state token travel as hidden fields, and the server re-checks the
+    recipient, the relationship and the token on submit. -#}
+<p style="margin-top: 0"><a href="{{ url_for('messages.inbox') }}">&larr; Back to messages</a></p>
+<h1 style="margin-top: 0">New message</h1>
+
+{{ msg.flash_messages() }}
+
+{% if mode == 'compose' %}
+<p class="ds-section__desc">
+  To <strong>{{ recipient.full_name }}</strong> ({{ recipient.role_label }}).
+  <a href="{{ url_for('messages.new_thread') }}">Choose someone else</a>.
+</p>
+
+{% if form_error %}
+<div class="alert alert--danger" role="alert" style="margin-bottom: var(--space-4)">{{ form_error }}</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('messages.create_thread') }}" class="card" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="recipient" value="{{ recipient.public_id }}">
+  <input type="hidden" name="message_state" value="{{ message_state }}">
+  <div class="field">
+    <label class="field__label" for="message-subject">Subject</label>
+    <input class="field__input" id="message-subject" name="subject" type="text"
+           maxlength="{{ subject_max }}" value="{{ subject }}">
+    {% if errors.subject %}<div class="field__error">{{ errors.subject }}</div>{% endif %}
+  </div>
+  <div class="field">
+    <label class="field__label" for="message-body">Message</label>
+    <textarea class="field__input" id="message-body" name="body" rows="8"
+              maxlength="{{ body_max }}">{{ body }}</textarea>
+    {% if errors.body %}<div class="field__error">{{ errors.body }}</div>{% endif %}
+    <p class="ds-section__desc" style="margin: var(--space-1) 0 0">
+      Plain text, up to {{ body_max }} characters. A message cannot be edited or deleted once it is sent.
+    </p>
+  </div>
+  <div class="ds-row" style="gap: var(--space-3)">
+    <button type="submit" class="btn btn--primary">Send message</button>
+    <a class="btn btn--secondary" href="{{ url_for('messages.inbox') }}">Cancel</a>
+  </div>
+</form>
+
+{% else %}
+<p class="ds-section__desc">
+  Choose one of your {{ audience }}. Only people you currently share an active group with are listed.
+</p>
+
+<form class="ds-row" method="get" action="{{ url_for('messages.new_thread') }}" role="search"
+      style="margin-bottom: var(--space-4); align-items: flex-end; gap: var(--space-2); flex-wrap: wrap;">
+  <div class="field" style="margin: 0">
+    <label class="field__label" for="recipient-q">Search by name</label>
+    <input class="field__input" id="recipient-q" name="q" type="search"
+           maxlength="{{ query_max }}" value="{{ query_text }}">
+  </div>
+  <button class="btn btn--secondary" type="submit">Search</button>
+  {% if query_text %}
+  <a class="btn btn--secondary" href="{{ url_for('messages.new_thread') }}">Clear</a>
+  {% endif %}
+</form>
+
+{% if recipients %}
+<div class="dash-scroll">
+<table class="dash-table">
+  <thead>
+    <tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Action</th></tr>
+  </thead>
+  <tbody>
+    {% for person in recipients %}
+    <tr>
+      <td>{{ person.full_name }}</td>
+      <td>{{ person.role_label }}</td>
+      <td><a class="btn btn--secondary" href="{{ url_for('messages.new_thread', to=person.public_id) }}">Write a message</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if recipients|length >= recipient_limit %}
+<p class="ds-section__desc" style="margin-top: var(--space-2)">
+  Showing the first {{ recipient_limit }}. Search by name to narrow the list.
+</p>
+{% endif %}
+{% elif query_text %}
+<div class="empty-state">
+  <div class="empty-state__title">No matches</div>
+  <div>None of the {{ audience }} you can message match that name.</div>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">No one to message yet</div>
+  <div>
+    You can message your {{ audience }} while you share an active group with them. Your existing
+    conversations stay available from <a href="{{ url_for('messages.inbox') }}">Messages</a>.
+  </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

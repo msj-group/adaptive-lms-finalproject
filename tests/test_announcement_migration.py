@@ -79,10 +79,10 @@ def test_revision_identifiers_and_one_linear_head():
         down = re.search(r"^down_revision = (?:'([^']+)'|None)", source, re.M).group(1)
         revisions.add(revision)
         parents[revision] = down
-    # Exactly one head. Phase 4 / M10 follows this revision, so the single
-    # head is now M10's rather than this one.
+    # Exactly one head. Phase 4 / M10 and then Phase 4 / M11 follow this
+    # revision, so the single head is now M11's rather than this one.
     assert revisions - {p for p in parents.values() if p is not None} == {
-        "e5b83c7d1a49"
+        "a4d9e3f7c215"
     }
     # No revision is claimed as the parent of two others (no branch).
     claimed = [p for p in parents.values() if p is not None]
@@ -156,7 +156,11 @@ def test_migration_declares_every_expected_column_and_constraint():
 
 def test_the_notification_kind_lists_match_the_application_enum():
     module, _ = _load_migration()
-    assert module._KINDS_AFTER == tuple(kind.value for kind in NotificationKind)
+    application = tuple(kind.value for kind in NotificationKind)
+    # This revision's list is exactly the enum as it stood after M09;
+    # Phase 4 / M11 later appended one kind in its own revision.
+    assert module._KINDS_AFTER == application[: len(module._KINDS_AFTER)]
+    assert application[len(module._KINDS_AFTER):] == ("message_received",)
     assert set(module._KINDS_AFTER) - set(module._KINDS_BEFORE) == {
         "announcement_published"
     }

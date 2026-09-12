@@ -1,0 +1,11 @@
+{#- Phase 4 / M11. The messaging pages are shared by both portal roles, so --
+    like the notification inbox -- their `portal_nav` branches: a Student keeps
+    the shared Student navigation and a Teacher keeps the Dashboard link.
+    `active_nav` is left unset; the shared layout adds the single Messages link
+    itself and marks it active for this blueprint. Administrator and Researcher
+    never reach these templates (403). -#}
+{%- if current_user.role == 'student' -%}
+  {% include "student/_portal_nav.html" %}
+{%- elif current_user.role == 'teacher' -%}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{%- endif -%}

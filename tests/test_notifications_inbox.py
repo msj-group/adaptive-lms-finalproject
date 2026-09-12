@@ -616,7 +616,9 @@ def test_inbox_navigation_holds_exactly_the_expected_links(app, client, role_nam
         # added Speaking after Listening, M07 added Attendance, M08 added
         # Grades, M09 added Announcements, and M10 added Calendar after it
         # -- each is a Student surface the Part introduced, so the shared
-        # nav names it. Search stays last before Notifications.
+        # nav names it. Search stays last in the Student partial. Phase 4 /
+        # M11 added the shared Messages link, which the portal header renders
+        # once for both roles immediately before Notifications.
         # The assertion stays exact: the inbox must hold these links, in this
         # order, and no others -- one Notifications link included.
         [
@@ -630,10 +632,11 @@ def test_inbox_navigation_holds_exactly_the_expected_links(app, client, role_nam
             "/student/announcements",
             "/student/calendar",
             "/student/search",
+            "/messages",
             "/notifications",
         ]
         if role_name == "student"
-        else ["/teacher/dashboard", "/notifications"]
+        else ["/teacher/dashboard", "/messages", "/notifications"]
     )
     hrefs = re.findall(r'href="([^"]+)"', nav)
     assert hrefs == expected

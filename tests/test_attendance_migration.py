@@ -66,10 +66,10 @@ def test_revision_identifiers_and_one_linear_head():
         down = re.search(r"^down_revision = (?:'([^']+)'|None)", source, re.M).group(1)
         revisions.add(revision)
         parents[revision] = down
-    # Exactly one head.  M08, then Phase 4 / M09 and then Phase 4 / M10
-    # follow this historical M07 revision, so the single head is now M10's.
+    # Exactly one head.  M08, then Phase 4 / M09, M10 and M11 follow this
+    # historical M07 revision, so the single head is now M11's.
     assert revisions - {p for p in parents.values() if p is not None} == {
-        "e5b83c7d1a49"
+        "a4d9e3f7c215"
     }
     # No revision is claimed as the parent of two others (no branch).
     claimed = [p for p in parents.values() if p is not None]

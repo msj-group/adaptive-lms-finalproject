@@ -27,8 +27,20 @@ segment a browser would normalise back out of that namespace. Passing
 this validator is **not** an authorization decision: the open route still
 re-authorizes the destination from scratch on every request, and an old
 notification is never proof of current access.
+
+**The one role-neutral exception (Phase 4 / M11).** A private message
+thread lives at the shared ``/messages/threads/<thread_public_id>`` route,
+used by both Students and Teachers, so it cannot be role-namespaced. It is
+not admitted by widening a namespace: :func:`validate_message_thread_target`
+accepts that **exact** shape and nothing else -- a lower-case canonical
+UUID as the one final segment, with no query string, no fragment, no
+further segment, no dot segment, no control character, no scheme and no
+host -- and only for a role that has an inbox. ``/messages``,
+``/messages/new`` and every other ``/messages/...`` value stay rejected.
+The thread route itself re-proves membership on every open.
 """
 
+import re
 from urllib.parse import urlparse
 
 from flask import current_app
@@ -52,6 +64,34 @@ ROLE_NAMESPACES = {
 _FRAGMENT_ALLOWED = frozenset(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_."
 )
+
+#: Phase 4 / M11 -- the canonical private-thread target is exactly this
+#: prefix followed by one canonical thread public id.
+MESSAGE_THREAD_PREFIX = "/messages/threads/"
+
+_THREAD_PUBLIC_ID = re.compile(
+    r"\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\Z"
+)
+
+
+def validate_message_thread_target(role, candidate):
+    """Return `candidate` when it is exactly
+    ``/messages/threads/<canonical-uuid>`` and `role` has an inbox, else
+    ``None``.
+
+    The whole remainder after the prefix must match the UUID pattern end
+    to end, which by itself rejects a query string, a fragment, an extra
+    segment, a trailing slash, a dot segment, a backslash, an upper-case or
+    malformed id and any control character. Not an authorization decision:
+    the thread route re-checks membership.
+    """
+    if role not in ROLE_NAMESPACES:
+        return None
+    if not isinstance(candidate, str) or not candidate.startswith(MESSAGE_THREAD_PREFIX):
+        return None
+    if _THREAD_PUBLIC_ID.match(candidate[len(MESSAGE_THREAD_PREFIX):]) is None:
+        return None
+    return candidate
 
 
 def validate_notification_target(role, candidate):
@@ -86,6 +126,10 @@ def validate_notification_target(role, candidate):
         return None
     if not candidate or not isinstance(candidate, str):
         return None
+    if candidate.startswith(MESSAGE_THREAD_PREFIX):
+        # Phase 4 / M11: the one exact-shape shared target -- see the
+        # module docstring. Never falls through to the namespace rule.
+        return validate_message_thread_target(role, candidate)
     if len(candidate) > MAX_TARGET_LENGTH:
         return None
     if any(ch in _CONTROL_CHARS for ch in candidate):
@@ -254,3 +298,20 @@ def role_announcement_target(role, announcement_public_id):
     if role == UserRole.TEACHER.value:
         return teacher_announcement_target(announcement_public_id)
     return None
+
+
+def message_thread_target(role, thread_public_id):
+    """The canonical private conversation page for one thread
+    (Phase 4 / M11), for a Student or Teacher recipient.
+
+    Resolved through the URL map and validated by the exact-shape rule
+    before it can be stored; anything else -- a role without an inbox, or
+    a value that is not a canonical thread public id -- raises, so the
+    best-effort delivery wrapper logs it and stores nothing. Opening the
+    notification still lands on a route that re-proves thread membership.
+    """
+    path = _build_path("messages.thread", thread_public_id=thread_public_id)
+    safe = validate_message_thread_target(role, path)
+    if safe is None:
+        raise ValueError(f"Refusing to store an unsafe message target for role {role!r}")
+    return safe

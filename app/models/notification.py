@@ -44,9 +44,16 @@ class Notification(db.Model):
     ``source_type``/``source_id`` pair: a notification points at a place
     (``target_path``), not at a row.
 
+    Phase 4 / M11 ``message_received`` rows are the one deliberate
+    exception to "no actor identity": a private message is meaningless
+    without saying who sent it, so they name the sender's display name
+    and a clipped thread subject -- never the message body.
+
     ``target_path`` is a **server-generated**, role-namespaced relative
     path (``/student/...`` or ``/teacher/...``), built and re-validated by
-    ``app/services/notification_targets.py``. It is never rendered as a
+    ``app/services/notification_targets.py`` -- or, for ``message_received``
+    only, the exact shared ``/messages/threads/<thread_public_id>`` shape
+    that module admits and the thread route re-authorizes. It is never rendered as a
     clickable link; opening a notification POSTs to a notification-owned
     route that re-validates the stored value, marks the row read, and
     redirects -- falling back to the inbox if the stored value is somehow

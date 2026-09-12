@@ -1,0 +1,72 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_message_macros.html" as msg %}
+{% block title %}{{ thread.subject }} - Messages{% endblock %}
+{% block portal_nav %}{% include "messages/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M11 conversation. Reaching this page already proved membership.
+    Messages are plain text rendered escaped inside a pre-wrap block, so line
+    breaks survive and markup is shown as the characters that were typed.
+
+    The reply form exists only while the server says a reply is allowed right
+    now; otherwise the page is read-only. The reply route enforces the same
+    rule again regardless of what this page showed. -#}
+<p style="margin-top: 0"><a href="{{ url_for('messages.inbox') }}">&larr; Back to messages</a></p>
+<h1 style="margin-top: 0; word-break: break-word">{{ thread.subject }}</h1>
+<p class="ds-section__desc">
+  {% if other %}Private conversation with <strong>{{ other.full_name }}</strong> ({{ other.role_label }}).{% else %}Private conversation.{% endif %}
+  Times are shown in the center timezone (<strong>{{ tz_name }}</strong>).
+</p>
+
+{{ msg.flash_messages() }}
+
+{% if has_older %}
+<nav class="ds-row" style="margin-bottom: var(--space-4)" aria-label="Older messages">
+  <a class="btn btn--secondary" href="{{ url_for('messages.thread', thread_public_id=thread.public_id, page=page + 1) }}">Older messages</a>
+</nav>
+{% endif %}
+
+<div class="dash-card-list">
+  {% for message in messages %}
+  <div class="card" id="message-{{ message.public_id }}">
+    <div class="ds-row" style="justify-content: space-between; gap: var(--space-3); flex-wrap: wrap;">
+      <strong>{{ message.sender_name }}{% if message.from_viewer %} <span style="color: var(--color-text-secondary); font-weight: normal">(you)</span>{% endif %}</strong>
+      <span class="card__body" style="color: var(--color-text-secondary)">{{ message.created_local.strftime("%Y-%m-%d %H:%M") }}</span>
+    </div>
+    <div class="card__body" style="margin-top: var(--space-2); white-space: pre-wrap; word-break: break-word">{{ message.body }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if has_newer %}
+<nav class="ds-row" style="margin-top: var(--space-4)" aria-label="Newer messages">
+  <a class="btn btn--secondary" href="{{ url_for('messages.thread', thread_public_id=thread.public_id, page=page - 1) }}">Newer messages</a>
+</nav>
+{% endif %}
+
+<div class="dash-section" id="reply">
+  <h2>Reply</h2>
+  {% if can_reply %}
+  {% if form_error %}
+  <div class="alert alert--danger" role="alert" style="margin-bottom: var(--space-4)">{{ form_error }}</div>
+  {% endif %}
+  <form method="post" action="{{ url_for('messages.reply', thread_public_id=thread.public_id) }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="message_state" value="{{ message_state }}">
+    <div class="field">
+      <label class="field__label" for="reply-body">Your reply</label>
+      <textarea class="field__input" id="reply-body" name="body" rows="6" maxlength="{{ body_max }}">{{ draft }}</textarea>
+      {% if body_error %}<div class="field__error">{{ body_error }}</div>{% endif %}
+      <p class="ds-section__desc" style="margin: var(--space-1) 0 0">
+        Plain text, up to {{ body_max }} characters. A message cannot be edited or deleted once it is sent.
+      </p>
+    </div>
+    <button type="submit" class="btn btn--primary">Send reply</button>
+  </form>
+  {% else %}
+  <div class="alert alert--warning" role="status">
+    This conversation is read-only. You can still read it, but replies can only be sent while you
+    and {{ other.full_name if other else "the other participant" }} share an active group.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

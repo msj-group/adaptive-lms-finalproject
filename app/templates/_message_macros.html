@@ -1,0 +1,54 @@
+{#- Phase 4 / M11 presentation helpers shared by the inbox and both dashboards.
+    Every value is a plain dict built by app.services.message_queries -- no ORM
+    row reaches a template, so nothing here can lazy-load or decide access.
+    Subjects, names and previews are user-authored plain text and are always
+    escaped; nothing in messaging is ever marked safe. -#}
+
+{% macro flash_messages() -%}
+  {%- with messages = get_flashed_messages(with_categories=true) -%}
+    {%- for category, message in messages %}
+      <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {%- endfor -%}
+  {%- endwith -%}
+{%- endmacro %}
+
+{% macro conversation_list(conversations) -%}
+<div class="dash-card-list">
+  {% for item in conversations %}
+  <div class="card">
+    <div class="ds-row" style="justify-content: space-between; align-items: flex-start; gap: var(--space-3); flex-wrap: wrap;">
+      <div style="min-width: 0">
+        <div class="card__title" style="margin-bottom: var(--space-1); word-break: break-word">
+          <a href="{{ url_for('messages.thread', thread_public_id=item.thread_public_id) }}">{{ item.subject }}</a>
+        </div>
+        <div class="card__body">With {{ item.other_name }} &middot; {{ item.other_role_label }}</div>
+      </div>
+      <div class="card__body" style="color: var(--color-text-secondary); white-space: nowrap">{{ item.last_local.strftime("%Y-%m-%d %H:%M") }}</div>
+    </div>
+    <div class="card__body" style="margin-top: var(--space-2); word-break: break-word">
+      {%- if item.last_from_viewer %}<span style="color: var(--color-text-secondary)">You:</span> {% endif %}{{ item.preview -}}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{%- endmacro %}
+
+{% macro recent_conversations(conversations, cap, audience) -%}
+{#- Rendered outside every enrollment / assignment branch on purpose: a
+    conversation stays readable after the shared group ends, so it stays listed
+    here too. -#}
+<div class="dash-section">
+  <h2>Recent conversations</h2>
+  {% if conversations %}
+  {{ conversation_list(conversations) }}
+  <p class="ds-section__desc" style="margin-top: var(--space-2)">
+    The {{ cap }} most recent at most. <a href="{{ url_for('messages.inbox') }}">Open messages</a>.
+  </p>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No conversations yet</div>
+    <div>Private messages with your {{ audience }} appear here. <a href="{{ url_for('messages.new_thread') }}">Start a conversation</a>.</div>
+  </div>
+  {% endif %}
+</div>
+{%- endmacro %}

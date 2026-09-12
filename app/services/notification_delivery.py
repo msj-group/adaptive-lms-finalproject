@@ -56,6 +56,9 @@ from app.models import (
     LessonStatus,
     Level,
     Material,
+    Message,
+    MessageThread,
+    MessageThreadMember,
     Notification,
     NotificationKind,
     Unit,
@@ -64,6 +67,7 @@ from app.models import (
     UserStatus,
 )
 from app.services.notification_targets import (
+    message_thread_target,
     role_announcement_target,
     role_dashboard_target,
     student_dashboard_target,
@@ -746,3 +750,78 @@ def notify_announcement_published(announcement_id, scope, course_id, group_id):
         return entries
 
     return _deliver(f"announcement publication ({scope})", build)
+
+
+#: How much of a thread subject a message notification quotes.
+_MESSAGE_SUBJECT_QUOTE_LIMIT = 80
+
+
+def notify_message_received(message_id):
+    """Event 9 (Phase 4 / M11) -- a private message was committed, either
+    as the first message of a new thread or as a reply.
+
+    Called once, by the messaging route, only on the request whose own
+    transaction inserted `message_id`; a duplicate submission, a replay, a
+    rejected or read-only send never reaches it. The recipient is the
+    thread's **other** member only -- re-read here, with role and active
+    account re-checked in SQL -- and never the sender. A thread that does
+    not have exactly one such other member produces nothing.
+
+    The row names the sender's display name and a clipped subject, and
+    nothing else: **the message body is never selected**, so it cannot
+    reach ``title``, ``message`` or the logs. The target is the canonical
+    thread page, built and validated by
+    ``app/services/notification_targets.py``; opening it re-proves
+    membership.
+
+    Best-effort and fault-isolated like every producer here: the message
+    is already committed, so a failure is logged without its content and
+    swallowed.
+    """
+
+    def build():
+        context = (
+            db.session.query(
+                Message.thread_id,
+                Message.sender_id,
+                MessageThread.public_id,
+                MessageThread.subject,
+                User.full_name,
+            )
+            .select_from(Message)
+            .join(MessageThread, MessageThread.id == Message.thread_id)
+            .join(User, User.id == Message.sender_id)
+            .filter(Message.id == message_id)
+            .first()
+        )
+        if context is None:
+            return []
+        thread_id, sender_id, thread_public_id, subject, sender_name = context
+        recipients = (
+            db.session.query(User.id, User.role)
+            .join(MessageThreadMember, MessageThreadMember.user_id == User.id)
+            .filter(
+                MessageThreadMember.thread_id == thread_id,
+                User.id != sender_id,
+                User.role.in_((_STUDENT, _TEACHER)),
+                User.status == _USER_ACTIVE,
+            )
+            .order_by(User.id)
+            .limit(2)
+            .all()
+        )
+        if len(recipients) != 1:
+            return []
+        recipient_id, role = recipients[0]
+        return [
+            _entry(
+                recipient_id,
+                NotificationKind.MESSAGE_RECEIVED.value,
+                "New message",
+                f"{sender_name} sent you a message in the conversation "
+                f"'{_clip(subject, _MESSAGE_SUBJECT_QUOTE_LIMIT)}'.",
+                message_thread_target(role, thread_public_id),
+            )
+        ]
+
+    return _deliver("private message", build)

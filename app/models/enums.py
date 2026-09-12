@@ -65,6 +65,11 @@ class NotificationKind(str, enum.Enum):
     first successful publication, and never again -- not on a retry, a
     refresh, an edit or a withdrawal. See
     ``app/services/notification_delivery.py``.
+
+    ``MESSAGE_RECEIVED`` is the member Phase 4 / M11 adds, the same way:
+    one row for the *other* member of a private thread, written after a
+    new message has committed. It names the sender and the thread subject
+    only -- never the message body.
     """
 
     ENROLLMENT_ACTIVATED = "enrollment_activated"
@@ -75,6 +80,7 @@ class NotificationKind(str, enum.Enum):
     LESSON_PUBLISHED = "lesson_published"
     MATERIAL_AVAILABLE = "material_available"
     ANNOUNCEMENT_PUBLISHED = "announcement_published"
+    MESSAGE_RECEIVED = "message_received"
 
 
 class AssignmentStatus(str, enum.Enum):

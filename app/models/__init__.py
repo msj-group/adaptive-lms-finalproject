@@ -95,6 +95,12 @@ from app.models.calendar_event import (
     CALENDAR_EVENT_TITLE_MAX_LENGTH,
     CalendarEvent,
 )
+from app.models.message_thread import (
+    MESSAGE_SUBJECT_MAX_LENGTH,
+    MessageThread,
+    MessageThreadMember,
+)
+from app.models.message import MESSAGE_BODY_MAX_LENGTH, Message
 
 __all__ = [
     "User",
@@ -183,4 +189,9 @@ __all__ = [
     "CALENDAR_EVENT_TITLE_MAX_LENGTH",
     "CALENDAR_EVENT_DETAILS_MAX_LENGTH",
     "CALENDAR_EVENT_LOCATION_MAX_LENGTH",
+    "MessageThread",
+    "MessageThreadMember",
+    "MESSAGE_SUBJECT_MAX_LENGTH",
+    "Message",
+    "MESSAGE_BODY_MAX_LENGTH",
 ]

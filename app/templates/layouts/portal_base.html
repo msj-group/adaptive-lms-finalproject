@@ -13,6 +13,15 @@
     </div>
     <nav class="portal-nav" aria-label="Primary">
       {% block portal_nav %}{% endblock %}
+      {#- Phase 4 / M11: Messages is a shared Student / Teacher surface, so --
+          exactly like Notifications below -- it is rendered once here rather
+          than in each page's own `portal_nav` block. It costs no query (the
+          role is already on the loaded user) and is never rendered for an
+          Administrator, a Researcher or an anonymous visitor. -#}
+      {% if current_user.is_authenticated and current_user.role in ('student', 'teacher') %}
+      <a class="portal-nav__link{{ ' portal-nav__link--active' if request.blueprint == 'messages' else '' }}"
+         href="{{ url_for('messages.inbox') }}">Messages</a>
+      {% endif %}
       {#- M14: the Notifications link and unread badge are part of the shared
           portal header, so every Student / Teacher page carries them without
           each page's own `portal_nav` block having to remember. The helper
