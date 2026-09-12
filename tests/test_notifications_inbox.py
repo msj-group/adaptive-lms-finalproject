@@ -614,8 +614,9 @@ def test_inbox_navigation_holds_exactly_the_expected_links(app, client, role_nam
         # Phase 4 / M01 added Assignments to the shared Student portal nav,
         # M04D added Quizzes after it, M05 added Listening after that, M06
         # added Speaking after Listening, M07 added Attendance, M08 added
-        # Grades, and M09 added Announcements before Search -- each is a
-        # Student surface the Part introduced, so the shared nav names it.
+        # Grades, M09 added Announcements, and M10 added Calendar after it
+        # -- each is a Student surface the Part introduced, so the shared
+        # nav names it. Search stays last before Notifications.
         # The assertion stays exact: the inbox must hold these links, in this
         # order, and no others -- one Notifications link included.
         [
@@ -627,6 +628,7 @@ def test_inbox_navigation_holds_exactly_the_expected_links(app, client, role_nam
             "/student/attendance",
             "/student/grades",
             "/student/announcements",
+            "/student/calendar",
             "/student/search",
             "/notifications",
         ]

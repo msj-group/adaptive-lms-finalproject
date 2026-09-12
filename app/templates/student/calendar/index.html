@@ -1,0 +1,54 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_calendar_macros.html" as cal %}
+{% block title %}Calendar{% endblock %}
+{% block portal_nav %}{% set active_nav = 'calendar' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M10. Every entry on this page was authorized in SQL before it was
+    built: a class occurrence of an active schedule of a group this student is
+    actively enrolled in under a fully active academic chain, an opening or due
+    moment of a published assignment, quiz or listening activity in one of
+    those groups, or a SCHEDULED centre event. What is not here is not hidden:
+    drafts, unopened work, cancelled events, other groups' classes and other
+    people's work were never fetched.
+
+    There is no control of any kind on this page beyond choosing which dates to
+    look at: no event creation, no RSVP, no acknowledgement and no dismiss, and
+    no such endpoint exists to aim one at. -#}
+<h1 style="margin-top: 0">Calendar</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  Your classes, your assignment and quiz dates, and notices from the centre — for
+  whichever dates you choose. Anything you are no longer in stops appearing here.
+</p>
+
+{{ cal.flash_messages() }}
+
+{% if range_normalized %}
+<div class="alert alert--info" style="margin-bottom: var(--space-4)">{{ range_message }}</div>
+{% endif %}
+
+{{ cal.range_controls(previous_url, next_url, today_url, range_start, range_end, max_range_days, today_url) }}
+{{ cal.range_summary(range_start, range_end, range_days, entry_count, tz_name) }}
+
+{% if truncated %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+  This range holds more than {{ max_rows }} entries, so only the first {{ max_rows }} are
+  shown. Choose a shorter range to see the rest.
+</div>
+{% endif %}
+
+{% if days %}
+  {% for day in days %}
+    {{ cal.day_heading(day) }}
+    {% for row in day.rows %}{{ cal.entry(row) }}{% endfor %}
+  {% endfor %}
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">Nothing in this range</div>
+  <div>
+    There are no classes, assignment or quiz dates, or centre events between
+    {{ range_start.strftime("%d %B %Y") }} and {{ range_end.strftime("%d %B %Y") }}.
+    Try another range.
+  </div>
+</div>
+{% endif %}
+{% endblock %}

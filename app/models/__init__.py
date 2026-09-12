@@ -5,6 +5,7 @@ from app.models.enums import (
     AnnouncementStatus,
     AssignmentStatus,
     AttendanceStatus,
+    CalendarEventStatus,
     FileAccessAction,
     FileCategory,
     GradeSourceKind,
@@ -87,6 +88,12 @@ from app.models.announcement import (
     ANNOUNCEMENT_BODY_MAX_LENGTH,
     ANNOUNCEMENT_TITLE_MAX_LENGTH,
     Announcement,
+)
+from app.models.calendar_event import (
+    CALENDAR_EVENT_DETAILS_MAX_LENGTH,
+    CALENDAR_EVENT_LOCATION_MAX_LENGTH,
+    CALENDAR_EVENT_TITLE_MAX_LENGTH,
+    CalendarEvent,
 )
 
 __all__ = [
@@ -171,4 +178,9 @@ __all__ = [
     "Announcement",
     "ANNOUNCEMENT_TITLE_MAX_LENGTH",
     "ANNOUNCEMENT_BODY_MAX_LENGTH",
+    "CalendarEventStatus",
+    "CalendarEvent",
+    "CALENDAR_EVENT_TITLE_MAX_LENGTH",
+    "CALENDAR_EVENT_DETAILS_MAX_LENGTH",
+    "CALENDAR_EVENT_LOCATION_MAX_LENGTH",
 ]

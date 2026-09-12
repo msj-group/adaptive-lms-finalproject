@@ -1,0 +1,61 @@
+{% extends "layouts/admin_base.html" %}
+{% import "_calendar_macros.html" as cal %}
+{% block title %}Calendar{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+{#- Phase 4 / M10. The centre's whole calendar for one bounded date range,
+    assembled from the EXISTING sources -- active schedules expanded by the
+    canonical occurrence arithmetic, published assignment / quiz / listening
+    dates -- plus the centre's own events. Rendering this page writes nothing
+    and can change no source record.
+
+    This is the ONE calendar surface that shows cancelled centre events, and
+    they are clearly marked. A student's and a teacher's calendar filter
+    `status = 'scheduled'` in SQL, so a cancelled event can never reach either.
+
+    What is deliberately NOT on this page: any individual student's enrollment,
+    quiz attempt, submission, grade, attendance record or notification. None of
+    them is a calendar entry, and no query behind this page fetches one. -#}
+  <div class="ds-row" style="justify-content: space-between; align-items: flex-start">
+    <div>
+      <h1 style="margin-top: 0">Calendar</h1>
+      <p class="ds-section__desc">
+        Classes, activity dates and centre events across the whole centre.
+      </p>
+    </div>
+    <a class="btn btn--primary" href="{{ new_event_url }}">New centre event</a>
+  </div>
+
+  {{ cal.flash_messages() }}
+
+  {% if range_normalized %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">{{ range_message }}</div>
+  {% endif %}
+
+  {{ cal.range_controls(previous_url, next_url, today_url, range_start, range_end, max_range_days, today_url) }}
+  {{ cal.range_summary(range_start, range_end, range_days, entry_count, tz_name) }}
+
+  {% if truncated %}
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    This range holds more than {{ max_rows }} entries, so only the first {{ max_rows }} are
+    shown. Choose a shorter range to see the rest.
+  </div>
+  {% endif %}
+
+  {% if days %}
+    {% for day in days %}
+      {{ cal.day_heading(day) }}
+      {% for row in day.rows %}{{ cal.entry(row) }}{% endfor %}
+    {% endfor %}
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">Nothing in this range</div>
+    <div>
+      There are no classes, activity dates or centre events between
+      {{ range_start.strftime("%d %B %Y") }} and {{ range_end.strftime("%d %B %Y") }}.
+      Try another range, or create a centre event.
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ event.title }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 4 / M10. One centre event in full, with whichever control its state
+      allows. A SCHEDULED event offers editing and cancellation; a CANCELLED one
+      offers neither and no token is minted for it -- the page is a record.
+
+      There is no delete, restore, un-cancel, re-schedule, duplicate, publish,
+      export or recurrence control here, and no endpoint exists server-side for
+      one. Correcting a cancelled event means creating a new one.
+
+      `details` is plain text rendered inside a pre-wrap block: Jinja's
+      autoescaping is what makes it safe, and nothing on this surface is ever
+      marked safe. -#}
+  <div class="ds-row" style="margin-bottom: var(--space-3)">
+    <a class="btn btn--secondary" href="{{ calendar_url }}">&larr; Calendar</a>
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  <div class="card">
+    <div class="ds-row" style="justify-content: space-between; align-items: flex-start">
+      <div>
+        <h1 style="margin: 0 0 var(--space-1)">{{ event.title }}</h1>
+        <div class="card__body">
+          {{ event.event_date.strftime("%A %d %B %Y") }} &middot;
+          {%- if event.all_day %} All day
+          {%- else %} {{ event.start_time.strftime("%H:%M") }}&ndash;{{ event.end_time.strftime("%H:%M") }}
+          {%- endif %}
+          ({{ tz_name }})
+        </div>
+        {% if event.location %}
+        <div class="card__body" style="color: var(--color-text-secondary)">{{ event.location }}</div>
+        {% endif %}
+      </div>
+      {% if event.cancelled %}
+      <span class="badge badge--danger">{{ event.status_label }}</span>
+      {% else %}
+      <span class="badge badge--success">{{ event.status_label }}</span>
+      {% endif %}
+    </div>
+
+    {% if event.details %}
+    <div class="card__body" style="white-space: pre-wrap; margin-top: var(--space-3)">{{ event.details }}</div>
+    {% endif %}
+
+    <div class="card__body" style="margin-top: var(--space-4); color: var(--color-text-secondary)">
+      Created by {{ event.created_by_name }} on
+      {{ event.created_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}) &middot;
+      last changed {{ event.updated_local.strftime("%Y-%m-%d %H:%M") }} &middot;
+      version {{ event.version }}
+      {%- if event.cancelled_local %} &middot; cancelled
+      {{ event.cancelled_local.strftime("%Y-%m-%d %H:%M") }}{% endif %}
+    </div>
+  </div>
+
+  {% if event.cancelled %}
+  <div class="alert alert--warning" style="margin-top: var(--space-4)">
+    This event was cancelled. It has disappeared from every student's and teacher's
+    calendar. A cancelled event is permanent — it can never be edited, re-scheduled or
+    restored. Create a new event instead.
+  </div>
+  {% else %}
+  <div class="ds-row" style="margin-top: var(--space-4); gap: var(--space-3); align-items: flex-start">
+    <a class="btn btn--secondary" href="{{ edit_url }}">Edit event</a>
+  </div>
+
+  <div class="card" style="margin-top: var(--space-4)">
+    <div class="card__title">Cancel this event</div>
+    <div class="card__body">
+      Cancelling hides the event from every student's and teacher's calendar immediately
+      and cannot be undone. The event is kept as a permanent record of what was planned
+      and that it was called off.
+    </div>
+    <form method="post"
+          action="{{ url_for('admin.calendar_event_cancel', event_public_id=event.public_id) }}"
+          style="margin-top: var(--space-3)">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="event_state" value="{{ cancel_token }}">
+      <label class="field__label" style="display: flex; align-items: center; gap: var(--space-2)">
+        <input type="checkbox" name="confirm" value="yes">
+        I understand that cancelling cannot be undone.
+      </label>
+      <button type="submit" class="btn btn--danger" style="margin-top: var(--space-3)">
+        Cancel event
+      </button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

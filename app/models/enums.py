@@ -374,3 +374,35 @@ class AnnouncementStatus(str, enum.Enum):
     DRAFT = "draft"
     PUBLISHED = "published"
     WITHDRAWN = "withdrawn"
+
+
+class CalendarEventStatus(str, enum.Enum):
+    """Lifecycle of one center-wide CalendarEvent (Phase 4 / M10).
+
+    Deliberately its own closed set, and deliberately a **two**-member
+    one. A center event is not authored in private and then released:
+    there is no ``draft`` state, because an event an Administrator has
+    typed into the center's calendar is the center's calendar. There is
+    likewise no ``archived``, ``deleted``, ``completed`` or ``expired``
+    member and no placeholder for one -- an event in the past is simply
+    an event whose date has passed, which the date already says, and
+    storing a second opinion about it would let the two disagree.
+
+    - ``scheduled`` -- the event stands. ``cancelled_at`` is NULL. Every
+      active Student and Teacher sees it inside the date range they are
+      looking at, and an Administrator may still edit it.
+    - ``cancelled`` -- the event is off. ``cancelled_at`` is set, and the
+      row is **permanently immutable**: there is no restore, no
+      un-cancel, no re-schedule and no edit, and no endpoint exists
+      server-side for one. It disappears from every Student and Teacher
+      calendar the instant the cancellation commits, and stays visible --
+      clearly marked -- only on the Administrator surfaces, so the record
+      of what was announced and then called off survives.
+
+    Cancellation stays possible for an event whose date is already in the
+    past: a calendar is also a record, and an Administrator must be able
+    to mark something as not having happened.
+    """
+
+    SCHEDULED = "scheduled"
+    CANCELLED = "cancelled"

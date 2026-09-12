@@ -14,3 +14,4 @@ from app.blueprints.teacher import speaking  # noqa: E402,F401
 from app.blueprints.teacher import attendance  # noqa: E402,F401
 from app.blueprints.teacher import grades  # noqa: E402,F401
 from app.blueprints.teacher import announcements  # noqa: E402,F401
+from app.blueprints.teacher import calendar  # noqa: E402,F401
