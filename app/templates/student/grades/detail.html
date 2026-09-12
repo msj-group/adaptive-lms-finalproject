@@ -1,0 +1,100 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_grade_macros.html" as gr %}
+{% block title %}{{ group.name }} — My grades{% endblock %}
+{% block portal_nav %}{% set active_nav = 'grades' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M08. Every row on this page satisfied the whole visibility
+    formula in SQL before it was fetched: this student's own record, on a
+    RELEASED grade item, with the acting account's role and status re-proved in
+    the same WHERE clause.
+
+    What is not here is not hidden -- it was never fetched: no other student's
+    score or name, no draft item, no draft comment, no group roster, no teacher
+    identity, no version and no internal id. The comment IS shown, because it
+    is the teacher's message to this student about this released result and
+    they are its intended reader.
+
+    Every number is a string produced by app.services.grade_calculations and
+    rounded there exactly once. This template performs no arithmetic. -#}
+<h1 style="margin-top: 0">{{ group.name }} — My grades</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  {{ group.course_title }} &middot; {{ group.level_name }} &middot; {{ group.term_name }}
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card" style="margin-bottom: var(--space-5)">
+  <div class="card__title" style="margin-bottom: var(--space-2)">Overall grade</div>
+  {% if overall_display %}
+  <div style="font-size: var(--font-size-xl); font-weight: 600">{{ overall_display }}%</div>
+  <p class="card__body" style="margin-top: var(--space-2)">
+    Calculated from every released result below, weighted by how much each part of the course
+    is worth.
+  </p>
+  {% else %}
+  <span class="badge badge--neutral">Not available yet</span>
+  <p class="card__body" style="margin-top: var(--space-2)">{{ overall_message }}</p>
+  {% endif %}
+</div>
+
+{% for category in categories %}
+<section class="dash-section" style="margin-top: 0">
+  <div class="ds-row" style="justify-content: space-between; align-items: center">
+    <h2 style="margin:0">
+      {{ category.title }}
+      <span style="color: var(--color-text-secondary); font-weight: normal">&middot; worth {{ gr.weight(category.weight_display) }} of the course</span>
+    </h2>
+    <div>{{ gr.percentage(category.percentage_display) }}</div>
+  </div>
+
+  {% if not category.complete %}
+  <p class="ds-section__desc">
+    {{ category.scored_item_count }} of {{ category.released_item_count }} released item{{ "" if category.released_item_count == 1 else "s" }}
+    in this part has a result for you so far.
+  </p>
+  {% endif %}
+
+  {% if category.grade_items %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th style="width:12rem">Kind</th>
+        <th style="width:7rem">Score</th>
+        <th style="width:7rem">Out of</th>
+        <th style="width:7rem">Percent</th>
+        <th>Your teacher's comment</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in category.grade_items %}
+      <tr>
+        <td><strong>{{ item.item_title }}</strong></td>
+        <td>{{ item.source_label }}</td>
+        <td>{{ gr.points(item.score_display) }}</td>
+        <td>{{ gr.points(item.max_points_display) }}</td>
+        <td>{{ gr.percentage(item.percentage_display) }}</td>
+        <td>{{ gr.comment_block(item.comment) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">Nothing released in this part yet</div>
+    <div>Results appear here as your teacher releases them.</div>
+  </div>
+  {% endif %}
+</section>
+{% endfor %}
+
+<div class="ds-row" style="margin-top: var(--space-5)">
+  <a class="btn btn--secondary" href="{{ url_for('student.grades_list') }}">Back to all grades</a>
+</div>
+{% endblock %}

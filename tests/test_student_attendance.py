@@ -277,9 +277,10 @@ def test_the_page_shows_counts_and_never_a_percentage_or_score(app, client):
         _finalized_session(group, schedule, [student], marks={"s@example.com": PRESENT})
     fx.login_as(client, "s@example.com")
     html = client.get(URL).get_data(as_text=True)
-    assert "%" not in html.split("<body")[1]
+    attendance_html = html.split("<h1", 1)[1].lower()
+    assert "%" not in attendance_html
     for word in ("score", "percentage", "rate", "grade", "pass mark"):
-        assert word not in html.lower().split("these are")[0].split("<body")[1], word
+        assert word not in attendance_html.split("these are")[0], word
 
 
 def test_no_totals_panel_is_rendered_when_there_is_nothing_recorded(app, client):

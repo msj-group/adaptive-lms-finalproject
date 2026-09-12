@@ -1,0 +1,149 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_grade_macros.html" as gr %}
+{% block title %}{{ group.name }} — {{ item.title }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link" href="{{ url_for('teacher.gradebook_overview') }}">Gradebook</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M08, read only. This page renders the release form ONLY when the
+    item is still a draft, the chain is operational, and every release rule
+    already passes -- and the release token is minted only in that same case,
+    from freshly read persisted state. Every rule is enforced again server-side
+    against the LOCKED rows, so a page that somehow rendered a button it should
+    not have would still be refused.
+
+    The readiness panel lists EVERY remaining blocker rather than the first, so
+    a teacher fixing one is not sent back for the next. Both the panel and the
+    release route call the same release_blockers() function.
+
+    There is deliberately no delete, unrelease, reopen or duplicate control
+    anywhere on this page -- no such endpoint exists. -#}
+<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+  <h1 style="margin:0">{{ item.title }}</h1>
+  {{ gr.release_badge(item.is_released) }}
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for message_category, message in messages %}
+  <div class="alert alert--{{ message_category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card" style="margin-bottom: var(--space-5)">
+  <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
+    <dd style="margin:0">{{ group.name }} &middot; {{ group.course.title }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Category</dt>
+    <dd style="margin:0">{{ category.title }} &middot; {{ gr.weight(category.weight_display) }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">What it is for</dt>
+    <dd style="margin:0">{{ gr.source_cell(item) }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Out of</dt>
+    <dd style="margin:0">{{ gr.points(item.max_points_display) }} points</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Students captured</dt>
+    <dd style="margin:0">{{ item.captured_count }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Scores entered</dt>
+    <dd style="margin:0">{{ gr.score_progress(item) }}</dd>
+    {% if item.is_released %}
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Released</dt>
+    <dd style="margin:0">{{ item.released_at.isoformat(sep=" ", timespec="seconds") }} UTC</dd>
+    {% endif %}
+  </dl>
+</div>
+
+{% if not operational %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-5)">
+  This group is not operational: the {{ archived_labels | join(", ") }} {{ "is" if archived_labels|length == 1 else "are" }} archived.
+  Everything here stays readable and nothing has been deleted, but no score can be changed and
+  nothing can be released until every parent is active again.
+</div>
+{% endif %}
+
+{% if item.is_released %}
+<div class="alert alert--success" style="margin-bottom: var(--space-5)">
+  This item has been released. The students on its list can see their own score, the maximum,
+  their percentage and your comment to them — and nobody else's. Its category, name, kind,
+  linked item and maximum points are now permanent. You can still correct a score or a comment,
+  and the student sees the correction immediately.
+</div>
+{% endif %}
+
+<div class="ds-row" style="margin-bottom: var(--space-5)">
+  <a class="btn btn--secondary" href="{{ gradebook_url }}">Back to gradebook</a>
+  {% if operational %}
+  <a class="btn btn--primary" href="{{ scores_url }}">{{ "Correct scores" if item.is_released else "Enter scores" }}</a>
+  {% endif %}
+  {% if edit_url %}
+  <a class="btn btn--secondary" href="{{ edit_url }}">Edit item</a>
+  {% endif %}
+</div>
+
+<section class="dash-section" style="margin-top: 0">
+  <h2>Students ({{ records | length }})</h2>
+  <p class="ds-section__desc">
+    This list was captured when the item was created and never changes. A student who enrolled
+    later is not on it, and a student who has withdrawn keeps their place.
+  </p>
+  {% if records %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th style="width:8rem">Score</th>
+        <th>Comment</th>
+        <th style="width:14rem">Last graded</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for record in records %}
+      <tr>
+        <td>{{ record.student_name }}</td>
+        <td>{{ gr.points(record.score_display) }}</td>
+        <td>{{ gr.comment_block(record.comment) }}</td>
+        <td>
+          {%- if record.graded_at %}
+          {{ record.graded_at.isoformat(sep=" ", timespec="seconds") }} UTC
+          {%- if record.grader_name %}<div style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">{{ record.grader_name }}</div>{% endif %}
+          {%- else %}<span style="color: var(--color-text-secondary)">—</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No students on this item</div>
+    <div>Nothing has been deleted — this item was created without a roster and cannot be released.</div>
+  </div>
+  {% endif %}
+</section>
+
+{% if not item.is_released %}
+<section class="card" style="margin-top: var(--space-5); border-color: var(--color-danger)">
+  <h2 style="margin-top:0">Release this grade item</h2>
+  <p class="card__body">
+    Releasing shows every student on the list their own score and your comment to them. It
+    freezes this item's category, name, kind, linked item and maximum points
+    <strong>permanently</strong> — there is no way to unrelease, reopen or delete a released
+    grade item, and no such control exists anywhere in the system. You will still be able to
+    correct a student's score afterwards.
+  </p>
+  {{ gr.messages(blocker_messages) }}
+  {% if releasable %}
+  <form method="post" action="{{ release_url }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="grade_state" value="{{ release_token }}">
+    <label class="ds-row" style="gap: var(--space-2); align-items:center; margin: var(--space-3) 0">
+      <input type="checkbox" name="confirm_release" value="yes">
+      <span>I have checked these scores and I understand that releasing cannot be undone.</span>
+    </label>
+    <button type="submit" class="btn btn--danger-outline">Release grade item</button>
+  </form>
+  {% elif operational %}
+  <p class="card__body">Fix the points above, then come back to release this item.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

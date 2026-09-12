@@ -1,0 +1,188 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_grade_macros.html" as gr %}
+{% block title %}{{ group.name }} — Gradebook{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link" href="{{ url_for('teacher.gradebook_overview') }}">Gradebook</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M08. `categories`, `student_totals` and every number on this page
+    are plain presentation dicts and pre-formatted strings: the categories and
+    items come from app.services.grade_queries.build_gradebook_view, and every
+    percentage and weight was produced by app.services.grade_calculations and
+    rounded there exactly once. This template performs NO arithmetic of any
+    kind -- no sum, no division, no percentage, no comparison of two numbers.
+
+    No ORM row and no internal id reaches this template. There is deliberately
+    no delete, unrelease, reopen, duplicate, import or export control anywhere
+    on this page, and no such endpoint exists server-side either. -#}
+<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+  <h1 style="margin:0">{{ group.name }} — Gradebook</h1>
+  {{ gr.weight_total(weight_total_display, weights_complete) }}
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card" style="margin-bottom: var(--space-5)">
+  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
+    <dd style="margin:0">{{ group.course.title }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
+    <dd style="margin:0">{{ group.course.level.name }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
+    <dd style="margin:0">{{ group.academic_term.name }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Unallocated weight</dt>
+    <dd style="margin:0">{{ gr.weight(weight_remaining_display) }}</dd>
+  </dl>
+</div>
+
+<div class="alert alert--info" style="margin-bottom: var(--space-5)">
+  A group's grade is split into weighted <strong>categories</strong> that must add up to
+  exactly 100%. Each category holds <strong>grade items</strong> — an assignment, a quiz or
+  listening activity, a speaking activity, a class activity, or a grade you enter yourself.
+  Creating an item captures the students enrolled at that moment, and that list never changes
+  afterwards. Students see nothing until you <strong>release</strong> an item; after that you
+  can still correct a score, and the student sees the correction.
+</div>
+
+{% if not operational %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-5)">
+  This group is not operational: the {{ archived_labels | join(", ") }} {{ "is" if archived_labels|length == 1 else "are" }} archived.
+  Grades already recorded stay readable and nothing has been deleted or rewritten, but you
+  cannot add a category or item, enter a score, or release until every parent is active again.
+</div>
+{% endif %}
+
+{{ gr.messages(config_messages) }}
+
+<div class="ds-row" style="margin-bottom: var(--space-5)">
+  <a class="btn btn--secondary" href="{{ url_for('teacher.gradebook_overview') }}">All groups</a>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
+  {% if operational %}
+  <a class="btn btn--primary" href="{{ url_for('teacher.grade_category_create', group_public_id=group.public_id) }}">Add category</a>
+  {% if categories %}
+  <a class="btn btn--primary" href="{{ url_for('teacher.grade_item_create', group_public_id=group.public_id) }}">Add grade item</a>
+  {% endif %}
+  {% endif %}
+</div>
+
+{% if categories %}
+{% for category in categories %}
+<section class="dash-section" style="margin-top: 0">
+  <div class="ds-row" style="justify-content: space-between; align-items: center">
+    <h2 style="margin:0">
+      {{ category.title }}
+      <span style="color: var(--color-text-secondary); font-weight: normal">&middot; {{ gr.weight(category.weight_display) }}</span>
+    </h2>
+    <div class="ds-row" style="gap: var(--space-2); align-items:center">
+      {% if category.frozen %}<span class="badge badge--neutral">Locked by a released item</span>{% endif %}
+      {% if operational and not category.frozen %}
+      <a class="btn btn--secondary" href="{{ url_for('teacher.grade_category_edit', group_public_id=group.public_id, category_public_id=category.public_id) }}">Edit category</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if category.grade_items %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Grade item</th>
+        <th style="width:16rem">What it is for</th>
+        <th style="width:7rem">Out of</th>
+        <th style="width:9rem">State</th>
+        <th style="width:12rem">Scores</th>
+        <th style="width:7rem">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in category.grade_items %}
+      <tr>
+        <td><strong>{{ item.title }}</strong></td>
+        <td>{{ gr.source_cell(item) }}</td>
+        <td>{{ gr.points(item.max_points_display) }}</td>
+        <td>{{ gr.release_badge(item.is_released) }}</td>
+        <td>{{ gr.score_progress(item) }}</td>
+        <td>
+          <a class="btn btn--secondary" href="{{ url_for('teacher.grade_item_detail', group_public_id=group.public_id, item_public_id=item.public_id) }}">Open</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No grade items in this category yet</div>
+    <div>
+      A category with no released item keeps the group's overall grade unavailable, because
+      part of the weight would describe nothing that has been graded.
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endfor %}
+
+<section class="dash-section">
+  <h2>Student totals</h2>
+  <p class="ds-section__desc">
+    Calculated from released items only, with exact decimal arithmetic, and rounded once for
+    display. A student whose overall grade is not available is shown their category progress
+    instead — never a partial weighted total.
+  </p>
+  {% if student_totals %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Student</th>
+        {% for category in categories %}
+        <th style="width:10rem">{{ category.title }}</th>
+        {% endfor %}
+        <th style="width:9rem">Overall</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in student_totals %}
+      <tr>
+        <td>{{ row.student_name }}</td>
+        {% for result in row.categories %}
+        <td>
+          {{ gr.percentage(result.percentage_display) }}
+          {%- if not result.complete %}
+          <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">{{ result.scored_item_count }} of {{ result.released_item_count }} released</div>
+          {%- endif %}
+        </td>
+        {% endfor %}
+        <td>
+          {% if row.overall_display %}<strong>{{ row.overall_display }}%</strong>
+          {% else %}<span class="badge badge--neutral">Not available</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">Nothing released yet</div>
+    <div>Student totals appear here once you release a grade item.</div>
+  </div>
+  {% endif %}
+</section>
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">This gradebook has no categories yet</div>
+  <div>
+    {% if operational %}Start by adding the weighted categories this group's grade is made of —
+    for example Homework 30%, Quizzes 30%, Speaking 40%.{% else %}This group has no grade
+    categories.{% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

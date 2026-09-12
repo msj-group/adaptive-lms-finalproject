@@ -484,8 +484,9 @@ def test_the_admin_navigation_now_links_attendance(app, client):
     fx.login_as(client, "admin@example.com")
     html = client.get("/admin/dashboard").get_data(as_text=True)
     assert 'href="/admin/attendance"' in html
-    # Grades, Payments and Research remain deferred with no endpoint.
-    assert 'href="/admin/grades"' not in html
+    # Phase 4 / M08 enabled Grades; Payments and Research remain deferred
+    # with no endpoint.
+    assert 'href="/admin/grades"' in html
     assert 'href="/admin/payments"' not in html
     assert 'href="/admin/research"' not in html
     assert "Soon" in html

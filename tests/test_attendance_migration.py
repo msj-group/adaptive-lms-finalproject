@@ -66,8 +66,10 @@ def test_revision_identifiers_and_one_linear_head():
         down = re.search(r"^down_revision = (?:'([^']+)'|None)", source, re.M).group(1)
         revisions.add(revision)
         parents[revision] = down
-    # Exactly one head, and it is this revision.
-    assert revisions - {p for p in parents.values() if p is not None} == {_REVISION}
+    # Exactly one head.  M08 follows this historical M07 revision.
+    assert revisions - {p for p in parents.values() if p is not None} == {
+        "2f6d1c83ab47"
+    }
     # No revision is claimed as the parent of two others (no branch).
     claimed = [p for p in parents.values() if p is not None]
     assert len(claimed) == len(set(claimed))

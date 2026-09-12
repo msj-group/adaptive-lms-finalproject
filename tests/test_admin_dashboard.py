@@ -198,13 +198,12 @@ def test_no_standalone_enrollments_nav_link(app, client):
 
 
 def test_other_disabled_nav_items_remain_disabled(app, client):
-    """Phase 4 / M07 enabled **Attendance** and nothing else.
+    """Phase 4 / M07 enabled **Attendance** and M08 enabled **Grades**.
 
-    The Administrator attendance review surface is real now, so its nav
-    entry links to it; Grades, Payments and Research remain deferred with
-    no endpoint at all. The assertion is updated explicitly rather than
-    loosened, so a future milestone enabling one of the three by accident
-    still fails here.
+    Both review surfaces are real now, so their nav entries link to them;
+    Payments and Research remain deferred with no endpoint at all. The
+    assertion is updated explicitly rather than loosened, so a future
+    milestone enabling one of the two by accident still fails here.
     """
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
@@ -218,10 +217,9 @@ def test_other_disabled_nav_items_remain_disabled(app, client):
     assert "Research" in html
     assert "Soon" in html
     assert 'href="/admin/attendance"' in html
-    assert 'href="/admin/grades"' not in html
+    assert 'href="/admin/grades"' in html
     assert 'href="/admin/payments"' not in html
     assert 'href="/admin/research"' not in html
-    assert client.get("/admin/grades").status_code == 404
     assert client.get("/admin/payments").status_code == 404
     assert client.get("/admin/research").status_code == 404
 
@@ -366,15 +364,15 @@ def test_dashboard_links_only_to_implemented_pages(app, client):
     login(client, "admin@example.com")
 
     html = client.get("/admin/dashboard").get_data(as_text=True)
-    # Phase 4 / M07 implemented the Administrator attendance review surface,
-    # so /admin/attendance moved from the "not implemented" list to the
-    # linked one. Grades, Payments and Research remain unimplemented, with
-    # no endpoint at all.
+    # Phase 4 / M07 implemented the Administrator attendance review surface
+    # and M08 the gradebook report, so /admin/attendance and /admin/grades
+    # both moved from the "not implemented" list to the linked one.
+    # Payments and Research remain unimplemented, with no endpoint at all.
     for path in ("/admin/academic-terms", "/admin/levels", "/admin/courses",
                  "/admin/groups", "/admin/schedules", "/admin/students",
-                 "/admin/teachers", "/admin/attendance"):
+                 "/admin/teachers", "/admin/attendance", "/admin/grades"):
         assert f'href="{path}"' in html
-    for missing in ("/admin/grades", "/admin/payments", "/admin/research"):
+    for missing in ("/admin/payments", "/admin/research"):
         assert f'href="{missing}"' not in html
 
 

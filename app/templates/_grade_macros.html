@@ -1,0 +1,97 @@
+{# Shared Gradebook rendering helpers (Phase 4 / M08).
+   Presentation only -- no database access, no authorization decision, and
+   nothing here is ever rendered with `|safe`. Every value arrives as a plain
+   presentation dict built by app/services/grade_queries.py, and every NUMBER
+   arrives already formatted as a string by app/services/grade_calculations.py.
+
+   **No macro here does arithmetic.** Not a percentage, not a sum, not a
+   division, not a comparison of two numbers. A template that calculated a
+   grade would be a second implementation of the rule the whole milestone is
+   built to keep in one place, and it would be the one nobody tests. #}
+
+{# Draft versus released is the single source of truth `released_at`, so the
+   badge is derived from it and never from a second stored flag. #}
+{% macro release_badge(is_released) -%}
+  {%- if is_released -%}
+    <span class="badge badge--success">Released</span>
+  {%- else -%}
+    <span class="badge badge--warning">Draft</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{# "3 of 12 scored" -- two integer counts the query layer already produced,
+   printed side by side. The comparison that decides the colour was made in
+   Python (`scores_complete`) rather than here. #}
+{% macro score_progress(item) -%}
+  {%- if item.captured_count == 0 -%}
+    <span class="badge badge--neutral">No students</span>
+  {%- elif item.scores_complete -%}
+    <span class="badge badge--success">{{ item.scored_count }} of {{ item.captured_count }} scored</span>
+  {%- else -%}
+    <span class="badge badge--warning">{{ item.scored_count }} of {{ item.captured_count }} scored</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{# A source link names WHAT a grade is about. `source_title` is None for a
+   class activity or a manual grade, which genuinely have no linked row -- the
+   em dash says so rather than inventing a label. A linked source that is still
+   a draft is marked, because a draft link is exactly what blocks release. #}
+{% macro source_cell(item) -%}
+  <div>{{ item.source_label }}</div>
+  {%- if item.source_title %}
+  <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">
+    {{ item.source_title }}{% if item.source_published is false %} <span class="badge badge--warning">Draft</span>{% endif %}
+  </div>
+  {%- endif %}
+{%- endmacro %}
+
+{# A weight, already converted from integer basis points to a percentage
+   string by format_weight(). The template never divides by 100. #}
+{% macro weight(display) -%}
+  {{- display }}%
+{%- endmacro %}
+
+{# A percentage, already rounded ONCE by format_percentage(). `None` means the
+   value genuinely does not exist -- never zero, which would be a claim. #}
+{% macro percentage(display) -%}
+  {%- if display is none -%}
+    <span style="color: var(--color-text-secondary)">—</span>
+  {%- else -%}
+    {{ display }}%
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro points(display) -%}
+  {%- if display is none -%}
+    <span style="color: var(--color-text-secondary)">—</span>
+  {%- else -%}
+    {{ display }}
+  {%- endif -%}
+{%- endmacro %}
+
+{# The configured-weight summary every gradebook surface shows. Both figures
+   are strings produced by format_weight(); "complete" was decided by an exact
+   integer comparison against 10,000 basis points in Python. #}
+{% macro weight_total(total_display, complete) -%}
+  {%- if complete -%}
+    <span class="badge badge--success">Weights total {{ total_display }}%</span>
+  {%- else -%}
+    <span class="badge badge--warning">Weights total {{ total_display }}%</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{# Plain-text comments, never HTML and never `|safe`. Line breaks are
+   preserved by CSS rather than by converting them to markup. #}
+{% macro comment_block(text) -%}
+  {%- if text %}<div style="white-space: pre-wrap">{{ text }}</div>{% endif -%}
+{%- endmacro %}
+
+{% macro messages(items, level="warning") -%}
+  {%- if items %}
+  <div class="alert alert--{{ level }}" style="margin-bottom: var(--space-5)">
+    <ul style="margin: 0; padding-left: var(--space-5)">
+      {% for message in items %}<li>{{ message }}</li>{% endfor %}
+    </ul>
+  </div>
+  {%- endif %}
+{%- endmacro %}

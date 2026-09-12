@@ -15,7 +15,7 @@ ADMIN_NAV_SECTIONS = [
             {"label": "Groups", "endpoint": "admin.groups_list"},
             {"label": "Schedules", "endpoint": "admin.schedules_overview"},
             {"label": "Attendance", "endpoint": "admin.attendance_overview"},
-            {"label": "Grades", "endpoint": None},
+            {"label": "Grades", "endpoint": "admin.gradebook_overview"},
         ],
     },
     {

@@ -5,6 +5,7 @@ from app.models.enums import (
     AttendanceStatus,
     FileAccessAction,
     FileCategory,
+    GradeSourceKind,
     LessonStatus,
     MaterialKind,
     NotificationKind,
@@ -65,6 +66,21 @@ from app.models.attendance_record import (
     DEFAULT_ATTENDANCE_STATUS,
     AttendanceRecord,
 )
+from app.models.grade_category import (
+    BASIS_POINTS_TOTAL,
+    GRADE_CATEGORY_TITLE_MAX_LENGTH,
+    MIN_CATEGORY_BASIS_POINTS,
+    GradeCategory,
+)
+from app.models.grade_item import (
+    GRADE_ITEM_TITLE_MAX_LENGTH,
+    MAX_POINTS_CEILING,
+    MIN_POINTS,
+    POINTS_PRECISION,
+    POINTS_SCALE,
+    GradeItem,
+)
+from app.models.grade_record import GRADE_COMMENT_MAX_LENGTH, GradeRecord
 
 __all__ = [
     "User",
@@ -130,4 +146,17 @@ __all__ = [
     "AttendanceRecord",
     "ATTENDANCE_NOTE_MAX_LENGTH",
     "DEFAULT_ATTENDANCE_STATUS",
+    "GradeSourceKind",
+    "GradeCategory",
+    "GRADE_CATEGORY_TITLE_MAX_LENGTH",
+    "BASIS_POINTS_TOTAL",
+    "MIN_CATEGORY_BASIS_POINTS",
+    "GradeItem",
+    "GRADE_ITEM_TITLE_MAX_LENGTH",
+    "POINTS_PRECISION",
+    "POINTS_SCALE",
+    "MAX_POINTS_CEILING",
+    "MIN_POINTS",
+    "GradeRecord",
+    "GRADE_COMMENT_MAX_LENGTH",
 ]

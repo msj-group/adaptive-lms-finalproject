@@ -1,0 +1,116 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ group.name }} — {{ "Edit grade item" if item else "New grade item" }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link" href="{{ url_for('teacher.gradebook_overview') }}">Gradebook</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M08. Every select on this page offers this group's own rows and
+    nothing else -- the choices are built by Group-scoped queries in
+    app.services.grade_queries, so another group's assignment, quiz or speaking
+    activity is not merely hidden here, it is not in the list at all, and
+    submitting its public id resolves to nothing in the write path for exactly
+    the same reason. Values are public ids; no internal database id appears in
+    any field, label or URL.
+
+    The three linked-source selects are shown together and the server decides
+    which one applies from `source_kind`. That is deliberate: the source-kind
+    rule is enforced server-side in the form's validate(), again against the
+    locked rows, and finally by ck_grade_items_source_link -- never by hiding a
+    control. A request that names a quiz while claiming to be a manual grade is
+    rejected with a sentence, not silently trimmed.
+
+    There is deliberately no release control here: release is a separate
+    POST-only route with its own confirmation and its own signed token, so a
+    forged released_at field in this body has nowhere to land. -#}
+<h1 style="margin-top: 0">{{ "Edit grade item" if item else "New grade item" }}</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }}
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for message_category, message in messages %}
+  <div class="alert alert--{{ message_category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="alert alert--info" style="margin-bottom: var(--space-5)">
+  {% if item %}
+  This item is still a draft, so everything below can be changed. Once you release it, its
+  category, name, kind, linked item and maximum points are locked permanently — you will still
+  be able to correct a student's score.
+  {% else %}
+  Creating this item captures the students who are actively enrolled in this group
+  <strong>right now</strong>, and that list never changes afterwards: a student who enrolls
+  later does not appear on it, and a student who withdraws keeps their result. Nothing is
+  copied from the linked item — quiz attempts keep their own results, and the grade here is the
+  number you enter.
+  {% endif %}
+</div>
+
+<form method="post" class="card" novalidate>
+  {{ form.hidden_tag() }}
+  <input type="hidden" name="grade_state" value="{{ grade_state }}">
+
+  <div class="field">
+    <label class="field__label" for="{{ form.category.id }}">{{ form.category.label.text }}</label>
+    {{ form.category(class="field__input") }}
+    {% for error in form.category.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="field" style="margin-top: var(--space-4)">
+    <label class="field__label" for="{{ form.title.id }}">{{ form.title.label.text }}</label>
+    {{ form.title(class="field__input", maxlength=title_max, autocomplete="off") }}
+    {% for error in form.title.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="field" style="margin-top: var(--space-4)">
+    <label class="field__label" for="{{ form.source_kind.id }}">{{ form.source_kind.label.text }}</label>
+    {{ form.source_kind(class="field__input") }}
+    {% for error in form.source_kind.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+      A listening activity is graded as a <strong>quiz</strong> — it is backed by one. A class
+      activity or a manual grade is not linked to anything, so leave the lists below empty for
+      those.
+    </div>
+  </div>
+
+  {% for kind in linked_kinds %}
+  {% set field = form.source_field(kind) %}
+  <div class="field" style="margin-top: var(--space-4)">
+    <label class="field__label" for="{{ field.id }}">{{ field.label.text }}</label>
+    {{ field(class="field__input") }}
+    {% for error in field.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+      Only used when the kind above is “{{ source_labels[kind] }}”. A draft can be linked, but
+      the grade item cannot be released until it is published.
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="field" style="margin-top: var(--space-4)">
+    <label class="field__label" for="{{ form.max_points.id }}">{{ form.max_points.label.text }}</label>
+    {{ form.max_points(class="field__input", inputmode="decimal", autocomplete="off") }}
+    {% for error in form.max_points.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+      A number with at most two decimal places, for example 20 or 12.5. Stored exactly, never
+      as a floating-point value.
+    </div>
+  </div>
+
+  <div class="ds-row" style="margin-top: var(--space-5)">
+    <button type="submit" class="btn btn--primary">{{ form.submit.label.text }}</button>
+    <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

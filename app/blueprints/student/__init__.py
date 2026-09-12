@@ -11,3 +11,4 @@ from app.blueprints.student import quizzes  # noqa: E402,F401
 from app.blueprints.student import listening  # noqa: E402,F401
 from app.blueprints.student import speaking  # noqa: E402,F401
 from app.blueprints.student import attendance  # noqa: E402,F401
+from app.blueprints.student import grades  # noqa: E402,F401

@@ -1,0 +1,108 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_grade_macros.html" as gr %}
+{% block title %}{{ group.name }} — Scores for {{ item.title }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link" href="{{ url_for('teacher.gradebook_overview') }}">Gradebook</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M08, the score sheet.
+
+    Each control is named after the record's OWN public id -- never an internal
+    database id and never a row index, which a reordered page could silently
+    re-point at another student. The hidden `grade_state` value is the signed
+    scores token binding the teacher, the group, the item, the item's current
+    version and every captured record's public id and version; it carries no
+    student name, no score and no comment.
+
+    The submitted field set is matched against the roster READ FROM THE
+    DATABASE, so a request naming an extra record, omitting one, or renaming
+    one adds, removes, replaces and reorders nothing. Validation runs before
+    any lock and before any write, and ONE bad value rejects the whole sheet --
+    a failed save never leaves a partial grade change behind. Student names and
+    comments are autoescaped and never rendered with `|safe`. -#}
+<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+  <h1 style="margin:0">{{ "Correct scores" if is_released else "Enter scores" }} — {{ item.title }}</h1>
+  {{ gr.release_badge(is_released) }}
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for message_category, message in messages %}
+  <div class="alert alert--{{ message_category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card" style="margin-bottom: var(--space-5)">
+  <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
+    <dd style="margin:0">{{ group.name }} &middot; {{ group.course.title }}</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Out of</dt>
+    <dd style="margin:0">{{ max_points_display }} points</dd>
+  </dl>
+</div>
+
+{% if is_released %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-5)">
+  This item has been <strong>released</strong>. Students can already see these results, so a
+  change here is a <strong>correction</strong> and they will see it immediately. A score cannot
+  be cleared once it has been released — correct the number instead.
+</div>
+{% else %}
+<div class="alert alert--info" style="margin-bottom: var(--space-5)">
+  This item is a <strong>draft</strong>. Students cannot see any of it. Leave a score blank for
+  a student you have not graded yet; every student needs a score before the item can be
+  released. Comments are your message to that one student and nobody else sees them — not
+  another student, and not an administrator's report. Saving again with nothing changed does
+  not count as a change.
+</div>
+{% endif %}
+
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="grade_state" value="{{ grade_state }}">
+
+  <section class="dash-section" style="margin-top: 0">
+    <h2>Students ({{ records | length }})</h2>
+    <div class="dash-scroll">
+    <table class="dash-table">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th style="width:10rem">Score (out of {{ max_points_display }})</th>
+          <th>Comment to this student (optional)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for record in records %}
+        <tr>
+          <td>{{ record.student_name }}</td>
+          <td>
+            <input type="text"
+                   class="field__input"
+                   name="score__{{ record.public_id }}"
+                   value="{{ record.score_display if record.score_display is not none else '' }}"
+                   inputmode="decimal"
+                   autocomplete="off"
+                   aria-label="Score for {{ record.student_name }}">
+          </td>
+          <td>
+            <textarea class="field__input"
+                      name="comment__{{ record.public_id }}"
+                      rows="2"
+                      maxlength="{{ comment_max }}"
+                      aria-label="Comment for {{ record.student_name }}">{{ record.comment or "" }}</textarea>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+
+    <div class="ds-row" style="margin-top: var(--space-5)">
+      <button type="submit" class="btn btn--primary">{{ "Save corrections" if is_released else "Save scores" }}</button>
+      <a class="btn btn--secondary" href="{{ detail_url }}">Back to grade item</a>
+      <a class="btn btn--secondary" href="{{ gradebook_url }}">Back to gradebook</a>
+    </div>
+  </section>
+</form>
+{% endblock %}

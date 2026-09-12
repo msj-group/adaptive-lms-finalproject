@@ -1,0 +1,138 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% import "_grade_macros.html" as gr %}
+{% block title %}Grades{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 4 / M08. READ ONLY. There is no create, edit, score, release,
+      unrelease, delete, override, recalculate, import or export control on
+      this page, and none behind it: no such administrator endpoint exists.
+      Grades are entered and released by the group's assigned teachers.
+
+      **No individual result appears on this surface.** Every figure below is
+      an integer count or a configured weight; no student's score, percentage,
+      overall grade or teacher comment is fetched by the queries behind this
+      page, let alone rendered. A comment is a message between one teacher and
+      one student, and it is not a reporting field. -#}
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+    <h1 style="margin:0">Grades</h1>
+  </div>
+  <p class="ds-section__desc">
+    Center-wide review of how each group's gradebook is configured and how far along it is,
+    newest group first. Only groups that have started a gradebook are listed. This page is
+    read-only and shows no individual student's result: grades are entered and released by the
+    group's assigned teachers.
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  <form method="get" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+    <label class="field__label" for="group" style="margin:0">Group ID:</label>
+    <input type="search" name="group" id="group" class="field__input" style="width:auto"
+           placeholder="Group public ID" value="{{ filter_group }}">
+
+    <label class="field__label" for="term" style="margin:0">Academic term:</label>
+    <select name="term" id="term" class="field__input" style="width:auto">
+      <option value="">All terms</option>
+      {% for term in terms %}
+      <option value="{{ term.id }}" {{ "selected" if filter_term == term.id else "" }}>{{ term.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label class="field__label" for="configured" style="margin:0">Weights:</label>
+    <select name="configured" id="configured" class="field__input" style="width:auto">
+      <option value="">Any</option>
+      <option value="complete" {{ "selected" if filter_configured == "complete" else "" }}>Exactly 100%</option>
+      <option value="incomplete" {{ "selected" if filter_configured == "incomplete" else "" }}>Not yet 100%</option>
+    </select>
+
+    <button type="submit" class="btn btn--secondary">Filter</button>
+    {% if filter_group or filter_term or filter_configured %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.gradebook_overview') }}">Clear</a>
+    {% endif %}
+  </form>
+
+  {% if filter_group_unknown %}
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    No group has that public ID, so nothing is listed.
+  </div>
+  {% elif filter_group_row %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    Showing the gradebook for <strong>{{ filter_group_row.name }}</strong> &middot;
+    {{ filter_group_row.course_title }} &middot; {{ filter_group_row.level_name }} &middot;
+    {{ filter_group_row.term_name }}.
+  </div>
+  {% endif %}
+
+  {% if groups %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Group</th>
+        <th>Course &amp; term</th>
+        <th style="width:7rem">Students</th>
+        <th style="width:8rem">Categories</th>
+        <th style="width:11rem">Configured weight</th>
+        <th style="width:10rem">Grade items</th>
+        <th style="width:11rem">Overall grade</th>
+        <th style="width:7rem">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in groups %}
+      <tr>
+        <td>
+          <strong>{{ item.group_name }}</strong>
+          {% if item.group_status != "active" %}<div><span class="badge badge--neutral">Archived</span></div>{% endif %}
+        </td>
+        <td>
+          {{ item.course_title }} &middot; {{ item.level_name }}
+          <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">{{ item.term_name }}</div>
+        </td>
+        <td>{{ item.student_count }}</td>
+        <td>{{ item.category_count }}</td>
+        <td>{{ gr.weight_total(item.weight_total_display, item.weights_complete) }}</td>
+        <td>
+          {{ item.released_item_count }} released
+          <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">{{ item.draft_item_count }} draft</div>
+        </td>
+        <td>
+          {% if item.overall_available %}
+          <span class="badge badge--success">Can be calculated</span>
+          {% else %}
+          <span class="badge badge--warning">Not available yet</span>
+          {% endif %}
+        </td>
+        <td>
+          <a class="btn btn--secondary" href="{{ url_for('admin.group_gradebook', group_public_id=item.group_public_id) }}">Open</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if has_prev or has_next %}
+  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Gradebook pages">
+    {% if has_prev %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.gradebook_overview', page=page - 1, group=filter_group or None, term=filter_term or None, configured=filter_configured or None) }}">Previous</a>
+    {% endif %}
+    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+    {% if has_next %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.gradebook_overview', page=page + 1, group=filter_group or None, term=filter_term or None, configured=filter_configured or None) }}">Next</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No gradebooks to show</div>
+    <div>
+      A group appears here once one of its teachers adds a grade category. Nothing has been
+      deleted or hidden.
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

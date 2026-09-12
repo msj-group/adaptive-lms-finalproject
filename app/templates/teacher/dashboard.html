@@ -91,6 +91,11 @@
             can always be read back. Only creating, saving a draft and
             finalizing require an operational chain. -#}
         <a class="btn btn--secondary" href="{{ url_for('teacher.group_attendance', group_public_id=card.group_public_id) }}">Attendance</a>
+        {#- Phase 4 / M08: the gradebook stays reachable for an actively assigned
+            Teacher even under an archived group/ancestor, so a term's grades can
+            always be read back. Only adding a category or item, entering a score
+            and releasing require an operational chain. -#}
+        <a class="btn btn--secondary" href="{{ url_for('teacher.group_gradebook', group_public_id=card.group_public_id) }}">Gradebook</a>
       </div>
     </div>
     {% endfor %}

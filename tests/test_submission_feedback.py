@@ -952,8 +952,14 @@ def test_the_student_receipt_offers_no_write_control_of_any_kind(app, client):
     html = client.get(_student_url(w)).get_data(as_text=True)
     forms = re.findall(r'<form[^>]*action="([^"]*)"', html)
     assert all("logout" in action for action in forms), forms
+    # Scoped past the shared portal nav, which since Phase 4 / M08 names a
+    # "Grades" *surface* of its own. The word list keeps "Grade": the point
+    # of this test is that no grading control reaches the receipt, so the
+    # word must stay forbidden in the page's own content rather than be
+    # dropped because the chrome now legitimately contains it.
+    receipt = html.split("<h1", 1)[1]
     for word in ("Reply", "Comment", "Grade", "Score", "Delete", "Resubmit"):
-        assert word not in html, word
+        assert word not in receipt, word
 
 
 def test_no_student_feedback_endpoint_exists(app):

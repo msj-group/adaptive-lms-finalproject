@@ -242,3 +242,59 @@ class AttendanceStatus(str, enum.Enum):
     ABSENT = "absent"
     LATE = "late"
     EXCUSED = "excused"
+
+
+class GradeSourceKind(str, enum.Enum):
+    """What one :class:`~app.models.grade_item.GradeItem` is a grade
+    *for* (Phase 4 / M08).
+
+    Exactly the five members the owner approved, and deliberately a
+    closed set: an unrecognised value can never be inserted by
+    application code or by a manual row, because the
+    ``grade_items.source_kind`` CHECK names these five and nothing else.
+    Adding a member is therefore a schema change, which is the point.
+
+    - ``assignment`` -- the grade is for one of the Group's own ordinary
+      :class:`~app.models.assignment.Assignment` rows. Exactly one
+      ``assignment_id`` is stored and the other two source columns are
+      NULL.
+    - ``quiz`` -- the grade is for one of the Group's own
+      :class:`~app.models.quiz.Quiz` rows. A Phase 4 / M05 Listening
+      activity **is** a Quiz (the ``listening_activities`` row is an
+      extension of it, exactly as a Speaking activity is an extension of
+      an Assignment), so a Listening grade is a ``quiz`` grade here and
+      there is deliberately no separate ``listening`` member.
+    - ``speaking`` -- the grade is for one of the Group's own
+      :class:`~app.models.speaking_activity.SpeakingActivity` rows.
+    - ``activity`` -- classroom work that has no row anywhere in this
+      system: participation in a debate, a poster, a presentation the
+      Teacher graded in the room. All three source columns are NULL.
+    - ``manual`` -- anything else the Teacher decided to grade, equally
+      with no linked row.
+
+    ``activity`` and ``manual`` are deliberately **two** members rather
+    than one: they are indistinguishable to the schema (both store no
+    link), but they are not the same statement to a Teacher reading a
+    gradebook back a term later, and collapsing them would throw that
+    distinction away with nothing to recover it from.
+
+    There is no ``attendance``, ``submission``, ``exam``, ``midterm``,
+    ``final``, ``project`` or ``bonus`` member and no placeholder for
+    one. **Attendance in particular is absent on purpose**: Phase 4 / M07
+    states that no attendance mark carries a weight, a score or a
+    pass/fail meaning, and M08 does not quietly reverse that by giving
+    attendance a grade source of its own. A Teacher who wants to grade
+    participation records it as an ``activity`` they entered themselves.
+
+    Nothing here imports, copies or derives a score from the linked row.
+    A ``quiz`` GradeItem does **not** pull
+    :class:`~app.models.quiz_attempt.QuizAttempt` results in: the link
+    says what the grade is *about*, and the number is the one a Teacher
+    deliberately entered.
+    """
+
+    ASSIGNMENT = "assignment"
+    QUIZ = "quiz"
+    SPEAKING = "speaking"
+    ACTIVITY = "activity"
+    MANUAL = "manual"

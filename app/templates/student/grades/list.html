@@ -1,0 +1,62 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Grades{% endblock %}
+{% block portal_nav %}{% set active_nav = 'grades' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M08. Every row here is a group this student holds at least one
+    RELEASED grade in -- the same condition the detail page applies, so this
+    list can never offer a link to a page that would then turn out to be empty.
+
+    What is not here is not hidden -- it was never fetched: no other student,
+    no draft item, no teacher comment, no roster, no teacher identity and no
+    internal id. -#}
+<h1 style="margin-top: 0">Grades</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  Your own results for the work your teachers have finished grading and released. A grade item
+  only appears once it has been released; until then your teacher is still working on it.
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+{% if groups %}
+<div class="dash-card-list">
+  {% for item in groups %}
+  <div class="card">
+    <div class="card__title" style="margin-bottom: var(--space-1)">{{ item.group_name }}</div>
+    <div class="card__body">{{ item.course_title }}</div>
+    <div class="card__body">{{ item.term_name }}</div>
+    <div class="card__body" style="margin-top: var(--space-2)">
+      {{ item.released_count }} released result{{ "" if item.released_count == 1 else "s" }}
+    </div>
+    <div class="ds-row" style="margin-top: var(--space-4)">
+      <a class="btn btn--primary" href="{{ url_for('student.group_grades', group_public_id=item.group_public_id) }}">See my grades</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if has_prev or has_next %}
+<nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Grade pages">
+  {% if has_prev %}
+  <a class="btn btn--secondary" href="{{ url_for('student.grades_list', page=page - 1) }}">Previous</a>
+  {% endif %}
+  <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+  {% if has_next %}
+  <a class="btn btn--secondary" href="{{ url_for('student.grades_list', page=page + 1) }}">Next</a>
+  {% endif %}
+</nav>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">No released grades yet</div>
+  <div>
+    Once a teacher finishes grading a piece of work and releases it, your own result for it
+    appears here.
+  </div>
+</div>
+{% endif %}
+{% endblock %}

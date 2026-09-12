@@ -1,0 +1,73 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ group.name }} — {{ "Edit grade category" if category else "New grade category" }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link" href="{{ url_for('teacher.gradebook_overview') }}">Gradebook</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M08. The hidden `grade_state` value is the signed token binding
+    the teacher, the group and every one of the group's categories with their
+    versions -- and, on an edit, the category being edited. It carries no
+    title, no weight and no internal id: a signed token is authenticated, not
+    encrypted, so nothing is placed in one that should not be readable.
+
+    Every check on this page is a friendly pre-lock guard. The duplicate name,
+    the weight range and the 100% total are all re-proved against the LOCKED
+    category rows before anything is written, and uq_grade_categories_group_title
+    is the final defense behind the name.
+
+    There is deliberately no delete control: a category's weight is part of how
+    already-released grades were calculated, and no delete endpoint exists. -#}
+<h1 style="margin-top: 0">{{ "Edit grade category" if category else "New grade category" }}</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }}
+</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for message_category, message in messages %}
+  <div class="alert alert--{{ message_category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="alert alert--info" style="margin-bottom: var(--space-5)">
+  A category's weight is how much of the group's final grade it is worth. The group's
+  categories may never add up to more than 100%, and an overall grade is only calculated once
+  they add up to exactly 100%. <strong>{{ remaining_display }}%</strong> is still unallocated.
+  Once any item in a category has been released, its name and weight are locked permanently —
+  students will already have been shown results calculated with them.
+</div>
+
+<form method="post" class="card" novalidate>
+  {{ form.hidden_tag() }}
+  <input type="hidden" name="grade_state" value="{{ grade_state }}">
+
+  <div class="field">
+    <label class="field__label" for="{{ form.title.id }}">{{ form.title.label.text }}</label>
+    {{ form.title(class="field__input", maxlength=title_max, autocomplete="off") }}
+    {% for error in form.title.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+      For example Homework, Quizzes, Speaking, or Final exam. Names must be unique inside this
+      group.
+    </div>
+  </div>
+
+  <div class="field" style="margin-top: var(--space-4)">
+    <label class="field__label" for="{{ form.weight.id }}">{{ form.weight.label.text }}</label>
+    {{ form.weight(class="field__input", inputmode="decimal", autocomplete="off") }}
+    {% for error in form.weight.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+      A percentage with at most two decimal places, for example 25 or 12.5. Weights are stored
+      as exact whole hundredths of a percent, never as a rounded decimal.
+    </div>
+  </div>
+
+  <div class="ds-row" style="margin-top: var(--space-5)">
+    <button type="submit" class="btn btn--primary">{{ form.submit.label.text }}</button>
+    <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

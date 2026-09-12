@@ -2451,7 +2451,7 @@ def test_edit_page_locked_identity_semantic_contract(app, client):
 
     assert (
         "Academic Term and Course are locked because this group already has enrollment, "
-        "teacher-assignment, schedule, unit, assignment, or quiz history"
+        "teacher-assignment, schedule, unit, assignment, quiz, or gradebook history"
         in html
     )
     parser = _parse_group_form(html)
@@ -2480,7 +2480,7 @@ def test_edit_page_unlocked_identity_semantic_contract(app, client):
 
     assert (
         "Academic Term and Course are locked because this group already has enrollment, "
-        "teacher-assignment, schedule, unit, assignment, or quiz history"
+        "teacher-assignment, schedule, unit, assignment, quiz, or gradebook history"
         not in html
     )
     parser = _parse_group_form(html)
@@ -4030,9 +4030,9 @@ def test_assignment_history_freezes_group_identity(app, client, assignment_statu
     assert b"cannot be changed" in resp.data
     # The rejection must still name assignment history as one of the kinds
     # that froze this group. Phase 4 / M04A extended the enumeration to
-    # "...unit, assignment, or quiz history", so the message is matched
+    # "...unit, assignment, quiz, or gradebook history", so the message is matched
     # through that phrase rather than the older standalone wording.
-    assert b"unit, assignment, or quiz history" in resp.data
+    assert b"unit, assignment, quiz, or gradebook history" in resp.data
     with app.app_context():
         assert Group.query.filter_by(public_id=public_id).first().academic_term_id == term_a_id
 
@@ -4136,7 +4136,7 @@ def test_locked_notice_mentions_assignment_history(app, client):
     html = client.get(f"/admin/groups/{public_id}/edit").get_data(as_text=True)
     assert (
         "Academic Term and Course are locked because this group already has enrollment, "
-        "teacher-assignment, schedule, unit, assignment, or quiz history"
+        "teacher-assignment, schedule, unit, assignment, quiz, or gradebook history"
         in html
     )
     parser = _parse_group_form(html)
@@ -4248,7 +4248,7 @@ def test_quiz_history_freezes_group_identity(app, client):
     resp = _retarget(client, public_id, term_b_id, course_id)
     assert resp.status_code == 200
     assert b"cannot be changed" in resp.data
-    assert b"quiz history" in resp.data
+    assert b"quiz, or gradebook history" in resp.data
     with app.app_context():
         assert Group.query.filter_by(public_id=public_id).first().academic_term_id == term_a_id
 
@@ -4352,7 +4352,7 @@ def test_locked_notice_mentions_quiz_history(app, client):
     html = client.get(f"/admin/groups/{public_id}/edit").get_data(as_text=True)
     assert (
         "Academic Term and Course are locked because this group already has enrollment, "
-        "teacher-assignment, schedule, unit, assignment, or quiz history"
+        "teacher-assignment, schedule, unit, assignment, quiz, or gradebook history"
         in html
     )
     parser = _parse_group_form(html)

@@ -24,6 +24,7 @@ from app.models import (
 from app.security.decorators import roles_required
 from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
 from app.services.assignment_queries import group_has_assignment_history
+from app.services.grade_queries import group_has_gradebook_history
 from app.services.group_memberships import (
     active_student_enrollment_count,
     active_student_enrollment_rows,
@@ -49,7 +50,10 @@ def _group_identity_frozen(group_id):
     - an Assignment row, draft or published
       (`group_has_assignment_history`, Phase 4 / M01);
     - a Quiz row -- every Quiz is a draft in Phase 4 / M04A, and an
-      **empty** one still counts (`group_has_quiz_history`).
+      **empty** one still counts (`group_has_quiz_history`);
+    - a GradeCategory row, and therefore any GradeItem or GradeRecord
+      hanging off one -- an **empty** category still counts
+      (`group_has_gradebook_history`, Phase 4 / M08).
 
     Every one of those rows was authored against this Group's Term/Course,
     so retargeting the Group afterwards would silently reinterpret it.
@@ -59,14 +63,19 @@ def _group_identity_frozen(group_id):
     questions yet is frozen on exactly that reasoning -- its title and
     instructions were already written for this Course in this Term, and
     waiting for questions (which M04A does not have at all) would leave
-    every M04A draft unprotected.
+    every M04A draft unprotected. A gradebook category freezes identity on
+    the same principle and for a sharper reason still: its weight is part
+    of how already-released grades were calculated, and a GradeItem's
+    captured roster is a statement about who was enrolled in *this* Group
+    under *this* Course in *this* Term. Retargeting afterwards would
+    silently reinterpret somebody's released result.
 
     This is an identity freeze only. It deliberately adds **no** new
-    archive blocker: a Group with Assignments or Quizzes can still be
-    archived, and a Group or ancestor lifecycle change never cascades into
-    an Assignment or a Quiz. Same-Term/same-Course resubmissions and
-    non-identity edits stay allowed -- that exemption lives in
-    `_group_identity_change_error`.
+    archive blocker: a Group with Assignments, Quizzes or a gradebook can
+    still be archived, and a Group or ancestor lifecycle change never
+    cascades into an Assignment, a Quiz or a grade.
+    Same-Term/same-Course resubmissions and non-identity edits stay
+    allowed -- that exemption lives in `_group_identity_change_error`.
     """
     return (
         group_has_membership_history(group_id)
@@ -74,6 +83,7 @@ def _group_identity_frozen(group_id):
         or group_has_unit_history(group_id)
         or group_has_assignment_history(group_id)
         or group_has_quiz_history(group_id)
+        or group_has_gradebook_history(group_id)
     )
 
 
@@ -289,8 +299,9 @@ def _group_identity_change_error(current_group, has_history, academic_term_id, c
 
     `has_history` is supplied by the caller from `_group_identity_frozen`
     (membership history OR Schedule history OR Unit history OR Assignment
-    history OR Quiz history); this function only decides the "unchanged
-    current values" exemption and the message.
+    history OR Quiz history OR, since Phase 4 / M08, gradebook history);
+    this function only decides the "unchanged current values" exemption
+    and the message.
 
     Shared by the early, pre-lock friendly check and the authoritative
     post-lock recheck in `group_edit` so the rule cannot drift between
@@ -302,8 +313,8 @@ def _group_identity_change_error(current_group, has_history, academic_term_id, c
         return None
     return (
         "Academic Term and Course cannot be changed once this group has enrollment, "
-        "teacher-assignment, schedule, unit, assignment, or quiz history. Create a new "
-        "group instead and archive this one."
+        "teacher-assignment, schedule, unit, assignment, quiz, or gradebook history. "
+        "Create a new group instead and archive this one."
     )
 
 

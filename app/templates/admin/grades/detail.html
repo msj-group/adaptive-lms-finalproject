@@ -1,0 +1,100 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% import "_grade_macros.html" as gr %}
+{% block title %}{{ group.name }} — Gradebook{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 4 / M08. READ ONLY, and nested: the group is resolved by its own
+      public id and 404s when it does not exist. No form, no token and no
+      control of any kind is rendered, because no administrator endpoint exists
+      to aim one at.
+
+      **No individual result appears on this page.** The per-item figures are
+      integer counts of how many captured records carry a score -- never a
+      score, never a percentage, never a student name, and never a teacher's
+      comment. Those are not reporting fields, and the queries behind this page
+      do not fetch them. -#}
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+    <h1 style="margin:0">{{ group.name }} — Gradebook</h1>
+    {{ gr.weight_total(weight_total_display, weights_complete) }}
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  <div class="card" style="margin-bottom: var(--space-5)">
+    <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
+      <dd style="margin:0">{{ group.course_title }} &middot; {{ group.level_name }}</dd>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
+      <dd style="margin:0">{{ group.term_name }}</dd>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group status</dt>
+      <dd style="margin:0">{{ group.status }}</dd>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Active students</dt>
+      <dd style="margin:0">{{ student_count }}</dd>
+    </dl>
+  </div>
+
+  <p class="ds-section__desc">
+    This page shows how this group's gradebook is set up and how far along it is. It shows no
+    student's score, percentage, overall grade or teacher comment: those belong to the student
+    and the group's assigned teachers.
+  </p>
+
+  {{ gr.messages(config_messages) }}
+
+  {% if categories %}
+  {% for category in categories %}
+  <section class="dash-section" style="margin-top: 0">
+    <div class="ds-row" style="justify-content: space-between; align-items: center">
+      <h2 style="margin:0">
+        {{ category.title }}
+        <span style="color: var(--color-text-secondary); font-weight: normal">&middot; {{ gr.weight(category.weight_display) }}</span>
+      </h2>
+      <div>{{ category.released_item_count }} released &middot; {{ category.draft_item_count }} draft</div>
+    </div>
+
+    {% if category.grade_items %}
+    <div class="dash-scroll">
+    <table class="dash-table">
+      <thead>
+        <tr>
+          <th>Grade item</th>
+          <th style="width:16rem">What it is for</th>
+          <th style="width:7rem">Out of</th>
+          <th style="width:9rem">State</th>
+          <th style="width:12rem">Scores entered</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in category.grade_items %}
+        <tr>
+          <td><strong>{{ item.title }}</strong></td>
+          <td>{{ gr.source_cell(item) }}</td>
+          <td>{{ gr.points(item.max_points_display) }}</td>
+          <td>{{ gr.release_badge(item.is_released) }}</td>
+          <td>{{ gr.score_progress(item) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state__title">No grade items in this category</div>
+      <div>An overall grade cannot be calculated in this group while a category has nothing released.</div>
+    </div>
+    {% endif %}
+  </section>
+  {% endfor %}
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">This group has no grade categories</div>
+    <div>Nothing has been deleted — this group's teachers have not started its gradebook.</div>
+  </div>
+  {% endif %}
+
+  <div class="ds-row" style="margin-top: var(--space-5)">
+    <a class="btn btn--secondary" href="{{ url_for('admin.gradebook_overview') }}">Back to grades</a>
+  </div>
+</div>
+{% endblock %}
