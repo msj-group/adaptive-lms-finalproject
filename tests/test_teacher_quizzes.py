@@ -354,10 +354,22 @@ def test_no_internal_numeric_id_appears_in_quiz_markup(app, client):
     _login_as(client, "teacher@example.com")
     for url in (_url(gpid), _detail_url(gpid, qpid), _edit_url(gpid, qpid)):
         html = client.get(url).get_data(as_text=True)
+        # Structural, deliberately NOT a naive substring search. A UUID
+        # public id can legitimately BEGIN with the same digit as a small
+        # internal id, so `"/quizzes/1" in html` fires at random against a
+        # perfectly correct `/quizzes/183674a7-...` link -- a ~1-in-16
+        # false failure per rendered public id, and nothing to do with what
+        # this test is about. What the rule actually says is that every
+        # id-shaped path segment the page emits is a public id (or a
+        # literal route word such as "new"), and that no form value is a
+        # bare internal id.
+        for segment in re.findall(
+            r"/(?:groups|quizzes|questions)/([^\"'/?# ]+)", html
+        ):
+            assert not segment.isdigit(), (url, segment)
+        values = set(re.findall(r'value="([^"]*)"', html))
         for internal in (gid, qid, tid):
-            assert f"/quizzes/{internal}" not in html, (url, internal)
-            assert f"/groups/{internal}/" not in html, (url, internal)
-            assert f'value="{internal}"' not in html, (url, internal)
+            assert str(internal) not in values, (url, internal)
 
 
 # ===========================================================================

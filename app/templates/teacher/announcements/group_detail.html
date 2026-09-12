@@ -1,0 +1,122 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_announcement_macros.html" as ann %}
+{% block title %}{{ group.name }} — {{ announcement.title }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.announcements_feed') }}">Announcements</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M09. The management view of one of this group's announcements.
+
+    Each hidden `announcement_state` value is a signed token minted by the
+    server a moment ago against the CURRENT row. The publish token additionally
+    binds the group's whole academic chain, so a form opened while the group was
+    operational cannot publish into a group that has since been archived. A
+    token is authenticated, not encrypted, so it carries only public ids, a
+    version and a short lifecycle string -- never the title, the text, the
+    author or an internal id.
+
+    Which controls exist is decided by the row's own state, and the server
+    re-proves that state against the LOCKED row before writing:
+      draft      -> Edit, Publish
+      published  -> Withdraw
+      withdrawn  -> nothing at all, permanently -#}
+<div class="ds-row" style="margin-bottom: var(--space-3)">
+  <a class="btn btn--secondary" href="{{ list_url }}">← {{ group.name }} announcements</a>
+</div>
+
+{{ ann.flash_messages() }}
+
+{% if not operational %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+  Not operational: {{ archived_labels | join(", ") }} archived. This announcement stays
+  readable here and a published one can still be withdrawn, but it cannot be edited or
+  published until every parent is active again.
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
+    <div>
+      <h1 style="margin: 0 0 var(--space-1)">{{ announcement.title }}</h1>
+      <div class="card__body">{{ group.name }} &middot; {{ group.course.title }}</div>
+      <div class="card__body">Written by {{ announcement.author_name }}</div>
+    </div>
+    <div>
+      {{ ann.status_badge(announcement) }}
+      {{ ann.scope_badge(announcement) }}
+    </div>
+  </div>
+
+  {{ ann.body_block(announcement) }}
+
+  <dl style="display:grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: var(--space-4) 0 0;">
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>
+    <dd style="margin:0">{{ announcement.created_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Last changed</dt>
+    <dd style="margin:0">{{ announcement.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Published</dt>
+    <dd style="margin:0">
+      {%- if announcement.published_local -%}
+        {{ announcement.published_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})
+      {%- else -%}—{%- endif -%}
+    </dd>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Withdrawn</dt>
+    <dd style="margin:0">
+      {%- if announcement.withdrawn_local -%}
+        {{ announcement.withdrawn_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})
+      {%- else -%}—{%- endif -%}
+    </dd>
+  </dl>
+</div>
+
+{% if announcement.status == 'draft' %}
+<div class="card" style="margin-top: var(--space-4)">
+  <div class="card__title">This is a draft</div>
+  <div class="card__body" style="margin-top: var(--space-2)">
+    Nobody but this group's teachers can see it. Publishing makes it readable by everyone
+    currently in the group and sends each of them one notification. A published announcement
+    can never be edited again — only withdrawn.
+  </div>
+  <div class="ds-row" style="margin-top: var(--space-4)">
+    {% if operational %}
+    <a class="btn btn--secondary" href="{{ edit_url }}">Edit draft</a>
+    {% endif %}
+    {% if publish_token %}
+    <form method="post" action="{{ url_for('teacher.announcement_publish', group_public_id=group.public_id, announcement_public_id=announcement.public_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="announcement_state" value="{{ publish_token }}">
+      <button type="submit" class="btn btn--primary">Publish to this group</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% elif announcement.status == 'published' %}
+<div class="card" style="margin-top: var(--space-4)">
+  <div class="card__title">Withdraw this announcement</div>
+  <div class="card__body" style="margin-top: var(--space-2)">
+    Withdrawing hides it from everyone immediately. It is permanent: a withdrawn
+    announcement can never be edited, published again, or restored. Notifications people
+    already received stay in their inbox as a record that they were told, but opening one
+    will no longer show anything. Write a new announcement if this one needs correcting.
+  </div>
+  <form method="post" action="{{ url_for('teacher.announcement_withdraw', group_public_id=group.public_id, announcement_public_id=announcement.public_id) }}" style="margin-top: var(--space-4)">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="announcement_state" value="{{ withdraw_token }}">
+    <label class="ds-row" style="gap: var(--space-2); align-items: center">
+      <input type="checkbox" name="confirm" value="yes">
+      <span>I understand that withdrawing cannot be undone.</span>
+    </label>
+    <div class="ds-row" style="margin-top: var(--space-3)">
+      <button type="submit" class="btn btn--danger">Withdraw</button>
+    </div>
+  </form>
+</div>
+{% else %}
+<div class="alert alert--info" style="margin-top: var(--space-4)">
+  This announcement was withdrawn and is permanent. It cannot be edited, published again,
+  or restored, and nobody can read it any more. It is kept as a record of what was posted
+  and when it was taken down.
+</div>
+{% endif %}
+{% endblock %}

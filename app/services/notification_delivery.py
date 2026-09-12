@@ -43,6 +43,9 @@ from app.extensions import db
 from app.models import (
     AcademicStatus,
     AcademicTerm,
+    Announcement,
+    AnnouncementScope,
+    AnnouncementStatus,
     Course,
     Enrollment,
     EnrollmentStatus,
@@ -61,6 +64,7 @@ from app.models import (
     UserStatus,
 )
 from app.services.notification_targets import (
+    role_announcement_target,
     role_dashboard_target,
     student_dashboard_target,
     student_lesson_target,
@@ -72,6 +76,9 @@ _ACTIVE = AcademicStatus.ACTIVE.value
 _ENROLLMENT_ACTIVE = EnrollmentStatus.ACTIVE.value
 _ASSIGNMENT_ACTIVE = GroupTeacherAssignmentStatus.ACTIVE.value
 _PUBLISHED = LessonStatus.PUBLISHED.value
+_CENTER_SCOPE = AnnouncementScope.CENTER.value
+_COURSE_SCOPE = AnnouncementScope.COURSE.value
+_GROUP_SCOPE = AnnouncementScope.GROUP.value
 _USER_ACTIVE = UserStatus.ACTIVE.value
 _STUDENT = UserRole.STUDENT.value
 _TEACHER = UserRole.TEACHER.value
@@ -531,3 +538,211 @@ def notify_material_available(material_id):
         ]
 
     return _deliver("material availability", build)
+
+
+def _announcement_context(announcement_id):
+    """One bounded read: what a published announcement *is*, or ``None``.
+
+    Returns the scope, the public id, the title, and the display name of
+    whichever target the scope has -- the Course title for a course-scoped
+    notice, the Group name for a group-scoped one, both resolved by
+    ``LEFT JOIN`` on a nullable foreign key so neither can multiply the
+    row. A **draft** or **withdrawn** announcement returns ``None`` here,
+    so an announcement that is not actually published can produce no
+    notification at all even if a caller asked for one.
+
+    The announcement's own ``body`` is deliberately not selected: a
+    notification names an announcement, it does not carry its text.
+    """
+    row = (
+        db.session.query(
+            Announcement.public_id,
+            Announcement.scope,
+            Announcement.title,
+            Course.title,
+            Group.name,
+        )
+        .select_from(Announcement)
+        .outerjoin(Course, Announcement.course_id == Course.id)
+        .outerjoin(Group, Announcement.group_id == Group.id)
+        .filter(
+            Announcement.id == announcement_id,
+            Announcement.status == AnnouncementStatus.PUBLISHED.value,
+        )
+        .first()
+    )
+    if row is None:
+        return None
+    public_id, scope, title, course_title, group_name = row
+    return {
+        "public_id": public_id,
+        "scope": scope,
+        "title": title,
+        "target_name": course_title if scope == _COURSE_SCOPE else group_name,
+    }
+
+
+def _announcement_recipients(scope, course_id, group_id):
+    """Every currently eligible Student and Teacher of one announcement's
+    scope, as ``[(user_id, role)]`` ascending by ``user_id``.
+
+    Exactly the M09 visibility rule, expressed in the ``WHERE`` clause and
+    never in Python:
+
+    - **center** -- every active Student and every active Teacher account.
+      No enrollment and no assignment is required, because none is
+      required to *read* a center announcement either.
+    - **course** -- everyone holding an ``active`` Enrollment (Student) or
+      an ``active`` GroupTeacherAssignment (Teacher) in an **operational**
+      Group of that Course.
+    - **group** -- the same, for that exact Group.
+
+    Two bounded queries, one per role, each ``DISTINCT``: a Student
+    enrolled in three Groups of one Course is **one** recipient, not
+    three, and a Teacher assigned to two Groups of one Course likewise.
+    A user cannot satisfy both role filters, so the merged list is
+    de-duplicated by construction. Sorted so the rows produced for one
+    publication are deterministic.
+
+    **No Administrator can appear here**, and not because they are
+    filtered out afterwards: the role filter selects only ``student`` and
+    ``teacher``, and the notification inbox itself is restricted to those
+    two roles. An Administrator who publishes a center announcement
+    therefore receives nothing.
+    """
+    if scope == _CENTER_SCOPE:
+        students = (
+            db.session.query(User.id)
+            .filter(User.role == _STUDENT, User.status == _USER_ACTIVE)
+            .distinct()
+            .all()
+        )
+        teachers = (
+            db.session.query(User.id)
+            .filter(User.role == _TEACHER, User.status == _USER_ACTIVE)
+            .distinct()
+            .all()
+        )
+    else:
+        if scope == _COURSE_SCOPE:
+            target = Group.course_id == course_id
+        elif scope == _GROUP_SCOPE:
+            target = Group.id == group_id
+        else:  # pragma: no cover -- the scope CHECK allows only three values
+            return []
+        students = (
+            db.session.query(User.id)
+            .select_from(Enrollment)
+            .join(User, Enrollment.student_id == User.id)
+            .join(Group, Enrollment.group_id == Group.id)
+            .join(Course, Group.course_id == Course.id)
+            .join(Level, Course.level_id == Level.id)
+            .join(AcademicTerm, Group.academic_term_id == AcademicTerm.id)
+            .filter(
+                target,
+                Enrollment.status == _ENROLLMENT_ACTIVE,
+                Group.status == _ACTIVE,
+                Course.status == _ACTIVE,
+                Level.status == _ACTIVE,
+                AcademicTerm.status == _ACTIVE,
+                User.role == _STUDENT,
+                User.status == _USER_ACTIVE,
+            )
+            .distinct()
+            .all()
+        )
+        teachers = (
+            db.session.query(User.id)
+            .select_from(GroupTeacherAssignment)
+            .join(User, GroupTeacherAssignment.teacher_id == User.id)
+            .join(Group, GroupTeacherAssignment.group_id == Group.id)
+            .join(Course, Group.course_id == Course.id)
+            .join(Level, Course.level_id == Level.id)
+            .join(AcademicTerm, Group.academic_term_id == AcademicTerm.id)
+            .filter(
+                target,
+                GroupTeacherAssignment.status == _ASSIGNMENT_ACTIVE,
+                Group.status == _ACTIVE,
+                Course.status == _ACTIVE,
+                Level.status == _ACTIVE,
+                AcademicTerm.status == _ACTIVE,
+                User.role == _TEACHER,
+                User.status == _USER_ACTIVE,
+            )
+            .distinct()
+            .all()
+        )
+    recipients = [(row[0], _STUDENT) for row in students]
+    recipients += [(row[0], _TEACHER) for row in teachers]
+    recipients.sort(key=lambda pair: (pair[0], pair[1]))
+    return recipients
+
+
+#: How each scope names itself in a notification message. Server-authored
+#: plain text, declared once, and deliberately naming only what the
+#: recipient can already see for themselves.
+_ANNOUNCEMENT_PHRASES = {
+    _CENTER_SCOPE: "A new center announcement was published",
+    _COURSE_SCOPE: "A new announcement was published for the course '{target}'",
+    _GROUP_SCOPE: "A new announcement was published for the group '{target}'",
+}
+
+
+def notify_announcement_published(announcement_id, scope, course_id, group_id):
+    """Event 8 (Phase 4 / M09) -- an Announcement was published for the
+    **first and only** time.
+
+    Called once, by the publish route, *after* the publication has already
+    committed. Recipients are everyone the announcement's scope currently
+    reaches, Students and Teachers only, each sent to their own role's
+    authorized detail page for it.
+
+    **Exactly one delivery per announcement, ever.** The publish route is
+    the only caller, and it can only reach this line on the one request
+    that moved a ``draft`` to ``published`` under the lock -- a retry, a
+    refresh, a second submission, a stale-token rejection, a withdrawal
+    and every later edit attempt all return before it. There is no
+    re-publication in M09 to produce a second one: ``published`` is a
+    one-way door, and ``withdrawn`` is terminal.
+
+    The message is server-authored plain text naming the announcement's
+    title and its scope, and nothing else: no body text, no author, no
+    recipient information, no internal id, and no count of who else was
+    told. The target is built by
+    ``app/services/notification_targets.py`` from the public id alone and
+    validated before it is stored.
+
+    Delivery is best-effort and fault-isolated, exactly like every other
+    producer here: the announcement is already committed and its response
+    already decided, so a failure is logged and swallowed rather than
+    turning a successful publication into an error.
+    """
+
+    def build():
+        context = _announcement_context(announcement_id)
+        if context is None:
+            return []
+        phrase = _ANNOUNCEMENT_PHRASES.get(scope)
+        if phrase is None:  # pragma: no cover -- the scope CHECK bounds this
+            return []
+        title = context["title"]
+        message = (
+            phrase.format(target=context["target_name"] or "") + f": '{title}'."
+        )
+        entries = []
+        for recipient_id, role in _announcement_recipients(scope, course_id, group_id):
+            target = role_announcement_target(role, context["public_id"])
+            if target is None:  # pragma: no cover -- only these two roles are selected
+                continue
+            entries.append(
+                _entry(
+                    recipient_id,
+                    NotificationKind.ANNOUNCEMENT_PUBLISHED.value,
+                    "New announcement",
+                    message,
+                    target,
+                )
+            )
+        return entries
+
+    return _deliver(f"announcement publication ({scope})", build)

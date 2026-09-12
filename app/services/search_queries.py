@@ -23,8 +23,13 @@ Design rules (Part M13):
   no ORM rows, no internal numeric ids, no storage keys / hashes / paths
   / uploader identity / raw rich-text HTML.
 - The query count is bounded: one query per requested content type (so
-  one when a type filter is set, at most four otherwise), plus the one
+  one when a type filter is set, at most five otherwise), plus the one
   ``authorized_search_groups`` query -- never one query per row.
+- Phase 4 / M09 adds an ``announcement`` type. Its authorization is not
+  the enrollment chain above but the M09 visibility clause, imported from
+  ``app/services/announcement_queries.py`` rather than re-expressed here
+  -- the search must not be able to be one row more generous than the
+  announcement feed.
 - Matching is a bounded ``LIKE``/``ILIKE`` (``func.lower(col).like(...)``
   both sides lower-cased for SQLite/MySQL portability); ``%``, ``_`` and
   the escape character are neutralised by
@@ -37,6 +42,9 @@ from app.extensions import db
 from app.models import (
     AcademicStatus,
     AcademicTerm,
+    Announcement,
+    AnnouncementScope,
+    AnnouncementStatus,
     Course,
     Enrollment,
     EnrollmentStatus,
@@ -49,11 +57,19 @@ from app.models import (
     Unit,
     UploadedFile,
 )
+from app.services.announcement_queries import (
+    SCOPE_LABELS as ANNOUNCEMENT_SCOPE_LABELS,
+    student_visibility_clause,
+)
+from app.services.announcement_search import match_clause as announcement_match_clause
 from app.services.search_terms import escape_like
 
 _ACTIVE = AcademicStatus.ACTIVE.value
 _ENROLLMENT_ACTIVE = EnrollmentStatus.ACTIVE.value
 _PUBLISHED = LessonStatus.PUBLISHED.value
+_ANNOUNCEMENT_PUBLISHED = AnnouncementStatus.PUBLISHED.value
+_ANNOUNCEMENT_COURSE = AnnouncementScope.COURSE.value
+_ANNOUNCEMENT_GROUP = AnnouncementScope.GROUP.value
 
 _ESCAPE = "\\"
 _SNIPPET_LIMIT = 160
@@ -65,7 +81,7 @@ _MATERIAL_KIND_BADGE = {
     MaterialKind.FILE.value: "File",
 }
 
-CONTENT_TYPE_ORDER = ("course", "unit", "lesson", "material")
+CONTENT_TYPE_ORDER = ("course", "unit", "lesson", "material", "announcement")
 
 
 # ---------------------------------------------------------------------------
@@ -422,6 +438,98 @@ def _material_results(student_id, qn, group_public_id, material_kind, cap):
     return _section(rows, cap, build)
 
 
+def _announcement_results(student_id, qn, group_public_id, cap):
+    """Published announcements this Student may read right now, matching
+    the query (Phase 4 / M09).
+
+    **Authorization is the same clause the announcement feed uses**, not a
+    second copy of it: ``status == 'published'`` plus
+    :func:`app.services.announcement_queries.student_visibility_clause`,
+    which is a correlated ``EXISTS`` over the Student's own active
+    Enrollments in operational Groups. A draft, a withdrawn announcement,
+    another Course's announcement and another Group's announcement are
+    therefore not "filtered out of the results" -- they are never
+    selected, so they cannot influence the result count, the ``has_more``
+    flag, the ranking, or a snippet.
+
+    The optional Group filter narrows to what is reachable *through that
+    Group*: its own group-scoped announcements and its Course's
+    course-scoped ones. Center announcements are deliberately excluded by
+    it -- they belong to no Group, and a filter must narrow rather than
+    quietly widen.
+
+    The body is searched and may appear in the snippet. That is not a
+    disclosure: every row here is one this Student may open and read in
+    full on the detail page.
+    """
+    rank = _rank_expr(qn.text, qn.tokens, Announcement.title)
+    group_course = db.aliased(Course)
+    query = (
+        db.session.query(
+            Announcement.public_id.label("announcement_public_id"),
+            Announcement.scope.label("scope"),
+            Announcement.title.label("title"),
+            Announcement.body.label("body"),
+            Course.title.label("course_title"),
+            Group.name.label("group_name"),
+            group_course.title.label("group_course_title"),
+        )
+        .select_from(Announcement)
+        .outerjoin(Course, Announcement.course_id == Course.id)
+        .outerjoin(Group, Announcement.group_id == Group.id)
+        .outerjoin(group_course, Group.course_id == group_course.id)
+        .filter(
+            Announcement.status == _ANNOUNCEMENT_PUBLISHED,
+            student_visibility_clause(student_id),
+            announcement_match_clause(qn.tokens),
+        )
+    )
+    if group_public_id:
+        query = query.filter(
+            or_(
+                and_(
+                    Announcement.scope == _ANNOUNCEMENT_GROUP,
+                    Group.public_id == group_public_id,
+                ),
+                and_(
+                    Announcement.scope == _ANNOUNCEMENT_COURSE,
+                    Announcement.course_id.in_(
+                        db.session.query(Group.course_id).filter(
+                            Group.public_id == group_public_id
+                        )
+                    ),
+                ),
+            )
+        )
+    rows = (
+        query.order_by(rank, Announcement.published_at.desc(), Announcement.id.desc())
+        .limit(cap + 1)
+        .all()
+    )
+
+    def build(row):
+        if row.scope == _ANNOUNCEMENT_COURSE:
+            crumb = [ANNOUNCEMENT_SCOPE_LABELS[row.scope], row.course_title]
+        elif row.scope == _ANNOUNCEMENT_GROUP:
+            crumb = [
+                ANNOUNCEMENT_SCOPE_LABELS[row.scope],
+                row.group_course_title,
+                row.group_name,
+            ]
+        else:
+            crumb = [ANNOUNCEMENT_SCOPE_LABELS[row.scope]]
+        return {
+            "type": "announcement",
+            "title": row.title,
+            "badge": "Announcement",
+            "breadcrumb": [part for part in crumb if part],
+            "snippet": _snippet([row.body], qn.tokens),
+            "announcement_public_id": row.announcement_public_id,
+        }
+
+    return _section(rows, cap, build)
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
@@ -453,6 +561,9 @@ def search_learning_content(
         "lesson": lambda: _lesson_results(student_id, query_norm, group_public_id, cap),
         "material": lambda: _material_results(
             student_id, query_norm, group_public_id, material_kind, cap
+        ),
+        "announcement": lambda: _announcement_results(
+            student_id, query_norm, group_public_id, cap
         ),
     }
     return {name: builders[name]() for name in CONTENT_TYPE_ORDER if name in wanted}

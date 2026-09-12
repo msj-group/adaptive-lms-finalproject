@@ -16,6 +16,7 @@ ADMIN_NAV_SECTIONS = [
             {"label": "Schedules", "endpoint": "admin.schedules_overview"},
             {"label": "Attendance", "endpoint": "admin.attendance_overview"},
             {"label": "Grades", "endpoint": "admin.gradebook_overview"},
+            {"label": "Announcements", "endpoint": "admin.announcements_overview"},
         ],
     },
     {

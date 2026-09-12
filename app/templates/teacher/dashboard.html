@@ -1,8 +1,10 @@
 {% extends "layouts/portal_base.html" %}
 {% import "_dashboard_macros.html" as dash %}
+{% import "_announcement_macros.html" as ann %}
 {% block title %}Teacher Dashboard{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link" href="{{ url_for('teacher.announcements_feed') }}">Announcements</a>
 {% endblock %}
 {% block portal_content %}
 <h1>Welcome, {{ current_user.full_name }}</h1>
@@ -10,6 +12,44 @@
   Your active teaching assignments. Class times are shown in the center timezone
   (<strong>{{ tz_name }}</strong>).
 </p>
+
+{#- Phase 4 / M09. One bounded query, applying exactly the same visibility
+    clause the teacher announcement feed applies. Rendered OUTSIDE the "no
+    active teaching assignments" branch on purpose: a teacher with no current
+    assignment still belongs to the centre and still receives the centre's
+    announcements. -#}
+<div class="dash-section">
+  <h2>Latest announcements</h2>
+  {% if announcements %}
+  <div class="dash-card-list">
+    {% for item in announcements %}
+    <div class="card">
+      <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
+        <div>
+          <div class="card__title" style="margin-bottom: var(--space-1)">
+            <a href="{{ url_for('teacher.announcement_detail', announcement_public_id=item.public_id) }}">{{ item.title }}</a>
+          </div>
+          {{ ann.context_line(item) }}
+        </div>
+        {{ ann.scope_badge(item) }}
+      </div>
+      {{ ann.body_preview(item, 140) }}
+      <div class="card__body" style="margin-top: var(--space-2); color: var(--color-text-secondary)">
+        {{ ann.published_line(item, tz_name) }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="ds-section__desc" style="margin-top: var(--space-2)">
+    The {{ announcement_cap }} most recent at most. <a href="{{ url_for('teacher.announcements_feed') }}">See all announcements</a>.
+  </p>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No announcements</div>
+    <div>Notices from the centre, your courses and your groups appear here.</div>
+  </div>
+  {% endif %}
+</div>
 
 {% if not cards %}
 <div class="empty-state">
@@ -96,6 +136,11 @@
             always be read back. Only adding a category or item, entering a score
             and releasing require an operational chain. -#}
         <a class="btn btn--secondary" href="{{ url_for('teacher.group_gradebook', group_public_id=card.group_public_id) }}">Gradebook</a>
+        {#- Phase 4 / M09: the announcement page stays reachable for an actively
+            assigned Teacher even under an archived group/ancestor, so what was
+            posted can always be read back and a published notice can always be
+            withdrawn. Only writing and publishing require an operational chain. -#}
+        <a class="btn btn--secondary" href="{{ url_for('teacher.group_announcements', group_public_id=card.group_public_id) }}">Announcements</a>
       </div>
     </div>
     {% endfor %}

@@ -204,3 +204,53 @@ def student_material_target(
         )
         + f"#material-{material_public_id}",
     )
+
+
+def student_announcement_target(announcement_public_id):
+    """The authorized Student detail page for one published Announcement
+    (Phase 4 / M09).
+
+    Public id only, resolved through the URL map like every other builder
+    here. Passing validation is **not** authorization: the detail route
+    re-proves the Student's current visibility of that announcement from
+    scratch and returns the ordinary non-disclosing 404 when the
+    Enrollment, the assignment or the academic chain has since ended --
+    so an old notification can never become proof of access to a notice
+    the recipient no longer stands in front of.
+    """
+    return _validated(
+        UserRole.STUDENT.value,
+        _build_path(
+            "student.announcement_detail",
+            announcement_public_id=announcement_public_id,
+        ),
+    )
+
+
+def teacher_announcement_target(announcement_public_id):
+    """The authorized Teacher detail page for one published Announcement
+    (Phase 4 / M09). Same contract, and the same re-authorization on
+    open, as the Student form."""
+    return _validated(
+        UserRole.TEACHER.value,
+        _build_path(
+            "teacher.announcement_detail",
+            announcement_public_id=announcement_public_id,
+        ),
+    )
+
+
+def role_announcement_target(role, announcement_public_id):
+    """The announcement detail target for `role`, or ``None`` for a role
+    without an inbox.
+
+    Used by the announcement producer, whose recipients are a mix of
+    Students and Teachers -- each is sent into **their own** role
+    namespace, and an Administrator (who has no inbox in this project and
+    is never a recipient) gets ``None`` rather than somebody else's path.
+    """
+    if role == UserRole.STUDENT.value:
+        return student_announcement_target(announcement_public_id)
+    if role == UserRole.TEACHER.value:
+        return teacher_announcement_target(announcement_public_id)
+    return None

@@ -1,5 +1,6 @@
 {% extends "layouts/portal_base.html" %}
 {% import "_dashboard_macros.html" as dash %}
+{% import "_announcement_macros.html" as ann %}
 {% block title %}Student Dashboard{% endblock %}
 {% block portal_nav %}{% set active_nav = 'dashboard' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
@@ -8,6 +9,44 @@
   Your active enrollments. Class times are shown in the center timezone
   (<strong>{{ tz_name }}</strong>).
 </p>
+
+{#- Phase 4 / M09. One bounded query, applying exactly the same visibility
+    clause the announcement feed applies -- so nothing can be previewed here
+    that the feed would hide. Rendered OUTSIDE the "no active enrollments"
+    branch on purpose: a student with no enrollment at all still belongs to the
+    centre, and still receives the centre's announcements. -#}
+<div class="dash-section">
+  <h2>Latest announcements</h2>
+  {% if announcements %}
+  <div class="dash-card-list">
+    {% for item in announcements %}
+    <div class="card">
+      <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
+        <div>
+          <div class="card__title" style="margin-bottom: var(--space-1)">
+            <a href="{{ url_for('student.announcement_detail', announcement_public_id=item.public_id) }}">{{ item.title }}</a>
+          </div>
+          {{ ann.context_line(item) }}
+        </div>
+        {{ ann.scope_badge(item) }}
+      </div>
+      {{ ann.body_preview(item, 140) }}
+      <div class="card__body" style="margin-top: var(--space-2); color: var(--color-text-secondary)">
+        {{ ann.published_line(item, tz_name) }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="ds-section__desc" style="margin-top: var(--space-2)">
+    The {{ announcement_cap }} most recent at most. <a href="{{ url_for('student.announcements_list') }}">See all announcements</a>.
+  </p>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No announcements</div>
+    <div>Notices from the centre, your courses and your groups appear here.</div>
+  </div>
+  {% endif %}
+</div>
 
 {% if not cards %}
 <div class="empty-state">

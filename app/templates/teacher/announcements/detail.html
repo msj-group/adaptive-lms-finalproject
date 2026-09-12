@@ -1,0 +1,34 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_announcement_macros.html" as ann %}
+{% block title %}{{ announcement.title }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.announcements_feed') }}">Announcements</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M09. The teacher's READER view of one announcement -- the
+    authorized destination a notification about it sends them to. The route has
+    already re-proved, in SQL, that it is published and that its scope currently
+    reaches this teacher. There is no control here at all: even a teacher who
+    could manage this announcement manages it from its own group's page, so this
+    template carries no form, no token and no lifecycle data. -#}
+<div class="ds-row" style="margin-bottom: var(--space-3)">
+  <a class="btn btn--secondary" href="{{ url_for('teacher.announcements_feed') }}">← All announcements</a>
+</div>
+
+{{ ann.flash_messages() }}
+
+<div class="card">
+  <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
+    <div>
+      <h1 style="margin: 0 0 var(--space-1)">{{ announcement.title }}</h1>
+      {{ ann.context_line(announcement) }}
+    </div>
+    {{ ann.scope_badge(announcement) }}
+  </div>
+  <div class="card__body" style="margin-top: var(--space-2); color: var(--color-text-secondary)">
+    {{ ann.published_line(announcement, tz_name) }}
+  </div>
+  {{ ann.body_block(announcement) }}
+</div>
+{% endblock %}

@@ -14,6 +14,13 @@ Student's own authorized enrollments, picks the display state, and sets
 private / non-cacheable response headers. An unknown or unauthorized
 ``group`` value yields an empty, non-disclosing result rather than
 revealing whether that Group exists.
+
+Phase 4 / M09 adds an ``announcement`` result type. Its authorization is
+the M09 visibility rule rather than the M13 enrollment chain -- a Center
+announcement is readable by any active Student, with or without an
+enrollment -- and that rule is imported from the announcement query layer
+rather than restated here, so this page cannot become one row more
+generous than the announcement feed itself.
 """
 
 from flask import make_response, render_template, request
@@ -41,6 +48,7 @@ _CONTENT_TYPE_CHOICES = (
     ("unit", "Units"),
     ("lesson", "Lessons"),
     ("material", "Materials"),
+    ("announcement", "Announcements"),
 )
 _MATERIAL_KIND_CHOICES = (
     ("all", "All materials"),

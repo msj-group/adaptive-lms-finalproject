@@ -52,12 +52,19 @@ class NotificationKind(str, enum.Enum):
     is about (M14).
 
     Deliberately a small, closed set covering exactly the high-signal
-    domain events that already exist through M13 -- there is no generic
-    "other"/"custom" kind, no Announcement kind, and no placeholder for a
-    future Assignment / Quiz / Attendance / Grade / Calendar / messaging
-    producer. Adding a kind is a schema change (the ``notifications``
-    ``kind`` CHECK constraint), which is the point: an unrecognised kind
-    can never be inserted by application code or by a manual row.
+    domain events that exist today -- there is no generic
+    "other"/"custom" kind and no placeholder for a future Assignment /
+    Quiz / Attendance / Grade / Calendar / messaging producer. Adding a
+    kind is a schema change (the ``notifications`` ``kind`` CHECK
+    constraint), which is the point: an unrecognised kind can never be
+    inserted by application code or by a manual row.
+
+    ``ANNOUNCEMENT_PUBLISHED`` is the one member Phase 4 / M09 adds, and
+    it is added the only way a member may be: with a migration that
+    rewrites the ``kind`` CHECK. It fires **once**, on an Announcement's
+    first successful publication, and never again -- not on a retry, a
+    refresh, an edit or a withdrawal. See
+    ``app/services/notification_delivery.py``.
     """
 
     ENROLLMENT_ACTIVATED = "enrollment_activated"
@@ -67,6 +74,7 @@ class NotificationKind(str, enum.Enum):
     SCHEDULE_CHANGED = "schedule_changed"
     LESSON_PUBLISHED = "lesson_published"
     MATERIAL_AVAILABLE = "material_available"
+    ANNOUNCEMENT_PUBLISHED = "announcement_published"
 
 
 class AssignmentStatus(str, enum.Enum):
@@ -298,3 +306,71 @@ class GradeSourceKind(str, enum.Enum):
     SPEAKING = "speaking"
     ACTIVITY = "activity"
     MANUAL = "manual"
+
+
+class AnnouncementScope(str, enum.Enum):
+    """Who one :class:`~app.models.announcement.Announcement` is addressed
+    to (Phase 4 / M09).
+
+    Exactly the three members the owner approved, and deliberately a
+    closed set: an unrecognised value can never be inserted by
+    application code or by a manual row, because the
+    ``announcements.scope`` CHECK names these three and nothing else.
+    Adding a member is therefore a schema change, which is the point.
+
+    - ``center`` -- everybody at the center. Carries **no** target: both
+      ``course_id`` and ``group_id`` are NULL.
+    - ``course`` -- everybody currently reachable through one Course,
+      i.e. every Student actively enrolled in, and every Teacher actively
+      assigned to, an operational Group of that Course. Carries exactly
+      ``course_id``.
+    - ``group`` -- exactly one Group's current members. Carries exactly
+      ``group_id``, and **never** a duplicated ``course_id``: the Course
+      of a group-scoped announcement is ``group.course``, one answer
+      rather than two that could disagree.
+
+    There is no ``level``, ``term``, ``role``, ``user``, ``teachers`` or
+    ``students`` member and no placeholder for one. An announcement is a
+    communication addressed at an academic place, never at a person or at
+    a role: a message to one person is messaging, which is an undecided
+    module.
+    """
+
+    CENTER = "center"
+    COURSE = "course"
+    GROUP = "group"
+
+
+class AnnouncementStatus(str, enum.Enum):
+    """Lifecycle of one Announcement (Phase 4 / M09).
+
+    Deliberately its own closed set rather than a reuse of
+    ``AssignmentStatus`` / ``QuizStatus`` / ``LessonStatus``: those three
+    publish and *unpublish*, and an announcement may never do the second.
+    It is equally deliberately not ``AcademicStatus`` -- an announcement
+    is not archived, and there is no hard delete anywhere in M09.
+
+    - ``draft`` -- author-only working text. Both publication timestamps
+      are NULL. It may be edited freely and published.
+    - ``published`` -- readable by everybody the scope currently reaches.
+      ``published_at`` is set, ``withdrawn_at`` is NULL. Its title, body,
+      scope, target and author are **frozen**; the only transition left
+      is withdrawal.
+    - ``withdrawn`` -- permanently hidden from every reader. Both
+      timestamps are set and ``withdrawn_at >= published_at``. This is a
+      **terminal** state: a withdrawn announcement can never be edited,
+      republished, restored or deleted. Correcting one means writing a
+      new announcement, so the record of what was actually said -- and
+      for how long -- survives.
+
+    There is no ``scheduled``, ``archived``, ``deleted``, ``expired`` or
+    ``pending`` member and no placeholder for one. In particular there is
+    no scheduled publication anywhere in M09: a publication time that has
+    not happened yet would be a promise no process in this application
+    keeps, and ``published_at`` is only ever the moment a human pressed
+    publish.
+    """
+
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    WITHDRAWN = "withdrawn"

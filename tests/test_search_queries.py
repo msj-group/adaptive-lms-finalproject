@@ -479,7 +479,11 @@ def test_bounded_query_count_with_many_rows(app):
         finally:
             event.remove(db.engine, "before_cursor_execute", ev)
         selects = [x for x in statements if x.strip().upper().startswith("SELECT")]
-        assert len(selects) <= 6, (len(selects), selects)
+        # One query per requested content type, never one per row. Phase 4 /
+        # M09 added a fifth type (announcements), so the bound is one higher
+        # than M13's -- and is still a constant, not a function of how many
+        # rows exist.
+        assert len(selects) <= 7, (len(selects), selects)
 
 
 def test_result_dicts_carry_no_internal_ids(app):

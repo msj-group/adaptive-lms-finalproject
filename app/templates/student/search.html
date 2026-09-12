@@ -16,13 +16,16 @@
     {{ url_for('student.lesson_detail', group_public_id=item.group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.lesson_public_id) }}
   {%- elif item.type == 'material' -%}
     {{ url_for('student.lesson_detail', group_public_id=item.group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.lesson_public_id) }}#material-{{ item.material_public_id }}
+  {%- elif item.type == 'announcement' -%}
+    {{ url_for('student.announcement_detail', announcement_public_id=item.announcement_public_id) }}
   {%- endif -%}
 {%- endmacro -%}
 
 <h1>Search learning content</h1>
 <p class="ds-section__desc">
-  Search the courses, units, lessons, and materials you are enrolled in. Try a course
-  code, a title, or a keyword your teacher added.
+  Search the courses, units, lessons, and materials you are enrolled in, and the
+  announcements addressed to you. Try a course code, a title, or a keyword your teacher
+  added.
 </p>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -109,8 +112,8 @@
     <div>Nothing in your enrolled courses matches “{{ q }}”. Try a different word, remove a filter, or check the spelling.</div>
   </div>
   {% else %}
-    {% set type_headings = {'course': 'Courses', 'unit': 'Units', 'lesson': 'Lessons', 'material': 'Materials'} %}
-    {% for type_name in ['course', 'unit', 'lesson', 'material'] %}
+    {% set type_headings = {'course': 'Courses', 'unit': 'Units', 'lesson': 'Lessons', 'material': 'Materials', 'announcement': 'Announcements'} %}
+    {% for type_name in ['course', 'unit', 'lesson', 'material', 'announcement'] %}
       {% set section = results.get(type_name) %}
       {% if section and section['items'] %}
       <section class="search-results" aria-label="{{ type_headings[type_name] }} results">

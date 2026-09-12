@@ -1,0 +1,115 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% import "_announcement_macros.html" as ann %}
+{% block title %}{{ announcement.title }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 4 / M09. One announcement in full, with whichever of the two
+      lifecycle controls its current state allows:
+        draft      -> Edit, Publish
+        published  -> Withdraw
+        withdrawn  -> nothing at all, permanently
+
+      Each hidden `announcement_state` value is a signed token minted by the
+      server a moment ago against the CURRENT row; the publish token also binds
+      the target's lifecycle, so a form opened while the course or group was
+      active cannot publish into one that has since been archived.
+
+      No recipient list and no notification row appears here, in any state. -#}
+  <div class="ds-row" style="margin-bottom: var(--space-3)">
+    <a class="btn btn--secondary" href="{{ overview_url }}">← All announcements</a>
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  <div class="card">
+    <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
+      <div>
+        <h1 style="margin: 0 0 var(--space-1)">{{ announcement.title }}</h1>
+        <div class="card__body">{{ announcement.context or "Everybody at the centre" }}</div>
+        <div class="card__body">Written by {{ announcement.author_name }}</div>
+      </div>
+      <div>
+        {{ ann.status_badge(announcement) }}
+        {{ ann.scope_badge(announcement) }}
+      </div>
+    </div>
+
+    {{ ann.body_block(announcement) }}
+
+    <dl style="display:grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: var(--space-4) 0 0;">
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>
+      <dd style="margin:0">{{ announcement.created_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Last changed</dt>
+      <dd style="margin:0">{{ announcement.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Published</dt>
+      <dd style="margin:0">
+        {%- if announcement.published_local -%}
+          {{ announcement.published_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})
+        {%- else -%}—{%- endif -%}
+      </dd>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Withdrawn</dt>
+      <dd style="margin:0">
+        {%- if announcement.withdrawn_local -%}
+          {{ announcement.withdrawn_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})
+        {%- else -%}—{%- endif -%}
+      </dd>
+    </dl>
+  </div>
+
+  {% if announcement.status == 'draft' %}
+  <div class="card" style="margin-top: var(--space-4)">
+    <div class="card__title">This is a draft</div>
+    <div class="card__body" style="margin-top: var(--space-2)">
+      Nobody can see it yet. Publishing makes it readable by everyone its scope currently
+      reaches and sends each of them one notification — students and teachers only;
+      administrators are never notified. A published announcement can never be edited
+      again, only withdrawn.
+    </div>
+    {% if not target_available %}
+    <div class="alert alert--warning" style="margin-top: var(--space-3)">
+      The course or group this draft is for could not be read, or is no longer active, so it
+      cannot be published. Edit it to choose a target that is still active.
+    </div>
+    {% endif %}
+    <div class="ds-row" style="margin-top: var(--space-4)">
+      <a class="btn btn--secondary" href="{{ edit_url }}">Edit draft</a>
+      {% if publish_token %}
+      <form method="post" action="{{ url_for('admin.announcement_publish', announcement_public_id=announcement.public_id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="announcement_state" value="{{ publish_token }}">
+        <button type="submit" class="btn btn--primary">Publish</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% elif announcement.status == 'published' %}
+  <div class="card" style="margin-top: var(--space-4)">
+    <div class="card__title">Withdraw this announcement</div>
+    <div class="card__body" style="margin-top: var(--space-2)">
+      Withdrawing hides it from everyone immediately. It is permanent: a withdrawn
+      announcement can never be edited, published again, or restored. Notifications people
+      already received stay in their inbox as a record that they were told, but opening one
+      will no longer show anything. Write a new announcement if this one needs correcting.
+    </div>
+    <form method="post" action="{{ url_for('admin.announcement_withdraw', announcement_public_id=announcement.public_id) }}" style="margin-top: var(--space-4)">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="announcement_state" value="{{ withdraw_token }}">
+      <label class="ds-row" style="gap: var(--space-2); align-items: center">
+        <input type="checkbox" name="confirm" value="yes">
+        <span>I understand that withdrawing cannot be undone.</span>
+      </label>
+      <div class="ds-row" style="margin-top: var(--space-3)">
+        <button type="submit" class="btn btn--danger">Withdraw</button>
+      </div>
+    </form>
+  </div>
+  {% else %}
+  <div class="alert alert--info" style="margin-top: var(--space-4)">
+    This announcement was withdrawn and is permanent. It cannot be edited, published again,
+    or restored, and nobody can read it any more. It is kept as a record of what was posted
+    and when it was taken down.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

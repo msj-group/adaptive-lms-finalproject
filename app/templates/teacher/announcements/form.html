@@ -1,0 +1,70 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_announcement_macros.html" as ann %}
+{% block title %}{{ group.name }} — {{ "Edit announcement" if announcement else "New announcement" }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.announcements_feed') }}">Announcements</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M09. The hidden `announcement_state` value is the signed token
+    binding the author, the announcement's public id, its version, and its scope
+    and target. It carries no title, no text and no internal id: a signed token
+    is authenticated, not encrypted, so nothing is placed in one that should not
+    be readable.
+
+    There is no scope control and no target control on this page, and that is
+    the point: a teacher may only ever write a GROUP announcement, and the group
+    is the one in the URL. A forged `scope` field in this form has nowhere to
+    land, because nothing on the server reads one.
+
+    There is equally no "publish now" checkbox. Publishing is a separate,
+    deliberate POST with its own token and its own notification, so a slip of
+    the mouse here cannot tell a whole group something. -#}
+<h1 style="margin-top: 0">{{ "Edit announcement" if announcement else "New announcement" }}</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }}
+</p>
+
+{{ ann.flash_messages() }}
+
+<div class="alert alert--info" style="margin-bottom: var(--space-5)">
+  This is saved as a <strong>draft</strong>. Nobody but this group's teachers can see a
+  draft. You publish it as a separate step, and once it is published its title and text can
+  never be changed — only withdrawn.
+</div>
+
+<form method="post" class="card" novalidate>
+  {{ form.hidden_tag() }}
+  <input type="hidden" name="announcement_state" value="{{ announcement_state }}">
+
+  <div class="field">
+    <label class="field__label" for="{{ form.title.id }}">{{ form.title.label.text }}</label>
+    {{ form.title(class="field__input", maxlength=title_max, autocomplete="off") }}
+    {% for error in form.title.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+      One short line, at most {{ title_max }} characters — for example “Room change on
+      Tuesday”.
+    </div>
+  </div>
+
+  <div class="field" style="margin-top: var(--space-4)">
+    <label class="field__label" for="{{ form.body.id }}">{{ form.body.label.text }}</label>
+    {{ form.body(class="field__input", rows=12, maxlength=body_max) }}
+    {% for error in form.body.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+      Plain text, at most {{ body_max }} characters. Line breaks are kept. There is no
+      formatting, no link preview and no attachment: share learning material through the
+      group's lessons instead.
+    </div>
+  </div>
+
+  <div class="ds-row" style="margin-top: var(--space-5)">
+    <button type="submit" class="btn btn--primary">{{ form.submit.label.text }}</button>
+    <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

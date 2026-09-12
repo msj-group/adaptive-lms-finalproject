@@ -1,6 +1,8 @@
 from app.models.user import User, UserRole, UserStatus
 from app.models.enums import (
     AcademicStatus,
+    AnnouncementScope,
+    AnnouncementStatus,
     AssignmentStatus,
     AttendanceStatus,
     FileAccessAction,
@@ -81,6 +83,11 @@ from app.models.grade_item import (
     GradeItem,
 )
 from app.models.grade_record import GRADE_COMMENT_MAX_LENGTH, GradeRecord
+from app.models.announcement import (
+    ANNOUNCEMENT_BODY_MAX_LENGTH,
+    ANNOUNCEMENT_TITLE_MAX_LENGTH,
+    Announcement,
+)
 
 __all__ = [
     "User",
@@ -159,4 +166,9 @@ __all__ = [
     "MIN_POINTS",
     "GradeRecord",
     "GRADE_COMMENT_MAX_LENGTH",
+    "AnnouncementScope",
+    "AnnouncementStatus",
+    "Announcement",
+    "ANNOUNCEMENT_TITLE_MAX_LENGTH",
+    "ANNOUNCEMENT_BODY_MAX_LENGTH",
 ]

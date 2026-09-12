@@ -22,3 +22,4 @@ from app.blueprints.admin import enrollments  # noqa: E402,F401
 from app.blueprints.admin import schedules  # noqa: E402,F401
 from app.blueprints.admin import attendance  # noqa: E402,F401
 from app.blueprints.admin import grades  # noqa: E402,F401
+from app.blueprints.admin import announcements  # noqa: E402,F401

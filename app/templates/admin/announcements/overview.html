@@ -1,0 +1,103 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% import "_announcement_macros.html" as ann %}
+{% block title %}Announcements{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 4 / M09. The centre's announcements in all three scopes, newest
+      first, with the two filters an administrator may apply. Both filters are
+      normalised to a known value or dropped before they reach SQL.
+
+      There is deliberately no delete, archive, restore, unwithdraw, republish,
+      duplicate, schedule, import, export or bulk control on this page, and none
+      behind it: no such endpoint exists. A correction to something already
+      published is a new announcement.
+
+      **Nothing here names a recipient.** Who was notified is not announcement
+      administration, and no query behind this page fetches a notification
+      row. -#}
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+    <h1 style="margin:0">Announcements</h1>
+    <a class="btn btn--primary" href="{{ url_for('admin.announcement_create') }}">New announcement</a>
+  </div>
+  <p class="ds-section__desc">
+    Notices addressed to the whole centre, to one course, or to one group. A draft is
+    visible to nobody; publishing makes it readable by everyone the scope currently reaches
+    and notifies each of them once; withdrawing hides it permanently.
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  <form method="get" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+    <label class="field__label" for="scope" style="margin:0">Scope:</label>
+    <select name="scope" id="scope" class="field__input" style="width:auto">
+      <option value="">All scopes</option>
+      {% for value, label in scope_choices %}
+      <option value="{{ value }}" {{ "selected" if filter_scope == value else "" }}>{{ scope_labels[value] }}</option>
+      {% endfor %}
+    </select>
+
+    <label class="field__label" for="status" style="margin:0">Status:</label>
+    <select name="status" id="status" class="field__input" style="width:auto">
+      <option value="">Any status</option>
+      {% for value, label in status_labels.items() %}
+      <option value="{{ value }}" {{ "selected" if filter_status == value else "" }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <button type="submit" class="btn btn--secondary">Filter</button>
+    {% if filter_scope or filter_status %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.announcements_overview') }}">Clear</a>
+    {% endif %}
+  </form>
+
+  {% if announcements %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th style="width:9rem">Scope</th>
+        <th>Addressed to</th>
+        <th style="width:9rem">Status</th>
+        <th style="width:12rem">Author</th>
+        <th style="width:12rem">Created</th>
+        <th style="width:7rem">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in announcements %}
+      <tr>
+        <td><strong>{{ item.title }}</strong></td>
+        <td>{{ ann.scope_badge(item) }}</td>
+        <td>{{ item.context or "Everybody at the centre" }}</td>
+        <td>{{ ann.status_badge(item) }}</td>
+        <td>{{ item.author_name }}</td>
+        <td>{{ item.created_local.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td><a class="btn btn--secondary" href="{{ url_for('admin.announcement_detail', announcement_public_id=item.public_id) }}">Open</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if has_prev or has_next %}
+  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Announcement pages">
+    {% if has_prev %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.announcements_overview', page=page - 1, scope=filter_scope or None, status=filter_status or None) }}">Previous</a>
+    {% endif %}
+    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page &middot; times in {{ tz_name }}</span>
+    {% if has_next %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.announcements_overview', page=page + 1, scope=filter_scope or None, status=filter_status or None) }}">Next</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No announcements</div>
+    <div>Nothing matches these filters. Use “New announcement” to write one.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -89,7 +89,11 @@ MIN_QUERY_LENGTH = 2
 MAX_QUERY_LENGTH = 100
 MAX_QUERY_TOKENS = 8
 
-CONTENT_TYPES = ("all", "course", "unit", "lesson", "material")
+#: Phase 4 / M09 adds ``announcement``. It is deliberately last: the
+#: first four are learning *content*, and an announcement is a
+#: communication about it, so it reads as an addition rather than as a
+#: peer of "lesson".
+CONTENT_TYPES = ("all", "course", "unit", "lesson", "material", "announcement")
 MATERIAL_KIND_FILTERS = ("all", "rich_text", "external_link", "file")
 
 

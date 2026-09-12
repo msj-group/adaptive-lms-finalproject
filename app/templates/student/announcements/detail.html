@@ -1,0 +1,32 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_announcement_macros.html" as ann %}
+{% block title %}{{ announcement.title }}{% endblock %}
+{% block portal_nav %}{% set active_nav = 'announcements' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M09. This page is only ever reached after the route has re-proved,
+    in SQL, that this announcement is published AND that its scope currently
+    reaches this student -- so there is nothing here to hide behind a condition.
+    The body is plain text rendered inside a pre-wrap block: Jinja's
+    autoescaping is what makes it safe, and nothing on this surface is ever
+    marked safe. No author, no version, no lifecycle history and no internal id
+    is available to this template, because none was fetched. -#}
+<div class="ds-row" style="margin-bottom: var(--space-3)">
+  <a class="btn btn--secondary" href="{{ url_for('student.announcements_list') }}">← All announcements</a>
+</div>
+
+{{ ann.flash_messages() }}
+
+<div class="card">
+  <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
+    <div>
+      <h1 style="margin: 0 0 var(--space-1)">{{ announcement.title }}</h1>
+      {{ ann.context_line(announcement) }}
+    </div>
+    {{ ann.scope_badge(announcement) }}
+  </div>
+  <div class="card__body" style="margin-top: var(--space-2); color: var(--color-text-secondary)">
+    {{ ann.published_line(announcement, tz_name) }}
+  </div>
+  {{ ann.body_block(announcement) }}
+</div>
+{% endblock %}

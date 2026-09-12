@@ -11,6 +11,11 @@ from app.services.assignment_queries import (
     build_student_view,
     student_upcoming_deadlines,
 )
+from app.services.announcement_queries import (
+    DASHBOARD_PREVIEW_CAP,
+    build_reader_view,
+    student_dashboard_preview,
+)
 from app.services.dashboard_queries import student_dashboard
 from app.services.schedule_occurrences import app_now, utc_reference_now
 
@@ -56,11 +61,20 @@ def dashboard():
     upcoming_deadlines = build_student_view(
         student_upcoming_deadlines(current_user.id, reference_utc), tz_name, reference_utc
     )
+    # Phase 4 / M09: one more bounded query, independent of how many
+    # announcements exist. It applies the SAME visibility clause the
+    # announcement feed applies, so nothing can be previewed here that the
+    # feed would hide -- and a Student with no enrollment at all still
+    # sees the center's announcements, which is why this section is
+    # rendered outside the "no active enrollments" branch.
+    announcements = build_reader_view(student_dashboard_preview(current_user.id), tz_name)
     return private_no_store(
         "student/dashboard.html",
         tz_name=tz_name,
         now=now,
         upcoming_deadlines=upcoming_deadlines,
         deadline_cap=DASHBOARD_DEADLINE_CAP,
+        announcements=announcements,
+        announcement_cap=DASHBOARD_PREVIEW_CAP,
         **data,
     )

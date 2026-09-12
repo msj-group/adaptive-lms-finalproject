@@ -1,0 +1,65 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_announcement_macros.html" as ann %}
+{% block title %}Announcements{% endblock %}
+{% block portal_nav %}{% set active_nav = 'announcements' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M09. Every row here is a PUBLISHED announcement whose scope
+    currently reaches this student -- the centre's, their courses', their
+    groups' -- newest first, in one query. What is not here is not hidden:
+    drafts, withdrawn announcements, other groups' and other courses'
+    announcements were never fetched, and neither was any author, version or
+    internal id. There is no control of any kind on this page: no
+    acknowledgement, no dismiss, no comment and no reply, and no such
+    endpoint exists to aim one at. -#}
+<h1 style="margin-top: 0">Announcements</h1>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  Notices from the centre and from the courses and groups you are currently in. An
+  announcement stays here for as long as it is standing; if it is taken down, it
+  disappears from this list.
+</p>
+
+{{ ann.flash_messages() }}
+
+{% if announcements %}
+<div class="dash-card-list">
+  {% for item in announcements %}
+  <div class="card">
+    <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
+      <div>
+        <div class="card__title" style="margin-bottom: var(--space-1)">
+          <a href="{{ url_for('student.announcement_detail', announcement_public_id=item.public_id) }}">{{ item.title }}</a>
+        </div>
+        {{ ann.context_line(item) }}
+      </div>
+      {{ ann.scope_badge(item) }}
+    </div>
+    {{ ann.body_preview(item) }}
+    <div class="card__body" style="margin-top: var(--space-3); color: var(--color-text-secondary)">
+      {{ ann.published_line(item, tz_name) }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if has_prev or has_next %}
+<nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Announcement pages">
+  {% if has_prev %}
+  <a class="btn btn--secondary" href="{{ url_for('student.announcements_list', page=page - 1) }}">Previous</a>
+  {% endif %}
+  <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+  {% if has_next %}
+  <a class="btn btn--secondary" href="{{ url_for('student.announcements_list', page=page + 1) }}">Next</a>
+  {% endif %}
+</nav>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">No announcements</div>
+  <div>
+    When the centre, one of your courses, or one of your groups posts a notice, it
+    appears here.
+  </div>
+</div>
+{% endif %}
+{% endblock %}

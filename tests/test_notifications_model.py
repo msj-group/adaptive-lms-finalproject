@@ -78,11 +78,31 @@ def test_migration_is_a_single_additive_table():
     assert dropped_indexes == list(reversed(created_indexes))
 
 
+#: The seven kinds THIS revision created. Phase 4 / M09 later added an
+#: eighth (``announcement_published``) by replacing this CHECK in its own
+#: revision, which is the only way a kind may ever be added -- so this
+#: migration must still declare exactly the seven it was written with, and
+#: must NOT be edited to mention a later one.
+_M14_KINDS = (
+    "enrollment_activated",
+    "enrollment_withdrawn",
+    "teacher_assignment_activated",
+    "teacher_assignment_removed",
+    "schedule_changed",
+    "lesson_published",
+    "material_available",
+)
+
+
 def test_migration_declares_the_kind_check_and_both_composite_indexes():
     _, source = _load_migration()
     assert "ck_notifications_kind_valid" in source
-    for kind in fx.kinds():
+    for kind in _M14_KINDS:
         assert f"'{kind}'" in source
+    assert "'announcement_published'" not in source
+    # Every kind the application knows today is either one of this
+    # revision's seven or was added by a later revision.
+    assert set(_M14_KINDS) <= set(fx.kinds())
     assert (
         "create_index('ix_notifications_recipient_unread_created', "
         "['recipient_id', 'read_at', 'created_at']" in source

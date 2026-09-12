@@ -1,0 +1,103 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ "Edit announcement" if announcement else "New announcement" }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 4 / M09. The hidden `announcement_state` value is the signed token
+      binding the author, the announcement's public id, its version, and the
+      scope and target the STORED row currently has -- not whatever this form
+      shows, so a retarget attempted against a row somebody else has already
+      retargeted is caught rather than applied. It carries no title, no text and
+      no internal id.
+
+      Both target selects carry PUBLIC ids and are populated from the centre's
+      currently operational courses and groups only: an announcement may only be
+      published to a place that is still standing, so offering an archived one
+      would be offering a draft that could never be published.
+
+      Exactly one target is required, and it is the one the chosen scope names.
+      The form refuses every other combination before any lock, and
+      `ck_announcements_scope_target` refuses the same shapes in the database as
+      the final defense. -#}
+  <h1 style="margin-top: 0">{{ "Edit announcement" if announcement else "New announcement" }}</h1>
+  <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+    Write the notice, choose who it is addressed to, and save it as a draft. Publishing is a
+    separate step.
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  <div class="alert alert--info" style="margin-bottom: var(--space-5)">
+    This is saved as a <strong>draft</strong>. Nobody can see a draft. Once it is published
+    its title, text, scope and target can never be changed — only withdrawn.
+  </div>
+
+  <form method="post" class="card" novalidate>
+    {{ form.hidden_tag() }}
+    <input type="hidden" name="announcement_state" value="{{ announcement_state }}">
+
+    <div class="field">
+      <label class="field__label" for="{{ form.scope.id }}">{{ form.scope.label.text }}</label>
+      {{ form.scope(class="field__input") }}
+      {% for error in form.scope.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+        Pick the scope first, then fill in only the matching selection below. A centre
+        announcement names neither a course nor a group.
+      </div>
+    </div>
+
+    <div class="field" style="margin-top: var(--space-4)">
+      <label class="field__label" for="{{ form.course.id }}">{{ form.course.label.text }}</label>
+      {{ form.course(class="field__input") }}
+      {% for error in form.course.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+        Only for a <strong>course</strong> announcement. Everyone currently in any active
+        group of that course will be able to read it.
+      </div>
+    </div>
+
+    <div class="field" style="margin-top: var(--space-4)">
+      <label class="field__label" for="{{ form.group.id }}">{{ form.group.label.text }}</label>
+      {{ form.group(class="field__input") }}
+      {% for error in form.group.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+        Only for a <strong>group</strong> announcement.
+      </div>
+    </div>
+
+    <div class="field" style="margin-top: var(--space-4)">
+      <label class="field__label" for="{{ form.title.id }}">{{ form.title.label.text }}</label>
+      {{ form.title(class="field__input", maxlength=title_max, autocomplete="off") }}
+      {% for error in form.title.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+        One short line, at most {{ title_max }} characters.
+      </div>
+    </div>
+
+    <div class="field" style="margin-top: var(--space-4)">
+      <label class="field__label" for="{{ form.body.id }}">{{ form.body.label.text }}</label>
+      {{ form.body(class="field__input", rows=12, maxlength=body_max) }}
+      {% for error in form.body.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+        Plain text, at most {{ body_max }} characters. Line breaks are kept. There is no
+        formatting and no attachment.
+      </div>
+    </div>
+
+    <div class="ds-row" style="margin-top: var(--space-5)">
+      <button type="submit" class="btn btn--primary">{{ form.submit.label.text }}</button>
+      <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
