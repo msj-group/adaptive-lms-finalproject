@@ -16,10 +16,9 @@ Creation::
     AcademicTerm -> Level -> Course      (lock_academic_hierarchy, which
                                           owns the one deliberate reset)
     -> Group
-    -> acting Teacher User
+    -> acting Teacher + eligible Student User rows, one ascending-id set
     -> GroupTeacherAssignment
     -> Schedule
-    -> eligible Student User rows, ascending internal id
     -> active Enrollment rows, ascending internal id
     -> AttendanceSession (the occurrence's row, which normally does not
        exist yet)
@@ -28,17 +27,18 @@ Draft save and finalization::
 
     AcademicTerm -> Level -> Course      (same single reset)
     -> Group
-    -> acting Teacher User
+    -> acting Teacher + captured Student User rows, one ascending-id set
     -> GroupTeacherAssignment
     -> Schedule
     -> AttendanceSession
-    -> captured Student User rows, ascending internal id
     -> captured AttendanceRecord rows, ascending internal id
 
-Ascending internal id at every level, never display order and never the
-order a form submitted things in: that is the project-wide rule that keeps
-two concurrent writers -- two co-teachers on one roster, or a Teacher and
-an Administrator membership change -- from deadlocking against each other.
+All involved User rows form one ascending-id lock set, never a
+``Teacher first, then Students`` pair of sets. That is the project-wide
+rule shared with feedback, speaking and messaging, and it matters across
+different Groups: two transactions can share the same people without
+sharing a Group row that would serialize them first. Every other row set
+also uses ascending internal id, never display order or submitted order.
 The Group lock is the same one every Group-affecting mutation in this
 project already takes, so an attendance write serializes against a Group
 retarget, a Schedule edit, an Enrollment change and a teacher-assignment
@@ -128,18 +128,31 @@ class AttendanceLocks:
         self.records = records or {}
 
 
-def _lock_prefix(group_public_id, term_id, level_id, course_id, teacher_id, schedule_id):
+def _lock_prefix(
+    group_public_id,
+    term_id,
+    level_id,
+    course_id,
+    teacher_id,
+    schedule_id,
+    student_ids=(),
+):
     """The shared prefix both M07 chains take, in one open transaction,
     with the single deliberate reset owned by
     :func:`~app.services.academic_hierarchy_transactions.lock_academic_hierarchy`.
 
-    Returns ``(hierarchy, group, teacher, teacher_assignment, schedule)``.
+    Returns ``(hierarchy, group, teacher, teacher_assignment, schedule,
+    students)``. The acting Teacher and all previewed Students are locked
+    as one ascending-id User set before any relationship or domain row.
     """
     hierarchy = lock_academic_hierarchy(
         term_ids=[term_id], level_ids=[level_id], course_ids=[course_id]
     )
     group = lock_group_in_open_transaction(group_public_id)
-    teacher = User.query.filter_by(id=teacher_id).with_for_update().first()
+    student_ids = sorted({uid for uid in student_ids if uid is not None})
+    users = _lock_user_rows((teacher_id, *student_ids))
+    teacher = users.get(teacher_id)
+    students = {student_id: users.get(student_id) for student_id in student_ids}
     teacher_assignment = None
     if group is not None:
         teacher_assignment = (
@@ -152,7 +165,7 @@ def _lock_prefix(group_public_id, term_id, level_id, course_id, teacher_id, sche
     schedule = None
     if schedule_id is not None:
         schedule = Schedule.query.filter_by(id=schedule_id).with_for_update().first()
-    return hierarchy, group, teacher, teacher_assignment, schedule
+    return hierarchy, group, teacher, teacher_assignment, schedule, students
 
 
 def _lock_user_rows(user_ids):
@@ -183,10 +196,15 @@ def lock_creation_chain(
     treat a ``None`` -- a vanished User, a vanished Enrollment, a missing
     Group, Teacher, assignment or Schedule -- as a rejection.
     """
-    hierarchy, group, teacher, teacher_assignment, schedule = _lock_prefix(
-        group_public_id, term_id, level_id, course_id, teacher_id, schedule_id
+    hierarchy, group, teacher, teacher_assignment, schedule, students = _lock_prefix(
+        group_public_id,
+        term_id,
+        level_id,
+        course_id,
+        teacher_id,
+        schedule_id,
+        student_ids,
     )
-    students = _lock_user_rows(student_ids)
     enrollments = {}
     for enrollment_id in sorted({e for e in enrollment_ids if e is not None}):
         enrollments[enrollment_id] = (
@@ -227,22 +245,27 @@ def lock_session_chain(
     """Take the full M07 **draft save / finalization** lock order in one
     open transaction.
 
-    The AttendanceSession is locked **before** the captured User and
-    record rows -- it is the serialization point for its own aggregate, so
-    two co-teachers saving the same roster serialize on it -- and the two
-    row sets follow it in ascending internal id.
+    All acting/captured User rows are locked first as one ascending-id set.
+    The AttendanceSession then remains the serialization point for its own
+    aggregate, so two co-teachers saving the same roster serialize on it;
+    captured record rows follow it in ascending internal id.
 
     Returns an :class:`AttendanceLocks`. Any ``None`` is a rejection.
     """
-    hierarchy, group, teacher, teacher_assignment, schedule = _lock_prefix(
-        group_public_id, term_id, level_id, course_id, teacher_id, schedule_id
+    hierarchy, group, teacher, teacher_assignment, schedule, students = _lock_prefix(
+        group_public_id,
+        term_id,
+        level_id,
+        course_id,
+        teacher_id,
+        schedule_id,
+        student_ids,
     )
     session = None
     if session_id is not None:
         session = (
             AttendanceSession.query.filter_by(id=session_id).with_for_update().first()
         )
-    students = _lock_user_rows(student_ids)
     records = {}
     for record_id in sorted({r for r in record_ids if r is not None}):
         records[record_id] = (

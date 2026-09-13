@@ -15,12 +15,11 @@ several chances for it to::
     AcademicTerm -> Level -> Course      (lock_academic_hierarchy, which
                                           owns the one deliberate reset)
     -> Group
-    -> acting Teacher User
+    -> acting Teacher + captured Student User rows, one ascending-id set
     -> GroupTeacherAssignment
     -> every GradeCategory of this Group, ascending internal id
     -> GradeItem rows, ascending internal id
     -> linked source row (Assignment / Quiz / SpeakingActivity)
-    -> Student User rows, ascending internal id
     -> Enrollment rows, ascending internal id
     -> GradeRecord rows, ascending internal id
 
@@ -31,10 +30,13 @@ order. That is what keeps a co-teacher editing weights, a co-teacher
 entering scores and a co-teacher releasing an item from deadlocking
 against each other.
 
-Ascending internal id at every level, never display order and never the
-order a form submitted things in: the project-wide rule, and it matters
-especially here because the score sheet is ordered by Student *name*,
-which an administrator can change between two requests.
+The acting Teacher and every involved Student form one ascending-id User
+lock set, never a ``Teacher first, then Students`` pair of sets. This is
+the project-wide rule shared with feedback, speaking and messaging, and
+it also prevents an inversion when two operations use different Groups
+but share the same people. Every other row set is ascending too, never
+display order or submitted order; that matters especially here because
+the score sheet is ordered by Student *name*.
 
 The Group lock is the same one every Group-affecting mutation in this
 project already takes, so a gradebook write serializes against a Group
@@ -204,18 +206,30 @@ class GradebookLocks:
         )
 
 
-def _lock_prefix(group_public_id, term_id, level_id, course_id, teacher_id):
+def _lock_prefix(
+    group_public_id,
+    term_id,
+    level_id,
+    course_id,
+    teacher_id,
+    student_ids=(),
+):
     """The shared prefix every M08 chain takes, in one open transaction,
     with the single deliberate reset owned by
     :func:`~app.services.academic_hierarchy_transactions.lock_academic_hierarchy`.
 
-    Returns ``(hierarchy, group, teacher, teacher_assignment)``.
+    Returns ``(hierarchy, group, teacher, teacher_assignment, students)``.
+    All involved User rows are locked as one ascending-id set before the
+    assignment or any gradebook row.
     """
     hierarchy = lock_academic_hierarchy(
         term_ids=[term_id], level_ids=[level_id], course_ids=[course_id]
     )
     group = lock_group_in_open_transaction(group_public_id)
-    teacher = User.query.filter_by(id=teacher_id).with_for_update().first()
+    student_ids = sorted({uid for uid in student_ids if uid is not None})
+    users = _lock_rows(User, (teacher_id, *student_ids))
+    teacher = users.get(teacher_id)
+    students = {student_id: users.get(student_id) for student_id in student_ids}
     teacher_assignment = None
     if group is not None:
         teacher_assignment = (
@@ -225,7 +239,7 @@ def _lock_prefix(group_public_id, term_id, level_id, course_id, teacher_id):
             .with_for_update()
             .first()
         )
-    return hierarchy, group, teacher, teacher_assignment
+    return hierarchy, group, teacher, teacher_assignment, students
 
 
 def _lock_rows(model, row_ids):
@@ -313,13 +327,12 @@ def lock_gradebook_chain(
 
     Returns a :class:`GradebookLocks`.
     """
-    hierarchy, group, teacher, teacher_assignment = _lock_prefix(
-        group_public_id, term_id, level_id, course_id, teacher_id
+    hierarchy, group, teacher, teacher_assignment, students = _lock_prefix(
+        group_public_id, term_id, level_id, course_id, teacher_id, student_ids
     )
     categories = _lock_group_categories(None if group is None else group.id)
     items = _lock_rows(GradeItem, item_ids)
     source = _lock_source(source_kind, source_id)
-    students = _lock_rows(User, student_ids)
     enrollments = _lock_rows(Enrollment, enrollment_ids)
     records = _lock_rows(GradeRecord, record_ids)
     return GradebookLocks(

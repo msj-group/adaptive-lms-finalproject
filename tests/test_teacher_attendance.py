@@ -1610,6 +1610,13 @@ def test_both_chains_lock_rows_of_one_type_in_ascending_internal_id(app):
         session, records = fx.full_session(group, schedule, students)
         student_ids = [student.id for student in students]
         record_ids = [record.id for record in records]
+        teacher_id = teacher.id
+        group_public_id = group.public_id
+        term_id = group.academic_term_id
+        level_id = group.course.level_id
+        course_id = group.course_id
+        schedule_id = schedule.id
+        session_id = session.id
 
         seen = []
 
@@ -1622,13 +1629,13 @@ def test_both_chains_lock_rows_of_one_type_in_ascending_internal_id(app):
         event.listen(db.engine, "before_cursor_execute", _rec)
         try:
             lock_session_chain(
-                group.public_id,
-                group.academic_term_id,
-                group.course.level_id,
-                group.course_id,
-                teacher.id,
-                schedule.id,
-                session.id,
+                group_public_id,
+                term_id,
+                level_id,
+                course_id,
+                teacher_id,
+                schedule_id,
+                session_id,
                 # Deliberately shuffled: the chain must sort them itself.
                 student_ids=list(reversed(student_ids)),
                 record_ids=list(reversed(record_ids)),
@@ -1636,10 +1643,75 @@ def test_both_chains_lock_rows_of_one_type_in_ascending_internal_id(app):
         finally:
             event.remove(db.engine, "before_cursor_execute", _rec)
 
-    locked_students = [p[0] for table, p in seen if table == "users" and p[0] in student_ids]
+    locked_users = [p[0] for table, p in seen if table == "users"]
     locked_records = [p[0] for table, p in seen if table == "attendance_records"]
-    assert locked_students == sorted(student_ids)
+    assert locked_users == sorted({teacher_id, *student_ids})
     assert locked_records == sorted(record_ids)
+
+
+def test_both_chains_sort_teacher_with_students_when_a_student_has_the_lower_id(app):
+    """The global User order must not depend on role. This is the shape
+    that used to invert against M11 on a different Group: Attendance took
+    the higher-id Teacher first while messaging held the lower-id Student."""
+    from app.services.attendance_transactions import lock_creation_chain, lock_session_chain
+
+    with app.app_context():
+        group = fx.hierarchy("Participant order")
+        student = fx.user("low-student@example.com", UserRole.STUDENT.value)
+        teacher = fx.assign_teacher(group, "high-teacher@example.com")
+        schedule = fx.schedule_for(group)
+        enrollment = Enrollment(group_id=group.id, student_id=student.id)
+        db.session.add(enrollment)
+        db.session.commit()
+        session, records = fx.full_session(group, schedule, [student])
+
+        student_id = student.id
+        teacher_id = teacher.id
+        enrollment_id = enrollment.id
+        session_id = session.id
+        record_ids = [record.id for record in records]
+
+        common = (
+            group.public_id,
+            group.academic_term_id,
+            group.course.level_id,
+            group.course_id,
+            teacher_id,
+            schedule.id,
+        )
+        calls = (
+            lambda: lock_creation_chain(
+                *common,
+                fx.NEXT_WEEK,
+                student_ids=(value for value in [student_id]),
+                enrollment_ids=[enrollment_id],
+            ),
+            lambda: lock_session_chain(
+                *common,
+                session_id,
+                student_ids=(value for value in [student_id]),
+                record_ids=record_ids,
+            ),
+        )
+        orders = []
+        for call in calls:
+            seen = []
+
+            def _rec(conn, cursor, statement, parameters, context, executemany):
+                if re.search(r"\bFROM users WHERE users\.id = \?", " ".join(statement.split())):
+                    seen.append(tuple(parameters)[0])
+
+            event.listen(db.engine, "before_cursor_execute", _rec)
+            try:
+                locks = call()
+            finally:
+                event.remove(db.engine, "before_cursor_execute", _rec)
+            orders.append(seen)
+            assert list(locks.students) == [student_id]
+            assert locks.students[student_id] is not None
+
+    assert student_id < teacher_id
+    assert orders == [sorted((student_id, teacher_id))] * 2
 
 
 @pytest.mark.parametrize("chain", ["lock_creation_chain", "lock_session_chain"])

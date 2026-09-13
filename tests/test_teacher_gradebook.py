@@ -1509,10 +1509,58 @@ def test_every_chain_locks_rows_of_one_type_in_ascending_internal_id(app):
 
     record_order = [p[0] for table, p in seen if table == "grade_records"]
     assert record_order == expected_records
-    # The acting Teacher is locked first, then the captured Students,
-    # each set ascending.
+    # The acting Teacher and captured Students form one global ascending
+    # User set, regardless of role or submitted order.
     user_order = [p[0] for table, p in seen if table == "users"]
-    assert user_order[1:] == expected_students
+    assert user_order == sorted({teacher.id, *expected_students})
+
+
+def test_chain_sorts_teacher_with_students_when_a_student_has_the_lower_id(app):
+    """Prevent the cross-Group inversion with M11 messaging: role must
+    not decide which of the two shared User rows is locked first."""
+    from app.models import Enrollment
+    from app.services.grade_transactions import lock_gradebook_chain
+
+    with app.app_context():
+        group = fx.hierarchy("Participant order")
+        student = fx.user("low-student@example.com", UserRole.STUDENT.value)
+        teacher = fx.assign_teacher(group, "high-teacher@example.com")
+        enrollment = Enrollment(group_id=group.id, student_id=student.id)
+        db.session.add(enrollment)
+        db.session.commit()
+
+        student_id = student.id
+        teacher_id = teacher.id
+        enrollment_id = enrollment.id
+        args = (
+            group.public_id,
+            group.academic_term_id,
+            group.course.level_id,
+            group.course_id,
+            teacher_id,
+        )
+
+        seen = []
+
+        def _rec(conn, cursor, statement, parameters, context, executemany):
+            if re.search(r"\bFROM users WHERE users\.id = \?", " ".join(statement.split())):
+                seen.append(tuple(parameters)[0])
+
+        event.listen(db.engine, "before_cursor_execute", _rec)
+        try:
+            locks = lock_gradebook_chain(
+                *args,
+                student_ids=(value for value in [student_id]),
+                enrollment_ids=[enrollment_id],
+            )
+        finally:
+            event.remove(db.engine, "before_cursor_execute", _rec)
+
+        assert list(locks.students) == [student_id]
+        assert locks.students[student_id] is not None
+
+    assert student_id < teacher_id
+    assert seen == sorted((student_id, teacher_id))
 
 
 def test_the_chain_discovers_the_category_set_itself_rather_than_trusting_a_caller(
