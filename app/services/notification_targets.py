@@ -38,6 +38,17 @@ further segment, no dot segment, no control character, no scheme and no
 host -- and only for a role that has an inbox. ``/messages``,
 ``/messages/new`` and every other ``/messages/...`` value stay rejected.
 The thread route itself re-proves membership on every open.
+
+**Discussion topics (Phase 4 / M12).** A discussion target is
+role-namespaced like any other, but it is admitted only in one exact
+shape: :func:`validate_discussion_topic_target` accepts
+``/student/groups/<group_public_id>/discussions/<topic_public_id>`` with
+two canonical lower-case UUIDs, for a Student recipient, and nothing else.
+Every other value containing ``/discussions`` -- a Teacher discussion
+path, a list or overview page, a reply or lock path, a query string, a
+fragment or a malformed identifier -- is rejected rather than falling back
+to the looser namespace rule. The topic route re-proves the Student's
+current Enrollment and the operational chain on every open.
 """
 
 import re
@@ -72,6 +83,33 @@ MESSAGE_THREAD_PREFIX = "/messages/threads/"
 _THREAD_PUBLIC_ID = re.compile(
     r"\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\Z"
 )
+
+#: Phase 4 / M12 -- any stored value containing this is judged only by the
+#: exact discussion-topic rule.
+DISCUSSION_MARKER = "/discussions"
+
+_UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+_DISCUSSION_TOPIC_TARGET = re.compile(
+    r"\A/student/groups/" + _UUID + r"/discussions/" + _UUID + r"\Z"
+)
+
+
+def validate_discussion_topic_target(role, candidate):
+    """Return `candidate` when it is exactly
+    ``/student/groups/<canonical-uuid>/discussions/<canonical-uuid>`` and
+    `role` is Student, else ``None``.
+
+    The pattern is anchored at both ends, so it rejects by itself a query
+    string, a fragment, an extra or missing segment, a trailing slash, a
+    dot segment, a backslash, an upper-case or malformed id and any
+    control character. Not an authorization decision: the topic route
+    re-checks the Student's current access.
+    """
+    if role != UserRole.STUDENT.value:
+        return None
+    if not isinstance(candidate, str) or _DISCUSSION_TOPIC_TARGET.match(candidate) is None:
+        return None
+    return candidate
 
 
 def validate_message_thread_target(role, candidate):
@@ -130,6 +168,10 @@ def validate_notification_target(role, candidate):
         # Phase 4 / M11: the one exact-shape shared target -- see the
         # module docstring. Never falls through to the namespace rule.
         return validate_message_thread_target(role, candidate)
+    if DISCUSSION_MARKER in candidate:
+        # Phase 4 / M12: the one exact-shape discussion target -- see the
+        # module docstring. Never falls through to the namespace rule.
+        return validate_discussion_topic_target(role, candidate)
     if len(candidate) > MAX_TARGET_LENGTH:
         return None
     if any(ch in _CONTROL_CHARS for ch in candidate):
@@ -315,3 +357,25 @@ def message_thread_target(role, thread_public_id):
     if safe is None:
         raise ValueError(f"Refusing to store an unsafe message target for role {role!r}")
     return safe
+
+
+def student_discussion_topic_target(group_public_id, topic_public_id):
+    """The authorized Student page for one Group discussion topic
+    (Phase 4 / M12).
+
+    Resolved through the application's URL map from public ids alone --
+    the same request-independent URL building every builder here uses --
+    and validated by the exact-shape discussion rule before it can be
+    stored. Passing validation is **not** authorization: the topic route
+    re-proves the Student's active Enrollment and the operational chain on
+    every open, so a notification about a Group the Student has since left
+    leads to the ordinary non-disclosing 404.
+    """
+    return _validated(
+        UserRole.STUDENT.value,
+        _build_path(
+            "student.discussions_topic",
+            group_public_id=group_public_id,
+            topic_public_id=topic_public_id,
+        ),
+    )

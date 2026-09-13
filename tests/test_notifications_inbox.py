@@ -618,7 +618,9 @@ def test_inbox_navigation_holds_exactly_the_expected_links(app, client, role_nam
         # -- each is a Student surface the Part introduced, so the shared
         # nav names it. Search stays last in the Student partial. Phase 4 /
         # M11 added the shared Messages link, which the portal header renders
-        # once for both roles immediately before Notifications.
+        # once for both roles immediately before Notifications. Phase 4 / M12
+        # added the Student-only Discussions link, which the portal header
+        # renders immediately after Messages.
         # The assertion stays exact: the inbox must hold these links, in this
         # order, and no others -- one Notifications link included.
         [
@@ -633,6 +635,7 @@ def test_inbox_navigation_holds_exactly_the_expected_links(app, client, role_nam
             "/student/calendar",
             "/student/search",
             "/messages",
+            "/student/discussions",
             "/notifications",
         ]
         if role_name == "student"

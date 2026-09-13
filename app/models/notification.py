@@ -49,6 +49,11 @@ class Notification(db.Model):
     without saying who sent it, so they name the sender's display name
     and a clipped thread subject -- never the message body.
 
+    Phase 4 / M12 ``discussion_topic_created`` rows name the Group and the
+    topic title only -- never the topic body or any reply -- and point at
+    the exact Student topic page, which re-proves the current Enrollment
+    and operational chain every time it is opened.
+
     ``target_path`` is a **server-generated**, role-namespaced relative
     path (``/student/...`` or ``/teacher/...``), built and re-validated by
     ``app/services/notification_targets.py`` -- or, for ``message_received``

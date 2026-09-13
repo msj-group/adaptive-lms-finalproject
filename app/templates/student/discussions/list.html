@@ -1,0 +1,18 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_discussion_macros.html" as disc %}
+{% block title %}{{ group.name }} — Discussions{% endblock %}
+{% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M12. This group's topics, newest first, at most `page_size` per
+    page. Reaching this page required an active enrollment in this exact
+    operational group. Students read and reply; only teachers start topics. -#}
+<p style="margin-top: 0"><a href="{{ url_for('student.discussions_overview') }}">&larr; All discussion groups</a></p>
+<h1 style="margin-top: 0; word-break: break-word">Discussions — {{ group.name }}</h1>
+{{ disc.group_context(group) }}
+
+{{ disc.flash_messages() }}
+
+{{ disc.topic_list(topics, group, 'student.discussions_topic', 'student.discussions_group',
+     page, has_prev, has_next, page_size, tz_name,
+     "Your teachers have not started a discussion for this group yet.") }}
+{% endblock %}

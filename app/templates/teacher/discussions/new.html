@@ -1,0 +1,44 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_discussion_macros.html" as disc %}
+{% block title %}New topic — {{ group.name }}{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.discussions_overview') }}">Discussions</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M12. The form carries a signed token bound to this teacher and
+    this group, with the nonce that stops a double submission creating a second
+    topic. The server authorizes and validates everything again on submit. -#}
+<p style="margin-top: 0"><a href="{{ url_for('teacher.discussions_group', group_public_id=group.public_id) }}">&larr; {{ group.name }} discussions</a></p>
+<h1 style="margin-top: 0; word-break: break-word">New topic — {{ group.name }}</h1>
+{{ disc.group_context(group) }}
+<p class="ds-section__desc">
+  Everyone currently in this group — its students and its teachers — can read the topic and reply
+  while it is open. Students currently enrolled in the group are notified. A topic cannot be edited
+  or deleted once it is created.
+</p>
+
+{% if form_error %}
+<div class="alert alert--danger" role="alert" style="margin-bottom: var(--space-4)">{{ form_error }}</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('teacher.discussions_create', group_public_id=group.public_id) }}" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="topic_state" value="{{ topic_state }}">
+  <div class="field">
+    <label class="field__label" for="topic-title">Title</label>
+    <input class="field__input" id="topic-title" name="title" type="text" maxlength="{{ title_max }}" value="{{ title }}">
+    {% if errors.title %}<div class="field__error">{{ errors.title }}</div>{% endif %}
+  </div>
+  <div class="field">
+    <label class="field__label" for="topic-body">Topic text</label>
+    <textarea class="field__input" id="topic-body" name="body" rows="10" maxlength="{{ body_max }}">{{ body }}</textarea>
+    {% if errors.body %}<div class="field__error">{{ errors.body }}</div>{% endif %}
+    <p class="ds-section__desc" style="margin: var(--space-1) 0 0">Plain text, up to {{ body_max }} characters.</p>
+  </div>
+  <div class="ds-row" style="gap: var(--space-3)">
+    <button type="submit" class="btn btn--primary">Create topic</button>
+    <a class="btn btn--secondary" href="{{ url_for('teacher.discussions_group', group_public_id=group.public_id) }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

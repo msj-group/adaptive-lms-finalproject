@@ -7,6 +7,7 @@
   <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
   <a class="portal-nav__link" href="{{ url_for('teacher.calendar') }}">Calendar</a>
   <a class="portal-nav__link" href="{{ url_for('teacher.announcements_feed') }}">Announcements</a>
+  <a class="portal-nav__link" href="{{ url_for('teacher.discussions_overview') }}">Discussions</a>
 {% endblock %}
 {% block portal_content %}
 <h1>Welcome, {{ current_user.full_name }}</h1>
@@ -147,6 +148,11 @@
             posted can always be read back and a published notice can always be
             withdrawn. Only writing and publishing require an operational chain. -#}
         <a class="btn btn--secondary" href="{{ url_for('teacher.group_announcements', group_public_id=card.group_public_id) }}">Announcements</a>
+        {#- Phase 4 / M12: discussions require the current operational chain,
+            so the link is offered only where the page can open. -#}
+        {% if card.operational %}
+        <a class="btn btn--secondary" href="{{ url_for('teacher.discussions_group', group_public_id=card.group_public_id) }}">Discussions</a>
+        {% endif %}
       </div>
     </div>
     {% endfor %}

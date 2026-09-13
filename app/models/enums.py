@@ -70,6 +70,13 @@ class NotificationKind(str, enum.Enum):
     one row for the *other* member of a private thread, written after a
     new message has committed. It names the sender and the thread subject
     only -- never the message body.
+
+    ``DISCUSSION_TOPIC_CREATED`` is the member Phase 4 / M12 adds, the same
+    way: one row per active Student currently enrolled in the topic's
+    operational Group, written once, after a Teacher's new topic has
+    committed. It names the Group and the topic title only -- never the
+    topic body or any reply -- and nothing is sent for a reply, a lock, a
+    reopen or a replayed form.
     """
 
     ENROLLMENT_ACTIVATED = "enrollment_activated"
@@ -81,6 +88,7 @@ class NotificationKind(str, enum.Enum):
     MATERIAL_AVAILABLE = "material_available"
     ANNOUNCEMENT_PUBLISHED = "announcement_published"
     MESSAGE_RECEIVED = "message_received"
+    DISCUSSION_TOPIC_CREATED = "discussion_topic_created"
 
 
 class AssignmentStatus(str, enum.Enum):
@@ -412,3 +420,27 @@ class CalendarEventStatus(str, enum.Enum):
 
     SCHEDULED = "scheduled"
     CANCELLED = "cancelled"
+
+
+class DiscussionTopicStatus(str, enum.Enum):
+    """Lock state of one Group discussion topic (Phase 4 / M12).
+
+    Deliberately its own closed set, and deliberately a **two**-member one.
+    It is not ``AcademicStatus`` -- a topic is never archived -- and it is
+    not a publication lifecycle: a topic is readable by its Group from the
+    moment a Teacher creates it.
+
+    - ``open`` -- the Group's currently eligible Students and Teachers may
+      read the topic and add replies.
+    - ``locked`` -- a Teacher assigned to the Group closed it. It stays
+      readable to the same people, exactly as it was, and accepts no new
+      reply; a Teacher assigned to the Group may reopen it.
+
+    Locking is moderation of the conversation, never removal of it: there
+    is no ``hidden``, ``deleted``, ``archived``, ``pinned`` or ``draft``
+    member and no placeholder for one. Adding a member is a schema change
+    (the ``discussion_topics.status`` CHECK), which is the point.
+    """
+
+    OPEN = "open"
+    LOCKED = "locked"

@@ -158,6 +158,7 @@
       {% if card.operational %}
       <div class="ds-row" style="margin-top: var(--space-4)">
         <a class="btn btn--secondary" href="{{ url_for('student.group_units', group_public_id=card.group_public_id) }}">Open Lessons</a>
+        <a class="btn btn--secondary" href="{{ url_for('student.discussions_group', group_public_id=card.group_public_id) }}">Discussions</a>
       </div>
       {% endif %}
     </div>

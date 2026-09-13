@@ -1,0 +1,21 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_discussion_macros.html" as disc %}
+{% block title %}Discussions{% endblock %}
+{#- Phase 4 / M12. `active_nav` is left unset: the shared portal layout renders
+    the Student Discussions link itself and marks it active on these pages. -#}
+{% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Only the groups this student is actively enrolled in right now, under an
+    active group, course, level and academic term -- proved in SQL by the
+    route. -#}
+<h1 style="margin-top: 0">Discussions</h1>
+<p class="ds-section__desc">
+  Classroom discussions your teachers start for your groups. Open a group to read its topics and
+  reply while a topic is open.
+</p>
+
+{{ disc.flash_messages() }}
+
+{{ disc.group_cards(groups, 'student.discussions_group', truncated, group_limit,
+     "Groups you are actively enrolled in appear here while their term, level, course and group are all active.") }}
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_discussion_macros.html" as disc %}
+{% block title %}{{ topic.title }} — Discussions{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.discussions_overview') }}">Discussions</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M12 topic page for an actively assigned teacher. The moderation
+    form offers exactly the one action the current state allows, bound by a
+    signed token to this topic's current version; the reply form exists only
+    while the topic is open. Both routes enforce the same rules again on submit,
+    whatever this page showed. -#}
+<p style="margin-top: 0"><a href="{{ url_for('teacher.discussions_group', group_public_id=group.public_id) }}">&larr; {{ group.name }} discussions</a></p>
+
+{{ disc.flash_messages() }}
+
+{{ disc.topic_header(topic, tz_name) }}
+
+<div class="dash-section" id="moderation">
+  <h2>Moderation</h2>
+  <form method="post" action="{{ url_for('teacher.discussions_' ~ moderation_action, group_public_id=group.public_id, topic_public_id=topic.public_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="moderation_state" value="{{ moderation_state }}">
+    {% if moderation_action == 'lock' %}
+    <p class="ds-section__desc">Locking keeps the whole discussion readable and stops new replies until a teacher of this group reopens it.</p>
+    <button type="submit" class="btn btn--secondary">Lock topic</button>
+    {% else %}
+    <p class="ds-section__desc">Reopening lets this group's students and teachers reply again.</p>
+    <button type="submit" class="btn btn--primary">Reopen topic</button>
+    {% endif %}
+  </form>
+</div>
+
+{{ disc.reply_timeline(replies, 'teacher.discussions_topic', group, topic, page, has_prev, has_next, page_size) }}
+
+{{ disc.reply_section(can_reply,
+     url_for('teacher.discussions_reply', group_public_id=group.public_id, topic_public_id=topic.public_id),
+     reply_state, draft, body_error, form_error, body_max) }}
+{% endblock %}

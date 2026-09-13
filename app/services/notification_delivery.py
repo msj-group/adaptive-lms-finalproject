@@ -47,6 +47,7 @@ from app.models import (
     AnnouncementScope,
     AnnouncementStatus,
     Course,
+    DiscussionTopic,
     Enrollment,
     EnrollmentStatus,
     Group,
@@ -68,6 +69,7 @@ from app.models import (
 )
 from app.services.notification_targets import (
     message_thread_target,
+    student_discussion_topic_target,
     role_announcement_target,
     role_dashboard_target,
     student_dashboard_target,
@@ -825,3 +827,91 @@ def notify_message_received(message_id):
         ]
 
     return _deliver("private message", build)
+
+
+def notify_discussion_topic_created(topic_id):
+    """Event 10 (Phase 4 / M12) -- a Teacher created a Group discussion
+    topic.
+
+    Called once, by the Teacher creation route, only on the request whose
+    own transaction inserted `topic_id`, and only *after* that commit. A
+    replayed or double-submitted form, a rejected creation, a reply, a lock
+    and a reopen never reach it, so each topic produces at most one
+    delivery.
+
+    Recipients are re-selected here, in SQL, from current state: every
+    **active** Student account with an **active** Enrollment in the topic's
+    exact Group, while that Group, its Course, Level and AcademicTerm are
+    all active -- each once, ascending by id. The creating Teacher is never
+    a recipient (the role filter excludes every Teacher, and the author is
+    excluded by id as well), and no Teacher, Administrator or Researcher is
+    notified.
+
+    The row names the Group and the topic title, and nothing else: **the
+    topic body is never selected**, so it cannot reach ``title``,
+    ``message`` or the logs. The target is the exact Student topic page,
+    built and validated by ``app/services/notification_targets.py``;
+    opening it re-proves the Student's current access.
+
+    Best-effort and fault-isolated like every producer here: the topic is
+    already committed, so a failure is logged without its content and
+    swallowed.
+    """
+
+    def build():
+        context = (
+            db.session.query(
+                DiscussionTopic.public_id,
+                DiscussionTopic.title,
+                DiscussionTopic.author_id,
+                Group.id,
+                Group.public_id,
+                Group.name,
+            )
+            .select_from(DiscussionTopic)
+            .join(Group, DiscussionTopic.group_id == Group.id)
+            .join(Course, Group.course_id == Course.id)
+            .join(Level, Course.level_id == Level.id)
+            .join(AcademicTerm, Group.academic_term_id == AcademicTerm.id)
+            .filter(
+                DiscussionTopic.id == topic_id,
+                Group.status == _ACTIVE,
+                Course.status == _ACTIVE,
+                Level.status == _ACTIVE,
+                AcademicTerm.status == _ACTIVE,
+            )
+            .first()
+        )
+        if context is None:
+            return []
+        topic_public_id, title, author_id, group_id, group_public_id, group_name = context
+        students = (
+            db.session.query(User.id)
+            .join(Enrollment, Enrollment.student_id == User.id)
+            .filter(
+                Enrollment.group_id == group_id,
+                Enrollment.status == _ENROLLMENT_ACTIVE,
+                User.role == _STUDENT,
+                User.status == _USER_ACTIVE,
+                User.id != author_id,
+            )
+            .distinct()
+            .order_by(User.id)
+            .all()
+        )
+        if not students:
+            return []
+        target = student_discussion_topic_target(group_public_id, topic_public_id)
+        message = f"A new discussion topic was started in the group '{group_name}': '{title}'."
+        return [
+            _entry(
+                row[0],
+                NotificationKind.DISCUSSION_TOPIC_CREATED.value,
+                "New discussion topic",
+                message,
+                target,
+            )
+            for row in students
+        ]
+
+    return _deliver("discussion topic creation", build)

@@ -22,6 +22,15 @@
       <a class="portal-nav__link{{ ' portal-nav__link--active' if request.blueprint == 'messages' else '' }}"
          href="{{ url_for('messages.inbox') }}">Messages</a>
       {% endif %}
+      {#- Phase 4 / M12: the Student Discussions link follows Messages. Like
+          Messages it is rendered once here and costs no query. It is never
+          rendered for a Teacher (whose dashboard navigation names it), an
+          Administrator, a Researcher or an anonymous visitor, and it is
+          marked active on the Student discussion pages only. -#}
+      {% if current_user.is_authenticated and current_user.role == 'student' %}
+      <a class="portal-nav__link{{ ' portal-nav__link--active' if (request.endpoint or '').startswith('student.discussions_') else '' }}"
+         href="{{ url_for('student.discussions_overview') }}">Discussions</a>
+      {% endif %}
       {#- M14: the Notifications link and unread badge are part of the shared
           portal header, so every Student / Teacher page carries them without
           each page's own `portal_nav` block having to remember. The helper

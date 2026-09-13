@@ -112,7 +112,8 @@ def test_revision_identifiers_and_one_linear_head():
         down = re.search(r"^down_revision = (?:'([^']+)'|None)", source, re.M).group(1)
         revisions.add(revision)
         parents[revision] = down
-    assert revisions - {p for p in parents.values() if p is not None} == {_REVISION}
+    # Phase 4 / M12 follows this revision, so the single head is now M12's.
+    assert revisions - {p for p in parents.values() if p is not None} == {"f3c8a1d5e927"}
     claimed = [p for p in parents.values() if p is not None]
     assert len(claimed) == len(set(claimed))
     assert len([r for r, p in parents.items() if p is None]) == 1
@@ -160,7 +161,11 @@ def test_the_downgrade_removes_only_what_the_upgrade_added_in_dependency_order()
 def test_the_migrations_kind_lists_match_the_application_enum():
     module, _ = _load_migration()
     assert module._KINDS_BEFORE == _M09_KINDS
-    assert module._KINDS_AFTER == tuple(kind.value for kind in NotificationKind)
+    application = tuple(kind.value for kind in NotificationKind)
+    # This revision's list is exactly the enum as it stood after M11;
+    # Phase 4 / M12 later appended one kind in its own revision.
+    assert module._KINDS_AFTER == application[: len(module._KINDS_AFTER)]
+    assert application[len(module._KINDS_AFTER):] == ("discussion_topic_created",)
     assert module._KINDS_AFTER[-1] == "message_received"
 
 

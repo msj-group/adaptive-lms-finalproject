@@ -6,6 +6,7 @@ from app.models.enums import (
     AssignmentStatus,
     AttendanceStatus,
     CalendarEventStatus,
+    DiscussionTopicStatus,
     FileAccessAction,
     FileCategory,
     GradeSourceKind,
@@ -101,6 +102,12 @@ from app.models.message_thread import (
     MessageThreadMember,
 )
 from app.models.message import MESSAGE_BODY_MAX_LENGTH, Message
+from app.models.discussion_topic import (
+    DISCUSSION_BODY_MAX_LENGTH,
+    DISCUSSION_TITLE_MAX_LENGTH,
+    DiscussionTopic,
+)
+from app.models.discussion_reply import DiscussionReply
 
 __all__ = [
     "User",
@@ -194,4 +201,9 @@ __all__ = [
     "MESSAGE_SUBJECT_MAX_LENGTH",
     "Message",
     "MESSAGE_BODY_MAX_LENGTH",
+    "DiscussionTopicStatus",
+    "DiscussionTopic",
+    "DiscussionReply",
+    "DISCUSSION_TITLE_MAX_LENGTH",
+    "DISCUSSION_BODY_MAX_LENGTH",
 ]

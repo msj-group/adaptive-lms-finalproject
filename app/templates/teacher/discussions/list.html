@@ -1,0 +1,24 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_discussion_macros.html" as disc %}
+{% block title %}{{ group.name }} — Discussions{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+  <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.discussions_overview') }}">Discussions</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M12. This group's topics, newest first, at most `page_size` per
+    page. Reaching this page required an active assignment to this exact
+    operational group; every actively assigned teacher is an equal moderator. -#}
+<p style="margin-top: 0"><a href="{{ url_for('teacher.discussions_overview') }}">&larr; All discussion groups</a></p>
+<div class="ds-row" style="justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap;">
+  <h1 style="margin: 0; word-break: break-word">Discussions — {{ group.name }}</h1>
+  <a class="btn btn--primary" href="{{ url_for('teacher.discussions_new', group_public_id=group.public_id) }}">New topic</a>
+</div>
+{{ disc.group_context(group) }}
+
+{{ disc.flash_messages() }}
+
+{{ disc.topic_list(topics, group, 'teacher.discussions_topic', 'teacher.discussions_group',
+     page, has_prev, has_next, page_size, tz_name,
+     "Start a topic for this group with New topic. Its students and teachers can then read it and reply.") }}
+{% endblock %}

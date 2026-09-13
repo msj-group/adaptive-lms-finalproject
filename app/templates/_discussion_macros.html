@@ -1,0 +1,184 @@
+{#- Phase 4 / M12 presentation helpers shared by the Teacher and Student
+    discussion pages. Every value is a plain dict built by
+    app.services.discussion_queries -- no ORM row reaches a template, so
+    nothing here can lazy-load or decide access, and no internal id is
+    available to render. Titles, bodies, replies and names are user-authored
+    plain text and are always escaped; nothing in discussions is ever marked
+    safe. -#}
+
+{% macro flash_messages() -%}
+  {%- with messages = get_flashed_messages(with_categories=true) -%}
+    {%- for category, message in messages %}
+      <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {%- endfor -%}
+  {%- endwith -%}
+{%- endmacro %}
+
+{% macro status_badge(is_locked) -%}
+  {%- if is_locked -%}
+    <span class="badge badge--warning">Locked</span>
+  {%- else -%}
+    <span class="badge badge--success">Open</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro group_context(group) -%}
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
+  {{ group.course_title }} &middot; {{ group.level_name }} &middot; {{ group.term_name }}
+</p>
+{%- endmacro %}
+
+{% macro group_cards(groups, list_endpoint, truncated, group_limit, empty_text) -%}
+{% if groups %}
+<div class="dash-card-list">
+  {% for group in groups %}
+  <div class="card">
+    <div class="ds-row" style="justify-content: space-between; align-items: flex-start; gap: var(--space-3); flex-wrap: wrap;">
+      <div style="min-width: 0">
+        <div class="card__title" style="margin-bottom: var(--space-1); word-break: break-word">
+          <a href="{{ url_for(list_endpoint, group_public_id=group.public_id) }}">{{ group.name }}</a>
+        </div>
+        <div class="card__body">{{ group.course_title }} &middot; {{ group.level_name }} &middot; {{ group.term_name }}</div>
+      </div>
+      <div class="card__body" style="white-space: nowrap">
+        {{ group.topic_count }} topic{{ "" if group.topic_count == 1 else "s" }} &middot; {{ group.open_count }} open
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% if truncated %}
+<p class="ds-section__desc" style="margin-top: var(--space-2)">Only the first {{ group_limit }} groups are listed.</p>
+{% endif %}
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">No discussion groups</div>
+  <div>{{ empty_text }}</div>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro topic_list(topics, group, topic_endpoint, list_endpoint, page, has_prev, has_next, page_size, tz_name, empty_text) -%}
+{% if topics %}
+<div class="dash-card-list">
+  {% for topic in topics %}
+  <div class="card">
+    <div class="ds-row" style="justify-content: space-between; align-items: flex-start; gap: var(--space-3); flex-wrap: wrap;">
+      <div style="min-width: 0">
+        <div class="card__title" style="margin-bottom: var(--space-1); word-break: break-word">
+          <a href="{{ url_for(topic_endpoint, group_public_id=group.public_id, topic_public_id=topic.public_id) }}">{{ topic.title }}</a>
+        </div>
+        <div class="card__body">Started by {{ topic.author_name }} ({{ topic.author_role_label }}) &middot; {{ topic.created_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</div>
+      </div>
+      {{ status_badge(topic.is_locked) }}
+    </div>
+    <div class="card__body" style="margin-top: var(--space-2); word-break: break-word">{{ topic.preview }}</div>
+    <div class="card__body" style="margin-top: var(--space-2); color: var(--color-text-secondary)">{{ topic.reply_count }} repl{{ "y" if topic.reply_count == 1 else "ies" }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% if has_prev or has_next %}
+<nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Topic pages">
+  {% if has_prev %}
+  <a class="btn btn--secondary" href="{{ url_for(list_endpoint, group_public_id=group.public_id, page=page - 1) }}">Newer topics</a>
+  {% endif %}
+  <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+  {% if has_next %}
+  <a class="btn btn--secondary" href="{{ url_for(list_endpoint, group_public_id=group.public_id, page=page + 1) }}">Older topics</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">No topics yet</div>
+  <div>{{ empty_text }}</div>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro topic_header(topic, tz_name) -%}
+<div class="ds-row" style="align-items: center; gap: var(--space-3); flex-wrap: wrap;">
+  <h1 style="margin: 0; word-break: break-word">{{ topic.title }}</h1>
+  {{ status_badge(topic.is_locked) }}
+</div>
+<p class="ds-section__desc">
+  Started by <strong>{{ topic.author_name }}</strong> ({{ topic.author_role_label }}) on
+  {{ topic.created_local.strftime("%Y-%m-%d %H:%M") }}. Times are shown in the center timezone
+  (<strong>{{ tz_name }}</strong>).
+</p>
+{% if topic.is_locked %}
+<div class="alert alert--warning" role="status" style="margin-bottom: var(--space-4)">
+  This topic is locked{% if topic.was_moderated %} since {{ topic.updated_local.strftime("%Y-%m-%d %H:%M") }}{% endif %}.
+  It stays readable, but no new replies can be added.
+</div>
+{% endif %}
+<div class="card" id="topic">
+  <div class="card__body" data-topic-body style="white-space: pre-wrap; word-break: break-word">{{ topic.body }}</div>
+</div>
+{%- endmacro %}
+
+{% macro reply_timeline(replies, topic_endpoint, group, topic, page, has_prev, has_next, page_size) -%}
+<div class="dash-section" id="replies">
+  <h2>Replies</h2>
+  {% if has_prev %}
+  <nav class="ds-row" style="margin-bottom: var(--space-4)" aria-label="Earlier replies">
+    <a class="btn btn--secondary" href="{{ url_for(topic_endpoint, group_public_id=group.public_id, topic_public_id=topic.public_id, page=page - 1) }}">Earlier replies</a>
+  </nav>
+  {% endif %}
+  {% if replies %}
+  <div class="dash-card-list">
+    {% for reply in replies %}
+    <div class="card" id="reply-{{ reply.public_id }}">
+      <div class="ds-row" style="justify-content: space-between; gap: var(--space-3); flex-wrap: wrap;">
+        <strong>{{ reply.author_name }} <span style="color: var(--color-text-secondary); font-weight: normal">({{ reply.author_role_label }}{% if reply.from_viewer %}, you{% endif %})</span></strong>
+        <span class="card__body" style="color: var(--color-text-secondary)">{{ reply.created_local.strftime("%Y-%m-%d %H:%M") }}</span>
+      </div>
+      <div class="card__body" data-reply-body style="margin-top: var(--space-2); white-space: pre-wrap; word-break: break-word">{{ reply.body }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No replies yet</div>
+    <div>Replies from this group's students and teachers appear here, oldest first.</div>
+  </div>
+  {% endif %}
+  {% if has_next %}
+  <nav class="ds-row" style="margin-top: var(--space-4)" aria-label="Later replies">
+    <a class="btn btn--secondary" href="{{ url_for(topic_endpoint, group_public_id=group.public_id, topic_public_id=topic.public_id, page=page + 1) }}">Later replies</a>
+  </nav>
+  {% endif %}
+  {% if has_prev or has_next %}
+  <p class="ds-section__desc" style="margin-top: var(--space-2)">Page {{ page }} &middot; up to {{ page_size }} replies per page</p>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro reply_section(can_reply, action, reply_state, draft, body_error, form_error, body_max) -%}
+<div class="dash-section" id="reply">
+  <h2>Add a reply</h2>
+  {% if form_error %}
+  <div class="alert alert--danger" role="alert" style="margin-bottom: var(--space-4)">{{ form_error }}</div>
+  {% endif %}
+  {% if can_reply %}
+  <form method="post" action="{{ action }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="reply_state" value="{{ reply_state }}">
+    <div class="field">
+      <label class="field__label" for="reply-body">Your reply</label>
+      <textarea class="field__input" id="reply-body" name="body" rows="6" maxlength="{{ body_max }}">{{ draft }}</textarea>
+      {% if body_error %}<div class="field__error">{{ body_error }}</div>{% endif %}
+      <p class="ds-section__desc" style="margin: var(--space-1) 0 0">
+        Plain text, up to {{ body_max }} characters. Everyone currently in this group can read it,
+        and it cannot be edited or deleted once it is posted.
+      </p>
+    </div>
+    <button type="submit" class="btn btn--primary">Post reply</button>
+  </form>
+  {% else %}
+  <div class="alert alert--warning" role="status">
+    This topic is locked, so no new replies can be added. The discussion stays readable.
+  </div>
+  {% endif %}
+</div>
+{%- endmacro %}
