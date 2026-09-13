@@ -60,6 +60,28 @@
 </div>
 {% else %}
 
+{#- Phase 4 / M13. `continue_lesson` comes from ONE query that re-proves the
+    whole Student visibility formula: the most recently opened incomplete
+    lesson, otherwise the earliest incomplete lesson in teaching order. When
+    there is none, the page says so rather than guessing a destination. -#}
+<div class="dash-section" id="continue-learning">
+  <h2>Continue learning</h2>
+  {% if continue_lesson %}
+  <div class="card">
+    <div class="card__title" style="margin-bottom: var(--space-1)">{{ continue_lesson.lesson_title }}</div>
+    <div class="card__body">{{ continue_lesson.group_name }} &middot; {{ continue_lesson.course_title }} &middot; {{ continue_lesson.unit_title }}</div>
+    <div class="ds-row" style="margin-top: var(--space-3)">
+      <a class="btn btn--primary" href="{{ url_for('student.lesson_detail', group_public_id=continue_lesson.group_public_id, unit_public_id=continue_lesson.unit_public_id, lesson_public_id=continue_lesson.lesson_public_id) }}">{{ "Continue lesson" if continue_lesson.resume else "Start lesson" }}</a>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">Nothing to continue right now</div>
+    <div>You have no incomplete lessons available. New lessons your teachers publish will appear here.</div>
+  </div>
+  {% endif %}
+</div>
+
 <div class="dash-section">
   <h2>Next class</h2>
   <p>{{ dash.next_class_line(next_class, now, tz_name) }}</p>
@@ -108,6 +130,89 @@
   <div class="empty-state">
     <div class="empty-state__title">No upcoming deadlines</div>
     <div>Assignments your teachers have published, once their opening time has passed, appear here until their deadline.</div>
+  </div>
+  {% endif %}
+</div>
+
+{#- Phase 4 / M13. Both sections come from bounded queries that re-prove the
+    whole Student visibility formula: only groups whose lessons this student
+    can open right now are summarised, and a recently opened lesson that has
+    since become unavailable is simply not listed. -#}
+<div class="dash-section" id="lesson-progress">
+  <h2>Lesson progress</h2>
+  {% if progress_groups %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Group</th>
+        <th>Course</th>
+        <th>Lessons completed</th>
+        <th>Lessons</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in progress_groups %}
+      <tr>
+        <td>{{ item.group_name }}</td>
+        <td>{{ item.course_title }} ({{ item.level_name }})</td>
+        <td>{{ item.completed }} of {{ item.lesson_total }}</td>
+        <td><a href="{{ url_for('student.group_units', group_public_id=item.group_public_id) }}">Open lessons</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="ds-section__desc" style="margin-top: var(--space-2)">
+    Counted against the published lessons you can open in each group. Completion is your own mark, not a grade.
+    {% if progress_truncated %}Showing the first {{ progress_group_cap }} groups.{% endif %}
+  </p>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No lesson progress to show</div>
+    <div>Progress appears here for the groups whose lessons you can currently open.</div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="dash-section" id="recently-opened">
+  <h2>Recently opened lessons</h2>
+  {% if recent_lessons %}
+  <div class="dash-scroll">
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Lesson</th>
+        <th>Group</th>
+        <th>Opened ({{ tz_name }})</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in recent_lessons %}
+      <tr>
+        <td><a href="{{ url_for('student.lesson_detail', group_public_id=item.group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.lesson_public_id) }}">{{ item.lesson_title }}</a></td>
+        <td>{{ item.group_name }} &middot; {{ item.unit_title }}</td>
+        <td>{{ item.opened_local.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>
+          {%- if item.is_completed -%}
+            <span class="badge badge--success">Completed</span>
+          {%- else -%}
+            <span class="badge badge--neutral">Not completed</span>
+          {%- endif -%}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="ds-section__desc" style="margin-top: var(--space-2)">
+    The {{ recent_cap }} most recently opened at most.
+  </p>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No recently opened lessons</div>
+    <div>Lessons you open appear here, most recent first.</div>
   </div>
   {% endif %}
 </div>

@@ -916,7 +916,10 @@ def test_dashboard_query_count_stays_bounded_with_many_groups(app, client):
     assert resp.status_code == 200
     selects = [s for s in statements if s.strip().upper().startswith("SELECT")]
     # M09's bound was <= 7; the deadline section adds exactly one query.
-    assert len(selects) <= 8, (len(selects), selects)
+    # Phase 4 / M13 adds exactly three fixed queries -- Group progress,
+    # Continue Learning and Recently Opened -- none of which grows with the
+    # number of groups (tests/test_student_dashboard_progress.py).
+    assert len(selects) <= 11, (len(selects), selects)
 
 
 def test_existing_dashboard_schedule_behaviour_is_unchanged(app, client):

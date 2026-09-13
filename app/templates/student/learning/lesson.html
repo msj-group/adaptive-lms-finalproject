@@ -16,6 +16,39 @@
   <a class="btn btn--secondary" href="{{ url_for('student.dashboard') }}">Dashboard</a>
 </div>
 
+{%- with messages = get_flashed_messages(with_categories=true) -%}
+  {%- for category, message in messages %}
+<div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+  {%- endfor -%}
+{%- endwith %}
+
+{#- Phase 4 / M13. The student's own completion state, with exactly the one
+    action that state allows. The form is bound by a signed token to this
+    student, lesson, action and progress version; the route proves access and
+    the version again under locks, whatever this page showed. -#}
+<div class="card" id="progress" style="margin-bottom: var(--space-6)">
+  <div class="ds-row" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3)">
+    <div>
+      {% if progress.is_completed %}
+      <span class="badge badge--success">Completed</span>
+      <div class="card__body" style="margin-top: var(--space-2)">You marked this lesson complete on {{ progress.completed_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).</div>
+      {% else %}
+      <span class="badge badge--neutral">Not completed</span>
+      <div class="card__body" style="margin-top: var(--space-2)">Mark this lesson complete when you have finished working through it.</div>
+      {% endif %}
+    </div>
+    <form method="post" action="{{ url_for('student.lesson_undo_complete' if progress_action == 'undo' else 'student.lesson_mark_complete', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="progress_state" value="{{ progress_state }}">
+      {% if progress_action == 'undo' %}
+      <button type="submit" class="btn btn--secondary">Undo completion</button>
+      {% else %}
+      <button type="submit" class="btn btn--primary">Mark as complete</button>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
 <div class="card" style="margin-bottom: var(--space-6)">
   {% if lesson_description %}
   {# Plain text: line breaks preserved via CSS, never via |safe or stored HTML. #}

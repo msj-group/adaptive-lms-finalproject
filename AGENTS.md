@@ -29,7 +29,12 @@ checkpoint, scope, and any explicit exceptions.
 - Do not install dependencies, alter machine settings, configure remotes, or change secrets unless authorized.
 - Never stage or commit `.claude/settings.local.json`, `.env`, secrets, databases, logs, caches,
   coverage output, temporary files, or QA artifacts.
-- Real MySQL schema/data changes and migration application are default-deny.
+- For an approved implementation Part that creates a migration, the standard close-out
+  workflow is: pass the required test gates, verify development MySQL is exactly at the
+  stated parent revision, apply only that Part's migration, inspect the resulting schema,
+  then create one reviewed local commit. A Part may explicitly opt out of this workflow.
+  Never repair an unexpected MySQL revision, mutate business data manually, run a
+  development-MySQL downgrade, push, or rewrite history without separate authorization.
 - If an additional file outside the expected scope is technically necessary, explain why before editing it.
 
 ## 4. Language and project facts
@@ -71,7 +76,10 @@ checkpoint, scope, and any explicit exceptions.
 - Run the full suite and strict-warning checks before final approval of cross-cutting/high-risk code or when
   the Part requires them. Documentation-only work does not automatically require the full suite.
 - Use migration checks separately from pytest when schema/model work is involved; SQLite `create_all()` is
-  not proof that Alembic migrations work on MySQL.
+  not proof that Alembic migrations work on MySQL. Unless the approved Part explicitly
+  opts out, after all required tests pass, apply the exact new revision to development
+  MySQL only after confirming the stated parent revision, then inspect the result and
+  record the evidence.
 - Use `git diff --check` and inspect final tracked/staged state before reporting completion.
 - Distinguish automated tests, real browser checks, real MySQL checks, and checks not performed.
 - Never report an unexecuted check as passed. State exact results and limitations.

@@ -1,0 +1,70 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}{{ group.name }} — Lesson progress{% endblock %}
+{% block portal_nav %}
+  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block portal_content %}
+{#- Phase 4 / M13. A read-only view for an actively assigned teacher: one page
+    of this group's actively enrolled students and their own completion marks
+    in this group. There is no control here that changes a student's progress,
+    and no such route exists. -#}
+<p style="margin-top: 0"><a href="{{ url_for('teacher.dashboard') }}">&larr; Dashboard</a></p>
+<h1 style="margin-top: 0">{{ group.name }} — Lesson progress</h1>
+<p class="ds-section__desc">
+  {{ group.course_title }} &middot; {{ group.level_name }} &middot; {{ group.term_name }}
+</p>
+
+{% if not group.operational %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+  This group is not operational, so its students cannot open its lessons right now.
+  The progress below is kept as a read-only record.
+</div>
+{% endif %}
+
+<p class="ds-section__desc">
+  Students mark lessons complete themselves. Progress is counted against the
+  {{ lesson_total }} published lesson{{ "" if lesson_total == 1 else "s" }} in this group's
+  active units. It is not a grade or a score.
+</p>
+
+{% if students %}
+<div class="dash-scroll">
+<table class="dash-table">
+  <thead>
+    <tr>
+      <th>Student</th>
+      <th>Lessons completed</th>
+      <th>Last completed ({{ tz_name }})</th>
+      <th>Last opened ({{ tz_name }})</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for student in students %}
+    <tr>
+      <td>{{ student.name }}</td>
+      <td>{{ student.completed }} of {{ lesson_total }}</td>
+      <td>{{ student.last_completed_local.strftime("%Y-%m-%d %H:%M") if student.last_completed_local else "—" }}</td>
+      <td>{{ student.last_opened_local.strftime("%Y-%m-%d %H:%M") if student.last_opened_local else "—" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if has_prev or has_next %}
+<nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Student pages">
+  {% if has_prev %}
+  <a class="btn btn--secondary" href="{{ url_for('teacher.group_progress', group_public_id=group.public_id, page=page - 1) }}">Previous students</a>
+  {% endif %}
+  <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+  {% if has_next %}
+  <a class="btn btn--secondary" href="{{ url_for('teacher.group_progress', group_public_id=group.public_id, page=page + 1) }}">More students</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">No active students</div>
+  <div>Students actively enrolled in this group will appear here with their lesson progress.</div>
+</div>
+{% endif %}
+{% endblock %}

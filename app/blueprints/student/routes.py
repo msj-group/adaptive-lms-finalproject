@@ -17,6 +17,14 @@ from app.services.announcement_queries import (
     student_dashboard_preview,
 )
 from app.services.dashboard_queries import student_dashboard
+from app.services.lesson_progress_queries import (
+    DASHBOARD_GROUP_LIMIT,
+    RECENTLY_OPENED_LIMIT,
+    build_recent_view,
+    continue_learning,
+    recently_opened,
+    student_group_progress,
+)
 from app.services.message_queries import (
     DASHBOARD_RECENT_CAP,
     build_inbox_view,
@@ -80,6 +88,18 @@ def dashboard():
     conversations = build_inbox_view(
         recent_conversations(current_user.id), current_user.id, tz_name
     )
+    # Phase 4 / M13: three more bounded queries, independent of how many
+    # Groups, Lessons or progress rows exist, and run only for a Student
+    # with an active enrollment -- the only case the sections render. Each
+    # one re-proves the whole Student visibility formula in SQL, so no
+    # Group, Lesson or destination can appear here that this Student could
+    # not open right now.
+    progress_groups, progress_truncated = [], False
+    continue_lesson, recent_lessons = None, []
+    if data["cards"]:
+        progress_groups, progress_truncated = student_group_progress(current_user.id)
+        continue_lesson = continue_learning(current_user.id)
+        recent_lessons = build_recent_view(recently_opened(current_user.id), tz_name)
     return private_no_store(
         "student/dashboard.html",
         tz_name=tz_name,
@@ -90,5 +110,11 @@ def dashboard():
         announcement_cap=DASHBOARD_PREVIEW_CAP,
         conversations=conversations,
         conversation_cap=DASHBOARD_RECENT_CAP,
+        progress_groups=progress_groups,
+        progress_truncated=progress_truncated,
+        progress_group_cap=DASHBOARD_GROUP_LIMIT,
+        continue_lesson=continue_lesson,
+        recent_lessons=recent_lessons,
+        recent_cap=RECENTLY_OPENED_LIMIT,
         **data,
     )

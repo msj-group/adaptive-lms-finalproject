@@ -148,6 +148,10 @@
             posted can always be read back and a published notice can always be
             withdrawn. Only writing and publishing require an operational chain. -#}
         <a class="btn btn--secondary" href="{{ url_for('teacher.group_announcements', group_public_id=card.group_public_id) }}">Announcements</a>
+        {#- Phase 4 / M13: lesson progress is a read-only record, so like the
+            gradebook it stays reachable for an actively assigned Teacher even
+            under an archived group/ancestor. -#}
+        <a class="btn btn--secondary" href="{{ url_for('teacher.group_progress', group_public_id=card.group_public_id) }}">Lesson progress</a>
         {#- Phase 4 / M12: discussions require the current operational chain,
             so the link is offered only where the page can open. -#}
         {% if card.operational %}

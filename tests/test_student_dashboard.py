@@ -280,7 +280,10 @@ def test_dashboard_query_count_is_bounded(app, client):
 
     assert resp.status_code == 200
     selects = [s for s in statements if s.strip().upper().startswith("SELECT")]
-    assert len(selects) <= 7, (len(selects), selects)
+    # Phase 4 / M13 adds exactly three fixed queries -- Group progress,
+    # Continue Learning and Recently Opened -- none of which grows with the
+    # number of groups (tests/test_student_dashboard_progress.py).
+    assert len(selects) <= 10, (len(selects), selects)
 
 
 # ===========================================================================

@@ -27,6 +27,7 @@ from app.models.group_teacher_assignment import GroupTeacherAssignment, GroupTea
 from app.models.schedule import Schedule
 from app.models.unit import Unit
 from app.models.lesson import Lesson
+from app.models.lesson_progress import LessonProgress
 from app.models.uploaded_file import UploadedFile
 from app.models.material import Material
 from app.models.file_access_log import FileAccessLog
@@ -132,6 +133,7 @@ __all__ = [
     "Schedule",
     "Unit",
     "Lesson",
+    "LessonProgress",
     "UploadedFile",
     "Material",
     "FileAccessLog",

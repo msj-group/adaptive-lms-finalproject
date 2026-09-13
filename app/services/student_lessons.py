@@ -18,8 +18,17 @@ Design rules (Part M11, Student section):
 - the outline issues a bounded number of queries (no per-Unit or
   per-Lesson query) -- one for Units, one batched query for their
   published Lessons.
+
+Phase 4 / M13 folds the Student's own lesson progress into the two
+queries that already exist rather than adding one: the outline's batched
+Lesson query and the Lesson detail query each outer-join the Student's
+``LessonProgress`` row for that exact Group, and the Lesson detail query
+also proves the acting account is an active Student.
 """
 
+from collections import namedtuple
+
+from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
@@ -31,19 +40,32 @@ from app.models import (
     EnrollmentStatus,
     Group,
     Lesson,
+    LessonProgress,
     LessonStatus,
     Level,
     Material,
     MaterialKind,
     Unit,
     UploadedFile,
+    User,
+    UserRole,
+    UserStatus,
 )
+from app.services.lesson_progress_queries import progress_join, progress_ref
 from app.services.material_queries import student_visible_materials
 
 _ACTIVE = AcademicStatus.ACTIVE.value
 _ENROLLMENT_ACTIVE = EnrollmentStatus.ACTIVE.value
 _PUBLISHED = LessonStatus.PUBLISHED.value
 _FILE = MaterialKind.FILE.value
+_STUDENT = UserRole.STUDENT.value
+_USER_ACTIVE = UserStatus.ACTIVE.value
+
+#: The Lesson page: ``view`` is the template's plain display dict, and
+#: ``progress`` the Student's
+#: :class:`~app.services.lesson_progress_queries.LessonProgressRef`, whose
+#: internal ids are for the write paths only and never reach a template.
+StudentLessonPage = namedtuple("StudentLessonPage", "view progress")
 
 
 def student_outline_group(student_id, group_public_id):
@@ -77,15 +99,17 @@ def student_outline_group(student_id, group_public_id):
     )
 
 
-def outline_units(group_id):
-    """The learning outline body for an already-authorized Group: every
-    ACTIVE Unit in Unit display order, each carrying only its PUBLISHED
-    Lessons in Lesson display order, as plain view dicts.
+def outline_units(group_id, student_id):
+    """The learning outline body for a Group already authorized for
+    `student_id`: every ACTIVE Unit in Unit display order, each carrying
+    only its PUBLISHED Lessons in Lesson display order, as plain view dicts.
 
     One query for the Units, one batched query for all their published
     Lessons -- never one query per Unit. An active Unit with no published
     Lesson yields an empty ``lessons`` list (the template renders an
-    honest empty state).
+    honest empty state). Each Lesson's ``is_completed`` comes from the
+    Student's own progress row for **this** Group, outer-joined into the
+    same batched query (Phase 4 / M13).
     """
     units = (
         Unit.query.filter_by(group_id=group_id, status=_ACTIVE)
@@ -96,16 +120,26 @@ def outline_units(group_id):
         return []
     unit_ids = [u.id for u in units]
     lessons = (
-        Lesson.query.filter(
-            Lesson.unit_id.in_(unit_ids), Lesson.status == _PUBLISHED
+        db.session.query(
+            Lesson.unit_id, Lesson.title, Lesson.public_id, LessonProgress.completed_at
         )
+        .select_from(Lesson)
+        .outerjoin(
+            LessonProgress,
+            and_(
+                LessonProgress.lesson_id == Lesson.id,
+                LessonProgress.group_id == group_id,
+                LessonProgress.student_id == student_id,
+            ),
+        )
+        .filter(Lesson.unit_id.in_(unit_ids), Lesson.status == _PUBLISHED)
         .order_by(Lesson.display_order, Lesson.id)
         .all()
     )
     lessons_by_unit = {}
-    for lesson in lessons:
-        lessons_by_unit.setdefault(lesson.unit_id, []).append(
-            {"title": lesson.title, "public_id": lesson.public_id}
+    for unit_id, title, public_id, completed_at in lessons:
+        lessons_by_unit.setdefault(unit_id, []).append(
+            {"title": title, "public_id": public_id, "is_completed": completed_at is not None}
         )
     return [
         {
@@ -119,28 +153,46 @@ def outline_units(group_id):
 
 def student_lesson_detail(student_id, group_public_id, unit_public_id, lesson_public_id):
     """One SQL query: a PUBLISHED Lesson plus its authorized hierarchy
-    context, or ``None``.
+    context and the Student's own progress on it, as a
+    :class:`StudentLessonPage`, or ``None``.
 
-    Every scoping predicate -- own active Enrollment, active
-    AcademicTerm / Level / Course / Group, active Unit belonging to that
-    Group, published Lesson belonging to that Unit, and the nested public
-    ids matching -- lives in the ``WHERE`` clause. A draft Lesson, an
-    inactive Unit or ancestor, a withdrawn / missing Enrollment, a
-    different Group, or a mismatched nested id all produce no row (the
-    route then returns a non-disclosing 404).
+    Every scoping predicate -- own active Enrollment, an active Student
+    account, active AcademicTerm / Level / Course / Group, active Unit
+    belonging to that Group, published Lesson belonging to that Unit, and
+    the nested public ids matching -- lives in the ``WHERE`` clause. A draft
+    Lesson, an inactive Unit or ancestor, a withdrawn / missing Enrollment,
+    a different Group, or a mismatched nested id all produce no row (the
+    route then returns a non-disclosing 404). The progress row is
+    outer-joined on this Student, this Group and this Lesson.
 
-    Returns a plain dict of display strings only -- no ORM row, no Teacher
-    identity, no internal id.
+    ``view`` is a plain dict of display strings and public ids only -- no
+    ORM row, no Teacher identity, no internal id.
     """
     row = (
-        db.session.query(Lesson, Unit, Group, Course, Level, AcademicTerm)
+        db.session.query(
+            Lesson,
+            Unit,
+            Group,
+            Course,
+            Level,
+            AcademicTerm,
+            LessonProgress.id,
+            LessonProgress.version,
+            LessonProgress.completed_at,
+            LessonProgress.last_opened_at,
+        )
+        .select_from(Lesson)
         .join(Unit, Lesson.unit_id == Unit.id)
         .join(Group, Unit.group_id == Group.id)
         .join(Course, Group.course_id == Course.id)
         .join(Level, Course.level_id == Level.id)
         .join(AcademicTerm, Group.academic_term_id == AcademicTerm.id)
         .join(Enrollment, Enrollment.group_id == Group.id)
+        .join(User, User.id == Enrollment.student_id)
+        .outerjoin(LessonProgress, progress_join(student_id))
         .filter(
+            User.role == _STUDENT,
+            User.status == _USER_ACTIVE,
             Lesson.public_id == lesson_public_id,
             Lesson.status == _PUBLISHED,
             Unit.public_id == unit_public_id,
@@ -157,10 +209,15 @@ def student_lesson_detail(student_id, group_public_id, unit_public_id, lesson_pu
     )
     if row is None:
         return None
-    lesson, unit, group, course, level, term = row
-    return {
+    lesson, unit, group, course, level, term = row[:6]
+    progress = progress_ref(
+        group.id, group.public_id, unit.public_id, lesson.id, lesson.public_id, *row[6:]
+    )
+    view = {
         "group_name": group.name,
         "group_public_id": group.public_id,
+        "unit_public_id": unit.public_id,
+        "lesson_public_id": lesson.public_id,
         "course_title": course.title,
         "level_name": level.name,
         "term_name": term.name,
@@ -169,6 +226,7 @@ def student_lesson_detail(student_id, group_public_id, unit_public_id, lesson_pu
         "lesson_description": lesson.description,
         "materials": student_visible_materials(lesson.id),
     }
+    return StudentLessonPage(view, progress)
 
 
 def student_file_material(student_id, group_public_id, unit_public_id, lesson_public_id, material_public_id):
