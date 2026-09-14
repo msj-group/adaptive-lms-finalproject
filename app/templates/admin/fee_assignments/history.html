@@ -77,7 +77,10 @@
             <input type="hidden" name="{{ state_field }}" value="{{ entry.cancel_token }}">
             <button type="submit" class="btn btn--danger-outline">Cancel assignment</button>
           </form>
+          {% elif entry.cancel_blocked %}
+          <div class="ds-section__desc" style="margin: 0 0 var(--space-2)">Cancel its draft or issued invoice first.</div>
           {% endif %}
+          <a class="btn btn--secondary" href="{{ entry.invoices_url }}">Invoices</a>
         </td>
       </tr>
       {% endfor %}

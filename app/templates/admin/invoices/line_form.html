@@ -1,0 +1,78 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ "Edit line" if editing else "Add line" }} — {{ context.student_name }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M04. One line of a DRAFT or ISSUED invoice. The hidden state
+      token binds the invoice's public id and version -- and, when editing, the
+      line's public id -- so a change made against an invoice that moved since
+      this page was opened is rejected rather than applied.
+
+      The amount is a plain text box, never a number input: the server accepts
+      ASCII digits with at most one decimal point and never rounds. An issued
+      invoice also needs a reason. There is no quantity, discount, tax,
+      due-date, status or currency field. -#}
+  <h1 style="margin-top: 0">{{ "Edit line" if editing else "Add line" }}</h1>
+  <p class="ds-section__desc">
+    {% if invoice.invoice_number %}Invoice {{ invoice.invoice_number }}{% else %}Draft invoice{% endif %} &middot; {{ invoice.status_label }}
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  {% include "admin/fee_assignments/_context.html" %}
+
+  <form method="post" action="{{ action_url }}" class="card" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="{{ state_field }}" value="{{ state_token }}">
+
+    <div class="field">
+      <label class="field__label" for="{{ form.kind.id }}">{{ form.kind.label.text }}</label>
+      {{ form.kind(class="field__input", style="width:auto") }}
+      {% for error in form.kind.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="field" style="margin-top: var(--space-4)">
+      <label class="field__label" for="{{ form.label.id }}">{{ form.label.label.text }}</label>
+      {{ form.label(class="field__input", maxlength=label_max, autocomplete="off") }}
+      {% for error in form.label.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+        One line, at most {{ label_max }} characters. Each active line needs its own label.
+      </div>
+    </div>
+
+    <div class="field" style="margin-top: var(--space-4)">
+      <label class="field__label" for="{{ form.amount.id }}">{{ form.amount.label.text }}</label>
+      {{ form.amount(class="field__input", inputmode="decimal", autocomplete="off", maxlength=32, style="max-width: 14rem") }}
+      {% for error in form.amount.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+        From {{ min_amount }} to {{ max_amount }} {{ currency_code }}. Digits and at most one decimal
+        point, with up to {{ amount_scale }} decimal places. The amount is never rounded.
+      </div>
+    </div>
+
+    {% if invoice.is_issued %}
+    <div class="field" style="margin-top: var(--space-4)">
+      <label class="field__label" for="{{ form.reason.id }}">{{ form.reason.label.text }}</label>
+      {{ form.reason(class="field__input", rows=4, maxlength=reason_max) }}
+      {% for error in form.reason.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+        Required for an issued invoice, at most {{ reason_max }} characters. It is kept in the audit timeline.
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      <button type="submit" class="btn btn--primary">{{ form.submit.label.text }}</button>
+      <a class="btn btn--secondary" href="{{ cancel_url }}">Back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

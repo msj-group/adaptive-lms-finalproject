@@ -50,6 +50,8 @@ from app.security.decorators import roles_required
 from app.services import student_fee_assignment_tokens as tokens
 from app.services.fee_plan_queries import active_item_summaries, normalize_page
 from app.services.fee_plan_transactions import administrator_authz_broken, locked_active_items
+from app.services.invoice_queries import assignments_with_open_invoice
+from app.services.invoice_transactions import lock_assignment_invoices, open_invoices
 from app.services.money import CURRENCY_CODE
 from app.services.student_fee_assignment_queries import (
     BLOCK_ACADEMIC_INACTIVE,
@@ -130,6 +132,11 @@ _ALREADY_CANCELLED_MESSAGE = "This fee assignment is already cancelled. Nothing 
 _ASSIGNED_OK_MESSAGE = "Fee plan assigned to this enrollment."
 _CANCELLED_OK_MESSAGE = (
     "Fee assignment cancelled. It is kept below as history, and a fee plan can be assigned again."
+)
+#: Phase 5 / M04. Cancelling an assignment never cancels its invoice.
+_OPEN_INVOICE_BLOCKS_CANCELLATION = (
+    "This fee assignment has a draft or issued invoice. Cancel that invoice explicitly from the "
+    "assignment's Invoices page before cancelling the fee assignment."
 )
 
 
@@ -230,9 +237,20 @@ def enrollment_fee_assignments(group_public_id, enrollment_public_id):
     history = build_history_view(rows, summaries, _tz_name())
 
     actor_public_id = current_user.public_id
+    # Phase 5 / M04: an assignment holding a draft or issued invoice offers no
+    # cancel control; the page says why and links to its invoices.
+    blocked = assignments_with_open_invoice([entry["public_id"] for entry in history])
     for entry in history:
         entry["plan_url"] = url_for("admin.fee_plan_detail", plan_public_id=entry["plan_public_id"])
-        if entry["status"] == _ASSIGNED:
+        entry["invoices_url"] = url_for(
+            "admin.assignment_invoices",
+            group_public_id=group_public_id,
+            enrollment_public_id=enrollment_public_id,
+            assignment_public_id=entry["public_id"],
+        )
+        if entry["status"] == _ASSIGNED and entry["public_id"] in blocked:
+            entry["cancel_blocked"] = True
+        elif entry["status"] == _ASSIGNED:
             entry["cancel_url"] = _cancel_url(
                 group_public_id, enrollment_public_id, entry["public_id"]
             )
@@ -436,6 +454,11 @@ def enrollment_fee_assignment_cancel(group_public_id, enrollment_public_id, assi
     Cancellation needs no active Enrollment, Student, academic chain or plan
     -- it is how an Administrator corrects a charge, and it must stay possible
     for any assignment that exists.
+
+    Phase 5 / M04: after the assignment lock, the assignment's invoices are
+    locked too, and cancellation is refused while any of them is ``draft`` or
+    ``issued``. The Administrator cancels that invoice explicitly first;
+    nothing here cancels, edits, deletes or creates an invoice.
     """
     context = _context_or_404(group_public_id, enrollment_public_id)
     assignment = enrollment_fee_assignment(context.enrollment_id, assignment_public_id)
@@ -456,6 +479,7 @@ def enrollment_fee_assignment_cancel(group_public_id, enrollment_public_id, assi
     ):
         db.session.rollback()
         abort(404)
+    invoices = lock_assignment_invoices(locked.id)
     if _hierarchy_moved(locks, context):
         return _reject(_STALE_MESSAGE, history_url, actor_id)
     if locked.status == _CANCELLED:
@@ -469,6 +493,12 @@ def enrollment_fee_assignment_cancel(group_public_id, enrollment_public_id, assi
         assignment_version=locked.version,
     ):
         return _reject(_STALE_MESSAGE, history_url, actor_id)
+    if open_invoices(
+        row
+        for row in invoices.values()
+        if row is not None and row.student_fee_assignment_id == locked.id
+    ):
+        return _reject(_OPEN_INVOICE_BLOCKS_CANCELLATION, history_url, actor_id, "warning")
 
     moment = _write_moment()
     locked.status = _CANCELLED

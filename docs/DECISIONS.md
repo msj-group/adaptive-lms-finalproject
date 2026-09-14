@@ -7650,3 +7650,297 @@ else in them changed.
   proves InnoDB blocking, isolation, collation or index plans.
 - **No browser, accessibility, responsive, keyboard, real-concurrency or
   MySQL query-plan verification was performed.**
+
+## Editable invoices with immutable audit events (Phase 5, Part M04)
+
+M04 lets an active Administrator create a draft invoice from a Student Fee
+Assignment, correct its lines, issue it manually with a permanent number and
+cancel it. Every movement writes one append-only audit event in the same
+transaction. It removes invoices, invoice items, numbering, invoice snapshots
+and audit-event tables from M03's deferred list. Money parsing, precision,
+limits, item kinds, the fee plan lifecycle and the M03 assignment lifecycle are
+unchanged, and the **Payments** navigation entry stays disabled.
+
+Deferred with **no** placeholder table, column, route, enum value, form field
+or template hook: manual cash or bank payments, payment transactions,
+receipts, payment intents, customers, providers, gateways, webhooks, card
+data, refunds, credit notes, taxes, discounts, scholarships, exemptions,
+installments, quantities, due dates, reports, Student / Teacher payment
+views, notifications, dashboard totals, search and seeded data.
+
+**Obligation on Phase 5 / M05.** No payment exists in M04, so every issued
+invoice is unpaid and stays editable. M05 must refuse direct amount changes
+and cancellation once a payment exists, and own the reversal or credit-note
+design that replaces them.
+
+### A. The aggregates
+
+An `Invoice` belongs to one `StudentFeeAssignment` and duplicates none of the
+Enrollment, Student, academic or plan identity read through it. Its lines are
+`InvoiceItem` rows: a kind (`registration` or `course`), a normalized label
+and an exact amount, **copied** from the assigned plan's active items when the
+draft is created. A line keeps no foreign key to `fee_plan_items`, so nothing
+that happens to the plan moves an invoice, and editing a line never touches
+the plan. The visible total is added from the current active lines in Python
+`Decimal`; it is never stored. `currency_code` is stored and is always `LYD`,
+following M02's rule that no stored amount is read without its unit.
+
+### B. Four new tables
+
+`invoices`: `id`, `public_id`, `student_fee_assignment_id`, `currency_code`,
+`status`, `invoice_number`, `issued_at`, `issued_by_id`, `cancelled_at`,
+`cancelled_by_id`, `version`, `created_at`, `updated_at`.
+
+`invoice_items`: `id`, `public_id`, `invoice_id`, `kind`, `label`,
+`amount DECIMAL(19, 4)`, `status`, `removed_at`, `removed_by_id`, `version`,
+`created_at`, `updated_at`.
+
+`payment_audit_events`: `id`, `invoice_id`, `actor_id`, `kind`, `occurred_at`,
+`invoice_version_before`, `invoice_version_after`, `reason`,
+`before_snapshot JSON`, `after_snapshot JSON`.
+
+`invoice_number_sequences`: `id`, `calendar_year`, `last_number`,
+`created_at`, `updated_at`.
+
+- Closed sets are literal `IN` CHECKs, never MySQL `ENUM`.
+- `invoices`: `ck_invoices_status_valid`, `ck_invoices_currency_code`,
+  `ck_invoices_version_positive`, `ck_invoices_issue_pair`,
+  `ck_invoices_cancellation_pair`, `ck_invoices_number_matches_issue` (a
+  number exists exactly when the invoice was issued),
+  `ck_invoices_number_format` (the portable `INV-____-______` shape and a
+  length of 15; `LENGTH` counts bytes on MySQL), `ck_invoices_lifecycle_state`
+  and `ck_invoices_timestamps_ordered`; `uq_invoices_invoice_number` (NULLs
+  allowed).
+- `invoice_items`: kind, status, `ck_invoice_items_amount_range` (M02's
+  bounds), version, `ck_invoice_items_removal_state` and ordered timestamps.
+- `payment_audit_events`: `ck_payment_audit_events_kind_valid`,
+  `_versions_positive`, `_version_transition` (a creation moves from nothing to
+  1, every other event by exactly one), `_snapshots_present` (a creation has no
+  "before", every event an "after") and `_reason_required` (a post-issue edit
+  and a cancellation carry a non-empty reason, every other kind none).
+- `invoice_number_sequences`: `uq_invoice_number_sequences_calendar_year`,
+  a four-digit year, `0 <= last_number <= 999999` and ordered timestamps.
+- Every foreign key is plain, with no `ON DELETE` / `ON UPDATE`; no ORM
+  relationship, cascade or trigger exists. No column stores card, bank,
+  provider or payment data.
+- Indexes: `ix_invoices_assignment_status_id` (the open-invoice check, the rows
+  to lock, one assignment's history), `ix_invoice_items_invoice_status_id`,
+  `ix_payment_audit_events_invoice_id_id` (one invoice's timeline) and one
+  index per `users` foreign key. No MySQL execution plan has been measured.
+- **At most one `draft` or `issued` invoice per assignment has no database
+  constraint** (no portable partial unique index); the application proves it
+  under the assignment lock, and the model suite demonstrates the limit.
+
+### C. Lifecycle and editing
+
+    draft -> issued -> cancelled
+    draft -> cancelled
+
+- A draft is created at version 1 with one active line per active plan item,
+  every line at version 1, all at one post-lock whole-second UTC moment. It
+  has no number.
+- A draft or issued invoice may add, edit and remove lines. Each change moves
+  the line's version (a new line starts at 1) and the invoice's version
+  exactly once and sets both `updated_at`s. A line edit whose kind, label and
+  exact amount are unchanged is a no-op: no version, timestamp or event moves.
+- **Line rules**, proved against the locked rows: every change leaves at least
+  one active line; at most 20 active lines with labels distinct after
+  case-folding -- the same definition a fee plan's items passed at activation,
+  inherited rather than invented; and at most 100 rows including removed
+  lines, a technical bound on the invoice page and on every snapshot (beyond
+  it the Administrator cancels and starts a new draft). A removed line keeps
+  its row with its removal attribution and never changes again.
+- **Editing after issue** needs a non-empty reason (normalized plain text,
+  at most 500 characters). It keeps `invoice_number`, `issued_at` and
+  `issued_by_id` exactly and writes `invoice_issued_edited`. A draft edit
+  takes no reason; a posted one is ignored.
+- **Issue** needs the confirmation box and one to 20 valid active lines. It
+  allocates the number (section D), records `issued_*`, moves the version
+  once and writes `invoice_issued`.
+- **Cancellation** needs a reason and the confirmation box. It records
+  `cancelled_*`, moves the version once, keeps every line and any number, and
+  writes `invoice_cancelled`. A cancelled invoice and its lines are read-only
+  forever; nothing deletes, restores or reissues one. A replay is told the
+  invoice is already cancelled. A new draft may then be created while the
+  assignment is still `assigned`.
+
+### D. Numbering
+
+`INV-YYYY-NNNNNN` is allocated only at a first issue, from the center-local
+calendar year (`APP_TIMEZONE`) of the post-lock write moment. The internal
+`invoice_number_sequences` row of that year is found by a plain read and
+locked by primary key -- never by a locking read that matches nothing, which
+on InnoDB would let two first issues of a year deadlock on gap locks. When
+the year has no row the issue inserts one at 0; two first issues racing to
+insert it meet the unique year, and the loser's flush raises `IntegrityError`,
+which is rolled back and reported generically. Under the lock `last_number`
+moves exactly once; the number is checked unused, and
+`uq_invoices_invoice_number` is the final defense. The write moment is read
+again after the sequence lock; if the local year changed while waiting, the
+request is rejected as stale. At 999999 the year is exhausted and issuing is
+refused. Every refusal rolls back, so no number is ever consumed without an
+issued invoice. The sequence has no public id and appears in no route, form,
+token, template or page.
+
+### E. Audit events
+
+- The five kinds are exactly `invoice_draft_created`, `invoice_draft_edited`,
+  `invoice_issued`, `invoice_issued_edited` and `invoice_cancelled`. Every
+  movement writes exactly one, through the single writer
+  `app/services/invoice_audit.py::record_invoice_event`, before the commit of
+  the change it describes. The writer re-proves the locked actor as an active
+  Administrator, the kind, the version transition, the reason rule, the
+  statuses each kind allows, that both snapshots describe the invoice, and
+  that something changed.
+- A **snapshot** is built by the server from the rows the request locked or
+  read after the invoice lock: the schema marker `phase5-m04.invoice.v1`, the
+  invoice public id, status, number (or null), assignment public id, currency,
+  the exact total of the active lines as four-place text, and every line --
+  active and removed, in ascending internal id order -- with its public id,
+  kind, label, status and exact four-place amount. It contains no internal id,
+  name, token, session value, reason or client value;
+  `validate_invoice_snapshot` refuses any other key, nesting, type,
+  non-canonical amount or a total that is not the exact sum. Canonical text is
+  sorted-key, whitespace-free JSON; MySQL stores it as a `JSON` document, whose
+  own normalization keeps the content identical. `before_snapshot` of a
+  creation is SQL NULL (`none_as_null`), never JSON `null`.
+- **Append-only.** No route, form, service operation, relationship or cascade
+  edits or deletes an event, and events have no public id (they are only read
+  through their invoice, as `FileAccessLog` is). ORM guards refuse an update
+  or delete of an event, a bulk `UPDATE` / `DELETE` statement against events,
+  and a bulk `DELETE` against invoices, lines and sequences. The guards on
+  invoices, lines and sequences read the stored row on the flush's own
+  connection, so they also refuse any change to a cancelled invoice, a change
+  to a number, issue attribution or owning assignment once set, a change to a
+  removed line, a line moving invoice, and a sequence going backwards or
+  changing year. Raw SQL and direct database access are outside these guards;
+  by instruction there is no trigger.
+- The timeline is on the invoice page only, newest first (`id DESC`), 20 per
+  page, with each event's kind, actor, moment, version transition, reason,
+  plain-text change sentences computed from the two snapshots, and the
+  recorded state after the change.
+
+### F. Eligibility and interactions
+
+- A draft is created only when, after the locks, the actor is an active
+  Administrator, the nesting holds, the Enrollment, Student, Group, Course,
+  Level and Academic Term are active, the assignment is `assigned`, no other
+  `draft` or `issued` invoice exists for it, and the assigned plan was
+  activated at least once, is `active` or `archived`, is `LYD`, and has a valid
+  active item set. **Archiving the plan does not stop invoicing an assignment
+  that already uses it**: the assigned definition was approved and is frozen.
+- Once an invoice exists, its line changes, issue and cancellation stay
+  available whatever later happens to the Student, Enrollment, Group, academic
+  chain, plan or assignment. This corrects the charge without reopening
+  operational enrollment access.
+- **Fee assignment cancellation** (M03) now locks the assignment's invoices
+  after the assignment and refuses while any is `draft` or `issued`, telling
+  the Administrator to cancel the invoice first; it never cancels, edits,
+  deletes or creates an invoice. M03 section C's "any assigned row may be
+  cancelled" is superseded by this rule. Its history page shows no cancel
+  control for such an assignment and says why.
+- **Enrollment withdrawal** is unchanged: it still requires the assigned fee
+  plan to be cancelled first, which now in turn requires the invoice to be
+  cancelled first.
+
+### G. Routes, locks, tokens and stale forms
+
+Nine URL rules under
+`/admin/groups/<gp>/enrollments/<ep>/fee-assignments/<ap>/invoices`, addressed
+only by public identifiers:
+
+    GET       <base>                           the assignment's invoices
+    GET|POST  <base>/new                       confirm, then create a draft
+    GET       <base>/<ip>                      detail and audit timeline
+    GET       <base>/<ip>/edit                 the line edit surface
+    GET|POST  <base>/<ip>/items/new            add a line
+    GET|POST  <base>/<ip>/items/<lp>/edit      edit a line
+    GET|POST  <base>/<ip>/items/<lp>/remove    confirm, then remove a line
+    POST      <base>/<ip>/issue                issue
+    GET|POST  <base>/<ip>/cancel               confirm, then cancel
+
+Only an active Administrator reaches them (`roles_required`, a suspended
+session no longer loading, and the locked actor re-read on every write).
+Anything that does not nest inside the link before it -- another Group,
+Enrollment, assignment, invoice or line, an unknown or numeric id -- is a
+plain 404. Mutations are POST-only with CSRF; every response carries
+`Cache-Control: private, no-store` and `Vary: Cookie`. The fee assignment
+history links every assignment to its invoices. Text is autoescaped and
+nothing is marked safe.
+
+`app/services/invoice_transactions.py` keeps the Part's chains:
+
+    creation:     AcademicTerm -> Level -> Course -> Group -> Student
+                  -> Enrollment -> Administrator -> StudentFeeAssignment
+                  -> FeePlan -> active FeePlanItems (ascending id)
+                  -> the assignment's Invoices (ascending id)
+    lines, issue: ... -> Administrator -> StudentFeeAssignment -> Invoice
+                  -> affected InvoiceItems and active siblings (ascending id)
+                  -> InvoiceNumberSequence (issue only)
+    cancellation: ... -> Administrator -> StudentFeeAssignment -> Invoice
+
+The prefix through the Administrator is M03's. The id-only reads choosing
+plan items, invoices and lines run after their owner's lock; removed lines,
+which never change, are read after the invoice lock for the snapshots. After
+the locks each write re-proves the actor, the nesting, that the Group still
+sits under the locked ancestors (otherwise stale), the token, the lifecycle
+and every rule of sections C, D and F.
+
+Six exact-shape tokens (`app/services/invoice_tokens.py`), each under its own
+`admin.<purpose>.phase5-m04.v1` salt, valid for 12 hours, carrying public ids
+and versions only: `invoice-create` binds the actor, Group, Enrollment,
+assignment, plan and assignment version, and -- like M03's create token -- is
+also stale when issued at a whole second earlier than the latest `updated_at`
+among the assignment's locked invoices, so a replayed confirmation cannot
+reopen a draft after a cancellation; `invoice-item-create` binds the actor,
+invoice and invoice version; `invoice-item-edit` and `invoice-item-remove` add
+the line; `invoice-issue` adds every active line's public id and version;
+`invoice-cancel` binds the actor, invoice and version. Every movement moves
+the invoice version, so any replayed token is stale. A form failing
+validation re-renders only while its token still describes current state.
+`IntegrityError`, and a refusal by the audit writer, are rolled back first;
+the actor is re-authorized from current state and one generic sentence is
+shown.
+
+### H. Query bounds
+
+The invoice history and the audit timeline are 20 rows per page ordered by
+`id DESC`, `LIMIT PAGE_SIZE + 1`, no `COUNT`; a page past the end falls back
+to page 1. Issuing and cancelling accounts are joined into the history query;
+line counts and totals come from one keyed query; a page's actor names come
+from one keyed query. Detail, edit and cancel pages cost a fixed number of
+queries whatever the lines and events hold.
+
+### I. Migration
+
+One additive revision, `a8d3f5c29e61`, after `f9b2d6e4a318`. It creates
+`invoice_number_sequences`, `invoices`, `invoice_items` and
+`payment_audit_events` with their indexes and nothing else: no alter, no data
+write, no seeded row, no trigger, no `mysql_engine` / `mysql_charset`. The
+downgrade drops the four tables, dependants first, without dropping indexes
+first (MySQL errno 1553). The nine earlier migration suites that pin the
+single Alembic head moved to the new head, and nothing else in them changed.
+`tests/test_admin_fee_assignments.py`'s fee route inventory now excludes the
+nested invoice routes, which `tests/test_admin_invoices.py` inventories.
+
+### J. Verification actually performed, and what it does not prove
+
+- New suites: `tests/test_invoices_model.py`, `tests/test_invoice_audit.py`,
+  `tests/test_invoices_migration.py`, `tests/test_admin_invoices.py` and
+  `tests/test_invoice_transactions.py`, with `tests/invoice_fixtures.py`.
+- The migration was executed in both directions on an isolated SQLite
+  database holding representative non-financial rows and M02 / M03 plans,
+  items and assignments, which were read back unchanged; constraints were
+  proved by refused inserts. MySQL DDL and the offline MySQL script were
+  compiled without a connection.
+- CSRF was exercised with protection **enabled**; a real CHECK failure on the
+  audit event reached the database and rolled back the whole change.
+- The revision is applied to development MySQL only after the strict full
+  suite passes and the database is confirmed at `f9b2d6e4a318`; the exact
+  test counts and MySQL evidence are recorded in the Part's handoff.
+- Automated tests run on SQLite in memory. Lock tests assert what the chains
+  *request*; race tests inject a change at the lock boundary or at the
+  sequence lock. Neither proves InnoDB blocking, isolation, gap-lock
+  behaviour, collation or index plans.
+- **No browser, accessibility, responsive, keyboard, real-concurrency or
+  MySQL query-plan verification was performed.**

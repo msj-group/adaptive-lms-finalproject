@@ -13,9 +13,13 @@ from app.models.enums import (
     FileAccessAction,
     FileCategory,
     GradeSourceKind,
+    InvoiceItemKind,
+    InvoiceItemStatus,
+    InvoiceStatus,
     LessonStatus,
     MaterialKind,
     NotificationKind,
+    PaymentAuditEventKind,
     QuestionAnswerMode,
     QuizAttemptStatus,
     QuizStatus,
@@ -124,6 +128,19 @@ from app.models.fee_plan_item import (
     FeePlanItem,
 )
 from app.models.student_fee_assignment import StudentFeeAssignment
+from app.models.invoice import (
+    MAX_INVOICE_SEQUENCE_NUMBER,
+    FinancialHistoryError,
+    Invoice,
+)
+from app.models.invoice_item import (
+    INVOICE_ITEM_LABEL_MAX_LENGTH,
+    MAX_ACTIVE_INVOICE_ITEMS,
+    MAX_INVOICE_ITEM_ROWS,
+    InvoiceItem,
+)
+from app.models.invoice_number_sequence import InvoiceNumberSequence
+from app.models.payment_audit_event import INVOICE_AUDIT_REASON_MAX_LENGTH, PaymentAuditEvent
 
 __all__ = [
     "User",
@@ -234,4 +251,18 @@ __all__ = [
     "MAX_ACTIVE_FEE_PLAN_ITEMS",
     "StudentFeeAssignmentStatus",
     "StudentFeeAssignment",
+    "InvoiceStatus",
+    "InvoiceItemKind",
+    "InvoiceItemStatus",
+    "PaymentAuditEventKind",
+    "Invoice",
+    "MAX_INVOICE_SEQUENCE_NUMBER",
+    "FinancialHistoryError",
+    "InvoiceItem",
+    "INVOICE_ITEM_LABEL_MAX_LENGTH",
+    "MAX_ACTIVE_INVOICE_ITEMS",
+    "MAX_INVOICE_ITEM_ROWS",
+    "InvoiceNumberSequence",
+    "PaymentAuditEvent",
+    "INVOICE_AUDIT_REASON_MAX_LENGTH",
 ]

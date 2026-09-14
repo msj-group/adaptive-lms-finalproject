@@ -1,0 +1,100 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Invoices — {{ context.student_name }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M04. One Student Fee Assignment's invoices, newest first, at
+      most `page_size` per page with no total count. Totals are exact Decimal
+      text added by the server from each invoice's active lines and are never
+      stored. There is no delete, restore, payment, receipt or refund control
+      here, and no endpoint behind one. -#}
+  <div class="ds-row" style="margin-bottom: var(--space-3)">
+    <a class="btn btn--secondary" href="{{ fee_assignments_url }}">&larr; Fee assignments</a>
+  </div>
+
+  <div class="ds-row" style="justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-4)">
+    <h1 style="margin:0">Invoices</h1>
+    {% if create_url %}
+    <a class="btn btn--primary" href="{{ create_url }}">Create draft invoice</a>
+    {% endif %}
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  {% include "admin/fee_assignments/_context.html" %}
+  {% include "admin/invoices/_assignment.html" %}
+
+  {% if block_message %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">{{ block_message }}</div>
+  {% endif %}
+
+  <p class="ds-section__desc">
+    A draft copies the fee plan's lines and is issued manually, which gives it a permanent invoice
+    number. A fee assignment has at most one draft or issued invoice at a time. Cancelling an
+    invoice keeps it here as read-only history.
+  </p>
+
+  {% if invoices %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th style="padding: var(--space-3)">Invoice</th>
+        <th style="padding: var(--space-3)">Status</th>
+        <th style="padding: var(--space-3); text-align:right">Lines</th>
+        <th style="padding: var(--space-3); text-align:right">Total ({{ currency_code }})</th>
+        <th style="padding: var(--space-3)">Created</th>
+        <th style="padding: var(--space-3)">Issued</th>
+        <th style="padding: var(--space-3)">Cancelled</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in invoices %}
+      <tr style="border-bottom:1px solid var(--color-border)">
+        <td style="padding: var(--space-3)">
+          <a href="{{ entry.detail_url }}">{% if entry.invoice_number %}{{ entry.invoice_number }}{% else %}Draft (no number){% endif %}</a>
+        </td>
+        <td style="padding: var(--space-3)">
+          {% if entry.status == "issued" %}
+          <span class="badge badge--success">{{ entry.status_label }}</span>
+          {% elif entry.status == "draft" %}
+          <span class="badge badge--warning">{{ entry.status_label }}</span>
+          {% else %}
+          <span class="badge badge--neutral">{{ entry.status_label }}</span>
+          {% endif %}
+        </td>
+        <td style="padding: var(--space-3); text-align:right">{{ entry.line_count }}</td>
+        <td style="padding: var(--space-3); text-align:right; font-variant-numeric: tabular-nums">{{ entry.total_text }}</td>
+        <td style="padding: var(--space-3)">{{ entry.created_local.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td style="padding: var(--space-3)">
+          {% if entry.issued_local %}{{ entry.issued_local.strftime("%Y-%m-%d %H:%M") }} by {{ entry.issued_by_name }}{% else %}&mdash;{% endif %}
+        </td>
+        <td style="padding: var(--space-3)">
+          {% if entry.cancelled_local %}{{ entry.cancelled_local.strftime("%Y-%m-%d %H:%M") }} by {{ entry.cancelled_by_name }}{% else %}&mdash;{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if has_prev or has_next %}
+  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3); flex-wrap: wrap" aria-label="Invoice pages">
+    {% if has_prev %}
+    <a class="btn btn--secondary" href="{{ history_url }}?page={{ page - 1 }}">Previous</a>
+    {% endif %}
+    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page &middot; times in {{ tz_name }}</span>
+    {% if has_next %}
+    <a class="btn btn--secondary" href="{{ history_url }}?page={{ page + 1 }}">Next</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No invoices</div>
+    <div>No invoice has been created for this fee assignment.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

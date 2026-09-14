@@ -520,3 +520,77 @@ class StudentFeeAssignmentStatus(str, enum.Enum):
 
     ASSIGNED = "assigned"
     CANCELLED = "cancelled"
+
+
+class InvoiceStatus(str, enum.Enum):
+    """Lifecycle of one :class:`~app.models.invoice.Invoice` (Phase 5 / M04).
+
+    - ``draft`` -- copied from the assignment's fee plan and under review.
+      Its lines may be added, edited and removed; it has no invoice number.
+    - ``issued`` -- issued manually by an Administrator, which allocated its
+      permanent ``INV-YYYY-NNNNNN`` number. No payment mechanism exists yet,
+      so its lines stay editable, each change needing a reason and recorded
+      by an audit event.
+    - ``cancelled`` -- terminal and read-only. A cancelled issued invoice
+      keeps its number; a cancelled draft never had one.
+
+    ``draft -> issued -> cancelled`` and ``draft -> cancelled`` are the only
+    transitions. There is no ``paid``, ``void``, ``refunded`` or ``deleted``
+    member and no placeholder for one. Adding a member is a schema change
+    (the ``invoices.status`` CHECK), which is the point.
+    """
+
+    DRAFT = "draft"
+    ISSUED = "issued"
+    CANCELLED = "cancelled"
+
+
+class InvoiceItemKind(str, enum.Enum):
+    """What one :class:`~app.models.invoice_item.InvoiceItem` charges for
+    (Phase 5 / M04).
+
+    Exactly the fee plan item kinds, so every plan line can be copied. There
+    is no discount, tax, installment or credit member; adding one is a schema
+    change (the ``invoice_items.kind`` CHECK).
+    """
+
+    REGISTRATION = "registration"
+    COURSE = "course"
+
+
+class InvoiceItemStatus(str, enum.Enum):
+    """Whether one :class:`~app.models.invoice_item.InvoiceItem` is part of
+    its invoice (Phase 5 / M04).
+
+    - ``active`` -- counted in the invoice's lines and its total.
+    - ``removed`` -- taken out of a draft or issued invoice. The row stays
+      as history with its removal attribution and never changes again.
+    """
+
+    ACTIVE = "active"
+    REMOVED = "removed"
+
+
+class PaymentAuditEventKind(str, enum.Enum):
+    """What one append-only
+    :class:`~app.models.payment_audit_event.PaymentAuditEvent` records
+    (Phase 5 / M04).
+
+    - ``invoice_draft_created`` -- a draft was copied from the fee plan.
+    - ``invoice_draft_edited`` -- a draft's line was added, edited or removed.
+    - ``invoice_issued`` -- the draft was issued and numbered.
+    - ``invoice_issued_edited`` -- an issued invoice's line was added, edited
+      or removed; a reason is required.
+    - ``invoice_cancelled`` -- the invoice was cancelled; a reason is
+      required.
+
+    Payment events belong to later Parts and have no member or placeholder
+    here. Adding one is a schema change (the ``payment_audit_events.kind``
+    CHECK).
+    """
+
+    INVOICE_DRAFT_CREATED = "invoice_draft_created"
+    INVOICE_DRAFT_EDITED = "invoice_draft_edited"
+    INVOICE_ISSUED = "invoice_issued"
+    INVOICE_ISSUED_EDITED = "invoice_issued_edited"
+    INVOICE_CANCELLED = "invoice_cancelled"

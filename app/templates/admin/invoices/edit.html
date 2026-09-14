@@ -1,0 +1,43 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Edit invoice lines — {{ context.student_name }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M04. The line edit surface of a DRAFT or ISSUED invoice. Each
+      add, edit and remove page mints its own signed token. Changing an issued
+      invoice needs a reason, keeps its number and issue record, and writes an
+      audit entry. -#}
+  <div class="ds-row" style="margin-bottom: var(--space-3)">
+    <a class="btn btn--secondary" href="{{ detail_url }}">&larr; Invoice</a>
+  </div>
+
+  <div class="ds-row" style="justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-4)">
+    <h1 style="margin:0">Edit invoice lines</h1>
+    {% if line_new_url %}
+    <a class="btn btn--primary" href="{{ line_new_url }}">Add line</a>
+    {% endif %}
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  {% include "admin/fee_assignments/_context.html" %}
+  {% include "admin/invoices/_assignment.html" %}
+
+  {% if invoice.is_issued %}
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    This invoice is issued as {{ invoice.invoice_number }}. Every change needs a reason and is
+    recorded in its audit timeline. Its number and issue record do not change.
+  </div>
+  {% else %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    This invoice is a draft. Changes are recorded in its audit timeline; the fee plan is never changed.
+  </div>
+  {% endif %}
+
+  {% if limit_message %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">{{ limit_message }}</div>
+  {% endif %}
+
+  {% include "admin/invoices/_lines.html" %}
+</div>
+{% endblock %}

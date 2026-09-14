@@ -167,10 +167,12 @@ def test_mutations_are_post_only_and_no_route_accepts_delete(app, client):
     assert client.delete(fx.assign_url(gp, ep, pp)).status_code == 405
 
     base = "/admin/groups/<group_public_id>/enrollments/<enrollment_public_id>"
+    # Phase 5 / M04's invoice routes nest below an assignment; they are
+    # inventoried by tests/test_admin_invoices.py.
     rules = {
         (rule.rule, frozenset(rule.methods - {"HEAD", "OPTIONS"}))
         for rule in app.url_map.iter_rules()
-        if rule.rule.startswith(base + "/fee-")
+        if rule.rule.startswith(base + "/fee-") and "/invoices" not in rule.rule
     }
     assert rules == {
         (base + "/fee-assignments", frozenset({"GET"})),

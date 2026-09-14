@@ -33,6 +33,8 @@ from app.models import StudentFeeAssignment, StudentFeeAssignmentStatus
 _MIGRATIONS = pathlib.Path(__file__).resolve().parents[1] / "migrations" / "versions"
 _REVISION = "f9b2d6e4a318"
 _DOWN_REVISION = "e4a1c6b9d273"
+#: Phase 5 / M04's revision follows this one, so it is the single head.
+_HEAD = "a8d3f5c29e61"
 _TABLE = "student_fee_assignments"
 
 _EXPECTED_COLUMNS = {
@@ -121,7 +123,7 @@ def test_revision_identifiers_and_one_linear_head():
         source = path.read_text(encoding="utf-8")
         revision = re.search(r"^revision = '([^']+)'", source, re.M).group(1)
         parents[revision] = re.search(r"^down_revision = (?:'([^']+)'|None)", source, re.M).group(1)
-    assert set(parents) - {p for p in parents.values() if p is not None} == {_REVISION}
+    assert set(parents) - {p for p in parents.values() if p is not None} == {_HEAD}
     claimed = [p for p in parents.values() if p is not None]
     assert len(claimed) == len(set(claimed))
     assert [r for r, p in parents.items() if p == _DOWN_REVISION] == [_REVISION]
