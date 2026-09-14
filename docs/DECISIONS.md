@@ -7138,8 +7138,9 @@ default exactly as every earlier table does.
 ## Administrative fee plan catalogue (Phase 5, Part M02)
 
 M02 adds an Administrator-only catalogue of reusable fee plans and their
-fee items. A plan is drafted, activated, archived and reactivated; its
-financial definition is frozen permanently from its first activation.
+fee items. A plan is drafted, activated, archived and restored from its
+archive; its financial definition is frozen permanently from its first
+activation. The restoration rule was corrected by Part M02R (section K).
 
 Deferred with **no** placeholder table, column, route, enum value, form
 field, template hook or TODO: student fee assignments, invoices, invoice
@@ -7177,9 +7178,10 @@ when, or whether anybody has paid; those are later Parts.
   requires the exact uppercase code.
 - `ck_fee_plans_first_activation_pair` / `ck_fee_plans_status_change_pair`
   keep each attribution moment and its actor together;
-  `ck_fee_plans_lifecycle_state` proves that a draft was never activated and
-  never changed state, an active plan was activated, and an archived plan
-  changed state no earlier than any activation;
+  `ck_fee_plans_lifecycle_state` proves that a draft was never activated
+  (since M02R it may carry a historical transition, section K), an active
+  plan was activated, and an archived plan changed state no earlier than
+  any activation;
   `ck_fee_plan_items_removal_state` ties removal attribution to `removed`
   exactly; both tables carry positive-version and timestamp-ordering CHECKs.
 - `ck_fee_plan_items_amount_range` enforces `0.001 <= amount <= 99999.999`.
@@ -7225,11 +7227,12 @@ an owner decision, not changed.
   **forever**.
 - **Archiving** is allowed from `draft` or `active` and changes
   availability only: no item, amount or label is touched.
-- **Reactivation** restores `active` to an archived plan **that was active
-  before**, and permits no edit. A draft archived before it was ever
-  activated stays archived and read-only; this is the reading of
-  "reactivate" as restoring a previous active state, and it means such a
-  plan keeps its name reserved.
+- **Restoration** follows history (corrected by M02R, section K): an
+  archived plan that was never activated returns to an editable `draft`;
+  an archived plan activated at least once returns to `active`, keeps its
+  original `first_activated_*` and permits no edit. M02's original reading
+  -- that an archived draft stayed archived forever -- was wrong and is
+  withdrawn.
 - `status_changed_*` records the latest transition; `created_by_id` is set
   once. None of them is an authorization fact.
 - Removing a draft item sets `removed` with `removed_at` / `removed_by_id`;
@@ -7339,3 +7342,77 @@ then `fee_plans`, without dropping indexes first (MySQL errno 1553).
   proves InnoDB blocking, isolation, collation or index plans.
 - **No browser, accessibility, responsive, keyboard, real-concurrency or
   MySQL query-plan verification was performed.**
+
+### K. Correction: restoring archived drafts (Phase 5, Part M02R)
+
+M02 read "reactivate" as restoring a previous `active` state only, so a
+draft archived before its first activation stayed archived for good. That
+reading was wrong. The approved lifecycle is:
+
+    draft -> archived -> draft
+    draft -> active -> archived -> active
+
+- Restoring an archived plan whose `first_activated_at` is NULL returns it
+  to `draft`. `first_activated_*` stays NULL; `status_changed_*` records the
+  restoration; the aggregate `version` moves exactly once and `updated_at`
+  takes the same moment. Editing, item creation, item editing, item removal
+  and a later first activation all work as for any draft. No active item is
+  required to restore.
+- Restoring an archived plan activated at least once returns it to `active`,
+  keeps `first_activated_*` exactly, records the restoration in
+  `status_changed_*`, moves the version once, and stays frozen: only a later
+  archive or restoration may change it.
+- Both outcomes use the existing POST `/admin/fee-plans/<pp>/reactivate`
+  route and the existing `fee-plan-reactivate` token; no route, token
+  purpose or salt was added. The outcome is decided from the **locked** row.
+  The token binds the plan's version and status, and `first_activated_at`
+  can change only through activation, which moves the version, so a current
+  token always leads to the outcome its page described. The page names that
+  outcome ("Restore draft" or "Reactivate plan"), and so do the confirmation
+  prompt and the result ("Draft restored" or "Fee plan reactivated").
+- The lock chain is unchanged -- reset point, acting Administrator, FeePlan
+  -- and locks no item: restoration neither reads nor changes the item set.
+  A missing confirmation, a stale / tampered / wrong-purpose / cross-plan
+  token, a plan that is not archived, or an `IntegrityError` writes nothing:
+  no version and no timestamp moves.
+
+**Database.** M02's `ck_fee_plans_lifecycle_state` also demanded
+`status_changed_at IS NULL` for a draft, so a restored draft could not keep
+its history. Revision `e4a1c6b9d273`, after `b7c3e9a15d42`, replaces that
+one CHECK and nothing else: the draft branch becomes
+`status = 'draft' AND first_activated_at IS NULL`. The active and archived
+branches, both pair CHECKs, timestamp ordering, currency, status, version,
+every item constraint, every column, index, unique constraint and foreign
+key stay as M02 created them, and no row is written.
+
+- **MySQL 8**: the CHECK is dropped and added again under the same name; no
+  statement alters an expression in place. MySQL validates existing rows on
+  the add, and the wider expression accepts every row the old one did.
+- **SQLite** (the migration tests only): a CHECK cannot be altered, so the
+  table is rebuilt by batch mode from an explicitly declared `copy_from`
+  definition, never a reflected one, which would carry the old CHECK back.
+  `fee_plan_items` references `fee_plans`, and the rebuild's `DROP TABLE`
+  step is refused while SQLite enforces foreign keys. Alembic does not
+  manage that pragma, and SQLite ignores it inside an open transaction, so
+  following SQLite's documented table-rebuild procedure the revision
+  **requires** enforcement to be off -- refusing rather than silently
+  disabling it -- and checks `PRAGMA foreign_key_check` after the rebuild.
+  The migration test disables enforcement around the run, turns it back on
+  and proves it is on and still refusing bad references.
+- The downgrade restores the exact M02 expression. A restored draft is valid
+  only under the corrected CHECK, so the downgrade first counts such rows
+  and **refuses** before dropping anything, rather than rewriting or
+  deleting history: MySQL DDL is not transactional, and a refused
+  `ADD CONSTRAINT` after the drop would leave the table with no lifecycle
+  CHECK. In offline (`--sql`) mode that read cannot run and is skipped.
+  Development MySQL is never downgraded.
+
+**Verification.** The M02 model, migration, route and transaction suites
+cover both restoration paths and the corrected CHECK. The correction
+revision is executed on isolated SQLite in both directions with draft,
+active, archived-draft and archived-active plans and their items, read back
+unchanged, including the refused downgrade. Its offline MySQL script is
+checked to contain only the CHECK drop and add. The seven earlier migration
+suites that pin the single head moved to the new head, and
+`app/models/enums.py` had its `FeePlanStatus` docstring corrected; nothing
+else in them changed. The limits stated in J apply unchanged.

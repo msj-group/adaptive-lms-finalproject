@@ -256,6 +256,10 @@ def test_every_plan_check_and_unique_constraint_is_enforced(app):
                             status_changed_by_id=str(actor_id), updated_at=_T2))
         _accepted(_plan_sql(actor_id, **dict(active, status="'archived'",
                                              status_changed_at=_T2, updated_at=_T2)))
+        # Phase 5 / M02R: a draft restored from its archive keeps the
+        # restoration in status_changed_* and was never activated.
+        _accepted(_plan_sql(actor_id, status_changed_at=_T2,
+                            status_changed_by_id=str(actor_id), updated_at=_T2))
 
         for overrides, rule in (
             ({"name": "'Legal draft'"}, "uq_fee_plans_name"),
@@ -266,6 +270,12 @@ def test_every_plan_check_and_unique_constraint_is_enforced(app):
             ({"first_activated_at": _T1}, "ck_fee_plans_first_activation_pair"),
             ({"status_changed_by_id": str(actor_id)}, "ck_fee_plans_status_change_pair"),
             (dict(active, status="'draft'"), "a draft that was activated"),
+            ({"first_activated_at": _T1, "first_activated_by_id": str(actor_id),
+              "updated_at": _T1}, "a draft with a first activation and no transition"),
+            ({"status_changed_at": _T2, "status_changed_by_id": str(actor_id)},
+             "a restored draft updated before its restoration"),
+            ({"status_changed_at": _T2, "updated_at": _T2},
+             "a restoration without its actor"),
             ({"status": "'active'"}, "an active plan never activated"),
             (dict(active, first_activated_at="NULL", first_activated_by_id="NULL"),
              "an active plan with no first activation"),
@@ -350,6 +360,12 @@ def test_lifecycle_properties_follow_the_stored_state(app):
         archived = fx.plan(creator, status=fx.ARCHIVED_STATUS)
         archived_draft = fx.plan(creator, status=fx.ARCHIVED_STATUS, ever_activated=False)
         assert draft.is_draft and not draft.has_been_activated
+        assert not draft.restores_to_draft and not draft.can_be_reactivated
         assert active.is_active and active.has_been_activated and not active.can_be_reactivated
+        assert not active.restores_to_draft
+        # Phase 5 / M02R: every archived plan restores, to the state its
+        # history allows.
         assert archived.is_archived and archived.can_be_reactivated
-        assert archived_draft.is_archived and not archived_draft.can_be_reactivated
+        assert not archived.restores_to_draft
+        assert archived_draft.is_archived and archived_draft.restores_to_draft
+        assert not archived_draft.can_be_reactivated

@@ -192,6 +192,29 @@ def test_csrf_is_enforced_on_create_and_on_every_lifecycle_post(csrf_app):
         assert FeePlan.query.count() == 2
 
 
+def test_csrf_is_enforced_on_restoring_an_archived_draft(csrf_app):
+    client = csrf_app.test_client()
+    with csrf_app.app_context():
+        creator = fx.admin()
+        pp = fx.plan(creator, status=fx.ARCHIVED_STATUS, ever_activated=False,
+                     version=2).public_id
+    login_page = client.get("/auth/login").get_data(as_text=True)
+    client.post("/auth/login", data={"email": "admin@example.com", "password": fx.PW,
+                                     "csrf_token": _csrf(login_page)})
+    detail = client.get(fx.detail_url(pp)).get_data(as_text=True)
+    token = fx.state_in(detail, fx.reactivate_url(pp))
+    assert token
+    response = client.post(fx.reactivate_url(pp), data={fx.STATE_FIELD: token, "confirm": "yes"})
+    assert response.status_code == 400
+    with csrf_app.app_context():
+        assert (fx.stored_plan(pp).status, fx.stored_plan(pp).version) == (fx.ARCHIVED_STATUS, 2)
+    response = client.post(fx.reactivate_url(pp), data={fx.STATE_FIELD: token, "confirm": "yes",
+                                                        "csrf_token": _csrf(detail)})
+    assert response.status_code == 302
+    with csrf_app.app_context():
+        assert (fx.stored_plan(pp).status, fx.stored_plan(pp).version) == (fx.DRAFT, 3)
+
+
 # ===========================================================================
 # Creating and editing a plan
 # ===========================================================================
@@ -577,18 +600,80 @@ def test_reactivation_restores_active_and_keeps_the_plan_frozen(app, client):
     fx.activate(client, pp)
     fx.archive(client, pp)
     with app.app_context():
-        first = fx.stored_plan(pp).first_activated_at
-    assert fx.reactivate(client, pp).status_code == 302
+        archived = fx.stored_plan(pp)
+        first = (archived.first_activated_at, archived.first_activated_by_id)
+        archived_version, archived_at = archived.version, archived.status_changed_at
+    html = fx.page(client, fx.detail_url(pp))
+    assert "Reactivate this plan" in html and "Reactivate plan" in html
+    assert "Restore draft" not in html
+    response = fx.reactivate(client, pp)
+    assert response.status_code == 302
+    assert response.headers["Cache-Control"] == "private, no-store"
     with app.app_context():
         row = fx.stored_plan(pp)
-        assert (row.status, row.version, row.first_activated_at) == (fx.ACTIVE, 4, first)
+        assert row.status == fx.ACTIVE
+        assert (row.first_activated_at, row.first_activated_by_id) == first
+        assert row.version == archived_version + 1 == 4
         assert row.status_changed_by_id == actor_id
+        assert row.status_changed_at >= archived_at and row.status_changed_at.microsecond == 0
+        assert row.updated_at == row.status_changed_at
     assert client.get(fx.edit_url(pp)).status_code == 302
     assert client.get(fx.item_edit_url(pp, ip)).status_code == 302
-    assert "Fee plan reactivated" in fx.page(client, fx.detail_url(pp))
+    page = fx.page(client, fx.detail_url(pp))
+    assert "Fee plan reactivated" in page and "Draft restored" not in page
+    assert "Definition frozen" in page
 
 
-def test_a_draft_can_be_archived_and_then_offers_nothing(app, client):
+def test_an_ever_activated_plan_stays_immutable_after_archive_and_reactivation(app, client):
+    """Genuine, current tokens for every write still change nothing: the
+    locked row's frozen lifecycle refuses them."""
+    from app.services import fee_plan_tokens as tokens
+
+    _admin(client, app)
+    pp, (ip, _) = _draft_with_items(app, creator_email="admin@example.com")
+    fx.activate(client, pp)
+    fx.archive(client, pp)
+    fx.reactivate(client, pp)
+    with app.app_context():
+        actor = User.query.one()
+        row = fx.stored_plan(pp)
+        item = fx.stored_item(ip)
+        snapshot = (row.name, row.description, row.status, row.version, row.updated_at)
+        items_before = [(r.label, r.amount, r.status, r.version)
+                        for r in FeePlanItem.query.order_by(FeePlanItem.id)]
+        state = {"actor_public_id": actor.public_id, "plan_public_id": pp,
+                 "plan_version": row.version, "plan_status": row.status}
+        item_state = dict(state, item_public_id=ip, item_version=item.version,
+                          item_status=item.status)
+        genuine = {
+            purpose: tokens.make_token(
+                purpose,
+                **(item_state if purpose in (tokens.PURPOSE_ITEM_EDIT,
+                                             tokens.PURPOSE_ITEM_REMOVE) else state),
+            )
+            for purpose in (tokens.PURPOSE_EDIT, tokens.PURPOSE_ITEM_CREATE,
+                            tokens.PURPOSE_ITEM_EDIT, tokens.PURPOSE_ITEM_REMOVE,
+                            tokens.PURPOSE_ACTIVATE, tokens.PURPOSE_REACTIVATE)
+        }
+    for url, data in (
+        (fx.edit_url(pp), fx.plan_form(name="Changed", token=genuine[tokens.PURPOSE_EDIT])),
+        (fx.item_new_url(pp), fx.item_form(label="New", token=genuine[tokens.PURPOSE_ITEM_CREATE])),
+        (fx.item_edit_url(pp, ip), fx.item_form(label="Changed", amount="1",
+                                                token=genuine[tokens.PURPOSE_ITEM_EDIT])),
+        (fx.item_remove_url(pp, ip), {fx.STATE_FIELD: genuine[tokens.PURPOSE_ITEM_REMOVE]}),
+        (fx.activate_url(pp), {fx.STATE_FIELD: genuine[tokens.PURPOSE_ACTIVATE], "confirm": "yes"}),
+        (fx.reactivate_url(pp), {fx.STATE_FIELD: genuine[tokens.PURPOSE_REACTIVATE],
+                                 "confirm": "yes"}),
+    ):
+        assert client.post(url, data=data).status_code == 302, url
+    with app.app_context():
+        row = fx.stored_plan(pp)
+        assert (row.name, row.description, row.status, row.version, row.updated_at) == snapshot
+        assert [(r.label, r.amount, r.status, r.version)
+                for r in FeePlanItem.query.order_by(FeePlanItem.id)] == items_before
+
+
+def test_a_draft_can_be_archived_and_then_offers_only_restoration(app, client):
     _admin(client, app)
     pp, _ = _draft_with_items(app, creator_email="admin@example.com")
     assert fx.archive(client, pp).status_code == 302
@@ -597,29 +682,169 @@ def test_a_draft_can_be_archived_and_then_offers_nothing(app, client):
         assert row.status == fx.ARCHIVED_STATUS and row.first_activated_at is None
     html = fx.page(client, fx.detail_url(pp))
     assert "archived before it was ever activated" in html
-    for absent in ("Activate plan", "Reactivate plan", "Archive plan", "Add item", "Edit name"):
+    assert "Restore this plan to a draft" in html and "Restore draft" in html
+    for absent in ("Activate plan", "Reactivate plan", "Reactivate this plan", "Archive plan",
+                   "Add item", "Edit name", "Remove</button>", "Definition frozen"):
         assert absent not in html, absent
-    assert "state_token" not in html
+    assert html.count('name="state_token"') == 1
+    assert fx.state_in(html, fx.reactivate_url(pp))
 
 
-def test_an_archived_draft_is_never_reactivated_even_with_a_genuine_token(app, client):
-    """The token alone is not the rule: a well-formed, current reactivation
-    token for an archived draft is still refused against the locked row."""
+def test_an_archived_draft_restores_to_an_editable_draft(app, client):
+    actor_id = _admin(client, app)
+    with app.app_context():
+        row = fx.plan(User.query.one(), name="Paused", status=fx.ARCHIVED_STATUS,
+                      ever_activated=False, version=2)
+        pp, archived_at = row.public_id, row.status_changed_at
+    # No active item is needed to restore a draft.
+    response = fx.reactivate(client, pp)
+    assert response.status_code == 302
+    assert response.headers["Cache-Control"] == "private, no-store"
+    assert "Cookie" in response.headers.get("Vary", "")
+    with app.app_context():
+        row = fx.stored_plan(pp)
+        assert row.status == fx.DRAFT
+        assert row.first_activated_at is None and row.first_activated_by_id is None
+        assert row.status_changed_by_id == actor_id
+        assert row.status_changed_at > archived_at and row.status_changed_at.microsecond == 0
+        assert row.updated_at == row.status_changed_at
+        assert row.version == 3
+        assert FeePlanItem.query.count() == 0
+    html = fx.page(client, fx.detail_url(pp))
+    assert "Draft restored" in html
+    assert "Fee plan reactivated" not in html and "Definition frozen" not in html
+    for present in ("Edit name", "Add item", "Activate plan", "Archive plan"):
+        assert present in html, present
+
+    # Ordinary draft work, then a normal first activation.
+    assert fx.edit_plan(client, pp, name="Resumed").status_code == 302
+    assert fx.add_item(client, pp, kind=fx.REGISTRATION, label="Registration",
+                       amount="50").status_code == 302
+    assert fx.add_item(client, pp, label="Books", amount="20").status_code == 302
+    with app.app_context():
+        registration = FeePlanItem.query.filter_by(label="Registration").one().public_id
+        books = FeePlanItem.query.filter_by(label="Books").one().public_id
+    assert fx.edit_item(client, pp, registration, kind=fx.REGISTRATION, label="Registration",
+                        amount="55.5").status_code == 302
+    assert fx.remove_item(client, pp, books).status_code == 302
+    assert fx.activate(client, pp).status_code == 302
+    with app.app_context():
+        row = fx.stored_plan(pp)
+        assert (row.status, row.name) == (fx.ACTIVE, "Resumed")
+        assert row.first_activated_by_id == actor_id
+        assert row.first_activated_at == row.status_changed_at == row.updated_at
+        assert row.version == 9
+        assert fx.stored_item(registration).amount == Decimal("55.5")
+        assert fx.stored_item(books).status == fx.ITEM_REMOVED
+
+
+def test_a_draft_can_be_archived_and_restored_repeatedly_keeping_its_history(app, client):
+    actor_id = _admin(client, app)
+    pp = fx.create_plan(client, name="Cycle")
+    versions = []
+    for _ in range(2):
+        assert fx.archive(client, pp).status_code == 302
+        with app.app_context():
+            assert fx.stored_plan(pp).status == fx.ARCHIVED_STATUS
+            versions.append(fx.stored_plan(pp).version)
+        assert fx.reactivate(client, pp).status_code == 302
+        with app.app_context():
+            row = fx.stored_plan(pp)
+            assert (row.status, row.first_activated_at) == (fx.DRAFT, None)
+            assert row.status_changed_at is not None and row.status_changed_by_id == actor_id
+            versions.append(row.version)
+    assert versions == [2, 3, 4, 5]
+
+
+def test_restoration_needs_the_confirmation_box_and_names_its_outcome(app, client):
+    _admin(client, app)
+    with app.app_context():
+        actor = User.query.one()
+        draft = fx.plan(actor, status=fx.ARCHIVED_STATUS, ever_activated=False, version=2)
+        frozen = fx.plan(actor, status=fx.ARCHIVED_STATUS, version=3)
+        sentences = {draft.public_id: "before restoring this plan to a draft",
+                     frozen.public_id: "before reactivating"}
+    for pp, sentence in sentences.items():
+        assert fx.reactivate(client, pp, confirm=False).status_code == 302
+        assert sentence in fx.page(client, fx.detail_url(pp))
+    with app.app_context():
+        assert [(fx.stored_plan(pp).status, fx.stored_plan(pp).version) for pp in sentences] == [
+            (fx.ARCHIVED_STATUS, 2), (fx.ARCHIVED_STATUS, 3)]
+
+
+@pytest.mark.parametrize("status", [fx.DRAFT, fx.ACTIVE])
+def test_restoration_is_refused_for_a_plan_that_is_not_archived(app, client, status):
+    """A genuine, current reactivation token for a draft or active plan still
+    changes nothing: the locked row decides."""
     from app.services import fee_plan_tokens as tokens
 
     _admin(client, app)
     with app.app_context():
         actor = User.query.one()
-        row = fx.plan(actor, status=fx.ARCHIVED_STATUS, ever_activated=False, version=2)
-        fx.item(row, label="Course")
+        row = fx.plan(actor, status=status, version=2)
         pp = row.public_id
+        before = (row.status, row.version, row.updated_at, row.status_changed_at)
         token = tokens.make_token(tokens.PURPOSE_REACTIVATE, actor_public_id=actor.public_id,
-                                  plan_public_id=pp, plan_version=2, plan_status="archived")
-    fx.reactivate(client, pp, token=token)
-    assert "stays archived" in fx.page(client, fx.detail_url(pp))
+                                  plan_public_id=pp, plan_version=2, plan_status=status)
+    assert fx.reactivate(client, pp, token=token).status_code == 302
+    assert "Only an archived fee plan can be restored" in fx.page(client, fx.detail_url(pp))
     with app.app_context():
-        assert fx.stored_plan(pp).status == fx.ARCHIVED_STATUS
-        assert fx.stored_plan(pp).version == 2
+        row = fx.stored_plan(pp)
+        assert (row.status, row.version, row.updated_at, row.status_changed_at) == before
+
+
+def _archived_draft(app, email="boss@example.com"):
+    with app.app_context():
+        creator = User.query.filter_by(email=email).first() or fx.admin(email)
+        row = fx.plan(creator, status=fx.ARCHIVED_STATUS, ever_activated=False, version=2)
+        return row.public_id
+
+
+def _still_archived_draft(app, pp):
+    with app.app_context():
+        row = fx.stored_plan(pp)
+        return (row.status, row.version, row.first_activated_at) == (fx.ARCHIVED_STATUS, 2, None)
+
+
+def test_only_an_active_administrator_can_restore_an_archived_draft(app, client):
+    pp = _archived_draft(app)
+    response = client.post(fx.reactivate_url(pp), data={"confirm": "yes"})
+    assert response.status_code == 302 and "/auth/login" in response.headers["Location"]
+    for role in (UserRole.STUDENT.value, UserRole.TEACHER.value, UserRole.RESEARCHER.value):
+        email = f"{role}@example.com"
+        with app.app_context():
+            fx.user(email, role)
+        fx.login_as(client, email)
+        assert client.post(fx.reactivate_url(pp), data={"confirm": "yes"}).status_code == 403
+        assert client.get(fx.detail_url(pp)).status_code == 403
+    _admin(client, app, "late@example.com")
+    token = fx.token_from(client, fx.detail_url(pp), fx.reactivate_url(pp))
+    assert token
+    with app.app_context():
+        late = User.query.filter_by(email="late@example.com").one()
+        late.status = UserStatus.SUSPENDED.value
+        db.session.commit()
+    fx.fresh_identity()
+    response = fx.reactivate(client, pp, token=token)
+    assert response.status_code == 302 and "/auth/login" in response.headers["Location"]
+    assert _still_archived_draft(app, pp)
+
+
+def test_restoration_is_post_only_and_nested_to_a_real_plan(app, client):
+    pp = _archived_draft(app)
+    other_pp = _archived_draft(app)
+    _admin(client, app)
+    token = fx.token_from(client, fx.detail_url(pp), fx.reactivate_url(pp))
+    assert client.get(fx.reactivate_url(pp)).status_code == 405
+    with app.app_context():
+        internal = fx.stored_plan(pp).id
+    for bad in ("no-such-plan", str(internal), pp + "x"):
+        response = client.post(fx.reactivate_url(bad), data={fx.STATE_FIELD: token,
+                                                             "confirm": "yes"})
+        assert response.status_code == 404, bad
+    # This plan's token, aimed at another plan's URL, is stale there.
+    fx.reactivate(client, other_pp, token=token)
+    assert _still_archived_draft(app, pp) and _still_archived_draft(app, other_pp)
 
 
 def test_each_state_offers_exactly_its_own_controls(app, client):
@@ -637,10 +862,10 @@ def test_each_state_offers_exactly_its_own_controls(app, client):
         "draft": {"Activate plan", "Archive plan", "Add item", "Edit name", "Remove</button>"},
         "active": {"Archive plan"},
         "archived": {"Reactivate plan"},
-        "archived_draft": set(),
+        "archived_draft": {"Restore draft"},
     }
-    controls = {"Activate plan", "Archive plan", "Reactivate plan", "Add item", "Edit name",
-                "Remove</button>"}
+    controls = {"Activate plan", "Archive plan", "Reactivate plan", "Restore draft", "Add item",
+                "Edit name", "Remove</button>"}
     for key, pp in plans.items():
         html = fx.page(client, fx.detail_url(pp))
         assert {c for c in controls if c in html} == expected[key], key

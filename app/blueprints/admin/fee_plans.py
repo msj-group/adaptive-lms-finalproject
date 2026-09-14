@@ -30,9 +30,12 @@ and only a draft's items may be added, edited or removed. Activation needs
 a current signed activation token and at least one active item, and freezes
 the whole definition **permanently** -- from then on, archiving changes
 availability only and reactivation restores ``active`` without allowing any
-edit. A draft may be archived too; an archived plan is read-only, and only
-one that was active before may be reactivated. Nothing is ever deleted: a
-removed draft item stays as history.
+edit. A draft may be archived too. An archived plan is read-only until it is
+restored through ``.../reactivate``, and restoration follows its history
+(Phase 5 / M02R): a plan that was never activated returns to an editable
+``draft``, while a plan activated at least once returns to ``active`` and
+stays frozen. Nothing is ever deleted: a removed draft item stays as
+history.
 
 **Every mutation** is POST-only and CSRF-protected, carries a
 purpose-specific signed token (``app/services/fee_plan_tokens.py``), runs
@@ -194,15 +197,18 @@ _NOT_ACTIVATABLE_MESSAGE = (
     "Only a draft fee plan can be activated. An activated plan stays frozen for good."
 )
 _NOT_ARCHIVABLE_MESSAGE = "This fee plan is already archived."
-_NOT_REACTIVATABLE_MESSAGE = (
-    "Only an archived plan that was active before can be reactivated. A draft that was "
-    "archived before it was ever activated stays archived."
+_NOT_RESTORABLE_MESSAGE = (
+    "Only an archived fee plan can be restored. This plan is not archived, so nothing "
+    "was changed."
 )
 _ACTIVATE_CONFIRM_MESSAGE = (
     "Please tick the confirmation box before activating. Activation cannot be undone."
 )
 _ARCHIVE_CONFIRM_MESSAGE = "Please tick the confirmation box before archiving."
 _REACTIVATE_CONFIRM_MESSAGE = "Please tick the confirmation box before reactivating."
+_RESTORE_DRAFT_CONFIRM_MESSAGE = (
+    "Please tick the confirmation box before restoring this plan to a draft."
+)
 _NO_CHANGES_MESSAGE = "Nothing was changed, so nothing was saved."
 _CREATED_MESSAGE = (
     "Fee plan created as a draft. Add its items, then activate it when it is complete."
@@ -217,6 +223,10 @@ _ARCHIVED_MESSAGE = (
 )
 _REACTIVATED_MESSAGE = (
     "Fee plan reactivated. Its definition is unchanged and still cannot be edited."
+)
+_DRAFT_RESTORED_MESSAGE = (
+    "Draft restored. The plan is a draft again: its name, description and items can be "
+    "changed, and it can be activated when it is complete."
 )
 
 
@@ -370,9 +380,9 @@ def fee_plan_detail(plan_public_id):
     """One plan in full, with whichever controls its current state allows.
 
     A draft offers editing, item changes, activation and archiving; an
-    active plan offers archiving; an archived plan that was active before
-    offers reactivation; an archived draft offers nothing. A token is minted
-    only for a control that is shown.
+    active plan offers archiving; an archived plan offers restoration --
+    reactivation when it was activated before, a return to draft when it
+    never was. A token is minted only for a control that is shown.
     """
     plan = _plan_or_404(plan_public_id)
     view = build_plan_detail_view(plan, _tz_name())
@@ -398,7 +408,7 @@ def fee_plan_detail(plan_public_id):
         archive_token = tokens.make_token(
             tokens.PURPOSE_ARCHIVE, actor_public_id=actor_public_id, **state
         )
-    if plan.status == _ARCHIVED and plan.first_activated_at is not None:
+    if plan.status == _ARCHIVED:
         reactivate_token = tokens.make_token(
             tokens.PURPOSE_REACTIVATE, actor_public_id=actor_public_id, **state
         )
@@ -939,15 +949,34 @@ def fee_plan_archive(plan_public_id):
 @roles_required(_ADMINISTRATOR)
 @_financial_response
 def fee_plan_reactivate(plan_public_id):
-    """Restore ``active`` to an archived plan that was active before. Its
-    definition stays frozen; nothing becomes editable."""
+    """Restore an archived plan from its archive, to the state its history
+    allows (Phase 5 / M02R):
+
+    - a plan that was **never activated** returns to ``draft``: its name,
+      description and items become editable again and it may be activated
+      later. ``first_activated_*`` stays NULL and no item is required;
+    - a plan activated **at least once** returns to ``active``: its original
+      ``first_activated_*`` is kept exactly and its definition stays frozen.
+
+    Either way ``status_changed_*`` records the restoration and the aggregate
+    version moves exactly once. No item is locked: restoration neither reads
+    nor changes the item set.
+
+    The outcome is decided from the **locked** row. The token binds the
+    plan's version and status, and ``first_activated_at`` can only change
+    through activation, which moves the version -- so a current token always
+    leads to the outcome its page described.
+    """
     plan = _plan_or_404(plan_public_id)
     detail_url = _detail_url(plan_public_id)
     actor_id, actor_public_id = current_user.id, current_user.public_id
     token = request.form.get(_STATE_FIELD)
 
     if request.form.get("confirm") != "yes":
-        flash(_REACTIVATE_CONFIRM_MESSAGE, "warning")
+        if plan.first_activated_at is None:
+            flash(_RESTORE_DRAFT_CONFIRM_MESSAGE, "warning")
+        else:
+            flash(_REACTIVATE_CONFIRM_MESSAGE, "warning")
         return redirect(detail_url)
     if tokens.token_is_stale(
         token, tokens.PURPOSE_REACTIVATE, actor_public_id=actor_public_id, **_plan_state(plan)
@@ -964,11 +993,16 @@ def fee_plan_reactivate(plan_public_id):
         **_plan_state(locked),
     ):
         return _reject(_STALE_MESSAGE, detail_url, actor_id)
-    if locked.status != _ARCHIVED or locked.first_activated_at is None:
-        return _reject(_NOT_REACTIVATABLE_MESSAGE, detail_url, actor_id, "warning")
+    if locked.status != _ARCHIVED:
+        return _reject(_NOT_RESTORABLE_MESSAGE, detail_url, actor_id, "warning")
 
     moment = _write_moment()
-    locked.status = _ACTIVE
+    if locked.first_activated_at is None:
+        locked.status = _DRAFT
+        message = _DRAFT_RESTORED_MESSAGE
+    else:
+        locked.status = _ACTIVE
+        message = _REACTIVATED_MESSAGE
     locked.status_changed_at = moment
     locked.status_changed_by_id = actor_id
     locked.version = locked.version + 1
@@ -978,5 +1012,5 @@ def fee_plan_reactivate(plan_public_id):
     except IntegrityError:
         return _reject(_INTEGRITY_MESSAGE, detail_url, actor_id)
 
-    flash(_REACTIVATED_MESSAGE, "success")
+    flash(message, "success")
     return redirect(detail_url)

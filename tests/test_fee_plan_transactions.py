@@ -628,6 +628,120 @@ def test_an_item_removed_mid_request_cannot_be_edited(app, client, monkeypatch):
 
 
 # ===========================================================================
+# Phase 5 / M02R -- restoring archived plans
+# ===========================================================================
+
+
+def _archived(app, name, ever_activated, version=2):
+    with app.app_context():
+        actor = User.query.filter_by(email="admin@example.com").one()
+        row = fx.plan(actor, name=name, status=fx.ARCHIVED_STATUS,
+                      ever_activated=ever_activated, version=version)
+        fx.item(row, label="Course")
+        return row.public_id
+
+
+def _plan_snapshot(app, pp):
+    with app.app_context():
+        row = fx.stored_plan(pp)
+        return (row.status, row.version, row.updated_at, row.status_changed_at,
+                row.status_changed_by_id, row.first_activated_at, row.first_activated_by_id)
+
+
+@pytest.mark.parametrize("ever_activated", [False, True])
+def test_restoration_locks_only_the_actor_and_the_plan(app, client, monkeypatch, ever_activated):
+    _admin(client, app)
+    pp = _archived(app, "Locked", ever_activated)
+    token = fx.token_from(client, fx.detail_url(pp), fx.reactivate_url(pp))
+    requested = _record_lock_requests(monkeypatch)
+    response = fx.reactivate(client, pp, token=token)
+    locked = requested[:]
+    monkeypatch.undo()
+    assert response.status_code == 302
+    assert locked == ["users", "fee_plans"]
+    with app.app_context():
+        assert fx.stored_plan(pp).status == (fx.ACTIVE if ever_activated else fx.DRAFT)
+
+
+@pytest.mark.parametrize("ever_activated", [False, True])
+@pytest.mark.parametrize(
+    "kind",
+    ["missing", "forged", "stale", "wrong_purpose", "tampered", "cross_plan", "other_actor",
+     "expired"],
+)
+def test_restoration_refuses_every_token_but_a_current_one(
+    app, client, monkeypatch, ever_activated, kind
+):
+    _admin(client, app)
+    pp = _archived(app, "Target", ever_activated)
+    other_pp = _archived(app, "Other", ever_activated)
+    with app.app_context():
+        actor = User.query.filter_by(email="admin@example.com").one()
+        second = fx.admin("second@example.com")
+        state = {"actor_public_id": actor.public_id, "plan_public_id": pp, "plan_version": 2,
+                 "plan_status": fx.ARCHIVED_STATUS}
+        genuine = tokens.make_token(tokens.PURPOSE_REACTIVATE, **state)
+        middle = len(genuine) // 2
+        token = {
+            "missing": "",
+            "forged": "forged",
+            "stale": tokens.make_token(tokens.PURPOSE_REACTIVATE, **dict(state, plan_version=1)),
+            "wrong_purpose": tokens.make_token(tokens.PURPOSE_ARCHIVE, **state),
+            "tampered": genuine[:middle] + ("A" if genuine[middle] != "A" else "B")
+            + genuine[middle + 1:],
+            "cross_plan": tokens.make_token(tokens.PURPOSE_REACTIVATE,
+                                            **dict(state, plan_public_id=other_pp)),
+            "other_actor": tokens.make_token(tokens.PURPOSE_REACTIVATE,
+                                             **dict(state, actor_public_id=second.public_id)),
+            "expired": genuine,
+        }[kind]
+    before = _plan_snapshot(app, pp)
+    other_before = _plan_snapshot(app, other_pp)
+    if kind == "expired":
+        monkeypatch.setattr(tokens, "TOKEN_MAX_AGE_SECONDS", -1)
+    response = fx.reactivate(client, pp, token=token)
+    monkeypatch.undo()
+    assert response.status_code == 302
+    assert fx.STALE_TEXT in fx.page(client, fx.detail_url(pp))
+    assert _plan_snapshot(app, pp) == before
+    assert _plan_snapshot(app, other_pp) == other_before
+
+
+def test_a_replayed_restoration_token_moves_the_version_exactly_once(app, client):
+    _admin(client, app)
+    pp = _archived(app, "Replay", ever_activated=False)
+    token = fx.token_from(client, fx.detail_url(pp), fx.reactivate_url(pp))
+    assert fx.reactivate(client, pp, token=token).status_code == 302
+    assert fx.archive(client, pp).status_code == 302
+    fx.reactivate(client, pp, token=token)
+    with app.app_context():
+        row = fx.stored_plan(pp)
+        assert (row.status, row.version) == (fx.ARCHIVED_STATUS, 4)
+
+
+def test_a_restoration_made_elsewhere_mid_request_is_not_applied_twice(app, client, monkeypatch):
+    actor_id = _admin(client, app)
+    pp = _archived(app, "Contested", ever_activated=False)
+    token = fx.token_from(client, fx.detail_url(pp), fx.reactivate_url(pp))
+
+    def restored_elsewhere():
+        from datetime import datetime
+        moment = datetime(2026, 5, 6, 9, 0, 0)
+        db.session.execute(update(FeePlan).where(FeePlan.public_id == pp).values(
+            status="draft", status_changed_at=moment, status_changed_by_id=actor_id,
+            version=3, updated_at=moment))
+
+    _inject_before_locks(monkeypatch, restored_elsewhere)
+    response = fx.reactivate(client, pp, token=token)
+    monkeypatch.undo()
+    assert response.status_code == 302
+    assert fx.STALE_TEXT in fx.page(client, fx.detail_url(pp))
+    with app.app_context():
+        row = fx.stored_plan(pp)
+        assert (row.status, row.version) == (fx.DRAFT, 3)
+
+
+# ===========================================================================
 # IntegrityError recovery
 # ===========================================================================
 
@@ -692,6 +806,25 @@ def test_recovery_re_authorizes_from_current_state(app, client, monkeypatch):
     assert response.status_code == 404
     with app.app_context():
         assert fx.stored_plan(pp).status == fx.DRAFT
+
+
+@pytest.mark.parametrize("ever_activated", [False, True])
+def test_a_restoration_integrity_error_is_rolled_back_and_reported_generically(
+    app, client, monkeypatch, ever_activated
+):
+    _admin(client, app)
+    pp = _archived(app, "Fragile", ever_activated)
+    token = fx.token_from(client, fx.detail_url(pp), fx.reactivate_url(pp))
+    before = _plan_snapshot(app, pp)
+    monkeypatch.setattr(routes.db.session, "commit", _failing_commit)
+    response = fx.reactivate(client, pp, token=token)
+    monkeypatch.undo()
+    assert response.status_code == 302
+    html = fx.page(client, response.headers["Location"])
+    assert fx.INTEGRITY_TEXT in html
+    for leaked in ("Duplicate entry", "IntegrityError", "INSERT"):
+        assert leaked not in html, leaked
+    assert _plan_snapshot(app, pp) == before
 
 
 def test_a_real_unique_name_race_reaches_the_database_and_is_handled(app, client, monkeypatch):

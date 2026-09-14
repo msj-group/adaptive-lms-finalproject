@@ -19,6 +19,7 @@ import pathlib
 import re
 import tempfile
 
+import pytest
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
@@ -32,6 +33,9 @@ from app.models import FeePlan, FeePlanItem, FeePlanItemKind, FeePlanItemStatus,
 _MIGRATIONS = pathlib.Path(__file__).resolve().parents[1] / "migrations" / "versions"
 _REVISION = "b7c3e9a15d42"
 _DOWN_REVISION = "d2b7e6a4c519"
+#: Phase 5 / M02R's correction revision, which follows this one.
+_CORRECTION = "e4a1c6b9d273"
+_LIFECYCLE = "ck_fee_plans_lifecycle_state"
 
 _PLANS = "fee_plans"
 _ITEMS = "fee_plan_items"
@@ -150,7 +154,8 @@ def test_revision_identifiers_and_one_linear_head():
         down = re.search(r"^down_revision = (?:'([^']+)'|None)", source, re.M).group(1)
         revisions.add(revision)
         parents[revision] = down
-    assert revisions - {p for p in parents.values() if p is not None} == {_REVISION}
+    # Phase 5 / M02R follows this revision, so the single head is now M02R's.
+    assert revisions - {p for p in parents.values() if p is not None} == {_CORRECTION}
     claimed = [p for p in parents.values() if p is not None]
     assert len(claimed) == len(set(claimed))
     assert len([r for r, p in parents.items() if p is None]) == 1
@@ -436,17 +441,21 @@ def test_the_models_and_migration_agree_on_both_tables(app):
 
 
 def test_the_models_check_expressions_match_the_migrations():
+    """Every model CHECK is the one ``b7c3e9a15d42`` wrote -- except the
+    lifecycle CHECK, which Phase 5 / M02R replaced in ``e4a1c6b9d273``."""
     _, source = _load_migration()
     flat = _flat(source)
+    _, correction_source = _load_correction()
+    correction_flat = _flat(correction_source)
     for model, table in ((FeePlan, _PLANS), (FeePlanItem, _ITEMS)):
-        checks = {
-            constraint.name: " ".join(str(constraint.sqltext).split())
-            for constraint in model.__table__.constraints
-            if isinstance(constraint, sa.CheckConstraint)
-        }
+        checks = _model_checks(model)
         assert set(checks) == _EXPECTED_CHECKS[table]
-        for expression in checks.values():
-            assert expression in flat, expression
+        for name, expression in checks.items():
+            if name == _LIFECYCLE:
+                assert expression in correction_flat, expression
+                assert expression not in flat, expression
+            else:
+                assert expression in flat, expression
 
 
 def test_mysql_ddl_compiles_without_a_connection():
@@ -459,6 +468,9 @@ def test_mysql_ddl_compiles_without_a_connection():
     assert "FOREIGN KEY(status_changed_by_id) REFERENCES users (id)" in plans
     assert "CONSTRAINT uq_fee_plans_name UNIQUE (name)" in plans
     assert "CONSTRAINT ck_fee_plans_currency_code CHECK (currency_code = 'LYD')" in plans
+    # The corrected (M02R) lifecycle CHECK, and not M02's.
+    assert f"CONSTRAINT {_LIFECYCLE} CHECK ({_model_lifecycle_sql()})" in " ".join(plans.split())
+    assert "first_activated_at IS NULL AND status_changed_at IS NULL" not in plans
     assert "amount DECIMAL(19, 4) NOT NULL" in items
     assert "FOREIGN KEY(fee_plan_id) REFERENCES fee_plans (id)" in items
     assert "FOREIGN KEY(removed_by_id) REFERENCES users (id)" in items
@@ -522,3 +534,330 @@ def test_the_offline_mysql_downgrade_drops_only_the_two_tables_child_first():
 def test_the_new_tables_use_the_deployment_engine_and_charset():
     assert FeePlan.__table__.kwargs == {}
     assert FeePlanItem.__table__.kwargs == {}
+
+
+# ===========================================================================
+# Phase 5 / M02R -- the lifecycle CHECK correction (e4a1c6b9d273)
+# ===========================================================================
+#
+# The correction rebuilds ``fee_plans`` on SQLite. ``fee_plan_items``
+# references that table, so the rebuild runs with foreign-key enforcement
+# switched off outside any transaction and back on afterwards -- SQLite's
+# documented table-rebuild procedure -- and every test proves enforcement is
+# on again and every reference still resolves.
+
+_T2 = "'2026-05-03 09:00:00'"
+
+_M02_PLANS = (
+    f"(1, 'p-1', 'Draft plan', NULL, 'LYD', 'draft', 11, NULL, NULL, NULL, NULL, 2,"
+    f" {_T0}, {_T0}),"
+    f" (2, 'p-2', 'Active plan', 'Text', 'LYD', 'active', 11, {_T1}, 11, {_T1}, 11, 3,"
+    f" {_T0}, {_T1}),"
+    f" (3, 'p-3', 'Archived draft', NULL, 'LYD', 'archived', 11, NULL, NULL, {_T1}, 12, 2,"
+    f" {_T0}, {_T1}),"
+    f" (4, 'p-4', 'Archived active', NULL, 'LYD', 'archived', 11, {_T1}, 11, {_T2}, 12, 4,"
+    f" {_T0}, {_T2})"
+)
+_M02_ITEMS = (
+    f"(1, 'i-1', 1, 'registration', 'Registration', 0.001, 'active', NULL, NULL, 1,"
+    f" {_T0}, {_T0}),"
+    f" (2, 'i-2', 1, 'course', 'Old course', 99999.999, 'removed', {_T1}, 11, 2, {_T0}, {_T1}),"
+    f" (3, 'i-3', 2, 'course', 'Course', 1250.5, 'active', NULL, NULL, 1, {_T0}, {_T0}),"
+    f" (4, 'i-4', 3, 'course', 'Course', 10, 'active', NULL, NULL, 1, {_T0}, {_T0}),"
+    f" (5, 'i-5', 4, 'registration', 'Registration', 75.25, 'active', NULL, NULL, 1,"
+    f" {_T0}, {_T0})"
+)
+#: A draft restored from its archive: never activated, one historical
+#: transition. Refused by M02's CHECK, accepted by the correction's.
+_RESTORED_DRAFT = _PLAN_INSERT + (
+    f"(10, 'p-10', 'Restored draft', NULL, 'LYD', 'draft', 11, NULL, NULL, {_T2}, 12, 3,"
+    f" {_T0}, {_T2})"
+)
+#: Rows the corrected schema must still refuse, with the rule each proves.
+_STILL_REFUSED = (
+    (f"(20, 'p-20', 'X20', NULL, 'LYD', 'draft', 11, {_T1}, 11, {_T1}, 11, 2, {_T0}, {_T1})",
+     "a draft with a first activation"),
+    (f"(21, 'p-21', 'X21', NULL, 'LYD', 'draft', 11, {_T1}, 11, NULL, NULL, 2, {_T0}, {_T1})",
+     "a draft with a first activation and no transition"),
+    (f"(22, 'p-22', 'X22', NULL, 'LYD', 'active', 11, NULL, NULL, {_T1}, 11, 2, {_T0}, {_T1})",
+     "an active plan never activated"),
+    (f"(23, 'p-23', 'X23', NULL, 'LYD', 'active', 11, {_T1}, 11, NULL, NULL, 2, {_T0}, {_T1})",
+     "an active plan without a transition"),
+    (f"(24, 'p-24', 'X24', NULL, 'LYD', 'active', 11, {_T2}, 11, {_T1}, 11, 2, {_T0}, {_T2})",
+     "an active transition before the first activation"),
+    (f"(25, 'p-25', 'X25', NULL, 'LYD', 'archived', 11, NULL, NULL, NULL, NULL, 2,"
+     f" {_T0}, {_T0})", "an archived plan without a transition"),
+    (f"(26, 'p-26', 'X26', NULL, 'LYD', 'archived', 11, {_T2}, 11, {_T1}, 11, 2,"
+     f" {_T0}, {_T2})", "an archive before the first activation"),
+    (f"(27, 'p-27', 'X27', NULL, 'LYD', 'draft', 11, NULL, NULL, {_T2}, NULL, 2, {_T0}, {_T2})",
+     "a restoration without its actor"),
+    (f"(28, 'p-28', 'X28', NULL, 'LYD', 'draft', 11, NULL, NULL, {_T2}, 11, 2, {_T0}, {_T1})",
+     "a restored draft updated before its restoration"),
+    (f"(29, 'p-29', 'X29', NULL, 'EUR', 'draft', 11, NULL, NULL, NULL, NULL, 1, {_T0}, {_T0})",
+     "the currency CHECK"),
+    (f"(30, 'p-30', 'X30', NULL, 'LYD', 'draft', 11, NULL, NULL, NULL, NULL, 0, {_T0}, {_T0})",
+     "the version CHECK"),
+    (f"(31, 'p-31', 'Draft plan', NULL, 'LYD', 'draft', 11, NULL, NULL, NULL, NULL, 1,"
+     f" {_T0}, {_T0})", "uq_fee_plans_name"),
+    (f"(32, 'p-32', 'X32', NULL, 'LYD', 'draft', 99, NULL, NULL, NULL, NULL, 1, {_T0}, {_T0})",
+     "the created_by foreign key"),
+)
+
+
+def _load_correction():
+    path = next(p for p in _MIGRATIONS.glob("*.py") if _CORRECTION in p.name)
+    spec = importlib.util.spec_from_file_location(f"p5m02r_{_CORRECTION}", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module, path.read_text(encoding="utf-8")
+
+
+def _model_checks(model):
+    return {
+        constraint.name: " ".join(str(constraint.sqltext).split())
+        for constraint in model.__table__.constraints
+        if isinstance(constraint, sa.CheckConstraint)
+    }
+
+
+def _model_lifecycle_sql():
+    return _model_checks(FeePlan)[_LIFECYCLE]
+
+
+def _rows(conn, table):
+    return conn.execute(sa.text(f"SELECT * FROM {table} ORDER BY id")).fetchall()
+
+
+def _table_sql(conn, table):
+    sql = conn.execute(
+        sa.text("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = :t"), {"t": table}
+    ).scalar_one()
+    return " ".join(sql.split())
+
+
+def _run_correction(conn, direction):
+    """Run the correction the way SQLite's table-rebuild procedure requires:
+    enforcement off outside any transaction, on again afterwards -- proved
+    on, with every reference still resolving."""
+    module, _ = _load_correction()
+    conn.commit()
+    conn.execute(sa.text("PRAGMA foreign_keys=OFF"))
+    try:
+        with Operations.context(MigrationContext.configure(conn)):
+            getattr(module, direction)()
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.execute(sa.text("PRAGMA foreign_keys=ON"))
+    assert conn.execute(sa.text("PRAGMA foreign_keys")).scalar() == 1
+    assert conn.execute(sa.text("PRAGMA foreign_key_check")).fetchall() == []
+
+
+def _seeded_probe(name):
+    tmp, engine, conn = _probe(name)
+    _run(conn, "upgrade")
+    conn.execute(sa.text(_PLAN_INSERT + _M02_PLANS))
+    conn.execute(sa.text(_ITEM_INSERT + _M02_ITEMS))
+    conn.commit()
+    return tmp, engine, conn
+
+
+def test_the_correction_revision_follows_m02_and_is_the_single_head():
+    module, _ = _load_correction()
+    assert (module.revision, module.down_revision) == (_CORRECTION, _REVISION)
+    assert module.branch_labels is None and module.depends_on is None
+    parents = {}
+    for path in _MIGRATIONS.glob("*.py"):
+        source = path.read_text(encoding="utf-8")
+        revision = re.search(r"^revision = '([^']+)'", source, re.M).group(1)
+        parents[revision] = re.search(
+            r"^down_revision = (?:'([^']+)'|None)", source, re.M
+        ).group(1)
+    assert set(parents) - {p for p in parents.values() if p is not None} == {_CORRECTION}
+    assert [r for r, p in parents.items() if p == _REVISION] == [_CORRECTION]
+
+
+def test_the_correction_replaces_only_the_lifecycle_check():
+    module, source = _load_correction()
+    code = _code(source)
+    assert set(re.findall(r"\b(op\.\w+|batch_op\.\w+)\(", code)) == {
+        "op.get_bind",
+        "op.get_context",
+        "op.batch_alter_table",
+        "batch_op.alter_column",
+        "op.drop_constraint",
+        "op.create_check_constraint",
+    }
+    assert re.findall(r"op\.drop_constraint\(([^)]*)\)", code) == [
+        "_LIFECYCLE_CHECK_NAME, 'fee_plans', type_='check'"
+    ]
+    assert re.findall(r"op\.create_check_constraint\(([^)]*)\)", code) == [
+        "_LIFECYCLE_CHECK_NAME, 'fee_plans', lifecycle_sql"
+    ]
+    assert re.findall(r"batch_alter_table\(\s*'([^']+)'", code) == ["fee_plans"]
+    assert module._LIFECYCLE_CHECK_NAME == _LIFECYCLE
+    for forbidden in ("INSERT", "UPDATE ", "DELETE", "server_default", "ondelete", "onupdate",
+                      "mysql_engine", "mysql_charset", "DECIMAL", "Numeric", "sa.Enum"):
+        assert forbidden not in code, forbidden
+    # The one read the revision issues is the downgrade's refusal count.
+    assert re.findall(r"SELECT[^\"]*", code) == ["SELECT COUNT(*) FROM fee_plans"]
+
+
+def test_the_correction_widens_only_the_draft_branch():
+    module, _ = _load_correction()
+    _, m02_source = _load_migration()
+    assert module._LIFECYCLE_AFTER == _model_lifecycle_sql()
+    assert module._LIFECYCLE_BEFORE in _flat(m02_source)
+    before = module._LIFECYCLE_BEFORE.split(" OR (status = ")
+    after = module._LIFECYCLE_AFTER.split(" OR (status = ")
+    assert before[1:] == after[1:]
+    assert len(after) == 3
+    assert before[0] == (
+        "(status = 'draft' AND first_activated_at IS NULL AND status_changed_at IS NULL)"
+    )
+    assert after[0] == "(status = 'draft' AND first_activated_at IS NULL)"
+
+
+def test_the_rebuild_definition_is_exactly_the_model_table():
+    module, _ = _load_correction()
+
+    def ddl_lines(table):
+        if "users" not in table.metadata.tables:
+            sa.Table("users", table.metadata, sa.Column("id", sa.BigInteger(), primary_key=True))
+        ddl = str(CreateTable(table).compile(dialect=mysql.dialect()))
+        return {line.strip().rstrip(",").strip() for line in ddl.splitlines()} - {"", ")"}
+
+    def index_shape(table):
+        return {(index.name, tuple(c.name for c in index.columns)) for index in table.indexes}
+
+    after = module._fee_plans_table(module._LIFECYCLE_AFTER)
+    before = module._fee_plans_table(module._LIFECYCLE_BEFORE)
+    assert ddl_lines(after) == ddl_lines(FeePlan.__table__)
+    assert index_shape(after) == index_shape(before) == index_shape(FeePlan.__table__)
+    assert ddl_lines(before) ^ ddl_lines(after) == {
+        f"CONSTRAINT {_LIFECYCLE} CHECK ({module._LIFECYCLE_BEFORE})",
+        f"CONSTRAINT {_LIFECYCLE} CHECK ({module._LIFECYCLE_AFTER})",
+    }
+
+
+def test_the_correction_applies_and_reverses_preserving_every_m02_row():
+    module, _ = _load_correction()
+    tmp, engine, conn = _seeded_probe("correction.db")
+    try:
+        existing = _existing_rows(conn)
+        plans, items = _rows(conn, "fee_plans"), _rows(conn, "fee_plan_items")
+        assert [row[5] for row in plans] == ["draft", "active", "archived", "archived"]
+        shapes = [_shape(conn, table) for table in _NEW_TABLES]
+        items_sql = _table_sql(conn, "fee_plan_items")
+        assert module._LIFECYCLE_BEFORE in _table_sql(conn, "fee_plans")
+        _refused(conn, _RESTORED_DRAFT, "M02's lifecycle CHECK")
+
+        _run_correction(conn, "upgrade")
+        assert [_shape(conn, table) for table in _NEW_TABLES] == shapes
+        assert _rows(conn, "fee_plans") == plans
+        assert _rows(conn, "fee_plan_items") == items
+        assert _existing_rows(conn) == existing
+        assert _table_sql(conn, "fee_plan_items") == items_sql
+        corrected = _table_sql(conn, "fee_plans")
+        assert module._LIFECYCLE_AFTER in corrected
+        assert module._LIFECYCLE_BEFORE not in corrected
+        for expression in _model_checks(FeePlan).values():
+            assert expression in corrected, expression
+        assert "_alembic_tmp_fee_plans" not in inspect(conn).get_table_names()
+
+        conn.execute(sa.text(_RESTORED_DRAFT))
+        conn.commit()
+        for values, rule in _STILL_REFUSED:
+            _refused(conn, _PLAN_INSERT + values, rule)
+        _refused(conn, _ITEM_INSERT + f"(9, 'i-9', 1, 'course', 'X', 0, 'active', NULL, NULL,"
+                 f" 1, {_T0}, {_T0})", "the item amount CHECK")
+        _refused(conn, _ITEM_INSERT + f"(9, 'i-9', 99, 'course', 'X', 5, 'active', NULL, NULL,"
+                 f" 1, {_T0}, {_T0})", "the fee_plan foreign key after the rebuild")
+        _refused(conn, "DELETE FROM fee_plans WHERE id = 1", "no cascade to a rebuilt plan's items")
+        _refused(conn, "DELETE FROM users WHERE id = 11", "no cascade from an account")
+        with_restored = _rows(conn, "fee_plans")
+
+        # The downgrade refuses while a restored draft exists, before
+        # touching anything.
+        with pytest.raises(RuntimeError, match="Refusing to downgrade"):
+            _run_correction(conn, "downgrade")
+        assert _rows(conn, "fee_plans") == with_restored
+        assert module._LIFECYCLE_AFTER in _table_sql(conn, "fee_plans")
+
+        # With only rows valid under M02, the downgrade restores M02 exactly.
+        conn.execute(sa.text("DELETE FROM fee_plans WHERE id = 10"))
+        conn.commit()
+        _run_correction(conn, "downgrade")
+        assert [_shape(conn, table) for table in _NEW_TABLES] == shapes
+        assert _rows(conn, "fee_plans") == plans
+        assert _rows(conn, "fee_plan_items") == items
+        assert _existing_rows(conn) == existing
+        assert module._LIFECYCLE_BEFORE in _table_sql(conn, "fee_plans")
+        _refused(conn, _RESTORED_DRAFT, "the restored M02 lifecycle CHECK")
+
+        # And the round trip really is one. The CREATE TABLE text is compared
+        # semantically, not byte for byte: a second batch rebuild may list
+        # the same constraints in a different order.
+        _run_correction(conn, "upgrade")
+        assert [_shape(conn, table) for table in _NEW_TABLES] == shapes
+        assert _rows(conn, "fee_plans") == plans
+        assert _rows(conn, "fee_plan_items") == items
+        again = _table_sql(conn, "fee_plans")
+        assert module._LIFECYCLE_AFTER in again and module._LIFECYCLE_BEFORE not in again
+        for expression in _model_checks(FeePlan).values():
+            assert expression in again, expression
+        assert len(again) == len(corrected)
+    finally:
+        conn.close()
+        engine.dispose()
+        tmp.cleanup()
+
+
+def test_the_sqlite_rebuild_refuses_to_run_under_enforced_foreign_keys():
+    module, _ = _load_correction()
+    tmp, engine, conn = _seeded_probe("enforced.db")
+    try:
+        plans = _rows(conn, "fee_plans")
+        assert conn.execute(sa.text("PRAGMA foreign_keys")).scalar() == 1
+        with pytest.raises(RuntimeError, match="PRAGMA foreign_keys=OFF"):
+            with Operations.context(MigrationContext.configure(conn)):
+                module.upgrade()
+        conn.rollback()
+        assert module._LIFECYCLE_BEFORE in _table_sql(conn, "fee_plans")
+        assert _rows(conn, "fee_plans") == plans
+        assert "_alembic_tmp_fee_plans" not in inspect(conn).get_table_names()
+    finally:
+        conn.close()
+        engine.dispose()
+        tmp.cleanup()
+
+
+def _offline_mysql_correction(direction):
+    module, _ = _load_correction()
+    buffer = io.StringIO()
+    context = MigrationContext.configure(
+        dialect_name="mysql", opts={"as_sql": True, "output_buffer": buffer}
+    )
+    with Operations.context(context):
+        getattr(module, direction)()
+    return " ".join(buffer.getvalue().split())
+
+
+@pytest.mark.parametrize("direction, attribute", [("upgrade", "_LIFECYCLE_AFTER"),
+                                                  ("downgrade", "_LIFECYCLE_BEFORE")])
+def test_the_offline_mysql_correction_only_drops_and_re_adds_the_lifecycle_check(
+    direction, attribute
+):
+    module, _ = _load_correction()
+    sql = _offline_mysql_correction(direction)
+    drop = f"ALTER TABLE fee_plans DROP CHECK {_LIFECYCLE}"
+    add = (f"ALTER TABLE fee_plans ADD CONSTRAINT {_LIFECYCLE}"
+           f" CHECK ({getattr(module, attribute)})")
+    assert sql.index(drop) < sql.index(add)
+    assert sql.count("ALTER TABLE") == 2
+    for forbidden in ("CREATE TABLE", "DROP TABLE", "INDEX", "fee_plan_items", "INSERT",
+                      "UPDATE ", "DELETE", "FOREIGN KEY", "UNIQUE", "SELECT", "ENGINE=",
+                      "CHARSET", "RENAME"):
+        assert forbidden not in sql, forbidden

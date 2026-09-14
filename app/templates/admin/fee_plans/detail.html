@@ -5,9 +5,10 @@
 <div class="ds-page">
   {#- Phase 5 / M02. One fee plan in full, with whichever controls its state
       allows. A DRAFT offers editing, item changes, activation and archiving; an
-      ACTIVE plan offers archiving only; an ARCHIVED plan that was active before
-      offers reactivation; an archived draft offers nothing. Each control carries
-      its own signed token, minted only when the control is shown.
+      ACTIVE plan offers archiving only; an ARCHIVED plan offers restoration
+      (Phase 5 / M02R): a plan that was active before is reactivated and stays
+      frozen, and a plan that never was is restored to an editable draft. Each
+      control carries its own signed token, minted only when the control is shown.
 
       Amounts and the total are exact Decimal text formatted by the server. The
       description and every label are plain text: Jinja's autoescaping is what
@@ -136,11 +137,12 @@
 
   {% if plan.is_archived %}
   <div class="alert alert--warning" style="margin-top: var(--space-4)">
-    {% if reactivate_token %}
+    {% if plan.frozen %}
     This plan is archived and unavailable. It can be reactivated, and its definition stays
     exactly as it was.
     {% else %}
-    This plan was archived before it was ever activated. It stays archived and read-only.
+    This plan was archived before it was ever activated. It is read-only while archived, and
+    it can be restored to an editable draft.
     {% endif %}
   </div>
   {% endif %}
@@ -166,18 +168,31 @@
 
   {% if reactivate_token %}
   <div class="card" style="margin-top: var(--space-4)">
+    {% if plan.frozen %}
     <div class="card__title">Reactivate this plan</div>
     <div class="card__body">
-      Reactivation makes the plan available again. Nothing about it becomes editable.
+      Reactivation makes the plan active and available again. It was activated before, so its
+      name, items and amounts stay frozen and nothing becomes editable.
     </div>
+    {% else %}
+    <div class="card__title">Restore this plan to a draft</div>
+    <div class="card__body">
+      This plan was never activated. Restoring it makes it a draft again: its name, description
+      and items become editable, and it can be activated later. It is not activated by restoring.
+    </div>
+    {% endif %}
     <form method="post" action="{{ url_for('admin.fee_plan_reactivate', plan_public_id=plan.public_id) }}" style="margin-top: var(--space-3)">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="{{ state_field }}" value="{{ reactivate_token }}">
       <label class="field__label" style="display: flex; align-items: center; gap: var(--space-2)">
         <input type="checkbox" name="confirm" value="yes">
-        Make this plan available again.
+        {% if plan.frozen %}Make this plan active again, unchanged.{% else %}Return this plan to draft.{% endif %}
       </label>
+      {% if plan.frozen %}
       <button type="submit" class="btn btn--primary" style="margin-top: var(--space-3)">Reactivate plan</button>
+      {% else %}
+      <button type="submit" class="btn btn--primary" style="margin-top: var(--space-3)">Restore draft</button>
+      {% endif %}
     </form>
   </div>
   {% endif %}
@@ -187,8 +202,8 @@
     <div class="card__title">Archive this plan</div>
     <div class="card__body">
       {% if plan.is_draft %}
-      Archiving a draft keeps it as a read-only record. A draft archived before it was ever
-      activated cannot be reactivated, and its name stays taken.
+      Archiving a draft makes it read-only. It can be restored to a draft later, and its name
+      stays taken while it is archived.
       {% else %}
       Archiving makes the plan unavailable. Its items and amounts do not change, and it can be
       reactivated later.

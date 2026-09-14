@@ -105,12 +105,18 @@ _STATUS_CHANGE_PAIR_SQL = (
 )
 
 #: The lifecycle truth table, proved by the database rather than promised
-#: by the application. A draft has never been activated and never changed
-#: state; an active plan has been activated, and its latest transition is
-#: no earlier than that; an archived plan has a transition, and was either
+#: by the application. A draft has never been activated -- though it may
+#: carry a historical transition, once it has been archived and restored;
+#: an active plan has been activated, and its latest transition is no
+#: earlier than that; an archived plan has a transition, and was either
 #: never activated or archived no earlier than its first activation.
+#:
+#: Phase 5 / M02R widened only the draft branch (revision
+#: ``e4a1c6b9d273``): M02 also required a draft's ``status_changed_at`` to
+#: be NULL, which made restoring an archived draft impossible without
+#: erasing its history.
 _LIFECYCLE_STATE_SQL = (
-    "(status = 'draft' AND first_activated_at IS NULL AND status_changed_at IS NULL)"
+    "(status = 'draft' AND first_activated_at IS NULL)"
     " OR (status = 'active' AND first_activated_at IS NOT NULL"
     " AND status_changed_at IS NOT NULL AND status_changed_at >= first_activated_at)"
     " OR (status = 'archived' AND status_changed_at IS NOT NULL"
@@ -141,8 +147,10 @@ class FeePlan(db.Model):
     once, and from then on the plan and its items are frozen **forever**:
     archiving changes availability only, and reactivating restores
     ``active`` without permitting any edit. A different fee structure is a
-    new plan. A draft may also be archived, and an archived plan is
-    read-only whatever its history.
+    new plan. A draft may also be archived. An archived plan is read-only
+    until it is restored, and restoration follows its history: a plan that
+    was never activated returns to ``draft`` and is editable again, while a
+    plan activated at least once returns to ``active`` and stays frozen.
 
     **Nothing is ever physically deleted.** There is no delete route, no
     ``cascade`` and no ``ondelete``; every foreign key is a plain reference.
@@ -158,7 +166,7 @@ class FeePlan(db.Model):
 
     **Attribution.** ``created_by_id`` is set once. ``first_activated_*``
     records the freeze. ``status_changed_*`` records the most recent
-    lifecycle transition (activate, archive or reactivate). None of them
+    lifecycle transition (activate, archive or restore). None of them
     is an authorization fact: a foreign key into ``users`` proves the row
     exists, never that it is still an active Administrator, so every write
     re-reads the *acting* account under its lock.
@@ -312,6 +320,12 @@ class FeePlan(db.Model):
         return self.first_activated_at is not None
 
     @property
+    def restores_to_draft(self):
+        """An archived plan that was never activated restores to ``draft``."""
+        return self.is_archived and not self.has_been_activated
+
+    @property
     def can_be_reactivated(self):
-        """Only an archived plan that was active before may be reactivated."""
+        """An archived plan activated at least once restores to ``active``,
+        and stays frozen."""
         return self.is_archived and self.has_been_activated

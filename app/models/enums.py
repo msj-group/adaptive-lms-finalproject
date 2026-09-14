@@ -456,9 +456,10 @@ class FeePlanStatus(str, enum.Enum):
     - ``active`` -- available for later use. Its financial definition --
       the plan and every item -- is frozen **permanently** from the first
       activation onward.
-    - ``archived`` -- unavailable and read-only. A plan that was ever
-      activated may be reactivated and stays frozen; a draft archived
-      before it was ever activated stays archived.
+    - ``archived`` -- unavailable and read-only until restored. A plan
+      that was ever activated is restored to ``active`` and stays frozen;
+      a draft archived before it was ever activated is restored to
+      ``draft`` and becomes editable again (Phase 5 / M02R).
 
     There is no ``deleted`` member and no placeholder for one: nothing in
     the fee plan catalogue is ever physically deleted. Adding a member is
