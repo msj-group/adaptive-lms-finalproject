@@ -7,6 +7,9 @@ from app.models.enums import (
     AttendanceStatus,
     CalendarEventStatus,
     DiscussionTopicStatus,
+    FeePlanItemKind,
+    FeePlanItemStatus,
+    FeePlanStatus,
     FileAccessAction,
     FileCategory,
     GradeSourceKind,
@@ -109,6 +112,16 @@ from app.models.discussion_topic import (
     DiscussionTopic,
 )
 from app.models.discussion_reply import DiscussionReply
+from app.models.fee_plan import (
+    FEE_PLAN_DESCRIPTION_MAX_LENGTH,
+    FEE_PLAN_NAME_MAX_LENGTH,
+    FeePlan,
+)
+from app.models.fee_plan_item import (
+    FEE_PLAN_ITEM_LABEL_MAX_LENGTH,
+    MAX_ACTIVE_FEE_PLAN_ITEMS,
+    FeePlanItem,
+)
 
 __all__ = [
     "User",
@@ -208,4 +221,13 @@ __all__ = [
     "DiscussionReply",
     "DISCUSSION_TITLE_MAX_LENGTH",
     "DISCUSSION_BODY_MAX_LENGTH",
+    "FeePlanStatus",
+    "FeePlanItemKind",
+    "FeePlanItemStatus",
+    "FeePlan",
+    "FEE_PLAN_NAME_MAX_LENGTH",
+    "FEE_PLAN_DESCRIPTION_MAX_LENGTH",
+    "FeePlanItem",
+    "FEE_PLAN_ITEM_LABEL_MAX_LENGTH",
+    "MAX_ACTIVE_FEE_PLAN_ITEMS",
 ]

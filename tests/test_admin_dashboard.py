@@ -218,6 +218,11 @@ def test_other_disabled_nav_items_remain_disabled(app, client):
     assert "Soon" in html
     assert 'href="/admin/attendance"' in html
     assert 'href="/admin/grades"' in html
+    # Phase 5 / M02 added the Fee Plans catalogue beside them. Payments stays
+    # disabled -- visibly, with no endpoint -- until the manual-payment Part.
+    assert "Fee Plans" in html
+    assert 'href="/admin/fee-plans"' in html
+    assert re.search(r'Payments <span class="badge badge--neutral">Soon</span>', html)
     assert 'href="/admin/payments"' not in html
     assert 'href="/admin/research"' not in html
     assert client.get("/admin/payments").status_code == 404
@@ -367,10 +372,12 @@ def test_dashboard_links_only_to_implemented_pages(app, client):
     # Phase 4 / M07 implemented the Administrator attendance review surface
     # and M08 the gradebook report, so /admin/attendance and /admin/grades
     # both moved from the "not implemented" list to the linked one.
-    # Payments and Research remain unimplemented, with no endpoint at all.
+    # Phase 5 / M02 implemented /admin/fee-plans. Payments and Research remain
+    # unimplemented, with no endpoint at all.
     for path in ("/admin/academic-terms", "/admin/levels", "/admin/courses",
                  "/admin/groups", "/admin/schedules", "/admin/students",
-                 "/admin/teachers", "/admin/attendance", "/admin/grades"):
+                 "/admin/teachers", "/admin/attendance", "/admin/grades",
+                 "/admin/fee-plans"):
         assert f'href="{path}"' in html
     for missing in ("/admin/payments", "/admin/research"):
         assert f'href="{missing}"' not in html

@@ -1,0 +1,248 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ plan.name }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M02. One fee plan in full, with whichever controls its state
+      allows. A DRAFT offers editing, item changes, activation and archiving; an
+      ACTIVE plan offers archiving only; an ARCHIVED plan that was active before
+      offers reactivation; an archived draft offers nothing. Each control carries
+      its own signed token, minted only when the control is shown.
+
+      Amounts and the total are exact Decimal text formatted by the server. The
+      description and every label are plain text: Jinja's autoescaping is what
+      makes them safe, and nothing on this page is marked safe. -#}
+  <div class="ds-row" style="margin-bottom: var(--space-3)">
+    <a class="btn btn--secondary" href="{{ list_url }}">&larr; Fee Plans</a>
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  <div class="card">
+    <div class="ds-row" style="justify-content: space-between; align-items: flex-start; gap: var(--space-3); flex-wrap: wrap">
+      <div>
+        <h1 style="margin: 0 0 var(--space-1)">{{ plan.name }}</h1>
+        <div class="card__body" style="color: var(--color-text-secondary)">
+          Currency {{ plan.currency_code }} &middot; version {{ plan.version }}
+        </div>
+      </div>
+      <div class="ds-row" style="gap: var(--space-2)">
+        {% if plan.is_active %}
+        <span class="badge badge--success">{{ plan.status_label }}</span>
+        {% elif plan.is_draft %}
+        <span class="badge badge--warning">{{ plan.status_label }}</span>
+        {% else %}
+        <span class="badge badge--neutral">{{ plan.status_label }}</span>
+        {% endif %}
+        {% if plan.frozen %}
+        <span class="badge badge--primary">Definition frozen</span>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if plan.description %}
+    <div class="card__body" style="white-space: pre-wrap; margin-top: var(--space-3)">{{ plan.description }}</div>
+    {% endif %}
+
+    <div class="card__body" style="margin-top: var(--space-4); color: var(--color-text-secondary)">
+      Created by {{ plan.created_by_name }} on {{ plan.created_local.strftime("%Y-%m-%d %H:%M") }}
+      &middot; last changed {{ plan.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})
+      {% if plan.first_activated_local %}
+      <br>First activated by {{ plan.first_activated_by_name }} on {{ plan.first_activated_local.strftime("%Y-%m-%d %H:%M") }}
+      {% endif %}
+      {% if plan.status_changed_local %}
+      <br>Latest status change by {{ plan.status_changed_by_name }} on {{ plan.status_changed_local.strftime("%Y-%m-%d %H:%M") }}
+      {% endif %}
+    </div>
+
+    {% if edit_url %}
+    <div class="ds-row" style="margin-top: var(--space-4)">
+      <a class="btn btn--secondary" href="{{ edit_url }}">Edit name and description</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card" style="margin-top: var(--space-4)">
+    <div class="ds-row" style="justify-content: space-between; align-items: center; gap: var(--space-2); flex-wrap: wrap">
+      <div class="card__title" style="margin: 0">Items ({{ plan.item_count }} of at most {{ plan.item_limit }})</div>
+      {% if item_new_url %}
+      <a class="btn btn--primary" href="{{ item_new_url }}">Add item</a>
+      {% endif %}
+    </div>
+
+    {% if plan.active_items %}
+    <div style="overflow-x:auto; margin-top: var(--space-3)">
+    <table style="width:100%; border-collapse:collapse">
+      <thead>
+        <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+          <th style="padding: var(--space-3)">Kind</th>
+          <th style="padding: var(--space-3)">Label</th>
+          <th style="padding: var(--space-3); text-align:right">Amount ({{ plan.currency_code }})</th>
+          {% if plan.is_draft %}
+          <th style="padding: var(--space-3)">Actions</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in plan.active_items %}
+        <tr style="border-bottom:1px solid var(--color-border)">
+          <td style="padding: var(--space-3)">{{ item.kind_label }}</td>
+          <td style="padding: var(--space-3)">{{ item.label }}</td>
+          <td style="padding: var(--space-3); text-align:right; font-variant-numeric: tabular-nums">{{ item.amount_text }}</td>
+          {% if plan.is_draft %}
+          <td style="padding: var(--space-3)">
+            <div class="ds-row" style="gap: var(--space-2)">
+              <a class="btn btn--secondary" href="{{ item.edit_url }}">Edit</a>
+              <form method="post" action="{{ url_for('admin.fee_plan_item_remove', plan_public_id=plan.public_id, item_public_id=item.public_id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="{{ state_field }}" value="{{ item.remove_token }}">
+                <button type="submit" class="btn btn--danger-outline">Remove</button>
+              </form>
+            </div>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th style="padding: var(--space-3); text-align:left" colspan="2">Total</th>
+          <th style="padding: var(--space-3); text-align:right; font-variant-numeric: tabular-nums">{{ plan.total_text }}</th>
+          {% if plan.is_draft %}<th></th>{% endif %}
+        </tr>
+      </tfoot>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="margin-top: var(--space-3)">
+      <div class="empty-state__title">No items yet</div>
+      <div>A plan needs at least one item before it can be activated.</div>
+    </div>
+    {% endif %}
+
+    {% if plan.is_draft and not item_new_url %}
+    <div class="alert alert--info" style="margin-top: var(--space-3)">
+      This plan already has the maximum of {{ plan.item_limit }} items.
+    </div>
+    {% endif %}
+  </div>
+
+  {% if plan.is_active %}
+  <div class="alert alert--info" style="margin-top: var(--space-4)">
+    This plan is active. Its name, items and amounts are permanent; a different fee structure
+    needs a new plan.
+  </div>
+  {% endif %}
+
+  {% if plan.is_archived %}
+  <div class="alert alert--warning" style="margin-top: var(--space-4)">
+    {% if reactivate_token %}
+    This plan is archived and unavailable. It can be reactivated, and its definition stays
+    exactly as it was.
+    {% else %}
+    This plan was archived before it was ever activated. It stays archived and read-only.
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if activate_token %}
+  <div class="card" style="margin-top: var(--space-4)">
+    <div class="card__title">Activate this plan</div>
+    <div class="card__body">
+      Activation makes the plan available and freezes its name, items and amounts permanently.
+      It cannot be undone. The plan needs at least one item.
+    </div>
+    <form method="post" action="{{ url_for('admin.fee_plan_activate', plan_public_id=plan.public_id) }}" style="margin-top: var(--space-3)">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="{{ state_field }}" value="{{ activate_token }}">
+      <label class="field__label" style="display: flex; align-items: center; gap: var(--space-2)">
+        <input type="checkbox" name="confirm" value="yes">
+        I have checked every item and amount, and understand activation cannot be undone.
+      </label>
+      <button type="submit" class="btn btn--primary" style="margin-top: var(--space-3)">Activate plan</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if reactivate_token %}
+  <div class="card" style="margin-top: var(--space-4)">
+    <div class="card__title">Reactivate this plan</div>
+    <div class="card__body">
+      Reactivation makes the plan available again. Nothing about it becomes editable.
+    </div>
+    <form method="post" action="{{ url_for('admin.fee_plan_reactivate', plan_public_id=plan.public_id) }}" style="margin-top: var(--space-3)">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="{{ state_field }}" value="{{ reactivate_token }}">
+      <label class="field__label" style="display: flex; align-items: center; gap: var(--space-2)">
+        <input type="checkbox" name="confirm" value="yes">
+        Make this plan available again.
+      </label>
+      <button type="submit" class="btn btn--primary" style="margin-top: var(--space-3)">Reactivate plan</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if archive_token %}
+  <div class="card" style="margin-top: var(--space-4)">
+    <div class="card__title">Archive this plan</div>
+    <div class="card__body">
+      {% if plan.is_draft %}
+      Archiving a draft keeps it as a read-only record. A draft archived before it was ever
+      activated cannot be reactivated, and its name stays taken.
+      {% else %}
+      Archiving makes the plan unavailable. Its items and amounts do not change, and it can be
+      reactivated later.
+      {% endif %}
+    </div>
+    <form method="post" action="{{ url_for('admin.fee_plan_archive', plan_public_id=plan.public_id) }}" style="margin-top: var(--space-3)">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="{{ state_field }}" value="{{ archive_token }}">
+      <label class="field__label" style="display: flex; align-items: center; gap: var(--space-2)">
+        <input type="checkbox" name="confirm" value="yes">
+        Archive this plan.
+      </label>
+      <button type="submit" class="btn btn--danger-outline" style="margin-top: var(--space-3)">Archive plan</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if plan.removed_items %}
+  <div class="card" style="margin-top: var(--space-4)">
+    <div class="card__title">Removed items</div>
+    <div class="card__body" style="color: var(--color-text-secondary)">
+      Items taken out of this plan while it was a draft. They are kept as history and are not part
+      of the plan or its total.
+    </div>
+    <div style="overflow-x:auto; margin-top: var(--space-3)">
+    <table style="width:100%; border-collapse:collapse">
+      <thead>
+        <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+          <th style="padding: var(--space-3)">Kind</th>
+          <th style="padding: var(--space-3)">Label</th>
+          <th style="padding: var(--space-3); text-align:right">Amount ({{ plan.currency_code }})</th>
+          <th style="padding: var(--space-3)">Removed by</th>
+          <th style="padding: var(--space-3)">Removed</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in plan.removed_items %}
+        <tr style="border-bottom:1px solid var(--color-border)">
+          <td style="padding: var(--space-3)">{{ item.kind_label }}</td>
+          <td style="padding: var(--space-3)">{{ item.label }}</td>
+          <td style="padding: var(--space-3); text-align:right; font-variant-numeric: tabular-nums">{{ item.amount_text }}</td>
+          <td style="padding: var(--space-3)">{{ item.removed_by_name }}</td>
+          <td style="padding: var(--space-3)">{{ item.removed_local.strftime("%Y-%m-%d %H:%M") }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% if plan.removed_truncated %}
+    <div class="ds-section__desc" style="margin: var(--space-2) 0 0">
+      Showing the {{ plan.removed_cap }} most recent removals.
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

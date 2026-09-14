@@ -444,3 +444,54 @@ class DiscussionTopicStatus(str, enum.Enum):
 
     OPEN = "open"
     LOCKED = "locked"
+
+
+class FeePlanStatus(str, enum.Enum):
+    """Lifecycle of one administrative
+    :class:`~app.models.fee_plan.FeePlan` (Phase 5 / M02).
+
+    - ``draft`` -- never activated. An active Administrator may still
+      change the plan's name and description and add, edit or remove its
+      items.
+    - ``active`` -- available for later use. Its financial definition --
+      the plan and every item -- is frozen **permanently** from the first
+      activation onward.
+    - ``archived`` -- unavailable and read-only. A plan that was ever
+      activated may be reactivated and stays frozen; a draft archived
+      before it was ever activated stays archived.
+
+    There is no ``deleted`` member and no placeholder for one: nothing in
+    the fee plan catalogue is ever physically deleted. Adding a member is
+    a schema change (the ``fee_plans.status`` CHECK), which is the point.
+    """
+
+    DRAFT = "draft"
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+
+
+class FeePlanItemKind(str, enum.Enum):
+    """What one :class:`~app.models.fee_plan_item.FeePlanItem` charges for
+    (Phase 5 / M02).
+
+    Exactly the two approved kinds. Discounts, installments, scholarships,
+    exemptions and taxes are deferred and have no member here; adding one
+    is a schema change (the ``fee_plan_items.kind`` CHECK).
+    """
+
+    REGISTRATION = "registration"
+    COURSE = "course"
+
+
+class FeePlanItemStatus(str, enum.Enum):
+    """Whether one :class:`~app.models.fee_plan_item.FeePlanItem` is part
+    of its plan's definition (Phase 5 / M02).
+
+    - ``active`` -- counted in the plan's items and its total.
+    - ``removed`` -- taken out of a **draft** plan. The row stays as
+      history with its removal attribution; it is never deleted, never
+      restored and never edited again.
+    """
+
+    ACTIVE = "active"
+    REMOVED = "removed"

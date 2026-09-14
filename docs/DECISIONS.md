@@ -7134,3 +7134,208 @@ default exactly as every earlier table does.
   performed.** The center timezone in development is a fixed-offset zone,
   so no DST transition was exercised at all, and the occurrence rules are
   date-only arithmetic that never converts a civil date to an instant.
+
+## Administrative fee plan catalogue (Phase 5, Part M02)
+
+M02 adds an Administrator-only catalogue of reusable fee plans and their
+fee items. A plan is drafted, activated, archived and reactivated; its
+financial definition is frozen permanently from its first activation.
+
+Deferred with **no** placeholder table, column, route, enum value, form
+field, template hook or TODO: student fee assignments, invoices, invoice
+items, transactions, payments, receipts, refunds, audit events, reports,
+payment providers, payment intents, webhooks, every Student / Teacher /
+Research payment view, discounts, installments, scholarships, exemptions,
+taxes, quantities, due dates, currencies other than `LYD`, plan copy or
+revision, notification kinds, search results, dashboard figures and seeded
+financial data. The Administrator navigation's **Payments** entry stays
+disabled with no endpoint.
+
+### A. What a fee plan is
+
+A `FeePlan` names a reusable fee structure: a unique name, an optional
+plain-text description, the fixed currency `LYD`, a lifecycle status and
+its items. A `FeePlanItem` is a kind (`registration` or `course`), a
+display label and an exact amount. Nothing in M02 says who pays a plan,
+when, or whether anybody has paid; those are later Parts.
+
+### B. Two new tables
+
+`fee_plans`: `id`, `public_id`, `name`, `description`, `currency_code`,
+`status`, `created_by_id`, `first_activated_at`, `first_activated_by_id`,
+`status_changed_at`, `status_changed_by_id`, `version`, `created_at`,
+`updated_at`.
+
+`fee_plan_items`: `id`, `public_id`, `fee_plan_id`, `kind`, `label`,
+`amount DECIMAL(19, 4)`, `status`, `removed_at`, `removed_by_id`,
+`version`, `created_at`, `updated_at`.
+
+- Closed sets are `VARCHAR` + literal `IN` CHECKs (`ck_fee_plans_status_valid`,
+  `ck_fee_plan_items_kind_valid`, `ck_fee_plan_items_status_valid`), the
+  project convention, never MySQL `ENUM`.
+- `ck_fee_plans_currency_code` allows `LYD` only; the application validator
+  requires the exact uppercase code.
+- `ck_fee_plans_first_activation_pair` / `ck_fee_plans_status_change_pair`
+  keep each attribution moment and its actor together;
+  `ck_fee_plans_lifecycle_state` proves that a draft was never activated and
+  never changed state, an active plan was activated, and an archived plan
+  changed state no earlier than any activation;
+  `ck_fee_plan_items_removal_state` ties removal attribution to `removed`
+  exactly; both tables carry positive-version and timestamp-ordering CHECKs.
+- `ck_fee_plan_items_amount_range` enforces `0.001 <= amount <= 99999.999`.
+- `uq_fee_plans_name` makes a name unique across **every** status. As for
+  every existing unique title in this project, the effective case and
+  accent sensitivity is the column collation (the MySQL server default,
+  binary on SQLite); the application's pre-checks compare through the same
+  column, and the constraint is the final defense.
+- Every foreign key is plain, with no `ON DELETE` / `ON UPDATE`, and no ORM
+  relationship or cascade is declared. Nothing is ever physically deleted.
+- No column stores card or bank data.
+- Indexes: `ix_fee_plans_status_id` (the filtered list),
+  `ix_fee_plan_items_plan_status_id` (a plan's active items, page totals and
+  removed history), and one declared index per `users` foreign key. No MySQL
+  execution plan has been measured.
+
+### C. Money
+
+`app/services/money.py` is the single money boundary. Submitted amounts
+cross it as **text** and leave as `Decimal`: ASCII digits, optionally one
+`.` and one to four digits. Signs, exponents, `NaN` / infinity, commas,
+inner spaces, non-ASCII digits, a bare or trailing point, zero, values
+outside `0.001..99999.999` and more than four decimal places (trailing
+zeros included) are **rejected with a reason, never rounded or repaired**.
+Only surrounding spaces and tabs are stripped. The model validator refuses a
+binary `float` (and any non-`Decimal`, non-text value) outright.
+
+Totals are added in Python `Decimal` with `Inexact` trapped; no `SUM()` is
+issued over `amount`, and no float is constructed anywhere in the module.
+Display shows three places (the dinar's precision) unless a fourth is
+non-zero, never rounding; forms are pre-filled with ungrouped text the
+parser accepts back unchanged. The approved rule allows a fourth decimal
+place although the dinar's minor unit has three; that is recorded here as
+an owner decision, not changed.
+
+### D. Lifecycle and the freeze
+
+- A new plan is a `draft`. Only a draft's name and description may change,
+  and only a draft's items may be added, edited or removed.
+- **Activation** requires a current signed activation token, confirmation
+  and one to twenty active items with distinct labels. It sets
+  `first_activated_*` once; from then on the plan and its items are frozen
+  **forever**.
+- **Archiving** is allowed from `draft` or `active` and changes
+  availability only: no item, amount or label is touched.
+- **Reactivation** restores `active` to an archived plan **that was active
+  before**, and permits no edit. A draft archived before it was ever
+  activated stays archived and read-only; this is the reading of
+  "reactivate" as restoring a previous active state, and it means such a
+  plan keeps its name reserved.
+- `status_changed_*` records the latest transition; `created_by_id` is set
+  once. None of them is an authorization fact.
+- Removing a draft item sets `removed` with `removed_at` / `removed_by_id`;
+  the row is kept as history, shown on the plan page (the 50 most recent),
+  never restored and never counted.
+- `version` is the **aggregate's** concurrency signal: every meaningful
+  change to a plan or to any of its items increments the plan version (and
+  the item's own version when an item changes). A no-op edit moves no
+  version and no timestamp. All write moments are whole-second naive UTC
+  read after the locks.
+
+### E. Item rules
+
+At most `MAX_ACTIVE_FEE_PLAN_ITEMS = 20` active items per plan; removed
+items do not count. Labels are unique among a plan's active items, compared
+after normalisation and case-folding. MySQL has no partial unique index for
+"active rows only", so both rules are application invariants proved under
+the plan lock at every item write and again at activation. Name, label and
+description text is plain: control characters (C0, DEL, C1), bidirectional
+override / isolate characters and Unicode line separators are rejected,
+whitespace is collapsed (single-line fields) or line endings normalised
+(description), and absent optional text is `NULL`.
+
+### F. Authorization, routes and responses
+
+Ten routes under `/admin/fee-plans`, addressed only by public identifiers:
+list; create; detail; plan edit; item create; item edit; item remove;
+activate; archive; reactivate. Only an active Administrator reaches them:
+`roles_required` rejects other roles with 403, a suspended account's
+session no longer loads, and every write re-reads the acting account under
+its lock. An unknown plan, an item under another plan's URL, or an internal
+numeric id is a plain 404. Every mutation is POST-only with CSRF; the
+lifecycle posts also require a confirmation box. Every response, rendered
+page or redirect, carries `Cache-Control: private, no-store` and
+`Vary: Cookie`. All text is autoescaped; nothing is marked safe. No internal
+id appears in a URL, form field, token payload or page.
+
+### G. Locking, tokens and stale forms
+
+One chain, `app/services/fee_plan_transactions.py`:
+
+    lock_academic_hierarchy() reset point
+    -> acting Administrator User
+    -> FeePlan
+    -> affected FeePlanItems (ascending internal id)
+
+The FeePlan lock is the aggregate serialization point. Item create and
+activation lock every active item of the plan; item edit locks the item and
+its active siblings; item remove locks the item; plan edit, archive and
+reactivate lock no item. The id-only read that selects which active items to
+lock runs after the plan lock is held. After the locks each write re-proves
+the actor, the plan's public id and lifecycle, the item's ownership and
+status, the exact token state, label uniqueness, the item limit and, for a
+create, the name.
+
+Eight signed, exact-shape tokens (`app/services/fee_plan_tokens.py`), one
+per purpose, each under its own `admin.<purpose>.phase5-m02.v1` salt and
+valid for at most 12 hours: create binds the actor; plan-scoped purposes
+bind the actor, plan public id, version and status; item edit and remove
+add the item public id, version and status. Because item changes move the
+plan version, an activation token goes stale as soon as anything in the
+aggregate changes, and every replayed token is stale because its own write
+moved the version. A form that fails validation is re-rendered only when
+its submitted token still describes current state; a stale submission is
+rejected rather than being handed a fresh token.
+
+`IntegrityError` is rolled back first, the actor is re-authorized from
+current state by a scalar id captured before the reset, and one generic
+sentence is shown.
+
+### H. Query bounds and navigation
+
+The list is 20 plans per page ordered by `id DESC`, `LIMIT PAGE_SIZE + 1`,
+no `COUNT`; a page past the end falls back to page 1; the status filter is
+normalised to a known value or dropped. A page's item counts and exact
+totals come from one query keyed by its plan ids; a plan page costs a fixed
+number of queries whatever it holds. The Administrator navigation gains
+**Fee Plans** in *Finance & Research*; the disabled-navigation contract in
+`tests/test_admin_dashboard.py` was updated explicitly. Seven earlier
+migration suites that pin the single Alembic head were updated to the new
+head, and nothing else in them changed.
+
+### I. Migration
+
+One additive revision, `b7c3e9a15d42`, after `d2b7e6a4c519`. It creates
+`fee_plans`, its indexes, `fee_plan_items` and its indexes, and nothing
+else: no alter, no drop, no data write, no seeded plan, no
+`mysql_engine` / `mysql_charset`. The downgrade drops `fee_plan_items`
+then `fee_plans`, without dropping indexes first (MySQL errno 1553).
+
+### J. Verification actually performed, and what it does not prove
+
+- New suites: `tests/test_money.py`, `tests/test_fee_plans_model.py`,
+  `tests/test_fee_plans_migration.py`, `tests/test_admin_fee_plans.py`,
+  `tests/test_fee_plan_transactions.py`, with `tests/fee_plan_fixtures.py`.
+- The migration was executed in both directions on an isolated SQLite
+  database with representative existing rows, which were read back
+  unchanged; each constraint was proved by a refused insert. MySQL DDL and
+  the offline MySQL script were compiled without a connection.
+- CSRF was exercised with protection **enabled**; a real unique-name race
+  reached the database constraint.
+- The revision is applied to development MySQL only after the strict full
+  suite passes and the database is confirmed at `d2b7e6a4c519`; the exact
+  test counts and MySQL evidence are recorded in the Part's handoff.
+- Automated tests run on SQLite in memory. Lock tests assert what the chain
+  *requests*; race tests inject a change at the lock boundary. Neither
+  proves InnoDB blocking, isolation, collation or index plans.
+- **No browser, accessibility, responsive, keyboard, real-concurrency or
+  MySQL query-plan verification was performed.**

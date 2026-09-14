@@ -1,0 +1,104 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Fee Plans{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M02. The centre's fee plan catalogue, newest first, with the one
+      filter an administrator may apply: lifecycle status, normalised to a known
+      value or dropped before it reaches SQL. A page holds at most `page_size`
+      plans; there is no total count.
+
+      Every total is exact: it is added in Python Decimal from the plan's active
+      items, never in SQL. Plan names are plain text rendered through Jinja's
+      autoescaping, and nothing on this page is marked safe.
+
+      There is deliberately no control here for removing, copying, exporting,
+      assigning, invoicing or collecting anything, and no endpoint behind one. -#}
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+    <h1 style="margin:0">Fee Plans</h1>
+    <a class="btn btn--primary" href="{{ url_for('admin.fee_plan_create') }}">New fee plan</a>
+  </div>
+  <p class="ds-section__desc">
+    Reusable fee structures, in {{ currency_code }}. A draft can still be changed; activating a
+    plan makes its items and amounts permanent. Archived plans are kept and stay read-only.
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  <form method="get" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+    <label class="field__label" for="status" style="margin:0">Status:</label>
+    <select name="status" id="status" class="field__input" style="width:auto">
+      <option value="">Any status</option>
+      {% for value, label in status_labels.items() %}
+      <option value="{{ value }}" {{ "selected" if filter_status == value else "" }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn--secondary">Filter</button>
+    {% if filter_status %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.fee_plans_list') }}">Clear</a>
+    {% endif %}
+  </form>
+
+  {% if plans %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th style="padding: var(--space-3)">Plan</th>
+        <th style="padding: var(--space-3)">Status</th>
+        <th style="padding: var(--space-3); text-align:right">Items</th>
+        <th style="padding: var(--space-3); text-align:right">Total ({{ currency_code }})</th>
+        <th style="padding: var(--space-3)">Created by</th>
+        <th style="padding: var(--space-3)">Last changed</th>
+        <th style="padding: var(--space-3)">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for plan in plans %}
+      <tr style="border-bottom:1px solid var(--color-border)">
+        <td style="padding: var(--space-3)"><strong>{{ plan.name }}</strong></td>
+        <td style="padding: var(--space-3)">
+          {% if plan.status == "active" %}
+          <span class="badge badge--success">{{ plan.status_label }}</span>
+          {% elif plan.status == "draft" %}
+          <span class="badge badge--warning">{{ plan.status_label }}</span>
+          {% else %}
+          <span class="badge badge--neutral">{{ plan.status_label }}</span>
+          {% endif %}
+          {% if plan.status == "archived" and not plan.frozen %}
+          <span class="badge badge--neutral">Never activated</span>
+          {% endif %}
+        </td>
+        <td style="padding: var(--space-3); text-align:right">{{ plan.item_count }}</td>
+        <td style="padding: var(--space-3); text-align:right; font-variant-numeric: tabular-nums">{{ plan.total_text }}</td>
+        <td style="padding: var(--space-3)">{{ plan.created_by_name }}</td>
+        <td style="padding: var(--space-3)">{{ plan.updated_local.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td style="padding: var(--space-3)">
+          <a class="btn btn--secondary" href="{{ url_for('admin.fee_plan_detail', plan_public_id=plan.public_id) }}">Open</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if has_prev or has_next %}
+  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Fee plan pages">
+    {% if has_prev %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.fee_plans_list', page=page - 1, status=filter_status or None) }}">Previous</a>
+    {% endif %}
+    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page &middot; times in {{ tz_name }}</span>
+    {% if has_next %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.fee_plans_list', page=page + 1, status=filter_status or None) }}">Next</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No fee plans</div>
+    <div>Nothing matches this filter. Use “New fee plan” to create a draft.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
