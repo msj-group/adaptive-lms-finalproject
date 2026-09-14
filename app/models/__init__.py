@@ -19,6 +19,7 @@ from app.models.enums import (
     QuestionAnswerMode,
     QuizAttemptStatus,
     QuizStatus,
+    StudentFeeAssignmentStatus,
     TranscriptVisibility,
 )
 from app.models.academic_term import AcademicTerm
@@ -122,6 +123,7 @@ from app.models.fee_plan_item import (
     MAX_ACTIVE_FEE_PLAN_ITEMS,
     FeePlanItem,
 )
+from app.models.student_fee_assignment import StudentFeeAssignment
 
 __all__ = [
     "User",
@@ -230,4 +232,6 @@ __all__ = [
     "FeePlanItem",
     "FEE_PLAN_ITEM_LABEL_MAX_LENGTH",
     "MAX_ACTIVE_FEE_PLAN_ITEMS",
+    "StudentFeeAssignmentStatus",
+    "StudentFeeAssignment",
 ]

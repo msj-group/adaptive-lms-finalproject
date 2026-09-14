@@ -7416,3 +7416,237 @@ checked to contain only the CHECK drop and add. The seven earlier migration
 suites that pin the single head moved to the new head, and
 `app/models/enums.py` had its `FeePlanStatus` docstring corrected; nothing
 else in them changed. The limits stated in J apply unchanged.
+
+## Student fee assignments by enrollment (Phase 5, Part M03)
+
+M03 lets an active Administrator assign one active Fee Plan to one active
+Student Enrollment, cancel that assignment explicitly, and keep every
+assignment as history. It removes "student fee assignments" from M02's
+deferred list and changes nothing else in M02: money parsing, precision,
+limits, item kinds, the plan lifecycle and the Fee Plans navigation are as
+M02 and M02R left them, and the **Payments** navigation entry stays disabled.
+
+Deferred with **no** placeholder table, column, route, enum value, form
+field or template hook: invoices, invoice items, numbering, due dates and
+invoice snapshots (Phase 5 / M04, which will also restrict cancelling an
+assignment that has invoice history), discounts, installments, exemptions,
+scholarships, taxes, quantities, payments, receipts, refunds, reports,
+providers, payment intents, customers, webhooks, audit-event tables, every
+Student / Teacher / Researcher / public fee view, automatic assignment,
+cancellation, transfer, reactivation or copying, notifications, dashboard
+figures, search and seeded data.
+
+### A. What an assignment is
+
+A `StudentFeeAssignment` says "this Enrollment is charged by this Fee Plan".
+It belongs to the **Enrollment** -- never directly to a Student, Group,
+Course or Academic Term -- so it names the exact registration the fees apply
+to. Registration fees apply to every new Enrollment, and a move to another
+Group is another Enrollment that needs its own assignment. The Enrollment
+supplies the Student and academic identity; the plan, frozen since its first
+activation, supplies the financial definition. The row duplicates neither.
+
+### B. One new table
+
+`student_fee_assignments`: `id`, `public_id`, `enrollment_id`,
+`fee_plan_id`, `status`, `assigned_at`, `assigned_by_id`, `cancelled_at`,
+`cancelled_by_id`, `version`, `created_at`, `updated_at`.
+
+- `ck_student_fee_assignments_status_valid` -- `assigned` or `cancelled`, a
+  literal `IN` list, never MySQL `ENUM`.
+- `ck_student_fee_assignments_version_positive`.
+- `ck_student_fee_assignments_assignment_pair` (both columns are also
+  NOT NULL; the pairing is stated explicitly) and
+  `ck_student_fee_assignments_cancellation_pair` (both or neither).
+- `ck_student_fee_assignments_lifecycle_state` -- an assigned row carries no
+  cancellation; a cancelled row always does.
+- `ck_student_fee_assignments_timestamps_ordered` --
+  `created_at <= assigned_at <= updated_at`, and a cancellation is no earlier
+  than the assignment and no later than `updated_at`.
+- Plain foreign keys to `enrollments`, `fee_plans` and `users` (twice), with
+  no `ON DELETE` / `ON UPDATE`, no ORM relationship, no cascade, no trigger
+  and no seeded row. There is no student, group, course or term id, plan
+  name, currency, item, amount, total, payment state, invoice or provider
+  column.
+- Indexes: `ix_student_fee_assignments_enrollment_status_id`
+  (`enrollment_id`, `status`, `id`) -- the assigned-plan check at
+  assignment, withdrawal and on the pages, the id-only read that chooses the
+  rows to lock, one Enrollment's history (which sorts that Enrollment's few
+  rows by `id`) and the `enrollment_id` foreign key; plus one index each for
+  `fee_plan_id`, `assigned_by_id` and `cancelled_by_id`. No MySQL execution
+  plan has been measured.
+- **At most one `assigned` row per Enrollment has no database constraint**:
+  MySQL has no portable partial unique index. The application proves the
+  rule against the Enrollment's locked assignment rows while it holds the
+  Enrollment lock. A raw insert can still create a second assigned row; the
+  model suite demonstrates that limit rather than hiding it.
+
+### C. Lifecycle
+
+    assigned -> cancelled
+
+- A row is created `assigned`, version 1, with `assigned_at`, `created_at`
+  and `updated_at` all the same post-lock whole-second naive-UTC moment.
+- Cancellation sets `cancelled_at` / `cancelled_by_id`, moves `version`
+  exactly once and sets `updated_at` to the same moment. Nothing else on the
+  row changes, and the plan and its items are never touched. A row that is
+  already cancelled is left exactly as it is; a replay is told so.
+- Nothing is deleted. Assigning again -- the same plan or another -- inserts
+  a new row; a cancelled row is never reused, restored or edited.
+- No invoice exists yet, so any assigned row may be cancelled. Cancellation
+  requires an active Administrator, the nesting of section F and an
+  `assigned` row -- **not** an active Enrollment, Student, academic chain or
+  plan: it is how a charge is corrected, and it is the precondition for
+  withdrawal. M04 adds the invoice-history restriction.
+- Nothing changes an assignment automatically. Archiving or restoring the
+  plan, withdrawing or reactivating the Enrollment, suspending the Student
+  and archiving any academic object leave every row as it is; reactivating a
+  withdrawn Enrollment restores, copies and creates nothing.
+
+### D. Assignment rules
+
+After the locks of section F an assignment is written only when all of
+these hold against the locked rows:
+
+- the acting account is an active Administrator (otherwise 404);
+- the Enrollment is in the URL's Group and references a Student-role
+  account (otherwise 404);
+- the Enrollment and the Student account are `active`;
+- the Group, Course, Level and Academic Term are `active`;
+- the plan is `active` with its first activation recorded, i.e. frozen;
+- no other `assigned` row exists for the Enrollment;
+- the plan's active items are a valid definition: one to
+  `MAX_ACTIVE_FEE_PLAN_ITEMS` items, known kinds, normalized labels that are
+  distinct after case-folding, and amounts that pass M02's
+  `validate_amount`. Activation proved this already; it is proved again so a
+  row the application did not write can never become a Student's charge.
+
+The totals on the choice, confirmation and history pages are informational:
+added in Python `Decimal` by M02's helpers from the plan's active items,
+never summed in SQL and never stored. The plan is frozen, so the figure
+cannot drift from the definition that was assigned. Invoice snapshots are
+M04's.
+
+### E. Enrollment withdrawal
+
+`group_enrollment_withdraw` keeps its Group -> Student -> Enrollment locks,
+checks, notification and redirect. After those locks and its existing
+archived-Group and already-withdrawn checks it now **refuses while the
+Enrollment has an `assigned` row**, telling the Administrator to cancel the
+fee assignment explicitly first. It never cancels, deletes, changes or
+creates an assignment. Assignment and cancellation take the same Enrollment
+lock before writing, so the read after the locks is current. Cancelled
+history does not block withdrawal, and Enrollment creation and reactivation
+are unchanged.
+
+### F. Routes, locks, tokens and stale forms
+
+Four URL rules under `/admin/groups/<gp>/enrollments/<ep>`, addressed only
+by public identifiers:
+
+    GET       .../fee-assignments                  the Enrollment's history
+    GET       .../fee-plans                        choose an active plan
+    GET|POST  .../fee-plans/<pp>/assign            confirm, then assign
+    POST      .../fee-assignments/<ap>/cancel      cancel
+
+The Manage Members page links every listed Enrollment to its history. Only
+an active Administrator reaches these routes: `roles_required` rejects other
+roles with 403, a suspended account's session no longer loads, and every
+write re-reads the acting account under its lock. An unknown Group, an
+Enrollment outside the URL's Group or referencing a non-Student account, a
+plan that is not active, and an assignment of another Enrollment are plain
+404s. Mutations are POST-only with CSRF. Every response carries
+`Cache-Control: private, no-store` and `Vary: Cookie` through M02's
+decorator. These pages read active plans and their items; they write no plan
+and no item.
+
+One chain, `app/services/student_fee_assignment_transactions.py`:
+
+    lock_academic_hierarchy(): AcademicTerm -> Level -> Course   (the one reset)
+    -> Group -> enrolled Student User -> Enrollment
+    -> acting Administrator User
+    -> FeePlan -> active FeePlanItems (ascending internal id)
+    -> the Enrollment's StudentFeeAssignments, any status (ascending internal id)
+
+Cancellation takes the same chain up to the acting Administrator and then
+locks the one assignment. The prefix is the Enrollment routes' own
+Group -> Student -> Enrollment order preceded by the Group's ancestors, and
+`Administrator -> FeePlan` is M02's order. Assignment therefore serializes
+against plan archival and restoration on the **FeePlan** lock, and against
+cancellation and withdrawal on the **Enrollment** lock. The id-only reads
+that choose which items and assignments to lock run after the FeePlan and
+Enrollment locks are held. After the locks each write re-proves the actor,
+the nesting, that the Group still sits under the ancestors the chain locked
+(otherwise the form is stale), the token, and section D or the cancellation
+rule.
+
+The project's rule of locking every involved User row as one ascending-id
+set is deliberately **not** applied here: the approved order fixes the
+Student before the Enrollment and the acting Administrator after it. No
+other chain locks an Administrator's row together with a Student's row, or
+takes an Administrator's row before academic rows.
+
+Two signed, exact-shape tokens (`app/services/student_fee_assignment_tokens.py`),
+each under its own `admin.<purpose>.phase5-m03.v1` salt, valid for at most
+12 hours, carrying public identifiers and versions only -- no internal id,
+name, label, amount or total:
+
+- `fee-assignment-create` binds the actor, the Enrollment, the plan and the
+  plan's version. Every plan transition moves that version, so archiving the
+  plan -- even followed by restoration -- stales the confirmation page.
+  Assigning a plan moves no bound version, so the token is **also** refused
+  when it was issued at a whole second earlier than the latest `updated_at`
+  among the Enrollment's locked assignment rows. The comparison uses the
+  issue time inside the signed token, so the payload shape is unchanged. It
+  stops a replayed confirmation form from re-creating an assignment somebody
+  cancelled after the page was opened. A change within the same second the
+  page was rendered is not detected; the locks and the one-assigned-plan
+  rule still hold then.
+- `fee-assignment-cancel` binds the actor, the Enrollment, the assignment
+  and the assignment's version.
+
+`IntegrityError` is rolled back first, the actor is re-authorized from
+current state by a scalar id captured before the reset, and one generic
+sentence is shown.
+
+### G. Query bounds
+
+The history is 20 rows per page ordered by `id DESC`, `LIMIT PAGE_SIZE + 1`,
+no `COUNT`; a page past the end falls back to page 1. The plan and the
+assigning and cancelling accounts are joined into the one page query, and
+the page's item counts and totals come from one query keyed by its plan ids.
+The choice page lists active plans with the same bounds and order. Both
+pages cost a fixed number of queries whatever they hold. No filter is
+offered.
+
+### H. Migration
+
+One additive revision, `f9b2d6e4a318`, after `e4a1c6b9d273`. It creates
+`student_fee_assignments` and its four indexes and nothing else: no alter,
+no drop, no data write, no seeded row, no `mysql_engine` / `mysql_charset`.
+The downgrade drops the table in one statement. The eight earlier migration
+suites that pin the single Alembic head moved to the new head, and nothing
+else in them changed.
+
+### I. Verification actually performed, and what it does not prove
+
+- New suites: `tests/test_student_fee_assignments_model.py`,
+  `tests/test_student_fee_assignments_migration.py`,
+  `tests/test_admin_fee_assignments.py` and
+  `tests/test_student_fee_assignment_transactions.py`, with
+  `tests/fee_assignment_fixtures.py`.
+- The migration was executed in both directions on an isolated SQLite
+  database holding representative users, Groups, Enrollments, fee plans and
+  items, which were read back unchanged; each constraint was proved by a
+  refused insert. MySQL DDL and the offline MySQL script were compiled
+  without a connection.
+- CSRF was exercised with protection **enabled**; a real CHECK failure
+  reached the database and was reported generically.
+- The revision is applied to development MySQL only after the strict full
+  suite passes and the database is confirmed at `e4a1c6b9d273`; the exact
+  test counts and MySQL evidence are recorded in the Part's handoff.
+- Automated tests run on SQLite in memory. Lock tests assert what the chain
+  *requests*; race tests inject a change at the lock boundary. Neither
+  proves InnoDB blocking, isolation, collation or index plans.
+- **No browser, accessibility, responsive, keyboard, real-concurrency or
+  MySQL query-plan verification was performed.**

@@ -496,3 +496,27 @@ class FeePlanItemStatus(str, enum.Enum):
 
     ACTIVE = "active"
     REMOVED = "removed"
+
+
+class StudentFeeAssignmentStatus(str, enum.Enum):
+    """Lifecycle of one
+    :class:`~app.models.student_fee_assignment.StudentFeeAssignment`
+    (Phase 5 / M03).
+
+    - ``assigned`` -- the Enrollment's current fee plan. An Enrollment has at
+      most one assigned row at a time; that rule is proved by the
+      application under the Enrollment lock, because MySQL has no portable
+      partial unique index for it.
+    - ``cancelled`` -- an Administrator cancelled the assignment explicitly.
+      Terminal: the row is kept as history with its cancellation
+      attribution, and is never edited, restored or deleted. Assigning a fee
+      plan again inserts a new row.
+
+    The only transition is ``assigned -> cancelled``. There is no
+    ``invoiced``, ``paid``, ``transferred`` or ``deleted`` member and no
+    placeholder for one. Adding a member is a schema change (the
+    ``student_fee_assignments.status`` CHECK), which is the point.
+    """
+
+    ASSIGNED = "assigned"
+    CANCELLED = "cancelled"

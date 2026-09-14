@@ -17,6 +17,13 @@ from app.services.notification_delivery import (
     notify_enrollment_activated,
     notify_enrollment_withdrawn,
 )
+from app.services.student_fee_assignment_queries import enrollment_has_assigned_fee_plan
+
+#: Phase 5 / M03. Withdrawal never cancels a fee assignment on its own.
+_ASSIGNED_FEE_PLAN_BLOCKS_WITHDRAWAL = (
+    "This enrollment has an assigned fee plan. Cancel the fee assignment explicitly from the "
+    "enrollment's Fee assignments page before withdrawing the student."
+)
 
 
 def _get_group_or_404(group_public_id):
@@ -277,6 +284,15 @@ def group_enrollment_withdraw(group_public_id, enrollment_public_id):
 
     if enrollment.status != EnrollmentStatus.ACTIVE.value:
         flash("This enrollment is already withdrawn.", "warning")
+        return _redirect_to_group_members(group)
+
+    # Phase 5 / M03: an assigned fee plan must be cancelled explicitly
+    # first -- withdrawal never cancels, deletes or changes one itself. Read
+    # only after the Group -> Student -> Enrollment locks above: assignment
+    # and cancellation take the same Enrollment lock before writing, so this
+    # answer is current rather than a stale snapshot.
+    if enrollment_has_assigned_fee_plan(enrollment.id):
+        flash(_ASSIGNED_FEE_PLAN_BLOCKS_WITHDRAWAL, "danger")
         return _redirect_to_group_members(group)
 
     enrollment.status = EnrollmentStatus.WITHDRAWN.value

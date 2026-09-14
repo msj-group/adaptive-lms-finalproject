@@ -144,6 +144,8 @@
           <td style="padding: var(--space-3)">{{ macros.user_status_badge(enrollment.student.status) }}</td>
           <td style="padding: var(--space-3)">{{ enrollment.created_at.strftime("%Y-%m-%d") }}</td>
           <td style="padding: var(--space-3)">
+            <div class="ds-row" style="gap: var(--space-2); flex-wrap: wrap">
+            <a class="btn btn--secondary" href="{{ url_for('admin.enrollment_fee_assignments', group_public_id=group.public_id, enrollment_public_id=enrollment.public_id) }}">Fee assignments</a>
             {% if group.status == "active" %}
               {% if enrollment.status == "active" %}
               <form method="post" action="{{ url_for('admin.group_enrollment_withdraw', group_public_id=group.public_id, enrollment_public_id=enrollment.public_id) }}" data-confirm="Withdraw {{ enrollment.student.full_name }} from {{ group.name }}? This can be reversed later with Reactivate.">
@@ -157,6 +159,7 @@
               </form>
               {% endif %}
             {% endif %}
+            </div>
           </td>
         </tr>
         {% endfor %}
