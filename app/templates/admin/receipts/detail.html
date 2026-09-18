@@ -1,0 +1,71 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Receipt {{ receipt.receipt_number }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M05. One permanent operational receipt, rendered from the
+      document the server built when its payment was confirmed -- never from the
+      invoice, Student or Group as they are now. A VOID receipt keeps its number
+      and content and shows why and by whom it was voided. This is not a legal,
+      tax or fiscal document. Plain text only; nothing is marked safe. -#}
+  <div class="ds-row" style="margin-bottom: var(--space-3); gap: var(--space-2)">
+    <a class="btn btn--secondary" href="{{ payments_url }}">&larr; Payments</a>
+    <a class="btn btn--secondary" href="{{ detail_url }}">Invoice</a>
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  <div class="card">
+    <div class="ds-row" style="justify-content: space-between; align-items: flex-start; gap: var(--space-3); flex-wrap: wrap">
+      <h1 style="margin: 0">Receipt {{ receipt.receipt_number }}</h1>
+      {% if receipt.is_voided %}
+      <span class="badge badge--danger">{{ receipt.status_label }}</span>
+      {% else %}
+      <span class="badge badge--success">{{ receipt.status_label }}</span>
+      {% endif %}
+    </div>
+
+    {% if receipt.is_voided %}
+    <div class="alert alert--warning" style="margin-top: var(--space-4)">
+      This receipt is void. Its payment was reversed on {{ receipt.voided_local.strftime("%Y-%m-%d %H:%M") }}
+      by {{ receipt.voided_by_name }}.
+      <div style="white-space: pre-wrap; margin-top: var(--space-1)">Reason: {{ receipt.void_reason }}</div>
+    </div>
+    {% endif %}
+
+    <dl style="display: grid; grid-template-columns: minmax(140px, 200px) 1fr; row-gap: var(--space-3); column-gap: var(--space-4); margin: var(--space-4) 0 0">
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Amount received</dt>
+      <dd style="margin:0; font-variant-numeric: tabular-nums"><strong>{{ receipt.amount_text }} {{ receipt.currency_code }}</strong></dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Method</dt>
+      <dd style="margin:0">{{ receipt.method_label }}</dd>
+
+      {% if receipt.bank_transfer_reference %}
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Transfer reference</dt>
+      <dd style="margin:0">{{ receipt.bank_transfer_reference }}</dd>
+      {% endif %}
+      {% if receipt.bank_transfer_date %}
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Transfer date</dt>
+      <dd style="margin:0">{{ receipt.bank_transfer_date.isoformat() }}</dd>
+      {% endif %}
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Invoice</dt>
+      <dd style="margin:0">{{ receipt.invoice_number }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Student</dt>
+      <dd style="margin:0">{{ receipt.student_name }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
+      <dd style="margin:0">{{ receipt.group_name }} &middot; {{ receipt.course_title }} &middot; {{ receipt.academic_term_name }}</dd>
+
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Confirmed</dt>
+      <dd style="margin:0">{{ receipt.confirmed_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}) by {{ receipt.confirmed_by_name }}</dd>
+    </dl>
+
+    <p class="ds-section__desc" style="margin: var(--space-4) 0 0">
+      An operational receipt issued by the system when the payment was confirmed. Its number is never
+      reused. It is not a tax invoice or a statutory receipt.
+    </p>
+  </div>
+</div>
+{% endblock %}

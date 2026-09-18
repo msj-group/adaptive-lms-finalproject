@@ -1,0 +1,66 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Record bank transfer — {{ context.student_name }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M05. Record a bank transfer against an ISSUED invoice. It is
+      stored as PENDING and does not change the balance, or reserve any of it,
+      until an Administrator confirms it. Only the amount, the bank's transfer
+      reference and the transfer date are stored: there is no account number,
+      card, credential or proof upload field, and none may be typed here. -#}
+  <div class="ds-row" style="margin-bottom: var(--space-3)">
+    <a class="btn btn--secondary" href="{{ payments_url }}">&larr; Payments</a>
+  </div>
+
+  <h1 style="margin: 0 0 var(--space-4)">Record bank transfer</h1>
+
+  {{ macros.flash_messages() }}
+
+  {% include "admin/fee_assignments/_context.html" %}
+  {% include "admin/payments/_invoice.html" %}
+
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+    Enter only the bank's transfer reference and the date of the transfer. Never enter account numbers,
+    card numbers, passwords or any other credentials.
+  </div>
+
+  <form method="post" action="{{ action_url }}" class="card" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="{{ state_field }}" value="{{ state_token }}">
+
+    <div class="field">
+      <label class="field__label" for="{{ form.amount.id }}">{{ form.amount.label.text }}</label>
+      {{ form.amount(class="field__input", inputmode="decimal", autocomplete="off", maxlength=32, style="max-width: 14rem") }}
+      {% for error in form.amount.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+        At least {{ min_amount }} {{ currency_code }} and no more than the outstanding balance, with up to
+        {{ amount_scale }} decimal places. The amount is never rounded.
+      </div>
+    </div>
+
+    <div class="field" style="margin-top: var(--space-4)">
+      <label class="field__label" for="{{ form.reference.id }}">{{ form.reference.label.text }}</label>
+      {{ form.reference(class="field__input", maxlength=reference_max, autocomplete="off") }}
+      {% for error in form.reference.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">One line, at most {{ reference_max }} characters.</div>
+    </div>
+
+    <div class="field" style="margin-top: var(--space-4)">
+      <label class="field__label" for="{{ form.transfer_date.id }}">{{ form.transfer_date.label.text }}</label>
+      {{ form.transfer_date(class="field__input", type="date", min=earliest_date, max=latest_date, style="max-width: 14rem") }}
+      {% for error in form.transfer_date.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      <button type="submit" class="btn btn--primary">Record bank transfer</button>
+      <a class="btn btn--secondary" href="{{ payments_url }}">Back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -202,8 +202,11 @@ def test_no_other_portal_and_no_route_exposes_invoices_events_or_sequences(app):
         text = f"{rule.rule} {rule.endpoint}".lower()
         if not rule.rule.startswith("/admin"):
             assert "invoice" not in text, rule.rule
+            # Phase 5 / M05's manual payments are Administrator-only as well;
+            # tests/test_admin_payments.py inventories their routes.
+            assert "payment" not in text, rule.rule
         # Speaking already has an unrelated submission "receipt" route.
-        for fragment in ("audit", "sequence", "payment", "refund", "webhook"):
+        for fragment in ("audit", "sequence", "refund", "webhook"):
             assert fragment not in text, (rule.rule, fragment)
 
 
@@ -220,10 +223,13 @@ def test_the_route_inventory_is_exact_and_mutations_are_post_only(app, client):
             "/fee-assignments/<assignment_public_id>/invoices")
     one = base + "/<invoice_public_id>"
     line = one + "/items/<item_public_id>"
+    # Phase 5 / M05's payment and receipt routes nest below an invoice; they are
+    # inventoried by tests/test_admin_payments.py.
     rules = {
         (rule.rule, frozenset(rule.methods - {"HEAD", "OPTIONS"}))
         for rule in app.url_map.iter_rules()
-        if "/invoices" in rule.rule
+        if "/invoices" in rule.rule and "/payments" not in rule.rule
+        and "/receipts" not in rule.rule
     }
     both = frozenset({"GET", "POST"})
     assert rules == {

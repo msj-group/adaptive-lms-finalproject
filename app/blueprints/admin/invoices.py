@@ -17,9 +17,13 @@ public identifiers. With ``<base>`` =
 **An invoice belongs to one Student Fee Assignment**, which holds at most one
 ``draft`` or ``issued`` invoice at a time. A draft copies the assigned fee
 plan's active items as its own lines. An Administrator issues it manually,
-which allocates its permanent ``INV-YYYY-NNNNNN`` number. No payment exists in
-M04, so a draft or issued invoice's lines may still be added, edited and
-removed; after issue every change needs a reason. Cancellation needs a reason,
+which allocates its permanent ``INV-YYYY-NNNNNN`` number. A draft or issued
+invoice's lines may be added, edited and removed; after issue every change
+needs a reason. **Phase 5 / M05:** once a ``pending`` or ``confirmed`` payment
+exists for an invoice, its lines and its cancellation are frozen -- every line
+route and the cancellation refuse, before and again after the invoice lock,
+which every payment write takes first. A rejected bank transfer alone freezes
+nothing. Cancellation needs a reason,
 keeps every row and number, and leaves the invoice read-only forever; a new
 draft may then be created for an assignment that is still ``assigned``.
 
@@ -142,6 +146,12 @@ from app.services.invoice_transactions import (
     locked_plan_items,
     open_invoices,
 )
+from app.services.payment_queries import build_balance_view, invoice_payment_rows
+from app.services.payment_transactions import (
+    invoice_payment_frozen,
+    payment_balance,
+    payment_rows_over_bound,
+)
 from app.services.schedule_occurrences import to_app_local
 from app.services.student_fee_assignment_queries import (
     build_enrollment_context_view,
@@ -246,6 +256,11 @@ _ISSUE_CONFIRM_MESSAGE = (
 )
 _CANCEL_CONFIRM_MESSAGE = "Please tick the confirmation box before cancelling this invoice."
 _ALREADY_CANCELLED_MESSAGE = "This invoice is already cancelled. Nothing was changed."
+_PAYMENT_FROZEN_MESSAGE = (
+    "This invoice has a pending or confirmed payment, so its lines can no longer be changed and "
+    "it can no longer be cancelled. Nothing was changed. A payment is corrected by reversing it "
+    "on the invoice's payments page."
+)
 _NO_CHANGES_MESSAGE = "Nothing was changed, so nothing was saved."
 _CREATED_MESSAGE = (
     "Draft invoice created from the assigned fee plan. Review its lines, then issue it when it "
@@ -748,7 +763,22 @@ def invoice_detail(group_public_id, enrollment_public_id, assignment_public_id, 
         else:
             issue_block = _LINES_INVALID_MESSAGE
 
-    is_open = invoice.status in _OPEN
+    # Phase 5 / M05: an issued invoice links to its payments and shows its
+    # balance; a pending or confirmed payment hides the edit and cancel links.
+    payments_url = payment_summary = None
+    frozen = False
+    if invoice.status == _ISSUED:
+        payment_rows = invoice_payment_rows(invoice.id)
+        payments_url = url_for(
+            "admin.invoice_payments", invoice_public_id=invoice.public_id, **_ids(context)
+        )
+        payment_summary = build_balance_view(
+            None
+            if payment_rows_over_bound(payment_rows)
+            else payment_balance(active_lines(lines), payment_rows)
+        )
+        frozen = invoice_payment_frozen(invoice.id)
+    editable = invoice.status in _OPEN and not frozen
     return render_template(
         "admin/invoices/detail.html",
         invoice=view,
@@ -756,8 +786,11 @@ def invoice_detail(group_public_id, enrollment_public_id, assignment_public_id, 
         issue_token=issue_token,
         issue_block=issue_block,
         issue_url=_issue_url(context, invoice.public_id),
-        edit_url=_edit_url(context, invoice.public_id) if is_open else None,
-        cancel_url=_cancel_url(context, invoice.public_id) if is_open else None,
+        edit_url=_edit_url(context, invoice.public_id) if editable else None,
+        cancel_url=_cancel_url(context, invoice.public_id) if editable else None,
+        payments_url=payments_url,
+        payment_summary=payment_summary,
+        payment_frozen=frozen,
         detail_url=_detail_url(context, invoice.public_id),
         page=page,
         has_prev=page > 1,
@@ -778,6 +811,9 @@ def invoice_edit(group_public_id, enrollment_public_id, assignment_public_id, in
     detail_url = _detail_url(context, invoice.public_id)
     if invoice.status not in _OPEN:
         flash(_READ_ONLY_MESSAGE, "warning")
+        return redirect(detail_url)
+    if invoice_payment_frozen(invoice.id):
+        flash(_PAYMENT_FROZEN_MESSAGE, "warning")
         return redirect(detail_url)
 
     lines = invoice_lines(invoice.id)
@@ -848,6 +884,10 @@ def invoice_line_create(
         flash(_READ_ONLY_MESSAGE, "warning")
         return redirect(detail_url)
 
+    if invoice_payment_frozen(invoice.id):
+        flash(_PAYMENT_FROZEN_MESSAGE, "warning")
+        return redirect(detail_url)
+
     status_seen = invoice.status
     form = InvoiceLineForm(
         formdata=request.form if request.method == "POST" else None,
@@ -890,6 +930,8 @@ def invoice_line_create(
         return _reject(_READ_ONLY_MESSAGE, detail_url, actor_id, "warning")
     if locked.status != status_seen:
         return _reject(_STALE_MESSAGE, edit_url, actor_id)
+    if invoice_payment_frozen(locked.id):
+        return _reject(_PAYMENT_FROZEN_MESSAGE, detail_url, actor_id, "warning")
     siblings = locked_active_items(locks)
     rows = invoice_rows_for_snapshot(locked)
     limit = _line_limit_message(len(siblings), len(rows))
@@ -959,6 +1001,10 @@ def invoice_line_edit(
         flash(_LINE_REMOVED_MESSAGE, "warning")
         return redirect(edit_url)
 
+    if invoice_payment_frozen(invoice.id):
+        flash(_PAYMENT_FROZEN_MESSAGE, "warning")
+        return redirect(detail_url)
+
     status_seen = invoice.status
     form = InvoiceLineForm(
         formdata=request.form if request.method == "POST" else None,
@@ -1009,6 +1055,8 @@ def invoice_line_edit(
         return _reject(_STALE_MESSAGE, edit_url, actor_id)
     if locked_line.status != _ITEM_ACTIVE:
         return _reject(_LINE_REMOVED_MESSAGE, edit_url, actor_id, "warning")
+    if invoice_payment_frozen(locked.id):
+        return _reject(_PAYMENT_FROZEN_MESSAGE, detail_url, actor_id, "warning")
     if label_in_use(locked_active_items(locks), label, exclude_item_id=line_id):
         return _reject(_LABEL_TAKEN_MESSAGE, form_url, actor_id, "warning")
     if locked_line.kind == kind and locked_line.label == label and locked_line.amount == amount:
@@ -1091,6 +1139,10 @@ def invoice_line_remove(
         flash(_LINE_REMOVED_MESSAGE, "warning")
         return redirect(edit_url)
 
+    if invoice_payment_frozen(invoice.id):
+        flash(_PAYMENT_FROZEN_MESSAGE, "warning")
+        return redirect(detail_url)
+
     status_seen = invoice.status
     form = InvoiceReasonForm(
         formdata=request.form if request.method == "POST" else None,
@@ -1138,6 +1190,8 @@ def invoice_line_remove(
         return _reject(_STALE_MESSAGE, edit_url, actor_id)
     if locked_line.status != _ITEM_ACTIVE:
         return _reject(_LINE_REMOVED_MESSAGE, edit_url, actor_id, "warning")
+    if invoice_payment_frozen(locked.id):
+        return _reject(_PAYMENT_FROZEN_MESSAGE, detail_url, actor_id, "warning")
     if len(locked_active_items(locks)) < 2:
         return _reject(_LAST_LINE_MESSAGE, edit_url, actor_id, "warning")
 
@@ -1288,6 +1342,9 @@ def invoice_cancel(group_public_id, enrollment_public_id, assignment_public_id, 
     if invoice.status == _CANCELLED:
         flash(_ALREADY_CANCELLED_MESSAGE, "info")
         return redirect(detail_url)
+    if invoice_payment_frozen(invoice.id):
+        flash(_PAYMENT_FROZEN_MESSAGE, "warning")
+        return redirect(detail_url)
 
     form = InvoiceReasonForm(
         formdata=request.form if request.method == "POST" else None,
@@ -1320,6 +1377,8 @@ def invoice_cancel(group_public_id, enrollment_public_id, assignment_public_id, 
         token, tokens.PURPOSE_CANCEL, **_invoice_state(actor_public_id, locked)
     ):
         return _reject(_STALE_MESSAGE, detail_url, actor_id)
+    if invoice_payment_frozen(locked.id):
+        return _reject(_PAYMENT_FROZEN_MESSAGE, detail_url, actor_id, "warning")
 
     rows = invoice_rows_for_snapshot(locked)
     moment = _write_moment()

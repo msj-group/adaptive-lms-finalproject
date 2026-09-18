@@ -406,7 +406,8 @@ def test_only_the_audit_writer_constructs_an_event_and_nothing_rewrites_one(app)
                         r"DELETE\s+FROM\s+payment_audit_events"):
             if re.search(pattern, text, re.I):
                 rewriting.append((path.name, pattern))
-    assert constructing == {"services/invoice_audit.py"}
+    # Phase 5 / M05: payment and receipt events have their own single writer.
+    assert constructing == {"services/invoice_audit.py", "services/payment_audit.py"}
     assert rewriting == []
     for template in (root / "templates").rglob("*.html"):
         text = template.read_text(encoding="utf-8")

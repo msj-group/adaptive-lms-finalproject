@@ -83,12 +83,21 @@ def test_the_closed_sets_are_exact():
     assert [m.value for m in InvoiceItemKind] == ["registration", "course"]
     assert [m.value for m in InvoiceItemKind] == [m.value for m in FeePlanItemKind]
     assert [m.value for m in InvoiceItemStatus] == ["active", "removed"]
+    # Phase 5 / M05 extended the one financial trail with seven payment and
+    # receipt kinds; the five invoice kinds are unchanged and still first.
     assert [m.value for m in PaymentAuditEventKind] == [
         "invoice_draft_created",
         "invoice_draft_edited",
         "invoice_issued",
         "invoice_issued_edited",
         "invoice_cancelled",
+        "payment_cash_recorded",
+        "payment_bank_transfer_recorded",
+        "payment_bank_transfer_confirmed",
+        "payment_bank_transfer_rejected",
+        "payment_reversed",
+        "receipt_issued",
+        "receipt_voided",
     ]
 
 
@@ -461,7 +470,10 @@ def test_the_database_refuses_deleting_anything_referenced(app):
         (Invoice, {("student_fee_assignment_id", "student_fee_assignments"),
                    ("issued_by_id", "users"), ("cancelled_by_id", "users")}),
         (InvoiceItem, {("invoice_id", "invoices"), ("removed_by_id", "users")}),
-        (PaymentAuditEvent, {("invoice_id", "invoices"), ("actor_id", "users")}),
+        # Phase 5 / M05 links a payment or receipt event to its rows.
+        (PaymentAuditEvent, {("invoice_id", "invoices"), ("actor_id", "users"),
+                             ("payment_transaction_id", "payment_transactions"),
+                             ("receipt_id", "receipts")}),
         (InvoiceNumberSequence, set()),
     ],
 )
@@ -482,7 +494,8 @@ _COLUMNS = {
                   "removed_at", "removed_by_id", "version", "created_at", "updated_at"},
     PaymentAuditEvent: {"id", "invoice_id", "actor_id", "kind", "occurred_at",
                         "invoice_version_before", "invoice_version_after", "reason",
-                        "before_snapshot", "after_snapshot"},
+                        "before_snapshot", "after_snapshot", "payment_transaction_id",
+                        "receipt_id"},
     InvoiceNumberSequence: {"id", "calendar_year", "last_number", "created_at", "updated_at"},
 }
 
@@ -500,7 +513,9 @@ _PROHIBITED_PARTS = (
 def test_no_card_payment_total_or_duplicated_identity_column_exists(model):
     columns = {column.name for column in model.__table__.columns}
     assert columns == _COLUMNS[model]
-    for name in columns - {"student_fee_assignment_id"}:
+    # Phase 5 / M05's two audit links name a payment transaction and a receipt
+    # by id; they store no payment data themselves.
+    for name in columns - {"student_fee_assignment_id", "payment_transaction_id", "receipt_id"}:
         for part in _PROHIBITED_PARTS:
             assert part not in name.split("_"), (name, part)
     assert "fee_plan_item_id" not in columns

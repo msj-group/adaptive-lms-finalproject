@@ -1,0 +1,59 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Reverse payment — {{ context.student_name }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M05. Reverse one CONFIRMED collection in full, with a reason. A
+      new reversal entry of the same amount is recorded, the amount becomes
+      outstanding again, and the payment's receipt is voided and kept. The
+      original payment never changes. A reversal is an internal correction: it
+      is not a refund and records no money returned. Partial reversals are not
+      offered. -#}
+  <div class="ds-row" style="margin-bottom: var(--space-3)">
+    <a class="btn btn--secondary" href="{{ payments_url }}">&larr; Payments</a>
+  </div>
+
+  <h1 style="margin: 0 0 var(--space-4)">Reverse payment</h1>
+
+  {{ macros.flash_messages() }}
+
+  {% include "admin/fee_assignments/_context.html" %}
+  {% include "admin/payments/_invoice.html" %}
+  {% include "admin/payments/_payment.html" %}
+
+  <form method="post" action="{{ action_url }}" class="card" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="{{ state_field }}" value="{{ state_token }}">
+    <div class="card__body">
+      A reversal records a correcting entry for the full {{ payment.amount_text }} {{ currency_code }}. The
+      amount becomes outstanding again, and receipt {{ receipt_number }} is voided and kept as history. The
+      original payment is not changed or deleted. A reversal is not a refund and does not record money
+      returned to anyone.
+    </div>
+
+    <div class="field" style="margin-top: var(--space-4)">
+      <label class="field__label" for="{{ form.reason.id }}">Reason for reversing</label>
+      {{ form.reason(class="field__input", rows=4, maxlength=reason_max) }}
+      {% for error in form.reason.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
+        Required, at most {{ reason_max }} characters. It is kept on the voided receipt and in the audit timeline.
+      </div>
+    </div>
+
+    <label class="field__label" style="display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-4)">
+      <input type="checkbox" name="confirm" value="yes">
+      Reverse this payment in full. This cannot be undone.
+    </label>
+    {% if confirm_error %}
+    <div class="field__error">{{ confirm_error }}</div>
+    {% endif %}
+
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      <button type="submit" class="btn btn--danger-outline">Reverse payment</button>
+      <a class="btn btn--secondary" href="{{ payments_url }}">Back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

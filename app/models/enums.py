@@ -528,9 +528,10 @@ class InvoiceStatus(str, enum.Enum):
     - ``draft`` -- copied from the assignment's fee plan and under review.
       Its lines may be added, edited and removed; it has no invoice number.
     - ``issued`` -- issued manually by an Administrator, which allocated its
-      permanent ``INV-YYYY-NNNNNN`` number. No payment mechanism exists yet,
-      so its lines stay editable, each change needing a reason and recorded
-      by an audit event.
+      permanent ``INV-YYYY-NNNNNN`` number. Its lines stay editable, each
+      change needing a reason and recorded by an audit event, until a
+      ``pending`` or ``confirmed`` payment exists for it (Phase 5 / M05):
+      from then on its lines and its cancellation are frozen.
     - ``cancelled`` -- terminal and read-only. A cancelled issued invoice
       keeps its number; a cancelled draft never had one.
 
@@ -573,8 +574,9 @@ class InvoiceItemStatus(str, enum.Enum):
 
 class PaymentAuditEventKind(str, enum.Enum):
     """What one append-only
-    :class:`~app.models.payment_audit_event.PaymentAuditEvent` records
-    (Phase 5 / M04).
+    :class:`~app.models.payment_audit_event.PaymentAuditEvent` records.
+
+    Invoice movements (Phase 5 / M04):
 
     - ``invoice_draft_created`` -- a draft was copied from the fee plan.
     - ``invoice_draft_edited`` -- a draft's line was added, edited or removed.
@@ -584,9 +586,25 @@ class PaymentAuditEventKind(str, enum.Enum):
     - ``invoice_cancelled`` -- the invoice was cancelled; a reason is
       required.
 
-    Payment events belong to later Parts and have no member or placeholder
-    here. Adding one is a schema change (the ``payment_audit_events.kind``
-    CHECK).
+    Manual payment and receipt movements (Phase 5 / M05):
+
+    - ``payment_cash_recorded`` -- a cash collection was recorded, and so
+      confirmed.
+    - ``payment_bank_transfer_recorded`` -- a bank transfer was recorded as
+      pending.
+    - ``payment_bank_transfer_confirmed`` -- a pending bank transfer was
+      confirmed.
+    - ``payment_bank_transfer_rejected`` -- a pending bank transfer was
+      rejected; a reason is required.
+    - ``payment_reversed`` -- a full reversing entry was recorded for one
+      confirmed collection; a reason is required.
+    - ``receipt_issued`` -- a confirmed collection received its receipt.
+    - ``receipt_voided`` -- a reversed collection's receipt was voided; a
+      reason is required.
+
+    Refund, provider, webhook and report events belong to later Parts and have
+    no member or placeholder here. Adding one is a schema change (the
+    ``payment_audit_events.kind`` CHECK).
     """
 
     INVOICE_DRAFT_CREATED = "invoice_draft_created"
@@ -594,3 +612,83 @@ class PaymentAuditEventKind(str, enum.Enum):
     INVOICE_ISSUED = "invoice_issued"
     INVOICE_ISSUED_EDITED = "invoice_issued_edited"
     INVOICE_CANCELLED = "invoice_cancelled"
+    PAYMENT_CASH_RECORDED = "payment_cash_recorded"
+    PAYMENT_BANK_TRANSFER_RECORDED = "payment_bank_transfer_recorded"
+    PAYMENT_BANK_TRANSFER_CONFIRMED = "payment_bank_transfer_confirmed"
+    PAYMENT_BANK_TRANSFER_REJECTED = "payment_bank_transfer_rejected"
+    PAYMENT_REVERSED = "payment_reversed"
+    RECEIPT_ISSUED = "receipt_issued"
+    RECEIPT_VOIDED = "receipt_voided"
+
+
+class PaymentTransactionKind(str, enum.Enum):
+    """What one :class:`~app.models.payment_transaction.PaymentTransaction`
+    is (Phase 5 / M05).
+
+    - ``collection`` -- money an Administrator recorded as received against
+      one issued invoice, by cash or bank transfer.
+    - ``reversal`` -- a full reversing entry for one confirmed collection. It
+      cancels that collection's credit to the balance; it is an internal
+      correction, **not** a refund and not evidence that money was returned.
+
+    There is no ``refund``, ``credit_note``, ``discount`` or ``adjustment``
+    member and no placeholder for one. Adding a member is a schema change
+    (the ``payment_transactions.kind`` CHECK).
+    """
+
+    COLLECTION = "collection"
+    REVERSAL = "reversal"
+
+
+class PaymentMethod(str, enum.Enum):
+    """How a :class:`~app.models.payment_transaction.PaymentTransaction`
+    was paid (Phase 5 / M05).
+
+    Exactly the two manual methods. A reversal copies its collection's method
+    for historical classification only. There is no card, online, gateway or
+    provider member; adding one is a schema change (the
+    ``payment_transactions.method`` CHECK).
+    """
+
+    CASH = "cash"
+    BANK_TRANSFER = "bank_transfer"
+
+
+class PaymentTransactionStatus(str, enum.Enum):
+    """Lifecycle of one
+    :class:`~app.models.payment_transaction.PaymentTransaction`
+    (Phase 5 / M05)::
+
+        cash collection:  confirmed at creation
+        bank collection:  pending -> confirmed
+        bank collection:  pending -> rejected
+        reversal:         confirmed at creation
+
+    - ``pending`` -- a recorded bank transfer awaiting an Administrator's
+      decision. It has no effect on the balance and reserves nothing.
+    - ``confirmed`` -- counted in the balance. Terminal: a confirmed row never
+      changes; a correction is a new ``reversal`` row.
+    - ``rejected`` -- a bank transfer an Administrator rejected with a reason.
+      Terminal, no financial effect, no receipt.
+    """
+
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    REJECTED = "rejected"
+
+
+class ReceiptStatus(str, enum.Enum):
+    """Lifecycle of one :class:`~app.models.receipt.Receipt`
+    (Phase 5 / M05).
+
+    - ``issued`` -- the permanent operational receipt of one confirmed
+      collection.
+    - ``voided`` -- its collection was reversed. The receipt, its number and
+      its issued document are kept as history; it is never deleted, restored,
+      reissued or overwritten.
+
+    ``issued -> voided`` is the only transition.
+    """
+
+    ISSUED = "issued"
+    VOIDED = "voided"

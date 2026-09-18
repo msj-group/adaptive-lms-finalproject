@@ -37,8 +37,8 @@ _DOWN_REVISION = "d2b7e6a4c519"
 _CORRECTION = "e4a1c6b9d273"
 #: Phase 5 / M03's revision follows the correction.
 _ASSIGNMENTS = "f9b2d6e4a318"
-#: Phase 5 / M04's revision follows M03's, so it is the single head.
-_HEAD = "a8d3f5c29e61"
+#: Phase 5 / M04's revision follows M03's and M05's follows M04's, so M05's is the head.
+_HEAD = "c5e8f2a7d914"
 _LIFECYCLE = "ck_fee_plans_lifecycle_state"
 
 _PLANS = "fee_plans"
@@ -679,7 +679,7 @@ def test_the_correction_revision_follows_m02_and_precedes_the_single_head():
         parents[revision] = re.search(
             r"^down_revision = (?:'([^']+)'|None)", source, re.M
         ).group(1)
-    # Phase 5 / M03 follows the correction and M04 follows M03, so the head is now M04's.
+    # Phase 5 / M03 follows the correction, M04 follows M03 and M05 follows M04, so the head is M05's.
     assert set(parents) - {p for p in parents.values() if p is not None} == {_HEAD}
     assert [r for r, p in parents.items() if p == _CORRECTION] == [_ASSIGNMENTS]
     assert [r for r, p in parents.items() if p == _REVISION] == [_CORRECTION]

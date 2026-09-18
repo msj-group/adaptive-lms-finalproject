@@ -200,10 +200,11 @@ def test_no_standalone_enrollments_nav_link(app, client):
 def test_other_disabled_nav_items_remain_disabled(app, client):
     """Phase 4 / M07 enabled **Attendance** and M08 enabled **Grades**.
 
-    Both review surfaces are real now, so their nav entries link to them;
-    Payments and Research remain deferred with no endpoint at all. The
-    assertion is updated explicitly rather than loosened, so a future
-    milestone enabling one of the two by accident still fails here.
+    Both review surfaces are real now, so their nav entries link to them.
+    Phase 5 / M05 implemented Payments, so its entry links too; Research
+    remains deferred with no endpoint at all. The assertion is updated
+    explicitly rather than loosened, so a future milestone enabling Research
+    by accident still fails here.
     """
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
@@ -218,14 +219,15 @@ def test_other_disabled_nav_items_remain_disabled(app, client):
     assert "Soon" in html
     assert 'href="/admin/attendance"' in html
     assert 'href="/admin/grades"' in html
-    # Phase 5 / M02 added the Fee Plans catalogue beside them. Payments stays
-    # disabled -- visibly, with no endpoint -- until the manual-payment Part.
+    # Phase 5 / M02 added the Fee Plans catalogue beside them, and Phase 5 /
+    # M05 enabled Payments. Research stays disabled -- visibly, with no endpoint.
     assert "Fee Plans" in html
     assert 'href="/admin/fee-plans"' in html
-    assert re.search(r'Payments <span class="badge badge--neutral">Soon</span>', html)
-    assert 'href="/admin/payments"' not in html
+    assert not re.search(r'Payments <span class="badge badge--neutral">Soon</span>', html)
+    assert 'href="/admin/payments"' in html
+    assert re.search(r'Research <span class="badge badge--neutral">Soon</span>', html)
     assert 'href="/admin/research"' not in html
-    assert client.get("/admin/payments").status_code == 404
+    assert client.get("/admin/payments").status_code == 200
     assert client.get("/admin/research").status_code == 404
 
 
@@ -372,14 +374,14 @@ def test_dashboard_links_only_to_implemented_pages(app, client):
     # Phase 4 / M07 implemented the Administrator attendance review surface
     # and M08 the gradebook report, so /admin/attendance and /admin/grades
     # both moved from the "not implemented" list to the linked one.
-    # Phase 5 / M02 implemented /admin/fee-plans. Payments and Research remain
-    # unimplemented, with no endpoint at all.
+    # Phase 5 / M02 implemented /admin/fee-plans and M05 /admin/payments.
+    # Research remains unimplemented, with no endpoint at all.
     for path in ("/admin/academic-terms", "/admin/levels", "/admin/courses",
                  "/admin/groups", "/admin/schedules", "/admin/students",
                  "/admin/teachers", "/admin/attendance", "/admin/grades",
-                 "/admin/fee-plans"):
+                 "/admin/fee-plans", "/admin/payments"):
         assert f'href="{path}"' in html
-    for missing in ("/admin/payments", "/admin/research"):
+    for missing in ("/admin/research",):
         assert f'href="{missing}"' not in html
 
 

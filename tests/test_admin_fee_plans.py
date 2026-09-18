@@ -1097,13 +1097,14 @@ def test_removed_history_is_capped(app, client):
 # ===========================================================================
 
 
-def test_the_navigation_links_fee_plans_and_keeps_payments_disabled(app, client):
+def test_the_navigation_links_fee_plans_and_payments(app, client):
     _admin(client, app)
     dashboard = fx.page(client, "/admin/dashboard")
     assert 'href="/admin/fee-plans"' in dashboard
-    assert re.search(r"Payments <span class=\"badge badge--neutral\">Soon</span>", dashboard)
-    assert 'href="/admin/payments"' not in dashboard
-    assert client.get("/admin/payments").status_code == 404
+    # Phase 5 / M05 replaced the disabled Payments placeholder with a real link.
+    assert not re.search(r"Payments <span class=\"badge badge--neutral\">Soon</span>", dashboard)
+    assert 'href="/admin/payments"' in dashboard
+    assert client.get("/admin/payments").status_code == 200
     own_page = fx.page(client, fx.LIST_URL)
     assert re.search(
         r'<a class="admin-nav__link admin-nav__link--active"[^>]*href="/admin/fee-plans"', own_page

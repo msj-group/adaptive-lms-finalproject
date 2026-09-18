@@ -1,0 +1,33 @@
+{#- Phase 5 / M05. The invoice a payment page is about, and its exact balance:
+    the total of its active lines, the net amount paid (confirmed collections
+    less confirmed reversals) and what is outstanding. Every figure is added by
+    the server in Python Decimal and never stored. Plain text only. -#}
+<div class="card" style="margin-bottom: var(--space-4)">
+  <div class="ds-row" style="justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap">
+    <div class="card__title" style="margin:0">
+      {% if invoice.invoice_number %}Invoice {{ invoice.invoice_number }}{% else %}Draft invoice{% endif %}
+      {% if invoice.is_issued %}<span class="badge badge--success">{{ invoice.status_label }}</span>{% else %}<span class="badge badge--neutral">{{ invoice.status_label }}</span>{% endif %}
+    </div>
+    <a class="btn btn--secondary" href="{{ detail_url }}">Open invoice</a>
+  </div>
+  {% if balance %}
+  <dl style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); margin: var(--space-4) 0 0">
+    <div>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Total ({{ currency_code }})</dt>
+      <dd style="margin:0; font-variant-numeric: tabular-nums">{{ balance.total_text }}</dd>
+    </div>
+    <div>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Paid ({{ currency_code }})</dt>
+      <dd style="margin:0; font-variant-numeric: tabular-nums">{{ balance.paid_text }}</dd>
+    </div>
+    <div>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Outstanding ({{ currency_code }})</dt>
+      <dd style="margin:0; font-variant-numeric: tabular-nums"><strong>{{ balance.outstanding_text }}</strong></dd>
+    </div>
+  </dl>
+  {% else %}
+  <div class="alert alert--warning" style="margin: var(--space-3) 0 0">
+    The balance cannot be shown: this invoice's payment records do not describe a valid balance.
+  </div>
+  {% endif %}
+</div>

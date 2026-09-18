@@ -54,10 +54,13 @@ from app.models import (
     UserRole,
     UserStatus,
 )
+from app.models.payment_audit_event import PAYMENT_SNAPSHOT_SCHEMA
 from app.services.fee_plan_queries import KIND_LABELS
 from app.services.fee_plan_queries import STATUS_LABELS as PLAN_STATUS_LABELS
 from app.services.invoice_transactions import fee_plan_invoiceable
 from app.services.money import amount_input_text, format_amount, sum_amounts
+from app.services.payment_queries import EVENT_KIND_LABELS as PAYMENT_EVENT_KIND_LABELS
+from app.services.payment_queries import build_payment_event_state, describe_payment_event
 from app.services.schedule_occurrences import to_app_local
 from app.services.student_fee_assignment_queries import (
     STATUS_LABELS as ASSIGNMENT_STATUS_LABELS,
@@ -559,26 +562,56 @@ def _snapshot_lines(snapshot):
     ]
 
 
+def _invoice_timeline_entry(row, tz_name):
+    return {
+        "kind": row.kind,
+        "kind_label": EVENT_KIND_LABELS.get(row.kind, row.kind),
+        "is_payment_event": False,
+        "actor_name": row.actor_name,
+        "occurred_local": _local(tz_name, row.occurred_at),
+        "version_before": row.invoice_version_before,
+        "version_after": row.invoice_version_after,
+        "reason": row.reason,
+        "changes": describe_snapshot_changes(row.before_snapshot, row.after_snapshot),
+        "before_lines": _snapshot_lines(row.before_snapshot),
+        "after_lines": _snapshot_lines(row.after_snapshot),
+        "after_total_text": _amount_text(row.after_snapshot["total"]),
+        "after_status_label": STATUS_LABELS.get(
+            row.after_snapshot["status"], row.after_snapshot["status"]
+        ),
+        "after_invoice_number": row.after_snapshot["invoice_number"],
+    }
+
+
+def _payment_timeline_entry(row, tz_name):
+    after = row.after_snapshot
+    return {
+        "kind": row.kind,
+        "kind_label": PAYMENT_EVENT_KIND_LABELS.get(row.kind, row.kind),
+        "is_payment_event": True,
+        "actor_name": row.actor_name,
+        "occurred_local": _local(tz_name, row.occurred_at),
+        "version_before": row.invoice_version_before,
+        "version_after": row.invoice_version_after,
+        "reason": row.reason,
+        "changes": describe_payment_event(row.kind, row.before_snapshot, after),
+        "before_lines": None,
+        "after_lines": None,
+        "after_balance": build_payment_event_state(after),
+        "after_total_text": _amount_text(after["invoice_total"]),
+        "after_status_label": STATUS_LABELS.get(after["invoice_status"], after["invoice_status"]),
+        "after_invoice_number": after["invoice_number"],
+    }
+
+
 def build_timeline_view(rows, tz_name="UTC"):
     """Presentation dicts for one timeline page. Snapshots are rendered as
-    plain text only; no internal id survives."""
+    plain text only; no internal id survives. Since Phase 5 / M05 the trail
+    also holds payment and receipt events, described from their own payment
+    snapshots: what moved, and the balance after it."""
     return [
-        {
-            "kind": row.kind,
-            "kind_label": EVENT_KIND_LABELS.get(row.kind, row.kind),
-            "actor_name": row.actor_name,
-            "occurred_local": _local(tz_name, row.occurred_at),
-            "version_before": row.invoice_version_before,
-            "version_after": row.invoice_version_after,
-            "reason": row.reason,
-            "changes": describe_snapshot_changes(row.before_snapshot, row.after_snapshot),
-            "before_lines": _snapshot_lines(row.before_snapshot),
-            "after_lines": _snapshot_lines(row.after_snapshot),
-            "after_total_text": _amount_text(row.after_snapshot["total"]),
-            "after_status_label": STATUS_LABELS.get(
-                row.after_snapshot["status"], row.after_snapshot["status"]
-            ),
-            "after_invoice_number": row.after_snapshot["invoice_number"],
-        }
+        _payment_timeline_entry(row, tz_name)
+        if row.after_snapshot.get("schema") == PAYMENT_SNAPSHOT_SCHEMA
+        else _invoice_timeline_entry(row, tz_name)
         for row in rows
     ]

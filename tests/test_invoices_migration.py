@@ -44,6 +44,23 @@ from app.models import (
 _MIGRATIONS = pathlib.Path(__file__).resolve().parents[1] / "migrations" / "versions"
 _REVISION = "a8d3f5c29e61"
 _DOWN_REVISION = "f9b2d6e4a318"
+#: Phase 5 / M05's revision follows this one, so it is the single head.
+_HEAD = "c5e8f2a7d914"
+
+#: What Phase 5 / M05 (``c5e8f2a7d914``) changed on ``payment_audit_events``:
+#: three CHECKs widened, one CHECK, two columns, two indexes and two foreign
+#: keys added. ``tests/test_payments_migration.py`` compares those with the
+#: M05 revision; this suite keeps comparing the rest with M04's.
+_M05_REPLACED_CHECKS = {"ck_payment_audit_events_kind_valid",
+                        "ck_payment_audit_events_version_transition",
+                        "ck_payment_audit_events_reason_required"}
+_M05_ADDED = {
+    "checks": {"ck_payment_audit_events_subject_links"},
+    "columns": {"payment_transaction_id", "receipt_id"},
+    "indexes": {"ix_payment_audit_events_payment_transaction_id",
+                "ix_payment_audit_events_receipt_id"},
+    "fks": {("payment_transaction_id", "payment_transactions"), ("receipt_id", "receipts")},
+}
 
 _TABLES = ["invoice_number_sequences", "invoices", "invoice_items", "payment_audit_events"]
 _MODELS = {
@@ -169,10 +186,11 @@ def test_revision_identifiers_and_one_linear_head():
         source = path.read_text(encoding="utf-8")
         revision = re.search(r"^revision = '([^']+)'", source, re.M).group(1)
         parents[revision] = re.search(r"^down_revision = (?:'([^']+)'|None)", source, re.M).group(1)
-    assert set(parents) - {p for p in parents.values() if p is not None} == {_REVISION}
+    assert set(parents) - {p for p in parents.values() if p is not None} == {_HEAD}
     claimed = [p for p in parents.values() if p is not None]
     assert len(claimed) == len(set(claimed))
     assert [r for r, p in parents.items() if p == _DOWN_REVISION] == [_REVISION]
+    assert [r for r, p in parents.items() if p == _REVISION] == [_HEAD]
     assert len([r for r, p in parents.items() if p is None]) == 1
 
 
@@ -212,16 +230,24 @@ def test_the_revision_declares_every_expected_column_and_check(table):
         assert f"name='{name}'" in block, name
     flat = _flat(source)
     checks = _model_checks(_MODELS[table])
-    assert set(checks) == _EXPECTED[table]["checks"]
+    extended = table == "payment_audit_events"
+    added = _M05_ADDED["checks"] if extended else set()
+    replaced = _M05_REPLACED_CHECKS if extended else set()
+    assert set(checks) == _EXPECTED[table]["checks"] | added
     for name, expression in checks.items():
-        assert expression in flat, (name, expression)
+        if name in added | replaced:
+            assert expression not in flat, (name, expression)
+        else:
+            assert expression in flat, (name, expression)
 
 
 def test_the_migrations_closed_sets_match_the_application_enums():
     _, source = _load_migration()
     flat = _flat(source)
+    # M04 wrote the five invoice event kinds; Phase 5 / M05 widened the set.
+    m04_kinds = [kind for kind in PaymentAuditEventKind if kind.value.startswith("invoice_")]
     for column, enum in (("status", InvoiceStatus), ("kind", InvoiceItemKind),
-                         ("status", InvoiceItemStatus), ("kind", PaymentAuditEventKind)):
+                         ("status", InvoiceItemStatus), ("kind", m04_kinds)):
         expected = f"{column} IN (" + ", ".join(f"'{member.value}'" for member in enum) + ")"
         assert expected in flat, expected
     for fragment in ("sa.Column('amount', sa.DECIMAL(precision=19, scale=4), nullable=False)",
@@ -472,14 +498,20 @@ def test_the_model_and_migration_agree(app, table):
         actual = {c["name"]: str(c["nullable"]) for c in inspector.get_columns(table)}
         declared.pop("id", None)
         actual.pop("id", None)
+        extended = table == "payment_audit_events"
+        for column in _M05_ADDED["columns"] if extended else ():
+            assert actual.pop(column) == "True", column
         assert declared == actual
         shape = {
-            "indexes": {i["name"]: i["column_names"] for i in inspector.get_indexes(table)},
+            "indexes": {i["name"]: i["column_names"] for i in inspector.get_indexes(table)
+                        if not extended or i["name"] not in _M05_ADDED["indexes"]},
             "uniques": sorted((u["name"] or "", tuple(u["column_names"]))
                               for u in inspector.get_unique_constraints(table)),
-            "checks": {c["name"] for c in inspector.get_check_constraints(table)},
+            "checks": {c["name"] for c in inspector.get_check_constraints(table)}
+            - (_M05_ADDED["checks"] if extended else set()),
             "fks": {(fk["constrained_columns"][0], fk["referred_table"])
-                    for fk in inspector.get_foreign_keys(table)},
+                    for fk in inspector.get_foreign_keys(table)}
+            - (_M05_ADDED["fks"] if extended else set()),
         }
         assert shape == {key: _EXPECTED[table][key] for key in shape}
 
@@ -537,6 +569,10 @@ def test_mysql_ddl_compiles_without_a_connection(table):
 @pytest.mark.parametrize("table", _TABLES)
 def test_no_column_is_shaped_for_card_or_payment_data(table):
     for column in _MODELS[table].__table__.columns:
+        # Phase 5 / M05's audit links name a payment transaction and a receipt
+        # by id; they hold no payment data.
+        if table == "payment_audit_events" and column.name in _M05_ADDED["columns"]:
+            continue
         for part in _PROHIBITED_PARTS:
             assert part not in column.name.split("_"), (column.name, part)
 

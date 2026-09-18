@@ -7944,3 +7944,337 @@ nested invoice routes, which `tests/test_admin_invoices.py` inventories.
   behaviour, collation or index plans.
 - **No browser, accessibility, responsive, keyboard, real-concurrency or
   MySQL query-plan verification was performed.**
+
+## Manual payments, reversals and receipts (Phase 5, Part M05)
+
+M05 lets an active Administrator record manual payments against an issued
+invoice -- cash, confirmed when recorded, and bank transfers, recorded pending
+and then confirmed or rejected -- correct a confirmed payment only by a full
+reversing entry, and keep a permanent, system-numbered receipt for every
+confirmed collection. Every payment and receipt movement writes its audit
+events in the same transaction, in the one trail M04 created. It removes manual
+cash and bank payments, payment transactions and receipts from M04's deferred
+list and discharges M04's obligation: once a payment exists, an invoice's
+amounts and cancellation are frozen and corrections are reversals. Money
+parsing, the fee plan, assignment and invoice lifecycles, invoice numbering and
+M04's invoice events are unchanged.
+
+Deferred with **no** placeholder table, column, route, enum value, form field
+or template hook: online payments, gateways, providers, payment intents,
+customers, webhooks, card data, bank credentials, proof uploads, refunds,
+credit notes, partial reversals, discounts, installments, taxes, due dates,
+dual approval, refund authorization, automatic matching, reports, dashboard
+totals, notifications, Student / Teacher payment views, legal / tax /
+fiscal-printer receipt compliance, imports and seeded data.
+
+### A. The aggregates
+
+A `PaymentTransaction` belongs to exactly one `Invoice`. It is a
+`collection` -- money recorded as received, by `cash` or `bank_transfer` -- or
+a `reversal`: a full correcting entry for exactly one confirmed collection,
+with the same amount, currency and (for classification only) method. A
+reversal is an internal correction; it is **not** a refund and records no money
+returned. A `Receipt` is the permanent operational receipt of one confirmed
+collection. `ReceiptNumberSequence` is its internal annual counter.
+`PaymentAuditEvent` (M04) now records invoice, payment and receipt movements.
+No balance, paid amount or total is stored anywhere.
+
+### B. Three new tables and one extension
+
+`payment_transactions`: `id`, `public_id`, `invoice_id`, `kind`, `method`,
+`status`, `currency_code`, `amount DECIMAL(19, 4)`, `bank_transfer_reference`,
+`bank_transfer_date DATE`, `recorded_at`, `recorded_by_id`, `confirmed_at`,
+`confirmed_by_id`, `rejected_at`, `rejected_by_id`, `rejection_reason`,
+`reversal_of_payment_transaction_id`, `version`, `created_at`, `updated_at`.
+
+`receipts`: `id`, `public_id`, `payment_transaction_id`, `receipt_number`,
+`status`, `issued_at`, `issued_by_id`, `voided_at`, `voided_by_id`,
+`void_reason`, `snapshot JSON`, `version`, `created_at`, `updated_at`.
+
+`receipt_number_sequences`: `id`, `calendar_year`, `last_number`, `created_at`,
+`updated_at` -- M04's invoice sequence, for receipts.
+
+- Closed sets are literal `IN` CHECKs, never MySQL `ENUM`. `payment_transactions`
+  also has `_currency_code` (`LYD`), `_amount_range` (M02's
+  `0.001..99999.999`), `_version_positive`, `_bank_transfer_details` (a bank
+  collection has a non-empty reference and a date; cash and every reversal have
+  neither), `_confirmation_pair`, `_rejection_state` (a rejection has its moment,
+  actor and non-empty reason, or none of them), `_lifecycle_state` (only a bank
+  collection is ever pending or rejected; a confirmed row has its confirmation
+  and no rejection), `_immediate_confirmation` (cash and reversals are
+  confirmed at the recording moment by the recorder), `_reversal_link` and
+  `_timestamps_ordered`; `uq_payment_transactions_reversal_of` makes a reversal
+  the sole reversal of its collection.
+- `receipts`: status, positive version, `ck_receipts_number_format`
+  (`RCT-____-______`, length 15), `ck_receipts_void_state` (a void has its
+  moment, actor and non-empty reason; an issued receipt has none),
+  `ck_receipts_timestamps_ordered`; `uq_receipts_payment_transaction_id` and
+  `uq_receipts_receipt_number`.
+- Every foreign key is plain, with no `ON DELETE` / `ON UPDATE`; no ORM
+  relationship, cascade or trigger exists. No column stores or is shaped for a
+  card number, CVV, PIN, account number, IBAN, credential, proof, provider,
+  intent, webhook or refund.
+- Indexes: `ix_payment_transactions_invoice_id_id` (one invoice's rows, the rows
+  to lock), `_status_id` and `_method_id` (the filtered overview), one per
+  `users` foreign key; the reversal link and a receipt's payment are indexed by
+  their unique constraints; `ix_receipts_issued_by_id`, `_voided_by_id`. No
+  MySQL execution plan has been measured.
+- Rules no CHECK can read are the application's, proved under the invoice lock:
+  a reversal names a confirmed **collection** of the **same** invoice with the
+  same amount and method (MySQL also refuses a CHECK reading the auto-increment
+  `id`); a receipt belongs to a confirmed collection; no collection exceeds the
+  outstanding balance. The model suite demonstrates that the database alone
+  accepts each of these.
+
+**The audit trail extension.** `payment_audit_events` gains two nullable columns,
+`payment_transaction_id` and `receipt_id`, each with an index and a **named**
+plain foreign key (`fk_payment_audit_events_payment_transaction_id`,
+`fk_payment_audit_events_receipt_id`); `ck_payment_audit_events_kind_valid`,
+`_version_transition` and `_reason_required` are widened; and
+`ck_payment_audit_events_subject_links` is added (an invoice event links
+nothing, a payment event its transaction only, a receipt event its receipt and
+that receipt's collection). The M04 branches keep their exact meaning for the
+M04 kinds, `_versions_positive` and `_snapshots_present` are untouched, and
+every M04 row -- an M04 kind with both links NULL -- satisfies every new
+expression exactly as it satisfied the old one. A payment or receipt event moves
+no invoice version: it records the version it observed as both "before" and
+"after".
+
+### C. Lifecycles
+
+    cash collection:  confirmed at creation
+    bank collection:  pending -> confirmed
+    bank collection:  pending -> rejected
+    reversal:         confirmed at creation
+    receipt:          issued -> voided
+
+- A cash collection and a reversal are written at version 1 with `recorded_*`,
+  `confirmed_*`, `created_at` and `updated_at` all the same post-lock
+  whole-second UTC moment. A bank transfer is written `pending` at version 1.
+  Confirming or rejecting it moves its version exactly once and sets
+  `updated_at`; a rejection keeps its normalized reason (at most 500
+  characters). A confirmed or rejected row never changes again.
+- A reversal inserts a new confirmed row and never changes the collection. It
+  voids the collection's receipt: only `status`, `voided_*` and `void_reason`
+  change, `version` moves once, and the number, document, issue record and
+  payment link stay exactly as issued. Nothing deletes, restores, reissues or
+  overwrites a receipt, and a collection is reversed at most once. Partial
+  reversals do not exist.
+- ORM guards refuse deleting a transaction, receipt or sequence; changing a
+  confirmed or rejected transaction, anything recorded on a pending one, or a
+  decision that does not move the version by exactly one; any receipt change but
+  the one void; and bulk `UPDATE` / `DELETE` statements against transactions and
+  receipts (and bulk `DELETE` against sequences). Raw SQL is outside them; by
+  instruction there is no trigger.
+
+### D. The balance
+
+    outstanding = total of the active invoice lines
+                  - confirmed collections + confirmed reversals
+
+computed in Python `Decimal` with `Inexact` trapped from the rows locked or read
+after the invoice lock; no SQL `SUM`, float or stored total. Pending and
+rejected rows count for nothing, so a pending transfer reserves nothing. A cash
+collection or a transfer confirmation must be at least `0.001` LYD and no more
+than the outstanding balance at that moment; recording a pending transfer is
+held to the same bound, since it could never be confirmed otherwise. Of two
+pending transfers, only a confirmation that still fits the balance it finds
+under the invoice lock succeeds. A reversal reopens its amount. There is no
+credit balance and no overpayment. A balance whose records give a negative paid
+or outstanding amount -- impossible through the application -- is shown as
+unavailable and blocks every payment write. A single payment is bounded by
+M02's money boundary (`99999.999`), so a larger invoice is paid in several
+payments; an outstanding amount below `0.001` cannot be settled by any payment
+and is shown as such.
+
+### E. Eligibility, the freeze, and two recorded readings
+
+- Recording or confirming a collection requires, after the locks: an active
+  Administrator, the nesting, an `issued` invoice, a valid set of active lines
+  (M04's definition), an amount within the balance, and current tokens. **It does
+  not require an active Student, Enrollment, Group, academic chain, plan or
+  assignment**: the Part's list of requirements names none of them, and an issued
+  charge stays collectable whatever later happened to its context (M04's rule for
+  correcting it). This reading is recorded here because the Part states the
+  context exemption explicitly only for rejection and reversal.
+- Rejection and reversal likewise need only an active Administrator, the nesting,
+  current tokens and the transaction's own state.
+- **Freeze.** While any transaction of an invoice is `pending` or `confirmed`,
+  every M04 line route and the invoice cancellation refuse -- on the page and
+  again after the invoice lock, which every payment write takes first. A
+  rejected transfer alone freezes nothing. A reversal leaves its confirmed
+  collection in place, so **an invoice that ever had a confirmed payment stays
+  frozen**; changing its charge needs a later Part (a credit note or similar),
+  exactly as M04 anticipated. Issue is unaffected (a draft never has payments).
+  Because the invoice cannot then be cancelled, its fee assignment cannot be
+  cancelled (M04) and its Enrollment cannot be withdrawn (M03).
+- **The cash chain ends with the receipt sequence.** The Part lists cash
+  recording's chain up to the invoice's transactions, but also requires every
+  confirmed collection to receive a receipt numbered under the sequence lock.
+  Cash is confirmed as it is recorded, so its chain ends with the
+  `ReceiptNumberSequence` exactly where confirmation takes it: last.
+
+### F. Receipts and numbering
+
+`RCT-YYYY-NNNNNN` is allocated only when a collection is confirmed (a cash
+recording or a transfer confirmation), from the center-local calendar year of
+the post-lock moment, exactly as M04 numbers invoices: the year's row is found by
+a plain read and locked by primary key; a missing year is inserted at 0, and two
+first receipts racing to insert it meet the unique year and roll back
+generically; `last_number` moves exactly once; the number is checked unused and
+`uq_receipts_receipt_number` is the final defense; a local year that changes
+while waiting is stale; at 999999 the year is exhausted. Every refusal rolls
+back, so no number is consumed without a receipt.
+
+A receipt's `snapshot` is its permanent document, built by the server from the
+locked rows: the receipt, payment, invoice and fee assignment public ids, the
+receipt and invoice numbers, the method, the exact amount and `LYD`, the
+confirmation moment (`YYYY-MM-DDTHH:MM:SSZ`) and five display names (the
+confirming Administrator, the Student, the Group, the Course, the Academic
+Term). `validate_receipt_snapshot` refuses any other key, type or value; there is
+no internal id, card or bank data, token, CSRF or session value. The transfer
+reference is deliberately **not** copied: the receipt page shows it from the
+immutable transaction row. The page renders from the document, so later
+renames do not change a receipt. M05 receipts are operational only -- not legal,
+tax, fiscal-printer or statutory documents.
+
+### G. Audit events
+
+The seven kinds are exactly `payment_cash_recorded`,
+`payment_bank_transfer_recorded`, `payment_bank_transfer_confirmed`,
+`payment_bank_transfer_rejected`, `payment_reversed`, `receipt_issued` and
+`receipt_voided`. A cash recording writes `payment_cash_recorded` and
+`receipt_issued`; a confirmation `payment_bank_transfer_confirmed` and
+`receipt_issued`; a rejection its event with the reason; a reversal
+`payment_reversed` (linking the reversal row) and `receipt_voided` (linking the
+collection and its receipt), both with the reason. Every event is written by
+`app/services/payment_audit.py::record_payment_event`, before the commit of the
+change it describes, which re-proves the locked actor, the issued invoice, the
+links, the reason rule, and that the two snapshots show the transition the kind
+means, the rows as they now are, and the kind's exact effect on the paid amount.
+
+A payment snapshot (`phase5-m05.payment.v1`) holds the invoice public id,
+number and status, the currency, the exact total, paid and outstanding amounts
+(`paid + outstanding = total`), the event's transaction (public id, kind,
+method, status, amount, and for a reversal the reversed collection's public id)
+and receipt (public id, number, status). No internal id, name, reference, reason,
+token or client value. A `before_insert` guard refuses an event whose snapshots
+or links do not match its kind; M04's append-only guards cover every event. The
+invoice page's timeline shows payment events with their sentences, reasons and
+the balance after each.
+
+### H. Routes, locks, tokens and stale forms
+
+Eight URL rules, public identifiers only. With `<invoice>` = M04's
+`.../fee-assignments/<ap>/invoices/<ip>`:
+
+    GET       <invoice>/payments                 history, balance, controls
+    GET|POST  <invoice>/payments/cash            confirm, then record cash
+    GET|POST  <invoice>/payments/bank-transfer   record a pending transfer
+    GET|POST  <invoice>/payments/<pp>/confirm    confirm a pending transfer
+    GET|POST  <invoice>/payments/<pp>/reject     reject, with a reason
+    GET|POST  <invoice>/payments/<pp>/reverse    reverse in full, with a reason
+    GET       <invoice>/receipts/<rp>            one receipt
+    GET       /admin/payments                    every payment, 20 per page
+
+Only an active Administrator reaches them. Anything that does not nest -- a
+payment or receipt of another invoice, assignment, Enrollment or Group, an
+unknown or numeric id -- is a plain 404. Mutations are POST-only with CSRF and a
+confirmation box (recording a pending transfer excepted); every response carries
+`Cache-Control: private, no-store` and `Vary: Cookie`; everything is
+autoescaped. An issued invoice's page shows its balance and links to its
+payments. The **Payments** navigation entry links to the overview; Research stays
+disabled.
+
+`app/services/payment_transactions.py`, after M04's prefix through the Invoice:
+cash and transfer recording lock the invoice's transactions (ascending id) --
+and cash then the sequence; confirmation locks the target, the other
+transactions, then the sequence; rejection locks only its target and reads the
+others after the invoice lock; reversal locks the original, the other
+transactions, then the original's receipt. The id-only reads run after the
+invoice lock. After the locks each write re-proves the actor, the nesting, that
+the Group still sits under the locked ancestors, the token, the transaction's
+state and every rule of sections D and E.
+
+Five exact-shape tokens (`app/services/payment_tokens.py`), each under its own
+`admin.<purpose>.phase5-m05.v1` salt, valid for 12 hours: `payment-cash-record`
+and `payment-bank-record` bind the actor, the invoice public id and version, and
+the invoice's **payment state** (`[public_id, status, version]` of every
+transaction, ascending id); `payment-bank-confirm` and `payment-bank-reject` bind
+the actor, invoice, target and target version, and the payment state;
+`payment-reverse` binds the actor, invoice and version, the original and its
+version, and its receipt's `[public_id, status, version]`. Every movement adds a
+row or moves a status and version, so every replay is stale. `IntegrityError`
+and a refused audit event are rolled back first; the actor is re-authorized from
+current state and one generic sentence is shown.
+
+### I. Bank transfer inputs
+
+Only a transfer reference and a civil date are kept. The reference is
+single-line plain text normalized like a fee plan label, at most 64 characters,
+and is refused when it holds 13 to 19 digits -- together or split only by single
+spaces or hyphens -- that pass the Luhn check, the shape of a card number. That
+check can refuse a genuine all-digit reference of that shape (about one in ten);
+the Administrator then enters the bank's reference in another form. The
+application cannot tell an account number typed as a reference from a
+reference; the form says never to enter one. The date is `YYYY-MM-DD`, no
+earlier than 2000-01-01 (a technical bound) and no later than the center-local
+date of the recording.
+
+### J. Query bounds
+
+An invoice holds at most `MAX_INVOICE_COLLECTIONS = 25` collections, rejected
+ones included, so at most 50 transactions -- a technical bound on its page, its
+balance read and every payment-state token, as M04 bounds line rows. Reversal is
+never blocked by it. The payments page reads the transactions once and their
+receipts and named accounts in one keyed query each. The overview is 20 rows per
+page, `id DESC`, `LIMIT PAGE_SIZE + 1`, no `COUNT`, with the invoice chain,
+Student, recorder and receipt joined into its one query; status and method
+filters are normalized to a known value or dropped. Page costs do not grow with
+the rows shown.
+
+### K. Migration
+
+One revision, `c5e8f2a7d914`, after `a8d3f5c29e61`. It creates
+`payment_transactions`, `receipt_number_sequences` and `receipts` with their
+indexes, then extends `payment_audit_events` (section B): on MySQL by adding the
+columns, their indexes before their foreign keys, and dropping and re-adding
+each replaced CHECK under its own name; on SQLite (tests only) by a batch rebuild
+from an explicit `copy_from` definition, with foreign keys enforced, since no
+table references the audit trail. No row is written or rewritten; no trigger,
+`mysql_engine` or `mysql_charset`. The downgrade **refuses** while any payment,
+receipt, receipt sequence or M05 event exists, rather than destroy financial
+history; otherwise it restores the exact M04 audit table and drops the three
+tables. The nine earlier migration suites pinning the single head moved to the
+new head; the M04 migration suite now compares the audit table's M05 additions
+against this revision instead of M04's; M04's route inventory and route-fragment
+tests exclude the payment routes, which `tests/test_admin_payments.py`
+inventories; M04's model and audit-writer tests list the new kinds, links and
+writer; and the navigation contracts in `tests/test_admin_dashboard.py`,
+`tests/test_admin_fee_plans.py`, `tests/test_admin_attendance.py` and
+`tests/test_admin_gradebook.py` now expect Payments enabled (the fee plan
+test was renamed accordingly). Nothing else in those suites changed.
+
+### L. Verification actually performed, and what it does not prove
+
+- New suites: `tests/test_payments_model.py`, `tests/test_payment_audit.py`,
+  `tests/test_payments_migration.py`, `tests/test_admin_payments.py` and
+  `tests/test_payment_transactions.py`, with `tests/payment_fixtures.py`.
+- The migration was executed in both directions on an isolated SQLite database
+  holding representative non-financial rows and M04 invoices, lines, sequences
+  and events of every M04 kind; those rows were read back unchanged, with NULL
+  links, after the upgrade and after the downgrade; M05 rows were written and
+  constraints proved by refused inserts; the downgrade was proved to refuse
+  while payment history exists. MySQL DDL and the offline MySQL script were
+  compiled without a connection.
+- CSRF was exercised with protection **enabled**; a real CHECK failure on a
+  payment event rolled back the payment, receipt and sequence writes with it.
+- The revision is applied to development MySQL only after the strict full suite
+  passes and the database is confirmed at `a8d3f5c29e61`; the exact test counts
+  and MySQL evidence are recorded in the Part's handoff.
+- Automated tests run on SQLite in memory. Lock tests assert what the chains
+  *request*; race tests inject a change at the lock boundary or at the sequence
+  lock. Neither proves InnoDB blocking, isolation, gap-lock behaviour, collation
+  or index plans.
+- **No browser, accessibility, responsive, keyboard, real-concurrency or MySQL
+  query-plan verification was performed.**
