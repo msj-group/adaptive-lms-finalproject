@@ -8917,3 +8917,214 @@ revision's text and exclude M07's additions, which
   in development and testing alone.
 - **No browser, accessibility, responsive, keyboard, real-concurrency, real
   provider or MySQL query-plan verification was performed.**
+
+## Administrative financial reports, CSV and PDF exports (Phase 5, Part M08)
+
+M08 completes the reporting portion of Phase 5. An active Administrator can
+read three financial reports -- collections, current outstanding invoices and
+operational exceptions -- as an HTML page, and download each as CSV or PDF.
+**M08 is read-only**: no route creates, edits, confirms, rejects, reverses,
+cancels or otherwise changes a financial row, writes an audit event or an
+export history row, or stores a file. It removes reports from the deferred
+lists of M04 to M07. There is no migration and no model change.
+
+Deferred with **no** placeholder table, column, route, enum value or template
+hook: historical "as of" statements, ageing buckets, accounting journals, tax
+logic, saved, scheduled or emailed reports, export history, charts or
+dashboard totals, a reconciliation-resolution workflow, Student, Teacher,
+Researcher or public report views, and a Unicode PDF font (section F).
+
+### A. The three reports
+
+- **Collections.** Every `confirmed` payment transaction whose kind is
+  `collection` (positive) or `reversal` (negative) and whose `confirmed_at`
+  falls on a center-local date inside the requested range. Subtotals by
+  method -- cash, bank transfer, online -- give the count and sum of
+  collections, the count and (negative) sum of reversals, and the net; an
+  "All methods" row totals them. A reversal keeps its collection's method
+  (M05), so it subtracts from that method, including an online collection's
+  reversal. Pending and rejected transfers are never counted. Each row shows
+  only the local confirmation moment, the movement type, the method, the
+  signed amount, the invoice number, the Student and the Group.
+- **Outstanding invoices** (current state, not a historical statement).
+  Every `issued` invoice whose M05 `payment_balance` -- active lines less
+  confirmed collections plus confirmed reversals -- has an outstanding amount
+  strictly above zero, with its number, Student, Group, local issue moment,
+  total, paid and outstanding amounts and their totals. Drafts, cancelled and
+  settled invoices are excluded; pending and rejected transfers change
+  nothing. **Recorded reading:** an issued invoice whose records give no
+  valid balance (a negative paid or outstanding amount -- impossible through
+  the application, and shown "unavailable" by M05) is not silently dropped:
+  it is listed in a separate section, named in a note, and left out of the
+  totals.
+- **Operational exceptions** (current state). Four sections and a summary of
+  their counts and amounts: pending bank-transfer collections (by recording
+  moment), rejected bank-transfer collections (by rejection moment), active
+  payment intents -- `pending` and `provider_succeeded` -- with their status
+  label, and provider events whose outcome is `reconciliation_required`, with
+  the event type and the intent's status. Nothing is resolved or changed;
+  there is no control to do so.
+
+No report shows an internal id, a bank-transfer reference or date, a
+rejection or void reason, a provider reference, an idempotency key, a
+provider event id, a payload digest, a signature, a secret or a public id of
+a payment, intent or event: the queries never select those columns.
+
+### B. One service, three outputs
+
+`app/services/financial_reports.py` validates the filters and builds one
+`FinancialReport` -- title, applied filters, generation moment, timezone,
+currency `LYD`, notice, notes and sections of typed rows (`str`, `int`,
+exact `Decimal`, naive center-local `datetime`) -- from one report moment read
+once per request. The HTML page, `render_csv` and `render_pdf`
+(`app/services/financial_report_exports.py`) all render that same object,
+so they state the same rows, order, totals, filters and generation time. Every
+report states its title, applied filters, generation moment in the center
+timezone, the currency, its totals and the notice "Operational report only.
+It is not a tax invoice, a receipt or a legal accounting statement."
+
+- **Ordering** is deterministic: collections by `confirmed_at`, outstanding
+  invoices by `issued_at`, pending transfers by `recorded_at`, rejected
+  transfers by `rejected_at`, intents by `created_at`, events by
+  `received_at` -- each then by the internal `id`, used only as a tie-breaker
+  in SQL and never rendered.
+- **Money** is added and subtracted in Python `Decimal` with `Inexact`
+  trapped, never in SQL and never as a float; the outstanding balance is M05's
+  own function, not a copy of it.
+- **No row limit.** Every matching row is read, because the totals are exact
+  only over every row and the exports must hold them all; there is no silent
+  cap and no invented safety limit. The HTML page shows 50 rows of a long
+  table per page, states "Rows x-y of n", and always shows the totals of all
+  rows; a page past the end falls back to page 1. CSV and PDF ignore `page`.
+- **Consistency.** A report's queries run in one database transaction and
+  take no lock, so a report never blocks a payment write. On InnoDB's default
+  REPEATABLE READ, plain reads in one transaction share the snapshot of its
+  first read; the SQLite tests cannot prove that.
+
+### C. Filters
+
+- `group` -- one Group's **public id**, or empty for the whole center
+  ("All groups (center-wide)"). The value must be exactly a lowercase UUID
+  that names a Group; a numeric database id, an unknown, malformed, padded or
+  upper-cased value is refused, never looked up. Archived Groups stay
+  selectable (their financial history remains reportable) and are labelled
+  "(archived)". The Group limits every report through
+  Invoice -> StudentFeeAssignment -> Enrollment -> Group.
+- `start` / `end` -- collections only: strict `YYYY-MM-DD` dates from
+  2000-01-01 (M05's technical bank-transfer bound) to 9998-12-31 (the next
+  local midnight stays representable), both inclusive. The range is
+  `[local midnight of start, local midnight after end)`, converted to naive
+  UTC with the existing `from_app_local` helper and compared with the stored
+  naive-UTC `confirmed_at`. Both absent or empty means the current
+  center-local calendar month, stated as such.
+- **Refused, never normalized:** one date without the other, a malformed,
+  impossible, padded or non-ASCII date, a reversed range, an out-of-range
+  date, any repeated parameter, a date on a current-state report and an
+  invalid Group. The response is a 400 page naming each problem, with no
+  report and no download; CSV and PDF requests get the same page.
+- The export links carry the validated filters (the resolved month's dates
+  included), so a download states exactly what the page showed.
+- **Recorded reading (timezone):** the Part names Africa/Tripoli. The center
+  timezone is `APP_TIMEZONE`, configured as `Africa/Tripoli` (`.env.example`)
+  and used by every financial moment since M04; the reports use it through the
+  existing helpers, so they cannot disagree with receipt and invoice years.
+  The report tests pin `APP_TIMEZONE=Africa/Tripoli`.
+
+### D. CSV
+
+UTF-8 with a byte-order mark, `text/csv; charset=utf-8`, CRLF rows. The file
+starts with the report's metadata rows (report, generated, currency, each
+filter, notice, notes), then each section: its title, description, header
+row, data rows, "no rows" sentence when empty, and totals row. Every text
+cell beginning with `=`, `+`, `-` or `@` -- or a tab or carriage return,
+which spreadsheets also read as formula triggers -- is prefixed with `'`.
+Amount cells are exact, ungrouped decimal text produced from `Decimal`
+(`1250.500`, `-100.000`) and checked against `-?[0-9]+\.[0-9]{3,4}` before
+they are written, so a negative amount stays numeric; count cells are digits.
+
+### E. Responses and routes
+
+Ten read-only GET rules, public filters only:
+
+    GET  /admin/financial-reports
+    GET  /admin/financial-reports/collections[.csv|.pdf]
+    GET  /admin/financial-reports/outstanding-invoices[.csv|.pdf]
+    GET  /admin/financial-reports/exceptions[.csv|.pdf]
+
+Only an active Administrator reaches them (`roles_required`; a suspended
+account no longer loads); every other role gets 403 and an anonymous visitor
+the login redirect. POST, PUT, PATCH and DELETE are 405, so no CSRF token is
+involved. Every response -- page, download, 400, 403, redirect -- carries
+`Cache-Control: private, no-store`, `Vary: Cookie` and
+`X-Content-Type-Options: nosniff`; the headers are attached before the role
+check runs. Downloads are attachments with fixed names
+(`collections-report`, `outstanding-invoices-report`,
+`operational-exceptions-report`, `.csv` / `.pdf`); no date, filter or stored
+text reaches a header. Nothing a report shows is logged. The rule and
+endpoint names avoid the fragments earlier route inventories reserve
+(`payment`, `receipt`, `intent`, `online`, `audit`, `webhook` ...), so no
+earlier inventory changed. The **Financial reports** navigation entry sits
+under Finance & Research after Payments; Research stays disabled.
+
+### F. PDF
+
+**No dependency was added** (`requirements.txt` is unchanged). The PDF is
+written directly by `render_pdf`: PDF 1.4, A4 landscape, the standard
+`Courier` and `Courier-Bold` fonts (nothing embedded) in `WinAnsiEncoding`,
+no compression. Every piece of text is a hexadecimal string operand of `Tj`,
+so no stored character can close a string or be read as an operator, name or
+markup; the content streams hold only text, rule and fill operators, and the
+document has no JavaScript, action, link, form, annotation, attachment,
+external reference or embedded file. No browser, shell, subprocess, network
+request or file path is involved, and nothing is written to disk. Courier is
+monospaced, so column widths and line wrapping are exact: numbers and moments
+never wrap and are right-aligned where numeric, text columns wrap at spaces
+without losing a character, a table continued on a new page repeats its
+section title and column headers, totals rows are bold, and every page states
+the title, "Page n of m" and the notice. A section starts on a new page
+unless its heading, header and first row -- or, when empty, its whole table
+-- fit. The output is deterministic for a given report.
+
+**Recorded limitation.** A standard PDF font can show only `WinAnsiEncoding`
+(Latin-script) characters. Rendering Arabic correctly needs an embedded
+Unicode font and a text-shaping engine -- more than the one dependency the
+Part allowed, plus a font file outside its scope. So when any text of a
+report (a name, a Group label) has another character, or a control
+character, `render_pdf` raises `PdfTextUnsupported` and nothing is produced:
+the PDF route redirects to the HTML report with a warning, and the CSV and
+the page show every character. No character is dropped, replaced or
+transliterated. Arabic-capable PDF output needs a later, owner-approved
+decision on a font asset and a shaping dependency.
+
+### G. Verification actually performed, and what it does not prove
+
+- New suites: `tests/test_admin_financial_reports.py` (49 tests) and
+  `tests/test_financial_report_exports.py` (19 tests), with
+  `tests/financial_report_fixtures.py`. No earlier test changed.
+- They cover Administrator-only access for every rule and role, suspended and
+  anonymous access, GET-only methods, the navigation entry, exact signed
+  totals by method over directly written rows **and** over rows recorded by
+  the application's own cash, bank-transfer, reversal and signed-webhook
+  routes, Tripoli midnight boundaries, the default month (including month,
+  year and leap-year edges), every refused filter on HTML, CSV and PDF, Group
+  ownership and archived Groups, the outstanding rules and the unavailable
+  balance, every exception category, identical facts across the three
+  outputs, deterministic ordering and byte-identical repeated exports,
+  pagination, CSV formula neutralization, PDF structure (cross-reference
+  offsets, stream lengths, page count, repeated headers), hex-only PDF text,
+  the Latin-only refusal, the absence of every sensitive value, and that no
+  report request changes any financial row, receipt, sequence, intent,
+  provider event or audit event.
+- The complete strict-warning suite (`pytest -W error`) passed 6,663 tests
+  with the four inherited IANA-time-zone skips, run as ten parallel processes
+  that together covered all 145 test files; the two M08 suites and the
+  navigation contract were then re-run on the final code (90 passed).
+- The report SQL was compiled with the MySQL dialect without a connection; it
+  was **not executed** on MySQL. Development MySQL was only checked to remain
+  at `e9c4b2d7a1f3`.
+- Sample PDFs of all three reports were rendered by the Windows PDF engine
+  (`Windows.Data.Pdf`) to images and inspected, and the report, refusal and
+  index pages, saved from the test client with local stylesheets, were
+  screenshotted in headless Chrome. **No live-browser session, accessibility,
+  responsive, keyboard, print, spreadsheet-application or MySQL query-plan
+  verification was performed.**

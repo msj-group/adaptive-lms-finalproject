@@ -29,3 +29,4 @@ from app.blueprints.admin import fee_assignments  # noqa: E402,F401
 from app.blueprints.admin import invoices  # noqa: E402,F401
 from app.blueprints.admin import payments  # noqa: E402,F401
 from app.blueprints.admin import payment_intents  # noqa: E402,F401
+from app.blueprints.admin import financial_reports  # noqa: E402,F401

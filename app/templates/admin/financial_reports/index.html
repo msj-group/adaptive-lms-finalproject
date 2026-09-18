@@ -1,0 +1,30 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Financial reports{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M08. The three read-only financial reports. Each can be viewed
+      here and downloaded as CSV or PDF; nothing on these pages changes a
+      financial record, and there is no control or endpoint that could. -#}
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+    <h1 style="margin:0">Financial reports</h1>
+  </div>
+  <p class="ds-section__desc">
+    Read-only reports of recorded payments and invoices. Each report can be limited to one
+    Group and downloaded as CSV or PDF with exactly the rows and totals it shows.
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">{{ notice }}</div>
+
+  <div style="display:grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))">
+    {% for spec in specs %}
+    <div class="card">
+      <div class="card__title"><a href="{{ url_for(endpoints[spec.key]) }}">{{ spec.title }}</a></div>
+      <div class="card__body">{{ spec.summary }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

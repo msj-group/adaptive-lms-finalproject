@@ -25,6 +25,7 @@ ADMIN_NAV_SECTIONS = [
         "links": [
             {"label": "Fee Plans", "endpoint": "admin.fee_plans_list"},
             {"label": "Payments", "endpoint": "admin.payments_overview"},
+            {"label": "Financial reports", "endpoint": "admin.financial_reports_index"},
             {"label": "Research", "endpoint": None},
         ],
     },
