@@ -1,0 +1,45 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Create sandbox payment intent — {{ context.student_name }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M06. Confirm, then ask the Mock/Sandbox provider to collect this
+      ISSUED invoice's whole outstanding balance. The amount is not an input: the
+      server snapshots the exact outstanding balance it finds under the invoice
+      lock. The state token binds the invoice's version, its manual payments, its
+      intents and the provider mode, so a page opened before anything changed is
+      rejected; the idempotency key is derived from it on the server. -#}
+  <div class="ds-row" style="margin-bottom: var(--space-3)">
+    <a class="btn btn--secondary" href="{{ intents_url }}">&larr; Payment intents</a>
+  </div>
+
+  <h1 style="margin: 0 0 var(--space-4)">Create sandbox payment intent</h1>
+
+  {{ macros.flash_messages() }}
+
+  {% include "admin/fee_assignments/_context.html" %}
+  {% include "admin/payments/_invoice.html" %}
+
+  <form method="post" action="{{ action_url }}" class="card" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="{{ state_field }}" value="{{ state_token }}">
+    <div class="card__body">
+      This asks the Mock/Sandbox provider to collect <strong>{{ amount_text }} {{ currency_code }}</strong>, the
+      invoice's whole outstanding balance. It is a simulation for development and testing: no real payment is
+      taken and nothing is charged. While the intent is active the invoice's lines and its cancellation are
+      frozen; a pending intent can be cancelled to release them.
+    </div>
+    <label class="field__label" style="display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-4)">
+      <input type="checkbox" name="confirm" value="yes">
+      I understand this is a sandbox payment intent and no payment is taken.
+    </label>
+    {% if confirm_error %}
+    <div class="field__error">{{ confirm_error }}</div>
+    {% endif %}
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      <button type="submit" class="btn btn--primary">Create sandbox payment intent</button>
+      <a class="btn btn--secondary" href="{{ intents_url }}">Back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Payment intent — {{ context.student_name }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M06. One payment intent. A pending intent may be checked out in
+      the Mock/Sandbox or cancelled, when the sandbox is enabled. A provider's
+      reported success is recorded for sandbox testing only: it creates no
+      payment or receipt, changes no balance, and cannot be cancelled here. -#}
+  <div class="ds-row" style="margin-bottom: var(--space-3)">
+    <a class="btn btn--secondary" href="{{ intents_url }}">&larr; Payment intents</a>
+  </div>
+
+  <div class="ds-row" style="justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-4)">
+    <h1 style="margin:0">Payment intent</h1>
+    {% if checkout_url or cancel_url %}
+    <div class="ds-row" style="gap: var(--space-2); flex-wrap: wrap">
+      {% if checkout_url %}<a class="btn btn--primary" href="{{ checkout_url }}">Open sandbox checkout</a>{% endif %}
+      {% if cancel_url %}<a class="btn btn--danger-outline" href="{{ cancel_url }}">Cancel intent</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  {% if intent.has_provider_result %}
+  <div class="alert alert--warning" role="status" style="margin-bottom: var(--space-4)">
+    <strong>{{ result_notice[0] }}</strong><br>
+    <strong>{{ result_notice[1] }}</strong>
+  </div>
+  {% endif %}
+  {% if intent.is_provider_succeeded %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    The provider reported success. This intent cannot be cancelled here; it stays active, and keeps the
+    invoice's lines and cancellation frozen, until its payment is verified. No payment or receipt has been
+    recorded and the invoice's balance is unchanged.
+  </div>
+  {% endif %}
+  {% if intent.is_pending and not mock_enabled %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    Online payments are disabled in this environment, so this pending intent cannot be checked out or
+    cancelled here. It keeps the invoice's lines and cancellation frozen.
+  </div>
+  {% endif %}
+
+  {% include "admin/fee_assignments/_context.html" %}
+  {% include "admin/payments/_invoice.html" %}
+  {% include "admin/payment_intents/_intent.html" %}
+
+  <p class="ds-section__desc">Times in {{ tz_name }}.</p>
+</div>
+{% endblock %}

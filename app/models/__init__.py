@@ -20,6 +20,7 @@ from app.models.enums import (
     MaterialKind,
     NotificationKind,
     PaymentAuditEventKind,
+    PaymentIntentStatus,
     PaymentMethod,
     PaymentTransactionKind,
     PaymentTransactionStatus,
@@ -154,6 +155,13 @@ from app.models.payment_transaction import (
     PaymentTransaction,
 )
 from app.models.receipt import Receipt
+from app.models.payment_intent import (
+    ACTIVE_PAYMENT_INTENT_STATUSES,
+    MAX_INVOICE_PAYMENT_INTENTS,
+    PAYMENT_INTENT_PROVIDERS,
+    TERMINAL_PAYMENT_INTENT_STATUSES,
+    PaymentIntent,
+)
 
 __all__ = [
     "User",
@@ -290,4 +298,10 @@ __all__ = [
     "Receipt",
     "ReceiptNumberSequence",
     "MAX_RECEIPT_SEQUENCE_NUMBER",
+    "PaymentIntentStatus",
+    "PaymentIntent",
+    "ACTIVE_PAYMENT_INTENT_STATUSES",
+    "TERMINAL_PAYMENT_INTENT_STATUSES",
+    "MAX_INVOICE_PAYMENT_INTENTS",
+    "PAYMENT_INTENT_PROVIDERS",
 ]

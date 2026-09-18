@@ -125,7 +125,7 @@ def test_revision_identifiers_and_one_linear_head():
         revisions.add(revision)
         parents[revision] = down
     # Phase 4 / M13 follows this revision, so the single head is now Phase 5 / M05's.
-    assert revisions - {p for p in parents.values() if p is not None} == {"c5e8f2a7d914"}
+    assert revisions - {p for p in parents.values() if p is not None} == {"d4f7a2c9e1b6"}
     claimed = [p for p in parents.values() if p is not None]
     assert len(claimed) == len(set(claimed))
     assert len([r for r, p in parents.items() if p is None]) == 1

@@ -44,6 +44,14 @@ class Config:
     MATERIAL_MAX_AUDIO_BYTES = os.environ.get("MATERIAL_MAX_AUDIO_BYTES", "52428800")
     MATERIAL_MAX_VIDEO_BYTES = os.environ.get("MATERIAL_MAX_VIDEO_BYTES", "104857600")
 
+    # ---- Phase 5 / M06: online payment provider boundary ----
+    # ``disabled`` (the default) or ``mock``. Resolved and validated once at
+    # start-up by app.services.payment_providers.resolve_payment_provider
+    # (fail-closed: ``mock`` outside development/testing, or any unknown
+    # value, refuses to start the application). Not a secret; no provider
+    # credential exists. See docs/DECISIONS.md, Part M06.
+    PAYMENT_PROVIDER_MODE = os.environ.get("PAYMENT_PROVIDER_MODE", "disabled")
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
@@ -55,6 +63,9 @@ class TestingConfig(Config):
     WTF_CSRF_ENABLED = False
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     RATELIMIT_ENABLED = False
+    # Pinned, like the database URI, so a developer's own environment can
+    # never switch the suite into a provider mode; a test opts in explicitly.
+    PAYMENT_PROVIDER_MODE = "disabled"
 
 
 class ProductionConfig(Config):

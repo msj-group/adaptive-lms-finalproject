@@ -187,10 +187,13 @@ def test_the_route_inventory_is_exact_and_mutations_are_post_only(app, client):
                "/fee-assignments/<assignment_public_id>/invoices/<invoice_public_id>")
     one = invoice + "/payments/<payment_public_id>"
     both = frozenset({"GET", "POST"})
+    # Phase 5 / M06's payment intent routes are inventoried by
+    # tests/test_admin_payment_intents.py.
     rules = {
         (rule.rule, frozenset(rule.methods - {"HEAD", "OPTIONS"}))
         for rule in app.url_map.iter_rules()
-        if "payment" in rule.rule or (rule.rule.startswith("/admin") and "receipt" in rule.rule)
+        if ("payment" in rule.rule and "payment-intents" not in rule.rule)
+        or (rule.rule.startswith("/admin") and "receipt" in rule.rule)
     }
     assert rules == {
         ("/admin/payments", frozenset({"GET"})),

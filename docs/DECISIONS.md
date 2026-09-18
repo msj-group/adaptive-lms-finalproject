@@ -8278,3 +8278,334 @@ test was renamed accordingly). Nothing else in those suites changed.
   or index plans.
 - **No browser, accessibility, responsive, keyboard, real-concurrency or MySQL
   query-plan verification was performed.**
+
+## Mock/Sandbox provider adapter and payment intents (Phase 5, Part M06)
+
+M06 adds a provider-independent online-payment boundary and a clearly labelled
+Mock/Sandbox provider for development and testing, and lets an active
+Administrator create, check out in the sandbox and cancel payment intents for
+issued invoices. It removes payment intents and providers from M05's deferred
+list. **A payment intent is not a payment.** M06 never creates a payment
+transaction, receipt or audit event, never changes an invoice's lines,
+amounts, balance, status or number, and never treats a browser redirect or a
+sandbox success as a financial confirmation. Money parsing, the M02 to M05
+lifecycles, invoice and receipt numbering and every manual-payment rule are
+unchanged.
+
+Deferred with **no** placeholder table, column, route, enum value, form field
+or template hook: any real provider, SDK, network call, provider secret,
+sandbox credential or hosted real checkout; card numbers, CVV/CVC, PINs, bank
+credentials, account numbers and payment proofs; `payment_customers`; webhook
+endpoints, signature and timestamp verification, replay prevention and
+provider-event storage; turning a provider result into a payment transaction,
+receipt or paid balance; refunds, credit notes, settlement, reports,
+notifications, Student, Teacher, Researcher or public payment views, and
+seeded data.
+
+**Obligations on Phase 5 / M07.** M07 alone verifies signed webhooks, prevents
+replays and turns a verified success into a financial payment. It must:
+
+- re-prove the outstanding balance when it records that payment. As this Part
+  instructs, M05's manual-payment rules are unchanged, so a cash payment or
+  bank transfer can still be recorded while an intent is active, and an
+  intent's amount snapshot can then exceed what is outstanding;
+- decide what happens to `provider_succeeded` intents. In M06 they stay
+  active, cannot be cancelled and keep their invoice frozen; the ORM guard
+  refuses any change to them, and M07 widens it (and the CHECKs) for the
+  transitions it adds;
+- make provider references unique per provider once a second provider exists.
+
+### A. The aggregate
+
+A `PaymentIntent` belongs to exactly one issued `Invoice`. It records that the
+provider was asked to collect the invoice's exact outstanding balance, in
+`LYD`, under a server-derived idempotency key, and what the provider has
+reported since. It duplicates none of the assignment, Enrollment, Student or
+academic identity read through the invoice. **At most one active intent per
+invoice** has no database constraint (no portable partial unique index, as
+M04 recorded for open invoices); the application proves it under the invoice
+lock, and the model suite shows the database alone accepts two.
+
+### B. One new table
+
+`payment_intents`: `id`, `public_id`, `invoice_id`, `provider`,
+`provider_reference`, `idempotency_key`, `status`, `currency_code`,
+`amount DECIMAL(19, 4)`, `created_by_id`, `provider_result_at`,
+`provider_result_by_id`, `terminal_at`, `cancelled_by_id`, `version`,
+`created_at`, `updated_at`.
+
+- Closed sets are literal `IN` CHECKs, never MySQL `ENUM`:
+  `ck_payment_intents_status_valid`, `_provider_valid` (`mock` only),
+  `_currency_code`, `_amount_range` (M02's `0.001..99999.999`) and
+  `_version_positive`.
+- `ck_payment_intents_provider_reference_present`,
+  `ck_payment_intents_idempotency_key_length` (64),
+  `ck_payment_intents_provider_result_pair`,
+  `ck_payment_intents_terminal_state` (a terminal moment exists exactly for
+  `provider_failed` and `cancelled`), `ck_payment_intents_lifecycle_state` (a
+  pending intent has no result and no canceller; a provider result has its
+  moment, and a failure became terminal at that moment; a cancellation names
+  its canceller and has no provider result) and
+  `ck_payment_intents_timestamps_ordered`.
+- `uq_payment_intents_provider_reference`, `uq_payment_intents_idempotency_key`
+  and the unique `public_id`.
+- Every foreign key is plain, with no `ON DELETE` / `ON UPDATE`; no ORM
+  relationship, cascade or trigger exists. There is no separate
+  `provider_status` column: the local status *is* the provider's normalized
+  report, and a copy would only duplicate it. No column stores, or is shaped
+  for, a card, bank or credential value, a customer, a webhook or a balance.
+- Indexes: `ix_payment_intents_invoice_id_id` (one invoice's rows, the rows to
+  lock and the foreign key), `ix_payment_intents_status_id` (the filtered
+  overview) and one per `users` foreign key. No MySQL execution plan has been
+  measured.
+
+### C. Lifecycle
+
+    pending -> provider_succeeded
+    pending -> provider_failed
+    pending -> cancelled
+
+- An intent is written `pending` at version 1 with `created_*` and
+  `updated_at` at one post-lock whole-second UTC moment.
+- `pending` and `provider_succeeded` are **active**; `provider_failed` and
+  `cancelled` are **terminal** and carry `terminal_at`.
+- Each decision moves the version exactly once. ORM guards refuse deleting an
+  intent, changing what was asked (provider, reference, key, amount, currency,
+  invoice, creator, creation moment), changing a decided intent, any
+  transition out of `pending` that is not one of the three decisions, and bulk
+  `UPDATE` / `DELETE` statements against the table.
+
+### D. The provider boundary and its configuration
+
+`app/services/payment_providers.py` defines the Flask-independent interface
+with exactly `create_payment_intent`, `get_payment_status`, `cancel_payment`,
+`refund_payment`, `verify_webhook` and `normalize_event`. The adapter layer
+imports no Flask, request, session, template, ORM, database or HTTP client
+module. `refund_payment`, `verify_webhook` and `normalize_event` exist on the
+interface, have no endpoint, and raise `PaymentProviderUnsupportedOperation`
+(never a fake success).
+
+`app/services/mock_payment_provider.py` is the only implementation. It makes
+no network call and stores no credential: its in-process ledger, one per
+application instance behind a lock, keeps only a reference, the key that
+created it, the amount, the currency and a status.
+
+- A reference is `mock_pi_` plus 32 hex digits of SHA-256 over the
+  idempotency key. The same key always yields the same reference, even after
+  a restart, and the reference reveals neither the key nor any amount or id.
+- A restart forgets simulated outcomes. A well-formed reference the ledger no
+  longer holds is reported `pending` with no amount, can still be cancelled,
+  and cannot be given a new outcome, so a pending intent is never stranded and
+  a forgotten success is never invented.
+- `simulate_checkout_outcome` (success, failure or cancellation) is sandbox
+  only, is not part of the interface, changes only the ledger, and refuses to
+  change a decided payment.
+
+`PAYMENT_PROVIDER_MODE` is the only setting: `disabled` (the default) or
+`mock`. `create_app` resolves it once for the environment it was created for
+and **fails closed**: an unknown value, `mock` outside `development` and
+`testing` (including any environment name this project does not define), or
+any non-`disabled` mode in `production` raises `PaymentProviderConfigError`,
+and the application refuses to start. No error repeats the configured value.
+`TestingConfig` pins `disabled`, as it pins its database, so a developer's
+environment can never switch the suite into a provider mode; tests opt in
+explicitly. `.env.example` documents the one non-secret setting. **Recorded
+reading:** wiring the start-up resolution needed a six-line addition to
+`app/__init__.py`, beside M12's material configuration, which the Part's file
+list did not name.
+
+### E. Creation, the amount and idempotency
+
+An intent is created only when, after the locks: the Mock/Sandbox provider is
+enabled; the actor is an active Administrator and the nesting holds; the
+Group still sits under the locked ancestors; the invoice is `issued` with a
+valid set of active lines (M04's definition) and a valid balance; it has no
+`pending` or `confirmed` manual payment; it has no active intent and fewer
+than `MAX_INVOICE_PAYMENT_INTENTS = 25` intents; its outstanding balance is
+at least `0.001` and at most `99999.999` LYD; and the token is current.
+
+- The amount is never submitted. It is the exact outstanding balance
+  (M05's `payment_balance`) read under the invoice lock. Because a pending or
+  confirmed manual payment refuses creation, and a reversal leaves its
+  confirmed collection in place, the snapshot is in practice the whole invoice
+  total. **An intent always covers the whole outstanding balance**, so an
+  outstanding balance above M02's single-payment maximum is refused (M05
+  bounds a single payment the same way).
+- Like M05's collections, creation needs an active Administrator and the
+  nesting but **not** an active Student, Enrollment, Group, academic chain,
+  plan or assignment: "current" in the Part is read as "still nested and not
+  stale".
+- **Idempotency.** The key is an HMAC-SHA-256 under the application secret
+  over the canonical JSON of the *verified* create token's payload -- actor,
+  invoice and version, payment state, intent state, mode. The same logical
+  request always yields the same key, whenever its form was rendered. Before
+  the stale check, and again under the locks, a request whose key already
+  names an intent of this invoice is resolved to that intent ("already
+  created") and writes nothing. The provider receives the same key, so an
+  interrupted creation -- provider accepted, local write failed -- retried
+  with the same request records exactly one intent under the same reference.
+  `uq_payment_intents_idempotency_key` is the final defense.
+- The provider is called only after every lock is held and every rule
+  re-proved; its answer must be a `pending` payment of exactly the asked
+  amount in `LYD` under a usable reference no other intent holds.
+
+### F. The sandbox checkout and the browser return
+
+The checkout page exists only while the sandbox is enabled and the intent is
+`pending`. It states "Simulation only. No real payment is taken.", shows only
+this intent's amount and sandbox reference, and has **no** card, bank-account,
+CVV/CVC, PIN, credential, text or upload field: its only inputs are hidden CSRF
+and checkout-context fields and three outcome buttons. Choosing an outcome
+posts to the checkout route, which changes only the mock ledger.
+
+"Return to the LMS" posts to the return route, **POST-only with CSRF and the
+signed checkout context**. The return reads the provider's result only through
+`get_payment_status()` under the lock chain, ignores every status, outcome,
+amount or reference the request carries, and records `provider_succeeded` or
+`provider_failed` -- with `provider_result_*`, and `terminal_at` for a failure
+-- only for a still-pending intent that is the invoice's only active intent,
+whose reference, amount and currency the report matches. A provider still
+`pending` or reporting a cancelled checkout changes nothing; the intent stays
+pending until an Administrator cancels it. A GET, a direct visit, forged query
+parameters or form fields, a forged, tampered, expired, stale or other
+intent's context, and a mismatching report all change nothing.
+
+The result page is read-only. After a recorded result it states prominently:
+
+    Provider result recorded for sandbox testing only.
+    No payment is confirmed until M07 verifies a signed webhook.
+
+and shows the invoice's balance, which the result never changes.
+
+### G. Cancellation
+
+Only a `pending` intent is cancelled, with a confirmation box. After the locks
+the provider's `cancel_payment` is called; only its confirmed cancellation of
+the same reference moves the intent to `cancelled` -- version once,
+`terminal_at`, `cancelled_by_id` -- and the invoice is released unless a
+manual payment still freezes it. A provider that refuses (for example because
+the sandbox already holds a success the LMS has not read) changes nothing. A
+`provider_succeeded` intent cannot be cancelled in M06. Cancellation writes no
+payment, refund, reversal or audit event.
+
+### H. The invoice freeze
+
+An invoice's lines and cancellation are frozen while it has a `pending` or
+`confirmed` manual payment (M05) **or** a `pending` or `provider_succeeded`
+intent. `app/blueprints/admin/invoices.py` asks one helper in the edit page,
+the three line routes and the cancellation -- before the invoice lock for the
+page and again after it for the decision; every intent write takes the invoice
+lock first, so the answer is current. A rejected transfer, a failed intent or a cancelled intent
+alone freezes nothing. The manual-payment sentence is shown first when both
+apply. The invoice page shows the intent freeze, hides the edit and cancel
+controls while it holds, and links an issued invoice to its intents.
+
+### I. Routes, locks, tokens and stale forms
+
+Eight URL rules, public identifiers only. With `<invoice>` = M04's
+`.../fee-assignments/<ap>/invoices/<ip>` and `<intent>` =
+`<invoice>/payment-intents/<xp>`:
+
+    GET       <invoice>/payment-intents        history and create control
+    GET|POST  <invoice>/payment-intents/new    confirm, then create
+    GET       <intent>                         detail
+    GET|POST  <intent>/checkout                sandbox checkout; simulate
+    POST      <intent>/return                  browser return
+    GET       <intent>/result                  read-only result page
+    GET|POST  <intent>/cancel                  confirm, then cancel
+    GET       /admin/payment-intents           every intent, 20 per page
+
+Only an active Administrator reaches them; other roles get 403 before
+anything else is decided. Anything that does not nest is a plain 404. While
+the sandbox is not enabled the create, checkout, return and cancel rules are a
+plain 404 and the read-only pages say online payments are disabled. Every
+response carries `Cache-Control: private, no-store` and `Vary: Cookie`; text is
+autoescaped; no page shows an internal id or an idempotency key. The
+**Payments** navigation is unchanged, and nothing is added to any other
+portal.
+
+`app/services/payment_intent_transactions.py`:
+
+    creation:          ... -> Invoice -> the invoice's PaymentTransactions
+                       (ascending) -> the invoice's PaymentIntents (ascending)
+    cancel and return: ... -> Invoice -> the target PaymentIntent
+                       -> PaymentTransactions (ascending)
+                       -> the other PaymentIntents (ascending)
+
+The prefix through the Invoice is M04's `lock_invoice_chain`, unchanged.
+**Recorded decision:** the Part lists
+`Student -> Administrator -> Enrollment`, while the code and M03 section D
+lock `Student -> Enrollment -> Administrator` and the Part also requires
+reusing the existing financial lock conventions. The owners approved keeping
+the existing order, so M06 writes cannot deadlock against M03, M04 or M05
+writes on the Enrollment and Administrator rows. The sandbox simulation takes
+no lock and writes no row. After the locks each write re-proves the actor, the
+nesting, that the Group still sits under the locked ancestors, the provider
+mode, the token or context, the invoice, its manual payments, its intents and
+every rule of sections E to G.
+
+Three exact-shape signed payloads (`app/services/payment_intent_tokens.py`),
+each under its own `admin.<purpose>.phase5-m06.v1` salt:
+`payment-intent-create` binds the actor, the invoice and its version, the
+payment state (M05's triples), the intent state (`[public_id, status,
+version]` of every intent, ascending id) and the mode; `payment-intent-cancel`
+binds the actor, the invoice and its version, the intent's public id, version
+and status, the intent state and the mode; both last 12 hours. The checkout
+context binds only the intent's public id, version and status, its provider
+reference, an explicit `expires_at` and the purpose, and lasts 30 minutes by
+its signed timestamp and its signed expiry. None carries an internal id, name,
+amount, line, credential, secret or authorization fact. Every creation adds an
+intent and every decision moves one, so a replay is stale (or, for creation,
+resolved). `IntegrityError` is rolled back first; the actor is re-authorized
+from current state and one generic sentence is shown.
+
+### J. Query bounds
+
+An invoice holds at most 25 intents, a technical bound on its pages, locks and
+tokens. The history and the overview are 20 rows per page, `id DESC`,
+`LIMIT PAGE_SIZE + 1`, no `COUNT`; a page past the end falls back to page 1.
+The overview joins the invoice chain, the Student and the creator into its
+one query; its status filter is normalized to a known value or dropped. Page
+costs do not grow with the rows shown.
+
+### K. Migration
+
+One additive revision, `d4f7a2c9e1b6`, after `c5e8f2a7d914`. It creates
+`payment_intents` and its five indexes and nothing else: no alter, no data
+write, no seeded row, no trigger, no `mysql_engine` / `mysql_charset`, so the
+table inherits the server's engine and collation. The downgrade **refuses**
+while any intent exists, rather than destroy history; otherwise it drops the
+table. The eleven earlier migration suites that pin the single head moved to
+the new head (M04's suite keeps `c5e8f2a7d914` as the child of its revision);
+M04's and M05's route inventories exclude the intent routes, which
+`tests/test_admin_payment_intents.py` inventories. Nothing else in those
+suites changed.
+
+### L. Verification actually performed, and what it does not prove
+
+- New suites: `tests/test_payment_providers.py`,
+  `tests/test_payment_intents_model.py`,
+  `tests/test_payment_intents_migration.py`,
+  `tests/test_admin_payment_intents.py` and
+  `tests/test_payment_intent_transactions.py`, with
+  `tests/payment_intent_fixtures.py`.
+- The migration was executed in both directions on an isolated SQLite
+  database holding representative non-financial rows and M04 and M05
+  financial history, which was read back unchanged; constraints were proved by
+  refused inserts, and the downgrade was proved to refuse while an intent
+  exists. MySQL DDL and the offline MySQL script were compiled without a
+  connection.
+- CSRF was exercised with protection **enabled**; a real CHECK failure rolled
+  a browser return back whole; network access was refused at the socket level
+  while every provider operation ran.
+- The revision is applied to development MySQL only after the strict full
+  suite passes and the database is confirmed at `c5e8f2a7d914`; the exact test
+  counts and MySQL evidence are recorded in the Part's handoff.
+- Automated tests run on SQLite in memory. Lock tests assert what the chains
+  *request*; race tests inject a change at the lock boundary. Neither proves
+  InnoDB blocking, isolation, gap-lock behaviour, collation or index plans.
+  The mock ledger lives in one process: several worker processes would not
+  share it, which is acceptable only because the mock runs in development and
+  testing alone.
+- **No browser, accessibility, responsive, keyboard, real-concurrency, real
+  provider or MySQL query-plan verification was performed.**

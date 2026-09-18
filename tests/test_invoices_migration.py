@@ -45,7 +45,9 @@ _MIGRATIONS = pathlib.Path(__file__).resolve().parents[1] / "migrations" / "vers
 _REVISION = "a8d3f5c29e61"
 _DOWN_REVISION = "f9b2d6e4a318"
 #: Phase 5 / M05's revision follows this one, so it is the single head.
-_HEAD = "c5e8f2a7d914"
+_HEAD = "d4f7a2c9e1b6"
+#: Phase 5 / M05, the revision that follows this one.
+_M05 = "c5e8f2a7d914"
 
 #: What Phase 5 / M05 (``c5e8f2a7d914``) changed on ``payment_audit_events``:
 #: three CHECKs widened, one CHECK, two columns, two indexes and two foreign
@@ -190,7 +192,7 @@ def test_revision_identifiers_and_one_linear_head():
     claimed = [p for p in parents.values() if p is not None]
     assert len(claimed) == len(set(claimed))
     assert [r for r, p in parents.items() if p == _DOWN_REVISION] == [_REVISION]
-    assert [r for r, p in parents.items() if p == _REVISION] == [_HEAD]
+    assert [r for r, p in parents.items() if p == _REVISION] == [_M05]
     assert len([r for r, p in parents.items() if p is None]) == 1
 
 

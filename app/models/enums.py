@@ -692,3 +692,32 @@ class ReceiptStatus(str, enum.Enum):
 
     ISSUED = "issued"
     VOIDED = "voided"
+
+
+class PaymentIntentStatus(str, enum.Enum):
+    """Lifecycle of one :class:`~app.models.payment_intent.PaymentIntent`
+    (Phase 5 / M06)::
+
+        pending -> provider_succeeded
+        pending -> provider_failed
+        pending -> cancelled
+
+    - ``pending`` -- created at the provider and awaiting its result. Active:
+      it freezes its invoice's lines and cancellation.
+    - ``provider_succeeded`` -- the provider *reported* success, read through
+      its status operation. Active, and **not** a financial confirmation: no
+      payment, receipt or balance change exists until Phase 5 / M07 verifies a
+      signed webhook. It cannot be cancelled in M06.
+    - ``provider_failed`` -- the provider reported failure. Terminal.
+    - ``cancelled`` -- an Administrator cancelled the pending intent after the
+      provider confirmed the cancellation. Terminal.
+
+    There is no ``paid``, ``confirmed``, ``refunded`` or ``deleted`` member and
+    no placeholder for one. Adding a member is a schema change (the
+    ``payment_intents.status`` CHECK), which is the point.
+    """
+
+    PENDING = "pending"
+    PROVIDER_SUCCEEDED = "provider_succeeded"
+    PROVIDER_FAILED = "provider_failed"
+    CANCELLED = "cancelled"

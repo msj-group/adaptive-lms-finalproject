@@ -6,6 +6,7 @@ from app.config import config_by_name
 from app.extensions import csrf, db, limiter, login_manager, migrate
 from app.errors import register_error_handlers
 from app.services.material_config import resolve_material_config
+from app.services.payment_providers import resolve_payment_provider
 
 
 def create_app(config_name=None, **config_overrides):
@@ -34,6 +35,12 @@ def create_app(config_name=None, **config_overrides):
     material_config = resolve_material_config(app.config, project_root)
     app.extensions["material_config"] = material_config
     app.config["MAX_CONTENT_LENGTH"] = material_config.max_content_length
+
+    # Phase 5 / M06: resolve the online-payment provider once, for the
+    # environment this application was created for. Fail closed --
+    # PaymentProviderConfigError propagates, so production (or any unknown
+    # environment) configured for the mock provider refuses to start.
+    app.extensions["payment_provider"] = resolve_payment_provider(app.config, config_name)
 
     db.init_app(app)
     migrate.init_app(app, db)

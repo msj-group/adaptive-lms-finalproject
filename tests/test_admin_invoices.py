@@ -224,12 +224,14 @@ def test_the_route_inventory_is_exact_and_mutations_are_post_only(app, client):
     one = base + "/<invoice_public_id>"
     line = one + "/items/<item_public_id>"
     # Phase 5 / M05's payment and receipt routes nest below an invoice; they are
-    # inventoried by tests/test_admin_payments.py.
+    # inventoried by tests/test_admin_payments.py. Phase 5 / M06's payment
+    # intent routes nest there too; tests/test_admin_payment_intents.py
+    # inventories them.
     rules = {
         (rule.rule, frozenset(rule.methods - {"HEAD", "OPTIONS"}))
         for rule in app.url_map.iter_rules()
         if "/invoices" in rule.rule and "/payments" not in rule.rule
-        and "/receipts" not in rule.rule
+        and "/receipts" not in rule.rule and "/payment-intents" not in rule.rule
     }
     both = frozenset({"GET", "POST"})
     assert rules == {

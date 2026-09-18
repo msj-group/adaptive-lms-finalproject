@@ -23,7 +23,9 @@ needs a reason. **Phase 5 / M05:** once a ``pending`` or ``confirmed`` payment
 exists for an invoice, its lines and its cancellation are frozen -- every line
 route and the cancellation refuse, before and again after the invoice lock,
 which every payment write takes first. A rejected bank transfer alone freezes
-nothing. Cancellation needs a reason,
+nothing. **Phase 5 / M06:** an active (``pending`` or ``provider_succeeded``)
+payment intent freezes them in exactly the same way; a failed or cancelled
+intent alone freezes nothing. Cancellation needs a reason,
 keeps every row and number, and leaves the invoice read-only forever; a new
 draft may then be created for an assignment that is still ``assigned``.
 
@@ -147,6 +149,7 @@ from app.services.invoice_transactions import (
     open_invoices,
 )
 from app.services.payment_queries import build_balance_view, invoice_payment_rows
+from app.services.payment_intent_transactions import invoice_payment_intent_frozen
 from app.services.payment_transactions import (
     invoice_payment_frozen,
     payment_balance,
@@ -260,6 +263,12 @@ _PAYMENT_FROZEN_MESSAGE = (
     "This invoice has a pending or confirmed payment, so its lines can no longer be changed and "
     "it can no longer be cancelled. Nothing was changed. A payment is corrected by reversing it "
     "on the invoice's payments page."
+)
+_INTENT_FROZEN_MESSAGE = (
+    "This invoice has an active online payment intent, so its lines can no longer be changed and "
+    "it can no longer be cancelled. Nothing was changed. A pending intent is released by "
+    "cancelling it on its page; an intent whose provider reported success stays frozen until its "
+    "payment is verified."
 )
 _NO_CHANGES_MESSAGE = "Nothing was changed, so nothing was saved."
 _CREATED_MESSAGE = (
@@ -541,6 +550,21 @@ def _line_limit_message(active_count, row_count):
     return None
 
 
+def _freeze_message(invoice_id):
+    """Why `invoice_id`'s lines and cancellation are frozen, as a sentence,
+    or ``None``: a ``pending`` or ``confirmed`` manual payment (Phase 5 / M05)
+    or an active -- ``pending`` or ``provider_succeeded`` -- payment intent
+    (Phase 5 / M06). A rejected transfer or a failed or cancelled intent alone
+    freezes nothing. Asked before the invoice lock for the page and again
+    after it for the decision; every payment and intent write takes that lock
+    first."""
+    if invoice_payment_frozen(invoice_id):
+        return _PAYMENT_FROZEN_MESSAGE
+    if invoice_payment_intent_frozen(invoice_id):
+        return _INTENT_FROZEN_MESSAGE
+    return None
+
+
 def _center_year(moment):
     """The center-local calendar year of a naive-UTC `moment`."""
     return to_app_local(_tz_name(), moment).year
@@ -765,8 +789,8 @@ def invoice_detail(group_public_id, enrollment_public_id, assignment_public_id, 
 
     # Phase 5 / M05: an issued invoice links to its payments and shows its
     # balance; a pending or confirmed payment hides the edit and cancel links.
-    payments_url = payment_summary = None
-    frozen = False
+    payments_url = payment_summary = payment_intents_url = None
+    frozen = intent_frozen = False
     if invoice.status == _ISSUED:
         payment_rows = invoice_payment_rows(invoice.id)
         payments_url = url_for(
@@ -778,7 +802,13 @@ def invoice_detail(group_public_id, enrollment_public_id, assignment_public_id, 
             else payment_balance(active_lines(lines), payment_rows)
         )
         frozen = invoice_payment_frozen(invoice.id)
-    editable = invoice.status in _OPEN and not frozen
+        # Phase 5 / M06: an active payment intent freezes the invoice too, and
+        # an issued invoice links to its intent history.
+        intent_frozen = invoice_payment_intent_frozen(invoice.id)
+        payment_intents_url = url_for(
+            "admin.invoice_payment_intents", invoice_public_id=invoice.public_id, **_ids(context)
+        )
+    editable = invoice.status in _OPEN and not frozen and not intent_frozen
     return render_template(
         "admin/invoices/detail.html",
         invoice=view,
@@ -791,6 +821,8 @@ def invoice_detail(group_public_id, enrollment_public_id, assignment_public_id, 
         payments_url=payments_url,
         payment_summary=payment_summary,
         payment_frozen=frozen,
+        intent_frozen=intent_frozen,
+        payment_intents_url=payment_intents_url,
         detail_url=_detail_url(context, invoice.public_id),
         page=page,
         has_prev=page > 1,
@@ -812,8 +844,9 @@ def invoice_edit(group_public_id, enrollment_public_id, assignment_public_id, in
     if invoice.status not in _OPEN:
         flash(_READ_ONLY_MESSAGE, "warning")
         return redirect(detail_url)
-    if invoice_payment_frozen(invoice.id):
-        flash(_PAYMENT_FROZEN_MESSAGE, "warning")
+    frozen = _freeze_message(invoice.id)
+    if frozen is not None:
+        flash(frozen, "warning")
         return redirect(detail_url)
 
     lines = invoice_lines(invoice.id)
@@ -884,8 +917,9 @@ def invoice_line_create(
         flash(_READ_ONLY_MESSAGE, "warning")
         return redirect(detail_url)
 
-    if invoice_payment_frozen(invoice.id):
-        flash(_PAYMENT_FROZEN_MESSAGE, "warning")
+    frozen = _freeze_message(invoice.id)
+    if frozen is not None:
+        flash(frozen, "warning")
         return redirect(detail_url)
 
     status_seen = invoice.status
@@ -930,8 +964,9 @@ def invoice_line_create(
         return _reject(_READ_ONLY_MESSAGE, detail_url, actor_id, "warning")
     if locked.status != status_seen:
         return _reject(_STALE_MESSAGE, edit_url, actor_id)
-    if invoice_payment_frozen(locked.id):
-        return _reject(_PAYMENT_FROZEN_MESSAGE, detail_url, actor_id, "warning")
+    frozen = _freeze_message(locked.id)
+    if frozen is not None:
+        return _reject(frozen, detail_url, actor_id, "warning")
     siblings = locked_active_items(locks)
     rows = invoice_rows_for_snapshot(locked)
     limit = _line_limit_message(len(siblings), len(rows))
@@ -1001,8 +1036,9 @@ def invoice_line_edit(
         flash(_LINE_REMOVED_MESSAGE, "warning")
         return redirect(edit_url)
 
-    if invoice_payment_frozen(invoice.id):
-        flash(_PAYMENT_FROZEN_MESSAGE, "warning")
+    frozen = _freeze_message(invoice.id)
+    if frozen is not None:
+        flash(frozen, "warning")
         return redirect(detail_url)
 
     status_seen = invoice.status
@@ -1055,8 +1091,9 @@ def invoice_line_edit(
         return _reject(_STALE_MESSAGE, edit_url, actor_id)
     if locked_line.status != _ITEM_ACTIVE:
         return _reject(_LINE_REMOVED_MESSAGE, edit_url, actor_id, "warning")
-    if invoice_payment_frozen(locked.id):
-        return _reject(_PAYMENT_FROZEN_MESSAGE, detail_url, actor_id, "warning")
+    frozen = _freeze_message(locked.id)
+    if frozen is not None:
+        return _reject(frozen, detail_url, actor_id, "warning")
     if label_in_use(locked_active_items(locks), label, exclude_item_id=line_id):
         return _reject(_LABEL_TAKEN_MESSAGE, form_url, actor_id, "warning")
     if locked_line.kind == kind and locked_line.label == label and locked_line.amount == amount:
@@ -1139,8 +1176,9 @@ def invoice_line_remove(
         flash(_LINE_REMOVED_MESSAGE, "warning")
         return redirect(edit_url)
 
-    if invoice_payment_frozen(invoice.id):
-        flash(_PAYMENT_FROZEN_MESSAGE, "warning")
+    frozen = _freeze_message(invoice.id)
+    if frozen is not None:
+        flash(frozen, "warning")
         return redirect(detail_url)
 
     status_seen = invoice.status
@@ -1190,8 +1228,9 @@ def invoice_line_remove(
         return _reject(_STALE_MESSAGE, edit_url, actor_id)
     if locked_line.status != _ITEM_ACTIVE:
         return _reject(_LINE_REMOVED_MESSAGE, edit_url, actor_id, "warning")
-    if invoice_payment_frozen(locked.id):
-        return _reject(_PAYMENT_FROZEN_MESSAGE, detail_url, actor_id, "warning")
+    frozen = _freeze_message(locked.id)
+    if frozen is not None:
+        return _reject(frozen, detail_url, actor_id, "warning")
     if len(locked_active_items(locks)) < 2:
         return _reject(_LAST_LINE_MESSAGE, edit_url, actor_id, "warning")
 
@@ -1342,8 +1381,9 @@ def invoice_cancel(group_public_id, enrollment_public_id, assignment_public_id, 
     if invoice.status == _CANCELLED:
         flash(_ALREADY_CANCELLED_MESSAGE, "info")
         return redirect(detail_url)
-    if invoice_payment_frozen(invoice.id):
-        flash(_PAYMENT_FROZEN_MESSAGE, "warning")
+    frozen = _freeze_message(invoice.id)
+    if frozen is not None:
+        flash(frozen, "warning")
         return redirect(detail_url)
 
     form = InvoiceReasonForm(
@@ -1377,8 +1417,9 @@ def invoice_cancel(group_public_id, enrollment_public_id, assignment_public_id, 
         token, tokens.PURPOSE_CANCEL, **_invoice_state(actor_public_id, locked)
     ):
         return _reject(_STALE_MESSAGE, detail_url, actor_id)
-    if invoice_payment_frozen(locked.id):
-        return _reject(_PAYMENT_FROZEN_MESSAGE, detail_url, actor_id, "warning")
+    frozen = _freeze_message(locked.id)
+    if frozen is not None:
+        return _reject(frozen, detail_url, actor_id, "warning")
 
     rows = invoice_rows_for_snapshot(locked)
     moment = _write_moment()

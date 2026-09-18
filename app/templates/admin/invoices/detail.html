@@ -61,6 +61,11 @@
     This invoice is issued and has a pending or confirmed payment, so its lines and its cancellation
     are frozen. A payment is corrected by reversing it on the payments page.
   </div>
+  {% elif invoice.is_issued and intent_frozen %}
+  <div class="alert alert--info" style="margin-top: var(--space-4)">
+    This invoice is issued and has an active online payment intent, so its lines and its cancellation
+    are frozen. A pending intent is released by cancelling it on its page.
+  </div>
   {% elif invoice.is_issued %}
   <div class="alert alert--info" style="margin-top: var(--space-4)">
     This invoice is issued. Its number is permanent. No pending or confirmed payment has been recorded,
@@ -80,7 +85,10 @@
   <div class="card" style="margin-top: var(--space-4)">
     <div class="ds-row" style="justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap">
       <div class="card__title" style="margin:0">Payments</div>
-      <a class="btn btn--secondary" href="{{ payments_url }}">Payments and receipts</a>
+      <div class="ds-row" style="gap: var(--space-2); flex-wrap: wrap">
+        <a class="btn btn--secondary" href="{{ payments_url }}">Payments and receipts</a>
+        {% if payment_intents_url %}<a class="btn btn--secondary" href="{{ payment_intents_url }}">Payment intents</a>{% endif %}
+      </div>
     </div>
     {% if payment_summary %}
     <div class="card__body" style="margin-top: var(--space-2); font-variant-numeric: tabular-nums">

@@ -1,0 +1,96 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Payment intents{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M06. Every payment intent, newest first, filtered only by a
+      status normalised to a known value or dropped before it reaches SQL. A page
+      holds at most `page_size` rows; there is no total count and no report,
+      export, refund, webhook or delete control, and no endpoint behind one. -#}
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+    <h1 style="margin:0">Payment intents</h1>
+    <a class="btn btn--secondary" href="{{ url_for('admin.payments_overview') }}">Payments</a>
+  </div>
+  <p class="ds-section__desc">
+    Online payment intents created with the Mock/Sandbox provider, in {{ currency_code }}. An intent is not a
+    payment: a provider's reported success is recorded for sandbox testing only, and no payment is confirmed
+    until it is verified.
+  </p>
+  {% if not mock_enabled %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    Online payments are disabled in this environment.
+  </div>
+  {% endif %}
+
+  {{ macros.flash_messages() }}
+
+  <form method="get" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+    <label class="field__label" for="status" style="margin:0">Status:</label>
+    <select name="status" id="status" class="field__input" style="width:auto">
+      <option value="">Any status</option>
+      {% for value, label in status_labels.items() %}
+      <option value="{{ value }}" {{ "selected" if filter_status == value else "" }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn--secondary">Filter</button>
+    {% if filter_status %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.payment_intents_overview') }}">Clear</a>
+    {% endif %}
+  </form>
+
+  {% if intents %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th style="padding: var(--space-3)">Created</th>
+        <th style="padding: var(--space-3)">Student</th>
+        <th style="padding: var(--space-3)">Invoice</th>
+        <th style="padding: var(--space-3)">Provider</th>
+        <th style="padding: var(--space-3)">Status</th>
+        <th style="padding: var(--space-3); text-align:right">Amount ({{ currency_code }})</th>
+        <th style="padding: var(--space-3)">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in intents %}
+      <tr style="border-bottom:1px solid var(--color-border)">
+        <td style="padding: var(--space-3)">{{ entry.created_local.strftime("%Y-%m-%d %H:%M") }}<br>by {{ entry.created_by_name }}</td>
+        <td style="padding: var(--space-3)">{{ entry.student_name }}<br><span class="ds-section__desc" style="margin:0">{{ entry.group_name }}</span></td>
+        <td style="padding: var(--space-3)">{{ entry.invoice_number or "—" }}</td>
+        <td style="padding: var(--space-3)">{{ entry.provider_label }}</td>
+        <td style="padding: var(--space-3)">
+          {% if entry.status in ("pending", "provider_succeeded") %}
+          <span class="badge badge--warning">{{ entry.status_label }}</span>
+          {% else %}
+          <span class="badge badge--neutral">{{ entry.status_label }}</span>
+          {% endif %}
+        </td>
+        <td style="padding: var(--space-3); text-align:right; font-variant-numeric: tabular-nums">{{ entry.amount_text }}</td>
+        <td style="padding: var(--space-3)"><a class="btn btn--secondary" href="{{ entry.url }}">Open</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if has_prev or has_next %}
+  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3); flex-wrap: wrap" aria-label="Payment intent pages">
+    {% if has_prev %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.payment_intents_overview', page=page - 1, status=filter_status or None) }}">Previous</a>
+    {% endif %}
+    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page &middot; times in {{ tz_name }}</span>
+    {% if has_next %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.payment_intents_overview', page=page + 1, status=filter_status or None) }}">Next</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No payment intents</div>
+    <div>Nothing matches this filter.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

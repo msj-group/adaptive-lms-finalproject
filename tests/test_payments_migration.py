@@ -47,6 +47,8 @@ from app.models import (
 _MIGRATIONS = pathlib.Path(__file__).resolve().parents[1] / "migrations" / "versions"
 _REVISION = "c5e8f2a7d914"
 _DOWN_REVISION = "a8d3f5c29e61"
+#: Phase 5 / M06 follows this revision, so the single head is now its own.
+_HEAD = "d4f7a2c9e1b6"
 
 _NEW_TABLES = ["payment_transactions", "receipt_number_sequences", "receipts"]
 _EVENTS = "payment_audit_events"
@@ -202,7 +204,7 @@ def test_revision_identifiers_and_one_linear_head():
         source = path.read_text(encoding="utf-8")
         revision = re.search(r"^revision = '([^']+)'", source, re.M).group(1)
         parents[revision] = re.search(r"^down_revision = (?:'([^']+)'|None)", source, re.M).group(1)
-    assert set(parents) - {p for p in parents.values() if p is not None} == {_REVISION}
+    assert set(parents) - {p for p in parents.values() if p is not None} == {_HEAD}
     claimed = [p for p in parents.values() if p is not None]
     assert len(claimed) == len(set(claimed))
     assert [r for r, p in parents.items() if p == _DOWN_REVISION] == [_REVISION]
