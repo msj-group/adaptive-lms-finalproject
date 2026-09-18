@@ -64,7 +64,11 @@ PAGE_SIZE = 20
 _PUBLIC_ID_MAX_LENGTH = 36
 
 KIND_LABELS = {_COLLECTION: "Collection", _REVERSAL: "Reversal"}
-METHOD_LABELS = {PaymentMethod.CASH.value: "Cash", PaymentMethod.BANK_TRANSFER.value: "Bank transfer"}
+METHOD_LABELS = {
+    PaymentMethod.CASH.value: "Cash",
+    PaymentMethod.BANK_TRANSFER.value: "Bank transfer",
+    PaymentMethod.ONLINE.value: "Online",
+}
 STATUS_LABELS = {_PENDING: "Pending", _CONFIRMED: "Confirmed", _REJECTED: "Rejected"}
 RECEIPT_STATUS_LABELS = {_RECEIPT_ISSUED: "Issued", ReceiptStatus.VOIDED.value: "Void"}
 EVENT_KIND_LABELS = {
@@ -75,6 +79,8 @@ EVENT_KIND_LABELS = {
     PaymentAuditEventKind.PAYMENT_REVERSED.value: "Payment reversed",
     PaymentAuditEventKind.RECEIPT_ISSUED.value: "Receipt issued",
     PaymentAuditEventKind.RECEIPT_VOIDED.value: "Receipt voided",
+    PaymentAuditEventKind.PAYMENT_ONLINE_CONFIRMED.value: "Online payment confirmed",
+    PaymentAuditEventKind.RECEIPT_ONLINE_ISSUED.value: "Receipt issued",
 }
 
 #: The only values the overview filters accept; anything else is dropped.
@@ -252,7 +258,8 @@ def payments_overview_page(page, status=None, method=None):
     """``(rows, has_next)`` for one page of every transaction, newest first
     (``id DESC``). `status` and `method` must already be normalized. One
     query: the invoice chain, the Student, the recording account and any
-    receipt are joined in."""
+    receipt are joined in. The recording account is an outer join: an online
+    collection (Phase 5 / M07) has none."""
     recorder = aliased(User)
     student = aliased(User)
     query = (
@@ -282,7 +289,7 @@ def payments_overview_page(page, status=None, method=None):
         .join(Enrollment, Enrollment.id == StudentFeeAssignment.enrollment_id)
         .join(Group, Group.id == Enrollment.group_id)
         .join(student, student.id == Enrollment.student_id)
-        .join(recorder, recorder.id == PaymentTransaction.recorded_by_id)
+        .outerjoin(recorder, recorder.id == PaymentTransaction.recorded_by_id)
         .outerjoin(Receipt, Receipt.payment_transaction_id == PaymentTransaction.id)
     )
     if status is not None:
@@ -356,6 +363,10 @@ def describe_payment_event(kind, before, after):
             changes.append(f"Bank transfer of {amount} rejected.")
         elif kind == PaymentAuditEventKind.PAYMENT_REVERSED.value:
             changes.append(f"The {method} payment of {amount} was reversed in full.")
+        elif kind == PaymentAuditEventKind.PAYMENT_ONLINE_CONFIRMED.value:
+            changes.append(
+                f"Online payment of {amount} confirmed by a verified signed provider webhook."
+            )
     receipt, earlier = after["receipt"], before["receipt"]
     if receipt is not None and (earlier is None or earlier["status"] != receipt["status"]):
         label = RECEIPT_STATUS_LABELS.get(receipt["status"], receipt["status"]).lower()

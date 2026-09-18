@@ -36,11 +36,14 @@ _PENDING = PaymentIntentStatus.PENDING.value
 _SUCCEEDED = PaymentIntentStatus.PROVIDER_SUCCEEDED.value
 _FAILED = PaymentIntentStatus.PROVIDER_FAILED.value
 _CANCELLED = PaymentIntentStatus.CANCELLED.value
+_CONFIRMED = PaymentIntentStatus.CONFIRMED.value
 
-#: An active intent freezes its invoice's lines and cancellation.
+#: An active intent freezes its invoice's lines and cancellation and, since
+#: Phase 5 / M07, refuses manual collection.
 ACTIVE_PAYMENT_INTENT_STATUSES = (_PENDING, _SUCCEEDED)
-#: A terminal intent never changes again and freezes nothing.
-TERMINAL_PAYMENT_INTENT_STATUSES = (_FAILED, _CANCELLED)
+#: A terminal intent never changes again and freezes nothing by itself (a
+#: confirmed intent's online collection freezes the invoice as a payment).
+TERMINAL_PAYMENT_INTENT_STATUSES = (_FAILED, _CANCELLED, _CONFIRMED)
 
 _STATUS_VALUES = tuple(status.value for status in PaymentIntentStatus)
 _IDEMPOTENCY_KEY_SHAPE = re.compile(r"[0-9a-f]{64}")
@@ -51,8 +54,8 @@ def _closed_set_sql(column, values):
     return f"{column} IN (" + ", ".join(f"'{v}'" for v in values) + ")"
 
 
-#: Who recorded the provider's result and when are recorded together or not
-#: at all.
+#: Who recorded the browser-observed provider result and when are recorded
+#: together or not at all. A verified webhook never writes them.
 _PROVIDER_RESULT_PAIR_SQL = (
     "(provider_result_at IS NULL AND provider_result_by_id IS NULL)"
     " OR (provider_result_at IS NOT NULL AND provider_result_by_id IS NOT NULL)"
@@ -62,19 +65,21 @@ _PROVIDER_RESULT_PAIR_SQL = (
 #: does not.
 _TERMINAL_STATE_SQL = (
     "(status IN ('pending', 'provider_succeeded') AND terminal_at IS NULL)"
-    " OR (status IN ('provider_failed', 'cancelled') AND terminal_at IS NOT NULL)"
+    " OR (status IN ('provider_failed', 'cancelled', 'confirmed') AND terminal_at IS NOT NULL)"
 )
 
-#: The lifecycle truth table: a pending intent has no result and no
-#: cancellation; a provider result is recorded with its moment (and, for a
-#: failure, that moment is when it became terminal); a cancellation records
-#: who cancelled and no provider result.
+#: The lifecycle truth table: a pending intent has no browser result and no
+#: cancellation; a browser-observed success has its result; a failure -- by
+#: the browser return (its result moment is the terminal moment) or by a
+#: verified webhook (with or without an earlier browser success) -- and a
+#: webhook confirmation became terminal no earlier than any browser result;
+#: a cancellation records who cancelled and no browser result.
 _LIFECYCLE_STATE_SQL = (
     "(status = 'pending' AND provider_result_at IS NULL AND cancelled_by_id IS NULL)"
     " OR (status = 'provider_succeeded' AND provider_result_at IS NOT NULL"
     " AND cancelled_by_id IS NULL)"
-    " OR (status = 'provider_failed' AND provider_result_at IS NOT NULL"
-    " AND terminal_at = provider_result_at AND cancelled_by_id IS NULL)"
+    " OR (status IN ('provider_failed', 'confirmed') AND cancelled_by_id IS NULL"
+    " AND (provider_result_at IS NULL OR terminal_at >= provider_result_at))"
     " OR (status = 'cancelled' AND provider_result_at IS NULL AND cancelled_by_id IS NOT NULL)"
 )
 
@@ -88,14 +93,17 @@ _TIMESTAMPS_ORDERED_SQL = (
 
 class PaymentIntent(db.Model):
     """One online-payment intent for one issued
-    :class:`~app.models.invoice.Invoice` (Phase 5 / M06).
+    :class:`~app.models.invoice.Invoice` (Phase 5 / M06, extended by M07).
 
     **An intent is not a payment.** It records that the provider was asked to
     collect the invoice's outstanding amount and what the provider has
-    reported since. No :class:`~app.models.payment_transaction.PaymentTransaction`,
-    receipt, audit event or balance change is ever derived from it in M06: a
-    reported success stays ``provider_succeeded`` until Phase 5 / M07 verifies
-    a signed webhook.
+    reported since. A success observed by the browser return stays
+    ``provider_succeeded``: no payment, receipt, audit event or balance change
+    comes from it. Only a verified, signed ``payment.succeeded`` webhook
+    (Phase 5 / M07) creates the one online
+    :class:`~app.models.payment_transaction.PaymentTransaction` linked to the
+    intent, its receipt and its audit events, and moves the intent to
+    ``confirmed``.
 
     **It belongs to the invoice, and only the invoice.** ``invoice_id`` is a
     plain foreign key; the assignment, Enrollment, Student and academic chain
@@ -108,22 +116,27 @@ class PaymentIntent(db.Model):
 
     **Lifecycle.** See :class:`~app.models.enums.PaymentIntentStatus`::
 
-        pending -> provider_succeeded | provider_failed | cancelled
+        pending -> provider_succeeded | provider_failed | cancelled | confirmed
+        provider_succeeded -> provider_failed | confirmed
 
-    ``pending`` and ``provider_succeeded`` are **active** and freeze the
-    invoice's lines and cancellation; ``provider_failed`` and ``cancelled``
-    are **terminal**, carry ``terminal_at``, and never change again. At most
-    one active intent exists per invoice -- an application invariant proved
-    under the invoice lock, because MySQL has no portable partial unique index.
+    ``pending`` and ``provider_succeeded`` are **active**: they freeze the
+    invoice's lines and cancellation and refuse manual collection.
+    ``provider_failed``, ``cancelled`` and ``confirmed`` are **terminal**,
+    carry ``terminal_at``, and never change again. ``provider_result_*`` is the
+    browser return's observation, set at most once and never by a webhook. At
+    most one active intent exists per invoice -- an application invariant
+    proved under the invoice lock, because MySQL has no portable partial unique
+    index.
 
     **No payment credential is stored.** There is no card number, CVV/CVC,
     PIN, account number, bank credential, proof, customer or provider secret
     column.
 
     **Nothing is ever physically deleted.** The ORM guards refuse a delete, a
-    change to what was asked, any change to a decided intent, a transition out
-    of ``pending`` to anything but a decision, a decision that does not move
-    ``version`` by exactly one, and bulk ``UPDATE`` / ``DELETE`` statements.
+    change to what was asked, a change to a recorded browser result, any
+    change to a terminal intent, any transition the lifecycle does not name, a
+    change that does not move ``version`` by exactly one, and bulk
+    ``UPDATE`` / ``DELETE`` statements.
 
     Database invariants (final defense only):
 
@@ -285,6 +298,10 @@ class PaymentIntent(db.Model):
     def is_terminal(self):
         return self.status in TERMINAL_PAYMENT_INTENT_STATUSES
 
+    @property
+    def is_confirmed(self):
+        return self.status == _CONFIRMED
+
 
 # ---------------------------------------------------------------------------
 # ORM guards
@@ -302,33 +319,46 @@ _ASKED_COLUMNS = (
     "created_by_id",
     "created_at",
 )
-_DECISIONS = frozenset({_SUCCEEDED, _FAILED, _CANCELLED})
+#: The browser return's observation: set at most once, from ``pending``.
+_BROWSER_RESULT_COLUMNS = ("provider_result_at", "provider_result_by_id")
+
+#: Every transition the lifecycle names, from each active status.
+_TRANSITIONS = {
+    _PENDING: frozenset({_SUCCEEDED, _FAILED, _CANCELLED, _CONFIRMED}),
+    _SUCCEEDED: frozenset({_FAILED, _CONFIRMED}),
+}
 
 
 @event.listens_for(PaymentIntent, "before_update")
 def _refuse_rewriting_a_payment_intent(_mapper, connection, target):
     if not is_changing(target):
         return
-    stored = stored_row(connection, target, ("status", "version") + _ASKED_COLUMNS)
+    stored = stored_row(
+        connection, target, ("status", "version") + _ASKED_COLUMNS + _BROWSER_RESULT_COLUMNS
+    )
     if stored is None:
         return
-    if stored["status"] != _PENDING:
+    if stored["status"] not in _TRANSITIONS:
         raise FinancialHistoryError(
-            "A decided payment intent never changes in Phase 5 / M06; a provider-succeeded "
-            "intent awaits the verified-webhook flow"
+            "A failed, cancelled or confirmed payment intent never changes"
         )
     for key in _ASKED_COLUMNS:
         setting, value = pending_value(target, key)
         if setting and value != stored[key]:
             raise FinancialHistoryError(f"A payment intent's {key} never changes once created")
+    for key in _BROWSER_RESULT_COLUMNS:
+        setting, value = pending_value(target, key)
+        if setting and stored[key] is not None and value != stored[key]:
+            raise FinancialHistoryError(f"A payment intent's {key} never changes once recorded")
     setting, status = pending_value(target, "status")
-    if not setting or status not in _DECISIONS:
+    if not setting or status not in _TRANSITIONS[stored["status"]]:
         raise FinancialHistoryError(
-            "A pending payment intent only ever records a provider result or a cancellation"
+            "A payment intent moves only along its lifecycle: a provider result, a "
+            "cancellation or a verified confirmation"
         )
     setting, version = pending_value(target, "version")
     if not setting or version != stored["version"] + 1:
-        raise FinancialHistoryError("A payment intent decision moves its version by exactly one")
+        raise FinancialHistoryError("A payment intent change moves its version by exactly one")
 
 
 @event.listens_for(PaymentIntent, "before_delete")

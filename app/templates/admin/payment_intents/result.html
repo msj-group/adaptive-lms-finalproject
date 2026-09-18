@@ -14,7 +14,11 @@
 
   <h1 style="margin: 0 0 var(--space-4)">Sandbox result</h1>
 
-  {% if intent.has_provider_result %}
+  {% if intent.is_confirmed %}
+  <div class="alert alert--success" role="status" style="margin-bottom: var(--space-4); font-size: var(--font-size-lg)">
+    <strong>This payment intent is confirmed by a verified signed provider webhook.</strong>
+  </div>
+  {% elif intent.has_provider_result %}
   <div class="alert alert--warning" role="status" style="margin-bottom: var(--space-4); font-size: var(--font-size-lg)">
     <strong>{{ result_notice[0] }}</strong><br>
     <strong>{{ result_notice[1] }}</strong>
@@ -32,8 +36,8 @@
   {% include "admin/payments/_invoice.html" %}
 
   <p class="ds-section__desc">
-    No payment, receipt or balance change has been recorded from this result. The invoice's balance above comes
-    only from its lines and its manual payments. Times in {{ tz_name }}.
+    No payment, receipt or balance change is ever recorded from the browser return. The invoice's balance above
+    comes only from its lines and its recorded payments. Times in {{ tz_name }}.
   </p>
 </div>
 {% endblock %}

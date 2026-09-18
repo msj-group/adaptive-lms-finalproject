@@ -59,7 +59,7 @@
       <dd style="margin:0">{{ receipt.group_name }} &middot; {{ receipt.course_title }} &middot; {{ receipt.academic_term_name }}</dd>
 
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Confirmed</dt>
-      <dd style="margin:0">{{ receipt.confirmed_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}) by {{ receipt.confirmed_by_name }}</dd>
+      <dd style="margin:0">{{ receipt.confirmed_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}) by {{ receipt.confirmed_by_name or "the verified provider webhook" }}</dd>
     </dl>
 
     <p class="ds-section__desc" style="margin: var(--space-4) 0 0">

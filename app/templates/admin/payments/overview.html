@@ -12,8 +12,10 @@
     <h1 style="margin:0">Payments</h1>
   </div>
   <p class="ds-section__desc">
-    Manual cash and bank-transfer payments recorded against issued invoices, in {{ currency_code }}. Payments
-    are recorded, confirmed, rejected and reversed from each invoice's payments page.
+    Cash, bank-transfer and verified online payments recorded against issued invoices, in {{ currency_code }}.
+    Manual payments are recorded, confirmed, rejected and reversed from each invoice's payments page; an
+    online payment is recorded only by a verified signed provider webhook.
+    <a href="{{ url_for('admin.payment_intents_overview') }}">Payment intents</a>
   </p>
 
   {{ macros.flash_messages() }}
@@ -57,7 +59,7 @@
     <tbody>
       {% for entry in payments %}
       <tr style="border-bottom:1px solid var(--color-border)">
-        <td style="padding: var(--space-3)">{{ entry.recorded_local.strftime("%Y-%m-%d %H:%M") }}<br>by {{ entry.recorded_by_name }}</td>
+        <td style="padding: var(--space-3)">{{ entry.recorded_local.strftime("%Y-%m-%d %H:%M") }}<br>by {{ entry.recorded_by_name or "the verified provider webhook" }}</td>
         <td style="padding: var(--space-3)">{{ entry.student_name }}<br><span class="ds-section__desc" style="margin:0">{{ entry.group_name }}</span></td>
         <td style="padding: var(--space-3)">{{ entry.invoice_number or "—" }}</td>
         <td style="padding: var(--space-3)">{{ entry.method_label }} {{ entry.kind_label|lower }}</td>

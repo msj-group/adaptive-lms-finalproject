@@ -32,6 +32,10 @@ INVOICE_SNAPSHOT_SCHEMA = "phase5-m04.invoice.v1"
 #: The Phase 5 / M05 layout of a payment or receipt event's snapshots.
 PAYMENT_SNAPSHOT_SCHEMA = "phase5-m05.payment.v1"
 
+#: The Phase 5 / M07 layout of a system-origin online event's snapshots: the
+#: M05 layout plus the payment intent and the verified provider event.
+ONLINE_PAYMENT_SNAPSHOT_SCHEMA = "phase5-m07.online-payment.v1"
+
 _K = PaymentAuditEventKind
 _CREATED = _K.INVOICE_DRAFT_CREATED.value
 
@@ -55,12 +59,22 @@ PAYMENT_EVENT_KINDS = frozenset(
         _K.PAYMENT_BANK_TRANSFER_CONFIRMED.value,
         _K.PAYMENT_BANK_TRANSFER_REJECTED.value,
         _K.PAYMENT_REVERSED.value,
+        _K.PAYMENT_ONLINE_CONFIRMED.value,
     }
 )
 
 #: Phase 5 / M05: a receipt's movements. Each names the receipt and the
 #: collection it belongs to.
-RECEIPT_EVENT_KINDS = frozenset({_K.RECEIPT_ISSUED.value, _K.RECEIPT_VOIDED.value})
+RECEIPT_EVENT_KINDS = frozenset(
+    {_K.RECEIPT_ISSUED.value, _K.RECEIPT_VOIDED.value, _K.RECEIPT_ONLINE_ISSUED.value}
+)
+
+#: Phase 5 / M07: the only kinds with no acting Administrator. A verified,
+#: signed provider webhook caused them; ``actor_id`` is NULL for them and for
+#: nothing else.
+SYSTEM_EVENT_KINDS = frozenset(
+    {_K.PAYMENT_ONLINE_CONFIRMED.value, _K.RECEIPT_ONLINE_ISSUED.value}
+)
 
 #: The kinds whose event must carry a human reason, and those that carry none.
 REASON_REQUIRED_KINDS = frozenset(
@@ -113,6 +127,8 @@ _PAYMENT_SNAPSHOT_KEYS = frozenset(
         "receipt",
     }
 )
+_ONLINE_PAYMENT_SNAPSHOT_KEYS = _PAYMENT_SNAPSHOT_KEYS | {"online"}
+_ONLINE_KEYS = frozenset({"payment_intent_public_id", "provider_event_public_id"})
 _PAYMENT_KEYS = frozenset({"public_id", "kind", "method", "status", "amount", "reversal_of_public_id"})
 _RECEIPT_KEYS = frozenset({"public_id", "receipt_number", "status"})
 _PAYMENT_KINDS = frozenset(kind.value for kind in PaymentTransactionKind)
@@ -121,6 +137,7 @@ _PAYMENT_STATUSES = frozenset(status.value for status in PaymentTransactionStatu
 _RECEIPT_STATUSES = frozenset(status.value for status in ReceiptStatus)
 _COLLECTION = PaymentTransactionKind.COLLECTION.value
 _CASH = PaymentMethod.CASH.value
+_ONLINE = PaymentMethod.ONLINE.value
 _CONFIRMED = PaymentTransactionStatus.CONFIRMED.value
 
 
@@ -275,8 +292,8 @@ def _payment_error(payment):
     if kind == _COLLECTION:
         if reversal_of is not None:
             return "a collection reverses nothing"
-        if method == _CASH and status != _CONFIRMED:
-            return "a cash collection is confirmed when it is recorded"
+        if method in (_CASH, _ONLINE) and status != _CONFIRMED:
+            return "a cash or online collection is confirmed when it is recorded"
     elif (
         not _public_id_ok(reversal_of)
         or reversal_of == payment["public_id"]
@@ -298,7 +315,7 @@ def _receipt_error(receipt):
     return None
 
 
-def validate_payment_snapshot(snapshot):
+def validate_payment_snapshot(snapshot, schema=PAYMENT_SNAPSHOT_SCHEMA):
     """The canonical copy of one server-built payment snapshot, or raise
     ``ValueError``.
 
@@ -310,10 +327,27 @@ def validate_payment_snapshot(snapshot):
     (public id, number, status) or ``None``. There is no internal id, name,
     reference, reason, token, session value or client JSON.
     """
-    if not isinstance(snapshot, dict) or set(snapshot) != _PAYMENT_SNAPSHOT_KEYS:
+    online = schema == ONLINE_PAYMENT_SNAPSHOT_SCHEMA
+    expected_keys = _ONLINE_PAYMENT_SNAPSHOT_KEYS if online else _PAYMENT_SNAPSHOT_KEYS
+    if not isinstance(snapshot, dict) or set(snapshot) != expected_keys:
         raise ValueError("A payment snapshot has the wrong keys")
-    if snapshot["schema"] != PAYMENT_SNAPSHOT_SCHEMA:
+    if snapshot["schema"] != schema:
         raise ValueError("A payment snapshot has an unknown schema")
+    if online:
+        context = snapshot["online"]
+        if (
+            not isinstance(context, dict)
+            or set(context) != _ONLINE_KEYS
+            or not all(_public_id_ok(context[key]) for key in _ONLINE_KEYS)
+        ):
+            raise ValueError("An online payment snapshot names its intent and provider event")
+        payment = snapshot["payment"]
+        if payment is not None and (
+            not isinstance(payment, dict)
+            or payment.get("kind") != _COLLECTION
+            or payment.get("method") != _ONLINE
+        ):
+            raise ValueError("An online payment snapshot describes an online collection")
     if not _public_id_ok(snapshot["invoice_public_id"]):
         raise ValueError("A payment snapshot invoice public id is invalid")
     if snapshot["invoice_status"] != InvoiceStatus.ISSUED.value or not invoice_number_is_valid(
@@ -342,11 +376,22 @@ def validate_payment_snapshot(snapshot):
     return json.loads(canonical_snapshot_json(snapshot))
 
 
+def validate_online_payment_snapshot(snapshot):
+    """:func:`validate_payment_snapshot` for the Phase 5 / M07 online layout:
+    the M05 content, an online collection as its payment when it has one, and
+    ``online`` naming the payment intent's and the verified provider event's
+    public ids. No provider reference, event id, digest, signature or secret."""
+    return validate_payment_snapshot(snapshot, schema=ONLINE_PAYMENT_SNAPSHOT_SCHEMA)
+
+
 def validate_audit_snapshot(snapshot):
     """The canonical copy of any audit snapshot: a payment snapshot when it
     says so, otherwise the invoice layout, whose refusal it keeps."""
-    if isinstance(snapshot, dict) and snapshot.get("schema") == PAYMENT_SNAPSHOT_SCHEMA:
+    schema = snapshot.get("schema") if isinstance(snapshot, dict) else None
+    if schema == PAYMENT_SNAPSHOT_SCHEMA:
         return validate_payment_snapshot(snapshot)
+    if schema == ONLINE_PAYMENT_SNAPSHOT_SCHEMA:
+        return validate_online_payment_snapshot(snapshot)
     return validate_invoice_snapshot(snapshot)
 
 
@@ -394,10 +439,17 @@ _SUBJECT_LINKS_SQL = (
     " AND payment_transaction_id IS NOT NULL AND receipt_id IS NOT NULL)"
 )
 
+#: Phase 5 / M07: a system-origin event has no actor; every other event has
+#: its acting Administrator.
+_ACTOR_ORIGIN_SQL = (
+    f"(kind IN {_in_list(SYSTEM_EVENT_KINDS)} AND actor_id IS NULL)"
+    f" OR (kind NOT IN {_in_list(SYSTEM_EVENT_KINDS)} AND actor_id IS NOT NULL)"
+)
+
 
 class PaymentAuditEvent(db.Model):
     """One append-only entry of the financial audit trail (Phase 5 / M04,
-    extended by M05).
+    extended by M05 and M07).
 
     **Every invoice, payment and receipt movement writes exactly one**, in the
     same transaction as the change it describes: draft creation, each line
@@ -414,8 +466,17 @@ class PaymentAuditEvent(db.Model):
 
     **Snapshots are built by the server, never submitted.** An invoice event
     uses :func:`validate_invoice_snapshot`; a payment or receipt event uses
-    :func:`validate_payment_snapshot`. Neither carries an internal id, card or
-    bank data, a transfer reference, a token, a session value or client JSON.
+    :func:`validate_payment_snapshot`; a system-origin online event uses
+    :func:`validate_online_payment_snapshot`. None carries an internal id, card
+    or bank data, a transfer or provider reference, a token, a signature, a
+    secret, a session value or client JSON.
+
+    **Who acted.** ``actor_id`` names the active Administrator of every
+    invoice, manual payment and receipt movement. Since Phase 5 / M07 it is
+    NULL exactly for the two system-origin kinds, ``payment_online_confirmed``
+    and ``receipt_online_issued``, which a verified, signed provider webhook
+    caused (``ck_payment_audit_events_actor_origin``): no Administrator
+    identity is ever invented for them, and no human event may omit its actor.
 
     **Append-only.** There is no route, form, service operation, relationship
     or cascade that edits or deletes an event, and the ORM guards refuse an
@@ -433,7 +494,8 @@ class PaymentAuditEvent(db.Model):
       ``ck_payment_audit_events_version_transition``;
     - ``ck_payment_audit_events_snapshots_present``;
     - ``ck_payment_audit_events_reason_required``;
-    - ``ck_payment_audit_events_subject_links`` (M05).
+    - ``ck_payment_audit_events_subject_links`` (M05);
+    - ``ck_payment_audit_events_actor_origin`` (M07).
 
     That the actor was an active Administrator, that a snapshot has the
     right shape for its kind and that a link names the right rows are proved
@@ -459,6 +521,7 @@ class PaymentAuditEvent(db.Model):
         ),
         db.CheckConstraint(_REASON_REQUIRED_SQL, name="ck_payment_audit_events_reason_required"),
         db.CheckConstraint(_SUBJECT_LINKS_SQL, name="ck_payment_audit_events_subject_links"),
+        db.CheckConstraint(_ACTOR_ORIGIN_SQL, name="ck_payment_audit_events_actor_origin"),
         db.Index("ix_payment_audit_events_invoice_id_id", "invoice_id", "id"),
         db.Index("ix_payment_audit_events_actor_id", "actor_id"),
         db.Index("ix_payment_audit_events_payment_transaction_id", "payment_transaction_id"),
@@ -471,10 +534,11 @@ class PaymentAuditEvent(db.Model):
         db.ForeignKey("invoices.id"),
         nullable=False,
     )
+    #: NULL exactly for a system-origin kind (Phase 5 / M07).
     actor_id = db.Column(
         db.BigInteger().with_variant(db.Integer, "sqlite"),
         db.ForeignKey("users.id"),
-        nullable=False,
+        nullable=True,
     )
     kind = db.Column(db.String(40), nullable=False)
     occurred_at = db.Column(db.DateTime, nullable=False)
@@ -542,6 +606,10 @@ def _expected_shape(kind):
     """``(schema, has_payment, has_receipt)`` for a known kind, else ``None``."""
     if kind in INVOICE_EVENT_KINDS:
         return INVOICE_SNAPSHOT_SCHEMA, False, False
+    if kind == _K.PAYMENT_ONLINE_CONFIRMED.value:
+        return ONLINE_PAYMENT_SNAPSHOT_SCHEMA, True, False
+    if kind == _K.RECEIPT_ONLINE_ISSUED.value:
+        return ONLINE_PAYMENT_SNAPSHOT_SCHEMA, True, True
     if kind in PAYMENT_EVENT_KINDS:
         return PAYMENT_SNAPSHOT_SCHEMA, True, False
     if kind in RECEIPT_EVENT_KINDS:
@@ -568,6 +636,8 @@ def _refuse_an_event_that_does_not_match_its_kind(_mapper, _connection, target):
         has_receipt,
     ):
         raise ValueError("An audit event's payment and receipt links do not match its kind")
+    if (target.actor_id is None) != (target.kind in SYSTEM_EVENT_KINDS):
+        raise ValueError("Only a system-origin online event has no acting Administrator")
 
 
 @event.listens_for(PaymentAuditEvent, "before_update")

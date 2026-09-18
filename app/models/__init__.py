@@ -24,6 +24,8 @@ from app.models.enums import (
     PaymentMethod,
     PaymentTransactionKind,
     PaymentTransactionStatus,
+    ProviderEventOutcome,
+    ProviderEventType,
     QuestionAnswerMode,
     QuizAttemptStatus,
     QuizStatus,
@@ -162,6 +164,7 @@ from app.models.payment_intent import (
     TERMINAL_PAYMENT_INTENT_STATUSES,
     PaymentIntent,
 )
+from app.models.payment_provider_event import PaymentProviderEvent
 
 __all__ = [
     "User",
@@ -304,4 +307,7 @@ __all__ = [
     "TERMINAL_PAYMENT_INTENT_STATUSES",
     "MAX_INVOICE_PAYMENT_INTENTS",
     "PAYMENT_INTENT_PROVIDERS",
+    "ProviderEventType",
+    "ProviderEventOutcome",
+    "PaymentProviderEvent",
 ]

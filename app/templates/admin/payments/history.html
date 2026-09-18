@@ -31,6 +31,12 @@
   {% if record_block %}
   <div class="alert alert--info" style="margin-bottom: var(--space-4)">{{ record_block }}</div>
   {% endif %}
+  {% if reconciliation_required %}
+  <div class="alert alert--danger" style="margin-bottom: var(--space-4)">
+    A verified provider event for one of this invoice's <a href="{{ intents_url }}">payment intents</a> needs
+    reconciliation. No payment was recorded from it.
+  </div>
+  {% endif %}
   {% if rows_truncated %}
   <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
     This invoice holds more payment records than one page can show.
@@ -38,7 +44,8 @@
   {% endif %}
 
   <p class="ds-section__desc">
-    A cash payment is confirmed when it is recorded. A bank transfer is recorded as pending and does
+    An online payment is recorded only when the provider's signed webhook is verified, and is confirmed at
+    once. A cash payment is confirmed when it is recorded. A bank transfer is recorded as pending and does
     not change the balance until it is confirmed. Every confirmed payment receives a permanent receipt.
     A recorded payment is never edited or deleted; a mistake is corrected by reversing the payment in
     full, which is an internal correction and not a refund. Times in {{ tz_name }}.
@@ -61,7 +68,7 @@
     <tbody>
       {% for entry in payments %}
       <tr style="border-bottom:1px solid var(--color-border); vertical-align: top">
-        <td style="padding: var(--space-3)">{{ entry.recorded_local.strftime("%Y-%m-%d %H:%M") }}<br>by {{ entry.recorded_by_name }}</td>
+        <td style="padding: var(--space-3)">{{ entry.recorded_local.strftime("%Y-%m-%d %H:%M") }}<br>by {{ entry.recorded_by_name or "the verified provider webhook" }}</td>
         <td style="padding: var(--space-3)">{{ entry.method_label }} {{ entry.kind_label|lower }}</td>
         <td style="padding: var(--space-3); text-align:right; font-variant-numeric: tabular-nums">{% if entry.kind == "reversal" %}&minus;{% endif %}{{ entry.amount_text }}</td>
         <td style="padding: var(--space-3)">
@@ -77,7 +84,7 @@
         <td style="padding: var(--space-3)">
           {% if entry.bank_transfer_reference %}<div>Reference: {{ entry.bank_transfer_reference }}</div>{% endif %}
           {% if entry.bank_transfer_date %}<div>Transfer date: {{ entry.bank_transfer_date.isoformat() }}</div>{% endif %}
-          {% if entry.kind == "collection" and entry.confirmed_local %}<div>Confirmed {{ entry.confirmed_local.strftime("%Y-%m-%d %H:%M") }} by {{ entry.confirmed_by_name }}</div>{% endif %}
+          {% if entry.kind == "collection" and entry.confirmed_local %}<div>Confirmed {{ entry.confirmed_local.strftime("%Y-%m-%d %H:%M") }} by {{ entry.confirmed_by_name or "the verified provider webhook" }}</div>{% endif %}
           {% if entry.rejected_local %}
           <div>Rejected {{ entry.rejected_local.strftime("%Y-%m-%d %H:%M") }} by {{ entry.rejected_by_name }}</div>
           <div style="white-space: pre-wrap">Reason: {{ entry.rejection_reason }}</div>

@@ -98,6 +98,9 @@ def test_the_closed_sets_are_exact():
         "payment_reversed",
         "receipt_issued",
         "receipt_voided",
+        # Phase 5 / M07: the two system-origin online kinds.
+        "payment_online_confirmed",
+        "receipt_online_issued",
     ]
 
 

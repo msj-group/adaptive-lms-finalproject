@@ -192,7 +192,8 @@ def test_the_route_inventory_is_exact_and_mutations_are_post_only(app, client):
     rules = {
         (rule.rule, frozenset(rule.methods - {"HEAD", "OPTIONS"}))
         for rule in app.url_map.iter_rules()
-        if ("payment" in rule.rule and "payment-intents" not in rule.rule)
+        if ("payment" in rule.rule and "payment-intents" not in rule.rule
+            and not rule.rule.startswith("/webhooks"))
         or (rule.rule.startswith("/admin") and "receipt" in rule.rule)
     }
     assert rules == {
@@ -206,7 +207,9 @@ def test_the_route_inventory_is_exact_and_mutations_are_post_only(app, client):
         (invoice + "/receipts/<receipt_public_id>", frozenset({"GET"})),
     }
     for rule in app.url_map.iter_rules():
-        if not rule.rule.startswith("/admin"):
+        # Phase 5 / M07's public signed webhook is the one exception;
+        # tests/test_payment_webhooks.py inventories it.
+        if not rule.rule.startswith("/admin") and rule.rule != "/webhooks/payments/mock":
             assert "payment" not in f"{rule.rule} {rule.endpoint}".lower(), rule.rule
     before = px.record(app)
     for url in (px.payments_url(w), px.receipt_url(w, rp), px.OVERVIEW_URL):

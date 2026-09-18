@@ -1,5 +1,5 @@
 """Read queries and presentation for Administrator payment intents
-(Phase 5 / M06).
+(Phase 5 / M06) and their verified provider events (M07).
 
 Flask-independent: explicit queries returning rows or plain presentation
 dicts, and no ``request``, ``abort`` or template. Route-level 404 / redirect
@@ -21,7 +21,14 @@ Enrollment and Group. Anything else is ``None``, which the route turns into a
 :data:`~app.models.payment_intent.MAX_INVOICE_PAYMENT_INTENTS`), its history is
 a page of :data:`PAGE_SIZE` with ``LIMIT PAGE_SIZE + 1`` and no ``COUNT``, and
 the accounts a page names come from one keyed query. The overview is one query
-per page with every name joined in.
+per page with every name joined in. An intent's provider events are its newest
+:data:`EVENT_PAGE_SIZE` (``LIMIT`` one past it); which intents await
+reconciliation is one keyed query.
+
+**Provider events are shown safely.** Their type, amount, outcome and the
+moments are shown; their provider event id, payload digest and provider
+reference never reach a template, and no raw body, signature or secret exists
+to show.
 """
 
 from sqlalchemy.orm import aliased
@@ -35,6 +42,11 @@ from app.models import (
     Invoice,
     PaymentIntent,
     PaymentIntentStatus,
+    PaymentProviderEvent,
+    PaymentTransaction,
+    ProviderEventOutcome,
+    ProviderEventType,
+    Receipt,
     StudentFeeAssignment,
     User,
 )
@@ -45,19 +57,36 @@ _PENDING = PaymentIntentStatus.PENDING.value
 _SUCCEEDED = PaymentIntentStatus.PROVIDER_SUCCEEDED.value
 _FAILED = PaymentIntentStatus.PROVIDER_FAILED.value
 _CANCELLED = PaymentIntentStatus.CANCELLED.value
+_CONFIRMED = PaymentIntentStatus.CONFIRMED.value
+_RECONCILIATION = ProviderEventOutcome.RECONCILIATION_REQUIRED.value
 
 #: The fixed page size of an invoice's intent history and of the overview.
 PAGE_SIZE = 20
+
+#: How many of an intent's newest provider events its page shows.
+EVENT_PAGE_SIZE = 20
 
 _PUBLIC_ID_MAX_LENGTH = 36
 
 STATUS_LABELS = {
     _PENDING: "Pending",
-    _SUCCEEDED: "Provider reported success",
-    _FAILED: "Provider reported failure",
+    _SUCCEEDED: "Browser-observed success (awaiting signed webhook)",
+    _FAILED: "Failed",
     _CANCELLED: "Cancelled",
+    _CONFIRMED: "Confirmed by signed webhook",
 }
 PROVIDER_LABELS = {"mock": "Mock/Sandbox"}
+EVENT_TYPE_LABELS = {
+    ProviderEventType.PAYMENT_SUCCEEDED.value: "Payment succeeded",
+    ProviderEventType.PAYMENT_FAILED.value: "Payment failed",
+}
+OUTCOME_LABELS = {
+    ProviderEventOutcome.CONFIRMED.value: "Payment confirmed",
+    ProviderEventOutcome.FAILED.value: "Intent failed",
+    ProviderEventOutcome.DUPLICATE.value: "Duplicate -- no change",
+    ProviderEventOutcome.IGNORED_TERMINAL.value: "Ignored -- intent already cancelled",
+    _RECONCILIATION: "Reconciliation required -- no payment recorded",
+}
 
 #: The only values the overview status filter accepts; anything else is
 #: dropped.
@@ -127,7 +156,7 @@ def intent_account_ids(rows):
     return ids
 
 
-def build_intent_view(row, names, tz_name="UTC"):
+def build_intent_view(row, names, tz_name="UTC", awaiting_reconciliation=False):
     """One intent as a page shows it. No internal id and no idempotency key
     survives."""
     return {
@@ -138,8 +167,10 @@ def build_intent_view(row, names, tz_name="UTC"):
         "is_provider_succeeded": row.status == _SUCCEEDED,
         "is_provider_failed": row.status == _FAILED,
         "is_cancelled": row.status == _CANCELLED,
+        "is_confirmed": row.status == _CONFIRMED,
         "is_active": row.status in ACTIVE_PAYMENT_INTENT_STATUSES,
-        "has_provider_result": row.status in (_SUCCEEDED, _FAILED),
+        "has_provider_result": row.provider_result_at is not None,
+        "awaiting_reconciliation": awaiting_reconciliation,
         "provider_label": PROVIDER_LABELS.get(row.provider, row.provider),
         "provider_reference": row.provider_reference,
         "amount_text": format_amount(row.amount),
@@ -153,8 +184,96 @@ def build_intent_view(row, names, tz_name="UTC"):
     }
 
 
-def build_intent_history_view(rows, names, tz_name="UTC"):
-    return [build_intent_view(row, names, tz_name) for row in rows]
+def build_intent_history_view(rows, names, tz_name="UTC", reconciliation=frozenset()):
+    return [
+        build_intent_view(row, names, tz_name, awaiting_reconciliation=row.id in reconciliation)
+        for row in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Verified provider events (Phase 5 / M07)
+# ---------------------------------------------------------------------------
+
+
+def intents_awaiting_reconciliation(intent_ids):
+    """The ids among `intent_ids` with a provider event awaiting
+    reconciliation, from one query."""
+    ids = [row_id for row_id in intent_ids if row_id is not None]
+    if not ids:
+        return frozenset()
+    return frozenset(
+        row.payment_intent_id
+        for row in db.session.query(PaymentProviderEvent.payment_intent_id)
+        .filter(
+            PaymentProviderEvent.payment_intent_id.in_(ids),
+            PaymentProviderEvent.outcome == _RECONCILIATION,
+        )
+        .distinct()
+        .all()
+    )
+
+
+def invoice_reconciliation_required(invoice_id):
+    """Whether any provider event of `invoice_id`'s intents awaits
+    reconciliation. One query."""
+    query = (
+        db.session.query(PaymentProviderEvent.id)
+        .join(PaymentIntent, PaymentIntent.id == PaymentProviderEvent.payment_intent_id)
+        .filter(
+            PaymentIntent.invoice_id == invoice_id,
+            PaymentProviderEvent.outcome == _RECONCILIATION,
+        )
+    )
+    return bool(db.session.query(query.exists()).scalar())
+
+
+def intent_provider_events(intent_id):
+    """``(rows, truncated)``: `intent_id`'s newest provider events (``id
+    DESC``), at most :data:`EVENT_PAGE_SIZE`, and whether older ones exist.
+    One query; no ``COUNT``."""
+    rows = (
+        PaymentProviderEvent.query.filter(PaymentProviderEvent.payment_intent_id == intent_id)
+        .order_by(PaymentProviderEvent.id.desc())
+        .limit(EVENT_PAGE_SIZE + 1)
+        .all()
+    )
+    return rows[:EVENT_PAGE_SIZE], len(rows) > EVENT_PAGE_SIZE
+
+
+def build_provider_event_view(rows, tz_name="UTC"):
+    """Presentation dicts for provider events. No internal id, provider event
+    id, payload digest or provider reference survives."""
+    return [
+        {
+            "public_id": row.public_id,
+            "event_type": row.event_type,
+            "event_type_label": EVENT_TYPE_LABELS.get(row.event_type, row.event_type),
+            "outcome": row.outcome,
+            "outcome_label": OUTCOME_LABELS.get(row.outcome, row.outcome),
+            "needs_reconciliation": row.outcome == _RECONCILIATION,
+            "amount_text": format_amount(row.amount),
+            "currency_code": row.currency_code,
+            "provider_occurred_local": _local(tz_name, row.provider_occurred_at),
+            "received_local": _local(tz_name, row.received_at),
+            "processed_local": _local(tz_name, row.processed_at),
+        }
+        for row in rows
+    ]
+
+
+def intent_collection(intent_id):
+    """``(payment_public_id, receipt_public_id, receipt_number)`` of the online
+    collection a confirmed intent created, or ``None``. One query."""
+    row = (
+        db.session.query(
+            PaymentTransaction.public_id, Receipt.public_id, Receipt.receipt_number
+        )
+        .outerjoin(Receipt, Receipt.payment_transaction_id == PaymentTransaction.id)
+        .filter(PaymentTransaction.payment_intent_id == intent_id)
+        .first()
+    )
+    return None if row is None else tuple(row)
 
 
 # ---------------------------------------------------------------------------
@@ -168,8 +287,17 @@ def intents_overview_page(page, status=None):
     invoice chain, the Student and the creating account are joined in."""
     creator = aliased(User)
     student = aliased(User)
+    awaiting = (
+        db.session.query(PaymentProviderEvent.id)
+        .filter(
+            PaymentProviderEvent.payment_intent_id == PaymentIntent.id,
+            PaymentProviderEvent.outcome == _RECONCILIATION,
+        )
+        .exists()
+    )
     query = (
         db.session.query(
+            awaiting.label("awaiting_reconciliation"),
             PaymentIntent.public_id,
             PaymentIntent.provider,
             PaymentIntent.status,
@@ -212,6 +340,7 @@ def build_overview_view(rows, tz_name="UTC"):
             "provider_label": PROVIDER_LABELS.get(row.provider, row.provider),
             "status": row.status,
             "status_label": STATUS_LABELS.get(row.status, row.status),
+            "awaiting_reconciliation": bool(row.awaiting_reconciliation),
             "amount_text": format_amount(row.amount),
             "currency_code": row.currency_code,
             "created_local": _local(tz_name, row.created_at),

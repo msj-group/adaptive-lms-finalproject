@@ -3,10 +3,12 @@ Mock/Sandbox provider and the fail-closed provider configuration.
 
 Interface completeness and the Mock-only implementation; the mock's
 idempotent creation, status, cancellation and sandbox simulation; the three
-operations that fail closed; ``PAYMENT_PROVIDER_MODE`` resolution per
-environment, including production refusing to start; the absence of secrets
-and of any network call; and the adapter layer's independence from Flask, the
-ORM and HTTP clients.
+operation that still fails closed (refunds; the webhook operations became
+real in Phase 5 / M07 and are proved in ``tests/test_payment_webhooks.py``);
+``PAYMENT_PROVIDER_MODE`` resolution per environment, including production
+refusing to start; that the only secret is the M07 webhook key; the absence of
+any network call; and the adapter layer's independence from Flask, the ORM and
+HTTP clients.
 """
 
 import ast
@@ -21,6 +23,7 @@ import pytest
 from app import create_app
 from app.config import Config, DevelopmentConfig, ProductionConfig, TestingConfig
 from app.models import PAYMENT_INTENT_PROVIDERS
+import tests.payment_intent_fixtures as ix
 from app.services import mock_payment_provider as mock_module
 from app.services import payment_providers as providers
 from app.services.mock_payment_provider import (
@@ -30,13 +33,14 @@ from app.services.mock_payment_provider import (
     mock_reference,
 )
 from app.services.payment_providers import (
-    M06_UNSUPPORTED_OPERATIONS,
     PROVIDER_OPERATIONS,
+    UNSUPPORTED_OPERATIONS,
     PaymentProvider,
     PaymentProviderConfigError,
     PaymentProviderError,
     PaymentProviderSettings,
     PaymentProviderUnsupportedOperation,
+    PaymentProviderWebhookError,
     ProviderPaymentStatus,
     resolve_payment_provider,
 )
@@ -45,6 +49,8 @@ _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _KEY = "a" * 64
 _OTHER_KEY = "b" * 64
 _AMOUNT = Decimal("1250.5000")
+#: Mock mode needs a valid webhook secret since Phase 5 / M07.
+_MOCK = {"PAYMENT_PROVIDER_MODE": "mock", "MOCK_PAYMENT_WEBHOOK_SECRET": ix.TEST_WEBHOOK_SECRET}
 
 
 def _provider():
@@ -62,8 +68,7 @@ def test_the_interface_declares_exactly_the_six_operations():
         "verify_webhook", "normalize_event",
     )
     assert PaymentProvider.__abstractmethods__ == frozenset(PROVIDER_OPERATIONS)
-    assert set(M06_UNSUPPORTED_OPERATIONS) == {"refund_payment", "verify_webhook",
-                                               "normalize_event"}
+    assert UNSUPPORTED_OPERATIONS == ("refund_payment",)
     with pytest.raises(TypeError):
         PaymentProvider()
 
@@ -89,7 +94,7 @@ def test_the_mock_is_the_only_implementation_and_implements_every_operation():
     assert MockPaymentProvider.__abstractmethods__ == frozenset()
 
 
-@pytest.mark.parametrize("operation", M06_UNSUPPORTED_OPERATIONS)
+@pytest.mark.parametrize("operation", UNSUPPORTED_OPERATIONS)
 def test_unsupported_operations_fail_closed_and_never_fake_success(operation):
     provider = _provider()
     provider.create_payment_intent(idempotency_key=_KEY, amount=_AMOUNT, currency_code="LYD")
@@ -257,7 +262,7 @@ def test_disabled_is_the_default_and_builds_no_provider(environment, raw):
 
 @pytest.mark.parametrize("environment", ["development", "testing"])
 def test_mock_is_built_only_in_development_and_testing(environment):
-    settings = resolve_payment_provider({"PAYMENT_PROVIDER_MODE": "mock"}, environment)
+    settings = resolve_payment_provider(_MOCK, environment)
     assert settings.mode == "mock" and isinstance(settings.provider, MockPaymentProvider)
     assert settings.mock_enabled
 
@@ -265,7 +270,7 @@ def test_mock_is_built_only_in_development_and_testing(environment):
 @pytest.mark.parametrize("environment", ["production", "staging", "", None, "Production"])
 def test_mock_fails_closed_outside_development_and_testing(environment):
     with pytest.raises(PaymentProviderConfigError):
-        resolve_payment_provider({"PAYMENT_PROVIDER_MODE": "mock"}, environment)
+        resolve_payment_provider(_MOCK, environment)
 
 
 @pytest.mark.parametrize("raw", ["stripe", "Mock", "MOCK", "live", "sandbox", "enabled", 1, True,
@@ -306,12 +311,12 @@ def test_create_app_refuses_to_start_in_production_with_mock():
 
 def test_create_app_resolves_the_mode_for_the_environment_it_was_created_for():
     assert create_app("testing").extensions["payment_provider"].mode == "disabled"
-    mocked = create_app("testing", PAYMENT_PROVIDER_MODE="mock").extensions["payment_provider"]
+    mocked = ix.make_app().extensions["payment_provider"]
     assert mocked.mock_enabled and mocked.environment == "testing"
-    development = create_app("development", PAYMENT_PROVIDER_MODE="mock")
+    development = ix.make_app(config_name="development")
     assert development.extensions["payment_provider"].mock_enabled
     # Two applications never share one sandbox ledger.
-    other = create_app("testing", PAYMENT_PROVIDER_MODE="mock").extensions["payment_provider"]
+    other = ix.make_app().extensions["payment_provider"]
     assert other.provider is not mocked.provider
 
 
@@ -328,28 +333,33 @@ def test_the_testing_config_pins_disabled_and_the_setting_defaults_to_disabled()
 # ===========================================================================
 
 
-def test_no_provider_secret_or_credential_setting_exists():
+def test_no_provider_credential_setting_exists_beyond_the_mock_webhook_key():
+    """Phase 5 / M07 added exactly one secret: the Mock/Sandbox webhook key."""
     names = [name for name in vars(Config) if name.isupper()]
     payment_names = [name for name in names if "PAYMENT" in name or "PROVIDER" in name]
-    assert payment_names == ["PAYMENT_PROVIDER_MODE"]
+    assert payment_names == ["PAYMENT_PROVIDER_MODE", "MOCK_PAYMENT_WEBHOOK_SECRET"]
     for name in names:
-        for part in ("STRIPE", "WEBHOOK", "API_KEY", "PUBLISHABLE", "MERCHANT", "GATEWAY"):
+        for part in ("STRIPE", "API_KEY", "PUBLISHABLE", "MERCHANT", "GATEWAY"):
             assert part not in name, name
     example = (_ROOT / ".env.example").read_text(encoding="utf-8")
     settings = [line for line in example.splitlines() if line and not line.startswith("#")]
     assert "PAYMENT_PROVIDER_MODE=disabled" in settings
-    assert not [line for line in settings if "PAYMENT" in line and line != "PAYMENT_PROVIDER_MODE=disabled"]
+    assert [line for line in settings if "PAYMENT" in line] == [
+        "PAYMENT_PROVIDER_MODE=disabled",
+        "MOCK_PAYMENT_WEBHOOK_SECRET=replace-with-a-long-random-webhook-secret",
+    ]
     for line in settings:
-        for part in ("STRIPE", "WEBHOOK", "API_KEY", "MERCHANT", "GATEWAY", "PROVIDER_KEY"):
+        for part in ("STRIPE", "API_KEY", "MERCHANT", "GATEWAY", "PROVIDER_KEY"):
             assert part not in line.upper(), line
 
 
 def test_resolved_settings_expose_no_secret(app):
     settings = app.extensions["payment_provider"]
     for mode in ("disabled", "mock"):
-        resolved = resolve_payment_provider({"PAYMENT_PROVIDER_MODE": mode,
-                                             "SECRET_KEY": "top-secret-value"}, "testing")
+        resolved = resolve_payment_provider(dict(_MOCK, PAYMENT_PROVIDER_MODE=mode,
+                                                 SECRET_KEY="top-secret-value"), "testing")
         assert "top-secret-value" not in repr(resolved)
+        assert ix.TEST_WEBHOOK_SECRET not in repr(resolved)
         assert set(vars(resolved)) == {"mode", "environment", "provider"}
     assert settings.mode == "disabled"
     assert repr(MockPaymentProvider()) == "MockPaymentProvider(sandbox)"
@@ -359,7 +369,8 @@ def test_the_mock_stores_only_reference_key_amount_currency_and_status():
     provider = _provider()
     provider.create_payment_intent(idempotency_key=_KEY, amount=_AMOUNT, currency_code="LYD")
     (entry,) = provider._ledger.values()
-    assert set(vars(entry)) == {"idempotency_key", "amount", "currency_code", "status"}
+    assert set(vars(entry)) == {"idempotency_key", "amount", "currency_code", "status", "event"}
+    assert entry.event is None
 
 
 def test_no_operation_touches_the_network(monkeypatch):
@@ -370,7 +381,7 @@ def test_no_operation_touches_the_network(monkeypatch):
     monkeypatch.setattr(socket.socket, "connect_ex", refuse)
     monkeypatch.setattr(socket, "create_connection", refuse)
     monkeypatch.setattr(socket, "getaddrinfo", refuse)
-    provider = resolve_payment_provider({"PAYMENT_PROVIDER_MODE": "mock"}, "testing").provider
+    provider = resolve_payment_provider(_MOCK, "testing").provider
     reference = provider.create_payment_intent(idempotency_key=_KEY, amount=_AMOUNT,
                                                currency_code="LYD").reference
     provider.get_payment_status(reference)
@@ -380,16 +391,19 @@ def test_no_operation_touches_the_network(monkeypatch):
     provider.cancel_payment(other)
     with pytest.raises(PaymentProviderUnsupportedOperation):
         provider.refund_payment(reference, _AMOUNT)
-    with pytest.raises(PaymentProviderUnsupportedOperation):
+    body, headers = provider.emit_webhook(reference)
+    provider.normalize_event(provider.verify_webhook(body, headers))
+    with pytest.raises(PaymentProviderWebhookError):
         provider.verify_webhook(b"{}", {})
-    with pytest.raises(PaymentProviderUnsupportedOperation):
+    with pytest.raises(PaymentProviderWebhookError):
         provider.normalize_event({})
 
 
 _ADAPTER_FILES = ("payment_providers.py", "mock_payment_provider.py")
 _ALLOWED_IMPORTS = {
-    "abc", "enum", "dataclasses", "hashlib", "re", "threading",
-    "app.services.money", "app.services.payment_providers", "app.services.mock_payment_provider",
+    "abc", "enum", "dataclasses", "hashlib", "hmac", "json", "re", "secrets", "threading", "time",
+    "datetime", "app.services.money", "app.services.payment_providers",
+    "app.services.mock_payment_provider",
 }
 
 
@@ -416,5 +430,18 @@ def test_the_adapter_layer_imports_no_flask_orm_template_session_or_http_client(
 def test_the_mock_module_names_no_credential_or_card_field():
     code = inspect.getsource(mock_module).split('"""', 2)[2].lower()
     for forbidden in ("card_number", "cvv", "cvc", "pin_", "iban", "account_number", "password",
-                      "secret", "api_key"):
+                      "api_key", "environ", "getenv"):
         assert forbidden not in code, forbidden
+    # The one secret it holds is the webhook key it was handed -- never read
+    # from the environment itself, and never in its repr, a report or an error.
+    provider = MockPaymentProvider(webhook_secret=ix.TEST_WEBHOOK_SECRET)
+    assert repr(provider) == "MockPaymentProvider(sandbox)"
+    reference = provider.create_payment_intent(idempotency_key=_KEY, amount=_AMOUNT,
+                                               currency_code="LYD").reference
+    assert ix.TEST_WEBHOOK_SECRET not in repr(provider.get_payment_status(reference))
+    with pytest.raises(PaymentProviderWebhookError) as raised:
+        provider.verify_webhook(b'{"x":"y"}', {
+            mock_module.WEBHOOK_TIMESTAMP_HEADER: "1",
+            mock_module.WEBHOOK_SIGNATURE_HEADER: "v1=" + "0" * 64,
+        })
+    assert ix.TEST_WEBHOOK_SECRET not in str(raised.value)

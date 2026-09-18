@@ -35,7 +35,7 @@ RESULT_AT = datetime(2026, 7, 5, 10, 0, 0)
 TERMINAL_AT = datetime(2026, 7, 5, 11, 0, 0)
 
 NOTICE_RECORDED = "Provider result recorded for sandbox testing only."
-NOTICE_M07 = "No payment is confirmed until M07 verifies a signed webhook."
+NOTICE_M07 = "No payment is confirmed until a signed provider webhook is verified."
 CREATED_OK_TEXT = "Sandbox payment intent created for"
 ALREADY_CREATED_TEXT = "was already created by the same request"
 CANCELLED_OK_TEXT = "Payment intent cancelled. It is kept as history."
@@ -55,7 +55,7 @@ CANCEL_CONFIRM_TEXT = "tick the confirmation box before cancelling this payment 
 NOT_ISSUED_TEXT = "A payment intent is created only for an issued invoice"
 ITEMS_INVALID_TEXT = "lines are not a valid charge, so no payment intent"
 BALANCE_BROKEN_TEXT = "do not describe a valid balance, so no payment intent"
-MANUAL_PAYMENT_TEXT = "has a pending or confirmed manual payment"
+MANUAL_PAYMENT_TEXT = "has a pending or confirmed payment, so no online payment intent"
 ACTIVE_INTENT_TEXT = "already has an active payment intent"
 LIMIT_TEXT = "already holds 25 payment intents"
 SETTLED_TEXT = "has no outstanding balance, so no payment intent"
@@ -84,8 +84,15 @@ def _next():
     return _SEQUENCE["n"]
 
 
+#: The suite's own, test-only Mock/Sandbox webhook secret, injected
+#: explicitly (``TestingConfig`` pins none). Never a real value.
+TEST_WEBHOOK_SECRET = "test-only-Mk7wQ2vN9xR4tB8zL3pH6sJ1fD5gK0aYc"
+
+
 def make_app(mode="mock", config_name="testing", **overrides):
-    """A testing application with the given provider mode."""
+    """A testing application with the given provider mode and the suite's
+    own test-only webhook secret."""
+    overrides.setdefault("MOCK_PAYMENT_WEBHOOK_SECRET", TEST_WEBHOOK_SECRET)
     return create_app(config_name, PAYMENT_PROVIDER_MODE=mode, **overrides)
 
 
@@ -150,10 +157,12 @@ def key_for(seed):
 def intent(owner, actor, status="pending", amount=INVOICE_AMOUNT, key=None, reference=None,
            created_at=CREATED_AT):
     """One intent in a consistent lifecycle state, written directly. Its
-    reference is the one the mock provider derives from its key."""
+    reference is the one the mock provider derives from its key. A
+    ``confirmed`` intent (Phase 5 / M07) has no browser result and no
+    collection here; the webhook suites build real ones."""
     key = key or key_for(_next())
     result = status in ("provider_succeeded", "provider_failed")
-    terminal = status in ("provider_failed", "cancelled")
+    terminal = status in ("provider_failed", "cancelled", "confirmed")
     row = PaymentIntent(
         invoice_id=owner.id,
         provider="mock",

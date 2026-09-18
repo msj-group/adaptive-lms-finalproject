@@ -123,6 +123,7 @@ _COLLECTION = PaymentTransactionKind.COLLECTION.value
 _REVERSAL = PaymentTransactionKind.REVERSAL.value
 _CASH = PaymentMethod.CASH.value
 _BANK_TRANSFER = PaymentMethod.BANK_TRANSFER.value
+_ONLINE = PaymentMethod.ONLINE.value
 _PENDING = PaymentTransactionStatus.PENDING.value
 _CONFIRMED = PaymentTransactionStatus.CONFIRMED.value
 _REJECTED = PaymentTransactionStatus.REJECTED.value
@@ -133,18 +134,22 @@ def _closed_set_sql(column, values):
 
 
 #: A bank transfer collection carries its normalized reference and civil
-#: date; a cash collection and every reversal carry neither.
+#: date; a cash or online collection and every reversal carry neither.
 _BANK_TRANSFER_DETAILS_SQL = (
     "(kind = 'collection' AND method = 'bank_transfer'"
     " AND bank_transfer_reference IS NOT NULL AND LENGTH(bank_transfer_reference) > 0"
     " AND bank_transfer_date IS NOT NULL)"
-    " OR ((kind = 'reversal' OR method = 'cash')"
+    " OR ((kind = 'reversal' OR method IN ('cash', 'online'))"
     " AND bank_transfer_reference IS NULL AND bank_transfer_date IS NULL)"
 )
 
+#: A confirmation has its moment and its Administrator -- except an online
+#: collection's, which a verified webhook made and no person did.
 _CONFIRMATION_PAIR_SQL = (
     "(confirmed_at IS NULL AND confirmed_by_id IS NULL)"
     " OR (confirmed_at IS NOT NULL AND confirmed_by_id IS NOT NULL)"
+    " OR (kind = 'collection' AND method = 'online'"
+    " AND confirmed_at IS NOT NULL AND confirmed_by_id IS NULL)"
 )
 
 _REJECTION_STATE_SQL = (
@@ -164,10 +169,23 @@ _LIFECYCLE_STATE_SQL = (
 )
 
 #: A cash collection and a reversal are confirmed by the act of recording
-#: them: the same moment, by the same Administrator.
+#: them: the same moment, by the same Administrator. An online collection is
+#: confirmed at the moment it is recorded, by no one.
 _IMMEDIATE_CONFIRMATION_SQL = (
     "(kind = 'collection' AND method = 'bank_transfer')"
+    " OR (kind = 'collection' AND method = 'online' AND confirmed_at = recorded_at"
+    " AND recorded_by_id IS NULL AND confirmed_by_id IS NULL)"
     " OR (confirmed_at = recorded_at AND confirmed_by_id = recorded_by_id)"
+)
+
+#: Only an online collection names a payment intent, and it names exactly one
+#: and no human recorder or confirmer; every other row names no intent and
+#: was recorded by an Administrator.
+_ONLINE_ORIGIN_SQL = (
+    "(kind = 'collection' AND method = 'online' AND payment_intent_id IS NOT NULL"
+    " AND recorded_by_id IS NULL AND confirmed_by_id IS NULL)"
+    " OR ((kind <> 'collection' OR method <> 'online') AND payment_intent_id IS NULL"
+    " AND recorded_by_id IS NOT NULL)"
 )
 
 _REVERSAL_LINK_SQL = (
@@ -183,15 +201,21 @@ _TIMESTAMPS_ORDERED_SQL = (
 
 
 class PaymentTransaction(db.Model):
-    """One manual payment movement against one issued
-    :class:`~app.models.invoice.Invoice` (Phase 5 / M05).
+    """One payment movement against one issued
+    :class:`~app.models.invoice.Invoice` (Phase 5 / M05, extended by M07).
 
     **It belongs to the invoice, and only the invoice.** ``invoice_id`` is a
     plain foreign key; the assignment, Enrollment, Student and academic chain
     are read through it and are not duplicated here.
 
-    **Two kinds.** A ``collection`` is money an Administrator recorded as
-    received, by ``cash`` or ``bank_transfer``. A ``reversal`` is a full
+    **Two kinds.** A ``collection`` is money recorded as received: by an
+    Administrator, by ``cash`` or ``bank_transfer``, or -- Phase 5 / M07 -- by
+    a verified, signed provider webhook, as ``online``. An online collection is
+    confirmed when recorded, names exactly one
+    :class:`~app.models.payment_intent.PaymentIntent` through the unique
+    ``payment_intent_id`` (``uq_payment_transactions_payment_intent_id``), and
+    names **no** recorder or confirmer: no Administrator identity is invented
+    for it. No other row names an intent. A ``reversal`` is a full
     reversing entry for exactly one confirmed collection -- the same amount,
     currency and (for classification only) method -- and the sole reversal of
     it (``uq_payment_transactions_reversal_of``). A reversal is an internal
@@ -227,7 +251,9 @@ class PaymentTransaction(db.Model):
     - ``ck_payment_transactions_lifecycle_state``,
       ``ck_payment_transactions_immediate_confirmation`` and
       ``ck_payment_transactions_reversal_link``;
-    - ``ck_payment_transactions_timestamps_ordered``.
+    - ``ck_payment_transactions_timestamps_ordered``;
+    - ``ck_payment_transactions_online_origin`` and
+      ``uq_payment_transactions_payment_intent_id`` (M07).
 
     Rules no CHECK can read, proved by the application under the invoice
     lock: a reversal names a confirmed **collection** of the **same** invoice
@@ -283,6 +309,10 @@ class PaymentTransaction(db.Model):
         db.CheckConstraint(
             _TIMESTAMPS_ORDERED_SQL, name="ck_payment_transactions_timestamps_ordered"
         ),
+        db.UniqueConstraint(
+            "payment_intent_id", name="uq_payment_transactions_payment_intent_id"
+        ),
+        db.CheckConstraint(_ONLINE_ORIGIN_SQL, name="ck_payment_transactions_online_origin"),
         db.Index("ix_payment_transactions_invoice_id_id", "invoice_id", "id"),
         db.Index("ix_payment_transactions_status_id", "status", "id"),
         db.Index("ix_payment_transactions_method_id", "method", "id"),
@@ -314,10 +344,11 @@ class PaymentTransaction(db.Model):
     )
     bank_transfer_date = db.Column(db.Date, nullable=True)
     recorded_at = db.Column(db.DateTime, nullable=False)
+    #: NULL exactly for an online collection (Phase 5 / M07).
     recorded_by_id = db.Column(
         db.BigInteger().with_variant(db.Integer, "sqlite"),
         db.ForeignKey("users.id"),
-        nullable=False,
+        nullable=True,
     )
     confirmed_at = db.Column(db.DateTime, nullable=True)
     confirmed_by_id = db.Column(
@@ -335,6 +366,14 @@ class PaymentTransaction(db.Model):
     reversal_of_payment_transaction_id = db.Column(
         db.BigInteger().with_variant(db.Integer, "sqlite"),
         db.ForeignKey("payment_transactions.id"),
+        nullable=True,
+    )
+    #: Phase 5 / M07: the one payment intent an online collection settles.
+    #: A named foreign key, because the revision that added it to an existing
+    #: table must be able to name it again.
+    payment_intent_id = db.Column(
+        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.ForeignKey("payment_intents.id", name="fk_payment_transactions_payment_intent_id"),
         nullable=True,
     )
     version = db.Column(db.Integer, nullable=False, default=1)
@@ -416,6 +455,10 @@ class PaymentTransaction(db.Model):
         return self.kind == _REVERSAL
 
     @property
+    def is_online(self):
+        return self.method == _ONLINE
+
+    @property
     def is_pending(self):
         return self.status == _PENDING
 
@@ -445,6 +488,7 @@ _RECORDED_COLUMNS = (
     "recorded_at",
     "recorded_by_id",
     "reversal_of_payment_transaction_id",
+    "payment_intent_id",
     "created_at",
 )
 _DECISIONS = frozenset({_CONFIRMED, _REJECTED})

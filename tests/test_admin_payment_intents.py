@@ -241,15 +241,21 @@ def test_the_route_inventory_is_exact_and_mutations_are_post_only(app, client):
         (invoice + "/payment-intents/new", both),
         (one, frozenset({"GET"})),
         (one + "/checkout", both),
+        (one + "/checkout/webhook", frozenset({"POST"})),
         (one + "/return", frozenset({"POST"})),
         (one + "/result", frozenset({"GET"})),
         (one + "/cancel", both),
     }
+    # Phase 5 / M07's one public route, the signed provider webhook, is
+    # inventoried by tests/test_payment_webhooks.py.
+    public_webhook = "/webhooks/payments/mock"
     for rule in app.url_map.iter_rules():
         text = f"{rule.rule} {rule.endpoint}".lower()
-        for fragment in ("webhook", "refund", "customer", "credential"):
+        for fragment in ("refund", "customer", "credential"):
             assert fragment not in text, (rule.rule, fragment)
-        if not rule.rule.startswith("/admin"):
+        if "webhook" in text:
+            assert rule.rule in (public_webhook, one + "/checkout/webhook"), rule.rule
+        if not rule.rule.startswith("/admin") and rule.rule != public_webhook:
             for fragment in ("intent", "checkout", "sandbox", "provider", "payment"):
                 assert fragment not in text, (rule.rule, fragment)
     before = ix.record(app)
@@ -638,7 +644,7 @@ def test_the_checkout_context_carries_only_its_bound_fields(app, client):
     assert 0 < payload["expires_at"] - time.time() <= tokens.CHECKOUT_CONTEXT_MAX_AGE_SECONDS
 
 
-@pytest.mark.parametrize("status", ["provider_succeeded", "provider_failed", "cancelled"])
+@pytest.mark.parametrize("status", ["provider_failed", "cancelled", "confirmed"])
 def test_a_decided_intent_has_no_checkout(app, client, status):
     w = ix.login_world(app, client)
     xp = _row(app, w, status)
@@ -711,7 +717,7 @@ def test_a_reported_success_is_recorded_for_sandbox_testing_only(app, client):
     assert response.status_code == 302 and response.headers["Location"].endswith("/result")
     html = ix.followed(client, response)
     assert ix.NOTICE_RECORDED in html and ix.NOTICE_M07 in html
-    assert "Provider reported success" in html
+    assert "Browser-observed success (awaiting signed webhook)" in html
     # The invoice's balance is exactly what it was: nothing is paid.
     assert "1,250.500" in _flat(html) and "0.000" in _flat(html)
     with app.app_context():
@@ -723,7 +729,11 @@ def test_a_reported_success_is_recorded_for_sandbox_testing_only(app, client):
     assert ix.financial_record(app) == before_financial
     detail = ix.page(client, ix.intent_url(w, xp))
     assert ix.NOTICE_RECORDED in detail and ix.NOTICE_M07 in detail
-    assert "Cancel intent" not in detail and "Open sandbox checkout" not in detail
+    # Phase 5 / M07: the sandbox checkout stays open for its signed webhook, but
+    # the intent cannot be cancelled and the payer's outcome is decided.
+    assert "Cancel intent" not in detail and "Open sandbox checkout" in detail
+    checkout = ix.page(client, ix.checkout_url(w, xp))
+    assert 'name="outcome"' not in checkout and ix.return_url(w, xp) not in checkout
     # Still frozen, still one active intent, and it cannot be cancelled here.
     assert ix.INTENT_FROZEN_TEXT in ix.followed(client, client.get(fx.edit_url(w, w["ip"])))
     assert ix.ACTIVE_INTENT_TEXT in ix.page(client, ix.intents_url(w))
@@ -935,11 +945,13 @@ def test_only_a_pending_intent_can_be_cancelled(app, client, status, text):
 
 
 def test_a_manual_payment_keeps_the_invoice_frozen_after_the_intent_is_cancelled(app, client):
-    """M05's rules are unchanged: a transfer may be recorded while an intent is
-    active, and then it alone keeps the invoice frozen."""
+    """A transfer recorded while an intent was active -- possible before
+    Phase 5 / M07 refused it, so written directly here as legacy overlap --
+    alone keeps the invoice frozen once the intent is cancelled."""
     w = ix.login_world(app, client)
     xp = ix.create_intent(client, w)
-    px.pending_transfer(client, w, amount="100")
+    _direct(app, w, lambda owner, actor: px.payment(owner, actor, method="bank_transfer",
+                                                    status="pending", amount="100"))
     assert ix.CANCELLED_OK_TEXT in ix.followed(client, ix.cancel(client, w, xp))
     assert px.FROZEN_TEXT in ix.followed(client, client.get(fx.edit_url(w, w["ip"])))
 

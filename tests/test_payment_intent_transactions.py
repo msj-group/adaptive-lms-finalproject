@@ -156,7 +156,7 @@ def test_tampered_malformed_and_wrongly_shaped_tokens_are_refused(app):
             serializer.dumps(dict(body, provider_mode=None)),
             serializer.dumps(dict(body, intent_state="x")),
             serializer.dumps(dict(body, intent_state=[["x", "pending"]])),
-            serializer.dumps(dict(body, intent_state=[["x", "confirmed", 1]])),
+            serializer.dumps(dict(body, intent_state=[["x", "paid", 1]])),
             serializer.dumps(dict(body, intent_state=[["x", "pending", 1], ["x", "pending", 1]])),
             serializer.dumps(dict(body, intent_state=[["x" * 36, "pending", 1]] * 26)),
         ):

@@ -14,13 +14,19 @@ rendering. Route-level 404 / redirect / flash handling belongs in
     -> StudentFeeAssignment
     -> Invoice
     -> the invoice's PaymentTransactions (ascending internal id)
+    -> the invoice's PaymentIntents (ascending internal id; Phase 5 / M07)
     -> ReceiptNumberSequence (cash only; see below)
 
 **Bank transfer confirmation**::
 
     ... -> Invoice -> the target PaymentTransaction
     -> the invoice's other PaymentTransactions (ascending internal id)
+    -> the invoice's PaymentIntents (ascending internal id; Phase 5 / M07)
     -> ReceiptNumberSequence
+
+Since Phase 5 / M07 an active payment intent refuses manual collection, so
+the three collection writes lock the invoice's intents after its transactions
+-- the order M06's intent chains use -- and re-prove that none is active.
 
 **Bank transfer rejection**::
 
@@ -65,8 +71,10 @@ from decimal import Inexact, localcontext
 
 from app.extensions import db
 from app.models import (
+    MAX_INVOICE_PAYMENT_INTENTS,
     MAX_INVOICE_PAYMENT_ROWS,
     MAX_RECEIPT_SEQUENCE_NUMBER,
+    PaymentIntent,
     PaymentTransaction,
     PaymentTransactionKind,
     PaymentTransactionStatus,
@@ -96,16 +104,18 @@ class PaymentLocks:
     ``chain`` is the M04 :class:`~app.services.invoice_transactions.InvoiceLocks`
     through the Invoice; ``payments`` maps an internal id to a locked
     transaction other than ``payment`` (or ``None`` when the id no longer
-    names a row). ``__slots__``-ed, so a typo raises instead of reading
-    ``None``.
+    names a row); ``intents`` (Phase 5 / M07) maps an internal id to a locked
+    payment intent of the invoice. ``__slots__``-ed, so a typo raises instead
+    of reading ``None``.
     """
 
-    __slots__ = ("chain", "payment", "payments", "receipt")
+    __slots__ = ("chain", "payment", "payments", "intents", "receipt")
 
-    def __init__(self, chain, payment=None, payments=None, receipt=None):
+    def __init__(self, chain, payment=None, payments=None, intents=None, receipt=None):
         self.chain = chain
         self.payment = payment
         self.payments = {} if payments is None else payments
+        self.intents = {} if intents is None else intents
         self.receipt = receipt
 
 
@@ -135,6 +145,19 @@ def invoice_payment_ids(invoice_id):
     ]
 
 
+def invoice_intent_ids(invoice_id):
+    """The internal ids of `invoice_id`'s payment intents, ascending, at most
+    one past :data:`~app.models.payment_intent.MAX_INVOICE_PAYMENT_INTENTS`."""
+    return [
+        row.id
+        for row in db.session.query(PaymentIntent.id)
+        .filter(PaymentIntent.invoice_id == invoice_id)
+        .order_by(PaymentIntent.id.asc())
+        .limit(MAX_INVOICE_PAYMENT_INTENTS + 1)
+        .all()
+    ]
+
+
 def lock_payment_chain(
     group_public_id,
     term_id,
@@ -147,6 +170,7 @@ def lock_payment_chain(
     invoice_id,
     payment_id=None,
     include_invoice_payments=False,
+    include_invoice_intents=False,
     include_receipt=False,
 ):
     """Take the M05 lock order in one open transaction. Returns a
@@ -156,8 +180,9 @@ def lock_payment_chain(
     non-locking read of the URL's public ids before this call; everything is
     re-proved against the locked rows afterwards. `payment_id` locks the
     target transaction right after the Invoice; `include_invoice_payments`
-    then locks the invoice's other transactions; `include_receipt` finally
-    locks the target's receipt.
+    then locks the invoice's other transactions; `include_invoice_intents`
+    (Phase 5 / M07) then locks the invoice's payment intents;
+    `include_receipt` finally locks the target's receipt.
     """
     chain = lock_invoice_chain(
         group_public_id,
@@ -180,6 +205,9 @@ def lock_payment_chain(
             PaymentTransaction,
             (row_id for row_id in invoice_payment_ids(invoice.id) if row_id != payment_id),
         )
+    intents = {}
+    if include_invoice_intents:
+        intents = _lock_rows(PaymentIntent, invoice_intent_ids(invoice.id))
     receipt = None
     if include_receipt and payment is not None:
         receipt_id = (
@@ -188,7 +216,9 @@ def lock_payment_chain(
             .scalar()
         )
         receipt = _lock_by_id(Receipt, receipt_id)
-    return PaymentLocks(chain, payment=payment, payments=payments, receipt=receipt)
+    return PaymentLocks(
+        chain, payment=payment, payments=payments, intents=intents, receipt=receipt
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -220,6 +250,19 @@ def locked_invoice_payments(locks):
         rows[locks.payment.id] = locks.payment
     return [
         row for _row_id, row in sorted(rows.items()) if row is not None and row.invoice_id == invoice.id
+    ]
+
+
+def locked_payment_chain_intents(locks):
+    """Every locked payment intent that still belongs to the locked invoice,
+    ascending internal id (Phase 5 / M07)."""
+    invoice = locks.chain.invoice
+    if invoice is None:
+        return []
+    return [
+        row
+        for _row_id, row in sorted(locks.intents.items())
+        if row is not None and row.invoice_id == invoice.id
     ]
 
 

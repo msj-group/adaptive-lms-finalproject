@@ -51,6 +51,11 @@ class Config:
     # value, refuses to start the application). Not a secret; no provider
     # credential exists. See docs/DECISIONS.md, Part M06.
     PAYMENT_PROVIDER_MODE = os.environ.get("PAYMENT_PROVIDER_MODE", "disabled")
+    # ---- Phase 5 / M07: the Mock/Sandbox webhook signing key ----
+    # A SECRET, read only from the environment and never given a default:
+    # required (and validated, fail-closed) only when PAYMENT_PROVIDER_MODE is
+    # ``mock``; ignored otherwise. Held by the mock adapter alone.
+    MOCK_PAYMENT_WEBHOOK_SECRET = os.environ.get("MOCK_PAYMENT_WEBHOOK_SECRET")
 
 
 class DevelopmentConfig(Config):
@@ -64,8 +69,10 @@ class TestingConfig(Config):
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     RATELIMIT_ENABLED = False
     # Pinned, like the database URI, so a developer's own environment can
-    # never switch the suite into a provider mode; a test opts in explicitly.
+    # never switch the suite into a provider mode or lend it a secret; a test
+    # opts in explicitly and injects its own test-only webhook secret.
     PAYMENT_PROVIDER_MODE = "disabled"
+    MOCK_PAYMENT_WEBHOOK_SECRET = None
 
 
 class ProductionConfig(Config):

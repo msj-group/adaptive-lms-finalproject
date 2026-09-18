@@ -71,6 +71,7 @@ def create_app(config_name=None, **config_overrides):
     from app.blueprints.student import student_bp
     from app.blueprints.notifications import notifications_bp
     from app.blueprints.messages import messages_bp
+    from app.blueprints.webhooks import webhooks_bp
 
     app.register_blueprint(design_system_bp)
     app.register_blueprint(auth_bp)
@@ -79,6 +80,9 @@ def create_app(config_name=None, **config_overrides):
     app.register_blueprint(student_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(messages_bp)
+    # Phase 5 / M07: the public, CSRF-exempt, signature-verified provider
+    # webhook endpoint (404 unless the Mock/Sandbox provider is enabled).
+    app.register_blueprint(webhooks_bp)
 
     # M14: the shared Student/Teacher portal header renders a
     # Notifications link and unread badge. This injects a *callable*, not

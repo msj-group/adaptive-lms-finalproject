@@ -572,13 +572,20 @@ def test_only_the_payment_routes_create_payments_and_receipts_and_nothing_rewrit
                         r"DELETE\s+FROM\s+(payment_transactions|receipts|receipt_number_sequences)"):
             if re.search(pattern, text, re.I):
                 rewriting.append((name, pattern))
-    assert payments == {"blueprints/admin/payments.py"}
-    assert receipts == {"blueprints/admin/payments.py"}
+    # Phase 5 / M07: a verified signed webhook records an online collection
+    # and its receipt; nothing else does.
+    assert payments == {"blueprints/admin/payments.py", "services/payment_webhooks.py"}
+    assert receipts == {"blueprints/admin/payments.py", "services/payment_webhooks.py"}
     assert rewriting == []
     for template in (root / "templates").rglob("*.html"):
         text = template.read_text(encoding="utf-8")
         assert not re.search(r'action="[^"]*(delete|refund|restore|reissue)', text, re.I), template
     for rule in app.url_map.iter_rules():
         if "payment" in rule.rule or "receipt" in rule.rule and rule.rule.startswith("/admin"):
-            for fragment in ("delete", "edit", "refund", "restore", "reissue", "webhook"):
+            for fragment in ("delete", "edit", "refund", "restore", "reissue"):
                 assert fragment not in rule.rule, rule.rule
+            # Phase 5 / M07: the public signed webhook and the sandbox delivery
+            # control are the only webhook routes.
+            if "webhook" in rule.rule:
+                assert rule.rule == "/webhooks/payments/mock" or rule.rule.endswith(
+                    "/checkout/webhook"), rule.rule

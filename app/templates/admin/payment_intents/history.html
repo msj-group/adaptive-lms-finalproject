@@ -26,6 +26,11 @@
   {% include "admin/fee_assignments/_context.html" %}
   {% include "admin/payments/_invoice.html" %}
 
+  {% if reconciliation_required %}
+  <div class="alert alert--danger" style="margin-bottom: var(--space-4)">
+    A verified provider event for one of these intents needs reconciliation. No payment was recorded from it.
+  </div>
+  {% endif %}
   {% if not mock_enabled %}
   <div class="alert alert--info" style="margin-bottom: var(--space-4)">
     Online payments are disabled in this environment. No payment intent can be created, checked out or
@@ -37,9 +42,10 @@
 
   <p class="ds-section__desc">
     A payment intent asks the Mock/Sandbox provider to collect the invoice's whole outstanding balance. It is a
-    simulation for development and testing: no real payment is taken, and a provider's reported success is not
-    a confirmed payment. While an intent is pending, or its provider reported success, the invoice's lines and
-    its cancellation are frozen. Times in {{ tz_name }}.
+    simulation for development and testing: no real payment is taken, and a success observed by the browser
+    is not a confirmed payment -- only a verified signed provider webhook records one. While an intent is
+    pending, or its success was observed, the invoice's lines, its cancellation and manual payments are frozen.
+    Times in {{ tz_name }}.
   </p>
 
   {% if intents %}
@@ -61,11 +67,14 @@
         <td style="padding: var(--space-3)">{{ entry.provider_label }}</td>
         <td style="padding: var(--space-3); text-align:right; font-variant-numeric: tabular-nums">{{ entry.amount_text }}</td>
         <td style="padding: var(--space-3)">
-          {% if entry.is_active %}
+          {% if entry.is_confirmed %}
+          <span class="badge badge--success">{{ entry.status_label }}</span>
+          {% elif entry.is_active %}
           <span class="badge badge--warning">{{ entry.status_label }}</span>
           {% else %}
           <span class="badge badge--neutral">{{ entry.status_label }}</span>
           {% endif %}
+          {% if entry.awaiting_reconciliation %}<span class="badge badge--danger">Awaiting reconciliation</span>{% endif %}
         </td>
         <td style="padding: var(--space-3)"><a class="btn btn--secondary" href="{{ entry.url }}">Open</a></td>
       </tr>

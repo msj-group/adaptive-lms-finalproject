@@ -51,6 +51,14 @@ changes do not stop the collection of an issued charge. Rejecting a pending
 transfer and reversing a confirmed collection likewise stay available whatever
 later happened to that context: they correct financial history.
 
+**Phase 5 / M07: an active online payment intent refuses manual collection.**
+While an intent of the invoice is ``pending`` or ``provider_succeeded``, cash
+recording, bank-transfer recording and bank-transfer confirmation are refused
+-- on the page, and again after the invoice's intents are locked. Rejection
+and reversal stay available for reconciliation. A confirmed online collection
+is shown here like any other and may be reversed in full; no route here can
+record one.
+
 A URL naming anything that does not nest inside the link before it is a plain
 404. Every response carries ``Cache-Control: private, no-store`` and
 ``Vary: Cookie``.
@@ -114,6 +122,11 @@ from app.services.fee_plan_queries import normalize_page
 from app.services.invoice_queries import STATUS_LABELS as INVOICE_STATUS_LABELS
 from app.services.invoice_queries import active_lines, invoice_lines
 from app.services.invoice_transactions import invoice_items_valid, invoice_rows_for_snapshot
+from app.services.payment_intent_queries import (
+    invoice_intent_rows,
+    invoice_reconciliation_required,
+)
+from app.services.payment_intent_transactions import active_intents
 from app.services.payment_audit import (
     BANK_CONFIRMED,
     BANK_RECORDED,
@@ -151,6 +164,7 @@ from app.services.payment_transactions import (
     lock_payment_chain,
     lock_receipt_number_sequence,
     locked_invoice_payments,
+    locked_payment_chain_intents,
     payment_balance,
     payment_has_receipt,
     payment_nesting_broken,
@@ -201,6 +215,11 @@ _BALANCE_BROKEN_MESSAGE = (
     "recorded or decided here."
 )
 _SETTLED_MESSAGE = "This invoice has no outstanding balance, so no further payment can be recorded."
+_ONLINE_INTENT_MESSAGE = (
+    "This invoice has an active online payment intent, so no cash or bank-transfer payment can be "
+    "recorded or confirmed until the intent is cancelled, fails or is confirmed by its signed "
+    "webhook. Rejecting a pending transfer and reversing a confirmed payment stay available."
+)
 _BELOW_MINIMUM_MESSAGE = (
     "This invoice's outstanding balance is below the smallest amount a payment can record."
 )
@@ -464,10 +483,16 @@ def _payable_block(invoice, lines, active, rows, balance):
     return None
 
 
-def _record_block(invoice, lines, active, rows, balance):
-    """:func:`_payable_block`, plus the collection bound and a balance a new
-    collection could still settle."""
-    block = _payable_block(invoice, lines, active, rows, balance)
+def _intent_block(intents):
+    """Phase 5 / M07: the sentence refusing manual collection while one of
+    `intents` -- the invoice's payment intents -- is active, or ``None``."""
+    return _ONLINE_INTENT_MESSAGE if active_intents(intents) else None
+
+
+def _record_block(invoice, lines, active, rows, balance, intents):
+    """:func:`_payable_block`, plus the active-intent refusal, the collection
+    bound and a balance a new collection could still settle."""
+    block = _payable_block(invoice, lines, active, rows, balance) or _intent_block(intents)
     if block is not None:
         return block
     if len(collection_rows(rows)) >= MAX_INVOICE_COLLECTIONS:
@@ -596,7 +621,7 @@ def _allocate_receipt_number(locked, active, payments, before_payment, reject_ur
     return before, moment, number, None
 
 
-def _history_entries(context, invoice, rows):
+def _history_entries(context, invoice, rows, confirmable=True):
     shown = sorted(rows, key=lambda row: row.id)[:MAX_INVOICE_PAYMENT_ROWS]
     receipts = receipts_by_payment([row.id for row in shown])
     names = account_names(history_account_ids(shown, receipts))
@@ -606,7 +631,7 @@ def _history_entries(context, invoice, rows):
         pending = entry["is_pending"] and entry["kind"] == _COLLECTION
         entry["confirm_url"] = (
             _payment_url("admin.invoice_payment_confirm", context, invoice.public_id, pp)
-            if pending
+            if pending and confirmable
             else None
         )
         entry["reject_url"] = (
@@ -654,11 +679,18 @@ def invoice_payments(group_public_id, enrollment_public_id, assignment_public_id
     context = _context_or_404(group_public_id, enrollment_public_id, assignment_public_id)
     invoice = _invoice_or_404(context, invoice_public_id)
     lines, active, rows, balance = _pre_lock_state(invoice)
-    block = _record_block(invoice, lines, active, rows, balance)
+    intents = invoice_intent_rows(invoice.id)
+    block = _record_block(invoice, lines, active, rows, balance, intents)
     return render_template(
         "admin/payments/history.html",
-        payments=_history_entries(context, invoice, rows),
+        payments=_history_entries(
+            context, invoice, rows, confirmable=_intent_block(intents) is None
+        ),
         record_block=block,
+        reconciliation_required=invoice_reconciliation_required(invoice.id),
+        intents_url=url_for(
+            "admin.invoice_payment_intents", **_ids(context, invoice.public_id)
+        ),
         cash_url=None if block else _cash_url(context, invoice.public_id),
         bank_url=None if block else _bank_url(context, invoice.public_id),
         rows_truncated=payment_rows_over_bound(rows),
@@ -695,7 +727,7 @@ def invoice_payment_cash(
     payments_url = _payments_url(context, invoice.public_id)
     cash_url = _cash_url(context, invoice.public_id)
     lines, active, rows, balance = _pre_lock_state(invoice)
-    block = _record_block(invoice, lines, active, rows, balance)
+    block = _record_block(invoice, lines, active, rows, balance, invoice_intent_rows(invoice.id))
     form = CashPaymentForm(formdata=request.form if request.method == "POST" else None)
     if request.method == "GET":
         if block is not None:
@@ -722,7 +754,9 @@ def invoice_payment_cash(
         return _render_cash(context, invoice, form, rows, balance)
     invoice_id = invoice.id
 
-    locks = _lock(context, actor_id, invoice_id, include_invoice_payments=True)
+    locks = _lock(
+        context, actor_id, invoice_id, include_invoice_payments=True, include_invoice_intents=True
+    )
     locked = _locked_invoice_or_404(locks.chain, context, invoice_id, invoice_public_id)
     if _hierarchy_moved(locks.chain, context):
         return _reject(_STALE_MESSAGE, payments_url, actor_id)
@@ -734,7 +768,9 @@ def invoice_payment_cash(
     item_rows = invoice_rows_for_snapshot(locked)
     active = active_lines(item_rows)
     balance = _balance_of(active, payments)
-    block = _record_block(locked, item_rows, active, payments, balance)
+    block = _record_block(
+        locked, item_rows, active, payments, balance, locked_payment_chain_intents(locks)
+    )
     if block is not None:
         return _reject(block, payments_url, actor_id, "warning")
     if amount > balance.outstanding:
@@ -820,7 +856,7 @@ def invoice_payment_bank_transfer(
     payments_url = _payments_url(context, invoice.public_id)
     bank_url = _bank_url(context, invoice.public_id)
     lines, active, rows, balance = _pre_lock_state(invoice)
-    block = _record_block(invoice, lines, active, rows, balance)
+    block = _record_block(invoice, lines, active, rows, balance, invoice_intent_rows(invoice.id))
     form = BankTransferForm(
         formdata=request.form if request.method == "POST" else None,
         latest_date=_local_date(_write_moment()),
@@ -851,7 +887,9 @@ def invoice_payment_bank_transfer(
         return _render_bank(context, invoice, form, rows, balance)
     invoice_id = invoice.id
 
-    locks = _lock(context, actor_id, invoice_id, include_invoice_payments=True)
+    locks = _lock(
+        context, actor_id, invoice_id, include_invoice_payments=True, include_invoice_intents=True
+    )
     locked = _locked_invoice_or_404(locks.chain, context, invoice_id, invoice_public_id)
     if _hierarchy_moved(locks.chain, context):
         return _reject(_STALE_MESSAGE, payments_url, actor_id)
@@ -863,7 +901,9 @@ def invoice_payment_bank_transfer(
     item_rows = invoice_rows_for_snapshot(locked)
     active = active_lines(item_rows)
     balance = _balance_of(active, payments)
-    block = _record_block(locked, item_rows, active, payments, balance)
+    block = _record_block(
+        locked, item_rows, active, payments, balance, locked_payment_chain_intents(locks)
+    )
     if block is not None:
         return _reject(block, payments_url, actor_id, "warning")
     if amount > balance.outstanding:
@@ -937,8 +977,8 @@ def _is_pending_transfer(payment):
     )
 
 
-def _confirm_block(invoice, lines, active, rows, balance, payment):
-    block = _payable_block(invoice, lines, active, rows, balance)
+def _confirm_block(invoice, lines, active, rows, balance, payment, intents):
+    block = _payable_block(invoice, lines, active, rows, balance) or _intent_block(intents)
     if block is not None:
         return block
     if payment.amount > balance.outstanding:
@@ -989,7 +1029,9 @@ def invoice_payment_confirm(
         flash(_NOT_PENDING_MESSAGE, "info")
         return redirect(payments_url)
     lines, active, rows, balance = _pre_lock_state(invoice)
-    block = _confirm_block(invoice, lines, active, rows, balance, payment)
+    block = _confirm_block(
+        invoice, lines, active, rows, balance, payment, invoice_intent_rows(invoice.id)
+    )
 
     def render(confirm_error=None):
         return _render_decision(
@@ -1018,7 +1060,12 @@ def invoice_payment_confirm(
     invoice_id, payment_id = invoice.id, payment.id
 
     locks = _lock(
-        context, actor_id, invoice_id, payment_id=payment_id, include_invoice_payments=True
+        context,
+        actor_id,
+        invoice_id,
+        payment_id=payment_id,
+        include_invoice_payments=True,
+        include_invoice_intents=True,
     )
     locked = _locked_invoice_or_404(locks.chain, context, invoice_id, invoice_public_id)
     target = _locked_payment_or_404(locks, payment_id, payment_public_id)
@@ -1036,7 +1083,9 @@ def invoice_payment_confirm(
     item_rows = invoice_rows_for_snapshot(locked)
     active = active_lines(item_rows)
     balance = _balance_of(active, payments)
-    block = _confirm_block(locked, item_rows, active, payments, balance, target)
+    block = _confirm_block(
+        locked, item_rows, active, payments, balance, target, locked_payment_chain_intents(locks)
+    )
     if block is not None:
         return _reject(block, payments_url, actor_id, "warning")
 

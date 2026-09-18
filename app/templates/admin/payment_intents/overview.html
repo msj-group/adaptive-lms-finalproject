@@ -13,8 +13,8 @@
   </div>
   <p class="ds-section__desc">
     Online payment intents created with the Mock/Sandbox provider, in {{ currency_code }}. An intent is not a
-    payment: a provider's reported success is recorded for sandbox testing only, and no payment is confirmed
-    until it is verified.
+    payment: a success observed by the browser is recorded for sandbox testing only, and a payment is recorded
+    only when the provider's signed webhook is verified.
   </p>
   {% if not mock_enabled %}
   <div class="alert alert--info" style="margin-bottom: var(--space-4)">
@@ -60,11 +60,14 @@
         <td style="padding: var(--space-3)">{{ entry.invoice_number or "—" }}</td>
         <td style="padding: var(--space-3)">{{ entry.provider_label }}</td>
         <td style="padding: var(--space-3)">
-          {% if entry.status in ("pending", "provider_succeeded") %}
+          {% if entry.status == "confirmed" %}
+          <span class="badge badge--success">{{ entry.status_label }}</span>
+          {% elif entry.status in ("pending", "provider_succeeded") %}
           <span class="badge badge--warning">{{ entry.status_label }}</span>
           {% else %}
           <span class="badge badge--neutral">{{ entry.status_label }}</span>
           {% endif %}
+          {% if entry.awaiting_reconciliation %}<span class="badge badge--danger">Awaiting reconciliation</span>{% endif %}
         </td>
         <td style="padding: var(--space-3); text-align:right; font-variant-numeric: tabular-nums">{{ entry.amount_text }}</td>
         <td style="padding: var(--space-3)"><a class="btn btn--secondary" href="{{ entry.url }}">Open</a></td>

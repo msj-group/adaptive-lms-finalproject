@@ -1,24 +1,36 @@
-"""Administrator Mock/Sandbox payment intents (Phase 5 / M06).
+"""Administrator Mock/Sandbox payment intents (Phase 5 / M06, extended by
+M07).
 
-Eight URL rules, addressed only by public identifiers. With ``<invoice>`` =
+Nine URL rules, addressed only by public identifiers. With ``<invoice>`` =
 ``/admin/groups/<gp>/enrollments/<ep>/fee-assignments/<ap>/invoices/<ip>``
 and ``<intent>`` = ``<invoice>/payment-intents/<xp>``::
 
     GET       <invoice>/payment-intents          one invoice's intents
     GET|POST  <invoice>/payment-intents/new      confirm, then create a Mock intent
-    GET       <intent>                           one intent
+    GET       <intent>                           one intent and its provider events
     GET|POST  <intent>/checkout                  the Mock/Sandbox checkout (sandbox only)
+    POST      <intent>/checkout/webhook          the sandbox provider sends its signed webhook
     POST      <intent>/return                    the browser return: record the provider's result
     GET       <intent>/result                    the safe result page
     GET|POST  <intent>/cancel                    confirm, then cancel a pending intent
     GET       /admin/payment-intents             every intent, filtered and paged
 
 **An intent is not a payment.** Creating one asks the provider to collect the
-invoice's exact outstanding balance; nothing here creates a payment
-transaction, a receipt or an audit event, or changes an invoice's lines,
-amounts, balance, status or number. A provider's reported success is recorded
-as ``provider_succeeded`` for sandbox testing only: **no payment is confirmed
-until Phase 5 / M07 verifies a signed webhook.**
+invoice's exact outstanding balance; nothing a person does here creates a
+payment transaction, a receipt or an audit event, or changes an invoice's
+lines, amounts, balance, status or number. A success observed by the browser
+return is recorded as ``provider_succeeded`` for sandbox testing only: **no
+payment is confirmed until a signed provider webhook is verified** (Phase 5 /
+M07, ``app/services/payment_webhooks.py``).
+
+**The sandbox webhook delivery (M07).** A real provider sends its webhook from
+its own server; the Mock/Sandbox provider cannot make a network call, so the
+checkout page offers "Send the sandbox provider's webhook". It asks the mock to
+sign the one event describing the outcome **its own ledger** records -- the
+Administrator chooses nothing about it -- and hands the exact signed bytes to
+the same verification and processing the public endpoint uses. It is not a
+"confirm payment" control: an unsigned, stale, conflicting or non-collectable
+event records no payment, and the acting account is never passed on.
 
 **Mock/Sandbox only.** The only provider is the in-process mock
 (``app/services/mock_payment_provider.py``), enabled only when
@@ -101,11 +113,16 @@ from app.services.payment_intent_queries import (
     build_intent_history_view,
     build_intent_view,
     build_overview_view,
+    build_provider_event_view,
     intent_account_ids,
+    intent_collection,
     intent_history_page,
+    intent_provider_events,
+    intents_awaiting_reconciliation,
     intents_overview_page,
     invoice_intent,
     invoice_intent_rows,
+    invoice_reconciliation_required,
     normalize_intent_status_filter,
 )
 from app.services.payment_intent_transactions import (
@@ -121,6 +138,16 @@ from app.services.payment_intent_transactions import (
     provider_reference_taken,
 )
 from app.services.payment_providers import PaymentProviderError, ProviderPaymentStatus
+from app.services.payment_webhooks import (
+    CONFIRMED as EVENT_CONFIRMED,
+    DUPLICATE as EVENT_DUPLICATE,
+    FAILED as EVENT_FAILED,
+    IGNORED_TERMINAL as EVENT_IGNORED,
+    RECONCILIATION_REQUIRED as EVENT_RECONCILIATION,
+    WebhookRejected,
+    WebhookRetry,
+    process_provider_webhook,
+)
 from app.services.payment_queries import account_names, build_balance_view, invoice_payment_rows
 from app.services.payment_transactions import payment_balance, payment_rows_over_bound
 
@@ -129,6 +156,8 @@ _PENDING = PaymentIntentStatus.PENDING.value
 _SUCCEEDED = PaymentIntentStatus.PROVIDER_SUCCEEDED.value
 _FAILED = PaymentIntentStatus.PROVIDER_FAILED.value
 _CANCELLED = PaymentIntentStatus.CANCELLED.value
+_CONFIRMED = PaymentIntentStatus.CONFIRMED.value
+_ACTIVE = (_PENDING, _SUCCEEDED)
 _REPORTED_PENDING = ProviderPaymentStatus.PENDING.value
 _REPORTED_SUCCEEDED = ProviderPaymentStatus.SUCCEEDED.value
 _REPORTED_FAILED = ProviderPaymentStatus.FAILED.value
@@ -145,7 +174,7 @@ _ONE = _INTENTS + "/<intent_public_id>"
 #: The two sentences the browser return's result page states prominently.
 SANDBOX_RESULT_NOTICE = (
     "Provider result recorded for sandbox testing only.",
-    "No payment is confirmed until M07 verifies a signed webhook.",
+    "No payment is confirmed until a signed provider webhook is verified.",
 )
 
 #: What the checkout page offers, in order: value, button text.
@@ -178,8 +207,8 @@ _BALANCE_BROKEN_MESSAGE = (
     "created for it."
 )
 _MANUAL_PAYMENT_MESSAGE = (
-    "This invoice has a pending or confirmed manual payment, so no online payment intent can be "
-    "created for it."
+    "This invoice has a pending or confirmed payment, so no online payment intent can be created "
+    "for it."
 )
 _ACTIVE_INTENT_MESSAGE = (
     "This invoice already has an active payment intent, and only one may exist at a time. A "
@@ -249,6 +278,36 @@ _ALREADY_CREATED_MESSAGE = (
     "This payment intent was already created by the same request. Nothing new was created."
 )
 _CANCELLED_OK_MESSAGE = "Payment intent cancelled. It is kept as history."
+_NOTHING_TO_DELIVER_MESSAGE = (
+    "The sandbox provider has no decided outcome to report yet, so it has no webhook to send. "
+    "Simulate the payer's outcome first. Nothing was recorded."
+)
+_DELIVERY_REJECTED_MESSAGE = (
+    "The sandbox provider's webhook could not be verified, so nothing was recorded."
+)
+_DELIVERY_RETRY_MESSAGE = (
+    "The sandbox provider's webhook could not be processed just now. Nothing was recorded; "
+    "send it again."
+)
+_DELIVERY_REPEATED_MESSAGE = (
+    "This signed webhook was already processed. Delivering it again changed nothing."
+)
+_DELIVERY_MESSAGES = {
+    EVENT_CONFIRMED: (
+        "The sandbox provider's signed webhook was verified: the online payment is confirmed "
+        "and receipt {number} was issued."
+    ),
+    EVENT_FAILED: (
+        "The sandbox provider's signed webhook was verified: the payment failed, so the intent "
+        "is closed and no payment was recorded."
+    ),
+    EVENT_DUPLICATE: "The signed webhook restates what is already recorded. Nothing changed.",
+    EVENT_IGNORED: "The signed webhook reports a failure for a cancelled intent. Nothing changed.",
+    EVENT_RECONCILIATION: (
+        "The signed webhook conflicts with what the LMS records, so no payment was recorded. "
+        "It is kept on this intent for reconciliation."
+    ),
+}
 
 _OUTCOME_NAMES = {
     OUTCOME_SUCCESS: "success",
@@ -497,7 +556,12 @@ def invoice_payment_intents(
     if not rows and page > 1:
         page = 1
         rows, has_next = intent_history_page(invoice.id, page)
-    entries = build_intent_history_view(rows, _names_of(rows), _tz_name())
+    entries = build_intent_history_view(
+        rows,
+        _names_of(rows),
+        _tz_name(),
+        reconciliation=intents_awaiting_reconciliation([row.id for row in rows]),
+    )
     for entry in entries:
         entry["url"] = _detail(context, invoice.public_id, entry["public_id"])
     lines, active, payments, intents, balance = _pre_lock_state(invoice)
@@ -509,6 +573,7 @@ def invoice_payment_intents(
     return render_template(
         "admin/payment_intents/history.html",
         intents=entries,
+        reconciliation_required=invoice_reconciliation_required(invoice.id),
         create_block=create_block,
         create_url=create_url,
         page=page,
@@ -673,20 +738,38 @@ def invoice_payment_intent_detail(
     context = _context_or_404(group_public_id, enrollment_public_id, assignment_public_id)
     invoice = _invoice_or_404(context, invoice_public_id)
     intent = _intent_or_404(invoice, intent_public_id)
-    sandbox_actions = _settings().mock_enabled and intent.status == _PENDING
+    mock_enabled = _settings().mock_enabled
+    events, events_truncated = intent_provider_events(intent.id)
+    event_views = build_provider_event_view(events, _tz_name())
+    collection = intent_collection(intent.id) if intent.status == _CONFIRMED else None
     return render_template(
         "admin/payment_intents/detail.html",
-        intent=build_intent_view(intent, _names_of([intent]), _tz_name()),
+        intent=build_intent_view(
+            intent,
+            _names_of([intent]),
+            _tz_name(),
+            awaiting_reconciliation=bool(intents_awaiting_reconciliation([intent.id])),
+        ),
         checkout_url=_intent_url(
             "admin.invoice_payment_intent_checkout", context, invoice.public_id, intent.public_id
         )
-        if sandbox_actions
+        if mock_enabled and intent.status in _ACTIVE
         else None,
         cancel_url=_intent_url(
             "admin.invoice_payment_intent_cancel", context, invoice.public_id, intent.public_id
         )
-        if sandbox_actions
+        if mock_enabled and intent.status == _PENDING
         else None,
+        provider_events=event_views,
+        events_truncated=events_truncated,
+        receipt_url=None
+        if collection is None or collection[1] is None
+        else url_for(
+            "admin.invoice_receipt_detail",
+            receipt_public_id=collection[1],
+            **_ids(context, invoice.public_id),
+        ),
+        receipt_number=None if collection is None else collection[2],
         result_notice=SANDBOX_RESULT_NOTICE,
         **_common(context, invoice, _invoice_balance(invoice)),
     )
@@ -700,6 +783,9 @@ def _checkout_urls(context, invoice_public_id, intent_public_id):
         "return_url": _intent_url(
             "admin.invoice_payment_intent_return", context, invoice_public_id, intent_public_id
         ),
+        "deliver_url": _intent_url(
+            "admin.invoice_payment_intent_deliver", context, invoice_public_id, intent_public_id
+        ),
     }
 
 
@@ -710,17 +796,19 @@ def invoice_payment_intent_checkout(
     group_public_id, enrollment_public_id, assignment_public_id, invoice_public_id,
     intent_public_id,
 ):
-    """The Mock/Sandbox checkout. GET: the simulation page, with a fresh
-    signed checkout context. POST: record one simulated outcome in the mock
-    provider's own ledger -- and nothing else; the local intent changes only
-    through the browser return, from the provider's reported status."""
+    """The Mock/Sandbox checkout, while the intent is active. GET: the
+    simulation page, with a fresh signed checkout context. POST: record one
+    simulated outcome in the mock provider's own ledger -- and nothing else --
+    for a still-pending intent; the local intent changes only through the
+    browser return (a non-financial observation) or a verified signed
+    webhook."""
     _mock_or_404()
     context = _context_or_404(group_public_id, enrollment_public_id, assignment_public_id)
     invoice = _invoice_or_404(context, invoice_public_id)
     intent = _intent_or_404(invoice, intent_public_id)
     detail_url = _detail(context, invoice.public_id, intent.public_id)
     urls = _checkout_urls(context, invoice.public_id, intent.public_id)
-    if intent.status != _PENDING:
+    if intent.status not in _ACTIVE:
         flash(_NOT_PENDING_MESSAGE, "info")
         return redirect(detail_url)
     if request.method == "GET":
@@ -730,12 +818,15 @@ def invoice_payment_intent_checkout(
             checkout_field=_CHECKOUT_FIELD,
             checkout_context=tokens.make_checkout_context(intent),
             outcomes=_OUTCOME_CHOICES,
+            can_simulate=intent.status == _PENDING,
             intent_url=detail_url,
             currency_code=money.CURRENCY_CODE,
             **urls,
         )
 
     actor_id = current_user.id
+    if intent.status != _PENDING:
+        return _reject(_NOT_PENDING_MESSAGE, urls["checkout_url"], actor_id, "info")
     if tokens.token_is_stale(
         request.form.get(_CHECKOUT_FIELD), tokens.PURPOSE_CHECKOUT, **_checkout_state(intent)
     ):
@@ -749,6 +840,52 @@ def invoice_payment_intent_checkout(
         return _reject(_SIMULATION_REFUSED_MESSAGE, urls["checkout_url"], actor_id, "warning")
     flash(_SIMULATED_MESSAGE.format(outcome=_OUTCOME_NAMES[outcome]), "info")
     return redirect(urls["checkout_url"])
+
+
+@admin_bp.post(_ONE + "/checkout/webhook")
+@roles_required(_ADMINISTRATOR)
+@_financial_response
+def invoice_payment_intent_deliver(
+    group_public_id, enrollment_public_id, assignment_public_id, invoice_public_id,
+    intent_public_id,
+):
+    """Sandbox only: have the Mock provider sign the one webhook event its own
+    ledger records for this intent's payment, and deliver the exact signed
+    bytes to :func:`~app.services.payment_webhooks.process_provider_webhook`
+    -- the public endpoint's own verification and processing. The acting
+    Administrator is never passed on and chooses nothing about the event."""
+    _mock_or_404()
+    context = _context_or_404(group_public_id, enrollment_public_id, assignment_public_id)
+    invoice = _invoice_or_404(context, invoice_public_id)
+    intent = _intent_or_404(invoice, intent_public_id)
+    detail_url = _detail(context, invoice.public_id, intent.public_id)
+    urls = _checkout_urls(context, invoice.public_id, intent.public_id)
+    actor_id = current_user.id
+    if intent.status not in _ACTIVE:
+        return _reject(_NOT_PENDING_MESSAGE, detail_url, actor_id, "info")
+    if tokens.token_is_stale(
+        request.form.get(_CHECKOUT_FIELD), tokens.PURPOSE_CHECKOUT, **_checkout_state(intent)
+    ):
+        return _reject(_CHECKOUT_INVALID_MESSAGE, urls["checkout_url"], actor_id)
+    reference = intent.provider_reference
+    provider = _settings().provider
+    db.session.rollback()
+    try:
+        body, headers = provider.emit_webhook(reference)
+    except PaymentProviderError:
+        return _reject(_NOTHING_TO_DELIVER_MESSAGE, urls["checkout_url"], actor_id, "warning")
+    try:
+        result = process_provider_webhook(provider, body, headers, tz_name=_tz_name())
+    except WebhookRejected:
+        return _reject(_DELIVERY_REJECTED_MESSAGE, detail_url, actor_id, "warning")
+    except WebhookRetry:
+        return _reject(_DELIVERY_RETRY_MESSAGE, urls["checkout_url"], actor_id, "warning")
+    if result.redelivered:
+        flash(_DELIVERY_REPEATED_MESSAGE, "info")
+    else:
+        level = "success" if result.outcome in (EVENT_CONFIRMED, EVENT_FAILED) else "warning"
+        flash(_DELIVERY_MESSAGES[result.outcome].format(number=result.receipt_number), level)
+    return redirect(detail_url)
 
 
 @admin_bp.post(_ONE + "/return")

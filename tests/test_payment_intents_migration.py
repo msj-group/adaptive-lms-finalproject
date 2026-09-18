@@ -35,6 +35,9 @@ from app.models import PaymentIntent, PaymentIntentStatus
 _MIGRATIONS = m05._MIGRATIONS
 _REVISION = "d4f7a2c9e1b6"
 _DOWN_REVISION = "c5e8f2a7d914"
+#: Phase 5 / M07 follows this revision, so the single head is now its own; it
+#: replaces three of this revision's CHECKs and records their M06 text.
+_HEAD = "e9c4b2d7a1f3"
 _TABLE = "payment_intents"
 _FINANCIAL_TABLES = ("invoice_number_sequences", "invoices", "invoice_items",
                      "payment_audit_events", "payment_transactions", "receipt_number_sequences",
@@ -99,11 +102,20 @@ def test_revision_identifiers_and_one_linear_head():
         source = path.read_text(encoding="utf-8")
         revision = re.search(r"^revision = '([^']+)'", source, re.M).group(1)
         parents[revision] = re.search(r"^down_revision = (?:'([^']+)'|None)", source, re.M).group(1)
-    assert set(parents) - {p for p in parents.values() if p is not None} == {_REVISION}
+    assert set(parents) - {p for p in parents.values() if p is not None} == {_HEAD}
     claimed = [p for p in parents.values() if p is not None]
     assert len(claimed) == len(set(claimed))
     assert [r for r, p in parents.items() if p == _DOWN_REVISION] == [_REVISION]
+    assert [r for r, p in parents.items() if p == _REVISION] == [_HEAD]
     assert len([r for r, p in parents.items() if p is None]) == 1
+
+
+def _m06_checks():
+    """The model's CHECKs as this revision declared them: Phase 5 / M07
+    replaced three, and records their M06 text as its "before"."""
+    m07, _ = m05._load(_HEAD, "p5m07")
+    replaced = {name: old for name, old, _new in m07._INTENT_CHECKS}
+    return {name: replaced.get(name, expression) for name, expression in _model_checks().items()}
 
 
 def test_the_revision_creates_one_table_and_alters_nothing():
@@ -261,7 +273,7 @@ def test_the_revision_declares_every_expected_column_and_check():
     block = m05._table_block(source, _TABLE)
     assert set(re.findall(r"sa\.Column\('([^']+)'", block)) == _EXPECTED["columns"]
     flat = m05._flat(source)
-    checks = _model_checks()
+    checks = _m06_checks()
     assert set(checks) == _EXPECTED["checks"]
     for name, expression in checks.items():
         assert f"name='{name}'" in block, name
@@ -271,7 +283,9 @@ def test_the_revision_declares_every_expected_column_and_check():
 def test_the_migrations_closed_sets_match_the_application_enums():
     _, source = _load_migration()
     flat = m05._flat(source)
-    expected = "status IN (" + ", ".join(f"'{m.value}'" for m in PaymentIntentStatus) + ")"
+    # Phase 5 / M07 added ``confirmed``; this revision declared the other four.
+    expected = "status IN (" + ", ".join(
+        f"'{m.value}'" for m in PaymentIntentStatus if m.value != "confirmed") + ")"
     assert expected in flat
     assert "provider IN ('mock')" in flat
     for fragment in ("sa.Column('amount', sa.DECIMAL(precision=19, scale=4), nullable=False)",

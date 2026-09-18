@@ -133,7 +133,7 @@
     <ol style="list-style: none; padding: 0; margin: var(--space-3) 0 0">
       {% for event in timeline %}
       <li style="border-top: 1px solid var(--color-border); padding: var(--space-3) 0">
-        <div><strong>{{ event.kind_label }}</strong> by {{ event.actor_name }} on {{ event.occurred_local.strftime("%Y-%m-%d %H:%M:%S") }}
+        <div><strong>{{ event.kind_label }}</strong> by {{ event.actor_name or "the verified provider webhook" }} on {{ event.occurred_local.strftime("%Y-%m-%d %H:%M:%S") }}
           {% if event.is_payment_event %}
           <span class="ds-section__desc" style="margin:0">(invoice version {{ event.version_after }} unchanged)</span>
           {% else %}

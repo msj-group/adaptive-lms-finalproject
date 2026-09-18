@@ -54,7 +54,7 @@ from app.models import (
     UserRole,
     UserStatus,
 )
-from app.models.payment_audit_event import PAYMENT_SNAPSHOT_SCHEMA
+from app.models.payment_audit_event import ONLINE_PAYMENT_SNAPSHOT_SCHEMA, PAYMENT_SNAPSHOT_SCHEMA
 from app.services.fee_plan_queries import KIND_LABELS
 from app.services.fee_plan_queries import STATUS_LABELS as PLAN_STATUS_LABELS
 from app.services.invoice_transactions import fee_plan_invoiceable
@@ -469,7 +469,8 @@ def line_form_data(line):
 
 def audit_event_page(invoice_id, page):
     """``(rows, has_next)`` for one page of the invoice's audit events, newest
-    first (``id DESC``). One query: the acting account is joined in."""
+    first (``id DESC``). One query: the acting account is outer-joined in, because a
+    system-origin online event (Phase 5 / M07) has none."""
     actor = aliased(User)
     query = (
         db.session.query(
@@ -483,7 +484,7 @@ def audit_event_page(invoice_id, page):
             actor.full_name.label("actor_name"),
         )
         .select_from(PaymentAuditEvent)
-        .join(actor, actor.id == PaymentAuditEvent.actor_id)
+        .outerjoin(actor, actor.id == PaymentAuditEvent.actor_id)
         .filter(PaymentAuditEvent.invoice_id == invoice_id)
         .order_by(PaymentAuditEvent.id.desc())
     )
@@ -611,7 +612,8 @@ def build_timeline_view(rows, tz_name="UTC"):
     snapshots: what moved, and the balance after it."""
     return [
         _payment_timeline_entry(row, tz_name)
-        if row.after_snapshot.get("schema") == PAYMENT_SNAPSHOT_SCHEMA
+        if row.after_snapshot.get("schema")
+        in (PAYMENT_SNAPSHOT_SCHEMA, ONLINE_PAYMENT_SNAPSHOT_SCHEMA)
         else _invoice_timeline_entry(row, tz_name)
         for row in rows
     ]

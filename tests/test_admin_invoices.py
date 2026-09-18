@@ -200,13 +200,18 @@ def test_a_suspended_administrator_reaches_nothing(app, client):
 def test_no_other_portal_and_no_route_exposes_invoices_events_or_sequences(app):
     for rule in app.url_map.iter_rules():
         text = f"{rule.rule} {rule.endpoint}".lower()
+        # Phase 5 / M07's public signed provider webhook is the one non-admin
+        # payment route; tests/test_payment_webhooks.py inventories it.
+        public_webhook = rule.rule == "/webhooks/payments/mock"
+        # ... and the Mock/Sandbox checkout's delivery of that signed webhook.
+        webhook_route = public_webhook or rule.rule.endswith("/checkout/webhook")
         if not rule.rule.startswith("/admin"):
             assert "invoice" not in text, rule.rule
             # Phase 5 / M05's manual payments are Administrator-only as well;
             # tests/test_admin_payments.py inventories their routes.
-            assert "payment" not in text, rule.rule
+            assert public_webhook or "payment" not in text, rule.rule
         # Speaking already has an unrelated submission "receipt" route.
-        for fragment in ("audit", "sequence", "refund", "webhook"):
+        for fragment in ("audit", "sequence", "refund") + (() if webhook_route else ("webhook",)):
             assert fragment not in text, (rule.rule, fragment)
 
 

@@ -17,7 +17,7 @@ from decimal import Decimal
 
 from app.extensions import db
 from app.models import PaymentTransaction, Receipt, ReceiptStatus
-from app.models.receipt import parse_receipt_moment
+from app.models.receipt import parse_receipt_moment, receipt_is_online
 from app.services.money import format_amount
 from app.services.payment_queries import METHOD_LABELS, RECEIPT_STATUS_LABELS
 from app.services.schedule_occurrences import to_app_local
@@ -57,7 +57,10 @@ def build_receipt_view(receipt, payment, names, tz_name="UTC"):
         "amount_text": format_amount(Decimal(document["amount"])),
         "currency_code": document["currency_code"],
         "confirmed_local": to_app_local(tz_name, parse_receipt_moment(document["confirmed_at"])),
-        "confirmed_by_name": document["confirmed_by_name"],
+        # An online collection's receipt (Phase 5 / M07) names no person: a
+        # verified provider webhook confirmed it.
+        "confirmed_by_name": document.get("confirmed_by_name"),
+        "is_online": receipt_is_online(document),
         "student_name": document["student_name"],
         "group_name": document["group_name"],
         "course_title": document["course_title"],

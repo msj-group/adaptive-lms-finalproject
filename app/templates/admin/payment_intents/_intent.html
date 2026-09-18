@@ -6,13 +6,16 @@
   <div class="ds-row" style="justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap">
     <div class="card__title" style="margin:0">
       {{ intent.provider_label }} payment intent
-      {% if intent.is_provider_succeeded %}
+      {% if intent.is_confirmed %}
+      <span class="badge badge--success">{{ intent.status_label }}</span>
+      {% elif intent.is_provider_succeeded %}
       <span class="badge badge--warning">{{ intent.status_label }}</span>
       {% elif intent.is_pending %}
       <span class="badge badge--warning">{{ intent.status_label }}</span>
       {% else %}
       <span class="badge badge--neutral">{{ intent.status_label }}</span>
       {% endif %}
+      {% if intent.awaiting_reconciliation %}<span class="badge badge--danger">Awaiting reconciliation</span>{% endif %}
     </div>
   </div>
   <dl style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-3); margin: var(--space-4) 0 0">
@@ -30,8 +33,14 @@
     </div>
     {% if intent.provider_result_local %}
     <div>
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Provider result recorded</dt>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Provider result observed by the browser return</dt>
       <dd style="margin:0">{{ intent.provider_result_local.strftime("%Y-%m-%d %H:%M") }} by {{ intent.provider_result_by_name }}</dd>
+    </div>
+    {% endif %}
+    {% if intent.is_confirmed or (intent.is_provider_failed and not intent.provider_result_local) %}
+    <div>
+      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">{% if intent.is_confirmed %}Confirmed{% else %}Failed{% endif %} by the verified provider webhook</dt>
+      <dd style="margin:0">{{ intent.terminal_local.strftime("%Y-%m-%d %H:%M") }}</dd>
     </div>
     {% endif %}
     {% if intent.is_cancelled %}

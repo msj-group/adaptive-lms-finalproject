@@ -47,8 +47,11 @@ from app.models import (
 _MIGRATIONS = pathlib.Path(__file__).resolve().parents[1] / "migrations" / "versions"
 _REVISION = "c5e8f2a7d914"
 _DOWN_REVISION = "a8d3f5c29e61"
-#: Phase 5 / M06 follows this revision, so the single head is now its own.
-_HEAD = "d4f7a2c9e1b6"
+#: Phase 5 / M06 and then M07 follow this revision, so the single head is now
+#: M07's. M07 extends three of this revision's tables; its revision records the
+#: M05 text of every CHECK it replaces, which this suite compares against.
+_HEAD = "e9c4b2d7a1f3"
+_M07 = "e9c4b2d7a1f3"
 
 _NEW_TABLES = ["payment_transactions", "receipt_number_sequences", "receipts"]
 _EVENTS = "payment_audit_events"
@@ -190,6 +193,51 @@ def _model_checks(model):
     }
 
 
+#: What Phase 5 / M07 (``e9c4b2d7a1f3``) added to this revision's tables, which
+#: the current model carries.
+_M07_ADDITIONS = {
+    "payment_transactions": {
+        "columns": {"payment_intent_id"},
+        "nullable": {"payment_intent_id", "recorded_by_id"},
+        "checks": {"ck_payment_transactions_online_origin"},
+        "indexes": {},
+        "fks": {("payment_intent_id", "payment_intents")},
+        "uniques": [("uq_payment_transactions_payment_intent_id", ("payment_intent_id",))],
+    },
+    "receipt_number_sequences": {},
+    "receipts": {"nullable": {"issued_by_id"}},
+    "payment_audit_events": {
+        "nullable": {"actor_id"},
+        "checks": {"ck_payment_audit_events_actor_origin"},
+    },
+}
+
+
+def _m05_checks(model):
+    """The model's CHECKs as this revision declared them: M07's replacements
+    mapped back to the M05 text M07 records, M07's additions left out."""
+    m07, _ = _load(_M07, "p5m07")
+    replaced = {name: old for group in (m07._PAYMENT_CHECKS, m07._AUDIT_CHECKS)
+                for name, old, _new in group}
+    added = _M07_ADDITIONS.get(model.__tablename__, {}).get("checks", set())
+    return {name: replaced.get(name, expression)
+            for name, expression in _model_checks(model).items() if name not in added}
+
+
+def _current_shape(table):
+    """This revision's expected shape of `table` plus M07's additions -- what
+    the current model creates."""
+    expected, additions = _EXPECTED[table], _M07_ADDITIONS.get(table, {})
+    return {
+        "columns": expected["columns"] | additions.get("columns", set()),
+        "nullable": expected["nullable"] | additions.get("nullable", set()),
+        "checks": expected["checks"] | additions.get("checks", set()),
+        "indexes": dict(expected["indexes"], **additions.get("indexes", {})),
+        "fks": expected["fks"] | additions.get("fks", set()),
+        "uniques": sorted(expected["uniques"] + additions.get("uniques", [])),
+    }
+
+
 # ===========================================================================
 # Revision identity and what the revision does
 # ===========================================================================
@@ -243,7 +291,7 @@ def test_the_replaced_checks_widen_the_m04_expressions_and_match_the_model():
     module, _ = _load_migration()
     _, m04_source = _load(_DOWN_REVISION, "p5m04")
     m04_flat = _flat(m04_source)
-    checks = _model_checks(PaymentAuditEvent)
+    checks = _m05_checks(PaymentAuditEvent)
     for name, before, after in module._REPLACED_CHECKS:
         assert before in m04_flat, name
         assert checks[name] == after, name
@@ -252,6 +300,8 @@ def test_the_replaced_checks_widen_the_m04_expressions_and_match_the_model():
     assert checks["ck_payment_audit_events_versions_positive"] == module._VERSIONS_POSITIVE
     assert checks["ck_payment_audit_events_snapshots_present"] == module._SNAPSHOTS_PRESENT
     for kind in PaymentAuditEventKind:
+        if kind.value in ("payment_online_confirmed", "receipt_online_issued"):
+            continue  # Phase 5 / M07's kinds.
         assert f"'{kind.value}'" in module._KIND_AFTER, kind
         assert (f"'{kind.value}'" in module._KIND_BEFORE) == kind.value.startswith("invoice_")
     # The M04 branches of the version CHECK are kept exactly, per kind.
@@ -272,12 +322,14 @@ def test_the_rebuild_definitions_are_the_m04_table_with_the_given_checks():
     model = PaymentAuditEvent.__table__
     upgraded_columns, upgraded_checks, upgraded_indexes = shape(module._audit_events_table(
         module._KIND_AFTER, module._VERSION_AFTER, module._REASON_AFTER, module._LINKS))
-    model_columns = {name: (kind, nullable) for name, kind, nullable in shape(model)[0]}
+    # Phase 5 / M07 made ``actor_id`` nullable; this revision declared it not.
+    model_columns = {name: (kind, nullable and name != "actor_id")
+                     for name, kind, nullable in shape(model)[0]}
     for name, kind, nullable in upgraded_columns:
         assert model_columns[name] == (kind, nullable), name
     assert set(model_columns) - {name for name, _, _ in upgraded_columns} == {
         "payment_transaction_id", "receipt_id"}
-    assert upgraded_checks == _model_checks(PaymentAuditEvent)
+    assert upgraded_checks == _m05_checks(PaymentAuditEvent)
     assert upgraded_indexes == {("ix_payment_audit_events_invoice_id_id", ("invoice_id", "id")),
                                 ("ix_payment_audit_events_actor_id", ("actor_id",))}
     _, restored_checks, _ = shape(module._audit_events_table(
@@ -590,7 +642,7 @@ def test_the_revision_declares_every_expected_column_and_check(table):
     block = _table_block(source, table)
     assert set(re.findall(r"sa\.Column\('([^']+)'", block)) == _EXPECTED[table]["columns"]
     flat = _flat(source)
-    checks = _model_checks(_MODELS[table])
+    checks = _m05_checks(_MODELS[table])
     assert set(checks) == _EXPECTED[table]["checks"]
     for name, expression in checks.items():
         assert f"name='{name}'" in block, name
@@ -602,7 +654,9 @@ def test_the_migrations_closed_sets_match_the_application_enums():
     flat = _flat(source)
     for column, enum in (("kind", PaymentTransactionKind), ("method", PaymentMethod),
                          ("status", PaymentTransactionStatus), ("status", ReceiptStatus)):
-        expected = f"{column} IN (" + ", ".join(f"'{member.value}'" for member in enum) + ")"
+        # Phase 5 / M07 added the ``online`` method; this revision declared the rest.
+        expected = f"{column} IN (" + ", ".join(
+            f"'{member.value}'" for member in enum if member.value != "online") + ")"
         assert expected in flat, expected
     for fragment in ("sa.Column('amount', sa.DECIMAL(precision=19, scale=4), nullable=False)",
                      "sa.Column('bank_transfer_date', sa.Date(), nullable=True)",
@@ -622,7 +676,10 @@ def test_the_model_and_migration_agree(app, table):
             declared = dict(re.findall(r"sa\.Column\('([^']+)',.*?nullable=(True|False)",
                                        _table_block(source, table)))
             declared.pop("id", None)
-            assert declared == actual
+            # Columns Phase 5 / M07 added or made nullable are compared by its suite.
+            changed = _M07_ADDITIONS[table].get("nullable", set())
+            assert {k: v for k, v in declared.items() if k not in changed} == {
+                k: v for k, v in actual.items() if k not in changed}
         shape = {
             "columns": {c["name"] for c in inspector.get_columns(table)},
             "nullable": {c["name"] for c in inspector.get_columns(table) if c["nullable"]},
@@ -633,7 +690,7 @@ def test_the_model_and_migration_agree(app, table):
             "fks": {(fk["constrained_columns"][0], fk["referred_table"])
                     for fk in inspector.get_foreign_keys(table)},
         }
-        assert shape == _EXPECTED[table]
+        assert shape == _current_shape(table)
 
 
 _DDL_FRAGMENTS = {
@@ -643,7 +700,8 @@ _DDL_FRAGMENTS = {
         "status VARCHAR(32) NOT NULL", "currency_code VARCHAR(3) NOT NULL",
         "amount DECIMAL(19, 4) NOT NULL", "bank_transfer_reference VARCHAR(64),",
         "bank_transfer_date DATE,", "recorded_at DATETIME NOT NULL",
-        "recorded_by_id BIGINT NOT NULL", "rejection_reason VARCHAR(500),",
+        # Phase 5 / M07: an online collection has no recorder.
+        "recorded_by_id BIGINT,", "rejection_reason VARCHAR(500),",
         "reversal_of_payment_transaction_id BIGINT,",
         "FOREIGN KEY(invoice_id) REFERENCES invoices (id)",
         "FOREIGN KEY(recorded_by_id) REFERENCES users (id)",
@@ -659,7 +717,8 @@ _DDL_FRAGMENTS = {
     ),
     "receipts": (
         "id BIGINT NOT NULL AUTO_INCREMENT", "payment_transaction_id BIGINT NOT NULL",
-        "receipt_number VARCHAR(15) NOT NULL", "issued_by_id BIGINT NOT NULL",
+        # Phase 5 / M07: an online collection's receipt has no issuing Administrator.
+        "receipt_number VARCHAR(15) NOT NULL", "issued_by_id BIGINT,",
         "void_reason VARCHAR(500),", "snapshot JSON NOT NULL",
         "FOREIGN KEY(payment_transaction_id) REFERENCES payment_transactions (id)",
         "FOREIGN KEY(issued_by_id) REFERENCES users (id)",
@@ -697,6 +756,8 @@ def test_mysql_ddl_compiles_without_a_connection(table):
 @pytest.mark.parametrize("table", _NEW_TABLES)
 def test_no_column_is_shaped_for_card_account_or_credential_data(table):
     for column in _MODELS[table].__table__.columns:
+        if column.name == "payment_intent_id":
+            continue  # Phase 5 / M07's approved link from an online collection to its intent.
         for part in _PROHIBITED_PARTS:
             assert part not in column.name.split("_"), (column.name, part)
 

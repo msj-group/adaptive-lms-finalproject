@@ -25,8 +25,14 @@ from app.models.receipt_number_sequence import RECEIPT_NUMBER_LENGTH, receipt_nu
 from app.models.submission_feedback import whole_second_utc
 from app.services.money import CURRENCY_CODE, validate_amount
 
-#: Marks the receipt document layout.
+#: Marks the receipt document layout of a manual (cash or bank-transfer)
+#: collection, confirmed by a named Administrator.
 RECEIPT_SNAPSHOT_SCHEMA = "phase5-m05.receipt.v1"
+
+#: Phase 5 / M07: the layout of an online collection's receipt. It names the
+#: payment intent and the verified provider event instead of a confirming
+#: Administrator, because no person confirmed it.
+ONLINE_RECEIPT_SNAPSHOT_SCHEMA = "phase5-m07.online-receipt.v1"
 
 #: The widest display name a receipt copies (a user's ``full_name``).
 RECEIPT_NAME_MAX_LENGTH = 255
@@ -54,13 +60,20 @@ _SNAPSHOT_KEYS = frozenset(
         "academic_term_name",
     }
 )
+_ONLINE_SNAPSHOT_KEYS = (_SNAPSHOT_KEYS - {"confirmed_by_name"}) | {
+    "payment_intent_public_id",
+    "provider_event_public_id",
+}
 _PUBLIC_ID_KEYS = (
     "receipt_public_id",
     "payment_public_id",
     "invoice_public_id",
     "student_fee_assignment_public_id",
 )
+_ONLINE_PUBLIC_ID_KEYS = _PUBLIC_ID_KEYS + ("payment_intent_public_id", "provider_event_public_id")
 _NAME_KEYS = ("confirmed_by_name", "student_name", "group_name", "course_title", "academic_term_name")
+_ONLINE_NAME_KEYS = ("student_name", "group_name", "course_title", "academic_term_name")
+_ONLINE = PaymentMethod.ONLINE.value
 _PUBLIC_ID_MAX_LENGTH = 36
 _AMOUNT_TEXT = re.compile(r"[0-9]+\.[0-9]{4}")
 _MOMENT_TEXT = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
@@ -83,23 +96,35 @@ def parse_receipt_moment(text):
     return datetime.strptime(text, _MOMENT_FORMAT)
 
 
+def receipt_is_online(snapshot):
+    """Whether `snapshot` is an online collection's receipt document."""
+    return isinstance(snapshot, dict) and snapshot.get("schema") == ONLINE_RECEIPT_SNAPSHOT_SCHEMA
+
+
 def validate_receipt_snapshot(snapshot):
     """The canonical copy of one server-built receipt document, or raise
     ``ValueError``.
 
-    The layout is exact: the receipt, payment, invoice and fee assignment
-    public ids, the receipt and invoice numbers, the method, the confirmed
-    amount as four-place text in ``LYD``, the confirmation moment as
-    ``YYYY-MM-DDTHH:MM:SSZ``, and five display names -- the confirming
-    Administrator, the Student, the Group, the Course and the Academic Term.
-    There is no internal id, card or bank data, transfer reference, token,
-    CSRF value, session value or client JSON.
+    The layout is exact. A manual collection's document
+    (:data:`RECEIPT_SNAPSHOT_SCHEMA`) holds the receipt, payment, invoice and
+    fee assignment public ids, the receipt and invoice numbers, the method
+    (cash or bank transfer), the confirmed amount as four-place text in
+    ``LYD``, the confirmation moment as ``YYYY-MM-DDTHH:MM:SSZ``, and five
+    display names -- the confirming Administrator, the Student, the Group, the
+    Course and the Academic Term. An online collection's document
+    (:data:`ONLINE_RECEIPT_SNAPSHOT_SCHEMA`, Phase 5 / M07) holds the same
+    except the confirming Administrator, and adds the payment intent's and the
+    verified provider event's public ids; its method is ``online``. There is no
+    internal id, card or bank data, transfer reference, provider reference,
+    token, secret, CSRF value, session value or client JSON.
     """
-    if not isinstance(snapshot, dict) or set(snapshot) != _SNAPSHOT_KEYS:
+    online = receipt_is_online(snapshot)
+    expected_keys = _ONLINE_SNAPSHOT_KEYS if online else _SNAPSHOT_KEYS
+    if not isinstance(snapshot, dict) or set(snapshot) != expected_keys:
         raise ValueError("A receipt document has the wrong keys")
-    if snapshot["schema"] != RECEIPT_SNAPSHOT_SCHEMA:
+    if not online and snapshot["schema"] != RECEIPT_SNAPSHOT_SCHEMA:
         raise ValueError("A receipt document has an unknown schema")
-    for key in _PUBLIC_ID_KEYS:
+    for key in _ONLINE_PUBLIC_ID_KEYS if online else _PUBLIC_ID_KEYS:
         value = snapshot[key]
         if not isinstance(value, str) or not 0 < len(value) <= _PUBLIC_ID_MAX_LENGTH:
             raise ValueError("A receipt document public id is invalid")
@@ -107,7 +132,7 @@ def validate_receipt_snapshot(snapshot):
         raise ValueError("A receipt document number is invalid")
     if not invoice_number_is_valid(snapshot["invoice_number"]):
         raise ValueError("A receipt document invoice number is invalid")
-    if snapshot["method"] not in _METHOD_VALUES:
+    if snapshot["method"] not in _METHOD_VALUES or (snapshot["method"] == _ONLINE) != online:
         raise ValueError("A receipt document method is invalid")
     if snapshot["currency_code"] != CURRENCY_CODE:
         raise ValueError("A receipt document currency is invalid")
@@ -126,7 +151,7 @@ def validate_receipt_snapshot(snapshot):
         parse_receipt_moment(moment)
     except ValueError:
         raise ValueError("A receipt document moment is invalid") from None
-    for key in _NAME_KEYS:
+    for key in _ONLINE_NAME_KEYS if online else _NAME_KEYS:
         value = snapshot[key]
         if not isinstance(value, str) or not 0 < len(value) <= RECEIPT_NAME_MAX_LENGTH:
             raise ValueError("A receipt document name is invalid")
@@ -161,8 +186,15 @@ class Receipt(db.Model):
     unique foreign key to a ``collection``
     :class:`~app.models.payment_transaction.PaymentTransaction`; the receipt
     is written in the same transaction that confirms it (a cash collection at
-    recording, a bank transfer at confirmation). A pending, rejected or
-    reversal row never has one.
+    recording, a bank transfer at confirmation, an online collection by the
+    verified webhook that records it). A pending, rejected or reversal row
+    never has one.
+
+    **Who issued it.** ``issued_by_id`` names the Administrator who confirmed a
+    manual collection. It is NULL exactly for an online collection's receipt
+    (Phase 5 / M07), whose document says a verified webhook confirmed it; the
+    database cannot read the document, so a ``before_insert`` guard proves the
+    pairing.
 
     **Its number is the system's.** ``RCT-YYYY-NNNNNN`` is allocated under the
     lock of the center-local year's
@@ -218,10 +250,11 @@ class Receipt(db.Model):
     receipt_number = db.Column(db.String(RECEIPT_NUMBER_LENGTH), nullable=False)
     status = db.Column(db.String(32), nullable=False, default=_ISSUED)
     issued_at = db.Column(db.DateTime, nullable=False)
+    #: NULL exactly for an online collection's receipt (Phase 5 / M07).
     issued_by_id = db.Column(
         db.BigInteger().with_variant(db.Integer, "sqlite"),
         db.ForeignKey("users.id"),
-        nullable=False,
+        nullable=True,
     )
     voided_at = db.Column(db.DateTime, nullable=True)
     voided_by_id = db.Column(
@@ -274,6 +307,10 @@ class Receipt(db.Model):
     def is_voided(self):
         return self.status == _VOIDED
 
+    @property
+    def is_online(self):
+        return receipt_is_online(self.snapshot)
+
 
 _ISSUED_COLUMNS = (
     "public_id",
@@ -284,6 +321,14 @@ _ISSUED_COLUMNS = (
     "snapshot",
     "created_at",
 )
+
+
+@event.listens_for(Receipt, "before_insert")
+def _refuse_a_receipt_without_its_issuer(_mapper, _connection, target):
+    """A manual receipt names the Administrator who confirmed it; an online
+    receipt names no one -- never an invented identity."""
+    if (target.issued_by_id is None) != receipt_is_online(target.snapshot):
+        raise ValueError("Only an online collection's receipt has no issuing Administrator")
 
 
 @event.listens_for(Receipt, "before_update")

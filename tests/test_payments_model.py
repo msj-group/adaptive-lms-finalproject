@@ -89,7 +89,8 @@ def _counts():
 
 def test_the_closed_sets_are_exact():
     assert [m.value for m in PaymentTransactionKind] == ["collection", "reversal"]
-    assert [m.value for m in PaymentMethod] == ["cash", "bank_transfer"]
+    # Phase 5 / M07 added the generic ``online`` method.
+    assert [m.value for m in PaymentMethod] == ["cash", "bank_transfer", "online"]
     assert [m.value for m in PaymentTransactionStatus] == ["pending", "confirmed", "rejected"]
     assert [m.value for m in ReceiptStatus] == ["issued", "voided"]
 
@@ -126,7 +127,7 @@ def test_defaults_public_ids_and_timestamp_hooks(app):
         (PaymentTransaction, "kind", "refund"),
         (PaymentTransaction, "kind", "COLLECTION"),
         (PaymentTransaction, "method", "card"),
-        (PaymentTransaction, "method", "online"),
+        (PaymentTransaction, "method", "gateway"),
         (PaymentTransaction, "status", "paid"),
         (PaymentTransaction, "status", "refunded"),
         (PaymentTransaction, "currency_code", "USD"),
@@ -493,7 +494,8 @@ def test_the_database_refuses_deleting_anything_referenced(app):
     [
         (PaymentTransaction, {("invoice_id", "invoices"), ("recorded_by_id", "users"),
                               ("confirmed_by_id", "users"), ("rejected_by_id", "users"),
-                              ("reversal_of_payment_transaction_id", "payment_transactions")}),
+                              ("reversal_of_payment_transaction_id", "payment_transactions"),
+                              ("payment_intent_id", "payment_intents")}),
         (Receipt, {("payment_transaction_id", "payment_transactions"), ("issued_by_id", "users"),
                    ("voided_by_id", "users")}),
         (ReceiptNumberSequence, set()),
@@ -516,8 +518,8 @@ _COLUMNS = {
                          "currency_code", "amount", "bank_transfer_reference",
                          "bank_transfer_date", "recorded_at", "recorded_by_id", "confirmed_at",
                          "confirmed_by_id", "rejected_at", "rejected_by_id", "rejection_reason",
-                         "reversal_of_payment_transaction_id", "version", "created_at",
-                         "updated_at"},
+                         "reversal_of_payment_transaction_id", "payment_intent_id", "version",
+                         "created_at", "updated_at"},
     Receipt: {"id", "public_id", "payment_transaction_id", "receipt_number", "status",
               "issued_at", "issued_by_id", "voided_at", "voided_by_id", "void_reason", "snapshot",
               "version", "created_at", "updated_at"},
@@ -534,11 +536,16 @@ _PROHIBITED_PARTS = (
 )
 
 
+#: Phase 5 / M07's one approved exception: an online collection names the
+#: payment intent it settles.
+_ALLOWED_COLUMNS = {PaymentTransaction: {"payment_intent_id"}}
+
+
 @pytest.mark.parametrize("model", list(_COLUMNS), ids=lambda model: model.__tablename__)
 def test_no_card_credential_balance_or_duplicated_identity_column_exists(model):
     columns = {column.name for column in model.__table__.columns}
     assert columns == _COLUMNS[model]
-    for name in columns:
+    for name in columns - _ALLOWED_COLUMNS.get(model, set()):
         for part in _PROHIBITED_PARTS:
             assert part not in name.split("_"), (name, part)
     assert model.__table__.kwargs == {}

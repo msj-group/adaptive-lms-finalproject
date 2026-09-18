@@ -8609,3 +8609,311 @@ suites changed.
   testing alone.
 - **No browser, accessibility, responsive, keyboard, real-concurrency, real
   provider or MySQL query-plan verification was performed.**
+
+## Signed Mock webhooks and verified online collections (Phase 5, Part M07)
+
+M07 makes a verified, signed provider webhook the **only** way an online
+collection is recorded. The Mock/Sandbox provider signs its webhooks with
+HMAC-SHA256; a public endpoint verifies them, stores each authenticated event
+once in an immutable inbox, and a verified `payment.succeeded` event that
+passes every locked check records one confirmed online collection of the
+intent's exact amount -- the invoice's whole outstanding balance -- with its
+receipt and two system-origin audit events, in one transaction. **A browser
+redirect or return is never a financial confirmation.** It answers M06's three
+obligations: the outstanding balance is re-proved exactly under the locks (and
+manual collection is now refused while an intent is active); a
+`provider_succeeded` intent is confirmed or failed only by its signed webhook;
+there is still one provider, so references stay globally unique.
+
+Deferred with **no** placeholder table, column, route, enum value or template
+hook: any real provider, SDK, network call or credential; card, bank-account
+or payment-proof data; partial online payments, overpayments, retries of a
+closed intent and credit balances; provider refunds (`refund_payment` still
+raises `PaymentProviderUnsupportedOperation`) and settlement; reconciliation
+*tools* (M07 only records and shows events that need reconciliation); reports,
+notifications, Student, Teacher, Researcher or public payment views; seeded
+data.
+
+### A. The aggregates
+
+- A `PaymentProviderEvent` is one authenticated provider event as processed.
+  It belongs to exactly one `PaymentIntent` and, for the `confirmed` outcome
+  only, names the one online `PaymentTransaction` it created.
+- An **online collection** is a `PaymentTransaction` with `kind = collection`,
+  `method = online`, `status = confirmed`, confirmed at the moment it was
+  recorded, with **no** recorder or confirmer (`recorded_by_id` and
+  `confirmed_by_id` NULL) and exactly one `payment_intent_id`. No person
+  records, confirms or rejects it; a person may only reverse it (M05).
+- Its `Receipt` has no `issued_by_id`; its document says the verified provider
+  webhook confirmed it.
+- Its two `PaymentAuditEvent` rows, `payment_online_confirmed` and
+  `receipt_online_issued`, are **system-origin**: `actor_id` is NULL for these
+  two kinds and for nothing else.
+
+### B. One new table and four extensions
+
+`payment_provider_events`: `id`, `public_id`, `provider`, `provider_event_id`,
+`payment_intent_id`, `event_type`, `currency_code`, `amount DECIMAL(19, 4)`,
+`provider_occurred_at`, `received_at`, `processed_at`, `payload_digest`,
+`outcome`, `payment_transaction_id` (nullable), `created_at`.
+
+- Closed sets are literal `IN` CHECKs: `_provider_valid` (`mock`),
+  `_event_type_valid` (`payment.succeeded`, `payment.failed`),
+  `_outcome_valid` (`confirmed`, `failed`, `duplicate`, `ignored_terminal`,
+  `reconciliation_required`), `_currency_code`, `_amount_range` (M02's).
+- `_event_id_present`, `_payload_digest_length` (64), `_outcome_link` (a
+  `confirmed` event is a `payment.succeeded` event naming a collection; no
+  other outcome names one), `_outcome_type` (only a `payment.failed` event
+  fails an intent) and `_timestamps_ordered`.
+- `uq_payment_provider_events_provider_event` (`provider`,
+  `provider_event_id`) -- an event is stored once however often it is
+  delivered; `uq_payment_provider_events_payment_transaction_id`; the unique
+  `public_id`.
+- **Stored:** only the normalized facts and the SHA-256 digest of the raw
+  body. **Never stored:** the raw body, headers, signature, secret, the
+  provider reference (the intent carries it), card or bank data.
+- Immutable: ORM guards refuse an update, a delete and bulk `UPDATE` /
+  `DELETE` statements; there is no version. Plain foreign keys, no ORM
+  relationship, no cascade, no trigger.
+- Indexes: `ix_payment_provider_events_intent_id_id` (one intent's events and
+  the foreign key) and `ix_payment_provider_events_outcome_id` (events needing
+  reconciliation). No MySQL execution plan has been measured.
+
+Extensions:
+
+- `payment_intents`: `status` gains the terminal `confirmed`. The terminal
+  and lifecycle CHECKs are replaced: `provider_failed` and `confirmed` carry
+  `terminal_at`, no canceller, and either no browser-observed result or a
+  terminal moment at or after it.
+- `payment_transactions`: `method` gains `online`; `recorded_by_id` becomes
+  nullable; `payment_intent_id` is added, nullable and unique
+  (`uq_payment_transactions_payment_intent_id`, named foreign key
+  `fk_payment_transactions_payment_intent_id`), so an intent is settled at
+  most once. `ck_payment_transactions_online_origin`: an online collection
+  names its intent and no recorder or confirmer; every other row names no
+  intent and has a recorder. The bank-details, confirmation-pair and
+  immediate-confirmation CHECKs gain an online branch; every M05 branch keeps
+  its exact meaning.
+- `receipts`: `issued_by_id` becomes nullable. The database cannot read the
+  document, so a `before_insert` guard proves "no issuer exactly for an online
+  document".
+- `payment_audit_events`: `actor_id` becomes nullable;
+  `ck_payment_audit_events_actor_origin` allows NULL exactly for the two
+  system-origin kinds, and the kind, version-transition, reason and
+  subject-link CHECKs know them.
+
+### C. Lifecycles
+
+    pending            -> provider_succeeded | provider_failed | cancelled  (M06)
+    pending            -> confirmed | provider_failed      (verified webhook)
+    provider_succeeded -> confirmed | provider_failed      (verified webhook)
+
+- `confirmed` is terminal. A webhook decision moves the version once, sets
+  `terminal_at` to the LMS's processing moment and keeps any browser-observed
+  result (`provider_result_*`) exactly. A `provider_succeeded` intent still
+  cannot be cancelled by a person.
+- The ORM guard refuses any other move, any change to a terminal intent and a
+  version that does not move by exactly one.
+- A confirmed online collection never changes (M05's guard); its reversal is
+  M05's full reversal, by an Administrator, with M05's reason and receipt void.
+  **Recorded reading:** the reversed intent stays `confirmed` -- it records
+  what the provider did -- and, because the reversed collection itself stays
+  `confirmed` (M05), the invoice stays frozen and no new intent can be created
+  for it. There is no provider refund and no retry.
+
+### D. The secret, signing and verification
+
+- `MOCK_PAYMENT_WEBHOOK_SECRET` comes only from the environment
+  (`Config.MOCK_PAYMENT_WEBHOOK_SECRET = os.environ.get(...)`);
+  `TestingConfig` pins `None`, and the suite injects its own test-only value.
+  With `PAYMENT_PROVIDER_MODE=mock` it must be 32 to 256 visible ASCII
+  characters with no whitespace, at least 12 distinct characters and no
+  placeholder fragment ("replace", "change", "example", "secret-here", ...);
+  otherwise `create_app` raises `PaymentProviderConfigError` and the
+  application refuses to start. No error repeats the value; the provider keeps
+  it name-mangled and its `repr` hides it. `.env.example` carries a
+  placeholder, which is itself refused. The mode rules of M06 are unchanged:
+  `mock` only in `development` and `testing`, `disabled` everywhere by default.
+- Headers: `X-Mock-Webhook-Timestamp` (Unix seconds, digits only) and
+  `X-Mock-Webhook-Signature: v1=<64 lowercase hex>` =
+  HMAC-SHA256(secret, `"<timestamp>." + raw body`). The body is at most 2,048
+  bytes. `verify_webhook` checks the size and header shapes, compares the
+  signature with `hmac.compare_digest`, then refuses a timestamp more than 300
+  seconds old or more than 60 seconds ahead -- all **before** the body is
+  parsed.
+- `normalize_event` then requires exactly six string fields, parsed strictly
+  (a duplicate key, `NaN`, a JSON number, a nested value or an unknown field
+  is refused): `event_id` (`evt_mock_` plus 32 lowercase hex), `event_type`,
+  `provider_reference`, `amount` (M02's decimal text), `currency_code`
+  (`LYD`) and `occurred_at` (`YYYY-MM-DDTHH:MM:SSZ`). Both are
+  Flask-independent and make no network call.
+- `emit_webhook(reference)` is sandbox-only and not part of the interface: it
+  signs the one event the mock ledger records for a *decided* sandbox outcome
+  (success or failure) and re-delivers the identical body with a fresh
+  signature. A pending, cancelled or forgotten sandbox payment has nothing to
+  emit.
+
+### E. The public endpoint
+
+    POST  /webhooks/payments/mock
+
+It stands for the provider's server-to-server call: no login, the
+application's **one** CSRF exception (the blueprint is exempt), rate limited to
+120 per minute, and a plain 404 unless the sandbox is enabled. It reads only
+`application/json` with a declared length of 1 to 2,048 bytes, and reads the
+raw bytes uncached. Every refusal -- wrong type, size, unsigned, bad signature,
+stale, future, malformed, duplicate or unknown key, unknown reference, an event
+id reused with a different body -- is the same `400 {"status": "rejected"}` and
+stores nothing. `200 {"status": "ok"}` is returned only after a committed
+result, including a re-delivery's stored result; a transient database failure
+(`IntegrityError`, `OperationalError`, a year that turned under the sequence
+lock, a context that moved under the locks) is rolled back and answered
+`503 {"status": "retry"}`. Every answer carries `Cache-Control: no-store`
+and discloses nothing. **Recorded reading:** an event naming no known intent is
+a generic 400 and is not stored -- the inbox row needs its intent.
+
+### F. Processing and outcomes
+
+Order: verify, normalize, locate the intent (one join), return a stored event's
+result if the event id is known, take the lock chain (section H), re-check the
+context and the stored event under the locks, decide, write, commit.
+
+- `payment.failed`, matching the intent's reference, amount and currency: an
+  active intent becomes `provider_failed` (`failed`); an already failed intent
+  gives `duplicate`; a cancelled intent `ignored_terminal`; a confirmed intent
+  `reconciliation_required`.
+- `payment.succeeded`, matching: a confirmed intent gives `duplicate`; a
+  failed or cancelled intent `reconciliation_required`; an active intent is
+  `confirmed` only if, against the locked rows, the context is current (the
+  nesting holds, the assignment is `assigned` and the Enrollment active --
+  **recorded reading**, consistent with M05: Student, Group and academic
+  statuses are not required), the invoice is `issued` with valid lines, its
+  payment rows are within M05's bounds, it has **no** pending or confirmed
+  collection and fewer than 25 collections, this intent is its **only** active
+  intent, and the outstanding balance **equals** the intent's amount. Anything
+  else is `reconciliation_required`.
+- An event that does not match its intent is `reconciliation_required`.
+- A `reconciliation_required`, `duplicate` or `ignored_terminal` event is
+  stored and shown and has **no financial effect**: no payment, receipt,
+  sequence, audit event, balance or intent change. **Recorded reading:** when
+  the year's receipt numbers are exhausted, the event is stored as
+  `reconciliation_required` and nothing else is written.
+- **Idempotency:** a re-delivery with the same digest returns the stored
+  outcome and changes nothing; the same event id with a different digest is
+  refused. A second, distinct success event for a confirmed intent is a
+  `duplicate`. The unique constraints are the final defense.
+- **The confirmation, one transaction:** the receipt sequence is locked last
+  and the center's year re-read (a change is a retry); then the online
+  collection, the `confirmed` event, `payment_online_confirmed`, the receipt
+  `RCT-YYYY-NNNNNN` and `receipt_online_issued`, and the intent `confirmed`.
+  Every accounting moment is the LMS's own whole-second UTC clock read after
+  the locks; the provider's `occurred_at` is kept in the inbox only.
+
+### G. Audit and receipt documents
+
+- `phase5-m07.online-payment.v1`: M05's payment snapshot plus `online` =
+  {`payment_intent_public_id`, `provider_event_public_id`}. Both snapshots of a
+  system-origin event must name exactly that context.
+- `phase5-m07.online-receipt.v1`: M05's receipt document without
+  `confirmed_by_name`, plus the intent's and the event's public ids; its method
+  must be `online`.
+- Neither holds an internal id, provider reference, event id, digest,
+  signature or secret.
+- `record_payment_event` refuses a system-origin kind with an actor or without
+  its context, a human kind with an online context, and any human event on an
+  online payment except `payment_reversed` and `receipt_voided`.
+
+### H. Manual collection, locks and the delivery control
+
+- **Manual collection is refused while the invoice has an active intent**
+  (`pending` or `provider_succeeded`): cash recording, bank-transfer recording
+  and bank-transfer confirmation -- on the history page (the controls are
+  hidden and a notice shown), on each form, before the locks and again after
+  them. Rejecting a pending transfer and reversing a confirmed payment stay
+  available. A failed, cancelled or confirmed intent blocks nothing (a
+  confirmed one's collection settles the balance).
+- The manual chains for cash, bank recording and bank confirmation lock the
+  invoice's intents (ascending id) **after** its payment rows and before the
+  receipt sequence; rejection and reversal do not.
+- The webhook chain is M06's intent chain with the actor left out -- no
+  Administrator row is locked because none acts; the invoice is locked before
+  the target intent, its payments and the other intents, and the sequence is
+  last. Every writer takes the invoice lock first, so the two orders cannot
+  deadlock on the rows beneath it.
+- **Recorded decision (owners):** the sandbox delivers its webhook through a
+  POST-only, CSRF-protected Administrator control,
+  `POST <intent>/checkout/webhook`, carrying the signed checkout context. It
+  asks the mock provider to sign the event its ledger records and hands the
+  exact signed bytes to the same processing as the public endpoint; the
+  signed-in Administrator is never passed on and chooses nothing about the
+  event. It exists only in mock mode and for an active intent.
+- **Recorded reading:** registering the webhook blueprint needed an import
+  and one `register_blueprint` call (with a comment) in `app/__init__.py`.
+
+### I. Pages
+
+Intent states are shown plainly: pending; "Browser-observed success (awaiting
+signed webhook)"; failed; cancelled; "Confirmed by signed webhook" (with its
+receipt); and "Awaiting reconciliation" on the intent detail, the invoice's
+intent history, the intents overview and the invoice's payment history. The
+detail page lists the intent's verified events -- type, amount, received and
+provider times, outcome; the newest 20, `LIMIT + 1` -- and never an event id,
+digest, body, signature or secret. There is **no** human "confirm online
+payment" control anywhere. A browser-observed success keeps the checkout open
+only for the delivery control. The payment history, overview, invoice
+timeline, payment and receipt pages show an online collection as "Online" and
+its actor as "the verified provider webhook"; the queries join the recorder
+and actor as outer joins so system rows are never hidden. No Student view was
+added.
+
+### J. Migration
+
+One revision, `e9c4b2d7a1f3`, after `d4f7a2c9e1b6`: it creates
+`payment_provider_events` and its two indexes and extends the four tables of
+section B -- no data write, no seed, no trigger, no `ENUM`, no
+`mysql_engine` / `mysql_charset`. Every M04 to M06 row satisfies every new
+expression. On MySQL each replaced CHECK is dropped and re-added under its
+name and nullability changes are `MODIFY` statements. On SQLite (the isolated
+migration tests only) each table is rebuilt from an explicit `copy_from`
+definition; three of them are referenced by other tables, so the revision
+**requires `PRAGMA foreign_keys=OFF`** there and refuses otherwise, then proves
+`PRAGMA foreign_key_check` empty. The downgrade **refuses** while any provider
+event, online payment, issuer-less receipt, system-origin event or
+webhook-decided intent exists; otherwise it drops the inbox and restores the
+M06 shapes exactly. The earlier suites that pin the single head moved to it;
+the M04, M05 and M06 suites map M07's replaced CHECKs back to their own
+revision's text and exclude M07's additions, which
+`tests/test_verified_webhooks_migration.py` checks.
+
+### K. Verification actually performed, and what it does not prove
+
+- New suites: `tests/test_payment_webhooks.py`,
+  `tests/test_admin_verified_payments.py`,
+  `tests/test_verified_webhooks_model.py` and
+  `tests/test_verified_webhooks_migration.py`, with
+  `tests/webhook_fixtures.py`. Earlier suites changed only where M07 changes
+  their documented contract (the online method, the nullable columns, the new
+  kinds and statuses, the head revision, the route inventories).
+- The migration was executed in both directions on an isolated SQLite database
+  holding representative M04, M05 and M06 history, read back unchanged; every
+  M07 row kind was accepted with foreign keys enforced, the new constraints
+  were proved by refused writes naming their CHECK, and the downgrade was
+  proved to refuse for each kind of M07 row alone. MySQL DDL and the offline
+  MySQL scripts were rendered without a connection.
+- CSRF was exercised with protection **enabled**; network access was refused
+  at the socket level during processing; a transient `OperationalError` at the
+  commit was proved to leave nothing behind and to succeed on retry.
+- The revision is applied to development MySQL only after the strict full
+  suite passes and the database is confirmed at `d4f7a2c9e1b6`; the exact
+  test counts and MySQL evidence are recorded in the Part's handoff.
+- Automated tests run on SQLite in memory. Lock tests assert what the chains
+  *request*; race tests inject a change at the lock boundary. Neither proves
+  InnoDB blocking, isolation, gap-lock behaviour, collation or index plans.
+- The mock ledger lives in one process. After a restart it forgets decided
+  sandbox outcomes, so the delivery control has nothing to send: a pending
+  intent can still be cancelled, but a `provider_succeeded` intent stays
+  active (and keeps its invoice frozen) until a correctly signed event for it
+  is delivered to the endpoint. This is acceptable only because the mock runs
+  in development and testing alone.
+- **No browser, accessibility, responsive, keyboard, real-concurrency, real
+  provider or MySQL query-plan verification was performed.**

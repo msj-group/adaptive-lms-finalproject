@@ -1,4 +1,5 @@
-"""Phase 5 / M06 -- the PaymentIntent model.
+"""Phase 5 / M06 -- the PaymentIntent model (with Phase 5 / M07's ``confirmed``
+status and webhook-decided states).
 
 Closed sets, defaults and application validators first; then every database
 CHECK, unique constraint and foreign key driven with raw SQL, so no validator
@@ -94,9 +95,9 @@ def _intent_sql(owner_id, actor_id, /, **overrides):
 
 def test_the_closed_sets_and_bounds_are_exact():
     assert [m.value for m in PaymentIntentStatus] == [
-        "pending", "provider_succeeded", "provider_failed", "cancelled"]
+        "pending", "provider_succeeded", "provider_failed", "cancelled", "confirmed"]
     assert ACTIVE_PAYMENT_INTENT_STATUSES == ("pending", "provider_succeeded")
-    assert TERMINAL_PAYMENT_INTENT_STATUSES == ("provider_failed", "cancelled")
+    assert TERMINAL_PAYMENT_INTENT_STATUSES == ("provider_failed", "cancelled", "confirmed")
     assert set(ACTIVE_PAYMENT_INTENT_STATUSES) | set(TERMINAL_PAYMENT_INTENT_STATUSES) == {
         m.value for m in PaymentIntentStatus}
     assert MAX_INVOICE_PAYMENT_INTENTS == 25
@@ -127,7 +128,7 @@ def test_defaults_public_ids_and_state_properties(app):
         ("provider_reference", "x" * 65), ("provider_reference", "refé"), ("provider_reference", 7),
         ("idempotency_key", "A" * 64), ("idempotency_key", "a" * 63), ("idempotency_key", "a" * 65),
         ("idempotency_key", "z" * 64), ("idempotency_key", None),
-        ("status", "paid"), ("status", "confirmed"), ("status", None),
+        ("status", "paid"), ("status", "succeeded"), ("status", None),
         ("currency_code", "USD"),
         ("amount", 12.5), ("amount", Decimal("0")), ("amount", Decimal("100000")),
         ("amount", Decimal("1.00001")), ("amount", 5),
@@ -157,8 +158,18 @@ def test_every_payment_intent_constraint_is_enforced(app):
                      "version": "2", "updated_at": _T2}
         _accepted(_intent_sql(i, u, public_id="'legal'", provider_reference="'legal-ref'",
                               idempotency_key=f"'{'e' * 64}'"))
+        # Phase 5 / M07: a verified webhook fails or confirms an intent with or
+        # without an earlier browser-observed result, never before it.
+        webhook_failed = {"status": "'provider_failed'", "terminal_at": _T2, "version": "2",
+                          "updated_at": _T2}
+        confirmed = dict(webhook_failed, status="'confirmed'")
+        confirmed_after_browser = dict(succeeded, status="'confirmed'", terminal_at=_T2,
+                                       version="3", updated_at=_T2)
+        failed_after_browser = dict(confirmed_after_browser, status="'provider_failed'")
         for accepted in ({}, succeeded, failed, cancelled, {"amount": "0.001"},
-                         {"amount": "99999.999"}, {"amount": "12.3456"}, {"version": "7"}):
+                         {"amount": "99999.999"}, {"amount": "12.3456"}, {"version": "7"},
+                         webhook_failed, confirmed, confirmed_after_browser,
+                         failed_after_browser):
             _accepted(_intent_sql(i, u, **accepted))
 
         for overrides, rule in (
@@ -166,7 +177,11 @@ def test_every_payment_intent_constraint_is_enforced(app):
             ({"provider_reference": "'legal-ref'"}, "uq_payment_intents_provider_reference"),
             ({"idempotency_key": f"'{'e' * 64}'"}, "uq_payment_intents_idempotency_key"),
             ({"status": "'paid'"}, "ck_payment_intents_status_valid"),
-            ({"status": "'confirmed'"}, "ck_payment_intents_status_valid (confirmed)"),
+            ({"status": "'succeeded'"}, "ck_payment_intents_status_valid (succeeded)"),
+            ({"status": "'confirmed'"}, "a confirmed intent without its terminal moment"),
+            (dict(confirmed, cancelled_by_id=u), "a confirmed intent naming a canceller"),
+            (dict(confirmed_after_browser, terminal_at=_EARLIER, updated_at=_T2),
+             "a confirmation before its browser result"),
             ({"provider": "'stripe'"}, "ck_payment_intents_provider_valid"),
             ({"currency_code": "'USD'"}, "ck_payment_intents_currency_code"),
             ({"amount": "0"}, "a zero amount"),
@@ -184,8 +199,8 @@ def test_every_payment_intent_constraint_is_enforced(app):
             (dict(succeeded, terminal_at=_T1), "a provider success with a terminal moment"),
             (dict(failed, terminal_at="NULL"), "a failure without its terminal moment"),
             (dict(cancelled, terminal_at="NULL"), "a cancellation without its terminal moment"),
-            (dict(failed, terminal_at=_T2, updated_at=_T2),
-             "a failure whose terminal moment is not its result moment"),
+            (dict(failed, provider_result_at=_T2, terminal_at=_T1, updated_at=_T2),
+             "a failure that became terminal before its browser result"),
             (dict(cancelled, cancelled_by_id="NULL"), "a cancellation without its actor"),
             ({"cancelled_by_id": u}, "a pending intent naming a canceller"),
             (dict(succeeded, cancelled_by_id=u), "a provider success naming a canceller"),
@@ -206,7 +221,7 @@ def test_every_payment_intent_constraint_is_enforced(app):
             ({"amount": "NULL"}, "a missing amount"),
         ):
             _refused(_intent_sql(i, u, **overrides), rule)
-        assert PaymentIntent.query.count() == 9
+        assert PaymentIntent.query.count() == 13
 
 
 def test_the_database_refuses_deleting_anything_an_intent_references(app):
@@ -375,7 +390,7 @@ def test_a_decision_moves_the_version_by_exactly_one_and_names_a_decision(app):
         row = PaymentIntent.query.one()
         row.version = 2
         row.updated_at = datetime(2026, 7, 6, 9, 0, 0)
-        with pytest.raises(FinancialHistoryError, match="only ever records"):
+        with pytest.raises(FinancialHistoryError, match="only along its lifecycle"):
             db.session.flush()
         db.session.rollback()
         assert PaymentIntent.query.one().version == 1

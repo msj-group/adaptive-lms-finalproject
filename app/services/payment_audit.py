@@ -1,5 +1,5 @@
 """Server-built payment snapshots, receipt documents and the one payment /
-receipt audit-event writer (Phase 5 / M05).
+receipt audit-event writer (Phase 5 / M05, extended by M07).
 
 Flask-independent: no ``request``, ``abort``, ``flash`` or template. The
 routes in ``app/blueprints/admin/payments.py`` call :func:`record_payment_event`
@@ -17,6 +17,13 @@ transaction and receipt. :func:`build_receipt_document` emits the permanent
 receipt content. Neither carries an internal id, card or bank data, a transfer
 reference, a reason, a token or a session value, and both are proved by the
 model validators before anything is stored.
+
+**System-origin events (Phase 5 / M07).** A verified, signed provider webhook
+confirms an online collection and issues its receipt with no person acting:
+``payment_online_confirmed`` and ``receipt_online_issued`` are written with no
+actor, in the online snapshot layout that also names the payment intent and the
+provider event by public id. Every other kind still needs the locked, active
+acting Administrator; the writer refuses any other combination.
 
 **Nothing here edits or deletes an event**, and nothing ever will: the
 module's only write is an insert.
@@ -37,14 +44,22 @@ from app.models import (
     UserStatus,
 )
 from app.models.payment_audit_event import (
+    ONLINE_PAYMENT_SNAPSHOT_SCHEMA,
     PAYMENT_SNAPSHOT_SCHEMA,
     REASON_REQUIRED_KINDS,
     RECEIPT_EVENT_KINDS,
+    SYSTEM_EVENT_KINDS,
     normalize_audit_reason,
     snapshot_amount_text,
+    validate_online_payment_snapshot,
     validate_payment_snapshot,
 )
-from app.models.receipt import RECEIPT_SNAPSHOT_SCHEMA, receipt_moment_text, validate_receipt_snapshot
+from app.models.receipt import (
+    ONLINE_RECEIPT_SNAPSHOT_SCHEMA,
+    RECEIPT_SNAPSHOT_SCHEMA,
+    receipt_moment_text,
+    validate_receipt_snapshot,
+)
 from app.services.payment_transactions import payment_balance
 
 _K = PaymentAuditEventKind
@@ -55,6 +70,8 @@ BANK_REJECTED = _K.PAYMENT_BANK_TRANSFER_REJECTED.value
 REVERSED = _K.PAYMENT_REVERSED.value
 RECEIPT_ISSUED = _K.RECEIPT_ISSUED.value
 RECEIPT_VOIDED = _K.RECEIPT_VOIDED.value
+ONLINE_CONFIRMED = _K.PAYMENT_ONLINE_CONFIRMED.value
+RECEIPT_ONLINE_ISSUED = _K.RECEIPT_ONLINE_ISSUED.value
 
 _ISSUED_INVOICE = InvoiceStatus.ISSUED.value
 _ADMINISTRATOR = UserRole.ADMINISTRATOR.value
@@ -63,6 +80,7 @@ _COLLECTION = PaymentTransactionKind.COLLECTION.value
 _REVERSAL = PaymentTransactionKind.REVERSAL.value
 _CASH = PaymentMethod.CASH.value
 _BANK = PaymentMethod.BANK_TRANSFER.value
+_ONLINE = PaymentMethod.ONLINE.value
 _PENDING = PaymentTransactionStatus.PENDING.value
 _CONFIRMED = PaymentTransactionStatus.CONFIRMED.value
 _REJECTED = PaymentTransactionStatus.REJECTED.value
@@ -81,16 +99,30 @@ _SHAPES = {
     REVERSED: (None, _CONFIRMED, _REVERSAL, None, None, None, -1),
     RECEIPT_ISSUED: (_CONFIRMED, _CONFIRMED, _COLLECTION, None, None, _RECEIPT_ISSUED, 0),
     RECEIPT_VOIDED: (_CONFIRMED, _CONFIRMED, _COLLECTION, None, _RECEIPT_ISSUED, _RECEIPT_VOIDED, 0),
+    ONLINE_CONFIRMED: (None, _CONFIRMED, _COLLECTION, _ONLINE, None, None, 1),
+    RECEIPT_ONLINE_ISSUED: (_CONFIRMED, _CONFIRMED, _COLLECTION, _ONLINE, None, _RECEIPT_ISSUED, 0),
 }
 
 
-def build_payment_snapshot(invoice, active_items, payments, payment=None, receipt=None):
+def online_context(intent_public_id, provider_event_public_id):
+    """The ``online`` part of an online payment snapshot."""
+    return {
+        "payment_intent_public_id": intent_public_id,
+        "provider_event_public_id": provider_event_public_id,
+    }
+
+
+def build_payment_snapshot(
+    invoice, active_items, payments, payment=None, receipt=None, online=None
+):
     """The canonical payment snapshot of `invoice` as it now is.
 
     `active_items` are its active lines; `payments` are **all** of its
     transactions (flush a new one first), which the balance and a reversal's
     link are read from; `payment` and `receipt` are the event's subjects.
-    Raises ``ValueError`` when the records do not describe a balance.
+    `online` -- an :func:`online_context` -- makes it the Phase 5 / M07 online
+    layout of a system-origin event. Raises ``ValueError`` when the records do
+    not describe a balance.
     """
     balance = payment_balance(active_items, payments)
     if balance is None:
@@ -112,7 +144,7 @@ def build_payment_snapshot(invoice, active_items, payments, payment=None, receip
             "reversal_of_public_id": reversal_of,
         }
     snapshot = {
-        "schema": PAYMENT_SNAPSHOT_SCHEMA,
+        "schema": PAYMENT_SNAPSHOT_SCHEMA if online is None else ONLINE_PAYMENT_SNAPSHOT_SCHEMA,
         "invoice_public_id": invoice.public_id,
         "invoice_number": invoice.invoice_number,
         "invoice_status": invoice.status,
@@ -129,7 +161,10 @@ def build_payment_snapshot(invoice, active_items, payments, payment=None, receip
             "status": receipt.status,
         },
     }
-    return validate_payment_snapshot(snapshot)
+    if online is None:
+        return validate_payment_snapshot(snapshot)
+    snapshot["online"] = dict(online)
+    return validate_online_payment_snapshot(snapshot)
 
 
 def build_receipt_document(
@@ -170,6 +205,53 @@ def build_receipt_document(
     return validate_receipt_snapshot(document)
 
 
+def build_online_receipt_document(
+    *,
+    receipt_public_id,
+    receipt_number,
+    payment,
+    invoice,
+    assignment_public_id,
+    intent_public_id,
+    provider_event_public_id,
+    student_name,
+    group_name,
+    course_title,
+    academic_term_name,
+):
+    """The canonical permanent content of one online collection's receipt
+    (Phase 5 / M07): :func:`build_receipt_document`'s content with the payment
+    intent and the verified provider event in place of a confirming
+    Administrator, who does not exist."""
+    if (
+        payment.kind != _COLLECTION
+        or payment.method != _ONLINE
+        or payment.status != _CONFIRMED
+        or payment.confirmed_at is None
+    ):
+        raise ValueError("Only a confirmed online collection receives an online receipt")
+    document = {
+        "schema": ONLINE_RECEIPT_SNAPSHOT_SCHEMA,
+        "receipt_public_id": receipt_public_id,
+        "receipt_number": receipt_number,
+        "payment_public_id": payment.public_id,
+        "invoice_public_id": invoice.public_id,
+        "invoice_number": invoice.invoice_number,
+        "student_fee_assignment_public_id": assignment_public_id,
+        "payment_intent_public_id": intent_public_id,
+        "provider_event_public_id": provider_event_public_id,
+        "method": payment.method,
+        "amount": snapshot_amount_text(payment.amount),
+        "currency_code": payment.currency_code,
+        "confirmed_at": receipt_moment_text(payment.confirmed_at),
+        "student_name": student_name,
+        "group_name": group_name,
+        "course_title": course_title,
+        "academic_term_name": academic_term_name,
+    }
+    return validate_receipt_snapshot(document)
+
+
 def _payment_facts(entry):
     return None if entry is None else (entry["public_id"], entry["kind"], entry["method"], entry["amount"])
 
@@ -179,30 +261,60 @@ def _receipt_status(entry):
 
 
 def record_payment_event(
-    *, invoice, actor, kind, payment, receipt, before_snapshot, after_snapshot, reason, moment
+    *,
+    invoice,
+    actor,
+    kind,
+    payment,
+    receipt,
+    before_snapshot,
+    after_snapshot,
+    reason,
+    moment,
+    online=None,
 ):
     """Add the one :class:`PaymentAuditEvent` for a payment or receipt change
     already applied in this transaction, or raise ``ValueError`` and add
     nothing.
 
     `actor` is the **locked** acting account, re-proved here as an active
-    Administrator. `invoice` is the locked, issued invoice, whose version the
-    event records and does not move. `payment` is the event's stored
-    transaction of that invoice; `receipt` is the stored receipt of that
-    transaction for a receipt event and ``None`` otherwise. The reason must be
+    Administrator -- except for a system-origin kind (Phase 5 / M07), which
+    must have **no** actor and must name its `online` context, an
+    :func:`online_context` that both snapshots carry exactly. `invoice` is the
+    locked, issued invoice, whose version the event records and does not move.
+    `payment` is the event's stored transaction of that invoice; `receipt` is
+    the stored receipt of that transaction for a receipt event and ``None``
+    otherwise. The reason must be
     present, normalized text exactly when the kind requires one. Both
     snapshots must describe the invoice, show the transition the kind means --
     including its exact effect on the paid amount -- and the "after" snapshot
     must describe the rows as they now are.
     """
-    if actor is None or actor.role != _ADMINISTRATOR or actor.status != _USER_ACTIVE:
-        raise ValueError("A payment audit event needs an active acting Administrator")
     if kind not in _SHAPES:
         raise ValueError(f"Unknown payment audit event kind: {kind}")
+    system = kind in SYSTEM_EVENT_KINDS
+    if system:
+        if actor is not None or online is None:
+            raise ValueError(
+                "A system-origin online event has no actor and names its intent and provider event"
+            )
+    elif actor is None or actor.role != _ADMINISTRATOR or actor.status != _USER_ACTIVE:
+        raise ValueError("A payment audit event needs an active acting Administrator")
+    elif online is not None:
+        raise ValueError("Only a system-origin online event names an online context")
     if invoice is None or invoice.id is None or invoice.status != _ISSUED_INVOICE:
         raise ValueError("A payment audit event needs a stored, issued invoice")
     if payment is None or payment.id is None or payment.invoice_id != invoice.id:
         raise ValueError("A payment audit event needs a stored transaction of the invoice")
+    if (
+        not system
+        and payment.method == _ONLINE
+        and kind not in (REVERSED, RECEIPT_VOIDED)
+    ):
+        raise ValueError(
+            "An online collection is recorded only by a verified webhook; a person may only "
+            "reverse it"
+        )
     if kind in RECEIPT_EVENT_KINDS:
         if receipt is None or receipt.id is None or receipt.payment_transaction_id != payment.id:
             raise ValueError("A receipt event needs the stored receipt of its transaction")
@@ -218,8 +330,11 @@ def record_payment_event(
 
     if before_snapshot is None or after_snapshot is None:
         raise ValueError("A payment audit event has both snapshots")
-    before = validate_payment_snapshot(before_snapshot)
-    after = validate_payment_snapshot(after_snapshot)
+    validate = validate_online_payment_snapshot if system else validate_payment_snapshot
+    before = validate(before_snapshot)
+    after = validate(after_snapshot)
+    if system and (before["online"] != online or after["online"] != online):
+        raise ValueError("The snapshots do not name this event's intent and provider event")
     for snapshot in (before, after):
         if (snapshot["invoice_public_id"], snapshot["invoice_number"]) != (
             invoice.public_id,
@@ -278,7 +393,7 @@ def record_payment_event(
 
     event = PaymentAuditEvent(
         invoice_id=invoice.id,
-        actor_id=actor.id,
+        actor_id=None if system else actor.id,
         kind=kind,
         occurred_at=moment,
         invoice_version_before=invoice.version,

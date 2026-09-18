@@ -602,8 +602,16 @@ class PaymentAuditEventKind(str, enum.Enum):
     - ``receipt_voided`` -- a reversed collection's receipt was voided; a
       reason is required.
 
-    Refund, provider, webhook and report events belong to later Parts and have
-    no member or placeholder here. Adding one is a schema change (the
+    Verified online collections (Phase 5 / M07), both **system-origin**: the
+    only kinds whose event has no acting Administrator, because a verified,
+    signed provider webhook -- not a person -- caused them:
+
+    - ``payment_online_confirmed`` -- a signed ``payment.succeeded`` webhook
+      created a confirmed online collection.
+    - ``receipt_online_issued`` -- that collection received its receipt.
+
+    Refund, report and notification events belong to later Parts and have no
+    member or placeholder here. Adding one is a schema change (the
     ``payment_audit_events.kind`` CHECK).
     """
 
@@ -619,6 +627,8 @@ class PaymentAuditEventKind(str, enum.Enum):
     PAYMENT_REVERSED = "payment_reversed"
     RECEIPT_ISSUED = "receipt_issued"
     RECEIPT_VOIDED = "receipt_voided"
+    PAYMENT_ONLINE_CONFIRMED = "payment_online_confirmed"
+    RECEIPT_ONLINE_ISSUED = "receipt_online_issued"
 
 
 class PaymentTransactionKind(str, enum.Enum):
@@ -644,14 +654,18 @@ class PaymentMethod(str, enum.Enum):
     """How a :class:`~app.models.payment_transaction.PaymentTransaction`
     was paid (Phase 5 / M05).
 
-    Exactly the two manual methods. A reversal copies its collection's method
-    for historical classification only. There is no card, online, gateway or
-    provider member; adding one is a schema change (the
+    The two manual methods, and (Phase 5 / M07) ``online`` -- a collection
+    created only by a verified, signed provider webhook for one payment
+    intent. The member is generic: which provider collected it is read through
+    the intent, never encoded in the method. A reversal copies its
+    collection's method for historical classification only. There is no card,
+    gateway or provider-specific member; adding one is a schema change (the
     ``payment_transactions.method`` CHECK).
     """
 
     CASH = "cash"
     BANK_TRANSFER = "bank_transfer"
+    ONLINE = "online"
 
 
 class PaymentTransactionStatus(str, enum.Enum):
@@ -696,24 +710,26 @@ class ReceiptStatus(str, enum.Enum):
 
 class PaymentIntentStatus(str, enum.Enum):
     """Lifecycle of one :class:`~app.models.payment_intent.PaymentIntent`
-    (Phase 5 / M06)::
+    (Phase 5 / M06, extended by M07)::
 
-        pending -> provider_succeeded
-        pending -> provider_failed
-        pending -> cancelled
+        pending -> provider_succeeded | provider_failed | cancelled | confirmed
+        provider_succeeded -> provider_failed | confirmed
 
     - ``pending`` -- created at the provider and awaiting its result. Active:
-      it freezes its invoice's lines and cancellation.
-    - ``provider_succeeded`` -- the provider *reported* success, read through
-      its status operation. Active, and **not** a financial confirmation: no
-      payment, receipt or balance change exists until Phase 5 / M07 verifies a
-      signed webhook. It cannot be cancelled in M06.
-    - ``provider_failed`` -- the provider reported failure. Terminal.
+      it freezes its invoice's lines and cancellation, and (M07) refuses
+      manual collection.
+    - ``provider_succeeded`` -- the provider's success was *observed by the
+      browser return*, read through its status operation. Active, and **not**
+      a financial confirmation. It cannot be cancelled.
+    - ``provider_failed`` -- the provider reported failure, by the browser
+      return or by a verified signed webhook. Terminal.
     - ``cancelled`` -- an Administrator cancelled the pending intent after the
       provider confirmed the cancellation. Terminal.
+    - ``confirmed`` (M07) -- a verified, signed ``payment.succeeded`` webhook
+      created the online collection and its receipt. Terminal.
 
-    There is no ``paid``, ``confirmed``, ``refunded`` or ``deleted`` member and
-    no placeholder for one. Adding a member is a schema change (the
+    There is no ``paid``, ``refunded`` or ``deleted`` member and no
+    placeholder for one. Adding a member is a schema change (the
     ``payment_intents.status`` CHECK), which is the point.
     """
 
@@ -721,3 +737,40 @@ class PaymentIntentStatus(str, enum.Enum):
     PROVIDER_SUCCEEDED = "provider_succeeded"
     PROVIDER_FAILED = "provider_failed"
     CANCELLED = "cancelled"
+    CONFIRMED = "confirmed"
+
+
+class ProviderEventType(str, enum.Enum):
+    """The normalized type of one signed provider webhook event
+    (Phase 5 / M07). Exactly the two a payment intent can receive; adding one
+    is a schema change (the ``payment_provider_events.event_type`` CHECK)."""
+
+    PAYMENT_SUCCEEDED = "payment.succeeded"
+    PAYMENT_FAILED = "payment.failed"
+
+
+class ProviderEventOutcome(str, enum.Enum):
+    """What processing one verified provider event did (Phase 5 / M07).
+
+    - ``confirmed`` -- a ``payment.succeeded`` event created the online
+      collection, its receipt and its audit events, and confirmed the intent.
+    - ``failed`` -- a ``payment.failed`` event moved an active intent to
+      ``provider_failed``. No financial record.
+    - ``duplicate`` -- a *new* event restating what the intent already records
+      (a second success for a confirmed intent, a second failure for a failed
+      one). No change. A re-delivery of the *same* event is not stored again.
+    - ``ignored_terminal`` -- a failure for a cancelled intent: consistent, so
+      nothing to do.
+    - ``reconciliation_required`` -- the event conflicts with the recorded
+      financial truth (a success for a cancelled or failed intent, a failure
+      for a confirmed one, an amount or currency that differs from the
+      intent, a manual payment, a changed balance, an invoice or assignment no
+      longer collectable). Financially inert: an Administrator reconciles it
+      outside the application.
+    """
+
+    CONFIRMED = "confirmed"
+    FAILED = "failed"
+    DUPLICATE = "duplicate"
+    IGNORED_TERMINAL = "ignored_terminal"
+    RECONCILIATION_REQUIRED = "reconciliation_required"

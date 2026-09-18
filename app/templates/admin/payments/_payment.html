@@ -21,11 +21,11 @@
     {% endif %}
 
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Recorded</dt>
-    <dd style="margin:0">{{ payment.recorded_local.strftime("%Y-%m-%d %H:%M") }} by {{ payment.recorded_by_name }}</dd>
+    <dd style="margin:0">{{ payment.recorded_local.strftime("%Y-%m-%d %H:%M") }} by {{ payment.recorded_by_name or "the verified provider webhook" }}</dd>
 
     {% if payment.confirmed_local %}
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Confirmed</dt>
-    <dd style="margin:0">{{ payment.confirmed_local.strftime("%Y-%m-%d %H:%M") }} by {{ payment.confirmed_by_name }}</dd>
+    <dd style="margin:0">{{ payment.confirmed_local.strftime("%Y-%m-%d %H:%M") }} by {{ payment.confirmed_by_name or "the verified provider webhook" }}</dd>
     {% endif %}
   </dl>
 </div>
