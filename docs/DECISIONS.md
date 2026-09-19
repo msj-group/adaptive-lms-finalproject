@@ -9345,3 +9345,75 @@ only to the desk and shows no figure; the dashboard's queries are unchanged.
   the dashboard were saved from the test client with local stylesheets and
   screenshotted in headless Chrome. **No live-browser session, accessibility,
   responsive, keyboard or MySQL query-plan verification was performed.**
+
+### G. Correction: the Invoice Register (Phase 5, Part M09R)
+
+The Billing Desk (sections A to F) stays the **guided, per-Student** page:
+which next step does this Student's billing need? M09R adds the **direct,
+cross-Student lookup**: find and open any existing invoice without first going
+through Group, Student and fee assignment.
+
+    GET  /admin/invoices[?status=][&payment=][&q=][&page=]
+
+`app/blueprints/admin/invoice_register.py`,
+`app/services/invoice_register_queries.py` and
+`app/templates/admin/invoices/register.html`. `Invoices` is the second item of
+the Finance & Research sidebar, after `Billing Desk` and before `Fee Plans`;
+the dashboard gains an `Invoices` card beside the Billing Desk card, with no
+figure.
+
+- **A lookup, never a writer.** GET only (POST, PUT, PATCH and DELETE are 405),
+  active Administrators only, M02's `private, no-store` and `Vary: Cookie`. It
+  writes, flushes, locks and commits nothing, allocates no number, processes
+  no webhook and records no event. Each row links to its existing invoice page
+  and -- for an issued invoice only -- to its payments and receipts page, both
+  built from the row's own public ids read in the same join; those pages stay
+  authoritative and re-prove everything. There is no collection, issue, edit
+  or cancel shortcut and no form that posts.
+- **Listing.** Every invoice, newest first (`id DESC`), 25 per page, with the
+  exact range from one `COUNT`; a malformed or past-the-end page is page 1.
+  Filters, kept across pages: lifecycle `all` (default), `draft`, `issued`,
+  `cancelled`; payment state `all` (default), `outstanding`, `paid`, which
+  describes issued invoices only and is `all` with a draft or cancelled status;
+  an unknown value is `all`, as on the other Administrator lists. The search is
+  literal and case-insensitive over the invoice number, the Student's name and
+  email, and the Group's name and code.
+- **Truthful amounts.** Each row shows the number (or a `Draft` label), status,
+  Student, Group, Course, fee plan and the exact total of its active lines. Paid
+  and outstanding amounts appear only for an issued invoice the payments page
+  would call payable -- a valid line set within `MAX_INVOICE_ITEM_ROWS`, its
+  transactions within `MAX_INVOICE_PAYMENT_ROWS` and a valid M05
+  `payment_balance`; otherwise "Balance unavailable" and no figure. A pending
+  transfer, an active online intent and a reconciliation are shown as plain
+  notes. Drafts are never shown as collectible. Payments remain invoice-wide:
+  the page says so, and nothing is allocated to registration or course items.
+- **Recorded reading (payment filter).** A payment state is a computed
+  balance, never a SQL sum, so to page without dropping an invoice the filter
+  classifies every issued invoice matching the other filters in Python before
+  paging -- a fixed number of queries through a subquery, reading their lines
+  and transactions. Without it, a page reads only its own 25 invoices' facts.
+- **Nothing sensitive.** Bank-transfer references and dates, rejection and
+  void reasons, provider references, idempotency keys, event ids, payload
+  digests, audit snapshots, receipt documents and internal ids are never
+  selected: the register is a navigation surface, and those values belong only
+  on the authoritative pages that need them.
+- **Recorded decision (owners).** The M04 route inventory in
+  `tests/test_admin_invoices.py` covers every rule containing `/invoices`, so
+  it now excludes `GET /admin/invoices`, which
+  `tests/test_admin_invoice_register.py` inventories -- the pattern M05 to M07
+  followed. Nothing else in any earlier test changed.
+- **Verification.** `tests/test_admin_invoice_register.py` (16 tests): the one
+  GET-only rule and 405s, every other role refused, anonymous and suspended
+  sessions sent to log in, the exact sidebar order and the dashboard card, the
+  empty state, pages and ranges that drop no invoice, filters kept across pages
+  and normalized, search over every field (literal `%` and `_`), every state
+  (draft, outstanding, paid, cancelled, unavailable, pending, intent,
+  reconciliation), links that resolve to the existing pages only where
+  applicable, no sensitive value, a fixed query count with and without the
+  payment filter, and that no request changes any financial row, assignment or
+  Enrollment. The complete strict-warning suite passed 6,713 tests with the
+  four inherited IANA-time-zone skips, run as ten parallel processes covering
+  all 147 test files. The register was saved from the test client with
+  local stylesheets and screenshotted in headless Chrome. **No live-browser
+  session, accessibility, responsive, keyboard or MySQL query-plan verification
+  was performed.**

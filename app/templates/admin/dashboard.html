@@ -12,12 +12,18 @@
   Times are shown in the center timezone (<strong>{{ tz_name }}</strong>).
 </p>
 
-{#- Phase 5 / M09. A shortcut only: it links to the Billing Desk and shows no
-    financial figure. -#}
-<a class="card" href="{{ url_for('admin.billing_desk') }}" style="display:block; margin-bottom: var(--space-6); text-decoration:none; color:inherit">
+{#- Phase 5 / M09 and M09R. Shortcuts only: they link to the Billing Desk and
+    the Invoice Register and show no financial figure. -#}
+<div style="display:grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: var(--space-6)">
+<a class="card" href="{{ url_for('admin.billing_desk') }}" style="display:block; text-decoration:none; color:inherit">
   <div class="card__title">Billing Desk</div>
   <div class="card__body">Find a student's fee assignment, invoice and payment actions in one place.</div>
 </a>
+<a class="card" href="{{ url_for('admin.invoice_register') }}" style="display:block; text-decoration:none; color:inherit">
+  <div class="card__title">Invoices</div>
+  <div class="card__body">Find and open any existing invoice across all students.</div>
+</a>
+</div>
 
 <h2>People</h2>
 <div class="stat-grid">

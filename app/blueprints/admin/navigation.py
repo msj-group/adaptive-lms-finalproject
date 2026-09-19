@@ -24,6 +24,7 @@ ADMIN_NAV_SECTIONS = [
         "label": "Finance & Research",
         "links": [
             {"label": "Billing Desk", "endpoint": "admin.billing_desk"},
+            {"label": "Invoices", "endpoint": "admin.invoice_register"},
             {"label": "Fee Plans", "endpoint": "admin.fee_plans_list"},
             {"label": "Payments", "endpoint": "admin.payments_overview"},
             {"label": "Financial reports", "endpoint": "admin.financial_reports_index"},
