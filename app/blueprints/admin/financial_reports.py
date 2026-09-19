@@ -57,7 +57,7 @@ from app.services.fee_plan_queries import normalize_page
 from app.services.financial_report_exports import (
     CSV_CONTENT_TYPE,
     PDF_CONTENT_TYPE,
-    PdfTextUnsupported,
+    PdfGlyphUnavailable,
     display_text,
     generated_text,
     is_numeric,
@@ -83,10 +83,10 @@ _FILENAMES = {
     reports.EXCEPTIONS: "operational-exceptions-report",
 }
 
-_PDF_UNSUPPORTED_MESSAGE = (
-    "The PDF export can only show Latin-script text, and this report holds characters it "
-    "cannot show (for example Arabic letters in a name). No PDF was produced and nothing was "
-    "left out: use the CSV export or this page, which show every character."
+_PDF_GLYPH_MESSAGE = (
+    "The PDF font has no glyph for some characters in this report (for example Chinese, "
+    "Japanese or Devanagari characters). No PDF was produced and nothing was left out: use "
+    "the CSV export or this page, which show every character."
 )
 
 
@@ -216,8 +216,8 @@ def _serve(report_key, output):
     if output == _PDF:
         try:
             body = render_pdf(report)
-        except PdfTextUnsupported:
-            flash(_PDF_UNSUPPORTED_MESSAGE, "warning")
+        except PdfGlyphUnavailable:
+            flash(_PDF_GLYPH_MESSAGE, "warning")
             return redirect(url_for(_ENDPOINTS[report_key], **filters.query_args()))
         return _download(body, PDF_CONTENT_TYPE, f"{_FILENAMES[report_key]}.pdf")
     return _render(report_key, report=report, filters=filters)

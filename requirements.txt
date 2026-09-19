@@ -29,6 +29,14 @@ python-dotenv==1.2.2
 # ---- Content sanitization (Phase 3, Part M12: Lesson Materials) ----
 nh3==0.3.7
 
+# ---- Financial report PDFs (Phase 5, Part M08R) ----
+# ReportLab builds the PDFs in the bundled DejaVu Sans font; arabic-reshaper
+# joins Arabic letters and python-bidi orders mixed-direction text. ReportLab
+# also installs pillow and charset-normalizer (resolved to 12.3.0 and 3.5.1).
+reportlab==5.0.1
+arabic-reshaper==3.0.1
+python-bidi==0.6.11
+
 # ---- Testing ----
 pytest==9.1.1
 pytest-cov==7.1.0

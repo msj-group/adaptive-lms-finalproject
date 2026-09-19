@@ -15,6 +15,7 @@ from decimal import Decimal
 
 import pytest
 
+import tests.fee_assignment_fixtures as fees
 import tests.financial_report_fixtures as rx
 import tests.payment_fixtures as px
 import tests.payment_intent_fixtures as ix
@@ -805,10 +806,9 @@ def test_downloads_are_attachments_with_fixed_names_and_safe_headers(app, client
             f'attachment; filename="{rx.FILENAMES[url]}.pdf"')
         _assert_private(response)
         body = response.get_data()
-        assert rx.pdf_objects_valid(body) >= 7
-        for name in (b"/JavaScript", b"/JS", b"/OpenAction", b"/AA", b"/URI", b"/Launch",
-                     b"/EmbeddedFile", b"/AcroForm", b"/Annots", b"http", b"/FontFile"):
-            assert name not in body, name
+        assert rx.pdf_objects_valid(body) > 0
+        assert rx.pdf_embeds_dejavu(body)
+        assert rx.pdf_active_names(body) == set()
 
 
 def rx_first_group(app):
@@ -846,27 +846,23 @@ def test_csv_neutralizes_formulas_and_keeps_amounts_numeric(app, client):
     assert '=HYPERLINK("http://example.com","x")' in texts
 
 
-def test_pdf_text_is_hex_encoded_and_never_interpreted(app, client):
-    hostile = "Evil) Tj /JavaScript (x) \\ <41> ET BT"
+def test_pdf_text_is_drawn_literally_and_never_interpreted(app, client):
+    hostile = '<a href="javascript:alert(1)">x</a> (Evil) Tj /JavaScript \\ %c'
+    markup = "<b>bold</b> <font color=red>r</font> &amp; <br/>"
     w = px.world(app)
     with app.app_context():
         owner, actor = rx.rows_of(w)
         invoice, _ = rx.invoice_in_group(actor, rx.plan_of(w), student_name=hostile,
-                                         group_name="(Group) <<>> %comment")
+                                         group_name=markup)
         rx.transaction(invoice, actor, "100.000")
     rx.login_as(client, "admin@example.com")
     body = _pdf(client, rx.COLLECTIONS_URL, _SEPT)
-    texts = rx.pdf_texts(body)
-    assert "Evil) Tj /JavaScript (x) \\ <41> ET" in " ".join(texts)
-    assert "(Group) <<>> %comment" in texts
-    assert b"/JavaScript" not in body and b"Evil" not in body and b"(Group)" not in body
-    streams = re.findall(rb"stream\n(.*?)\nendstream", body, re.S)
-    for stream in streams:
-        for line in stream.split(b"\n"):
-            assert re.fullmatch(
-                rb"BT /F[12] [0-9.]+ Tf 1 0 0 1 [0-9.]+ [0-9.]+ Tm <[0-9A-F]*> Tj ET"
-                rb"|[0-9.]+ G [0-9.]+ w [0-9.]+ [0-9.]+ m [0-9.]+ [0-9.]+ l S 0 G"
-                rb"|[0-9.]+ g [0-9.]+ [0-9.]+ [0-9.]+ [0-9.]+ re f 0 g", line), line
+    drawn = " ".join(rx.pdf_texts(body))  # a long cell wraps at its spaces
+    assert hostile in drawn and markup in drawn
+    assert rx.pdf_active_names(body) == set()
+    html = _html(client, rx.COLLECTIONS_URL, _SEPT)
+    assert "&lt;a href=&#34;javascript:alert(1)&#34;&gt;" in html
+    assert "<b>bold</b>" not in html
 
 
 def test_a_long_report_spans_pdf_pages_with_repeated_headers_and_html_pages(app, client,
@@ -880,13 +876,19 @@ def test_a_long_report_spans_pdf_pages_with_repeated_headers_and_html_pages(app,
     rx.fixed_clock(monkeypatch, datetime(2026, 9, 18, 10, 0, 0))
     rx.login_as(client, "admin@example.com")
     body = _pdf(client, rx.COLLECTIONS_URL, _SEPT)
-    texts = rx.pdf_texts(body)
-    pages = rx.pdf_page_count(body)
+    per_page = rx.pdf_page_texts(body)
+    pages = len(per_page)
     assert pages >= 3
-    headers = texts.count("Confirmed (Africa/Tripoli)")
-    assert headers == 1 + texts.count("Confirmed movements (continued)") >= 3
-    assert texts.count("Collections report (continued)") == pages - 1
-    assert f"Collections report | Page {pages} of {pages} | {rx.NOTICE_TEXT}" in texts
+    spanned = [texts for texts in per_page if "Confirmed movements" in texts]
+    assert len(spanned) >= 2
+    for texts in spanned:  # the section title and its column header, on every page
+        assert texts.count("Confirmed movements") == 1
+        assert texts.count("Confirmed (Africa/Tripoli)") == 1
+    for number, texts in enumerate(per_page, start=1):
+        assert ("Collections report (continued)" in texts) == (number > 1)
+        assert f"Collections report | Page {number} of {pages} | {rx.NOTICE_TEXT}" in texts
+    assert {"Net total (65 movements)", "2,145.000"} <= set(per_page[-1])
+    texts = rx.pdf_texts(body)
     _assert_subsequence([f"{n}.000" for n in range(1, 66)] + ["Net total (65 movements)",
                                                                "2,145.000"], texts)
     first = rx.html_tables(_html(client, rx.COLLECTIONS_URL, _SEPT))
@@ -919,33 +921,106 @@ def test_ordering_is_deterministic_and_repeated_exports_are_identical(app, clien
         assert _get(client, rx.COLLECTIONS_URL + suffix, _SEPT).get_data() == first
 
 
-def test_a_pdf_that_cannot_show_a_name_is_refused_and_csv_keeps_it(app, client):
-    arabic = "محمد علي"
+def _assert_drawn_subsequence(expected, texts):
+    """Like :func:`_assert_subsequence`, comparing each cell as the PDF draws
+    it: Arabic shaped and in visual order."""
+    position = 0
+    for text in expected:
+        while position < len(texts) and not rx.drawn_as(texts[position], text):
+            position += 1
+        assert position < len(texts), f"{text!r} missing from the PDF in report order"
+        position += 1
+
+
+_ARABIC_NAMES = ("محمد علي", "Ali علي Hassan", "عبدالله الطرابلسي")
+_ARABIC_GROUP = "مجموعة الصباح"
+
+
+def _arabic_world(app):
+    """Three Students with Arabic and mixed names in a Group with an Arabic
+    name: a confirmed cash payment each, a pending transfer and an active
+    intent for the first."""
     w = px.world(app)
     with app.app_context():
         owner, actor = rx.rows_of(w)
-        invoice, owning = rx.invoice_in_group(actor, rx.plan_of(w), student_name=arabic)
+        owning = fees.group(name=_ARABIC_GROUP)
+        invoices = []
+        for index, name in enumerate(_ARABIC_NAMES):
+            invoice, _ = rx.invoice_in_group(actor, rx.plan_of(w), student_name=name,
+                                             owning_group=owning)
+            rx.transaction(invoice, actor, f"{index + 1}00.000",
+                           at=datetime(2026, 9, 10 + index, 8, 0))
+            invoices.append(invoice)
+        rx.transaction(invoices[0], actor, "20.000", method="bank_transfer", status="pending")
+        ix.intent(invoices[1], actor, status="pending")
+        w.update(arabic_gp=owning.public_id, arabic_label=_label(owning))
+    return w
+
+
+def test_arabic_and_mixed_names_print_in_every_pdf_with_the_html_and_csv_rows(app, client):
+    w = _arabic_world(app)
+    with app.app_context():
+        before = rx.everything()
+    rx.login_as(client, "admin@example.com")
+    cases = (
+        (rx.COLLECTIONS_URL, f"group={w['arabic_gp']}&{_SEPT}", ("totals", "movements"),
+         {"totals": "Totals by method", "movements": "Confirmed movements"}),
+        (rx.OUTSTANDING_URL, f"group={w['arabic_gp']}", ("invoices",),
+         {"invoices": "Outstanding invoices"}),
+        (rx.EXCEPTIONS_URL, f"group={w['arabic_gp']}", ("summary", "pending", "intents"),
+         {"summary": "Summary", "pending": "Pending bank transfers",
+          "intents": "Active online payment intents"}),
+    )
+    for url, query, keys, titles in cases:
+        response = _get(client, url + ".pdf", query)
+        assert response.status_code == 200, url
+        assert response.mimetype == "application/pdf"
+        _assert_private(response)
+        body = response.get_data()
+        assert rx.pdf_embeds_dejavu(body) and rx.pdf_active_names(body) == set()
+        texts = rx.pdf_texts(body)
+        assert any(rx.drawn_as(text, f"Group: {w['arabic_label']}") for text in texts), url
+        tables = rx.html_tables(_html(client, url, query))
+        rows = _csv(client, url, query)
+        expected = []
+        for key in keys:
+            html_rows = tables[key]["rows"] + ([tables[key]["footer"]] if tables[key]["footer"]
+                                               else [])
+            _, data = rx.csv_section(rows, titles[key])
+            assert data == _plain_rows(html_rows), key
+            expected += [cell for row in html_rows for cell in row if cell]
+        _assert_drawn_subsequence(expected, texts)
+    movements = rx.html_tables(_html(client, rx.COLLECTIONS_URL,
+                                     f"group={w['arabic_gp']}&{_SEPT}"))["movements"]["rows"]
+    assert [row[5] for row in movements] == list(_ARABIC_NAMES)
+    assert {row[6] for row in movements} == {_ARABIC_GROUP}
+    with app.app_context():
+        assert rx.everything() == before
+
+
+def test_a_pdf_the_font_cannot_show_is_refused_explicitly_and_csv_keeps_it(app, client):
+    unsupported = "李小龙"
+    w = px.world(app)
+    with app.app_context():
+        owner, actor = rx.rows_of(w)
+        invoice, owning = rx.invoice_in_group(actor, rx.plan_of(w), student_name=unsupported)
         rx.transaction(invoice, actor, "100.000")
         gp = owning.public_id
         before = rx.everything()
     rx.login_as(client, "admin@example.com")
-    for url, query in ((rx.COLLECTIONS_URL, _SEPT), (rx.OUTSTANDING_URL, f"group={gp}"),
-                       (rx.EXCEPTIONS_URL, "")):
+    for url, query, title in ((rx.COLLECTIONS_URL, _SEPT, "Confirmed movements"),
+                              (rx.OUTSTANDING_URL, f"group={gp}", "Outstanding invoices")):
         response = _get(client, url + ".pdf", query)
-        if url == rx.EXCEPTIONS_URL:
-            assert response.status_code == 200  # the name is in no exception
-            continue
         assert response.status_code == 302
         _assert_private(response)
         location = response.headers["Location"]
         assert location.startswith(url + "?") and ".pdf" not in location
         html = rx.page(client, location)
         assert rx.PDF_REFUSED_TEXT in html
-        assert arabic in html
-        _, data = rx.csv_section(_csv(client, url, query),
-                                 "Confirmed movements" if url == rx.COLLECTIONS_URL
-                                 else "Outstanding invoices")
-        assert arabic in {cell for row in data for cell in row}
+        assert unsupported in html
+        _, data = rx.csv_section(_csv(client, url, query), title)
+        assert unsupported in {cell for row in data for cell in row}
+    assert _get(client, rx.EXCEPTIONS_URL + ".pdf").status_code == 200  # the name is in none
     with app.app_context():
         assert rx.everything() == before
 

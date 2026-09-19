@@ -9128,3 +9128,89 @@ decision on a font asset and a shaping dependency.
   screenshotted in headless Chrome. **No live-browser session, accessibility,
   responsive, keyboard, print, spreadsheet-application or MySQL query-plan
   verification was performed.**
+
+### H. Correction: Arabic and Unicode PDFs (Phase 5, Part M08R)
+
+M08's hand-written PDF writer used the standard WinAnsi fonts and refused any
+report holding Arabic text. PDF must stay available for Arabic Student and
+Group names and for mixed Arabic/Latin values, so **section F is superseded**
+and the Unicode PDF font leaves the deferred list. Nothing else of M08
+changed: routes, filters, validation, report calculations, ordering, totals,
+CSV output, headers, fixed filenames and the read-only guarantees are as
+sections A to E state. There is no migration and no model change.
+
+**Dependencies.** `reportlab==5.0.1` builds the PDF, `arabic-reshaper==3.0.1`
+joins Arabic letters into their presentation forms and `python-bidi==0.6.11`
+puts each line in visual order. ReportLab also installs `pillow` and
+`charset-normalizer` (resolved to 12.3.0 and 3.5.1). All five resolved with
+binary wheels for CPython 3.14 on Windows and on manylinux x86-64; the local
+environment was installed from wheels pip checked against the index's
+SHA-256 hashes. No other PDF library, browser, shell tool, system font or
+service is used.
+
+**The font.** DejaVu Sans 2.37, `app/assets/fonts/DejaVuSans.ttf` (SHA-256
+`7da195a74c55bef988d0d48f9508bd5d849425c1770dba5d7bfc6ce9ed848954`),
+byte-identical to the file in the DejaVu project's `dejavu-fonts-ttf-2.37.zip`
+release, with its license beside it as `DejaVuSans-LICENSE.txt` (Bitstream Vera
+and Arev terms; DejaVu changes are public domain). The license text is
+unchanged except for one trailing space removed so the repository's
+whitespace check passes. `app/assets` is outside the public `app/static`
+folder and no route serves it. The renderer reads the font only from that
+fixed path, registers it once, and embeds a subset of it in every report PDF;
+no font installed on the host is ever used. One file, one weight: headers are
+shaded and totals rows ruled and shaded instead of bold.
+
+**Rendering.** Each report is ReportLab platypus tables of **plain strings**,
+plus canvas-drawn page lines -- no `Paragraph` or other markup API is used,
+so no stored text can become markup, a link, JavaScript, an attachment or an
+instruction; ReportLab escapes every string operand itself. A cell is wrapped
+in logical order at the page's measured widths, then each line is normalized
+(NFC), shaped, and reordered by the bidirectional algorithm with the cell's
+base direction (its first strong character); a right-to-left cell is
+right-aligned. Invisible formatting marks the algorithm consumed are then
+dropped. Of the reshaper's default ligatures, one is used only when the font
+has its glyph: DejaVu Sans has the lam-alef ligatures but not the "Allah"
+ligature, so "عبدالله" is drawn letter by letter. Harakat are kept and left
+unshifted, because DejaVu draws a mark over the glyph that follows it and the
+visual reversal already places each mark before its letter (verified
+visually; the "shifted" setting misplaces them). Every table repeats its
+section title, description and column header on each page it continues on,
+every later page states "<title> (continued)", every page ends with
+"<title> | Page n of m | <notice>", and totals end each table. The document is
+built in memory with `invariant=1`, so a report renders to identical bytes,
+and names the LMS as its producer.
+
+**What is still refused.** Arabic, Latin, accented Latin, punctuation and
+mixed text always render. A character the bundled font has no glyph for --
+Chinese, Japanese or Devanagari script, for example -- raises
+`PdfGlyphUnavailable` instead of being dropped or drawn as an empty box; the
+PDF route then redirects to the HTML report with a warning, and the CSV and
+the page show every character. The M08 message and the page's download note
+("The PDF shows Latin-script text only") were corrected accordingly; the note
+is a one-sentence change to `report.html`, outside the Part's file list,
+because it would otherwise misstate what the PDF does.
+
+**Verification.** `tests/test_financial_report_exports.py` (24 tests) proves
+the exact presentation-form code points and visual order of Arabic words, the
+lam-alef ligature and the absent "Allah" ligature, mixed-direction ordering,
+harakat placement, accented Latin, the narrow glyph refusal, wrapping without
+loss, hostile markup drawn literally, the embedded DejaVu subset (and no
+standard font), repeated headers and totals on every page, deterministic
+bytes, and the font's path, checksum and license.
+`tests/test_admin_financial_reports.py` (50 tests) now proves that all three
+report PDFs return `200 application/pdf` for Arabic and mixed Student and
+Group names with the same rows and totals as their HTML and CSV, the refusal
+path for a character without a glyph, and every earlier M08 guarantee. The
+tests read text back through each font subset's ToUnicode map -- what a
+viewer uses to copy or search -- locating objects through the
+cross-reference table, without a PDF library; mixed text is compared in the
+drawn direction, and pure Arabic is also undone independently (reversal and
+NFKC). The complete strict-warning suite passed 6,669 tests with the four
+inherited IANA-time-zone skips, run as ten parallel processes covering all
+145 test files. Report PDFs with Arabic Student and Group names, mixed names
+and harakat, generated through the real routes, were rendered by the Windows
+PDF engine (`Windows.Data.Pdf`) and inspected: letters join, right-to-left
+text reads in order and is right-aligned, mixed values are readable, and
+headers and totals repeat across pages. **Not verified:** rendering on the
+Linux deployment host (only its wheels were resolved), mark positioning
+beyond the common harakat, other PDF viewers, and any live-browser download.

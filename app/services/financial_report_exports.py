@@ -2,8 +2,9 @@
 
 Flask-independent pure functions over a
 :class:`~app.services.financial_reports.FinancialReport`: no ``request``, no
-ORM, no file, no network, no subprocess and no logging. Both return the whole
-document as ``bytes``; nothing is written to disk and nothing is kept.
+ORM, no network, no subprocess and no logging, and the only file read is the
+bundled font. Both return the whole document as ``bytes``; nothing is written
+to disk and nothing is kept.
 
 Both outputs state exactly what the HTML page states -- the title, the
 applied filters, the generation moment and its timezone, the currency, the
@@ -24,30 +25,47 @@ return, which spreadsheets also treat as formula triggers -- is prefixed with
 produced here from ``Decimal`` / ``int`` and proved to match a strict numeric
 shape, so a negative amount stays a number.
 
-**PDF** is written directly, with no library, browser, shell or external
-resource: PDF 1.4, A4 landscape, the standard Courier and Courier-Bold fonts
-(no embedded file) in ``WinAnsiEncoding``. Every piece of text -- the
-report's own wording and every stored name alike -- is written as a
-hexadecimal string operand of ``Tj``, so no character of it can close the
-string or be read as a PDF operator, name or markup. The document has no
-JavaScript, action, link, form, annotation, attachment or external reference.
-Tables span as many pages as they need, repeat their column headers on every
-page they continue on, and end with their totals. Courier is monospaced, so
-every column width and line wrap is computed exactly.
+**PDF** is built in memory with ReportLab, A4 landscape, in the one bundled
+Unicode font -- DejaVu Sans, loaded from a fixed application-owned path and
+embedded (subset) in every file -- so Arabic, Latin, accented Latin and mixed
+text all print. Arabic is shaped into its joined letter forms
+(``arabic-reshaper``) and each line is put in visual order by the Unicode
+bidirectional algorithm (``python-bidi``) with its cell's base direction,
+after the text has been wrapped in logical order; a right-to-left cell is
+right-aligned. Every string is drawn as plain table-cell or canvas text:
+nothing a record holds reaches a ReportLab markup parser, and the document has
+no link, JavaScript, action, form, annotation or attachment. No browser,
+shell, network, file write or user-supplied path is involved. Tables span as
+many pages as they need, repeat their title and column headers on every page
+they continue on, and end with their totals; every page states the title,
+"Page n of m" and the notice. The output is deterministic for a given report.
 
-A standard font can only show the characters of ``WinAnsiEncoding`` (Latin
-script). When any text of the report holds another character -- an Arabic
-name, for example -- :func:`render_pdf` raises :class:`PdfTextUnsupported`
-instead of dropping or replacing it; the caller offers the CSV and HTML
-report, which show every character.
+A character the bundled font has no glyph for -- a Chinese, Japanese or
+Devanagari character, for example -- is never dropped or replaced:
+:func:`render_pdf` raises :class:`PdfGlyphUnavailable` and the caller offers
+the CSV and HTML report.
 """
 
 import codecs
 import csv
 import io
 import re
+import threading
+import unicodedata
 from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
+
+from arabic_reshaper import ArabicReshaper
+from arabic_reshaper.ligatures import LIGATURES
+from arabic_reshaper.reshaper_config import default_config
+from bidi import get_display
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen.canvas import Canvas
+from reportlab.platypus import SimpleDocTemplate, Spacer, Table, TableStyle
 
 from app.services.financial_reports import AMOUNT, COUNT, TEXT
 from app.services.money import amount_input_text, format_amount
@@ -160,210 +178,215 @@ def render_csv(report):
     return codecs.BOM_UTF8 + buffer.getvalue().encode("utf-8")
 
 
+
+
 # ---------------------------------------------------------------------------
 # PDF
 # ---------------------------------------------------------------------------
 
 
-class PdfTextUnsupported(ValueError):
-    """Some text of the report holds a character the PDF's standard font
-    cannot show. Nothing was rendered."""
+class PdfGlyphUnavailable(ValueError):
+    """Some text of the report holds a character the bundled font has no
+    glyph for (for example a Chinese, Japanese or Devanagari character).
+    Nothing was rendered. Arabic, Latin and accented Latin text never raise
+    this."""
 
 
-_PAGE_WIDTH = 842  # A4 landscape, in points
-_PAGE_HEIGHT = 595
+#: The one bundled font: DejaVu Sans 2.37, which covers Latin, accented Latin
+#: and Arabic -- including the presentation forms Arabic shaping produces.
+#: It is read only from this fixed, application-owned path (never from the
+#: host's fonts and never from a request), outside the public static folder,
+#: and embedded (subset) in every report PDF. Its license is beside it.
+FONT_PATH = Path(__file__).resolve().parents[1] / "assets" / "fonts" / "DejaVuSans.ttf"
+FONT_NAME = "LmsReportDejaVuSans"
+
+_PAGE_SIZE = landscape(A4)
 _MARGIN = 36
-_CONTENT_BOTTOM = _MARGIN + 18  # the page footer sits below this line
+_TOP_MARGIN = _MARGIN + 18  # room for the "(continued)" line above the frame
+_BOTTOM_MARGIN = _MARGIN + 12  # room for the page footer below the frame
 _BODY_SIZE = 8
 _TITLE_SIZE = 14
 _HEADING_SIZE = 10
 _FOOTER_SIZE = 7
-_CHAR_ADVANCE = 0.6  # every Courier glyph is 600/1000 of the font size wide
-_CELL_GAP = 2  # blank characters between two columns
-_CELL_PADDING = 2.5  # points above and below a row's text
-_MIN_TEXT_COLUMN = 8  # characters
+_PADDING = 3
+_MIN_TEXT_WIDTH = 48
+_HEADER_SHADE = colors.Color(0.9, 0.9, 0.9)
+_FOOTER_SHADE = colors.Color(0.96, 0.96, 0.96)
+_RULE = colors.Color(0.75, 0.75, 0.75)
+_PRODUCER = "Adaptive English LMS"
 
-_REGULAR = "F1"
-_BOLD = "F2"
+_font_lock = threading.Lock()
+_font_state = {}
 
 
-def _line_height(size):
+def _leading(size):
     return size * 1.25
 
 
-def _chars_per_line(size, width=_PAGE_WIDTH - 2 * _MARGIN):
-    return int(width // (size * _CHAR_ADVANCE))
+def _frame_width():
+    return _PAGE_SIZE[0] - 2 * _MARGIN
 
 
-def _encode(text):
-    """`text` in ``WinAnsiEncoding``, or :class:`PdfTextUnsupported`. A
-    control character is refused as well: it has no glyph to show."""
-    try:
-        encoded = text.encode("cp1252")
-    except UnicodeEncodeError:
-        raise PdfTextUnsupported("The report holds text the PDF font cannot show") from None
-    if any(byte < 0x20 or byte == 0x7F for byte in encoded):
-        raise PdfTextUnsupported("The report holds a control character")
-    return encoded
+def _loaded_font():
+    """``(font, reshaper)``: the bundled font, registered once, and an Arabic
+    reshaper that produces only glyphs the font has.
+
+    Of the reshaper's default ligatures, one is enabled only when the font has
+    its glyph: DejaVu Sans has the lam-alef ligatures but not the "Allah"
+    ligature, so a common name such as "عبدالله" is drawn letter by letter
+    rather than as a missing glyph. Harakat are kept (never silently deleted)
+    and, as DejaVu's marks are drawn over the glyph that follows them, left
+    unshifted: the visual reversal already puts each mark before its letter.
+    """
+    with _font_lock:
+        if not _font_state:
+            font = TTFont(FONT_NAME, str(FONT_PATH))
+            pdfmetrics.registerFont(font)
+            glyphs = font.face.charToGlyph
+            configuration = {"delete_harakat": False, "shift_harakat_position": False}
+            for name, (_match, forms) in LIGATURES:
+                if default_config.get(name):
+                    configuration[name] = all(
+                        ord(character) in glyphs for form in forms for character in form
+                    )
+            _font_state["font"] = font
+            _font_state["reshaper"] = ArabicReshaper(configuration=configuration)
+        return _font_state["font"], _font_state["reshaper"]
 
 
-def _hex_string(text):
-    """A PDF hexadecimal string operand: only ``0-9A-F`` between ``<`` and
-    ``>``, whatever `text` holds."""
-    return "<" + _encode(text).hex().upper() + ">"
+def _is_right_to_left(character):
+    return unicodedata.bidirectional(character) in ("R", "AL")
 
 
-def _wrap(text, width):
-    """`text` broken into lines of at most `width` characters, at spaces
-    where possible. Runs of whitespace read as one space; every other
-    character is kept, and nothing is cut off."""
+def _base_right_to_left(text):
+    """Whether `text` reads right to left: its first strong character is
+    Arabic (or another right-to-left script)."""
+    for character in text:
+        direction = unicodedata.bidirectional(character)
+        if direction == "L":
+            return False
+        if direction in ("R", "AL"):
+            return True
+    return False
+
+
+def _visual(line, right_to_left):
+    """One line of logical text as it is drawn left to right: normalized,
+    Arabic shaped into joined letter forms, put in visual order by the
+    Unicode bidirectional algorithm with the cell's base direction, and
+    stripped of the invisible formatting marks that algorithm consumed. Every
+    visible character must have a glyph in the bundled font."""
+    font, reshaper = _loaded_font()
+    line = unicodedata.normalize("NFC", line)
+    if any(_is_right_to_left(character) for character in line):
+        line = get_display(reshaper.reshape(line), base_dir="R" if right_to_left else "L")
+    line = "".join(character for character in line if unicodedata.category(character) != "Cf")
+    glyphs = font.face.charToGlyph
+    if any(ord(character) not in glyphs for character in line if character != " "):
+        raise PdfGlyphUnavailable("The report holds a character the PDF font cannot show")
+    return line
+
+
+def _width(line, size, right_to_left=False):
+    return pdfmetrics.stringWidth(_visual(line, right_to_left), FONT_NAME, size)
+
+
+def _longest_prefix(word, width, size, right_to_left):
+    """How many leading characters of `word` fit `width` (at least one)."""
+    fitting = 1
+    for end in range(2, len(word) + 1):
+        if _width(word[:end], size, right_to_left) > width:
+            break
+        fitting = end
+    return fitting
+
+
+def _wrap(text, width, size, right_to_left=False):
+    """`text` as logical lines that each fit `width` points once shaped:
+    broken at spaces where possible, inside a word only when the word alone
+    is wider than the column. Runs of whitespace read as one space; no other
+    character is lost."""
     lines, current = [], ""
     for word in text.split():
-        while len(word) > width:
-            if current:
-                lines.append(current)
-                current = ""
-            lines.append(word[:width])
-            word = word[width:]
-        if not word:
+        candidate = f"{current} {word}" if current else word
+        if _width(candidate, size, right_to_left) <= width:
+            current = candidate
             continue
-        if not current:
-            current = word
-        elif len(current) + 1 + len(word) <= width:
-            current += " " + word
-        else:
+        if current:
             lines.append(current)
-            current = word
+        while len(word) > 1 and _width(word, size, right_to_left) > width:
+            cut = _longest_prefix(word, width, size, right_to_left)
+            lines.append(word[:cut])
+            word = word[cut:]
+        current = word
     if current or not lines:
         lines.append(current)
     return lines
 
 
-class _Document:
-    """Pages of content-stream operators, laid out top to bottom."""
-
-    def __init__(self, title):
-        self.title = title
-        self.pages = []
-        self.ops = None
-        self.y = 0
-        self.new_page()
-
-    def new_page(self):
-        self.ops = []
-        self.pages.append(self.ops)
-        self.y = _PAGE_HEIGHT - _MARGIN
-        if len(self.pages) > 1:
-            self.paragraph(f"{self.title} (continued)", _HEADING_SIZE, bold=True)
-            self.y -= 4
-
-    def room(self):
-        return self.y - _CONTENT_BOTTOM
-
-    def text(self, x, y, text, size, bold=False):
-        if text:
-            self.ops.append(
-                f"BT /{_BOLD if bold else _REGULAR} {size} Tf 1 0 0 1 {x:.2f} {y:.2f} Tm "
-                f"{_hex_string(text)} Tj ET"
-            )
-
-    def rule(self, y, width=0.4, gray=0.6):
-        self.ops.append(
-            f"{gray:.2f} G {width:.2f} w {_MARGIN:.2f} {y:.2f} m "
-            f"{_PAGE_WIDTH - _MARGIN:.2f} {y:.2f} l S 0 G"
-        )
-
-    def shade(self, y_top, height, gray=0.9):
-        self.ops.append(
-            f"{gray:.2f} g {_MARGIN:.2f} {y_top - height:.2f} "
-            f"{_PAGE_WIDTH - 2 * _MARGIN:.2f} {height:.2f} re f 0 g"
-        )
-
-    def paragraph(self, text, size, bold=False):
-        height = _line_height(size)
-        for line in _wrap(text, _chars_per_line(size)):
-            if self.room() < height:
-                self.new_page()
-            self.y -= height
-            self.text(_MARGIN, self.y + (height - size) / 2 + 1, line, size, bold)
-
-    def gap(self, points):
-        self.y -= points
+def _cell(text, width, size=_BODY_SIZE):
+    """``(drawn text, right_to_left)`` of one table cell: wrapped logically,
+    each line then shaped and ordered for drawing, joined by newlines. The
+    string is drawn as plain text -- ReportLab never parses it as markup."""
+    right_to_left = _base_right_to_left(text)
+    lines = _wrap(text, width, size, right_to_left)
+    return "\n".join(_visual(line, right_to_left) for line in lines), right_to_left
 
 
 def _column_widths(section, texts):
-    """Character widths of the section's columns. Numbers and moments never
-    wrap -- their header too, while the page has room -- and text columns
-    share what is left, none narrower than :data:`_MIN_TEXT_COLUMN`."""
+    """Point widths of the section's columns. Numbers and moments never wrap
+    -- their header too, while the page has room -- and text columns share
+    what is left, none narrower than :data:`_MIN_TEXT_WIDTH`."""
     columns = section.columns
-    available = _chars_per_line(_BODY_SIZE) - _CELL_GAP * (len(columns) - 1)
-    longest = [max((len(text) for text in texts[index]), default=0) for index in range(len(columns))]
+    available = _frame_width()
+
+    def natural(index, whole_label=True):
+        values = [_width(text, _BODY_SIZE, _base_right_to_left(text)) for text in texts[index]]
+        label = columns[index].label
+        labels = [label] if whole_label else label.split()
+        return max(values + [_width(part, _BODY_SIZE) for part in labels]) + 2 * _PADDING
+
+    fixed_indexes = [index for index, column in enumerate(columns) if column.kind != TEXT]
     flexible = sorted(
-        (max(longest[index], len(column.label), 1), index)
-        for index, column in enumerate(columns)
-        if column.kind == TEXT
+        (natural(index), index) for index, column in enumerate(columns) if column.kind == TEXT
     )
-
-    def fixed(whole_label):
-        return {
-            index: max(
-                longest[index],
-                len(column.label) if whole_label else max(map(len, column.label.split())),
-                1,
-            )
-            for index, column in enumerate(columns)
-            if column.kind != TEXT
-        }
-
-    widths_of_fixed = fixed(True)
-    if sum(widths_of_fixed.values()) + _MIN_TEXT_COLUMN * len(flexible) > available:
-        widths_of_fixed = fixed(False)
-    widths = [widths_of_fixed.get(index, 0) for index in range(len(columns))]
+    fixed = {index: natural(index) for index in fixed_indexes}
+    if sum(fixed.values()) + _MIN_TEXT_WIDTH * len(flexible) > available:
+        fixed = {index: natural(index, whole_label=False) for index in fixed_indexes}
+    widths = [fixed.get(index, 0) for index in range(len(columns))]
     remaining = available - sum(widths)
-    for position, (natural, index) in enumerate(flexible):
-        fair = remaining // (len(flexible) - position)
-        widths[index] = max(min(natural, fair), _MIN_TEXT_COLUMN)
+    for position, (wanted, index) in enumerate(flexible):
+        fair = remaining / (len(flexible) - position)
+        widths[index] = max(min(wanted, fair), _MIN_TEXT_WIDTH)
         remaining -= widths[index]
-    if sum(widths) > available:
+    if sum(widths) > available + 0.01:
         raise ValueError("The report's columns do not fit the page width")
     return widths
 
 
-def _draw_row(document, columns, widths, cells, bold=False, shade=False):
-    """Draw one table row whose `cells` are already wrapped, on the current
-    page. Numbers are right-aligned."""
-    size = _BODY_SIZE
-    leading = _line_height(size)
-    height = max(len(lines) for lines in cells) * leading + 2 * _CELL_PADDING
-    if shade:
-        document.shade(document.y, height)
-    char_width = size * _CHAR_ADVANCE
-    offset = 0
-    for column, width, lines in zip(columns, widths, cells):
-        left = _MARGIN + offset * char_width
-        for number, line in enumerate(lines):
-            baseline = document.y - _CELL_PADDING - (number + 1) * leading + (leading - size) / 2 + 1
-            x = left + (width - len(line)) * char_width if is_numeric(column) else left
-            document.text(x, baseline, line, size, bold)
-        offset += width + _CELL_GAP
-    document.y -= height
-    return height
+def _lines_table(lines):
+    """A borderless one-column block of ``(text, size)`` lines -- the report
+    heading, filters, notice and notes -- wrapped to the page width."""
+    rows, style = [], [("VALIGN", (0, 0), (-1, -1), "TOP")]
+    for text, size in lines:
+        drawn, right_to_left = _cell(text, _frame_width() - 2 * _PADDING, size)
+        row = len(rows)
+        rows.append([drawn])
+        style.append(("FONT", (0, row), (0, row), FONT_NAME, size, _leading(size)))
+        style.append(("ALIGN", (0, row), (0, row), "RIGHT" if right_to_left else "LEFT"))
+        style.append(("BOTTOMPADDING", (0, row), (0, row), 1))
+        style.append(("TOPPADDING", (0, row), (0, row), 1))
+    table = Table(rows, colWidths=[_frame_width()], hAlign="LEFT")
+    table.setStyle(TableStyle(style))
+    return table
 
 
-def _row_height(cells):
-    return max(len(lines) for lines in cells) * _line_height(_BODY_SIZE) + 2 * _CELL_PADDING
-
-
-def _paragraph_height(text, size):
-    return len(_wrap(text, _chars_per_line(size))) * _line_height(size)
-
-
-def _draw_section(document, section):
-    """One section: its heading and description, then its table -- header,
-    rows, "no rows" sentence, totals. A section starts on a new page unless
-    its heading, header and first row (or, when it has no rows, the whole
-    table) fit; a table that continues repeats its header."""
+def _section_table(section):
+    """One section as a table: its title, description and column header --
+    repeated at the top of every page the table continues on -- then its rows,
+    its "no rows" sentence when empty, and its totals row."""
     columns = section.columns
+    count = len(columns)
     body = [[display_text(row.get(column.key)) for column in columns] for row in section.rows]
     footer = (
         [display_text(section.footer.get(column.key)) for column in columns]
@@ -371,138 +394,134 @@ def _draw_section(document, section):
         else None
     )
     texts = [
-        [row[index] for row in body + ([footer] if footer else [])] for index in range(len(columns))
+        [row[index] for row in body + ([footer] if footer else [])] for index in range(count)
     ]
     widths = _column_widths(section, texts)
-
-    def cells_of(row_texts):
-        return [_wrap(text, width) for text, width in zip(row_texts, widths)]
-
-    header = cells_of(column.label for column in columns)
-    rows = [cells_of(row_texts) for row_texts in body]
-    footer_cells = cells_of(footer) if footer else None
-    empty_height = (
-        _paragraph_height(section.empty_text, _BODY_SIZE) + 2 * _CELL_PADDING
-        if not rows and section.empty_text
-        else 0
-    )
-    lead = 8 + _line_height(_HEADING_SIZE) + 2
-    if section.description:
-        lead += _paragraph_height(section.description, _BODY_SIZE)
-    if rows:
-        table = _row_height(header) + _row_height(rows[0])
-    elif footer_cells:
-        table = _row_height(header) + empty_height + _row_height(footer_cells)
-    else:
-        table = empty_height
-    if document.room() < lead + table:
-        document.new_page()
-    document.gap(8)
-    document.paragraph(section.title, _HEADING_SIZE, bold=True)
-    if section.description:
-        document.paragraph(section.description, _BODY_SIZE)
-    document.gap(2)
-
-    def draw_header():
-        _draw_row(document, columns, widths, header, bold=True, shade=True)
-
-    def continue_if_needed(height):
-        if document.room() < height:
-            document.new_page()
-            document.paragraph(f"{section.title} (continued)", _BODY_SIZE, bold=True)
-            draw_header()
-
-    if not rows and not footer_cells:
-        if section.empty_text:
-            document.paragraph(section.empty_text, _BODY_SIZE)
-        return
-    draw_header()
-    for cells in rows:
-        continue_if_needed(_row_height(cells))
-        _draw_row(document, columns, widths, cells)
-        document.rule(document.y, width=0.3, gray=0.8)
-    if not rows and section.empty_text:
-        document.gap(_CELL_PADDING)
-        document.paragraph(section.empty_text, _BODY_SIZE)
-        document.gap(_CELL_PADDING)
-    if footer_cells:
-        continue_if_needed(_row_height(footer_cells))
-        document.rule(document.y, width=0.9, gray=0.0)
-        _draw_row(document, columns, widths, footer_cells, bold=True)
-
-
-def _page_footers(document, report):
-    total = len(document.pages)
-    for number, ops in enumerate(document.pages, start=1):
-        text = f"{report.title} | Page {number} of {total} | {report.notice}"
-        document.ops = ops
-        for index, line in enumerate(_wrap(text, _chars_per_line(_FOOTER_SIZE))):
-            document.text(_MARGIN, _MARGIN - 12 - index * _line_height(_FOOTER_SIZE), line, _FOOTER_SIZE)
-
-
-def _assemble(pages, title):
-    """The PDF file: catalog, page tree, two standard fonts, the document
-    information, and one page plus one content stream per page."""
-    first_page = 6
-    page_numbers = [first_page + 2 * index for index in range(len(pages))]
-    objects = [
-        b"<< /Type /Catalog /Pages 2 0 R >>",
-        (
-            "<< /Type /Pages /Kids ["
-            + " ".join(f"{number} 0 R" for number in page_numbers)
-            + f"] /Count {len(pages)} >>"
-        ).encode("ascii"),
-        b"<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>",
-        b"<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold /Encoding /WinAnsiEncoding >>",
-        f"<< /Title {_hex_string(title)} /Producer {_hex_string('Adaptive English LMS')} >>".encode(
-            "ascii"
-        ),
+    rows, style = [], [
+        ("FONT", (0, 0), (-1, -1), FONT_NAME, _BODY_SIZE, _leading(_BODY_SIZE)),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), _PADDING),
+        ("RIGHTPADDING", (0, 0), (-1, -1), _PADDING),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
     ]
-    for number, ops in zip(page_numbers, pages):
-        objects.append(
-            (
-                f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {_PAGE_WIDTH} {_PAGE_HEIGHT}] "
-                f"/Resources << /Font << /{_REGULAR} 3 0 R /{_BOLD} 4 0 R >> >> "
-                f"/Contents {number + 1} 0 R >>"
-            ).encode("ascii")
-        )
-        stream = "\n".join(ops).encode("ascii")
-        objects.append(
-            f"<< /Length {len(stream)} >>\nstream\n".encode("ascii") + stream + b"\nendstream"
-        )
-    output = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
-    offsets = []
-    for number, body in enumerate(objects, start=1):
-        offsets.append(len(output))
-        output += f"{number} 0 obj\n".encode("ascii") + body + b"\nendobj\n"
-    xref = len(output)
-    output += f"xref\n0 {len(objects) + 1}\n".encode("ascii")
-    output += b"0000000000 65535 f \n"
-    for offset in offsets:
-        output += f"{offset:010d} 00000 n \n".encode("ascii")
-    output += (
-        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R /Info 5 0 R >>\n"
-        f"startxref\n{xref}\n%%EOF\n"
-    ).encode("ascii")
-    return bytes(output)
+
+    def spanning(text, size):
+        row = len(rows)
+        drawn, right_to_left = _cell(text, sum(widths) - 2 * _PADDING, size)
+        rows.append([drawn] + [""] * (count - 1))
+        style.append(("SPAN", (0, row), (-1, row)))
+        style.append(("FONT", (0, row), (-1, row), FONT_NAME, size, _leading(size)))
+        style.append(("ALIGN", (0, row), (-1, row), "RIGHT" if right_to_left else "LEFT"))
+        return row
+
+    def cells(values):
+        row = len(rows)
+        drawn = []
+        for index, (text, column) in enumerate(zip(values, columns)):
+            content, right_to_left = _cell(text, widths[index] - 2 * _PADDING)
+            drawn.append(content)
+            if is_numeric(column) or right_to_left:
+                style.append(("ALIGN", (index, row), (index, row), "RIGHT"))
+        rows.append(drawn)
+        return row
+
+    title_row = spanning(section.title, _HEADING_SIZE)
+    style.append(("TOPPADDING", (0, title_row), (-1, title_row), 8))
+    if section.description:
+        spanning(section.description, _BODY_SIZE)
+    if not body and not footer:
+        if section.empty_text:
+            spanning(section.empty_text, _BODY_SIZE)
+        table = Table(rows, colWidths=widths, hAlign="LEFT")
+        table.setStyle(TableStyle(style))
+        return table
+    header_row = cells([column.label for column in columns])
+    style.append(("BACKGROUND", (0, header_row), (-1, header_row), _HEADER_SHADE))
+    repeat = len(rows)
+    for values in body:
+        row = cells(values)
+        style.append(("LINEBELOW", (0, row), (-1, row), 0.3, _RULE))
+    if not body and section.empty_text:
+        spanning(section.empty_text, _BODY_SIZE)
+    if footer:
+        row = cells(footer)
+        style.append(("LINEABOVE", (0, row), (-1, row), 0.9, colors.black))
+        style.append(("BACKGROUND", (0, row), (-1, row), _FOOTER_SHADE))
+    table = Table(rows, colWidths=widths, repeatRows=repeat, hAlign="LEFT")
+    table.setStyle(TableStyle(style))
+    return table
+
+
+def _canvas_class(report):
+    """A canvas that, once every page is laid out, gives each page its footer
+    (title, "Page n of m", notice) and each later page a "(continued)" line."""
+
+    footer = f"{report.title} | Page {{number}} of {{total}} | {report.notice}"
+    continued = f"{report.title} (continued)"
+
+    class _ReportCanvas(Canvas):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._page_states = []
+
+        def showPage(self):
+            self._page_states.append(dict(self.__dict__))
+            self._startPage()
+
+        def save(self):
+            total = len(self._page_states)
+            for number, state in enumerate(self._page_states, start=1):
+                self.__dict__.update(state)
+                self.setFont(FONT_NAME, _FOOTER_SIZE)
+                text = footer.format(number=number, total=total)
+                for index, line in enumerate(_wrap(text, _frame_width(), _FOOTER_SIZE)):
+                    self.drawString(
+                        _MARGIN,
+                        _MARGIN - 8 - index * _leading(_FOOTER_SIZE),
+                        _visual(line, False),
+                    )
+                if number > 1:
+                    self.setFont(FONT_NAME, _HEADING_SIZE)
+                    self.drawString(
+                        _MARGIN, _PAGE_SIZE[1] - _MARGIN - _HEADING_SIZE, _visual(continued, False)
+                    )
+                super().showPage()
+            super().save()
+
+    return _ReportCanvas
 
 
 def render_pdf(report):
-    """The whole report as PDF bytes, or :class:`PdfTextUnsupported` when
-    some text cannot be shown in the standard font."""
-    document = _Document(report.title)
-    document.paragraph(report.title, _TITLE_SIZE, bold=True)
-    document.gap(4)
-    document.paragraph(f"Generated: {generated_text(report)}", _BODY_SIZE)
-    document.paragraph(f"Currency: {report.currency_code}", _BODY_SIZE)
-    document.paragraph("Applied filters:", _BODY_SIZE, bold=True)
-    for label, value in report.filters:
-        document.paragraph(f"{label}: {value}", _BODY_SIZE)
-    document.gap(2)
-    document.paragraph(report.notice, _BODY_SIZE, bold=True)
-    for note in report.notes:
-        document.paragraph(note, _BODY_SIZE)
+    """The whole report as PDF bytes, built in memory with the bundled font
+    embedded. Raises :class:`PdfGlyphUnavailable` only for a character the
+    font has no glyph for."""
+    _loaded_font()
+    heading = [(report.title, _TITLE_SIZE), (f"Generated: {generated_text(report)}", _BODY_SIZE),
+               (f"Currency: {report.currency_code}", _BODY_SIZE), ("Applied filters:", _BODY_SIZE)]
+    heading += [(f"{label}: {value}", _BODY_SIZE) for label, value in report.filters]
+    heading += [(report.notice, _BODY_SIZE)] + [(note, _BODY_SIZE) for note in report.notes]
+    story = [_lines_table(heading)]
     for section in report.sections:
-        _draw_section(document, section)
-    _page_footers(document, report)
-    return _assemble(document.pages, report.title)
+        story += [Spacer(1, 6), _section_table(section)]
+    buffer = io.BytesIO()
+    document = SimpleDocTemplate(
+        buffer,
+        pagesize=_PAGE_SIZE,
+        leftMargin=_MARGIN,
+        rightMargin=_MARGIN,
+        topMargin=_TOP_MARGIN,
+        bottomMargin=_BOTTOM_MARGIN,
+        initialFontName=FONT_NAME,
+        initialFontSize=_BODY_SIZE,
+        initialLeading=_leading(_BODY_SIZE),
+        title=report.title,
+        subject=report.notice,
+        author=_PRODUCER,
+        creator=_PRODUCER,
+        producer=_PRODUCER,
+        invariant=1,
+        pageCompression=1,
+    )
+    document.build(story, canvasmaker=_canvas_class(report))
+    return buffer.getvalue()

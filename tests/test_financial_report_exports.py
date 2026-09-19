@@ -9,9 +9,10 @@ without any route or database.
 
 import ast
 import csv
+import hashlib
 import io
 import pathlib
-import re
+import unicodedata
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -135,54 +136,141 @@ def test_the_csv_states_the_whole_report_with_a_bom():
 # PDF
 # ===========================================================================
 
+#: The bundled font: DejaVu Sans 2.37, as published by the DejaVu project.
+_FONT_SHA256 = "7da195a74c55bef988d0d48f9508bd5d849425c1770dba5d7bfc6ce9ed848954"
+
+_ALI = "علي"
+#: "علي" shaped and in visual order: YEH final, LAM medial, AIN initial.
+_ALI_DRAWN = (
+    "\N{ARABIC LETTER YEH FINAL FORM}"
+    "\N{ARABIC LETTER LAM MEDIAL FORM}"
+    "\N{ARABIC LETTER AIN INITIAL FORM}"
+)
+#: "محمد" likewise: DAL final, MEEM medial, HAH medial, MEEM initial.
+_MUHAMMAD_DRAWN = (
+    "\N{ARABIC LETTER DAL FINAL FORM}"
+    "\N{ARABIC LETTER MEEM MEDIAL FORM}"
+    "\N{ARABIC LETTER HAH MEDIAL FORM}"
+    "\N{ARABIC LETTER MEEM INITIAL FORM}"
+)
+
+
+def _drawn(text):
+    return exports._visual(text, exports._base_right_to_left(text))
+
+
+def test_the_bundled_font_is_dejavu_sans_outside_the_public_static_folder():
+    root = pathlib.Path(__file__).resolve().parents[1]
+    font = exports.FONT_PATH
+    assert font == root / "app" / "assets" / "fonts" / "DejaVuSans.ttf"
+    assert (root / "app" / "static") not in font.parents
+    assert hashlib.sha256(font.read_bytes()).hexdigest() == _FONT_SHA256
+    notice = (font.parent / "DejaVuSans-LICENSE.txt").read_text(encoding="utf-8")
+    assert "Bitstream Vera Fonts Copyright" in notice and "Arev Fonts Copyright" in notice
+    assert "DejaVu changes are in public domain" in notice
+
+
+def test_arabic_is_shaped_into_joined_forms_in_visual_order():
+    assert _drawn(_ALI) == _ALI_DRAWN
+    assert _drawn("لا") == "\N{ARABIC LIGATURE LAM WITH ALEF ISOLATED FORM}"
+    assert _drawn("محمد علي") == f"{_ALI_DRAWN} {_MUHAMMAD_DRAWN}"
+    for name in ("محمد علي", "عبدالله الطرابلسي", "لا إله", "مجموعة الصباح"):
+        drawn = _drawn(name)
+        # Every letter is a joined presentation form, and undoing the visual
+        # order and the shaping gives the stored name back.
+        assert all(character == " " or unicodedata.name(character).endswith("FORM")
+                   for character in drawn), drawn
+        assert rx.logical(drawn) == name
+    # The font has no "Allah" ligature glyph, so the name is drawn letter by letter.
+    assert "\N{ARABIC LIGATURE ALLAH ISOLATED FORM}" not in _drawn("عبدالله")
+
+
+def test_mixed_direction_cells_keep_each_run_readable():
+    assert _drawn("Ali علي Hassan") == f"Ali {_ALI_DRAWN} Hassan"
+    assert _drawn("علي Ali") == f"Ali {_ALI_DRAWN}"
+    assert _drawn("مجموعة 2 — Level A").startswith("Level A — 2 ")
+    assert exports._base_right_to_left("علي Ali") is True
+    assert exports._base_right_to_left("Ali علي") is False
+    assert exports._base_right_to_left("2026 علي") is True
+
+
+def test_harakat_are_kept_and_drawn_before_their_letter():
+    drawn = _drawn("ش\N{ARABIC FATHA}د\N{ARABIC SHADDA}ة")
+    assert "\N{ARABIC FATHA}" in drawn and "\N{ARABIC SHADDA}" in drawn
+    # DejaVu draws a mark over the glyph that follows it: shadda, then its
+    # dal; fatha, then its sheen.
+    dal = drawn.index("\N{ARABIC LETTER DAL FINAL FORM}")
+    sheen = drawn.index("\N{ARABIC LETTER SHEEN INITIAL FORM}")
+    assert drawn.index("\N{ARABIC SHADDA}") == dal - 1
+    assert drawn.index("\N{ARABIC FATHA}") == sheen - 1
+
+
+def test_accented_latin_and_punctuation_are_drawn_unchanged():
+    for text in ("Zoë Müller-Łaski", "José Núñez", "Ærø — 50% (a/b) & c", "Ñandú: «x» €"):
+        assert _drawn(text) == text
+
+
+def test_only_characters_without_a_glyph_are_refused():
+    for bad in ("中文", "かな", "नमस्ते", "bell\x07"):
+        with pytest.raises(exports.PdfGlyphUnavailable):
+            _drawn(bad)
+    assert _drawn("a" + chr(0x200F) + "b") == "ab"  # an invisible bidi mark, consumed
+    with pytest.raises(exports.PdfGlyphUnavailable):
+        exports.render_pdf(_report([_row("Latin"), _row("中文")]))
+    body = exports.render_pdf(_report([_row("Latin"), _row(_ALI)],
+                                      filters=(("Group", "مجموعة الصباح"),)))
+    assert body.startswith(b"%PDF-1.4")
+    texts = rx.pdf_texts(body)
+    assert _ALI_DRAWN in texts
+    assert any(rx.drawn_as(text, "Group: مجموعة الصباح") for text in texts)
+
 
 def test_wrapping_keeps_every_character_and_respects_the_width():
-    text = "A long   name with averyveryveryverylongword and more words"
-    lines = exports._wrap(text, 10)
-    assert all(len(line) <= 10 for line in lines)
-    assert "".join(lines).replace(" ", "") == text.replace(" ", "")
-    assert exports._wrap("", 10) == [""]
-    assert exports._wrap("x" * 25, 10) == ["x" * 10, "x" * 10, "x" * 5]
+    size = exports._BODY_SIZE
+    for text in ("A long   name with averyveryveryverylongword and more words",
+                 "محمد عبدالله الطرابلسي بن علي الفيتوري"):
+        rtl = exports._base_right_to_left(text)
+        lines = exports._wrap(text, 60, size, rtl)
+        assert len(lines) > 1
+        assert all(exports._width(line, size, rtl) <= 60 for line in lines)
+        assert "".join(lines).replace(" ", "") == text.replace(" ", "")
+    assert exports._wrap("", 60, size) == [""]
 
 
-def test_pdf_text_is_only_ever_a_hex_string():
-    for text in ("(a) \\ <b>) Tj ET", "€ café — naïve", "%comment /Name << >>"):
-        operand = exports._hex_string(text)
-        assert re.fullmatch(r"<[0-9A-F]*>", operand), operand
-        assert bytes.fromhex(operand[1:-1]).decode("cp1252") == text
-    assert exports._hex_string("() ") == "<282920>"
-    right_to_left_mark = chr(0x200F)
-    for bad in ("محمد", "中文", "a" + right_to_left_mark + "b", "bell\x07", "\x00", "del\x7f",
-                "tab\t"):
-        with pytest.raises(exports.PdfTextUnsupported):
-            exports._hex_string(bad)
+def test_hostile_text_is_drawn_literally_and_never_interpreted():
+    hostile = [
+        '<a href="javascript:alert(1)">x</a>',
+        "<b>bold</b> <font color=red>red</font> &amp; &lt;",
+        "(evil) Tj /JavaScript << /S /Launch >> \\ %comment",
+        "<img src=x onerror=1> <para>p</para> <br/>",
+    ]
+    body = exports.render_pdf(_report([_row(text) for text in hostile]))
+    texts = rx.pdf_texts(body)
+    for text in hostile:
+        assert text in texts, text
+    assert rx.pdf_active_names(body) == set()
 
 
 def test_a_pdf_is_a_valid_multipage_document_with_its_totals():
     rows = [_row(f"Student {n}", f"{n}.0000", n) for n in range(1, 121)]
     footer = {"name": "Total (120)", "amount": Decimal("7260.0000")}
     body = exports.render_pdf(_report(rows, footer=footer))
-    assert rx.pdf_objects_valid(body) == 5 + 2 * rx.pdf_page_count(body)
+    assert rx.pdf_objects_valid(body) > 0
+    assert rx.pdf_embeds_dejavu(body)
+    assert b"Helvetica" not in body and b"/Courier" not in body
     pages = rx.pdf_page_count(body)
     assert pages >= 3
+    per_page = rx.pdf_page_texts(body)
+    for number, texts in enumerate(per_page, start=1):
+        assert texts.count("When (Africa/Tripoli)") == 1, number  # the header, on every page
+        assert texts.count("Rows") == 1, number  # the section title repeats with it
+        assert f"Test report | Page {number} of {pages} | {reports.NOTICE}" in texts
+        assert ("Test report (continued)" in texts) == (number > 1)
+    assert {"Total (120)", "7,260.000"} <= set(per_page[-1])
     texts = rx.pdf_texts(body)
-    assert texts.count("When (Africa/Tripoli)") == pages
-    assert texts.count("Rows (continued)") == pages - 1
-    assert "Total (120)" in texts and "7,260.000" in texts
     assert [text for text in texts if text.startswith("Student ")] == [
         f"Student {n}" for n in range(1, 121)]
-    assert b"/Courier" in body and b"/FontFile" not in body
-    for name in (b"/JavaScript", b"/JS", b"/OpenAction", b"/AA", b"/URI", b"/Launch",
-                 b"/EmbeddedFile", b"/AcroForm", b"/Annots"):
-        assert name not in body
-
-
-def test_a_pdf_with_unsupported_text_is_refused_whole():
-    with pytest.raises(exports.PdfTextUnsupported):
-        exports.render_pdf(_report([_row("Latin"), _row("علي")]))
-    with pytest.raises(exports.PdfTextUnsupported):
-        exports.render_pdf(_report([_row()], filters=(("Group", "مجموعة"),)))
-    assert exports.render_pdf(_report([_row("Zoë Müller-Laski")])).startswith(b"%PDF-1.4")
+    assert exports.render_pdf(_report(rows, footer=footer)) == body  # deterministic
 
 
 def test_an_empty_section_states_that_it_has_no_rows():
@@ -207,11 +295,16 @@ def _imports_and_calls(module):
     return imported, called, attributes
 
 
-def test_the_export_module_touches_no_file_network_process_or_log():
+def test_the_export_module_touches_no_network_process_log_or_written_file():
     imported, called, _ = _imports_and_calls(exports)
-    assert imported == {"codecs", "csv", "io", "re", "datetime", "decimal",
-                        "app.services.financial_reports", "app.services.money"}
-    assert not called & {"open", "print", "system", "Popen", "urlopen", "write_bytes"}
+    assert imported == {
+        "codecs", "csv", "io", "re", "threading", "unicodedata", "datetime", "decimal",
+        "pathlib", "arabic_reshaper", "arabic_reshaper.ligatures",
+        "arabic_reshaper.reshaper_config", "bidi", "reportlab.lib", "reportlab.lib.pagesizes",
+        "reportlab.pdfbase", "reportlab.pdfbase.ttfonts", "reportlab.pdfgen.canvas",
+        "reportlab.platypus", "app.services.financial_reports", "app.services.money"}
+    assert not called & {"open", "print", "system", "Popen", "urlopen", "write_bytes",
+                         "write_text", "Paragraph", "XPreformatted", "linkURL", "linkAbsolute"}
     imported, called, attributes = _imports_and_calls(reports)
     assert not {name for name in imported if name.split(".")[0] in (
         "os", "logging", "subprocess", "socket", "urllib", "requests", "pathlib")}
