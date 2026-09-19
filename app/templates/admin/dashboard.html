@@ -12,6 +12,13 @@
   Times are shown in the center timezone (<strong>{{ tz_name }}</strong>).
 </p>
 
+{#- Phase 5 / M09. A shortcut only: it links to the Billing Desk and shows no
+    financial figure. -#}
+<a class="card" href="{{ url_for('admin.billing_desk') }}" style="display:block; margin-bottom: var(--space-6); text-decoration:none; color:inherit">
+  <div class="card__title">Billing Desk</div>
+  <div class="card__body">Find a student's fee assignment, invoice and payment actions in one place.</div>
+</a>
+
 <h2>People</h2>
 <div class="stat-grid">
   <div class="stat-card">

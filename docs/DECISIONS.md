@@ -9214,3 +9214,134 @@ text reads in order and is right-aligned, mixed values are readable, and
 headers and totals repeat across pages. **Not verified:** rendering on the
 Linux deployment host (only its wheels were resolved), mark positioning
 beyond the common harakat, other PDF viewers, and any live-browser download.
+
+## Billing Desk and dashboard shortcuts (Phase 5, Part M09)
+
+M09 is a usability Part. The Billing Desk shortens the everyday path to a
+Student's fee assignment, invoice and payment actions:
+
+    Sidebar / Dashboard -> Billing Desk -> choose a Group -> choose a Student
+    -> the one next step for that Student
+
+It is **a guide to the existing pages, never a writer**. No financial rule,
+payment allocation, record, model, migration or lifecycle changed, and no
+route, service or template of M02 to M08R changed apart from the navigation
+and the dashboard card below.
+
+### A. One read-only route
+
+    GET  /admin/billing-desk                           choose a Group
+    GET  /admin/billing-desk?group=<gp>[&q=][&page=]   its enrolled Students
+    GET  /admin/billing-desk?group=<gp>&student=<sp>   one Student's billing
+
+`app/blueprints/admin/billing_desk.py` (the route) and
+`app/services/billing_desk_queries.py` (Flask-independent reads and view
+building) hold the desk; `app/templates/admin/billing_desk/index.html` renders
+it. The desk writes, flushes, locks and commits nothing, keeps no export or
+audit record, and has no form that posts: its three forms are GET. POST, PUT,
+PATCH and DELETE are 405. Only an active Administrator reaches it
+(`roles_required`; a suspended account's session no longer loads); every
+response carries M02's `Cache-Control: private, no-store` and `Vary: Cookie`.
+
+### B. Selection
+
+- `group` is a Group's public id; `student` is a Student-role account's public
+  id **within** that Group, which names at most one Enrollment
+  (`uq_enrollments_student_group`). Both must be exactly a lowercase UUID; a
+  numeric id is never looked up. An unknown, malformed, numeric, upper-cased,
+  padded, repeated, foreign or mismatched identifier -- a Student of another
+  Group, a Teacher or Administrator, an Enrollment's own public id, a Student
+  without its Group -- is a plain 404.
+- Every Group is offered (archived ones are labelled), because an issued
+  charge stays collectable whatever happens to its Group (M05).
+- A Group's list shows the Students with an **active** Enrollment, by name,
+  20 per page, with the exact range ("Students 21-26 of 26") from one
+  `COUNT`; a page past the end falls back to page 1. The search matches the
+  start of the name, of any word in it, or of the email -- the Administrator
+  student list's rule -- with `%` and `_` matched literally. Each row states
+  whether a fee plan is assigned and the open invoice's status, from one keyed
+  query each; no amount is read for the list.
+- The selected Student is re-read against the Group and its Enrollment before
+  any link is built. A withdrawn Enrollment is not listed; opened directly it
+  shows its history only.
+
+### C. The next step for each state
+
+The stage is decided from current rows with the existing rules, and only its
+next step is linked -- to the existing route, with server-derived public ids:
+
+| Stage | Links |
+| --- | --- |
+| No fee plan assigned | `Assign fee plan` (the plan-choice page) when M03's `context_block_reason` allows it; otherwise its own sentence |
+| Plan assigned, no invoice | `Create draft invoice` (the creation page) when M04's `context_draft_block_reason` allows it; otherwise its own sentence |
+| Draft invoice | `Open draft invoice` only -- issuing stays on the invoice page |
+| Issued, outstanding, nothing blocking | `Record cash payment`, `Record bank transfer`, `Open payments and receipts`, `Open invoice` |
+| Issued, blocked | `Open payments and receipts`, `Open payment intents` when the invoice has intents or a reconciliation, `Open invoice`, with the reason in plain language |
+| Issued, fully paid | `Open payments and receipts`, `Open invoice` |
+| Withdrawn Enrollment, cancelled assignment, cancelled invoice, inconsistent records | history links only |
+
+Every page also links the fee assignment history and, once an assignment
+exists, its invoice history. Each linked route still re-proves every rule after
+its own locks.
+
+**Recorded readings.**
+
+- *Blocked* uses the payments page's own `_payable_block` and `_record_block`
+  (an invalid line set or balance, an active online intent, the collection
+  limit, a balance below the smallest payment), imported from
+  `app/blueprints/admin/payments.py` exactly as that module imports its
+  neighbours' helpers, so the desk and the page cannot disagree. The desk adds
+  two cautions of its own: while a bank transfer is **pending**, or a provider
+  event awaits **reconciliation**, it offers no collection shortcut and says
+  why. The payments page itself is unchanged -- M05 still lets an
+  Administrator record a payment beside a pending transfer -- but deciding the
+  pending item comes first, so the desk does not suggest otherwise.
+- An invalid invoice is never shown as paid: validity is decided before the
+  zero balance.
+- After a **cancelled assignment** or a **cancelled invoice** the desk offers
+  history only, as the Part requires; charging again is decided on those
+  history pages, which still offer it under M03 and M04, with the cancelled
+  record in view.
+- Two `assigned` fee plans, or two open invoices -- which no application write
+  creates (M03 section B, M04 section B) -- are shown as records needing review,
+  with no action.
+
+### D. Amounts
+
+For an issued invoice the desk shows its exact total, confirmed paid and
+outstanding amounts from M05's `payment_balance` over the pre-lock rows the
+payments page reads, or says the balance is unavailable. It also shows the
+active lines' **registration** and **course** subtotals, labelled as an
+explanation only, with the sentence "Payments reduce the invoice balance and
+are not allocated to a particular fee item." There is no "Pay registration" or
+"Pay course" control, and invoices are never split. Amounts are `Decimal`,
+added by M02's `sum_amounts`; nothing is summed in SQL. No bank-transfer
+reference, rejection reason, provider or event identifier, webhook data,
+audit snapshot or internal id is read for the page.
+
+### E. Navigation and dashboard
+
+`Billing Desk` is the first item of the **Finance & Research** sidebar section;
+Fee Plans, Payments, Financial reports and the disabled Research follow
+unchanged. The Administrator dashboard gains a `Billing Desk` card that links
+only to the desk and shows no figure; the dashboard's queries are unchanged.
+
+### F. Verification actually performed, and what it does not prove
+
+- New suite `tests/test_admin_billing_desk.py` (28 tests): the one GET-only
+  rule and 405s, every other role refused, anonymous and suspended sessions
+  sent to log in, the sidebar order and the dashboard card, public-id-only
+  selection, every refused identifier, pagination and literal search that drop
+  no Student, every stage's exact links (and that they resolve), each block
+  and paid state offering no collection shortcut, the informational subtotals
+  and allocation sentence, no bank reference or provider identifier on the
+  page, GET-only forms, a fixed query count for the list, and that no desk
+  request changes any invoice, line, payment, receipt, sequence, intent,
+  provider event, audit event or assignment. No earlier test changed.
+- The complete strict-warning suite passed 6,697 tests with the four
+  inherited IANA-time-zone skips, run as ten parallel processes covering all
+  146 test files.
+- The desk (Group list, an outstanding invoice, a pending-transfer block) and
+  the dashboard were saved from the test client with local stylesheets and
+  screenshotted in headless Chrome. **No live-browser session, accessibility,
+  responsive, keyboard or MySQL query-plan verification was performed.**
