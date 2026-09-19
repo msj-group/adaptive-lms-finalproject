@@ -299,8 +299,9 @@ def assignment_nesting_broken(locks, assignment_id, assignment_public_id):
 
 
 def invoice_nesting_broken(locks, invoice_id, invoice_public_id):
-    """``True`` unless the locked invoice is the URL's and still belongs to
-    the locked assignment."""
+    """``True`` unless the locked invoice is the URL's, still belongs to the
+    locked assignment and is not deleted (Phase 5 / M10): a deleted invoice is
+    no longer anything a write may act on."""
     invoice, assignment = locks.invoice, locks.assignment
     return (
         invoice is None
@@ -308,6 +309,7 @@ def invoice_nesting_broken(locks, invoice_id, invoice_public_id):
         or invoice.id != invoice_id
         or invoice.public_id != invoice_public_id
         or invoice.student_fee_assignment_id != assignment.id
+        or invoice.deleted_at is not None
     )
 
 
@@ -338,8 +340,13 @@ def locked_assignment_invoices(locks):
 
 
 def open_invoices(rows):
-    """The ``draft`` or ``issued`` rows among `rows`."""
-    return [row for row in rows if row is not None and row.status in _OPEN]
+    """The live ``draft`` or ``issued`` rows among `rows`. A deleted invoice
+    (Phase 5 / M10) is no assignment's open invoice."""
+    return [
+        row
+        for row in rows
+        if row is not None and row.status in _OPEN and row.deleted_at is None
+    ]
 
 
 def latest_change(rows):

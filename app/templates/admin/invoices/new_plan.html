@@ -1,0 +1,72 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}New invoice — choose a fee plan{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M10. New invoice, step 3 of 4: the fee plan whose active items
+      the draft copies. The enrollment's current plan, when it can still be
+      invoiced, is offered first and reused. -#}
+  <div class="ds-row" style="margin-bottom: var(--space-3)">
+    <a class="btn btn--secondary" href="{{ back_url }}">&larr; Enrollments</a>
+  </div>
+  <h1 style="margin: 0 0 var(--space-2)">New invoice for {{ student.full_name }}</h1>
+  <p class="ds-section__desc">
+    Step 3 of 4: choose the fee plan for {{ context.group_name }} ({{ context.course_title }}, {{ context.term_name }}).
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  {% if reused %}
+  <div class="card" style="margin-bottom: var(--space-4)">
+    <div class="card__title">Current fee plan: {{ reused.name }}</div>
+    <div class="card__body">This enrollment's fee assignment is reused; nothing about the assignment changes.</div>
+    <div class="ds-row" style="margin-top: var(--space-3)"><a class="btn btn--primary" href="{{ reused.select_url }}" data-link="reuse">Use the current plan</a></div>
+  </div>
+  {% endif %}
+
+  {% if replaces_assignment %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    Choosing a different plan cancels this enrollment's current fee assignment (kept as history) and
+    assigns the new plan. The confirmation page says exactly what will happen.
+  </div>
+  {% endif %}
+
+  <h2>Active fee plans</h2>
+  {% if plans %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th scope="col" style="padding: var(--space-3)">Plan</th>
+        <th scope="col" style="padding: var(--space-3)">Items</th>
+        <th scope="col" style="padding: var(--space-3); text-align:right">Total</th>
+        <th scope="col" style="padding: var(--space-3)"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for plan in plans %}
+      <tr style="border-bottom:1px solid var(--color-border)">
+        <td style="padding: var(--space-3)">{{ plan.name }}</td>
+        <td style="padding: var(--space-3)">{{ plan.item_count }}</td>
+        <td style="padding: var(--space-3); text-align:right; font-variant-numeric: tabular-nums; white-space: nowrap">{{ plan.total_text }} {{ plan.currency_code }}</td>
+        <td style="padding: var(--space-3)">
+          {% if plan.select_url %}<a class="btn btn--secondary" href="{{ plan.select_url }}">Choose</a>{% else %}<span class="ds-section__desc" style="margin:0">Not a valid item set</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="empty-state__title">No active fee plan</div><div>Activate a fee plan first.</div></div>
+  {% endif %}
+
+  {% if prev_url or next_url %}
+  <nav class="ds-row" style="margin-top: var(--space-4); gap: var(--space-3)" aria-label="Plan pages">
+    {% if prev_url %}<a class="btn btn--secondary" href="{{ prev_url }}">Previous</a>{% endif %}
+    <span class="ds-section__desc" style="margin:0">Page {{ page }}</span>
+    {% if next_url %}<a class="btn btn--secondary" href="{{ next_url }}">Next</a>{% endif %}
+  </nav>
+  {% endif %}
+</div>
+{% endblock %}

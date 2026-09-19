@@ -1,0 +1,6 @@
+{#- Phase 5 / M10. Who deleted a document, when and why. -#}
+<div class="alert alert--danger" style="margin-bottom: var(--space-4)">
+  <strong>Deleted</strong> {{ record.deleted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}) by {{ record.deleted_by_name }}.
+  <br>Reason: {{ record.deletion_reason }}
+  <br>This record is read-only and no longer counts in any balance or report. There is no restore.
+</div>

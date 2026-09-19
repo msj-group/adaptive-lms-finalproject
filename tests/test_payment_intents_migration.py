@@ -37,7 +37,10 @@ _REVISION = "d4f7a2c9e1b6"
 _DOWN_REVISION = "c5e8f2a7d914"
 #: Phase 5 / M07 follows this revision, so the single head is now its own; it
 #: replaces three of this revision's CHECKs and records their M06 text.
-_HEAD = "e9c4b2d7a1f3"
+#: Phase 5 / M10 follows M07, so the single head is now M10's.
+_HEAD = "b3d8f1a6c472"
+#: Phase 5 / M07, the revision that follows this one.
+_M07 = "e9c4b2d7a1f3"
 _TABLE = "payment_intents"
 _FINANCIAL_TABLES = ("invoice_number_sequences", "invoices", "invoice_items",
                      "payment_audit_events", "payment_transactions", "receipt_number_sequences",
@@ -106,14 +109,14 @@ def test_revision_identifiers_and_one_linear_head():
     claimed = [p for p in parents.values() if p is not None]
     assert len(claimed) == len(set(claimed))
     assert [r for r, p in parents.items() if p == _DOWN_REVISION] == [_REVISION]
-    assert [r for r, p in parents.items() if p == _REVISION] == [_HEAD]
+    assert [r for r, p in parents.items() if p == _REVISION] == [_M07]
     assert len([r for r, p in parents.items() if p is None]) == 1
 
 
 def _m06_checks():
     """The model's CHECKs as this revision declared them: Phase 5 / M07
     replaced three, and records their M06 text as its "before"."""
-    m07, _ = m05._load(_HEAD, "p5m07")
+    m07, _ = m05._load(_M07, "p5m07")
     replaced = {name: old for name, old, _new in m07._INTENT_CHECKS}
     return {name: replaced.get(name, expression) for name, expression in _model_checks().items()}
 

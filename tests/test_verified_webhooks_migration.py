@@ -87,6 +87,46 @@ def _table_checks(table):
             if isinstance(c, sa.CheckConstraint)}
 
 
+#: Phase 5 / M10 (``b3d8f1a6c472``) follows this revision: it adds the
+#: visible-deletion tombstone -- three columns, a CHECK, two indexes and a
+#: foreign key -- to ``payment_transactions`` and ``receipts`` and widens four
+#: audit-event CHECKs. The current models carry that; this suite compares the
+#: M07 schema, so M10's additions are taken back out and its replacements
+#: mapped back to the M07 text M10 records.
+#: ``tests/test_financial_deletion_migration.py`` compares them with M10.
+_M10 = "b3d8f1a6c472"
+_TOMBSTONE = {"deleted_at", "deleted_by_id", "deletion_reason"}
+
+
+def _m10_old_checks():
+    module, _ = m05._load(_M10, "p5m10for07")
+    return {name: _norm(old) for name, old, _new in module._AUDIT_CHECKS}
+
+
+def _at_m07(checks):
+    """`checks` -- ``{name: text}`` of the current schema -- as M07 left them."""
+    old = _m10_old_checks()
+    return {name: old.get(name, text) for name, text in checks.items()
+            if not name.endswith("_deletion_state")}
+
+
+def _m07_checks(model):
+    return _at_m07(_model_checks(model))
+
+
+def _m07_shape(shape):
+    """A current ``m05._shape`` without M10's additions."""
+    return {
+        "columns": shape["columns"] - _TOMBSTONE,
+        "nullable": shape["nullable"] - _TOMBSTONE,
+        "checks": {name for name in shape["checks"] if not name.endswith("_deletion_state")},
+        "indexes": {name: columns for name, columns in shape["indexes"].items()
+                    if "_deleted_" not in name},
+        "fks": shape["fks"] - {("deleted_by_id", "users")},
+        "uniques": shape["uniques"],
+    }
+
+
 # ===========================================================================
 # Revision identity and what the revision does
 # ===========================================================================
@@ -102,7 +142,9 @@ def test_revision_identifiers_and_one_linear_head():
         revision = re.search(r"^revision = '([^']+)'", source, re.M).group(1)
         parents[revision] = re.search(r"^down_revision = (?:'([^']+)'|None)", source, re.M).group(1)
     heads = set(parents) - {p for p in parents.values() if p is not None}
-    assert heads == {_REVISION}
+    # Phase 5 / M10 follows this revision, so the single head is now M10's.
+    assert heads == {"b3d8f1a6c472"}
+    assert [r for r, p in parents.items() if p == _REVISION] == ["b3d8f1a6c472"]
     assert [r for r, p in parents.items() if p == _DOWN_REVISION] == [_REVISION]
     assert len([r for r, p in parents.items() if p is None]) == 1
 
@@ -135,20 +177,20 @@ def test_every_replaced_check_starts_where_its_revision_left_it_and_ends_at_the_
     m05_replaced = {name: after for name, _before, after in m05_module._REPLACED_CHECKS}
     for name, old, new in module._INTENT_CHECKS:
         assert old in m06_flat, name
-        assert _model_checks(PaymentIntent)[name] == new, name
+        assert _m07_checks(PaymentIntent)[name] == new, name
     for name, old, new in module._PAYMENT_CHECKS:
         assert old in m05_flat, name
-        assert _model_checks(PaymentTransaction)[name] == new, name
+        assert _m07_checks(PaymentTransaction)[name] == new, name
     for name, old, new in module._AUDIT_CHECKS:
         # M05 replaced three of these M04 CHECKs and created the fourth.
         if name in m05_replaced:
             assert m05_replaced[name] == old, name
         else:
             assert old in m05_flat, name
-        assert _model_checks(PaymentAuditEvent)[name] == new, name
-    assert _model_checks(PaymentTransaction)["ck_payment_transactions_online_origin"] == (
+        assert _m07_checks(PaymentAuditEvent)[name] == new, name
+    assert _m07_checks(PaymentTransaction)["ck_payment_transactions_online_origin"] == (
         module._ONLINE_ORIGIN_SQL)
-    assert _model_checks(PaymentAuditEvent)["ck_payment_audit_events_actor_origin"] == (
+    assert _m07_checks(PaymentAuditEvent)["ck_payment_audit_events_actor_origin"] == (
         module._ACTOR_ORIGIN_SQL)
     # Each old expression only gains branches or values.
     for name, old, new in module._INTENT_CHECKS + module._PAYMENT_CHECKS + module._AUDIT_CHECKS:
@@ -157,14 +199,14 @@ def test_every_replaced_check_starts_where_its_revision_left_it_and_ends_at_the_
 
 def test_every_rebuild_definition_carries_exactly_the_models_checks():
     module, _ = _load_migration()
-    assert _table_checks(module._intents_table(True)) == _model_checks(PaymentIntent)
-    assert _table_checks(module._receipts_table()) == _model_checks(Receipt)
+    assert _table_checks(module._intents_table(True)) == _m07_checks(PaymentIntent)
+    assert _table_checks(module._receipts_table()) == _m07_checks(Receipt)
     payments = dict(_table_checks(module._payments_table(True)),
                     ck_payment_transactions_online_origin=module._ONLINE_ORIGIN_SQL)
-    assert payments == _model_checks(PaymentTransaction)
+    assert payments == _m07_checks(PaymentTransaction)
     events = dict(_table_checks(module._audit_events_table(True)),
                   ck_payment_audit_events_actor_origin=module._ACTOR_ORIGIN_SQL)
-    assert events == _model_checks(PaymentAuditEvent)
+    assert events == _m07_checks(PaymentAuditEvent)
     # The "before" definitions are exactly the previous revisions' CHECKs.
     before = {name: old for group in (module._INTENT_CHECKS, module._PAYMENT_CHECKS,
                                       module._AUDIT_CHECKS) for name, old, _new in group}
@@ -175,7 +217,7 @@ def test_every_rebuild_definition_carries_exactly_the_models_checks():
         (module._audit_events_table(False), PaymentAuditEvent,
          {"ck_payment_audit_events_actor_origin"}),
     ):
-        expected = {name: before.get(name, text) for name, text in _model_checks(model).items()
+        expected = {name: before.get(name, text) for name, text in _m07_checks(model).items()
                     if name not in added}
         assert _table_checks(table) == expected, table.name
     # The rebuild definitions match the models' columns and nullability,
@@ -188,7 +230,8 @@ def test_every_rebuild_definition_carries_exactly_the_models_checks():
         (module._audit_events_table(True), PaymentAuditEvent, {"actor_id"}),
     ):
         declared = {c.name: c.nullable for c in table.columns}
-        modelled = {c.name: c.nullable for c in model.__table__.columns}
+        modelled = {c.name: c.nullable for c in model.__table__.columns
+                    if c.name not in _TOMBSTONE}
         for column in changed:
             modelled.pop(column)
             declared.pop(column, None)
@@ -362,9 +405,10 @@ def _history(conn, columns):
 
 
 def _model_shapes(app):
+    """The current models' schema as M07 left it (see :func:`_m07_shape`)."""
     with app.app_context(), db.engine.connect() as model:
-        return ({table: m05._shape(model, table) for table in _MODELS},
-                {table: _checks(model, table) for table in _MODELS})
+        return ({table: _m07_shape(m05._shape(model, table)) for table in _MODELS},
+                {table: _at_m07(_checks(model, table)) for table in _MODELS})
 
 
 def _refuses_downgrade(conn, module):

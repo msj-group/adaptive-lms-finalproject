@@ -46,7 +46,8 @@ _REVISION = "a8d3f5c29e61"
 _DOWN_REVISION = "f9b2d6e4a318"
 #: Phase 5 / M05, M06 and then M07 follow this revision; the single head is
 #: M07's.
-_HEAD = "e9c4b2d7a1f3"
+#: Phase 5 / M10 follows M07, so the single head is now M10's.
+_HEAD = "b3d8f1a6c472"
 #: Phase 5 / M05, the revision that follows this one.
 _M05 = "c5e8f2a7d914"
 
@@ -70,6 +71,20 @@ _M05_ADDED = {
 #: CHECKs M05 had already replaced). ``tests/test_verified_webhooks_migration.py``
 #: compares those with the M07 revision.
 _M07_ADDED = {"checks": {"ck_payment_audit_events_actor_origin"}, "nullable": {"actor_id"}}
+
+#: What Phase 5 / M10 (``b3d8f1a6c472``) added to ``invoices``: the three
+#: nullable tombstone columns, one CHECK, two indexes and one foreign key. (It
+#: also widened audit-event CHECKs M05 had already replaced.)
+#: ``tests/test_financial_deletion_migration.py`` compares those with the M10
+#: revision.
+_M10_ADDED = {
+    "invoices": {
+        "checks": {"ck_invoices_deletion_state"},
+        "columns": {"deleted_at", "deleted_by_id", "deletion_reason"},
+        "indexes": {"ix_invoices_deleted_at_id", "ix_invoices_deleted_by_id"},
+        "fks": {("deleted_by_id", "users")},
+    },
+}
 
 _TABLES = ["invoice_number_sequences", "invoices", "invoice_items", "payment_audit_events"]
 _MODELS = {
@@ -241,6 +256,7 @@ def test_the_revision_declares_every_expected_column_and_check(table):
     checks = _model_checks(_MODELS[table])
     extended = table == "payment_audit_events"
     added = _M05_ADDED["checks"] | _M07_ADDED["checks"] if extended else set()
+    added = added | _M10_ADDED.get(table, {}).get("checks", set())
     replaced = _M05_REPLACED_CHECKS if extended else set()
     assert set(checks) == _EXPECTED[table]["checks"] | added
     for name, expression in checks.items():
@@ -253,8 +269,10 @@ def test_the_revision_declares_every_expected_column_and_check(table):
 def test_the_migrations_closed_sets_match_the_application_enums():
     _, source = _load_migration()
     flat = _flat(source)
-    # M04 wrote the five invoice event kinds; Phase 5 / M05 widened the set.
-    m04_kinds = [kind for kind in PaymentAuditEventKind if kind.value.startswith("invoice_")]
+    # M04 wrote the five invoice event kinds; Phase 5 / M05 widened the set,
+    # and Phase 5 / M10 added ``invoice_deleted``.
+    m04_kinds = [kind for kind in PaymentAuditEventKind if kind.value.startswith("invoice_")
+                 and kind is not PaymentAuditEventKind.INVOICE_DELETED]
     for column, enum in (("status", InvoiceStatus), ("kind", InvoiceItemKind),
                          ("status", InvoiceItemStatus), ("kind", m04_kinds)):
         expected = f"{column} IN (" + ", ".join(f"'{member.value}'" for member in enum) + ")"
@@ -512,17 +530,22 @@ def test_the_model_and_migration_agree(app, table):
             assert actual.pop(column) == "True", column
         for column in _M07_ADDED["nullable"] if extended else ():
             assert (declared.pop(column), actual.pop(column)) == ("False", "True"), column
+        m10 = _M10_ADDED.get(table, {})
+        for column in m10.get("columns", ()):
+            assert actual.pop(column) == "True", column
         assert declared == actual
         shape = {
             "indexes": {i["name"]: i["column_names"] for i in inspector.get_indexes(table)
-                        if not extended or i["name"] not in _M05_ADDED["indexes"]},
+                        if (not extended or i["name"] not in _M05_ADDED["indexes"])
+                        and i["name"] not in m10.get("indexes", set())},
             "uniques": sorted((u["name"] or "", tuple(u["column_names"]))
                               for u in inspector.get_unique_constraints(table)),
             "checks": {c["name"] for c in inspector.get_check_constraints(table)}
-            - (_M05_ADDED["checks"] | _M07_ADDED["checks"] if extended else set()),
+            - (_M05_ADDED["checks"] | _M07_ADDED["checks"] if extended else set())
+            - m10.get("checks", set()),
             "fks": {(fk["constrained_columns"][0], fk["referred_table"])
                     for fk in inspector.get_foreign_keys(table)}
-            - (_M05_ADDED["fks"] if extended else set()),
+            - (_M05_ADDED["fks"] if extended else set()) - m10.get("fks", set()),
         }
         assert shape == {key: _EXPECTED[table][key] for key in shape}
 
@@ -584,6 +607,9 @@ def test_no_column_is_shaped_for_card_or_payment_data(table):
         # Phase 5 / M05's audit links name a payment transaction and a receipt
         # by id; they hold no payment data.
         if table == "payment_audit_events" and column.name in _M05_ADDED["columns"]:
+            continue
+        # Phase 5 / M10's tombstone names who deleted the row, and why.
+        if column.name in _M10_ADDED.get(table, {}).get("columns", set()):
             continue
         for part in _PROHIBITED_PARTS:
             assert part not in column.name.split("_"), (column.name, part)

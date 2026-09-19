@@ -38,6 +38,15 @@
   <div class="alert alert--info" style="margin-bottom: var(--space-4)">{{ limit_message }}</div>
   {% endif %}
 
+  {% if payment_floor_text %}
+  {#- Phase 5 / M10: payments no longer freeze an issued invoice's lines; they set
+      the lowest total the lines may add up to. -#}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)" data-floor="{{ payment_floor_text }}">
+    {{ payment_floor_text }} {{ currency_code }} has already been paid or is pending on this invoice.
+    Its total cannot be changed to less than that.
+  </div>
+  {% endif %}
+
   {% include "admin/invoices/_lines.html" %}
 </div>
 {% endblock %}

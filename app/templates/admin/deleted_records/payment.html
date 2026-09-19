@@ -1,0 +1,36 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Deleted payment{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M10. A deleted payment's read-only tombstone. No bank
+      reference, provider value or snapshot is shown. -#}
+  <div class="ds-row" style="margin-bottom: var(--space-3)">
+    <a class="btn btn--secondary" href="{{ list_url }}">&larr; Deleted Records</a>
+  </div>
+  <h1 style="margin: 0 0 var(--space-4)">{{ record.label }} <span class="badge badge--danger">Deleted</span></h1>
+
+  {% include "admin/deleted_records/_deletion.html" %}
+
+  <div class="card" style="margin-bottom: var(--space-4)">
+    <div class="card__title">{{ record.student_name }}</div>
+    <div class="card__body">
+      {{ record.student_email }}<br>
+      Invoice {% if record.invoice_url %}<a href="{{ record.invoice_url }}">{{ record.invoice_number }}</a>{% else %}{{ record.invoice_number }}{% endif %}
+      &middot; {{ record.group_name }}<br>
+      {{ record.method_label }} {{ record.kind_label|lower }} &middot; {{ record.status_label }}
+      &middot; <span style="font-variant-numeric: tabular-nums">{{ record.amount_text }} {{ record.currency_code }}</span>
+      &middot; recorded {{ record.recorded_local.strftime("%Y-%m-%d %H:%M") }}
+      {% if record.receipt_number %}<br>Receipt {% if record.receipt_url %}<a href="{{ record.receipt_url }}">{{ record.receipt_number }}</a>{% else %}{{ record.receipt_number }}{% endif %}{% endif %}
+    </div>
+    {% if record.replacement %}
+    <div class="card__body" style="margin-top: var(--space-2)" data-replacement="yes">
+      This payment was edited: a corrected payment of {{ record.replacement.amount_text }} {{ record.currency_code }}
+      was recorded in its place on {{ record.replacement.recorded_local.strftime("%Y-%m-%d %H:%M") }}.
+    </div>
+    {% endif %}
+  </div>
+
+  {% include "admin/deleted_records/_events.html" %}
+</div>
+{% endblock %}

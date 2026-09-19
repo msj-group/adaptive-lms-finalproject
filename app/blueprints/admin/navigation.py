@@ -23,11 +23,12 @@ ADMIN_NAV_SECTIONS = [
     {
         "label": "Finance & Research",
         "links": [
-            {"label": "Billing Desk", "endpoint": "admin.billing_desk"},
+            {"label": "Student Accounts", "endpoint": "admin.student_accounts"},
             {"label": "Invoices", "endpoint": "admin.invoice_register"},
-            {"label": "Fee Plans", "endpoint": "admin.fee_plans_list"},
             {"label": "Payments", "endpoint": "admin.payments_overview"},
+            {"label": "Fee Plans", "endpoint": "admin.fee_plans_list"},
             {"label": "Financial reports", "endpoint": "admin.financial_reports_index"},
+            {"label": "Deleted Records", "endpoint": "admin.deleted_financial_records"},
             {"label": "Research", "endpoint": None},
         ],
     },

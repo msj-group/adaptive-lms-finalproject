@@ -492,12 +492,14 @@ def test_the_database_refuses_deleting_anything_referenced(app):
 @pytest.mark.parametrize(
     "model, expected",
     [
+        # Phase 5 / M10 adds the deleting account to both.
         (PaymentTransaction, {("invoice_id", "invoices"), ("recorded_by_id", "users"),
                               ("confirmed_by_id", "users"), ("rejected_by_id", "users"),
                               ("reversal_of_payment_transaction_id", "payment_transactions"),
-                              ("payment_intent_id", "payment_intents")}),
+                              ("payment_intent_id", "payment_intents"),
+                              ("deleted_by_id", "users")}),
         (Receipt, {("payment_transaction_id", "payment_transactions"), ("issued_by_id", "users"),
-                   ("voided_by_id", "users")}),
+                   ("voided_by_id", "users"), ("deleted_by_id", "users")}),
         (ReceiptNumberSequence, set()),
         (PaymentAuditEvent, {("invoice_id", "invoices"), ("actor_id", "users"),
                              ("payment_transaction_id", "payment_transactions"),
@@ -519,10 +521,13 @@ _COLUMNS = {
                          "bank_transfer_date", "recorded_at", "recorded_by_id", "confirmed_at",
                          "confirmed_by_id", "rejected_at", "rejected_by_id", "rejection_reason",
                          "reversal_of_payment_transaction_id", "payment_intent_id", "version",
-                         "created_at", "updated_at"},
+                         "created_at", "updated_at",
+                         # Phase 5 / M10: the visible-deletion tombstone.
+                         "deleted_at", "deleted_by_id", "deletion_reason"},
     Receipt: {"id", "public_id", "payment_transaction_id", "receipt_number", "status",
               "issued_at", "issued_by_id", "voided_at", "voided_by_id", "void_reason", "snapshot",
-              "version", "created_at", "updated_at"},
+              "version", "created_at", "updated_at",
+              "deleted_at", "deleted_by_id", "deletion_reason"},
     ReceiptNumberSequence: {"id", "calendar_year", "last_number", "created_at", "updated_at"},
 }
 

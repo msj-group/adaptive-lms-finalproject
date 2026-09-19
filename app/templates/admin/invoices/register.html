@@ -3,18 +3,22 @@
 {% block title %}Invoices{% endblock %}
 {% block admin_content %}
 <div class="ds-page">
-  {#- Phase 5 / M09R. A read-only register of every invoice, newest first. Each
-      row links to its existing invoice page -- and an issued invoice to its
-      payments and receipts page -- built from the row's own public ids. There
-      is no form that posts and no collection shortcut; values are autoescaped
-      plain text and nothing is marked safe. -#}
+  {#- Phase 5 / M09R, the Invoices workspace since M10. Every live invoice,
+      newest first. Each row links to its existing pages -- invoice, payments,
+      line edit and visible deletion -- built from the row's own public ids.
+      The register itself has no form that posts; values are autoescaped plain
+      text and nothing is marked safe. -#}
   <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2)">
     <h1 style="margin:0">Invoices</h1>
-    <a class="btn btn--secondary" href="{{ url_for('admin.billing_desk') }}">Billing Desk</a>
+    <div class="ds-row" style="gap: var(--space-2); flex-wrap: wrap">
+      <a class="btn btn--primary" href="{{ new_invoice_url }}">New invoice</a>
+      <a class="btn btn--secondary" href="{{ url_for('admin.student_accounts') }}">Student Accounts</a>
+    </div>
   </div>
   <p class="ds-section__desc">
-    Find and open any existing invoice. To work through one student's next billing step, use the
-    Billing Desk. {{ allocation_note }}
+    Create, find, open, edit and delete invoices. Deleted invoices are kept in
+    <a href="{{ url_for('admin.deleted_financial_records', type='invoice') }}">Deleted Records</a>.
+    {{ allocation_note }}
   </p>
 
   {{ macros.flash_messages() }}
@@ -72,8 +76,10 @@
         <td style="padding: var(--space-3); text-align:right; font-variant-numeric: tabular-nums; white-space: nowrap">{{ invoice.outstanding_text ~ " " ~ invoice.currency_code if invoice.outstanding_text else "—" }}</td>
         <td style="padding: var(--space-3)">
           <div style="display:flex; flex-direction:column; gap: var(--space-2)">
-            <a class="btn btn--secondary" href="{{ invoice.detail_url }}" data-link="invoice">Open invoice</a>
+            <a class="btn btn--secondary" href="{{ invoice.detail_url }}" data-link="invoice">Open</a>
+            {% if invoice.edit_url %}<a class="btn btn--secondary" href="{{ invoice.edit_url }}" data-link="edit">Edit</a>{% endif %}
             {% if invoice.payments_url %}<a class="btn btn--secondary" href="{{ invoice.payments_url }}" data-link="payments">Payments and receipts</a>{% endif %}
+            {% if invoice.delete_url %}<a class="btn btn--danger-outline" href="{{ invoice.delete_url }}" data-link="delete">Delete</a>{% endif %}
           </div>
         </td>
       </tr>

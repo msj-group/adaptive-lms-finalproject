@@ -8,7 +8,16 @@ from sqlalchemy.orm import validates
 from app.extensions import db
 from app.models.enums import PaymentMethod, PaymentTransactionKind, PaymentTransactionStatus
 from app.models.fee_plan import TEXT_MISSING, normalize_single_line_text
-from app.models.invoice import FinancialHistoryError, is_changing, pending_value, stored_row
+from app.models.invoice import (
+    DELETION_REASON_MAX_LENGTH,
+    FinancialHistoryError,
+    deletion_state_sql,
+    is_changing,
+    pending_value,
+    refuse_or_allow_deletion,
+    stored_row,
+    validate_deletion_reason,
+)
 from app.models.payment_audit_event import INVOICE_AUDIT_REASON_MAX_LENGTH, normalize_audit_reason
 from app.models.submission_feedback import whole_second_utc
 from app.services.money import (
@@ -199,6 +208,10 @@ _TIMESTAMPS_ORDERED_SQL = (
     " AND (rejected_at IS NULL OR (rejected_at >= recorded_at AND updated_at >= rejected_at))"
 )
 
+#: Phase 5 / M10: any transaction may be deleted -- alone, when edited, or with
+#: its invoice's whole document family.
+_DELETION_STATE_SQL = deletion_state_sql("recorded_at")
+
 
 class PaymentTransaction(db.Model):
     """One payment movement against one issued
@@ -239,6 +252,14 @@ class PaymentTransaction(db.Model):
     what was recorded, and a decision that does not move ``version`` by
     exactly one.
 
+    **Visible deletion (Phase 5 / M10).** A transaction may be *deleted* once:
+    ``deleted_at``, ``deleted_by_id`` and ``deletion_reason`` set together
+    with the version moved by one and nothing else changed
+    (``ck_payment_transactions_deletion_state``). An edit of a manual
+    collection deletes it the same way and records a new collection in its
+    place. A deleted row keeps everything it recorded, counts for nothing in
+    any balance, list or report, and never changes again.
+
     Database invariants (final defense only):
 
     - ``public_id`` unique; ``uq_payment_transactions_reversal_of``;
@@ -253,7 +274,8 @@ class PaymentTransaction(db.Model):
       ``ck_payment_transactions_reversal_link``;
     - ``ck_payment_transactions_timestamps_ordered``;
     - ``ck_payment_transactions_online_origin`` and
-      ``uq_payment_transactions_payment_intent_id`` (M07).
+      ``uq_payment_transactions_payment_intent_id`` (M07);
+    - ``ck_payment_transactions_deletion_state`` (M10).
 
     Rules no CHECK can read, proved by the application under the invoice
     lock: a reversal names a confirmed **collection** of the **same** invoice
@@ -267,7 +289,9 @@ class PaymentTransaction(db.Model):
     ``id``) -- one invoice's rows in id order, the rows to lock and the
     foreign key; ``ix_payment_transactions_status_id`` and
     ``ix_payment_transactions_method_id`` -- the filtered overview; and one
-    index per ``users`` foreign key. The reversal link is indexed by its
+    index per ``users`` foreign key. Phase 5 / M10 adds
+    ``ix_payment_transactions_deleted_at_id`` for Deleted Records and
+    ``ix_payment_transactions_deleted_by_id``. The reversal link is indexed by its
     unique constraint. **No MySQL execution plan has been measured for this
     table.** No ORM relationship is declared in either direction.
     """
@@ -313,12 +337,15 @@ class PaymentTransaction(db.Model):
             "payment_intent_id", name="uq_payment_transactions_payment_intent_id"
         ),
         db.CheckConstraint(_ONLINE_ORIGIN_SQL, name="ck_payment_transactions_online_origin"),
+        db.CheckConstraint(_DELETION_STATE_SQL, name="ck_payment_transactions_deletion_state"),
         db.Index("ix_payment_transactions_invoice_id_id", "invoice_id", "id"),
         db.Index("ix_payment_transactions_status_id", "status", "id"),
         db.Index("ix_payment_transactions_method_id", "method", "id"),
         db.Index("ix_payment_transactions_recorded_by_id", "recorded_by_id"),
         db.Index("ix_payment_transactions_confirmed_by_id", "confirmed_by_id"),
         db.Index("ix_payment_transactions_rejected_by_id", "rejected_by_id"),
+        db.Index("ix_payment_transactions_deleted_at_id", "deleted_at", "id"),
+        db.Index("ix_payment_transactions_deleted_by_id", "deleted_by_id"),
     )
 
     id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
@@ -381,6 +408,14 @@ class PaymentTransaction(db.Model):
     #: post-lock whole-second moment. Deliberately no ``onupdate`` hook.
     created_at = db.Column(db.DateTime, nullable=False, default=whole_second_utc)
     updated_at = db.Column(db.DateTime, nullable=False, default=whole_second_utc)
+    #: Phase 5 / M10: the visible deletion.
+    deleted_at = db.Column(db.DateTime, nullable=True)
+    deleted_by_id = db.Column(
+        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.ForeignKey("users.id", name="fk_payment_transactions_deleted_by_id"),
+        nullable=True,
+    )
+    deletion_reason = db.Column(db.String(DELETION_REASON_MAX_LENGTH), nullable=True)
 
     @validates("kind")
     def validate_kind(self, _key, value):
@@ -446,6 +481,14 @@ class PaymentTransaction(db.Model):
             raise ValueError("Payment transaction version must be a positive integer")
         return value
 
+    @validates("deletion_reason")
+    def validate_deletion_reason(self, _key, value):
+        return validate_deletion_reason(value)
+
+    @property
+    def is_deleted(self):
+        return self.deleted_at is not None
+
     @property
     def is_collection(self):
         return self.kind == _COLLECTION
@@ -498,8 +541,12 @@ _DECISIONS = frozenset({_CONFIRMED, _REJECTED})
 def _refuse_rewriting_a_payment(_mapper, connection, target):
     if not is_changing(target):
         return
-    stored = stored_row(connection, target, ("status", "version") + _RECORDED_COLUMNS)
+    stored = stored_row(
+        connection, target, ("status", "version", "deleted_at") + _RECORDED_COLUMNS
+    )
     if stored is None:
+        return
+    if refuse_or_allow_deletion(target, stored, "payment"):
         return
     if stored["status"] != _PENDING:
         raise FinancialHistoryError("A confirmed or rejected payment never changes")

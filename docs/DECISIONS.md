@@ -9417,3 +9417,275 @@ figure.
   local stylesheets and screenshotted in headless Chrome. **No live-browser
   session, accessibility, responsive, keyboard or MySQL query-plan verification
   was performed.**
+
+## Simplified financial workspaces and Deleted Records (Phase 5, Part M10)
+
+M10 replaces the fragmented, Group-nested finance path with six Administrator
+workspaces -- Student Accounts, Invoices, Payments, Fee Plans, Financial
+reports and Deleted Records -- and introduces **visible deletion**: a deleted
+invoice, payment or receipt is kept as a read-only tombstone, leaves every
+live list, balance and report, and appears in Deleted Records. Fee Plans and
+Financial reports keep their own pages, unchanged apart from excluding deleted
+records.
+
+The owners decided four questions before implementation (recorded here as
+accepted policy):
+
+1. **Only what M10 changes is updated in earlier tests** -- the assertions
+   that pinned the old head, the old sidebar, the Group finance link, the
+   payment line freeze, the closed kind sets and the column / route
+   inventories. Every other earlier assertion stands.
+2. **Unfreeze with a floor.** An issued invoice with live payments can again
+   be corrected through its existing line pages, but never to a total below its
+   live confirmed payments plus its live pending transfers. A payment still
+   freezes the invoice's **cancellation**; an active payment intent still
+   freezes both the lines and the cancellation.
+3. **Edit = supersede.** An edited payment and its receipt become deleted
+   tombstones, with everything they recorded intact; a new payment with a new
+   receipt number replaces them, linked by events. M05's immutability guards
+   stay: nothing is edited in place.
+4. **Manual collections only.** Only a cash or bank-transfer collection that
+   is pending or confirmed (and not reversed) may be edited or deleted on its
+   own. An online collection, a reversal and a rejected transfer are deleted
+   only with their whole invoice, and nothing is deleted while a payment intent
+   is active.
+
+### A. Navigation and routes
+
+The Finance & Research sidebar is: Student Accounts, Invoices, Payments, Fee
+Plans, Financial reports, Deleted Records and the disabled Research. The
+dashboard's finance shortcuts open Student Accounts, Invoices, Payments and
+Deleted Records and show no figure.
+
+    GET       /admin/student-accounts[?q=][&page=]
+    GET       /admin/student-accounts/<sp>/financial-record
+    GET       /admin/billing-desk                         -> Student Accounts
+    GET       /admin/invoices[?status=][&payment=][&q=][&page=]   (M09R)
+    GET|POST  /admin/invoices/new[?student=][&enrollment=][&plan=]
+    GET|POST  /admin/invoices/<ip>/delete
+    GET       /admin/payments[?status=][&method=][&page=]         (M05)
+    GET       /admin/payments/new[?q=][&page=]
+    GET|POST  /admin/payments/<pp>/edit
+    GET|POST  /admin/payments/<pp>/delete
+    GET       /admin/deleted-financial-records[?type=][&q=][&page=]
+    GET       /admin/deleted-financial-records/<type>/<public_id>
+
+Blueprints `student_accounts.py`, `invoice_workspace.py`,
+`payment_workspace.py` and `deleted_records.py`; services
+`student_account_queries.py`, `financial_workspace_queries.py`,
+`financial_deletions.py`, `deleted_record_queries.py` and
+`financial_workspace_tokens.py`. The M09 Billing Desk page, its query service
+and its template were removed; `/admin/billing-desk` remains only as a
+redirect so an old bookmark still works. Every page is Administrator-only,
+`private, no-store` with `Vary: Cookie`; every write is POST with CSRF, a
+confirmation box, a required reason for destructive actions and a signed
+`phase5-m10` stale-state token; unsupported methods are 405; malformed,
+unknown or foreign public ids are 404. Objects are addressed by public ids
+only; a workspace route locates the document's own chain and then reuses the
+existing nested lookups, lock chains and re-proofs.
+
+### B. Student Accounts: a computed status, never stored
+
+The list shows each Student's name and email, whether they have a live open
+invoice, whether an amount is due, the financial status and a Financial Record
+button -- paginated (25, exact range) and searchable (literal, case-insensitive
+name and email). The status is computed on every request from live invoices,
+active lines and live transactions, and is **written nowhere**: no User,
+Enrollment, Group, Course, Level or Academic Term status ever changes because
+of finance:
+
+- `No financial obligation` -- no live draft or issued invoice (cancelled
+  invoices describe no obligation);
+- `Draft invoice` -- live drafts only;
+- `Amount due` -- a live issued invoice has a positive outstanding balance;
+- `Settled` -- live issued invoices exist and all are fully paid;
+- `Needs review` -- a live issued invoice's lines or payments do not describe
+  a valid balance (the Invoice Register's own rule); no balance is shown.
+
+The Financial Record lists every live invoice of the Student across all
+Enrollments and Groups (number, status, Group, total and, when valid, paid and
+outstanding), every live payment and receipt oldest first, links to each
+invoice and receipt page, the total outstanding only when valid, and a link to
+Deleted Records filtered to the Student. No bank reference, provider value,
+snapshot or internal id is shown. Each record list is capped (200 invoices,
+500 payments) with a note; the status itself is computed over every live open
+invoice.
+
+### C. Invoices workspace
+
+- **New invoice** is a guided flow -- an active Student, one of their
+  Enrollments whose Enrollment, Group, Course, Level and Term are active, then
+  a Fee Plan, then a confirmation page -- ending in one transaction under the
+  M03 lock order extended by M04's last step (... Enrollment -> Administrator
+  -> FeePlan -> active items -> the Enrollment's assignments -> the current
+  assignment's invoices). The Enrollment must belong to the chosen Student
+  (never trusted from the client). The Enrollment's `assigned` fee assignment
+  is **reused** when the plan is its own (an archived plan keeps invoicing an
+  existing assignment, as in M04); otherwise the plan must be active, and a
+  different current assignment -- only when it holds no live open invoice --
+  is cancelled and kept as history before the new assignment is created. The
+  draft copies the plan's active items; `invoice_draft_created` is written.
+  Fee assignments have no event trail of their own: their row records who
+  assigned and cancelled them, exactly as M03 writes it. All M03 / M04 refusals
+  (inactive Student, Enrollment or academic chain, unavailable plan, invalid
+  items, a live open invoice) are re-proved after the locks and write
+  nothing. The flow redirects to the existing invoice page.
+- **Edit** stays on the existing line pages. The payment floor (decision 2)
+  is re-proved after the invoice lock, which every payment write takes first;
+  the edit page states the floor. Every change keeps its M04 event with before
+  and after snapshots.
+- **Delete** (`invoice_deleted`, reason required). A draft or an unpaid issued
+  invoice is deleted alone. An issued invoice with live payments is deleted
+  with its whole **document family** -- every live transaction whatever its
+  kind, method or status, and every live receipt -- after the confirmation page
+  lists exactly what will go, in one transaction with one event per document.
+  Lock order: M05's chain with M07's intents, then the family's live receipts
+  in ascending id. A cancelled invoice is never deleted (cancellation keeps its
+  meaning); nothing is deleted while an intent is active. After deletion a new
+  draft may be created for the assignment.
+
+The Invoice Register is the workspace list: `New invoice`, and per live
+draft or issued row `Open`, `Edit` (the line pages), `Payments and receipts`
+and `Delete`. Deleted invoices are never listed.
+
+### D. Payments workspace
+
+- **New payment** lists live issued invoices with an outstanding balance and
+  links each to the existing M05 cash and bank-transfer forms, which keep every
+  rule (cash confirmed with its receipt at once, a bank transfer pending until
+  confirmed, never more than the live outstanding balance). An invoice with an
+  active intent offers no manual collection.
+- **Edit** (decisions 3 and 4) re-proves everything under M05's lock chain
+  with intents and the payment's receipt. The corrected amount may not exceed
+  the balance outstanding without the original. In one transaction the
+  original receipt (`receipt_deleted`) and payment (`payment_replaced`, which
+  names the replacement) become tombstones and the corrected collection of the
+  same method is recorded with M05's own events: cash is confirmed with a new
+  receipt number; a confirmed bank transfer is recorded and confirmed with a
+  new receipt number; a pending transfer is recorded pending. The method,
+  status and currency are not editable. The old receipt's document is never
+  overwritten.
+- **Delete** tombstones the payment and its live receipt, with a reason.
+- **No standalone receipt.** No route creates a receipt except by confirming a
+  collection; receipts are still issued only by the payments page's helper.
+
+The M05 reject, confirm and reverse routes are unchanged. The payment list and
+each invoice's payments page link a changeable payment to its edit and delete
+pages.
+
+### E. The tombstone model
+
+`invoices`, `payment_transactions` and `receipts` each carry `deleted_at`,
+`deleted_by_id` and `deletion_reason`: all three or none
+(`ck_<table>_deletion_state`, which also requires a non-empty reason, a moment
+no earlier than the row's own anchor and no later than `updated_at`, and --
+for an invoice -- a draft or issued status). The ORM guards allow exactly one
+transition: the three columns set together, the version moved by one, nothing
+else changed. A deleted row never changes again; a partial, repeated or mixed
+deletion is refused (`FinancialHistoryError`). Nothing is physically deleted,
+no cascade exists, and bulk rewrites stay refused.
+
+### F. Events
+
+Four kinds join the one financial trail, each with a required reason:
+`invoice_deleted` (an invoice event that moves the invoice version by one),
+`payment_deleted` and `payment_replaced` (payment events) and
+`receipt_deleted` (a receipt event). They use two new snapshot layouts --
+`phase5-m10.invoice.v1` (M04's plus `deleted`) and `phase5-m10.payment.v1`
+(M05's with `deleted` on the payment and receipt entries and
+`replaced_by_public_id` on the payment) -- validated exactly, and are written
+only by the strict writers `record_invoice_deletion_event` and
+`record_payment_deletion_event`. Their balances are the invoice's before and
+after the **whole** deletion the event belongs to (a single payment, an
+edit's superseded collection, or a family), because the steps inside one
+deletion are not observable states. An edit's replacement is then recorded
+with M05's unchanged events. The invoice timeline describes every new kind.
+
+### G. Live data only
+
+Deleted rows count for nothing: `payment_balance` ignores them; the reads that
+choose rows to lock, balance, freeze, floor or list read live rows only
+(`current_invoice_payments`, `invoice_payment_ids`, `invoice_payment_rows`,
+`invoice_payment_frozen`, `open_invoices`, the one-open-invoice previews);
+`invoice_nesting_broken` and `payment_nesting_broken` treat a deleted row as
+missing, so every nested write 404s for it after its locks. The Invoice
+Register, payment list, intent overview, Student Accounts, Financial Record
+and all three financial reports exclude deleted invoices and transactions (and
+everything read through a deleted invoice). The nested invoice and receipt
+pages send an old link to a deleted document to its tombstone; every other
+nested route 404s. Webhook, reconciliation, PDF and provider behaviour is
+unchanged apart from these live-only reads; since nothing is deleted while an
+intent is active, a verified webhook never meets a deleted invoice's active
+intent.
+
+### H. Deleted Records
+
+A read-only, paginated (25, exact range from one `UNION ALL` count) list of
+deleted invoices, payments and receipts, newest deletion first, filtered by
+type and searched (literal, case-insensitive) over the Student's name and
+email, the invoice number and the receipt number. Each row shows the type, the
+number or label, the Student, the related invoice, the deletion moment, the
+deleting Administrator and the reason, with a `Deleted` label and a link to a
+read-only tombstone page (its facts, an invoice's lines and deleted family, a
+replaced payment's replacement, and the event history as kind, moment, actor
+and reason -- never a snapshot). There is no restore and no form that posts.
+
+### I. Groups
+
+The Group members page no longer shows a `Fee assignments` link or any
+finance wording; no Group page offers finance controls. The nested fee
+assignment, invoice, payment, intent and receipt routes remain for old links
+and compatibility, and keep every rule.
+
+### J. Migration `b3d8f1a6c472` (parent `e9c4b2d7a1f3`)
+
+One non-destructive revision: the three tombstone columns, the named foreign
+key `fk_<table>_deleted_by_id`, `ix_<table>_deleted_at_id` (`deleted_at`,
+`id`) and `ix_<table>_deleted_by_id` on `invoices`, `payment_transactions` and
+`receipts`, and four widened `payment_audit_events` CHECKs. MySQL alters in
+place, creating each foreign key's index first; SQLite rebuilds from explicit
+`copy_from` definitions with foreign keys off. The downgrade refuses while any
+deleted row or deletion event exists. Every existing row satisfies the new
+expressions unchanged. **No MySQL execution plan has been measured.**
+
+### K. Verification actually performed, and what it does not prove
+
+- New suites: `tests/test_admin_financial_workspaces.py` (47 tests: route and
+  method inventory, sidebar and dashboard, the Billing Desk redirect, every
+  other role, anonymous and suspended sessions, 405s, malformed / unknown /
+  live identifiers, CSRF on every mutation, every computed status with nothing
+  stored, search and paging, the Financial Record across Groups, the New
+  invoice flow -- create, reuse, replace, refusals that write nothing -- the
+  payment floor, cancellation and intent freezes, deletion alone, family
+  deletion and its atomicity, refusals, old links, New payment, automatic
+  receipts, no standalone receipt, cash and bank edits by replacement, edit
+  validation, payment deletion, rejection and reversal compatibility, Deleted
+  Records paging / filtering / search / safe content, exclusion from every
+  live list, balance and report, tombstone pages, the Group cleanup and
+  fixed query counts), `tests/test_financial_deletion_model.py` (15
+  tests: the guards, the database CHECKs, the reason, bulk refusals, live-only
+  balances and floors, and the strict writers and layouts) and
+  `tests/test_financial_deletion_migration.py` (9 tests: identity
+  and one head, the replaced CHECKs from M07 to the model, the rebuild
+  definitions, execution on an isolated SQLite database with M04 to M07
+  history, the downgrade refusal and restoration, a second upgrade, and the
+  offline MySQL scripts).
+- Earlier tests changed only where M10 changes behaviour (decision 1): the
+  head pins of 13 migration suites and the M04, M05 and M07 migration suites'
+  M10 layers; the invoice and payment model inventories and the closed kind
+  set; the M04 and M05 route inventories and page scans (the approved Delete /
+  Edit controls); the reports inventory (three M10 routes carry "financial");
+  the calendar scan (the sidebar's "Deleted Records"); the M05, M06 and lock
+  tests of the payment line freeze (now the floor, with the cancellation freeze
+  kept); the payment-audit source scan (the workspace records an edit's
+  replacement); the M09R sidebar test; and the Group members link test. The
+  M09 Billing Desk suite was removed with the page.
+- The complete strict-warning suite passed 6,756 tests with the four
+  inherited IANA-time-zone skips, run as ten parallel processes covering all
+  149 test files. The development MySQL database was upgraded from
+  `e9c4b2d7a1f3` to `b3d8f1a6c472` and its schema inspected.
+- An end-to-end run through the test client (create, issue, cash, edit, bank
+  transfer, delete payment, family deletion, tombstones, old links, reports)
+  was performed. **No live-browser session, accessibility, responsive,
+  keyboard, real-InnoDB concurrency or MySQL query-plan verification was
+  performed.**

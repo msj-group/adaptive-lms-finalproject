@@ -57,6 +57,11 @@ ReceiptNumberSequence, exactly where confirmation takes it: last.
   snapshot are read after the Invoice lock, which every change to them takes
   first.
 
+**Deleted transactions (Phase 5 / M10) are history, not state.** Every read
+here that chooses rows to lock, balances or freezes sees live rows only, and
+:func:`payment_balance` itself ignores a deleted row it is handed. A deleted
+row never changes again, so leaving it unlocked is safe.
+
 **Nothing here authorizes anything.** Every value may come back ``None`` and
 the helpers only report what the locked rows say; the caller rolls back and
 404s or redirects.
@@ -133,12 +138,12 @@ def _lock_rows(model, ids):
 
 
 def invoice_payment_ids(invoice_id):
-    """The internal ids of `invoice_id`'s transactions, ascending, at most one
-    past :data:`~app.models.payment_transaction.MAX_INVOICE_PAYMENT_ROWS`."""
+    """The internal ids of `invoice_id`'s live transactions, ascending, at most
+    one past :data:`~app.models.payment_transaction.MAX_INVOICE_PAYMENT_ROWS`."""
     return [
         row.id
         for row in db.session.query(PaymentTransaction.id)
-        .filter(PaymentTransaction.invoice_id == invoice_id)
+        .filter(PaymentTransaction.invoice_id == invoice_id, PaymentTransaction.deleted_at.is_(None))
         .order_by(PaymentTransaction.id.asc())
         .limit(MAX_INVOICE_PAYMENT_ROWS + 1)
         .all()
@@ -227,8 +232,8 @@ def lock_payment_chain(
 
 
 def payment_nesting_broken(locks, payment_id, payment_public_id):
-    """``True`` unless the locked transaction is the URL's and still belongs to
-    the locked invoice."""
+    """``True`` unless the locked transaction is the URL's, still belongs to
+    the locked invoice and is not deleted (Phase 5 / M10)."""
     invoice, payment = locks.chain.invoice, locks.payment
     return (
         invoice is None
@@ -236,6 +241,7 @@ def payment_nesting_broken(locks, payment_id, payment_public_id):
         or payment.id != payment_id
         or payment.public_id != payment_public_id
         or payment.invoice_id != invoice.id
+        or payment.deleted_at is not None
     )
 
 
@@ -267,11 +273,14 @@ def locked_payment_chain_intents(locks):
 
 
 def current_invoice_payments(invoice):
-    """Every transaction of `invoice`, ascending internal id, read **after**
-    the invoice lock without locking them (at most one past the bound). Rows
-    this transaction already locked come back as the same objects."""
+    """Every live transaction of `invoice`, ascending internal id, read
+    **after** the invoice lock without locking them (at most one past the
+    bound). Rows this transaction already locked come back as the same
+    objects."""
     return (
-        PaymentTransaction.query.filter(PaymentTransaction.invoice_id == invoice.id)
+        PaymentTransaction.query.filter(
+            PaymentTransaction.invoice_id == invoice.id, PaymentTransaction.deleted_at.is_(None)
+        )
         .order_by(PaymentTransaction.id.asc())
         .limit(MAX_INVOICE_PAYMENT_ROWS + 1)
         .all()
@@ -308,8 +317,10 @@ def payment_balance(active_items, payments):
     reversals``, added and subtracted in Python ``Decimal`` with ``Inexact``
     trapped; pending and rejected rows count for nothing. A negative paid or
     outstanding amount cannot come from the application's own writes and is
-    reported as ``None`` rather than shown or acted on.
+    reported as ``None`` rather than shown or acted on. A deleted row
+    (Phase 5 / M10) counts for nothing.
     """
+    payments = [row for row in payments if getattr(row, "deleted_at", None) is None]
     with localcontext() as context:
         context.traps[Inexact] = True
         total = sum_amounts([item.amount for item in active_items])
@@ -326,16 +337,43 @@ def payment_balance(active_items, payments):
     return PaymentBalance(total, paid, outstanding)
 
 
+def payment_floor(payments):
+    """Phase 5 / M10: the lowest total an issued invoice's lines may be edited
+    to -- its live net confirmed payments plus its live pending transfers,
+    exact ``Decimal`` -- or ``None`` when `payments` is the one-past-the-bound
+    read or nets to a negative amount. Only live rows count."""
+    if payment_rows_over_bound(payments):
+        return None
+    live = [row for row in payments if getattr(row, "deleted_at", None) is None]
+    with localcontext() as context:
+        context.traps[Inexact] = True
+        collected = sum_amounts(
+            [row.amount for row in live if row.kind == _COLLECTION and row.status == _CONFIRMED]
+        )
+        reversed_amount = sum_amounts(
+            [row.amount for row in live if row.kind == _REVERSAL and row.status == _CONFIRMED]
+        )
+        pending = sum_amounts(
+            [row.amount for row in live if row.kind == _COLLECTION and row.status == _PENDING]
+        )
+        paid = collected - reversed_amount
+    if paid < 0:
+        return None
+    return paid + pending
+
+
 def invoice_payment_frozen(invoice_id):
-    """Whether `invoice_id` holds a ``pending`` or ``confirmed`` transaction,
-    which freezes its lines and its cancellation. A rejected transfer alone
-    does not.
+    """Whether `invoice_id` holds a live ``pending`` or ``confirmed``
+    transaction, which freezes its cancellation (and, before Phase 5 / M10,
+    its lines). A rejected transfer or a deleted row alone does not.
 
     An invoice-content write asks this after its Invoice lock: every payment
     insert and status change takes that lock first, so the answer is current.
     """
     query = db.session.query(PaymentTransaction.id).filter(
-        PaymentTransaction.invoice_id == invoice_id, PaymentTransaction.status.in_(_FREEZING)
+        PaymentTransaction.invoice_id == invoice_id,
+        PaymentTransaction.status.in_(_FREEZING),
+        PaymentTransaction.deleted_at.is_(None),
     )
     return bool(db.session.query(query.exists()).scalar())
 

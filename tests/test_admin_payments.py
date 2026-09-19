@@ -188,13 +188,15 @@ def test_the_route_inventory_is_exact_and_mutations_are_post_only(app, client):
     one = invoice + "/payments/<payment_public_id>"
     both = frozenset({"GET", "POST"})
     # Phase 5 / M06's payment intent routes are inventoried by
-    # tests/test_admin_payment_intents.py.
+    # tests/test_admin_payment_intents.py, and Phase 5 / M10's Payments
+    # workspace rules by tests/test_admin_financial_workspaces.py.
     rules = {
         (rule.rule, frozenset(rule.methods - {"HEAD", "OPTIONS"}))
         for rule in app.url_map.iter_rules()
-        if ("payment" in rule.rule and "payment-intents" not in rule.rule
-            and not rule.rule.startswith("/webhooks"))
-        or (rule.rule.startswith("/admin") and "receipt" in rule.rule)
+        if (("payment" in rule.rule and "payment-intents" not in rule.rule
+             and not rule.rule.startswith("/webhooks"))
+            or (rule.rule.startswith("/admin") and "receipt" in rule.rule))
+        and not rule.endpoint.startswith("admin.payment_workspace")
     }
     assert rules == {
         ("/admin/payments", frozenset({"GET"})),
@@ -808,46 +810,51 @@ def test_payments_and_corrections_stay_available_when_the_context_becomes_inacti
 
 @pytest.mark.parametrize("state", ["pending", "confirmed", "reversed"])
 def test_a_pending_or_confirmed_payment_freezes_the_invoice(app, client, state):
+    """Phase 5 / M10 (owners' decision): a pending or confirmed payment still
+    freezes the cancellation, but no longer the lines -- they keep a floor of
+    the live confirmed payments plus pending transfers."""
     w = px.login_world(app, client)
 
     def build(owner, actor):
         if state == "pending":
-            px.payment(owner, actor, method="bank_transfer", status="pending")
+            px.payment(owner, actor, method="bank_transfer", status="pending",
+                       amount="1100.000")
         elif state == "confirmed":
-            px.cash_with_receipt(owner, actor)
+            px.cash_with_receipt(owner, actor, amount="1100.000")
         else:
-            px.reversed_collection(owner, actor)
-        return InvoiceItem.query.filter_by(invoice_id=owner.id).first().public_id
+            px.reversed_collection(owner, actor, amount="1100.000")
+        return InvoiceItem.query.filter_by(invoice_id=owner.id, label="Course").one().public_id
 
     lp = _direct(app, w, build)
     ip = w["ip"]
     detail = _flat(px.page(client, fx.detail_url(w, ip)))
-    assert "lines and its cancellation are frozen" in detail
-    assert fx.edit_url(w, ip) not in detail and fx.cancel_url(w, ip) not in detail
+    assert "so it can no longer be cancelled" in detail
+    assert fx.edit_url(w, ip) in detail and fx.cancel_url(w, ip) not in detail
     assert f'href="{px.payments_url(w)}"' in detail
-    before = px.record(app)
     for url in (fx.edit_url(w, ip), fx.line_new_url(w, ip), fx.line_edit_url(w, ip, lp),
-                fx.line_remove_url(w, ip, lp), fx.cancel_url(w, ip)):
-        response = client.get(url)
-        assert response.status_code == 302, url
-        assert px.FROZEN_TEXT in px.followed(client, response), url
+                fx.line_remove_url(w, ip, lp)):
+        assert client.get(url).status_code == 200, url
+    response = client.get(fx.cancel_url(w, ip))
+    assert response.status_code == 302 and px.FROZEN_TEXT in px.followed(client, response)
+    before = px.record(app)
     state_ = _state(w)
-    attempts = [
-        (fx.line_new_url(w, ip), fx.line_form(reason="x", token=invoice_tokens.make_token(
-            invoice_tokens.PURPOSE_ITEM_CREATE, **state_))),
-        (fx.line_edit_url(w, ip, lp), fx.line_form(label="Changed", reason="x",
-                                                   token=invoice_tokens.make_token(
-            invoice_tokens.PURPOSE_ITEM_EDIT, item_public_id=lp, **state_))),
-        (fx.line_remove_url(w, ip, lp), {fx.STATE_FIELD: invoice_tokens.make_token(
-            invoice_tokens.PURPOSE_ITEM_REMOVE, item_public_id=lp, **state_), "reason": "x"}),
-        (fx.cancel_url(w, ip), {fx.STATE_FIELD: invoice_tokens.make_token(
-            invoice_tokens.PURPOSE_CANCEL, **state_), "reason": "x", "confirm": "yes"}),
-    ]
-    for url, data in attempts:
-        response = client.post(url, data=data)
-        assert response.status_code == 302, url
-        assert px.FROZEN_TEXT in px.followed(client, response), url
+    response = client.post(fx.cancel_url(w, ip), data={
+        fx.STATE_FIELD: invoice_tokens.make_token(invoice_tokens.PURPOSE_CANCEL, **state_),
+        "reason": "x", "confirm": "yes"})
+    assert response.status_code == 302 and px.FROZEN_TEXT in px.followed(client, response)
     assert px.record(app) == before
+    # Removing the 1,200.500 course line would leave 50.000: below the floor
+    # of a live pending or confirmed 1,100.000, above a reversed one's zero.
+    response = client.post(fx.line_remove_url(w, ip, lp), data={
+        fx.STATE_FIELD: invoice_tokens.make_token(invoice_tokens.PURPOSE_ITEM_REMOVE,
+                                                  item_public_id=lp, **state_),
+        "reason": "x"})
+    assert response.status_code == 302
+    if state == "reversed":
+        assert "Line removed." in px.followed(client, response)
+    else:
+        assert "below the 1,100.000 LYD already paid or pending" in px.followed(client, response)
+        assert px.record(app) == before
     # The fee assignment stays uncancellable while its invoice is issued.
     history = px.page(client, fees.history_url(w["gp"], w["ep"]))
     assert fees.cancel_url(w["gp"], w["ep"], w["ap"]) not in history
@@ -1033,6 +1040,12 @@ def test_no_internal_identifier_card_field_or_out_of_scope_control_reaches_a_pag
             if name not in ("csrf_token", "state_token"):
                 assert value not in internal, (url, name, value)
         body = html.split('class="admin-main"', 1)[1]
+        # Phase 5 / M10: the Payments workspace's own edit and delete links and
+        # the link to Deleted Records are the approved controls.
+        body = re.sub(r'<a class="btn btn--[a-z-]+" href="/admin/payments/[0-9a-f-]{36}/'
+                      r'(edit|delete)" data-link="(edit|delete)">(Edit|Delete)</a>', "", body)
+        body = body.replace(
+            '<a href="/admin/deleted-financial-records?type=payment">Deleted Records</a>', "")
         forbidden = ['name="card', 'name="account', 'name="iban', 'name="cvv', 'name="pin',
                      'name="currency', 'name="receipt_number"', 'type="file"', "Refund",
                      "Delete", "Pay now", "Edit payment", "invoice_id", "payment_transaction_id",

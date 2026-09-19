@@ -320,6 +320,8 @@ def intents_overview_page(page, status=None):
         .join(Group, Group.id == Enrollment.group_id)
         .join(student, student.id == Enrollment.student_id)
         .join(creator, creator.id == PaymentIntent.created_by_id)
+        # Phase 5 / M10: an intent of a deleted invoice is history only.
+        .filter(Invoice.deleted_at.is_(None))
     )
     if status is not None:
         query = query.filter(PaymentIntent.status == status)

@@ -610,6 +610,16 @@ class PaymentAuditEventKind(str, enum.Enum):
       created a confirmed online collection.
     - ``receipt_online_issued`` -- that collection received its receipt.
 
+    Visible deletion (Phase 5 / M10), each with a required reason: the row is
+    kept as a tombstone, never physically deleted:
+
+    - ``invoice_deleted`` -- a draft or issued invoice was deleted.
+    - ``payment_deleted`` -- a payment transaction was deleted, alone or with
+      its invoice's whole document family.
+    - ``payment_replaced`` -- an edited manual collection was deleted and
+      replaced by a new collection, which its snapshot names.
+    - ``receipt_deleted`` -- a receipt was deleted with its collection.
+
     Refund, report and notification events belong to later Parts and have no
     member or placeholder here. Adding one is a schema change (the
     ``payment_audit_events.kind`` CHECK).
@@ -629,6 +639,10 @@ class PaymentAuditEventKind(str, enum.Enum):
     RECEIPT_VOIDED = "receipt_voided"
     PAYMENT_ONLINE_CONFIRMED = "payment_online_confirmed"
     RECEIPT_ONLINE_ISSUED = "receipt_online_issued"
+    INVOICE_DELETED = "invoice_deleted"
+    PAYMENT_DELETED = "payment_deleted"
+    PAYMENT_REPLACED = "payment_replaced"
+    RECEIPT_DELETED = "receipt_deleted"
 
 
 class PaymentTransactionKind(str, enum.Enum):

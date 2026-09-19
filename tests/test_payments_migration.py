@@ -50,7 +50,8 @@ _DOWN_REVISION = "a8d3f5c29e61"
 #: Phase 5 / M06 and then M07 follow this revision, so the single head is now
 #: M07's. M07 extends three of this revision's tables; its revision records the
 #: M05 text of every CHECK it replaces, which this suite compares against.
-_HEAD = "e9c4b2d7a1f3"
+#: Phase 5 / M10 follows M07, so the single head is now M10's.
+_HEAD = "b3d8f1a6c472"
 _M07 = "e9c4b2d7a1f3"
 
 _NEW_TABLES = ["payment_transactions", "receipt_number_sequences", "receipts"]
@@ -213,13 +214,33 @@ _M07_ADDITIONS = {
 }
 
 
+#: Phase 5 / M10 (``b3d8f1a6c472``)'s visible-deletion tombstone on two of this
+#: revision's tables: three nullable columns, one CHECK, two indexes and one
+#: foreign key each. It also widened audit-event CHECKs M07 had replaced.
+#: ``tests/test_financial_deletion_migration.py`` compares those with the M10
+#: revision.
+_M10_ADDITIONS = {
+    table: {
+        "columns": {"deleted_at", "deleted_by_id", "deletion_reason"},
+        "nullable": {"deleted_at", "deleted_by_id", "deletion_reason"},
+        "checks": {f"ck_{table}_deletion_state"},
+        "indexes": {f"ix_{table}_deleted_at_id": ["deleted_at", "id"],
+                    f"ix_{table}_deleted_by_id": ["deleted_by_id"]},
+        "fks": {("deleted_by_id", "users")},
+    }
+    for table in ("payment_transactions", "receipts")
+}
+
+
 def _m05_checks(model):
-    """The model's CHECKs as this revision declared them: M07's replacements
-    mapped back to the M05 text M07 records, M07's additions left out."""
+    """The model's CHECKs as this revision declared them: M07's and M10's
+    replacements mapped back to the M05 text M07 records, M07's and M10's
+    additions left out."""
     m07, _ = _load(_M07, "p5m07")
     replaced = {name: old for group in (m07._PAYMENT_CHECKS, m07._AUDIT_CHECKS)
                 for name, old, _new in group}
     added = _M07_ADDITIONS.get(model.__tablename__, {}).get("checks", set())
+    added = added | _M10_ADDITIONS.get(model.__tablename__, {}).get("checks", set())
     return {name: replaced.get(name, expression)
             for name, expression in _model_checks(model).items() if name not in added}
 
@@ -228,12 +249,17 @@ def _current_shape(table):
     """This revision's expected shape of `table` plus M07's additions -- what
     the current model creates."""
     expected, additions = _EXPECTED[table], _M07_ADDITIONS.get(table, {})
+    later = _M10_ADDITIONS.get(table, {})
     return {
-        "columns": expected["columns"] | additions.get("columns", set()),
-        "nullable": expected["nullable"] | additions.get("nullable", set()),
-        "checks": expected["checks"] | additions.get("checks", set()),
-        "indexes": dict(expected["indexes"], **additions.get("indexes", {})),
-        "fks": expected["fks"] | additions.get("fks", set()),
+        "columns": expected["columns"] | additions.get("columns", set())
+        | later.get("columns", set()),
+        "nullable": expected["nullable"] | additions.get("nullable", set())
+        | later.get("nullable", set()),
+        "checks": expected["checks"] | additions.get("checks", set())
+        | later.get("checks", set()),
+        "indexes": dict(expected["indexes"], **additions.get("indexes", {}),
+                        **later.get("indexes", {})),
+        "fks": expected["fks"] | additions.get("fks", set()) | later.get("fks", set()),
         "uniques": sorted(expected["uniques"] + additions.get("uniques", [])),
     }
 
@@ -302,6 +328,9 @@ def test_the_replaced_checks_widen_the_m04_expressions_and_match_the_model():
     for kind in PaymentAuditEventKind:
         if kind.value in ("payment_online_confirmed", "receipt_online_issued"):
             continue  # Phase 5 / M07's kinds.
+        if kind.value in ("invoice_deleted", "payment_deleted", "payment_replaced",
+                          "receipt_deleted"):
+            continue  # Phase 5 / M10's kinds.
         assert f"'{kind.value}'" in module._KIND_AFTER, kind
         assert (f"'{kind.value}'" in module._KIND_BEFORE) == kind.value.startswith("invoice_")
     # The M04 branches of the version CHECK are kept exactly, per kind.
@@ -676,8 +705,10 @@ def test_the_model_and_migration_agree(app, table):
             declared = dict(re.findall(r"sa\.Column\('([^']+)',.*?nullable=(True|False)",
                                        _table_block(source, table)))
             declared.pop("id", None)
-            # Columns Phase 5 / M07 added or made nullable are compared by its suite.
-            changed = _M07_ADDITIONS[table].get("nullable", set())
+            # Columns Phase 5 / M07 or M10 added or made nullable are compared
+            # by their own suites.
+            changed = _M07_ADDITIONS[table].get("nullable", set()) | _M10_ADDITIONS.get(
+                table, {}).get("nullable", set())
             assert {k: v for k, v in declared.items() if k not in changed} == {
                 k: v for k, v in actual.items() if k not in changed}
         shape = {

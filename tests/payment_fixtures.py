@@ -66,7 +66,9 @@ REJECT_CONFIRM_TEXT = "tick the confirmation box before rejecting this bank tran
 REVERSE_CONFIRM_TEXT = "tick the confirmation box before reversing this payment"
 REJECT_REASON_TEXT = "Give the reason for rejecting this bank transfer."
 REVERSE_REASON_TEXT = "Give the reason for reversing this payment."
-FROZEN_TEXT = "has a pending or confirmed payment, so its lines can no longer be changed"
+#: Phase 5 / M10: a payment freezes the cancellation only; the lines keep a
+#: payment floor instead.
+FROZEN_TEXT = "has a pending or confirmed payment, so it can no longer be cancelled"
 CARD_LIKE_TEXT = "looks like a payment card number"
 FUTURE_DATE_TEXT = "cannot be later than today"
 REFERENCE_MISSING_TEXT = "Enter the bank"

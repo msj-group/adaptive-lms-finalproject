@@ -25,6 +25,15 @@ actor, in the online snapshot layout that also names the payment intent and the
 provider event by public id. Every other kind still needs the locked, active
 acting Administrator; the writer refuses any other combination.
 
+**Visible deletion (Phase 5 / M10).** :func:`record_payment_deletion_event`
+writes ``payment_deleted``, ``payment_replaced`` and ``receipt_deleted`` for a
+transaction or receipt whose tombstone columns this transaction has just set,
+in the deletion layout (:func:`build_payment_deletion_snapshot`). Their
+balances are the invoice's before and after the **whole** deletion they belong
+to -- one payment and its receipt, an edit's superseded collection, or an
+invoice's entire document family -- because the steps inside one such
+deletion are not states anyone can observe.
+
 **Nothing here edits or deletes an event**, and nothing ever will: the
 module's only write is an insert.
 """
@@ -45,6 +54,7 @@ from app.models import (
 )
 from app.models.payment_audit_event import (
     ONLINE_PAYMENT_SNAPSHOT_SCHEMA,
+    PAYMENT_DELETION_SNAPSHOT_SCHEMA,
     PAYMENT_SNAPSHOT_SCHEMA,
     REASON_REQUIRED_KINDS,
     RECEIPT_EVENT_KINDS,
@@ -52,6 +62,7 @@ from app.models.payment_audit_event import (
     normalize_audit_reason,
     snapshot_amount_text,
     validate_online_payment_snapshot,
+    validate_payment_deletion_snapshot,
     validate_payment_snapshot,
 )
 from app.models.receipt import (
@@ -72,6 +83,10 @@ RECEIPT_ISSUED = _K.RECEIPT_ISSUED.value
 RECEIPT_VOIDED = _K.RECEIPT_VOIDED.value
 ONLINE_CONFIRMED = _K.PAYMENT_ONLINE_CONFIRMED.value
 RECEIPT_ONLINE_ISSUED = _K.RECEIPT_ONLINE_ISSUED.value
+PAYMENT_DELETED = _K.PAYMENT_DELETED.value
+PAYMENT_REPLACED = _K.PAYMENT_REPLACED.value
+RECEIPT_DELETED = _K.RECEIPT_DELETED.value
+PAYMENT_DELETION_KINDS = frozenset({PAYMENT_DELETED, PAYMENT_REPLACED, RECEIPT_DELETED})
 
 _ISSUED_INVOICE = InvoiceStatus.ISSUED.value
 _ADMINISTRATOR = UserRole.ADMINISTRATOR.value
@@ -104,6 +119,69 @@ _SHAPES = {
 }
 
 
+def _payment_entry(payment, payments):
+    reversal_of = None
+    if payment.reversal_of_payment_transaction_id is not None:
+        public_ids = {row.id: row.public_id for row in payments}
+        reversal_of = public_ids.get(payment.reversal_of_payment_transaction_id)
+        if reversal_of is None:
+            raise ValueError("A reversal's collection is not among the invoice's payments")
+    return {
+        "public_id": payment.public_id,
+        "kind": payment.kind,
+        "method": payment.method,
+        "status": payment.status,
+        "amount": snapshot_amount_text(payment.amount),
+        "reversal_of_public_id": reversal_of,
+    }
+
+
+def _snapshot_content(invoice, active_items, payments, payment, receipt, schema):
+    """The shared content of every payment snapshot layout. Deleted
+    transactions (Phase 5 / M10) count for nothing in the balance."""
+    balance = payment_balance(active_items, payments)
+    if balance is None:
+        raise ValueError("The invoice's payment records do not describe a balance")
+    return {
+        "schema": schema,
+        "invoice_public_id": invoice.public_id,
+        "invoice_number": invoice.invoice_number,
+        "invoice_status": invoice.status,
+        "currency_code": invoice.currency_code,
+        "invoice_total": snapshot_amount_text(balance.total),
+        "paid_amount": snapshot_amount_text(balance.paid),
+        "outstanding_amount": snapshot_amount_text(balance.outstanding),
+        "payment": None if payment is None else _payment_entry(payment, payments),
+        "receipt": None
+        if receipt is None
+        else {
+            "public_id": receipt.public_id,
+            "receipt_number": receipt.receipt_number,
+            "status": receipt.status,
+        },
+    }
+
+
+def build_payment_deletion_snapshot(
+    invoice, active_items, payments, payment, receipt=None, replaced_by_public_id=None
+):
+    """Phase 5 / M10: the canonical deletion-layout snapshot of `invoice` as it
+    now is, naming `payment` -- and, for a receipt event, `receipt` -- with
+    whether each is deleted. `payments` are the invoice's transactions the
+    request read under its locks, deleted ones included (they resolve a
+    reversal's collection and count for nothing in the balance).
+    `replaced_by_public_id` names the collection an edit recorded in place of
+    `payment`."""
+    snapshot = _snapshot_content(
+        invoice, active_items, payments, payment, receipt, PAYMENT_DELETION_SNAPSHOT_SCHEMA
+    )
+    snapshot["payment"]["deleted"] = payment.deleted_at is not None
+    snapshot["payment"]["replaced_by_public_id"] = replaced_by_public_id
+    if receipt is not None:
+        snapshot["receipt"]["deleted"] = receipt.deleted_at is not None
+    return validate_payment_deletion_snapshot(snapshot)
+
+
 def online_context(intent_public_id, provider_event_public_id):
     """The ``online`` part of an online payment snapshot."""
     return {
@@ -124,43 +202,14 @@ def build_payment_snapshot(
     layout of a system-origin event. Raises ``ValueError`` when the records do
     not describe a balance.
     """
-    balance = payment_balance(active_items, payments)
-    if balance is None:
-        raise ValueError("The invoice's payment records do not describe a balance")
-    entry = None
-    if payment is not None:
-        reversal_of = None
-        if payment.reversal_of_payment_transaction_id is not None:
-            public_ids = {row.id: row.public_id for row in payments}
-            reversal_of = public_ids.get(payment.reversal_of_payment_transaction_id)
-            if reversal_of is None:
-                raise ValueError("A reversal's collection is not among the invoice's payments")
-        entry = {
-            "public_id": payment.public_id,
-            "kind": payment.kind,
-            "method": payment.method,
-            "status": payment.status,
-            "amount": snapshot_amount_text(payment.amount),
-            "reversal_of_public_id": reversal_of,
-        }
-    snapshot = {
-        "schema": PAYMENT_SNAPSHOT_SCHEMA if online is None else ONLINE_PAYMENT_SNAPSHOT_SCHEMA,
-        "invoice_public_id": invoice.public_id,
-        "invoice_number": invoice.invoice_number,
-        "invoice_status": invoice.status,
-        "currency_code": invoice.currency_code,
-        "invoice_total": snapshot_amount_text(balance.total),
-        "paid_amount": snapshot_amount_text(balance.paid),
-        "outstanding_amount": snapshot_amount_text(balance.outstanding),
-        "payment": entry,
-        "receipt": None
-        if receipt is None
-        else {
-            "public_id": receipt.public_id,
-            "receipt_number": receipt.receipt_number,
-            "status": receipt.status,
-        },
-    }
+    snapshot = _snapshot_content(
+        invoice,
+        active_items,
+        payments,
+        payment,
+        receipt,
+        PAYMENT_SNAPSHOT_SCHEMA if online is None else ONLINE_PAYMENT_SNAPSHOT_SCHEMA,
+    )
     if online is None:
         return validate_payment_snapshot(snapshot)
     snapshot["online"] = dict(online)
@@ -394,6 +443,149 @@ def record_payment_event(
     event = PaymentAuditEvent(
         invoice_id=invoice.id,
         actor_id=None if system else actor.id,
+        kind=kind,
+        occurred_at=moment,
+        invoice_version_before=invoice.version,
+        invoice_version_after=invoice.version,
+        reason=reason,
+        before_snapshot=before,
+        after_snapshot=after,
+        payment_transaction_id=payment.id,
+        receipt_id=None if receipt is None else receipt.id,
+    )
+    db.session.add(event)
+    return event
+
+
+def _deletion_facts(entry):
+    return (entry["public_id"], entry["kind"], entry["method"], entry["status"], entry["amount"])
+
+
+def record_payment_deletion_event(
+    *,
+    invoice,
+    actor,
+    kind,
+    payment,
+    receipt,
+    before_snapshot,
+    after_snapshot,
+    reason,
+    moment,
+    replacement=None,
+):
+    """Phase 5 / M10: add the one ``payment_deleted``, ``payment_replaced`` or
+    ``receipt_deleted`` event for a deletion this transaction has already
+    applied, or raise ``ValueError`` and add nothing.
+
+    `actor` is the locked, active acting Administrator; `invoice` the locked,
+    issued invoice, whose version the event observes. `payment` is its stored
+    transaction, now deleted; `receipt` is that transaction's stored, deleted
+    receipt for ``receipt_deleted`` and ``None`` otherwise. `replacement` is
+    the stored, live collection of the same invoice an edit recorded in place
+    of `payment`: required for ``payment_replaced``, optional for the edited
+    collection's ``receipt_deleted`` and refused otherwise. The reason is
+    required.
+
+    Both snapshots are in the deletion layout and describe the invoice; they
+    name the same transaction as the row now holds it, deleted after and not
+    before, and -- for a receipt event -- the same receipt likewise. The
+    invoice total never changes. The paid and outstanding amounts are those
+    before and after the whole deletion the event belongs to.
+    """
+    if kind not in PAYMENT_DELETION_KINDS:
+        raise ValueError(f"Unknown payment deletion event kind: {kind}")
+    if actor is None or actor.role != _ADMINISTRATOR or actor.status != _USER_ACTIVE:
+        raise ValueError("A payment audit event needs an active acting Administrator")
+    if invoice is None or invoice.id is None or invoice.status != _ISSUED_INVOICE:
+        raise ValueError("A payment audit event needs a stored, issued invoice")
+    if (
+        payment is None
+        or payment.id is None
+        or payment.invoice_id != invoice.id
+        or payment.deleted_at is None
+    ):
+        raise ValueError("A payment deletion event needs a stored, deleted transaction")
+    if kind == RECEIPT_DELETED:
+        if (
+            receipt is None
+            or receipt.id is None
+            or receipt.payment_transaction_id != payment.id
+            or receipt.deleted_at is None
+        ):
+            raise ValueError("A receipt deletion event needs the stored, deleted receipt")
+    elif receipt is not None:
+        raise ValueError("A payment event names no receipt")
+    if kind == PAYMENT_REPLACED and replacement is None:
+        raise ValueError("A replaced collection names its replacement")
+    if kind == PAYMENT_DELETED and replacement is not None:
+        raise ValueError("A deleted payment names no replacement")
+    if replacement is not None and (
+        replacement.id is None
+        or replacement.id == payment.id
+        or replacement.invoice_id != invoice.id
+        or replacement.kind != _COLLECTION
+        or replacement.deleted_at is not None
+    ):
+        raise ValueError("A replacement is another live collection of the same invoice")
+
+    normalized, error = normalize_audit_reason(reason)
+    if error is not None or normalized != reason:
+        raise ValueError("A deletion needs a normalized, non-empty reason")
+
+    if before_snapshot is None or after_snapshot is None:
+        raise ValueError("A payment audit event has both snapshots")
+    before = validate_payment_deletion_snapshot(before_snapshot)
+    after = validate_payment_deletion_snapshot(after_snapshot)
+    for snapshot in (before, after):
+        if (snapshot["invoice_public_id"], snapshot["invoice_number"]) != (
+            invoice.public_id,
+            invoice.invoice_number,
+        ):
+            raise ValueError("A payment snapshot does not describe the invoice")
+    if after["invoice_total"] != before["invoice_total"]:
+        raise ValueError("A deletion never changes the invoice total")
+
+    earlier, now = before["payment"], after["payment"]
+    row_facts = (
+        payment.public_id,
+        payment.kind,
+        payment.method,
+        payment.status,
+        snapshot_amount_text(payment.amount),
+    )
+    if (
+        earlier is None
+        or now is None
+        or _deletion_facts(earlier) != row_facts
+        or _deletion_facts(now) != row_facts
+        or earlier["reversal_of_public_id"] != now["reversal_of_public_id"]
+    ):
+        raise ValueError("The snapshots do not describe the transaction as it is")
+    if earlier["deleted"] or not now["deleted"] or earlier["replaced_by_public_id"] is not None:
+        raise ValueError("The snapshots do not show the transaction's deletion")
+    expected_replacement = None if replacement is None else replacement.public_id
+    if now["replaced_by_public_id"] != expected_replacement:
+        raise ValueError("The after snapshot does not name the replacement")
+
+    if kind == RECEIPT_DELETED:
+        facts = (receipt.public_id, receipt.receipt_number, receipt.status)
+        old, new = before["receipt"], after["receipt"]
+        if (
+            old is None
+            or new is None
+            or (old["public_id"], old["receipt_number"], old["status"]) != facts
+            or (new["public_id"], new["receipt_number"], new["status"]) != facts
+            or old["deleted"]
+            or not new["deleted"]
+        ):
+            raise ValueError("The snapshots do not show the receipt's deletion")
+    elif before["receipt"] is not None or after["receipt"] is not None:
+        raise ValueError("A payment event's snapshots name no receipt")
+
+    event = PaymentAuditEvent(
+        invoice_id=invoice.id,
+        actor_id=actor.id,
         kind=kind,
         occurred_at=moment,
         invoice_version_before=invoice.version,

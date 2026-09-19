@@ -36,6 +36,13 @@ PAYMENT_SNAPSHOT_SCHEMA = "phase5-m05.payment.v1"
 #: M05 layout plus the payment intent and the verified provider event.
 ONLINE_PAYMENT_SNAPSHOT_SCHEMA = "phase5-m07.online-payment.v1"
 
+#: Phase 5 / M10: the layouts of a visible-deletion event's snapshots -- the
+#: M04 invoice layout plus ``deleted``, and the M05 payment layout whose
+#: payment and receipt entries also say whether they are deleted (and the
+#: payment, which collection replaced it).
+INVOICE_DELETION_SNAPSHOT_SCHEMA = "phase5-m10.invoice.v1"
+PAYMENT_DELETION_SNAPSHOT_SCHEMA = "phase5-m10.payment.v1"
+
 _K = PaymentAuditEventKind
 _CREATED = _K.INVOICE_DRAFT_CREATED.value
 
@@ -47,6 +54,7 @@ INVOICE_EVENT_KINDS = frozenset(
         _K.INVOICE_ISSUED.value,
         _K.INVOICE_ISSUED_EDITED.value,
         _K.INVOICE_CANCELLED.value,
+        _K.INVOICE_DELETED.value,
     }
 )
 
@@ -60,13 +68,31 @@ PAYMENT_EVENT_KINDS = frozenset(
         _K.PAYMENT_BANK_TRANSFER_REJECTED.value,
         _K.PAYMENT_REVERSED.value,
         _K.PAYMENT_ONLINE_CONFIRMED.value,
+        _K.PAYMENT_DELETED.value,
+        _K.PAYMENT_REPLACED.value,
     }
 )
 
 #: Phase 5 / M05: a receipt's movements. Each names the receipt and the
 #: collection it belongs to.
 RECEIPT_EVENT_KINDS = frozenset(
-    {_K.RECEIPT_ISSUED.value, _K.RECEIPT_VOIDED.value, _K.RECEIPT_ONLINE_ISSUED.value}
+    {
+        _K.RECEIPT_ISSUED.value,
+        _K.RECEIPT_VOIDED.value,
+        _K.RECEIPT_ONLINE_ISSUED.value,
+        _K.RECEIPT_DELETED.value,
+    }
+)
+
+#: Phase 5 / M10: the visible deletions. Each keeps its row as a tombstone and
+#: carries the deletion snapshot layouts.
+DELETION_EVENT_KINDS = frozenset(
+    {
+        _K.INVOICE_DELETED.value,
+        _K.PAYMENT_DELETED.value,
+        _K.PAYMENT_REPLACED.value,
+        _K.RECEIPT_DELETED.value,
+    }
 )
 
 #: Phase 5 / M07: the only kinds with no acting Administrator. A verified,
@@ -85,7 +111,7 @@ REASON_REQUIRED_KINDS = frozenset(
         _K.PAYMENT_REVERSED.value,
         _K.RECEIPT_VOIDED.value,
     }
-)
+) | DELETION_EVENT_KINDS
 _REASONLESS_KINDS = frozenset(kind.value for kind in PaymentAuditEventKind) - REASON_REQUIRED_KINDS
 _INVOICE_CHANGE_KINDS = INVOICE_EVENT_KINDS - {_CREATED}
 _PAYMENT_AND_RECEIPT_KINDS = PAYMENT_EVENT_KINDS | RECEIPT_EVENT_KINDS
@@ -102,6 +128,7 @@ _SNAPSHOT_KEYS = frozenset(
         "items",
     }
 )
+_DELETION_SNAPSHOT_KEYS = _SNAPSHOT_KEYS | {"deleted"}
 _ITEM_KEYS = frozenset({"public_id", "kind", "label", "status", "amount"})
 _AMOUNT_TEXT = re.compile(r"[0-9]+\.[0-9]{4}")
 _AMOUNT_TEXT_MAX_LENGTH = 32
@@ -131,6 +158,8 @@ _ONLINE_PAYMENT_SNAPSHOT_KEYS = _PAYMENT_SNAPSHOT_KEYS | {"online"}
 _ONLINE_KEYS = frozenset({"payment_intent_public_id", "provider_event_public_id"})
 _PAYMENT_KEYS = frozenset({"public_id", "kind", "method", "status", "amount", "reversal_of_public_id"})
 _RECEIPT_KEYS = frozenset({"public_id", "receipt_number", "status"})
+_DELETION_PAYMENT_KEYS = _PAYMENT_KEYS | {"deleted", "replaced_by_public_id"}
+_DELETION_RECEIPT_KEYS = _RECEIPT_KEYS | {"deleted"}
 _PAYMENT_KINDS = frozenset(kind.value for kind in PaymentTransactionKind)
 _PAYMENT_METHODS = frozenset(method.value for method in PaymentMethod)
 _PAYMENT_STATUSES = frozenset(status.value for status in PaymentTransactionStatus)
@@ -205,19 +234,25 @@ def _item_error(item):
     return None
 
 
-def validate_invoice_snapshot(snapshot):
+def validate_invoice_snapshot(snapshot, schema=INVOICE_SNAPSHOT_SCHEMA):
     """The canonical copy of one server-built invoice snapshot, or raise
     ``ValueError``.
 
     Proves the exact layout -- no missing, extra or nested key, no internal
     id, no client JSON -- and that ``total`` is the exact sum of the active
     lines. Business rules (at least one line, distinct labels) are the
-    routes'; a snapshot only records state.
+    routes'; a snapshot only records state. The Phase 5 / M10 deletion
+    layout (`schema` ``INVOICE_DELETION_SNAPSHOT_SCHEMA``) also carries
+    ``deleted``, a boolean.
     """
-    if not isinstance(snapshot, dict) or set(snapshot) != _SNAPSHOT_KEYS:
+    deletion = schema == INVOICE_DELETION_SNAPSHOT_SCHEMA
+    expected_keys = _DELETION_SNAPSHOT_KEYS if deletion else _SNAPSHOT_KEYS
+    if not isinstance(snapshot, dict) or set(snapshot) != expected_keys:
         raise ValueError("An invoice snapshot has the wrong keys")
-    if snapshot["schema"] != INVOICE_SNAPSHOT_SCHEMA:
+    if snapshot["schema"] != schema:
         raise ValueError("An invoice snapshot has an unknown schema")
+    if deletion and not isinstance(snapshot["deleted"], bool):
+        raise ValueError("An invoice deletion snapshot says whether the invoice is deleted")
     if not _public_id_ok(snapshot["invoice_public_id"]) or not _public_id_ok(
         snapshot["student_fee_assignment_public_id"]
     ):
@@ -272,11 +307,24 @@ def _balance_text_ok(value):
     return snapshot_amount_text(Decimal(value)) == value
 
 
-def _payment_error(payment):
-    if not isinstance(payment, dict) or set(payment) != _PAYMENT_KEYS:
+def _payment_error(payment, deletion=False):
+    if not isinstance(payment, dict) or set(payment) != (
+        _DELETION_PAYMENT_KEYS if deletion else _PAYMENT_KEYS
+    ):
         return "the payment has the wrong keys"
     if not _public_id_ok(payment["public_id"]):
         return "the payment public id is invalid"
+    if deletion:
+        replaced_by = payment["replaced_by_public_id"]
+        if not isinstance(payment["deleted"], bool):
+            return "the payment does not say whether it is deleted"
+        if replaced_by is not None and (
+            not _public_id_ok(replaced_by)
+            or replaced_by == payment["public_id"]
+            or not payment["deleted"]
+            or payment["kind"] != _COLLECTION
+        ):
+            return "only a deleted collection names another collection as its replacement"
     kind, method, status = payment["kind"], payment["method"], payment["status"]
     if kind not in _PAYMENT_KINDS or method not in _PAYMENT_METHODS or status not in _PAYMENT_STATUSES:
         return "the payment kind, method or status is invalid"
@@ -303,9 +351,13 @@ def _payment_error(payment):
     return None
 
 
-def _receipt_error(receipt):
-    if not isinstance(receipt, dict) or set(receipt) != _RECEIPT_KEYS:
+def _receipt_error(receipt, deletion=False):
+    if not isinstance(receipt, dict) or set(receipt) != (
+        _DELETION_RECEIPT_KEYS if deletion else _RECEIPT_KEYS
+    ):
         return "the receipt has the wrong keys"
+    if deletion and not isinstance(receipt["deleted"], bool):
+        return "the receipt does not say whether it is deleted"
     if not _public_id_ok(receipt["public_id"]):
         return "the receipt public id is invalid"
     if not receipt_number_is_valid(receipt["receipt_number"]):
@@ -326,8 +378,14 @@ def validate_payment_snapshot(snapshot, schema=PAYMENT_SNAPSHOT_SCHEMA):
     the reversed collection's public id) or ``None``; and the event's receipt
     (public id, number, status) or ``None``. There is no internal id, name,
     reference, reason, token, session value or client JSON.
+
+    The Phase 5 / M10 deletion layout (`schema`
+    ``PAYMENT_DELETION_SNAPSHOT_SCHEMA``) is the same, except that the payment
+    entry also carries ``deleted`` and ``replaced_by_public_id`` and the
+    receipt entry ``deleted``.
     """
     online = schema == ONLINE_PAYMENT_SNAPSHOT_SCHEMA
+    deletion = schema == PAYMENT_DELETION_SNAPSHOT_SCHEMA
     expected_keys = _ONLINE_PAYMENT_SNAPSHOT_KEYS if online else _PAYMENT_SNAPSHOT_KEYS
     if not isinstance(snapshot, dict) or set(snapshot) != expected_keys:
         raise ValueError("A payment snapshot has the wrong keys")
@@ -364,11 +422,11 @@ def validate_payment_snapshot(snapshot, schema=PAYMENT_SNAPSHOT_SCHEMA):
         raise ValueError("A payment snapshot's paid and outstanding amounts do not add up")
     payment, receipt = snapshot["payment"], snapshot["receipt"]
     if payment is not None:
-        error = _payment_error(payment)
+        error = _payment_error(payment, deletion)
         if error is not None:
             raise ValueError(f"A payment snapshot is invalid: {error}")
     if receipt is not None:
-        error = _receipt_error(receipt)
+        error = _receipt_error(receipt, deletion)
         if error is not None:
             raise ValueError(f"A payment snapshot is invalid: {error}")
         if payment is None or payment["kind"] != _COLLECTION or payment["status"] != _CONFIRMED:
@@ -384,6 +442,18 @@ def validate_online_payment_snapshot(snapshot):
     return validate_payment_snapshot(snapshot, schema=ONLINE_PAYMENT_SNAPSHOT_SCHEMA)
 
 
+def validate_payment_deletion_snapshot(snapshot):
+    """:func:`validate_payment_snapshot` for the Phase 5 / M10 deletion
+    layout."""
+    return validate_payment_snapshot(snapshot, schema=PAYMENT_DELETION_SNAPSHOT_SCHEMA)
+
+
+def validate_invoice_deletion_snapshot(snapshot):
+    """:func:`validate_invoice_snapshot` for the Phase 5 / M10 deletion
+    layout."""
+    return validate_invoice_snapshot(snapshot, schema=INVOICE_DELETION_SNAPSHOT_SCHEMA)
+
+
 def validate_audit_snapshot(snapshot):
     """The canonical copy of any audit snapshot: a payment snapshot when it
     says so, otherwise the invoice layout, whose refusal it keeps."""
@@ -392,6 +462,10 @@ def validate_audit_snapshot(snapshot):
         return validate_payment_snapshot(snapshot)
     if schema == ONLINE_PAYMENT_SNAPSHOT_SCHEMA:
         return validate_online_payment_snapshot(snapshot)
+    if schema == PAYMENT_DELETION_SNAPSHOT_SCHEMA:
+        return validate_payment_deletion_snapshot(snapshot)
+    if schema == INVOICE_DELETION_SNAPSHOT_SCHEMA:
+        return validate_invoice_deletion_snapshot(snapshot)
     return validate_invoice_snapshot(snapshot)
 
 
@@ -464,6 +538,14 @@ class PaymentAuditEvent(db.Model):
     invoice version, so its "before" and "after" versions are the version it
     observed.
 
+    **Visible deletion (Phase 5 / M10).** Deleting an invoice, a payment or a
+    receipt keeps the row as a tombstone and writes ``invoice_deleted``,
+    ``payment_deleted``, ``payment_replaced`` (an edited collection replaced
+    by a new one) or ``receipt_deleted``, each with its reason, in the
+    deletion layouts (:func:`validate_invoice_deletion_snapshot`,
+    :func:`validate_payment_deletion_snapshot`). An invoice deletion moves the
+    invoice version by one; a payment or receipt deletion observes it.
+
     **Snapshots are built by the server, never submitted.** An invoice event
     uses :func:`validate_invoice_snapshot`; a payment or receipt event uses
     :func:`validate_payment_snapshot`; a system-origin online event uses
@@ -496,6 +578,9 @@ class PaymentAuditEvent(db.Model):
     - ``ck_payment_audit_events_reason_required``;
     - ``ck_payment_audit_events_subject_links`` (M05);
     - ``ck_payment_audit_events_actor_origin`` (M07).
+
+    Phase 5 / M10 widened ``_kind_valid``, ``_version_transition``,
+    ``_reason_required`` and ``_subject_links`` to the four deletion kinds.
 
     That the actor was an active Administrator, that a snapshot has the
     right shape for its kind and that a link names the right rows are proved
@@ -604,6 +689,12 @@ class PaymentAuditEvent(db.Model):
 
 def _expected_shape(kind):
     """``(schema, has_payment, has_receipt)`` for a known kind, else ``None``."""
+    if kind == _K.INVOICE_DELETED.value:
+        return INVOICE_DELETION_SNAPSHOT_SCHEMA, False, False
+    if kind in (_K.PAYMENT_DELETED.value, _K.PAYMENT_REPLACED.value):
+        return PAYMENT_DELETION_SNAPSHOT_SCHEMA, True, False
+    if kind == _K.RECEIPT_DELETED.value:
+        return PAYMENT_DELETION_SNAPSHOT_SCHEMA, True, True
     if kind in INVOICE_EVENT_KINDS:
         return INVOICE_SNAPSHOT_SCHEMA, False, False
     if kind == _K.PAYMENT_ONLINE_CONFIRMED.value:

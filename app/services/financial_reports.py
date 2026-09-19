@@ -402,12 +402,14 @@ def parse_report_filters(report_key, args, tz_name, moment):
 def _with_invoice_context(query, student, group_id):
     """Join the invoice's assignment, Enrollment, Group and Student onto a
     query that already selects from (or joined) ``invoices``; limit it to one
-    Group when a Group filter is set."""
+    Group when a Group filter is set. A deleted invoice (Phase 5 / M10) and
+    everything read through it are never reported."""
     query = (
         query.join(StudentFeeAssignment, StudentFeeAssignment.id == Invoice.student_fee_assignment_id)
         .join(Enrollment, Enrollment.id == StudentFeeAssignment.enrollment_id)
         .join(Group, Group.id == Enrollment.group_id)
         .join(student, student.id == Enrollment.student_id)
+        .filter(Invoice.deleted_at.is_(None))
     )
     if group_id is not None:
         query = query.filter(Group.id == group_id)
@@ -500,6 +502,7 @@ def confirmed_movement_rows(filters):
         student,
         _group_id(filters),
     ).filter(
+        PaymentTransaction.deleted_at.is_(None),
         PaymentTransaction.status == _CONFIRMED,
         PaymentTransaction.kind.in_((_COLLECTION, _REVERSAL)),
         PaymentTransaction.method.in_(_METHOD_ORDER),
@@ -623,8 +626,9 @@ def issued_invoice_rows(filters):
 
 
 def _issued_scope(query, filters):
-    """Limit a query joined to ``invoices`` to issued invoices in scope."""
-    query = query.filter(Invoice.status == _ISSUED)
+    """Limit a query joined to ``invoices`` to live issued invoices in
+    scope."""
+    query = query.filter(Invoice.status == _ISSUED, Invoice.deleted_at.is_(None))
     group_id = _group_id(filters)
     if group_id is not None:
         query = (
@@ -662,7 +666,7 @@ def issued_invoice_movement_rows(filters):
         )
         .select_from(PaymentTransaction)
         .join(Invoice, Invoice.id == PaymentTransaction.invoice_id)
-        .filter(PaymentTransaction.status == _CONFIRMED)
+        .filter(PaymentTransaction.status == _CONFIRMED, PaymentTransaction.deleted_at.is_(None))
     )
     return _issued_scope(query, filters).order_by(
         PaymentTransaction.invoice_id.asc(), PaymentTransaction.id.asc()
@@ -777,6 +781,7 @@ def transfer_rows(filters, status, moment_column):
         student,
         _group_id(filters),
     ).filter(
+        PaymentTransaction.deleted_at.is_(None),
         PaymentTransaction.status == status,
         PaymentTransaction.kind == _COLLECTION,
         PaymentTransaction.method == PaymentMethod.BANK_TRANSFER.value,

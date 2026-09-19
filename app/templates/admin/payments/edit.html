@@ -1,0 +1,73 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Edit payment{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M10. Correct a manual payment. Saving deletes the original
+      payment and its receipt (kept in Deleted Records) and records the
+      corrected payment -- with a new receipt number when it is confirmed. The
+      method, status and currency follow the original. -#}
+  <div class="ds-row" style="margin-bottom: var(--space-3)">
+    <a class="btn btn--secondary" href="{{ payments_url }}">&larr; Invoice payments</a>
+  </div>
+  <h1 style="margin: 0 0 var(--space-4)">Edit {{ payment.method_label|lower }} payment</h1>
+
+  {{ macros.flash_messages() }}
+
+  <div class="card" style="margin-bottom: var(--space-4)">
+    <div class="card__title">{{ payment.student_name }} &middot; {{ payment.invoice_number }}</div>
+    <div class="card__body">
+      {{ payment.group_name }}<br>
+      Recorded {{ payment.recorded_local.strftime("%Y-%m-%d %H:%M") }} &middot; {{ payment.status_label }}
+      &middot; <span style="font-variant-numeric: tabular-nums">{{ payment.amount_text }} {{ currency_code }}</span>
+      {% if payment.receipt_number %}&middot; receipt {{ payment.receipt_number }}{% endif %}
+    </div>
+  </div>
+
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    The original payment{% if payment.receipt_number %} and receipt {{ payment.receipt_number }}{% endif %} will be
+    deleted and kept in Deleted Records. The corrected payment is recorded
+    {% if payment.is_confirmed or payment.method == "cash" %}as confirmed, with a new receipt number{% else %}as a pending bank transfer{% endif %}.
+    {% if available_text %}It can be at most {{ available_text }} {{ currency_code }}.{% endif %}
+  </div>
+
+  <form method="post" action="{{ action_url }}" class="card" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="{{ state_field }}" value="{{ state_token }}">
+    <div class="field">
+      <label class="field__label" for="{{ form.amount.id }}">{{ form.amount.label.text }}</label>
+      {{ form.amount(class="field__input", inputmode="decimal", autocomplete="off") }}
+      {% for error in form.amount.errors %}<div class="field__error">{{ error }}</div>{% endfor %}
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">At least {{ min_amount }}, up to {{ amount_scale }} decimal places.</div>
+    </div>
+    {% if payment.is_bank %}
+    <div class="field">
+      <label class="field__label" for="{{ form.reference.id }}">{{ form.reference.label.text }}</label>
+      {{ form.reference(class="field__input", maxlength=reference_max, autocomplete="off") }}
+      {% for error in form.reference.errors %}<div class="field__error">{{ error }}</div>{% endfor %}
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">Never a card or account number.</div>
+    </div>
+    <div class="field">
+      <label class="field__label" for="{{ form.transfer_date.id }}">{{ form.transfer_date.label.text }}</label>
+      {{ form.transfer_date(class="field__input", type="date", min=earliest_date, max=latest_date) }}
+      {% for error in form.transfer_date.errors %}<div class="field__error">{{ error }}</div>{% endfor %}
+    </div>
+    {% endif %}
+    <div class="field">
+      <label class="field__label" for="{{ form.reason.id }}">{{ form.reason.label.text }}</label>
+      {{ form.reason(class="field__input", rows=3, maxlength=reason_max) }}
+      {% for error in form.reason.errors %}<div class="field__error">{{ error }}</div>{% endfor %}
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">Required, at most {{ reason_max }} characters.</div>
+    </div>
+    <label class="field__label" style="display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-4)">
+      <input type="checkbox" name="confirm" value="yes">
+      Replace this payment with the corrected one.
+    </label>
+    {% if confirm_error %}<div class="field__error">{{ confirm_error }}</div>{% endif %}
+    <div class="ds-row" style="margin-top: var(--space-6)">
+      <button type="submit" class="btn btn--primary">Save corrected payment</button>
+      <a class="btn btn--secondary" href="{{ payments_url }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

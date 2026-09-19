@@ -3,18 +3,23 @@
 {% block title %}Payments{% endblock %}
 {% block admin_content %}
 <div class="ds-page">
-  {#- Phase 5 / M05. Every manual payment transaction, newest first, with the two
-      filters an administrator may apply -- status and method, each normalised to
-      a known value or dropped before it reaches SQL. A page holds at most
-      `page_size` rows; there is no total count and no report, export, refund or
-      delete control, and no endpoint behind one. -#}
-  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+  {#- Phase 5 / M05, the Payments workspace since M10. Every live payment
+      transaction, newest first, with the two filters an administrator may apply
+      -- status and method, each normalised to a known value or dropped before
+      it reaches SQL. A page holds at most `page_size` rows. A live manual
+      collection that is pending or confirmed and not reversed links to its
+      edit and delete pages; there is no standalone receipt, report, export or
+      refund control. -#}
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2)">
     <h1 style="margin:0">Payments</h1>
+    <a class="btn btn--primary" href="{{ new_payment_url }}">New payment</a>
   </div>
   <p class="ds-section__desc">
     Cash, bank-transfer and verified online payments recorded against issued invoices, in {{ currency_code }}.
-    Manual payments are recorded, confirmed, rejected and reversed from each invoice's payments page; an
-    online payment is recorded only by a verified signed provider webhook.
+    A confirmed payment receives its receipt automatically. Editing a payment deletes it and its receipt
+    and records the corrected payment with a new receipt; deleted payments and receipts are kept in
+    <a href="{{ url_for('admin.deleted_financial_records', type='payment') }}">Deleted Records</a>.
+    An online payment is recorded only by a verified signed provider webhook.
     <a href="{{ url_for('admin.payment_intents_overview') }}">Payment intents</a>
   </p>
 
@@ -77,7 +82,11 @@
           {% if entry.receipt_url %}<a href="{{ entry.receipt_url }}">{{ entry.receipt_number }}</a>{% if entry.receipt_status_label != "Issued" %} <span class="badge badge--neutral">{{ entry.receipt_status_label }}</span>{% endif %}{% else %}&mdash;{% endif %}
         </td>
         <td style="padding: var(--space-3)">
-          <a class="btn btn--secondary" href="{{ entry.payments_url }}">Open</a>
+          <div style="display:flex; flex-direction:column; gap: var(--space-2)">
+            <a class="btn btn--secondary" href="{{ entry.payments_url }}" data-link="open">Open</a>
+            {% if entry.edit_url %}<a class="btn btn--secondary" href="{{ entry.edit_url }}" data-link="edit">Edit</a>{% endif %}
+            {% if entry.delete_url %}<a class="btn btn--danger-outline" href="{{ entry.delete_url }}" data-link="delete">Delete</a>{% endif %}
+          </div>
         </td>
       </tr>
       {% endfor %}

@@ -101,6 +101,11 @@ def test_the_closed_sets_are_exact():
         # Phase 5 / M07: the two system-origin online kinds.
         "payment_online_confirmed",
         "receipt_online_issued",
+        # Phase 5 / M10: the four visible-deletion kinds.
+        "invoice_deleted",
+        "payment_deleted",
+        "payment_replaced",
+        "receipt_deleted",
     ]
 
 
@@ -470,8 +475,10 @@ def test_the_database_refuses_deleting_anything_referenced(app):
 @pytest.mark.parametrize(
     "model, expected",
     [
+        # Phase 5 / M10 adds the deleting account.
         (Invoice, {("student_fee_assignment_id", "student_fee_assignments"),
-                   ("issued_by_id", "users"), ("cancelled_by_id", "users")}),
+                   ("issued_by_id", "users"), ("cancelled_by_id", "users"),
+                   ("deleted_by_id", "users")}),
         (InvoiceItem, {("invoice_id", "invoices"), ("removed_by_id", "users")}),
         # Phase 5 / M05 links a payment or receipt event to its rows.
         (PaymentAuditEvent, {("invoice_id", "invoices"), ("actor_id", "users"),
@@ -492,7 +499,9 @@ def test_foreign_keys_are_plain_with_no_relationship_or_cascade(app, model, expe
 _COLUMNS = {
     Invoice: {"id", "public_id", "student_fee_assignment_id", "currency_code", "status",
               "invoice_number", "issued_at", "issued_by_id", "cancelled_at", "cancelled_by_id",
-              "version", "created_at", "updated_at"},
+              "version", "created_at", "updated_at",
+              # Phase 5 / M10: the visible-deletion tombstone.
+              "deleted_at", "deleted_by_id", "deletion_reason"},
     InvoiceItem: {"id", "public_id", "invoice_id", "kind", "label", "amount", "status",
                   "removed_at", "removed_by_id", "version", "created_at", "updated_at"},
     PaymentAuditEvent: {"id", "invoice_id", "actor_id", "kind", "occurred_at",

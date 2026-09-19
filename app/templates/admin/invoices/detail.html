@@ -48,23 +48,25 @@
       {% endif %}
     </div>
 
-    {% if edit_url or cancel_url %}
+    {% if edit_url or cancel_url or delete_url %}
     <div class="ds-row" style="margin-top: var(--space-4); gap: var(--space-2); flex-wrap: wrap">
       {% if edit_url %}<a class="btn btn--secondary" href="{{ edit_url }}">Edit lines</a>{% endif %}
       {% if cancel_url %}<a class="btn btn--danger-outline" href="{{ cancel_url }}">Cancel invoice</a>{% endif %}
+      {% if delete_url %}<a class="btn btn--danger-outline" href="{{ delete_url }}">Delete invoice</a>{% endif %}
     </div>
     {% endif %}
   </div>
 
-  {% if invoice.is_issued and payment_frozen %}
-  <div class="alert alert--info" style="margin-top: var(--space-4)">
-    This invoice is issued and has a pending or confirmed payment, so its lines and its cancellation
-    are frozen. A payment is corrected by reversing it on the payments page.
-  </div>
-  {% elif invoice.is_issued and intent_frozen %}
+  {% if invoice.is_issued and intent_frozen %}
   <div class="alert alert--info" style="margin-top: var(--space-4)">
     This invoice is issued and has an active online payment intent, so its lines and its cancellation
     are frozen. A pending intent is released by cancelling it on its page.
+  </div>
+  {% elif invoice.is_issued and payment_frozen %}
+  <div class="alert alert--info" style="margin-top: var(--space-4)">
+    This invoice is issued and has a pending or confirmed payment, so it can no longer be cancelled.
+    Its lines can still be corrected with a reason, but its total can never go below what has been
+    paid or is pending. A payment is corrected or deleted from the Payments workspace.
   </div>
   {% elif invoice.is_issued %}
   <div class="alert alert--info" style="margin-top: var(--space-4)">

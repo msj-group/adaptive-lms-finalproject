@@ -12,16 +12,24 @@
   Times are shown in the center timezone (<strong>{{ tz_name }}</strong>).
 </p>
 
-{#- Phase 5 / M09 and M09R. Shortcuts only: they link to the Billing Desk and
-    the Invoice Register and show no financial figure. -#}
-<div style="display:grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: var(--space-6)">
-<a class="card" href="{{ url_for('admin.billing_desk') }}" style="display:block; text-decoration:none; color:inherit">
-  <div class="card__title">Billing Desk</div>
-  <div class="card__body">Find a student's fee assignment, invoice and payment actions in one place.</div>
+{#- Phase 5 / M10. Shortcuts only: they open the financial workspaces and show
+    no financial figure. -#}
+<div style="display:grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: var(--space-6)">
+<a class="card" href="{{ url_for('admin.student_accounts') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="student-accounts">
+  <div class="card__title">Student Accounts</div>
+  <div class="card__body">Each student's computed financial status and complete financial record.</div>
 </a>
-<a class="card" href="{{ url_for('admin.invoice_register') }}" style="display:block; text-decoration:none; color:inherit">
+<a class="card" href="{{ url_for('admin.invoice_register') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="invoices">
   <div class="card__title">Invoices</div>
-  <div class="card__body">Find and open any existing invoice across all students.</div>
+  <div class="card__body">Create, find, open, edit and delete invoices across all students.</div>
+</a>
+<a class="card" href="{{ url_for('admin.payments_overview') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="payments">
+  <div class="card__title">Payments</div>
+  <div class="card__body">Record, correct and delete payments; receipts are issued automatically.</div>
+</a>
+<a class="card" href="{{ url_for('admin.deleted_financial_records') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="deleted-records">
+  <div class="card__title">Deleted Records</div>
+  <div class="card__body">Deleted invoices, payments and receipts, kept read-only.</div>
 </a>
 </div>
 

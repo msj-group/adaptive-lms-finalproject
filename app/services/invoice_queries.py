@@ -54,7 +54,11 @@ from app.models import (
     UserRole,
     UserStatus,
 )
-from app.models.payment_audit_event import ONLINE_PAYMENT_SNAPSHOT_SCHEMA, PAYMENT_SNAPSHOT_SCHEMA
+from app.models.payment_audit_event import (
+    ONLINE_PAYMENT_SNAPSHOT_SCHEMA,
+    PAYMENT_DELETION_SNAPSHOT_SCHEMA,
+    PAYMENT_SNAPSHOT_SCHEMA,
+)
 from app.services.fee_plan_queries import KIND_LABELS
 from app.services.fee_plan_queries import STATUS_LABELS as PLAN_STATUS_LABELS
 from app.services.invoice_transactions import fee_plan_invoiceable
@@ -91,6 +95,7 @@ EVENT_KIND_LABELS = {
     PaymentAuditEventKind.INVOICE_ISSUED.value: "Issued",
     PaymentAuditEventKind.INVOICE_ISSUED_EDITED.value: "Issued invoice edited",
     PaymentAuditEventKind.INVOICE_CANCELLED.value: "Cancelled",
+    PaymentAuditEventKind.INVOICE_DELETED.value: "Deleted",
 }
 
 #: Why a draft cannot be created now, as a code. The route owns the wording.
@@ -213,10 +218,12 @@ def build_assignment_view(context):
 
 
 def assignment_has_open_invoice(assignment_id):
-    """Whether `assignment_id` has a ``draft`` or ``issued`` invoice. A
+    """Whether `assignment_id` has a live ``draft`` or ``issued`` invoice. A
     friendly preview; writes decide against locked rows."""
     query = db.session.query(Invoice.id).filter(
-        Invoice.student_fee_assignment_id == assignment_id, Invoice.status.in_(_OPEN)
+        Invoice.student_fee_assignment_id == assignment_id,
+        Invoice.status.in_(_OPEN),
+        Invoice.deleted_at.is_(None),
     )
     return bool(db.session.query(query.exists()).scalar())
 
@@ -231,7 +238,11 @@ def assignments_with_open_invoice(assignment_public_ids):
     rows = (
         db.session.query(StudentFeeAssignment.public_id)
         .join(Invoice, Invoice.student_fee_assignment_id == StudentFeeAssignment.id)
-        .filter(StudentFeeAssignment.public_id.in_(ids), Invoice.status.in_(_OPEN))
+        .filter(
+            StudentFeeAssignment.public_id.in_(ids),
+            Invoice.status.in_(_OPEN),
+            Invoice.deleted_at.is_(None),
+        )
         .distinct()
         .all()
     )
@@ -305,7 +316,9 @@ def invoice_history_page(assignment_id, page):
         .select_from(Invoice)
         .outerjoin(issuer, issuer.id == Invoice.issued_by_id)
         .outerjoin(canceller, canceller.id == Invoice.cancelled_by_id)
-        .filter(Invoice.student_fee_assignment_id == assignment_id)
+        .filter(
+            Invoice.student_fee_assignment_id == assignment_id, Invoice.deleted_at.is_(None)
+        )
         .order_by(Invoice.id.desc())
     )
     return _page(query, page)
@@ -360,14 +373,20 @@ def build_invoice_history_view(rows, summaries, tz_name="UTC"):
 # ---------------------------------------------------------------------------
 
 
-def assignment_invoice(assignment_id, invoice_public_id):
-    """One invoice by ``public_id`` **inside** `assignment_id`, or ``None``."""
+def assignment_invoice(assignment_id, invoice_public_id, include_deleted=False):
+    """One invoice by ``public_id`` **inside** `assignment_id`, or ``None``.
+    A deleted invoice (Phase 5 / M10) is found only with `include_deleted`,
+    which only the read-only detail page asks for, to send an old link to
+    the invoice's Deleted Records entry."""
     if not _public_id_ok(invoice_public_id):
         return None
-    return Invoice.query.filter(
+    query = Invoice.query.filter(
         Invoice.student_fee_assignment_id == assignment_id,
         Invoice.public_id == invoice_public_id,
-    ).first()
+    )
+    if not include_deleted:
+        query = query.filter(Invoice.deleted_at.is_(None))
+    return query.first()
 
 
 def invoice_line(invoice_id, item_public_id):
@@ -510,6 +529,8 @@ def describe_snapshot_changes(before, after):
             f"plan, totalling {_amount_text(after['total'])} {currency}."
         ]
     changes = []
+    if not before.get("deleted") and after.get("deleted"):
+        changes.append("Invoice deleted. It is kept as a read-only record in Deleted Records.")
     if before["status"] != after["status"]:
         changes.append(
             f"Status changed from {STATUS_LABELS.get(before['status'], before['status'])} "
@@ -613,7 +634,7 @@ def build_timeline_view(rows, tz_name="UTC"):
     return [
         _payment_timeline_entry(row, tz_name)
         if row.after_snapshot.get("schema")
-        in (PAYMENT_SNAPSHOT_SCHEMA, ONLINE_PAYMENT_SNAPSHOT_SCHEMA)
+        in (PAYMENT_SNAPSHOT_SCHEMA, ONLINE_PAYMENT_SNAPSHOT_SCHEMA, PAYMENT_DELETION_SNAPSHOT_SCHEMA)
         else _invoice_timeline_entry(row, tz_name)
         for row in rows
     ]

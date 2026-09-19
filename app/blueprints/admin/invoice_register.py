@@ -1,4 +1,5 @@
-"""Administrator Invoice Register (Phase 5 / M09R).
+"""Administrator Invoice Register (Phase 5 / M09R), the Invoices workspace
+since Phase 5 / M10.
 
 One read-only GET rule::
 
@@ -14,10 +15,14 @@ kept across pages.
 
 **A lookup, never a writer.** Each row links to its existing invoice page
 and, for an issued invoice, to its payments and receipts page, built from the
-row's own verified public ids. The register creates, issues, edits, cancels
-and records nothing, has no form that posts and offers no collection
-shortcut; the linked pages stay authoritative. A POST, PUT, PATCH or DELETE is
-a 405. The Billing Desk (M09) remains the guided page for one Student.
+row's own verified public ids. Since Phase 5 / M10 the page is the Invoices
+workspace: a ``New invoice`` button opens the guided flow, and a live draft
+or issued row links to its existing line edit page and to its visible
+deletion (``app/blueprints/admin/invoice_workspace.py``); a cancelled row is
+only opened. The register itself still writes nothing and has no form that
+posts: every linked page stays authoritative and re-proves everything. A POST,
+PUT, PATCH or DELETE is a 405. Deleted invoices are never listed; they belong
+to Deleted Records.
 
 Only an active Administrator reaches it. Every response carries
 ``Cache-Control: private, no-store`` and ``Vary: Cookie``.
@@ -27,12 +32,13 @@ from flask import render_template, request, url_for
 
 from app.blueprints.admin import admin_bp
 from app.blueprints.admin.fee_plans import _financial_response
-from app.models import UserRole
+from app.models import InvoiceStatus, UserRole
 from app.security.decorators import roles_required
 from app.services import invoice_register_queries as register
 from app.services.fee_plan_queries import normalize_page
 
 _ADMINISTRATOR = UserRole.ADMINISTRATOR.value
+_OPEN = (InvoiceStatus.DRAFT.value, InvoiceStatus.ISSUED.value)
 
 
 @admin_bp.get("/invoices")
@@ -60,6 +66,13 @@ def invoice_register():
         invoice["payments_url"] = (
             url_for("admin.invoice_payments", **ids) if invoice["is_issued"] else None
         )
+        live_open = invoice["status"] in _OPEN
+        invoice["edit_url"] = url_for("admin.invoice_edit", **ids) if live_open else None
+        invoice["delete_url"] = (
+            url_for("admin.invoice_workspace_delete", invoice_public_id=invoice["public_id"])
+            if live_open
+            else None
+        )
     filters = {
         key: value
         for key, value in (("status", status), ("payment", payment), ("q", search))
@@ -77,6 +90,7 @@ def invoice_register():
         payment_filters=register.PAYMENT_FILTERS,
         filtered=bool(filters),
         allocation_note=register.ALLOCATION_NOTE,
+        new_invoice_url=url_for("admin.invoice_workspace_new"),
         pagination={
             "first": first,
             "last": last,

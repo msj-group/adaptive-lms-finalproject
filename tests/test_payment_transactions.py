@@ -949,6 +949,17 @@ def test_a_payment_recorded_at_the_invoice_lock_freezes_a_waiting_invoice_change
     response = post()
     monkeypatch.undo()
     assert response.status_code == 302
+    if action == "add_line":
+        # Phase 5 / M10: a payment no longer freezes the lines. The waiting
+        # change re-proves the payment floor against the transfer it now sees,
+        # and its higher total clears it.
+        assert fx.LINE_ADDED_TEXT in px.followed(client, response)
+        with app.app_context():
+            owner = fx.stored_invoice(ip)
+            assert (owner.status, owner.version) == ("issued", 3)
+            assert len(fx.stored_lines(ip)) == 3
+            assert [e.kind for e in PaymentAuditEvent.query] == ["invoice_issued_edited"]
+        return
     assert px.FROZEN_TEXT in px.followed(client, response)
     with app.app_context():
         owner = fx.stored_invoice(ip)

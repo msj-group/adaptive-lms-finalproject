@@ -953,7 +953,10 @@ def test_a_manual_payment_keeps_the_invoice_frozen_after_the_intent_is_cancelled
     _direct(app, w, lambda owner, actor: px.payment(owner, actor, method="bank_transfer",
                                                     status="pending", amount="100"))
     assert ix.CANCELLED_OK_TEXT in ix.followed(client, ix.cancel(client, w, xp))
-    assert px.FROZEN_TEXT in ix.followed(client, client.get(fx.edit_url(w, w["ip"])))
+    # Phase 5 / M10: the transfer keeps the cancellation frozen; the lines
+    # only keep its floor.
+    assert px.FROZEN_TEXT in ix.followed(client, client.get(fx.cancel_url(w, w["ip"])))
+    assert client.get(fx.edit_url(w, w["ip"])).status_code == 200
 
 
 # ===========================================================================
@@ -1005,7 +1008,10 @@ def test_a_manual_payment_freeze_is_reported_first(app, client):
     _direct(app, w, lambda owner, actor: px.payment(owner, actor, method="bank_transfer",
                                                     status="pending", amount="5"))
     _row(app, w, "pending")
-    assert px.FROZEN_TEXT in ix.followed(client, client.get(fx.edit_url(w, w["ip"])))
+    # Phase 5 / M10: the manual payment is still reported first for the
+    # cancellation; the lines are frozen by the intent alone.
+    assert px.FROZEN_TEXT in ix.followed(client, client.get(fx.cancel_url(w, w["ip"])))
+    assert ix.INTENT_FROZEN_TEXT in ix.followed(client, client.get(fx.edit_url(w, w["ip"])))
 
 
 @pytest.mark.parametrize("action", ["add_line", "cancel_invoice"])

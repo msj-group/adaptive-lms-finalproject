@@ -25,6 +25,10 @@ are within ``MAX_INVOICE_PAYMENT_ROWS``, and the balance is valid. Otherwise
 the balance is "unavailable", never a misleading figure. Nothing is summed in
 SQL. A payment reduces the invoice balance; it is never allocated to an item.
 
+**Live invoices only (Phase 5 / M10).** A deleted invoice and a deleted
+transaction are never listed, counted or balanced here; they belong to
+Deleted Records.
+
 **Nothing sensitive is read.** No bank-transfer reference or date, rejection
 or void reason, provider reference, idempotency key, event id, digest, audit
 snapshot, receipt document or internal id reaches a row.
@@ -138,6 +142,7 @@ def _register_query(status, search):
         .join(Course, Course.id == Group.course_id)
         .join(student, student.id == Enrollment.student_id)
         .join(FeePlan, FeePlan.id == StudentFeeAssignment.fee_plan_id)
+        .filter(Invoice.deleted_at.is_(None))
     )
     if status != ALL:
         query = query.filter(Invoice.status == status)
@@ -155,7 +160,7 @@ def _register_query(status, search):
     return query
 
 
-def _money_facts(scope):
+def money_facts(scope):
     """``({invoice_id: [line rows]}, {invoice_id: [transaction rows]})`` for
     the invoices `scope` selects -- a criterion on ``Invoice.id``. Two queries.
     Only the columns the balance and the line validity read are selected."""
@@ -180,7 +185,7 @@ def _money_facts(scope):
             PaymentTransaction.status,
             PaymentTransaction.amount,
         )
-        .filter(scope(PaymentTransaction.invoice_id))
+        .filter(scope(PaymentTransaction.invoice_id), PaymentTransaction.deleted_at.is_(None))
         .order_by(PaymentTransaction.invoice_id.asc(), PaymentTransaction.id.asc())
         .all()
     ):
@@ -221,7 +226,7 @@ def register_page(status, payment, search, page):
         # matching issued invoice before paging; none is dropped.
         issued = query.filter(Invoice.status == _ISSUED)
         matching = issued.with_entities(Invoice.id).subquery()
-        lines, movements = _money_facts(lambda column: column.in_(select(matching.c.id)))
+        lines, movements = money_facts(lambda column: column.in_(select(matching.c.id)))
         ids = [
             row.id
             for row in issued.with_entities(Invoice.id, Invoice.status)
@@ -242,7 +247,7 @@ def register_page(status, payment, search, page):
     page = page if (page - 1) * PAGE_SIZE < total else 1
     rows = query.order_by(Invoice.id.desc()).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).all()
     ids = [row.id for row in rows]
-    facts = _money_facts(lambda column: column.in_(ids)) if ids else ({}, {})
+    facts = money_facts(lambda column: column.in_(ids)) if ids else ({}, {})
     return rows, facts, total, page
 
 

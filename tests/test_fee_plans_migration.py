@@ -38,7 +38,8 @@ _CORRECTION = "e4a1c6b9d273"
 #: Phase 5 / M03's revision follows the correction.
 _ASSIGNMENTS = "f9b2d6e4a318"
 #: Phase 5 / M04's revision follows M03's and M05's follows M04's, so M05's is the head.
-_HEAD = "e9c4b2d7a1f3"
+#: Phase 5 / M10's revision is the single head.
+_HEAD = "b3d8f1a6c472"
 _LIFECYCLE = "ck_fee_plans_lifecycle_state"
 
 _PLANS = "fee_plans"

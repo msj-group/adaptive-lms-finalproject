@@ -1,0 +1,70 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Deleted Records{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M10. Every deleted invoice, payment and receipt, newest
+      deletion first. Read-only: there is no restore and no form that posts.
+      Safe identifying facts only. -#}
+  <h1 style="margin: 0 0 var(--space-2)">Deleted Records</h1>
+  <p class="ds-section__desc">
+    Deleted financial documents are kept here, read-only, with who deleted them and why. They no longer
+    count in any list, balance or report. There is no restore.
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  <form method="get" action="{{ list_url }}" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+    <label class="field__label" for="type" style="margin:0">Type:</label>
+    <select name="type" id="type" class="field__input" style="width:auto">
+      {% for value, label in type_filters.items() %}
+      <option value="{{ value }}" {{ "selected" if kind == value else "" }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label class="field__label" for="q" style="margin:0">Search:</label>
+    <input type="search" name="q" id="q" class="field__input" style="width:auto" value="{{ search }}" maxlength="100" placeholder="Student, email, invoice or receipt number">
+    <button type="submit" class="btn btn--secondary">Apply</button>
+    {% if filtered %}<a class="btn btn--secondary" href="{{ url_for('admin.deleted_financial_records') }}">Clear</a>{% endif %}
+  </form>
+
+  {% if records %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th scope="col" style="padding: var(--space-3)">Document</th>
+        <th scope="col" style="padding: var(--space-3)">Student</th>
+        <th scope="col" style="padding: var(--space-3)">Invoice</th>
+        <th scope="col" style="padding: var(--space-3)">Deleted ({{ tz_name }})</th>
+        <th scope="col" style="padding: var(--space-3)">Reason</th>
+        <th scope="col" style="padding: var(--space-3)"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for record in records %}
+      <tr style="border-bottom:1px solid var(--color-border)" data-record="{{ record.doc_type }}:{{ record.public_id }}">
+        <td style="padding: var(--space-3)"><span class="badge badge--danger">Deleted</span> {{ record.type_label }}<br>{{ record.label }}</td>
+        <td style="padding: var(--space-3)">{{ record.student_name }}<br><span class="ds-section__desc" style="margin:0">{{ record.student_email }}</span></td>
+        <td style="padding: var(--space-3); white-space: nowrap">{{ record.invoice_number or "Draft" }}<br><span class="ds-section__desc" style="margin:0">{{ record.group_name }}</span></td>
+        <td style="padding: var(--space-3); white-space: nowrap">{{ record.deleted_local.strftime("%Y-%m-%d %H:%M") }}<br><span class="ds-section__desc" style="margin:0">by {{ record.deleted_by_name }}</span></td>
+        <td style="padding: var(--space-3)">{{ record.deletion_reason }}</td>
+        <td style="padding: var(--space-3)"><a class="btn btn--secondary" href="{{ record.detail_url }}">View</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No deleted records</div>
+    <div>{% if filtered %}Nothing matches these filters.{% else %}No invoice, payment or receipt has been deleted.{% endif %}</div>
+  </div>
+  {% endif %}
+
+  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3); flex-wrap: wrap" aria-label="Deleted record pages">
+    {% if pagination.prev_url %}<a class="btn btn--secondary" href="{{ pagination.prev_url }}">Previous</a>{% endif %}
+    <span class="ds-section__desc" style="margin:0">Records {{ pagination.first }}&ndash;{{ pagination.last }} of {{ pagination.total }}, newest deletion first</span>
+    {% if pagination.next_url %}<a class="btn btn--secondary" href="{{ pagination.next_url }}">Next</a>{% endif %}
+  </nav>
+</div>
+{% endblock %}

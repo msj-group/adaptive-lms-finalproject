@@ -1,0 +1,72 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}New invoice — confirm{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M10. New invoice, step 4 of 4: exactly what the one
+      transaction will write. The ids posted back are public ids only, and the
+      server re-proves their pairing and every rule after its locks. -#}
+  <div class="ds-row" style="margin-bottom: var(--space-3)">
+    <a class="btn btn--secondary" href="{{ back_url }}">&larr; Fee plans</a>
+  </div>
+  <h1 style="margin: 0 0 var(--space-2)">Confirm the new invoice</h1>
+  <p class="ds-section__desc">Step 4 of 4.</p>
+
+  {{ macros.flash_messages() }}
+
+  <div class="card" style="margin-bottom: var(--space-4)">
+    <div class="card__title">{{ student.full_name }}</div>
+    <div class="card__body">
+      {{ student.email }}<br>
+      {{ context.group_name }} &middot; {{ context.course_title }} &middot; {{ context.term_name }}
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom: var(--space-4)">
+    <div class="card__title">Fee plan: {{ plan.name }}</div>
+    <div class="card__body">
+      {% if assignment_action == "reuse" %}
+      The enrollment's current fee assignment of this plan is reused.
+      {% elif assignment_action == "replace" %}
+      The enrollment's current fee assignment is cancelled and kept as history, and this plan is assigned.
+      {% else %}
+      This plan is assigned to the enrollment.
+      {% endif %}
+      A draft invoice is created with these lines copied from the plan. Its lines stay editable on the
+      invoice's own pages until it is issued.
+    </div>
+    <table style="width:100%; border-collapse:collapse; margin-top: var(--space-3)">
+      <tbody>
+        {% for line in plan.lines %}
+        <tr style="border-bottom:1px solid var(--color-border)">
+          <td style="padding: var(--space-2)">{{ line.kind_label }}</td>
+          <td style="padding: var(--space-2)">{{ line.label }}</td>
+          <td style="padding: var(--space-2); text-align:right; font-variant-numeric: tabular-nums">{{ line.amount_text }} {{ plan.currency_code }}</td>
+        </tr>
+        {% endfor %}
+        <tr>
+          <td style="padding: var(--space-2)" colspan="2"><strong>Total</strong></td>
+          <td style="padding: var(--space-2); text-align:right; font-variant-numeric: tabular-nums"><strong>{{ plan.total_text }} {{ plan.currency_code }}</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <form method="post" action="{{ action_url }}" class="card" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="{{ state_field }}" value="{{ state_token }}">
+    {% for name, value in hidden.items() %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
+    <label class="field__label" style="display: flex; align-items: center; gap: var(--space-2)">
+      <input type="checkbox" name="confirm" value="yes">
+      Create this draft invoice.
+    </label>
+    {% if confirm_error %}<div class="field__error">{{ confirm_error }}</div>{% endif %}
+    <div class="ds-row" style="margin-top: var(--space-4)">
+      <button type="submit" class="btn btn--primary">Create invoice</button>
+      <a class="btn btn--secondary" href="{{ back_url }}">Back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

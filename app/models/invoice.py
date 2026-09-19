@@ -22,6 +22,13 @@ MAX_INVOICE_YEAR = 9999
 
 _NUMBER_SHAPE = re.compile(r"INV-(?P<year>[0-9]{4})-(?P<sequence>[0-9]{6})")
 
+#: Phase 5 / M10: a visible deletion's reason is an audit reason's width.
+DELETION_REASON_MAX_LENGTH = 500
+
+#: Phase 5 / M10: the three tombstone columns an invoice, a payment
+#: transaction and a receipt each carry -- all set together, once, or none.
+DELETION_COLUMNS = ("deleted_at", "deleted_by_id", "deletion_reason")
+
 
 class FinancialHistoryError(RuntimeError):
     """A write tried to delete financial history, or to change something the
@@ -110,6 +117,24 @@ _TIMESTAMPS_ORDERED_SQL = (
 )
 
 
+def deletion_state_sql(anchor, extra=""):
+    """Phase 5 / M10: the tombstone truth table -- no deletion, or its moment,
+    its Administrator and a non-empty reason together, no earlier than
+    `anchor` and no later than ``updated_at``. `extra` narrows which rows may
+    be deleted."""
+    return (
+        "(deleted_at IS NULL AND deleted_by_id IS NULL AND deletion_reason IS NULL)"
+        " OR (deleted_at IS NOT NULL AND deleted_by_id IS NOT NULL"
+        " AND deletion_reason IS NOT NULL AND LENGTH(deletion_reason) > 0"
+        f"{extra} AND deleted_at >= {anchor} AND updated_at >= deleted_at)"
+    )
+
+
+#: A cancelled invoice is never deleted: cancellation and deletion stay two
+#: distinct outcomes.
+_DELETION_STATE_SQL = deletion_state_sql("created_at", " AND status IN ('draft', 'issued')")
+
+
 class Invoice(db.Model):
     """One invoice for one Student Fee Assignment (Phase 5 / M04).
 
@@ -145,6 +170,14 @@ class Invoice(db.Model):
     cancelled invoice, and a change to the number, the issue attribution or
     the owning assignment once set.
 
+    **Visible deletion (Phase 5 / M10).** A draft or issued invoice may be
+    *deleted*: ``deleted_at``, ``deleted_by_id`` and ``deletion_reason`` are
+    set together, once, with the version moved by one and nothing else
+    changed (``ck_invoices_deletion_state``). The row, its lines and its
+    events stay; a deleted invoice leaves every live list, balance and report,
+    appears in Deleted Records, and never changes again. A cancelled invoice
+    is never deleted -- cancellation keeps its own meaning.
+
     **``version``** is the aggregate's concurrency signal: it moves by
     exactly one per recorded change to the invoice or any of its items.
 
@@ -156,7 +189,8 @@ class Invoice(db.Model):
     - ``ck_invoices_issue_pair``, ``ck_invoices_cancellation_pair`` and
       ``ck_invoices_number_matches_issue``;
     - ``ck_invoices_number_format``;
-    - ``ck_invoices_lifecycle_state`` and ``ck_invoices_timestamps_ordered``.
+    - ``ck_invoices_lifecycle_state`` and ``ck_invoices_timestamps_ordered``;
+    - ``ck_invoices_deletion_state`` (M10).
 
     Indexes:
 
@@ -164,7 +198,9 @@ class Invoice(db.Model):
       ``status``, ``id``) -- the open-invoice check, the id-only read that
       picks the rows to lock, one assignment's history and the foreign key;
     - ``ix_invoices_issued_by_id`` and ``ix_invoices_cancelled_by_id`` -- the
-      two ``users`` foreign keys.
+      two ``users`` foreign keys;
+    - ``ix_invoices_deleted_at_id`` (``deleted_at``, ``id``) -- Deleted
+      Records, newest deletion first -- and ``ix_invoices_deleted_by_id`` (M10).
 
     **No MySQL execution plan has been measured for this table.** No ORM
     relationship is declared in either direction.
@@ -182,11 +218,14 @@ class Invoice(db.Model):
         db.CheckConstraint(_NUMBER_FORMAT_SQL, name="ck_invoices_number_format"),
         db.CheckConstraint(_LIFECYCLE_STATE_SQL, name="ck_invoices_lifecycle_state"),
         db.CheckConstraint(_TIMESTAMPS_ORDERED_SQL, name="ck_invoices_timestamps_ordered"),
+        db.CheckConstraint(_DELETION_STATE_SQL, name="ck_invoices_deletion_state"),
         db.Index(
             "ix_invoices_assignment_status_id", "student_fee_assignment_id", "status", "id"
         ),
         db.Index("ix_invoices_issued_by_id", "issued_by_id"),
         db.Index("ix_invoices_cancelled_by_id", "cancelled_by_id"),
+        db.Index("ix_invoices_deleted_at_id", "deleted_at", "id"),
+        db.Index("ix_invoices_deleted_by_id", "deleted_by_id"),
     )
 
     id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
@@ -219,12 +258,25 @@ class Invoice(db.Model):
     #: post-lock whole-second moment. Deliberately no ``onupdate`` hook.
     created_at = db.Column(db.DateTime, nullable=False, default=whole_second_utc)
     updated_at = db.Column(db.DateTime, nullable=False, default=whole_second_utc)
+    #: Phase 5 / M10: the visible deletion. Named foreign key, because the
+    #: revision that added it to an existing table must be able to name it.
+    deleted_at = db.Column(db.DateTime, nullable=True)
+    deleted_by_id = db.Column(
+        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.ForeignKey("users.id", name="fk_invoices_deleted_by_id"),
+        nullable=True,
+    )
+    deletion_reason = db.Column(db.String(DELETION_REASON_MAX_LENGTH), nullable=True)
 
     @validates("status")
     def validate_status(self, _key, value):
         if value not in _STATUS_VALUES:
             raise ValueError(f"Invalid invoice status: {value}")
         return value
+
+    @validates("deletion_reason")
+    def validate_deletion_reason(self, _key, value):
+        return validate_deletion_reason(value)
 
     @validates("currency_code")
     def validate_currency_code(self, _key, value):
@@ -258,8 +310,29 @@ class Invoice(db.Model):
 
     @property
     def is_open(self):
-        """``draft`` or ``issued``: the one invoice an assignment may hold."""
-        return self.status in (InvoiceStatus.DRAFT.value, InvoiceStatus.ISSUED.value)
+        """``draft`` or ``issued``, and not deleted: the one invoice an
+        assignment may hold."""
+        return self.deleted_at is None and self.status in (
+            InvoiceStatus.DRAFT.value,
+            InvoiceStatus.ISSUED.value,
+        )
+
+    @property
+    def is_deleted(self):
+        return self.deleted_at is not None
+
+
+def validate_deletion_reason(value):
+    """``None`` or normalized, non-empty audit-reason text (Phase 5 / M10)."""
+    if value is None:
+        return value
+    # Imported here: the audit model imports this module.
+    from app.models.payment_audit_event import normalize_audit_reason
+
+    normalized, error = normalize_audit_reason(value)
+    if error is not None or normalized != value:
+        raise ValueError("A deletion reason must be normalized plain text or None")
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -293,6 +366,37 @@ def pending_value(target, key):
     return (True, added[0]) if added else (False, None)
 
 
+_DELETION_WRITES = frozenset(DELETION_COLUMNS) | {"version", "updated_at"}
+
+
+def refuse_or_allow_deletion(target, stored, noun):
+    """Phase 5 / M10, shared by the invoice, payment and receipt guards.
+
+    ``True`` when this flush is the one permitted deletion of `target` --
+    all three tombstone columns set, the version moved by exactly one, and
+    nothing else changed; ``False`` when it touches no tombstone column (the
+    caller's own rules then apply). Raises :class:`FinancialHistoryError` for
+    any change to a row that is already deleted, and for a partial deletion or
+    one that changes anything else. `stored` must hold ``deleted_at`` and
+    ``version``.
+    """
+    if stored["deleted_at"] is not None:
+        raise FinancialHistoryError(f"A deleted {noun} never changes")
+    changed = {attr.key for attr in sa.inspect(target).attrs if attr.history.added}
+    if not changed & set(DELETION_COLUMNS):
+        return False
+    if not set(DELETION_COLUMNS) <= changed or not changed <= _DELETION_WRITES:
+        raise FinancialHistoryError(
+            f"A {noun} is deleted by setting its deletion columns and version only"
+        )
+    if any(getattr(target, key) is None for key in DELETION_COLUMNS):
+        raise FinancialHistoryError(f"A {noun}'s deletion is recorded in full")
+    setting, version = pending_value(target, "version")
+    if not setting or version != stored["version"] + 1:
+        raise FinancialHistoryError(f"Deleting a {noun} moves its version by exactly one")
+    return True
+
+
 _SET_ONCE_COLUMNS = ("student_fee_assignment_id", "invoice_number", "issued_at", "issued_by_id")
 
 
@@ -300,11 +404,15 @@ _SET_ONCE_COLUMNS = ("student_fee_assignment_id", "invoice_number", "issued_at",
 def _refuse_rewriting_invoice_history(_mapper, connection, target):
     if not is_changing(target):
         return
-    stored = stored_row(connection, target, ("status",) + _SET_ONCE_COLUMNS)
+    stored = stored_row(
+        connection, target, ("status", "version", "deleted_at") + _SET_ONCE_COLUMNS
+    )
     if stored is None:
         return
     if stored["status"] == InvoiceStatus.CANCELLED.value:
         raise FinancialHistoryError("A cancelled invoice is read-only")
+    if refuse_or_allow_deletion(target, stored, "invoice"):
+        return
     for key in _SET_ONCE_COLUMNS:
         setting, value = pending_value(target, key)
         if setting and stored[key] is not None and value != stored[key]:

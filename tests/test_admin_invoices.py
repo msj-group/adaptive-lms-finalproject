@@ -232,13 +232,15 @@ def test_the_route_inventory_is_exact_and_mutations_are_post_only(app, client):
     # inventoried by tests/test_admin_payments.py. Phase 5 / M06's payment
     # intent routes nest there too; tests/test_admin_payment_intents.py
     # inventories them. Phase 5 / M09R's read-only Invoice Register,
-    # GET /admin/invoices, is inventoried by tests/test_admin_invoice_register.py.
+    # GET /admin/invoices, is inventoried by tests/test_admin_invoice_register.py,
+    # and Phase 5 / M10's workspace rules below /admin/invoices by
+    # tests/test_admin_financial_workspaces.py.
     rules = {
         (rule.rule, frozenset(rule.methods - {"HEAD", "OPTIONS"}))
         for rule in app.url_map.iter_rules()
         if "/invoices" in rule.rule and "/payments" not in rule.rule
         and "/receipts" not in rule.rule and "/payment-intents" not in rule.rule
-        and rule.rule != "/admin/invoices"
+        and not rule.rule.startswith("/admin/invoices")
     }
     both = frozenset({"GET", "POST"})
     assert rules == {
@@ -1175,6 +1177,10 @@ def test_no_internal_identifier_or_out_of_scope_control_reaches_a_page(app, clie
                        "invoice_number_sequences"):
             assert leaked not in html, (url, leaked)
         body = html.split('class="admin-main"', 1)[1]
+        # Phase 5 / M10: the one approved deletion control, the Invoices
+        # workspace's own confirmation page.
+        body = re.sub(r'<a class="btn btn--danger-outline" href="/admin/invoices/[0-9a-f-]{36}'
+                      r'/delete">Delete invoice</a>', "", body)
         for forbidden in ("Record payment", "Receipt", "Refund", "Pay now", "Delete", "Restore",
                           "Reissue", "Discount", "Due date", "Quantity", 'name="status"',
                           'name="currency', 'name="invoice_number"', 'name="total"'):

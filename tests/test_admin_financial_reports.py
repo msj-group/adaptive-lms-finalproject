@@ -107,7 +107,14 @@ def test_the_route_inventory_is_exact_get_only_and_carries_no_identifier(app, cl
         if rule.endpoint.startswith("admin.financial_report")
     }
     assert rules == {(url, frozenset({"GET"})) for url in rx.ALL_URLS}
+    # Phase 5 / M10's Student Accounts record and Deleted Records pages carry
+    # "financial" in their names; they have their own inventory in
+    # tests/test_admin_financial_workspaces.py.
+    workspaces = {"admin.student_financial_record", "admin.deleted_financial_records",
+                  "admin.deleted_financial_record"}
     for rule in app.url_map.iter_rules():
+        if rule.endpoint in workspaces:
+            continue
         if "financial" in rule.rule or "financial" in rule.endpoint:
             assert rule.endpoint.startswith("admin.financial_report"), rule.rule
             assert "<" not in rule.rule, rule.rule

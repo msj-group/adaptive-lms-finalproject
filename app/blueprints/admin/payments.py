@@ -19,10 +19,14 @@ partial and never exceeds the invoice's current outstanding balance; a pending
 transfer reserves nothing. Every confirmed collection receives one permanent
 ``RCT-YYYY-NNNNNN`` receipt in the same transaction.
 
-**A recorded payment is never edited or deleted.** A correction is a full
+**A recorded payment is never edited in place.** A correction here is a full
 reversing entry for one confirmed collection, with a reason: a new row that
 reopens the amount as outstanding and voids the collection's receipt, which is
-kept. It is not a refund.
+kept. It is not a refund. Since Phase 5 / M10 the Payments workspace
+(``app/blueprints/admin/payment_workspace.py``) can also *edit* a manual
+collection -- delete it and its receipt as tombstones and record a corrected
+one -- or *delete* it visibly; this page links there. Deleted transactions and
+receipts are never listed or balanced here.
 
 **Every movement writes its audit events** in the same transaction
 (``app/services/payment_audit.py``). Recording a pending or confirmed payment
@@ -120,7 +124,7 @@ from app.services import money
 from app.services import payment_tokens as tokens
 from app.services.fee_plan_queries import normalize_page
 from app.services.invoice_queries import STATUS_LABELS as INVOICE_STATUS_LABELS
-from app.services.invoice_queries import active_lines, invoice_lines
+from app.services.invoice_queries import active_lines, assignment_invoice, invoice_lines
 from app.services.invoice_transactions import invoice_items_valid, invoice_rows_for_snapshot
 from app.services.payment_intent_queries import (
     invoice_intent_rows,
@@ -626,8 +630,25 @@ def _history_entries(context, invoice, rows, confirmable=True):
     receipts = receipts_by_payment([row.id for row in shown])
     names = account_names(history_account_ids(shown, receipts))
     entries = build_payment_history_view(shown, receipts, names, _tz_name())
+    methods = {row.public_id: row.method for row in shown}
     for entry in entries:
         pp = entry["public_id"]
+        # Phase 5 / M10: a manual collection, pending or confirmed and not
+        # reversed, links to the Payments workspace's edit and delete pages
+        # while no intent is active; they re-prove everything.
+        changeable = (
+            confirmable
+            and entry["kind"] == _COLLECTION
+            and methods.get(pp) in (_CASH, _BANK_TRANSFER)
+            and (entry["is_pending"] or entry["is_confirmed_collection"])
+            and not entry["is_reversed"]
+        )
+        entry["edit_url"] = (
+            url_for("admin.payment_workspace_edit", payment_public_id=pp) if changeable else None
+        )
+        entry["delete_url"] = (
+            url_for("admin.payment_workspace_delete", payment_public_id=pp) if changeable else None
+        )
         pending = entry["is_pending"] and entry["kind"] == _COLLECTION
         entry["confirm_url"] = (
             _payment_url("admin.invoice_payment_confirm", context, invoice.public_id, pp)
@@ -1405,13 +1426,23 @@ def invoice_receipt_detail(
     receipt_public_id,
 ):
     """One receipt, rendered from its permanent document, with its void
-    record when its collection was reversed."""
+    record when its collection was reversed. Phase 5 / M10: an old link to a
+    deleted receipt -- alone or with its invoice -- opens its Deleted Records
+    entry instead."""
     context = _context_or_404(group_public_id, enrollment_public_id, assignment_public_id)
-    invoice = _invoice_or_404(context, invoice_public_id)
+    invoice = assignment_invoice(context.assignment_id, invoice_public_id, include_deleted=True)
+    if invoice is None:
+        abort(404)
     found = invoice_receipt(invoice.id, receipt_public_id)
     if found is None:
         abort(404)
     receipt, payment = found
+    if receipt.deleted_at is not None or invoice.deleted_at is not None:
+        return redirect(
+            url_for(
+                "admin.deleted_financial_record", doc_type="receipt", public_id=receipt.public_id
+            )
+        )
     return render_template(
         "admin/receipts/detail.html",
         receipt=build_receipt_view(
@@ -1447,6 +1478,16 @@ def payments_overview():
             "invoice_public_id": entry["invoice_public_id"],
         }
         entry["payments_url"] = url_for("admin.invoice_payments", **ids)
+        entry["edit_url"] = (
+            url_for("admin.payment_workspace_edit", payment_public_id=entry["public_id"])
+            if entry["changeable"]
+            else None
+        )
+        entry["delete_url"] = (
+            url_for("admin.payment_workspace_delete", payment_public_id=entry["public_id"])
+            if entry["changeable"]
+            else None
+        )
         entry["receipt_url"] = (
             url_for(
                 "admin.invoice_receipt_detail",
@@ -1469,4 +1510,5 @@ def payments_overview():
         page_size=PAGE_SIZE,
         tz_name=_tz_name(),
         currency_code=money.CURRENCY_CODE,
+        new_payment_url=url_for("admin.payment_workspace_new"),
     )

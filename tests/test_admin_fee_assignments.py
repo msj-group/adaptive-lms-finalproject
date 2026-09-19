@@ -686,7 +686,10 @@ def test_an_assigned_plan_in_another_enrollment_does_not_block_withdrawal(app, c
 # ===========================================================================
 
 
-def test_manage_members_links_every_enrollment_to_its_fee_assignments(app, client):
+def test_manage_members_no_longer_links_to_fee_assignments(app, client):
+    """Phase 5 / M10 removed Finance from the Group pages: the members page
+    links no Enrollment to its fee assignments. The nested fee assignment
+    pages still work for old links and still lead back to the members."""
     w = _world(app, client)
     with app.app_context():
         withdrawn = fx.enrollment(db.session.get(Group, w["group_id"]), status=fx.WITHDRAWN)
@@ -697,13 +700,13 @@ def test_manage_members_links_every_enrollment_to_its_fee_assignments(app, clien
         withdrawn_ep, corrupted_ep = withdrawn.public_id, corrupted.public_id
 
     html = fx.page(client, fx.members_url(w["gp"]))
-    for ep in (w["ep"], withdrawn_ep):
-        assert f'href="{fx.history_url(w["gp"], ep)}">Fee assignments</a>' in html
-    assert fx.history_url(w["gp"], corrupted_ep) not in html
+    for ep in (w["ep"], withdrawn_ep, corrupted_ep):
+        assert fx.history_url(w["gp"], ep) not in html
+    assert "Fee assignments" not in html and "fee-assignments" not in html
 
     assert client.post(f"/admin/groups/{w['gp']}/toggle-status").status_code == 302
     archived = fx.page(client, fx.members_url(w["gp"]))
-    assert f'href="{fx.history_url(w["gp"], w["ep"])}"' in archived
+    assert "fee-assignments" not in archived
     history = fx.page(client, fx.history_url(w["gp"], w["ep"]))
     assert f'href="{fx.members_url(w["gp"])}"' in history
 

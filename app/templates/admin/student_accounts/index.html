@@ -1,0 +1,71 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Student Accounts{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 5 / M10. Every Student with a financial status computed on this
+      request from live invoices and payments -- never stored, and never
+      changing an account, enrollment or group. Read-only; values are
+      autoescaped plain text. -#}
+  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2)">
+    <h1 style="margin:0">Student Accounts</h1>
+    <a class="btn btn--primary" href="{{ url_for('admin.invoice_workspace_new') }}">New invoice</a>
+  </div>
+  <p class="ds-section__desc">
+    Each student's financial status is calculated from their live invoices and payments every time this
+    page opens. It is never saved and never changes the student's account, enrollment or group.
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  <form method="get" action="{{ url_for('admin.student_accounts') }}" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+    <label class="field__label" for="q" style="margin:0">Search:</label>
+    <input type="search" name="q" id="q" class="field__input" style="width:auto" value="{{ search }}" maxlength="100" placeholder="Name or email">
+    <button type="submit" class="btn btn--secondary">Apply</button>
+    {% if filtered %}<a class="btn btn--secondary" href="{{ url_for('admin.student_accounts') }}">Clear</a>{% endif %}
+  </form>
+
+  {% if students %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th scope="col" style="padding: var(--space-3)">Student</th>
+        <th scope="col" style="padding: var(--space-3)">Open invoice</th>
+        <th scope="col" style="padding: var(--space-3)">Amount due</th>
+        <th scope="col" style="padding: var(--space-3)">Financial status</th>
+        <th scope="col" style="padding: var(--space-3)"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for student in students %}
+      <tr style="border-bottom:1px solid var(--color-border)" data-student="{{ student.public_id }}" data-status="{{ student.code }}">
+        <td style="padding: var(--space-3)">{{ student.full_name }}<br><span class="ds-section__desc" style="margin:0">{{ student.email }}</span></td>
+        <td style="padding: var(--space-3)">{{ "Yes" if student.has_open_invoice else "No" }}</td>
+        <td style="padding: var(--space-3)">{% if student.has_amount_due is none %}&mdash;{% elif student.has_amount_due %}Yes{% else %}No{% endif %}</td>
+        <td style="padding: var(--space-3)">
+          {% if student.code == "amount_due" %}<span class="badge badge--warning">{{ student.label }}</span>
+          {% elif student.code == "settled" %}<span class="badge badge--success">{{ student.label }}</span>
+          {% elif student.code == "needs_review" %}<span class="badge badge--danger">{{ student.label }}</span>
+          {% else %}<span class="badge badge--neutral">{{ student.label }}</span>{% endif %}
+        </td>
+        <td style="padding: var(--space-3)"><a class="btn btn--secondary" href="{{ student.record_url }}">Financial Record</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No students</div>
+    <div>{% if filtered %}No student matches this search.{% else %}No student account exists yet.{% endif %}</div>
+  </div>
+  {% endif %}
+
+  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3); flex-wrap: wrap" aria-label="Student pages">
+    {% if pagination.prev_url %}<a class="btn btn--secondary" href="{{ pagination.prev_url }}">Previous</a>{% endif %}
+    <span class="ds-section__desc" style="margin:0">Students {{ pagination.first }}&ndash;{{ pagination.last }} of {{ pagination.total }}</span>
+    {% if pagination.next_url %}<a class="btn btn--secondary" href="{{ pagination.next_url }}">Next</a>{% endif %}
+  </nav>
+</div>
+{% endblock %}

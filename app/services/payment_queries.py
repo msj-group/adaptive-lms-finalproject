@@ -81,6 +81,9 @@ EVENT_KIND_LABELS = {
     PaymentAuditEventKind.RECEIPT_VOIDED.value: "Receipt voided",
     PaymentAuditEventKind.PAYMENT_ONLINE_CONFIRMED.value: "Online payment confirmed",
     PaymentAuditEventKind.RECEIPT_ONLINE_ISSUED.value: "Receipt issued",
+    PaymentAuditEventKind.PAYMENT_DELETED.value: "Payment deleted",
+    PaymentAuditEventKind.PAYMENT_REPLACED.value: "Payment edited",
+    PaymentAuditEventKind.RECEIPT_DELETED.value: "Receipt deleted",
 }
 
 #: The only values the overview filters accept; anything else is dropped.
@@ -114,12 +117,15 @@ def normalize_payment_method_filter(value):
 
 
 def invoice_payment_rows(invoice_id):
-    """Every transaction of `invoice_id`, ascending internal id, at most one
-    past :data:`~app.models.payment_transaction.MAX_INVOICE_PAYMENT_ROWS`. A
-    pre-lock read: it decides what a page shows and which rows a write locks,
-    never whether a write is allowed."""
+    """Every live transaction of `invoice_id`, ascending internal id, at most
+    one past :data:`~app.models.payment_transaction.MAX_INVOICE_PAYMENT_ROWS`.
+    A pre-lock read: it decides what a page shows and which rows a write
+    locks, never whether a write is allowed. Deleted rows (Phase 5 / M10)
+    belong to Deleted Records only."""
     return (
-        PaymentTransaction.query.filter(PaymentTransaction.invoice_id == invoice_id)
+        PaymentTransaction.query.filter(
+            PaymentTransaction.invoice_id == invoice_id, PaymentTransaction.deleted_at.is_(None)
+        )
         .order_by(PaymentTransaction.id.asc())
         .limit(MAX_INVOICE_PAYMENT_ROWS + 1)
         .all()
@@ -127,12 +133,14 @@ def invoice_payment_rows(invoice_id):
 
 
 def invoice_payment(invoice_id, payment_public_id):
-    """One transaction by ``public_id`` **inside** `invoice_id`, or ``None``."""
+    """One live transaction by ``public_id`` **inside** `invoice_id`, or
+    ``None`` -- a deleted one (Phase 5 / M10) is not found."""
     if not _public_id_ok(payment_public_id):
         return None
     return PaymentTransaction.query.filter(
         PaymentTransaction.invoice_id == invoice_id,
         PaymentTransaction.public_id == payment_public_id,
+        PaymentTransaction.deleted_at.is_(None),
     ).first()
 
 
@@ -262,8 +270,20 @@ def payments_overview_page(page, status=None, method=None):
     collection (Phase 5 / M07) has none."""
     recorder = aliased(User)
     student = aliased(User)
+    reversal = aliased(PaymentTransaction)
+    # Phase 5 / M10: whether a live reversal reverses this collection, so the
+    # list offers edit and delete only where they can apply.
+    reversed_ = (
+        db.session.query(reversal.id)
+        .filter(
+            reversal.reversal_of_payment_transaction_id == PaymentTransaction.id,
+            reversal.deleted_at.is_(None),
+        )
+        .exists()
+    )
     query = (
         db.session.query(
+            reversed_.label("is_reversed"),
             PaymentTransaction.public_id,
             PaymentTransaction.kind,
             PaymentTransaction.method,
@@ -290,8 +310,12 @@ def payments_overview_page(page, status=None, method=None):
         .join(Group, Group.id == Enrollment.group_id)
         .join(student, student.id == Enrollment.student_id)
         .outerjoin(recorder, recorder.id == PaymentTransaction.recorded_by_id)
-        .outerjoin(Receipt, Receipt.payment_transaction_id == PaymentTransaction.id)
+        .outerjoin(
+            Receipt,
+            (Receipt.payment_transaction_id == PaymentTransaction.id) & Receipt.deleted_at.is_(None),
+        )
     )
+    query = query.filter(PaymentTransaction.deleted_at.is_(None), Invoice.deleted_at.is_(None))
     if status is not None:
         query = query.filter(PaymentTransaction.status == status)
     if method is not None:
@@ -316,6 +340,12 @@ def build_overview_view(rows, tz_name="UTC"):
             "status_label": STATUS_LABELS.get(row.status, row.status),
             "amount_text": format_amount(row.amount),
             "currency_code": row.currency_code,
+            # Phase 5 / M10: a live manual collection, pending or confirmed
+            # and not reversed, may be edited or deleted on its own.
+            "changeable": row.kind == _COLLECTION
+            and row.method in (PaymentMethod.CASH.value, PaymentMethod.BANK_TRANSFER.value)
+            and row.status in (_PENDING, _CONFIRMED)
+            and not row.is_reversed,
             "recorded_local": _local(tz_name, row.recorded_at),
             "recorded_by_name": row.recorded_by_name,
             "invoice_public_id": row.invoice_public_id,
@@ -367,8 +397,17 @@ def describe_payment_event(kind, before, after):
             changes.append(
                 f"Online payment of {amount} confirmed by a verified signed provider webhook."
             )
+        elif kind == PaymentAuditEventKind.PAYMENT_DELETED.value:
+            changes.append(f"The {method} payment of {amount} was deleted.")
+        elif kind == PaymentAuditEventKind.PAYMENT_REPLACED.value:
+            changes.append(
+                f"The {method} payment of {amount} was edited: it was deleted and a corrected "
+                "payment was recorded in its place."
+            )
     receipt, earlier = after["receipt"], before["receipt"]
-    if receipt is not None and (earlier is None or earlier["status"] != receipt["status"]):
+    if kind == PaymentAuditEventKind.RECEIPT_DELETED.value and receipt is not None:
+        changes.append(f"Receipt {receipt['receipt_number']} was deleted.")
+    elif receipt is not None and (earlier is None or earlier["status"] != receipt["status"]):
         label = RECEIPT_STATUS_LABELS.get(receipt["status"], receipt["status"]).lower()
         changes.append(
             f"Receipt {receipt['receipt_number']} issued."

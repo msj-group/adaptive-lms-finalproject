@@ -105,6 +105,8 @@
             {% if entry.confirm_url %}<a class="btn btn--primary" href="{{ entry.confirm_url }}">Confirm</a>{% endif %}
             {% if entry.reject_url %}<a class="btn btn--danger-outline" href="{{ entry.reject_url }}">Reject</a>{% endif %}
             {% if entry.reverse_url %}<a class="btn btn--danger-outline" href="{{ entry.reverse_url }}">Reverse</a>{% endif %}
+            {% if entry.edit_url %}<a class="btn btn--secondary" href="{{ entry.edit_url }}" data-link="edit">Edit</a>{% endif %}
+            {% if entry.delete_url %}<a class="btn btn--danger-outline" href="{{ entry.delete_url }}" data-link="delete">Delete</a>{% endif %}
           </div>
         </td>
       </tr>

@@ -858,6 +858,9 @@ def test_no_calendar_page_offers_a_delete_restore_duplicate_or_export_control(
     ep = fx.create_event(client)
     for url in (fx.admin_month(), fx.admin_event_detail(ep), fx.admin_event_edit(ep)):
         html = client.get(url).get_data(as_text=True)
+        # Phase 5 / M10: the shared sidebar links "Deleted Records" (finance);
+        # only the calendar page's own content is scanned.
+        html = re.sub(r'<aside class="admin-sidebar">.*?</aside>', "", html, flags=re.S)
         for forbidden in ("Delete", "Restore", "Duplicate", "Export", "Repeat", ".ics"):
             assert forbidden not in html, (url, forbidden)
 

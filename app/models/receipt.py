@@ -9,11 +9,15 @@ from sqlalchemy.orm import validates
 from app.extensions import db
 from app.models.enums import PaymentMethod, ReceiptStatus
 from app.models.invoice import (
+    DELETION_REASON_MAX_LENGTH,
     FinancialHistoryError,
+    deletion_state_sql,
     invoice_number_is_valid,
     is_changing,
     pending_value,
+    refuse_or_allow_deletion,
     stored_row,
+    validate_deletion_reason,
 )
 from app.models.payment_audit_event import (
     INVOICE_AUDIT_REASON_MAX_LENGTH,
@@ -177,6 +181,9 @@ _TIMESTAMPS_ORDERED_SQL = (
     " AND (voided_at IS NULL OR (voided_at >= issued_at AND updated_at >= voided_at))"
 )
 
+#: Phase 5 / M10: an issued or voided receipt is deleted with its collection.
+_DELETION_STATE_SQL = deletion_state_sql("issued_at")
+
 
 class Receipt(db.Model):
     """The permanent operational receipt of one confirmed collection
@@ -213,15 +220,24 @@ class Receipt(db.Model):
     overwrites a receipt. M05 receipts are operational only -- not a legal,
     tax, fiscal-printer or statutory document.
 
+    **Visible deletion (Phase 5 / M10).** A receipt is deleted only together
+    with its collection -- when the collection is deleted, edited (a new
+    collection receives a new receipt number) or deleted with its invoice's
+    whole family. ``deleted_at``, ``deleted_by_id`` and ``deletion_reason``
+    are set together with the version moved by one; the document snapshot,
+    number and status are kept unchanged and the row never changes again
+    (``ck_receipts_deletion_state``). There is still no standalone receipt.
+
     Database invariants (final defense only): ``public_id``,
     ``uq_receipts_payment_transaction_id`` and ``uq_receipts_receipt_number``
     unique; ``ck_receipts_status_valid``, ``ck_receipts_version_positive``,
-    ``ck_receipts_number_format``, ``ck_receipts_void_state`` and
-    ``ck_receipts_timestamps_ordered``. That the linked row is a confirmed
+    ``ck_receipts_number_format``, ``ck_receipts_void_state``,
+    ``ck_receipts_timestamps_ordered`` and (M10) ``ck_receipts_deletion_state``. That the linked row is a confirmed
     collection is proved by the application.
 
-    Indexes: the two unique constraints, ``ix_receipts_issued_by_id`` and
-    ``ix_receipts_voided_by_id``. **No MySQL execution plan has been measured
+    Indexes: the two unique constraints, ``ix_receipts_issued_by_id``,
+    ``ix_receipts_voided_by_id`` and (M10) ``ix_receipts_deleted_at_id`` and
+    ``ix_receipts_deleted_by_id``. **No MySQL execution plan has been measured
     for this table.** No ORM relationship is declared.
     """
 
@@ -234,8 +250,11 @@ class Receipt(db.Model):
         db.CheckConstraint(_NUMBER_FORMAT_SQL, name="ck_receipts_number_format"),
         db.CheckConstraint(_VOID_STATE_SQL, name="ck_receipts_void_state"),
         db.CheckConstraint(_TIMESTAMPS_ORDERED_SQL, name="ck_receipts_timestamps_ordered"),
+        db.CheckConstraint(_DELETION_STATE_SQL, name="ck_receipts_deletion_state"),
         db.Index("ix_receipts_issued_by_id", "issued_by_id"),
         db.Index("ix_receipts_voided_by_id", "voided_by_id"),
+        db.Index("ix_receipts_deleted_at_id", "deleted_at", "id"),
+        db.Index("ix_receipts_deleted_by_id", "deleted_by_id"),
     )
 
     id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
@@ -267,6 +286,14 @@ class Receipt(db.Model):
     version = db.Column(db.Integer, nullable=False, default=1)
     created_at = db.Column(db.DateTime, nullable=False, default=whole_second_utc)
     updated_at = db.Column(db.DateTime, nullable=False, default=whole_second_utc)
+    #: Phase 5 / M10: the visible deletion.
+    deleted_at = db.Column(db.DateTime, nullable=True)
+    deleted_by_id = db.Column(
+        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.ForeignKey("users.id", name="fk_receipts_deleted_by_id"),
+        nullable=True,
+    )
+    deletion_reason = db.Column(db.String(DELETION_REASON_MAX_LENGTH), nullable=True)
 
     @validates("status")
     def validate_status(self, _key, value):
@@ -311,6 +338,14 @@ class Receipt(db.Model):
     def is_online(self):
         return receipt_is_online(self.snapshot)
 
+    @property
+    def is_deleted(self):
+        return self.deleted_at is not None
+
+    @validates("deletion_reason")
+    def validate_deletion_reason(self, _key, value):
+        return validate_deletion_reason(value)
+
 
 _ISSUED_COLUMNS = (
     "public_id",
@@ -335,8 +370,12 @@ def _refuse_a_receipt_without_its_issuer(_mapper, _connection, target):
 def _refuse_rewriting_a_receipt(_mapper, connection, target):
     if not is_changing(target):
         return
-    stored = stored_row(connection, target, ("status", "version") + _ISSUED_COLUMNS)
+    stored = stored_row(
+        connection, target, ("status", "version", "deleted_at") + _ISSUED_COLUMNS
+    )
     if stored is None:
+        return
+    if refuse_or_allow_deletion(target, stored, "receipt"):
         return
     if stored["status"] != _ISSUED:
         raise FinancialHistoryError("A voided receipt never changes")
