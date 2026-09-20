@@ -1,0 +1,76 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Invite a Student{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 6 / M01. One POST per candidate, each carrying its own signed
+      stale-state token. Offering a student authorizes nothing: the create
+      transaction re-reads the account under its lock and refuses any other
+      role, a suspended account or a second participant. -#}
+  <div class="ds-row" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3)">
+    <h1 style="margin: 0">Invite a student</h1>
+    <a class="btn btn--secondary" href="{{ cancel_url }}">Back to participants</a>
+  </div>
+  <p class="ds-section__desc">
+    Only active student accounts that are not already participants are listed. Inviting a student
+    creates a research code and nothing else &mdash; it is <strong>not</strong> consent, and it
+    changes no enrollment, group, grade or financial record.
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  <form method="get" action="{{ form_url }}" class="ds-row"
+        style="margin-bottom: var(--space-4); align-items: flex-end; gap: var(--space-3); flex-wrap: wrap">
+    <div class="field" style="margin: 0">
+      <label class="field__label" for="q">Find a student</label>
+      <input type="search" name="q" id="q" class="field__input" style="width: auto"
+             value="{{ search }}" maxlength="40" placeholder="Name or email">
+    </div>
+    <button type="submit" class="btn btn--secondary">Search</button>
+    {% if search %}<a class="btn btn--secondary" href="{{ form_url }}">Clear</a>{% endif %}
+  </form>
+
+  {% if candidates %}
+  <div style="overflow-x: auto">
+  <table style="width: 100%; border-collapse: collapse">
+    <thead>
+      <tr style="text-align: left; border-bottom: 1px solid var(--color-border)">
+        <th scope="col" style="padding: var(--space-3)">Student</th>
+        <th scope="col" style="padding: var(--space-3)">Email</th>
+        <th scope="col" style="padding: var(--space-3)"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for candidate in candidates %}
+      <tr style="border-bottom: 1px solid var(--color-border)" data-candidate="{{ candidate.public_id }}">
+        <td style="padding: var(--space-3)">{{ candidate.full_name }}</td>
+        <td style="padding: var(--space-3)">{{ candidate.email }}</td>
+        <td style="padding: var(--space-3)">
+          <form method="post" action="{{ form_url }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="{{ state_field }}" value="{{ candidate.state_token }}">
+            <input type="hidden" name="student_public_id" value="{{ candidate.public_id }}">
+            <input type="hidden" name="q" value="{{ search }}">
+            <button type="submit" class="btn btn--primary">Invite</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="ds-section__desc" style="margin-top: var(--space-2)">
+    At most {{ candidate_limit }} students are listed at a time. Search to narrow the list.
+  </p>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No students to invite</div>
+    <div>
+      {% if search %}No active student matches that search and is not already a participant.
+      {% else %}Every active student is already a research participant, or there are no active
+      student accounts yet.{% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

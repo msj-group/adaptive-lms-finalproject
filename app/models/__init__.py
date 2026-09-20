@@ -30,6 +30,9 @@ from app.models.enums import (
     QuizAttemptStatus,
     QuizStatus,
     ReceiptStatus,
+    ResearchConsentAction,
+    ResearchConsentDocumentStatus,
+    ResearchParticipantStatus,
     StudentFeeAssignmentStatus,
     TranscriptVisibility,
 )
@@ -165,6 +168,28 @@ from app.models.payment_intent import (
     PaymentIntent,
 )
 from app.models.payment_provider_event import PaymentProviderEvent
+from app.models.research_consent_document import (
+    CONSENT_BODY_MAX_LENGTH,
+    CONSENT_DIGEST_LENGTH,
+    CONSENT_TITLE_MAX_LENGTH,
+    CONSENT_VERSION_MAX_LENGTH,
+    CURRENT_MARKER,
+    ResearchConsentDocument,
+    ResearchHistoryError,
+    consent_digest,
+)
+from app.models.research_participant import (
+    ALLOWED_PARTICIPANT_TRANSITIONS,
+    PARTICIPANT_CODE_ALPHABET,
+    PARTICIPANT_CODE_LENGTH,
+    PARTICIPANT_CODE_PREFIX,
+    ResearchParticipant,
+    generate_participant_code,
+)
+from app.models.research_consent_event import (
+    STATUS_AFTER_ACTION,
+    ResearchConsentEvent,
+)
 
 __all__ = [
     "User",
@@ -310,4 +335,23 @@ __all__ = [
     "ProviderEventType",
     "ProviderEventOutcome",
     "PaymentProviderEvent",
+    "ResearchConsentDocumentStatus",
+    "ResearchParticipantStatus",
+    "ResearchConsentAction",
+    "ResearchConsentDocument",
+    "ResearchHistoryError",
+    "consent_digest",
+    "CONSENT_VERSION_MAX_LENGTH",
+    "CONSENT_TITLE_MAX_LENGTH",
+    "CONSENT_BODY_MAX_LENGTH",
+    "CONSENT_DIGEST_LENGTH",
+    "CURRENT_MARKER",
+    "ResearchParticipant",
+    "generate_participant_code",
+    "PARTICIPANT_CODE_PREFIX",
+    "PARTICIPANT_CODE_ALPHABET",
+    "PARTICIPANT_CODE_LENGTH",
+    "ALLOWED_PARTICIPANT_TRANSITIONS",
+    "ResearchConsentEvent",
+    "STATUS_AFTER_ACTION",
 ]

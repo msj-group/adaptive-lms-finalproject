@@ -69,6 +69,7 @@ def create_app(config_name=None, **config_overrides):
     from app.blueprints.admin.routes import admin_bp
     from app.blueprints.teacher import teacher_bp
     from app.blueprints.student import student_bp
+    from app.blueprints.research import research_bp
     from app.blueprints.notifications import notifications_bp
     from app.blueprints.messages import messages_bp
     from app.blueprints.webhooks import webhooks_bp
@@ -78,6 +79,9 @@ def create_app(config_name=None, **config_overrides):
     app.register_blueprint(admin_bp)
     app.register_blueprint(teacher_bp)
     app.register_blueprint(student_bp)
+    # Phase 6 / M01: the Researcher portal. Read-only, and gated to an
+    # active Researcher account.
+    app.register_blueprint(research_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(messages_bp)
     # Phase 5 / M07: the public, CSRF-exempt, signature-verified provider
@@ -99,6 +103,22 @@ def create_app(config_name=None, **config_overrides):
         from app.services.notification_queries import header_badge
 
         return {"notification_header": lambda: header_badge(current_user)}
+
+    # Phase 6 / M01: the shared Student/Teacher portal header renders a
+    # Research consent link for a Student who has an invitation to answer or
+    # an acceptance they may withdraw. Injected as a *callable*, exactly like
+    # the notification badge above, so a template that never calls it (every
+    # Administrator page, the Researcher portal, the login page, the error
+    # pages) costs no query at all; the helper itself is role-gated and
+    # returns None for every other case -- so no Student is ever shown a
+    # consent prompt that is not theirs.
+    @app.context_processor
+    def inject_research_consent_link():
+        from flask_login import current_user
+
+        from app.services.research_queries import portal_consent_status
+
+        return {"research_consent_status": lambda: portal_consent_status(current_user)}
 
     register_error_handlers(app)
 

@@ -788,3 +788,63 @@ class ProviderEventOutcome(str, enum.Enum):
     DUPLICATE = "duplicate"
     IGNORED_TERMINAL = "ignored_terminal"
     RECONCILIATION_REQUIRED = "reconciliation_required"
+
+
+class ResearchConsentDocumentStatus(str, enum.Enum):
+    """The lifecycle of one versioned research consent document
+    (Phase 6 / M01).
+
+    - ``draft`` -- written by an Administrator and **never shown to a
+      Student as valid consent text**. It may still be edited.
+    - ``active`` -- activated by an Administrator. Its version, title, body
+      and digest are frozen forever, and it is the one document a Student
+      may consent to. At most one document is ``active`` at any moment.
+    - ``superseded`` -- a previously active document replaced by a newer
+      activation. It is never edited and never deleted: participants who
+      accepted it keep pointing at exactly the text they read.
+
+    Adding a member is a schema change (the
+    ``research_consent_documents.status`` CHECK), which is the point.
+    """
+
+    DRAFT = "draft"
+    ACTIVE = "active"
+    SUPERSEDED = "superseded"
+
+
+class ResearchParticipantStatus(str, enum.Enum):
+    """The stored lifecycle of one research participant (Phase 6 / M01).
+
+    - ``invited`` -- an Administrator created the participant. **This is not
+      consent**: no Student decision has been recorded.
+    - ``active`` -- the linked Student explicitly accepted the active consent
+      document.
+    - ``declined`` -- the linked Student explicitly declined.
+    - ``withdrawn`` -- the linked Student accepted earlier and later withdrew.
+      Withdrawal is terminal in M01: re-invitation and re-consent are
+      deferred to a later Part.
+
+    The status is **stored**, moved in the same transaction and the same
+    commit as the append-only consent event that explains it (see
+    ``docs/DECISIONS.md``, Phase 6 / M01). Adding a member is a schema change
+    (the ``research_participants.status`` CHECK).
+    """
+
+    INVITED = "invited"
+    ACTIVE = "active"
+    DECLINED = "declined"
+    WITHDRAWN = "withdrawn"
+
+
+class ResearchConsentAction(str, enum.Enum):
+    """One meaningful transition in the append-only research consent history
+    (Phase 6 / M01).
+
+    Exactly the three decisions a Student can take. There is no ``invited``
+    action -- creating a participant is an Administrator act, not a consent
+    decision, and recording it here would read as history the Student made.
+    """
+
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+    WITHDRAWN = "withdrawn"

@@ -1,0 +1,116 @@
+{% extends "layouts/portal_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Research Consent{% endblock %}
+{% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 6 / M01. The student's own consent decision. Nothing on this page
+    identifies the participant to anybody else, no field carries an object
+    identifier, and every action is an explicit POST with CSRF and a signed
+    stale-state token. There is no default and no pre-ticked box. -#}
+<h1>Research consent</h1>
+
+{{ macros.flash_messages() }}
+
+<div class="card" style="margin-bottom: var(--space-5)">
+  <div class="card__title">Your current status</div>
+  <div class="card__body">
+    {% if participant.status == 'invited' %}
+    You have been invited to take part in a research study at this centre.
+    <strong>You have not agreed to anything yet.</strong>
+    {% elif participant.status == 'active' %}
+    <span class="badge badge--success">Taking part</span>
+    You accepted the consent document shown below. You can withdraw at any time.
+    {% elif participant.status == 'declined' %}
+    <span class="badge badge--neutral">Declined</span>
+    You declined to take part. Nothing further is asked of you.
+    {% elif participant.status == 'withdrawn' %}
+    <span class="badge badge--neutral">Withdrawn</span>
+    You withdrew from the study. You are not included in any future research activity.
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: var(--space-5)">
+  <div class="card__title">This does not affect your studies</div>
+  <div class="card__body">
+    Taking part is entirely voluntary. Accepting, declining or withdrawing changes nothing about
+    your courses, lessons, assignments, quizzes, attendance, grades, messages or fees, and you
+    keep full access to the platform either way.
+  </div>
+</div>
+
+{% if document and document_presentable %}
+<h2>{{ document.title }}</h2>
+<p class="ds-section__desc">Version {{ document.version_identifier }}</p>
+<div class="card" style="margin-bottom: var(--space-5)">
+  <div class="card__body" style="white-space: pre-wrap">{{ document.body }}</div>
+</div>
+{% elif document and participant.consent_document_id %}
+<h2>{{ document.title }}</h2>
+<p class="ds-section__desc">
+  Version {{ document.version_identifier }} &mdash; the exact version you decided on. It is kept
+  unchanged as a record of what you read.
+</p>
+<div class="card" style="margin-bottom: var(--space-5)">
+  <div class="card__body" style="white-space: pre-wrap">{{ document.body }}</div>
+</div>
+{% else %}
+<div class="empty-state" style="margin-bottom: var(--space-5)">
+  <div class="empty-state__title">No consent document is available</div>
+  <div>
+    There is no approved consent wording to read right now, so no decision can be recorded.
+    Nothing is expected of you until there is.
+  </div>
+</div>
+{% endif %}
+
+{% if actions.ACTION_ACCEPT in offered or actions.ACTION_DECLINE in offered %}
+<h2>Your decision</h2>
+<p class="ds-section__desc">
+  Read the whole document above before deciding. Your decision is recorded together with the
+  exact version you read.
+</p>
+<div class="ds-row" style="gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-5)">
+  {% if accept_token %}
+  <form method="post" action="{{ accept_url }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="{{ state_field }}" value="{{ accept_token }}">
+    <button type="submit" class="btn btn--primary">I have read this and I agree to take part</button>
+  </form>
+  {% endif %}
+  {% if decline_token %}
+  <form method="post" action="{{ decline_url }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="{{ state_field }}" value="{{ decline_token }}">
+    <button type="submit" class="btn btn--secondary">I do not want to take part</button>
+  </form>
+  {% endif %}
+</div>
+{% elif actions.ACTION_WITHDRAW in offered %}
+<h2>Withdrawing</h2>
+<p class="ds-section__desc">
+  You can withdraw at any time, without giving a reason. Withdrawing stops you being included in
+  any future research activity from that moment.
+</p>
+<a class="btn btn--danger-outline" href="{{ withdraw_url }}">Withdraw from the study</a>
+{% endif %}
+
+<div class="card" style="margin-top: var(--space-6)">
+  <div class="card__title">What the study would look at</div>
+  <div class="card__body">
+    <p style="margin: 0 0 var(--space-3)">
+      The research looks at how students move through learning activities, in order to study
+      behavioural patterns associated with possible frustration. The platform does not know, and
+      does not claim to know, how any student feels.
+    </p>
+    <p style="margin: 0">
+      No research data is being collected at this stage. Nothing is recorded about what you type,
+      no keystrokes, no passwords or form contents, no audio, no camera and no browser
+      fingerprinting &mdash; not now and not as part of this consent. Your messages, your fees and
+      your grades are never part of any research collection. How long any future research data
+      would be kept, and what would happen to data collected before a withdrawal, still require
+      ethics approval and are not decided here.
+    </p>
+  </div>
+</div>
+{% endblock %}

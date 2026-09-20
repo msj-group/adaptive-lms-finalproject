@@ -138,9 +138,11 @@ def test_the_sidebar_order_and_the_dashboard_shortcut(app, client):
     finance = dashboard[dashboard.index("Finance &amp; Research"):dashboard.index("</nav>")]
     labels = re.findall(r'<a class="admin-nav__link[^"]*" href="[^"]+">([^<]+)</a>', finance)
     # Phase 5 / M10's order: Student Accounts replaced the Billing Desk.
+    # Phase 6 / M01 appended Research as its own entry after all of them.
     assert labels == ["Student Accounts", "Invoices", "Payments", "Fee Plans",
-                      "Financial reports", "Deleted Records"]
-    assert re.search(r'Research <span class="badge badge--neutral">Soon</span>', finance)
+                      "Financial reports", "Deleted Records", "Research"]
+    assert not re.search(
+        r'Research <span class="badge badge--neutral">Soon</span>', finance)
     card = re.search(r'<a class="card" href="/admin/invoices"[^>]*>(.*?)</a>', dashboard, re.S)
     assert card and "Invoices" in card.group(1) and "LYD" not in card.group(1)
     assert re.search(r'<a class="card" href="/admin/student-accounts"', dashboard)

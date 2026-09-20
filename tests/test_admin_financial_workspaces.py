@@ -200,9 +200,12 @@ def test_the_sidebar_order_and_the_dashboard_shortcuts(app, client):
     dashboard = client.get("/admin/dashboard").get_data(as_text=True)
     finance = dashboard[dashboard.index("Finance &amp; Research"):dashboard.index("</nav>")]
     labels = re.findall(r'<a class="admin-nav__link[^"]*" href="[^"]+">([^<]+)</a>', finance)
+    # Phase 6 / M01 enabled Research as a separate entry *after* every
+    # Phase 5 workspace; their order is unchanged.
     assert labels == ["Student Accounts", "Invoices", "Payments", "Fee Plans",
-                      "Financial reports", "Deleted Records"]
-    assert re.search(r'Research <span class="badge badge--neutral">Soon</span>', finance)
+                      "Financial reports", "Deleted Records", "Research"]
+    assert not re.search(
+        r'Research <span class="badge badge--neutral">Soon</span>', finance)
     shortcuts = re.findall(r'<a class="card" href="([^"]+)"[^>]*data-shortcut="([a-z-]+)">(.*?)</a>',
                            dashboard, re.S)
     assert [(url, key) for url, key, _body in shortcuts] == [

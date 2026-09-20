@@ -1,0 +1,92 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Participant {{ record.participant_code }}{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 6 / M01. The protected mapping and the complete consent history.
+      The history is append-only: a withdrawal is an added record, never a
+      rewritten acceptance, and nothing here is ever deleted. -#}
+  <div class="ds-row" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3)">
+    <h1 style="margin: 0">{{ record.participant_code }}</h1>
+    <a class="btn btn--secondary" href="{{ list_url }}">Back to participants</a>
+  </div>
+
+  {{ macros.flash_messages() }}
+
+  <div class="card" style="margin-top: var(--space-4)">
+    <dl style="display: grid; grid-template-columns: auto 1fr; gap: var(--space-2) var(--space-4); margin: 0">
+      <dt style="color: var(--color-text-secondary)">Research code</dt>
+      <dd style="margin: 0"><strong>{{ record.participant_code }}</strong></dd>
+
+      <dt style="color: var(--color-text-secondary)">Student</dt>
+      <dd style="margin: 0">
+        {{ record.student_name }}<br>
+        <span class="ds-section__desc" style="margin: 0">{{ record.student_email }}</span>
+      </dd>
+
+      <dt style="color: var(--color-text-secondary)">Student account</dt>
+      <dd style="margin: 0">{{ macros.user_status_badge(record.student_status) }}</dd>
+
+      <dt style="color: var(--color-text-secondary)">Research status</dt>
+      <dd style="margin: 0">
+        {% if record.status == 'active' %}<span class="badge badge--success">{{ record.status_label }}</span>
+        {% elif record.status == 'invited' %}<span class="badge badge--warning">{{ record.status_label }}</span>
+        {% elif record.status == 'withdrawn' %}<span class="badge badge--danger">{{ record.status_label }}</span>
+        {% else %}<span class="badge badge--neutral">{{ record.status_label }}</span>{% endif %}
+      </dd>
+
+      <dt style="color: var(--color-text-secondary)">Consent version</dt>
+      <dd style="margin: 0">{{ record.consent_version or "None accepted" }}</dd>
+
+      <dt style="color: var(--color-text-secondary)">Invited ({{ tz_name }})</dt>
+      <dd style="margin: 0">{{ record.invited_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+
+      <dt style="color: var(--color-text-secondary)">Decided ({{ tz_name }})</dt>
+      <dd style="margin: 0">
+        {{ record.decided_local.strftime("%Y-%m-%d %H:%M") if record.decided_local else "No decision yet" }}
+      </dd>
+
+      <dt style="color: var(--color-text-secondary)">Withdrawn ({{ tz_name }})</dt>
+      <dd style="margin: 0">
+        {{ record.withdrawn_local.strftime("%Y-%m-%d %H:%M") if record.withdrawn_local else "—" }}
+      </dd>
+    </dl>
+  </div>
+
+  <h2 style="margin-top: var(--space-6)">Consent history</h2>
+  <p class="ds-section__desc">
+    Every decision this student took, oldest first. Records are never changed or deleted: a
+    withdrawal is an added record, and the earlier acceptance is kept exactly as it was made.
+    No administrator or researcher can record a decision on a student&rsquo;s behalf.
+  </p>
+  {% if history %}
+  <div style="overflow-x: auto">
+  <table style="width: 100%; border-collapse: collapse">
+    <thead>
+      <tr style="text-align: left; border-bottom: 1px solid var(--color-border)">
+        <th scope="col" style="padding: var(--space-3)">Decision</th>
+        <th scope="col" style="padding: var(--space-3)">Consent version</th>
+        <th scope="col" style="padding: var(--space-3)">When ({{ tz_name }})</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in history %}
+      <tr style="border-bottom: 1px solid var(--color-border)" data-action="{{ entry.action }}">
+        <td style="padding: var(--space-3)">{{ entry.action_label }}</td>
+        <td style="padding: var(--space-3)">{{ entry.consent_version }}</td>
+        <td style="padding: var(--space-3); white-space: nowrap">
+          {{ entry.occurred_local.strftime("%Y-%m-%d %H:%M") }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No decision yet</div>
+    <div>This student has been invited and has not accepted or declined. Only they can decide.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

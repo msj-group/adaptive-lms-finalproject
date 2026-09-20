@@ -95,7 +95,9 @@ def test_revision_identifiers_and_one_linear_head():
         revision = re.search(r"^revision = '([^']+)'", source, re.M).group(1)
         parents[revision] = re.search(r"^down_revision = (?:'([^']+)'|None)", source, re.M).group(1)
     heads = set(parents) - {p for p in parents.values() if p is not None}
-    assert heads == {_REVISION}
+    # Phase 6 / M01 follows this revision, so the single head is now M01's.
+    assert heads == {"f2a6d1c84b37"}
+    assert [r for r, p in parents.items() if p == _REVISION] == ["f2a6d1c84b37"]
     assert [r for r, p in parents.items() if p == _DOWN_REVISION] == [_REVISION]
     assert len([r for r, p in parents.items() if p is None]) == 1
 

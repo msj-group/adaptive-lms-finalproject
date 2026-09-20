@@ -1,0 +1,64 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}New Consent Document{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 6 / M01. A draft only. There is no status, digest, activation or
+      participant field here: the digest is computed on the server from these
+      exact values, and activation is a separate confirmed POST. -#}
+  <h1 style="margin: 0 0 var(--space-2)">New consent document</h1>
+  <p class="ds-section__desc">
+    Enter the approved consent wording exactly as students must read it. This is saved as a
+    <strong>draft</strong> and is never shown to any student until you activate it.
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    This platform ships no consent text. Only wording that has received the required ethics
+    approval should be entered here. Once activated, the version, title and wording are frozen
+    permanently and can only be replaced by activating a new version.
+  </div>
+
+  <form method="post" action="{{ form_url }}" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="field">
+      {{ form.version_identifier.label(class="field__label") }}
+      {{ form.version_identifier(class="field__input", maxlength=version_max_length,
+                                 placeholder="v1.0", autocomplete="off") }}
+      <p class="ds-section__desc" style="margin: var(--space-1) 0 0">
+        Unique across every document, at most {{ version_max_length }} characters.
+      </p>
+      {% for error in form.version_identifier.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="field">
+      {{ form.title.label(class="field__label") }}
+      {{ form.title(class="field__input", maxlength=title_max_length, autocomplete="off") }}
+      {% for error in form.title.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="field">
+      {{ form.body.label(class="field__label") }}
+      {{ form.body(class="field__input", rows=18, maxlength=body_max_length) }}
+      <p class="ds-section__desc" style="margin: var(--space-1) 0 0">
+        Plain text, at most {{ body_max_length }} characters. It is stored and shown exactly as
+        typed; no formatting is interpreted.
+      </p>
+      {% for error in form.body.errors %}
+      <div class="field__error">{{ error }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="ds-row" style="margin-top: var(--space-4); gap: var(--space-3)">
+      {{ form.submit(class="btn btn--primary") }}
+      <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

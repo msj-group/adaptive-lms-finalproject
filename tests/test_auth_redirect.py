@@ -182,9 +182,10 @@ def test_login_unsafe_next_falls_back_to_role_home_for_teacher(app, client):
     assert "evil.example" not in resp.headers["Location"]
 
 
-def test_researcher_still_falls_back_to_default_home(app, client):
-    """The Researcher dashboard is deferred to Phase 6, so Researcher
-    keeps the DEFAULT_HOME_ENDPOINT fallback."""
+def test_researcher_is_sent_to_the_researcher_dashboard(app, client):
+    """Phase 6 / M01 built the Researcher portal, so Researcher now has a
+    real role home and no longer falls back to DEFAULT_HOME_ENDPOINT. The
+    fallback itself is kept for a role added later with no dashboard yet."""
     with app.app_context():
         make_user("researcher@example.com", UserRole.RESEARCHER.value, password=PASSWORD)
 
@@ -194,7 +195,8 @@ def test_researcher_still_falls_back_to_default_home(app, client):
         follow_redirects=False,
     )
     assert resp.status_code == 302
-    assert resp.headers["Location"] == "/design-system/"
+    assert resp.headers["Location"] == "/research/dashboard"
+    assert resp.headers["Location"] != "/design-system/"
 
 
 def test_invalid_credentials_never_redirect_via_next(app, client):

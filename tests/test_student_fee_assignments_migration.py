@@ -35,7 +35,7 @@ _REVISION = "f9b2d6e4a318"
 _DOWN_REVISION = "e4a1c6b9d273"
 #: Phase 5 / M04's and then M05's revisions follow this one, so M05's is the single head.
 #: Phase 5 / M10's revision is the single head.
-_HEAD = "b3d8f1a6c472"
+_HEAD = "f2a6d1c84b37"
 _TABLE = "student_fee_assignments"
 
 _EXPECTED_COLUMNS = {

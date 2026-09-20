@@ -9689,3 +9689,297 @@ expressions unchanged. **No MySQL execution plan has been measured.**
   was performed. **No live-browser session, accessibility, responsive,
   keyboard, real-InnoDB concurrency or MySQL query-plan verification was
   performed.**
+
+## Researcher workspace, participants and consent (Phase 6, Part M01)
+
+M01 builds the safe foundation for the first research workspace: a dedicated
+**Researcher portal**, a **research-participant registry** linked internally
+to Student accounts, a **pseudonymous identity** separate from a Student's
+operational identity, **versioned consent documents**, and explicit Student
+**acceptance, refusal and withdrawal** with permanent history.
+
+**M01 collects no research data.** There is no interaction tracking, no
+browser JavaScript, no `sendBeacon`, no experiment, no assignment to a
+condition, no experiment or task session, no survey, no frustration rating,
+no observer annotation, no export, no dataset, no feature engineering, no
+model and no inference. No table, column or route exists for any of them, and
+the Researcher-facing suite asserts the absence rather than trusting it.
+
+### A. Participants are existing Students, and that is rechecked
+
+Every `ResearchParticipant` links to exactly one `users` row
+(`uq_research_participants_student_id`: one participant per Student, ever).
+**A foreign key to `users` proves the row exists, never that it is a Student
+and never that it is active**, so `create_participant` re-reads the chosen
+account under its lock and refuses a Teacher, an Administrator, a Researcher,
+a suspended Student or a second participant -- whatever the browser
+submitted. Creating a participant writes one row in `research_participants`
+and nothing else: no `User`, `Enrollment`, `Group`, academic or financial row
+is touched. A later suspension preserves the research history and, separately,
+stops that account logging in at all, so no further consent action can follow
+it. Nothing research-related is ever physically deleted.
+
+### B. Identity boundary: pseudonymization, not anonymization
+
+Each participant carries a `participant_code` (`RP-` plus ten characters from
+a 30-character unambiguous alphabet) drawn from `secrets`, **not derived**
+from any name, email, public id, internal id or other identifying value --
+the generator takes no argument at all. Every object URL uses `public_id`;
+numeric primary keys stay internal.
+
+**The boundary is in SQL, not in a template.** Hiding a name with `{% if %}`
+would still have loaded it. The Researcher-facing functions in
+`app/services/research_queries.py` select **column tuples**, never ORM
+entities, and never join `users` at all: a Researcher page can therefore load
+only the participant's `public_id` and code, its status, its decision moments
+and the consent document's version and title -- never a name, an email
+address, a `users` public id, any numeric id, the consent **body**, or any
+financial, academic, enrollment, group or messaging value. No M01 model
+declares an ORM relationship in either direction, so no template can lazy-load
+across the boundary. Search on both participant lists matches
+`participant_code` only.
+
+Only an Administrator sees the code-to-account mapping, in the Administrator
+research area, because inviting and auditing a participant needs it.
+
+**This is pseudonymization.** The link exists in
+`research_participants.student_id`; an Administrator -- or anyone with
+database access -- can follow it. What M01 guarantees is that the Researcher
+surface never loads it. M01 implements no research export.
+
+### C. Consent documents, and the one-current-document invariant
+
+`ResearchConsentDocument` is versioned: a unique `version_identifier`, an
+English `title`, the `body` wording, a SHA-256 `body_digest` over the
+length-prefixed version, title and body, a `draft -> active -> superseded`
+lifecycle, `created_by_id`, `activated_at` / `activated_by_id`,
+`superseded_at` / `superseded_by_id`, and whole-second UTC timestamps.
+
+Only an Administrator may write or activate one; a Researcher has no route to
+either. A draft is **never** presented to a Student. Activation freezes the
+version, title, body and digest **forever** (a mapper guard refuses the flush,
+not merely the route) and supersedes whatever was current. Changing wording
+means a new version; an old document that participants accepted is never
+mutated. **A draft is not editable in M01** -- correcting wording means a new
+version, which is the rule that already governs an activated document,
+applied earlier.
+
+**Exclusivity is a real database constraint, not a promise.** `current_marker`
+is `1` exactly while `active` and NULL otherwise
+(`ck_research_consent_documents_current_marker`), and
+`uq_research_consent_documents_current` is unique over it: MySQL and SQLite
+both admit many NULLs in a unique index and exactly one `1`. The check spells
+out `current_marker IS NOT NULL AND current_marker = 1`, because a CHECK that
+evaluates to NULL **passes** and `NULL = 1` is NULL -- without it an active
+row carrying no marker would be accepted, and two of those would satisfy the
+unique index too. Activation still takes the documented lock order, re-reads
+which document is current **after** its locks, and clears the outgoing marker
+in its own flush before setting the new one (SQLAlchemy orders a flush by
+primary key, not by assignment, and neither backend defers a unique index to
+commit).
+
+**No consent wording ships with the project.** The migration seeds nothing,
+the area starts empty, and it says in plain English that an Administrator must
+enter and activate approved wording before anyone can be invited.
+
+### D. Consent is explicit, and nothing else is consent
+
+Login is not consent. Ordinary LMS use is not consent. Being invited is not
+consent -- it records `invited` and writes no history row. An Administrator
+or Researcher cannot consent for anybody: `/student/research-consent` and its
+three POSTs are Student-only, and no route in the project writes an
+`accepted` event with any other actor.
+
+**The participant is found from the session, never from the request.** There
+is no participant id, Student id, document id, version or status in any URL or
+hidden field -- the consent page's only hidden inputs are the CSRF token and
+one signed state token -- and `participant.student_id == current_user.id` is
+proved again against the **locked** row inside the transaction.
+
+The signed decision token binds the acting Student, the participant's public
+id, status and version, the document's public id, version identifier and
+digest, and the intended action. It is checked once before the locks and
+again, from the locked rows, inside the transaction. A draft or superseded
+document is never presented and never accepted; a document whose stored digest
+no longer matches its stored wording is never presented, however it came to
+disagree. If the wording changed after the page was opened, the submission is
+refused and nothing is written. An action the current state already satisfies
+is an authorized no-op -- no write, no version move, no second event -- so a
+double click or a replayed POST creates no false history.
+
+### E. Stored lifecycle, and append-only history
+
+**The participant status is stored, not derived.** `invited`, `active`,
+`declined`, `withdrawn`, with `ck_research_participants_status_valid` as a
+closed set and `ck_research_participants_lifecycle_state` proving the shape of
+each one (an `invited` participant carries no decision at all; `withdrawn`
+carries a withdrawal moment equal to its decision moment). The status moves
+only in the same transaction and the same commit as the
+`ResearchConsentEvent` that explains it, so the stored value and the history
+cannot disagree -- which the suite proves by deriving the status back from the
+latest event. `version` is the optimistic-concurrency signal the signed form
+is bound to. The allowed transitions are exactly `invited -> active`,
+`invited -> declined` and `active -> withdrawn`: **`declined` and `withdrawn`
+are terminal in M01**, so no old form, replay or race reactivates either.
+Re-invitation and re-consent after withdrawal are deferred to a later Part.
+
+`research_consent_events` is append-only: `participant_id`,
+`consent_document_id`, `action`, `actor_id`, a server `occurred_at`, and the
+`consent_version` and `consent_digest` copied at the moment of the decision.
+**Withdrawal adds a row; the acceptance stays exactly as it was recorded.**
+Mapper guards refuse any update or delete of an event, a participant or a
+document, and a session-level `do_orm_execute` guard refuses bulk
+`update(...)` / `delete(...)` against all three tables, which mapper events
+never see. No foreign key carries `ON DELETE` or `ON UPDATE`, so nothing
+cascades into research history.
+
+**Deliberately absent from the history**: no IP address, no user-agent string,
+no device or browser fingerprint, no free-form comment, no extra personal
+information and no generic research-event payload. There is no column shaped
+to hold any of them.
+
+### F. Withdrawal and the retention boundary
+
+M01 approves only this: withdrawal immediately ends eligibility for any future
+research session or collection, and the withdrawal moment and the prior
+consent history are preserved. M01 deletes no interaction events **because it
+creates none**. There is no automatic deletion, no retention job and no
+invented retention duration.
+
+**Unresolved, and stated as unresolved on the Student's own page**: how long
+any future research data would be kept, and what happens to data collected
+before a withdrawal. Both require ethics approval before any real collection
+begins.
+
+### G. Lock order
+
+One order, every M01 write:
+
+```
+lock_academic_hierarchy() reset point
+  -> users rows, ascending internal id (the acting account, and the
+     linked Student when the write has one)
+  -> research_consent_documents rows, ascending internal id
+  -> research_participants
+```
+
+`lock_academic_hierarchy()` with no ids locks nothing; it is called because it
+owns the project's single deliberate `db.session.rollback()` before a
+request's first lock. Users are locked ascending by id, never "actor then
+student", so two requests involving the same accounts in opposite roles cannot
+deadlock. Documents come before participants: activation locks documents and
+never a participant, so the graph gains no reverse edge. Locking the Student's
+`users` row is what serialises two concurrent invitations for the same Student;
+`uq_research_participants_student_id` remains the final defense. Every write
+commits or rolls back before returning, and an `IntegrityError` is rolled back
+and answered with one generic sentence carrying no SQL and no driver text.
+
+SQLite honours neither `FOR UPDATE` nor REPEATABLE READ, so the tests assert
+the *requested* lock set and order. **They prove nothing about real InnoDB
+blocking.**
+
+### H. Routes
+
+Researcher (read-only; POST/PUT/PATCH/DELETE are 405, and the only form on any
+page is the shared header's logout):
+
+```
+GET  /research/dashboard
+GET  /research/participants[?status=][&q=][&page=]
+GET  /research/participants/<participant_public_id>
+```
+
+Administrator, in its own area beside the financial workspaces and inside
+neither:
+
+```
+GET       /admin/research
+GET|POST  /admin/research/consent-documents/new
+GET       /admin/research/consent-documents/<document_public_id>
+POST      /admin/research/consent-documents/<document_public_id>/activate
+GET       /admin/research/participants[?status=][&q=][&page=]
+GET|POST  /admin/research/participants/new[?q=]
+GET       /admin/research/participants/<participant_public_id>
+```
+
+Student, with **no object identifier in any rule**:
+
+```
+GET   /student/research-consent
+POST  /student/research-consent/accept
+POST  /student/research-consent/decline
+GET   /student/research-consent/withdraw
+POST  /student/research-consent/withdraw
+```
+
+Every mutation is POST-only with CSRF and a purpose-specific signed token.
+Every response on all three surfaces carries `Cache-Control: private,
+no-store` and `Vary: Cookie` -- the page, the redirect, the login redirect,
+the 403 and the 404 alike, because an error page states by existing whether an
+identifier was recognised. Both participant lists are paginated (25) with
+bounded queries. A malformed, unknown or mismatched identifier is the same
+plain 404.
+
+`ROLE_HOME_ENDPOINT` now sends a Researcher to `research.dashboard` instead of
+the Design System; the `DEFAULT_HOME_ENDPOINT` fallback is kept for a role
+added later with no dashboard. The Administrator sidebar's disabled
+**Research "Soon"** item is now a real link, appended **after** Student
+Accounts, Invoices, Payments, Fee Plans, Financial reports and Deleted
+Records, whose order is unchanged; Research is not merged into Student
+Accounts or Deleted Records, shows no financial figure, and adds nothing to
+any Group page. The Student portal shows a Research consent link only for a
+Student whose participant is `invited` (with a "Decide" badge) or `active`;
+a Student with no invitation, or who declined or withdrew, is never prompted,
+and their own page still states their current status correctly.
+
+### I. Wording
+
+No page claims to detect, measure or prove an emotion. Where the study is
+described, the approved phrasing is **"behavioral patterns associated with
+possible frustration"**, alongside an explicit statement that the platform
+does not know how any Student feels, that no research data is being collected
+at this stage, and that no keystrokes, passwords, form contents, audio, camera
+or browser fingerprinting are involved. Accepting, declining or withdrawing
+changes nothing about courses, lessons, assignments, quizzes, attendance,
+grades, messages or fees, and the Student portal stays fully usable either
+way.
+
+### J. Migration `f2a6d1c84b37` (parent `b3d8f1a6c472`)
+
+One additive revision creating `research_consent_documents`,
+`research_participants` and `research_consent_events` with their CHECKs,
+unique constraints, plain foreign keys and query-driven indexes. It alters no
+existing table, reads no existing row and **seeds nothing** -- in particular
+no consent document. `body` is `TEXT`, the project's convention, and the
+application bounds wording at 15,000 characters, which is 60,000 bytes even if
+every character is four bytes, so the number an Administrator is told and the
+number the database can hold are the same on every backend. The downgrade
+**refuses while any research row exists**, before touching anything, and only
+then drops child before parent. **No MySQL execution plan has been measured.**
+
+### K. Phase 5 is untouched
+
+Student Accounts, Invoices, Payments, Fee Plans, Financial reports, Deleted
+Records, visible deletion and its tombstones, the exclusion of deleted
+documents from every live list, balance and report, payment editing by
+replacement, the absence of a restore workflow, and the absence of finance
+from Group pages all stand unchanged. No M01 route reads or writes an
+Invoice, Payment, Receipt, Fee Assignment, Enrollment or balance, and the
+suites assert that creating a participant and recording a decision leave every
+account, enrollment and financial row byte-identical.
+
+### L. Honest limitations
+
+- **Building consent infrastructure does not approve the final ethics
+  wording.** The project ships none, and nothing here has been reviewed by an
+  ethics committee.
+- **Retention duration and the treatment of data collected before a
+  withdrawal are unresolved** and require approval before real collection.
+- M01 contains no tracking, experiments, sessions, surveys, exports or machine
+  learning.
+- **The system is not ready for real research recruitment or collection** until
+  the consent wording, the retention policy and the withdrawal policy receive
+  the required approval. The existence of this infrastructure is not that
+  approval.
+- SQLite proves application logic and the requested lock structure only; it
+  proves nothing about MySQL/InnoDB blocking, isolation or collation.

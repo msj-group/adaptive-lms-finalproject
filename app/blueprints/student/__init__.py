@@ -15,3 +15,4 @@ from app.blueprints.student import grades  # noqa: E402,F401
 from app.blueprints.student import announcements  # noqa: E402,F401
 from app.blueprints.student import calendar  # noqa: E402,F401
 from app.blueprints.student import discussions  # noqa: E402,F401
+from app.blueprints.student import research  # noqa: E402,F401

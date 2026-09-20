@@ -38,7 +38,7 @@ _DOWN_REVISION = "c5e8f2a7d914"
 #: Phase 5 / M07 follows this revision, so the single head is now its own; it
 #: replaces three of this revision's CHECKs and records their M06 text.
 #: Phase 5 / M10 follows M07, so the single head is now M10's.
-_HEAD = "b3d8f1a6c472"
+_HEAD = "f2a6d1c84b37"
 #: Phase 5 / M07, the revision that follows this one.
 _M07 = "e9c4b2d7a1f3"
 _TABLE = "payment_intents"

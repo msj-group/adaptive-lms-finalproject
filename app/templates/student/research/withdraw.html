@@ -1,0 +1,45 @@
+{% extends "layouts/portal_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Withdraw From The Study{% endblock %}
+{% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 6 / M01. A separate confirmation page, and a separate POST. The
+    withdrawal is recorded against the exact document that was accepted. -#}
+<h1>Withdraw from the study</h1>
+
+{{ macros.flash_messages() }}
+
+<div class="card" style="margin-bottom: var(--space-5)">
+  <div class="card__title">What withdrawing does</div>
+  <div class="card__body">
+    <ul style="margin: 0; padding-left: var(--space-5)">
+      <li>You stop taking part immediately, and are not included in any future research activity.</li>
+      <li>Your earlier decision is kept as a record, together with the date you withdrew. That
+        record is what shows you were asked properly and agreed freely; it is not research data.</li>
+      <li>Nothing about your courses, lessons, assignments, quizzes, attendance, grades, messages
+        or fees changes in any way.</li>
+      <li>You do not have to give a reason, and you are not asked for one.</li>
+    </ul>
+  </div>
+</div>
+
+<p class="ds-section__desc">
+  You accepted version <strong>{{ document.version_identifier }}</strong> of
+  &ldquo;{{ document.title }}&rdquo;. Withdrawing is recorded against that exact version.
+</p>
+
+<form method="post" action="{{ withdraw_url }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="{{ state_field }}" value="{{ state_token }}">
+  <div class="field">
+    <label class="field__label" for="confirm" style="display: flex; align-items: center; gap: var(--space-2)">
+      <input type="checkbox" id="confirm" name="confirm" value="yes">
+      I want to withdraw from the study.
+    </label>
+  </div>
+  <div class="ds-row" style="gap: var(--space-3); flex-wrap: wrap">
+    <button type="submit" class="btn btn--danger-outline">Withdraw</button>
+    <a class="btn btn--secondary" href="{{ cancel_url }}">Keep taking part</a>
+  </div>
+</form>
+{% endblock %}

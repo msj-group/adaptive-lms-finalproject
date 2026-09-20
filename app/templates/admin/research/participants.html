@@ -1,0 +1,98 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Research Participants{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  {#- Phase 6 / M01. The protected mapping: research code beside the student
+      account. This is the only surface that shows both, and only an
+      administrator reaches it. No financial figure appears here. -#}
+  <div class="ds-row" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3)">
+    <h1 style="margin: 0">Research participants</h1>
+    <div class="ds-row" style="gap: var(--space-3)">
+      <a class="btn btn--primary" href="{{ new_url }}">Invite a student</a>
+      <a class="btn btn--secondary" href="{{ overview_url }}">Back to research</a>
+    </div>
+  </div>
+  <p class="ds-section__desc">
+    Each participant is one student account, shown here with its research code. Search matches
+    research codes only.
+  </p>
+
+  {{ macros.flash_messages() }}
+
+  <form method="get" action="{{ list_url }}" class="ds-row"
+        style="margin-bottom: var(--space-4); align-items: flex-end; gap: var(--space-3); flex-wrap: wrap">
+    <div class="field" style="margin: 0">
+      <label class="field__label" for="status">Status</label>
+      <select name="status" id="status" class="field__input" style="width: auto">
+        {% for value, label in status_filters.items() %}
+        <option value="{{ value }}" {{ "selected" if status == value else "" }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field" style="margin: 0">
+      <label class="field__label" for="q">Research code</label>
+      <input type="search" name="q" id="q" class="field__input" style="width: auto"
+             value="{{ search }}" maxlength="40" placeholder="RP-XXXXXXXXXX">
+    </div>
+    <button type="submit" class="btn btn--secondary">Apply</button>
+    {% if filtered %}<a class="btn btn--secondary" href="{{ list_url }}">Clear</a>{% endif %}
+  </form>
+
+  {% if records %}
+  <div style="overflow-x: auto">
+  <table style="width: 100%; border-collapse: collapse">
+    <thead>
+      <tr style="text-align: left; border-bottom: 1px solid var(--color-border)">
+        <th scope="col" style="padding: var(--space-3)">Research code</th>
+        <th scope="col" style="padding: var(--space-3)">Student</th>
+        <th scope="col" style="padding: var(--space-3)">Status</th>
+        <th scope="col" style="padding: var(--space-3)">Consent version</th>
+        <th scope="col" style="padding: var(--space-3)">Decided ({{ tz_name }})</th>
+        <th scope="col" style="padding: var(--space-3)"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for record in records %}
+      <tr style="border-bottom: 1px solid var(--color-border)" data-participant="{{ record.participant_code }}">
+        <td style="padding: var(--space-3); white-space: nowrap"><strong>{{ record.participant_code }}</strong></td>
+        <td style="padding: var(--space-3)">
+          {{ record.student_name }}<br>
+          <span class="ds-section__desc" style="margin: 0">{{ record.student_email }}</span>
+        </td>
+        <td style="padding: var(--space-3)">
+          {% if record.status == 'active' %}<span class="badge badge--success">{{ record.status_label }}</span>
+          {% elif record.status == 'invited' %}<span class="badge badge--warning">{{ record.status_label }}</span>
+          {% elif record.status == 'withdrawn' %}<span class="badge badge--danger">{{ record.status_label }}</span>
+          {% else %}<span class="badge badge--neutral">{{ record.status_label }}</span>{% endif %}
+        </td>
+        <td style="padding: var(--space-3)">{{ record.consent_version or "—" }}</td>
+        <td style="padding: var(--space-3); white-space: nowrap">
+          {{ record.decided_local.strftime("%Y-%m-%d %H:%M") if record.decided_local else "—" }}
+        </td>
+        <td style="padding: var(--space-3)"><a class="btn btn--secondary" href="{{ record.detail_url }}">View</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No participants</div>
+    <div>
+      {% if filtered %}Nothing matches these filters.{% else %}
+      No student has been invited into the study yet.{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3); flex-wrap: wrap"
+       aria-label="Participant pages">
+    {% if pagination.prev_url %}<a class="btn btn--secondary" href="{{ pagination.prev_url }}">Previous</a>{% endif %}
+    <span class="ds-section__desc" style="margin: 0">
+      Participants {{ pagination.first }}&ndash;{{ pagination.last }} of {{ pagination.total }}, newest first
+    </span>
+    {% if pagination.next_url %}<a class="btn btn--secondary" href="{{ pagination.next_url }}">Next</a>{% endif %}
+  </nav>
+</div>
+{% endblock %}

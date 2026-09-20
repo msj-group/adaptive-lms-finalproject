@@ -1,0 +1,61 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Research Dashboard{% endblock %}
+{% block portal_nav %}{% set active_nav = 'dashboard' %}{% include "research/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 6 / M01. Real counts of real rows, and nothing else: no chart, no
+    rate, no experiment result, no behavioural metric. The platform collects
+    no research data at all yet, and this page says so rather than implying
+    otherwise with an empty graph. -#}
+<h1>Research</h1>
+<p class="ds-section__desc">
+  Participation consent only. Participants are shown by research code; no student names,
+  email addresses or account identifiers appear anywhere in this portal.
+</p>
+
+<div class="stat-grid">
+  {% for status in status_order %}
+  <div class="stat-card" data-count="{{ status }}">
+    <div class="stat-card__value">{{ counts[status] }}</div>
+    <div class="stat-card__label">{{ status_labels[status] }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="dash-section">
+  <h2>Participants</h2>
+  {% if total %}
+  <p class="ds-section__desc">
+    {{ total }} participant{{ "" if total == 1 else "s" }} in total, by research code and consent state.
+  </p>
+  <a class="btn btn--primary" href="{{ participants_url }}">Open participants</a>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No participants yet</div>
+    <div>
+      An administrator invites a student into the study, and only that student can accept.
+      Invited participants will appear here by research code.
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="dash-section">
+  <h2>What this workspace contains</h2>
+  <div class="card">
+    <div class="card__body">
+      <p style="margin: 0 0 var(--space-3)">
+        This milestone builds the consent foundation only. There is no interaction tracking,
+        no experiment, no session recording, no survey, no rating, no export and no model.
+        Nothing about a student's behaviour is collected, measured or inferred here.
+      </p>
+      <p style="margin: 0">
+        A participant shown as <strong>Active</strong> has read and accepted a specific version
+        of the consent document. A participant shown as <strong>Withdrawn</strong> is no longer
+        eligible for any future research session. Consent wording, data retention and the
+        treatment of previously collected data still require ethics approval before any real
+        research collection begins.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

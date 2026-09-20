@@ -31,6 +31,21 @@
       <a class="portal-nav__link{{ ' portal-nav__link--active' if (request.endpoint or '').startswith('student.discussions_') else '' }}"
          href="{{ url_for('student.discussions_overview') }}">Discussions</a>
       {% endif %}
+      {#- Phase 6 / M01: the Research consent link. Rendered only for a Student
+          who has a research invitation to answer or an acceptance they may
+          withdraw -- the helper returns nothing for every other role, for a
+          Student with no invitation, and for one who already declined or
+          withdrew, so nobody is shown a consent prompt that is not theirs and
+          nobody is prompted again after deciding. It is a link to a page, never
+          a consent control: consent itself is an explicit POST on that page. -#}
+      {% set research_status = research_consent_status() %}
+      {% if research_status %}
+      <a class="portal-nav__link{{ ' portal-nav__link--active' if (request.endpoint or '').startswith('student.research_consent') else '' }}"
+         href="{{ url_for('student.research_consent') }}">
+        Research consent
+        {%- if research_status == 'invited' %} <span class="badge badge--warning">Decide</span>{% endif %}
+      </a>
+      {% endif %}
       {#- M14: the Notifications link and unread badge are part of the shared
           portal header, so every Student / Teacher page carries them without
           each page's own `portal_nav` block having to remember. The helper

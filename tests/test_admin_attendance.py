@@ -484,9 +484,9 @@ def test_the_admin_navigation_now_links_attendance(app, client):
     fx.login_as(client, "admin@example.com")
     html = client.get("/admin/dashboard").get_data(as_text=True)
     assert 'href="/admin/attendance"' in html
-    # Phase 4 / M08 enabled Grades and Phase 5 / M05 Payments; Research
-    # remains deferred with no endpoint.
+    # Phase 4 / M08 enabled Grades, Phase 5 / M05 Payments and Phase 6 / M01
+    # Research -- the last disabled entry, so no "Soon" placeholder remains.
     assert 'href="/admin/grades"' in html
     assert 'href="/admin/payments"' in html
-    assert 'href="/admin/research"' not in html
-    assert "Soon" in html
+    assert 'href="/admin/research"' in html
+    assert "Soon" not in html

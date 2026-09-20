@@ -1,0 +1,86 @@
+{% extends "layouts/portal_base.html" %}
+{% block title %}Research Participants{% endblock %}
+{% block portal_nav %}{% set active_nav = 'participants' %}{% include "research/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 6 / M01. Pseudonymous rows only: the query behind this page never
+    joins `users` and never selects a name, an email address or any internal
+    id, so there is nothing identifying here to leave out. The search is over
+    the research code alone. -#}
+<h1>Participants</h1>
+<p class="ds-section__desc">
+  Research codes and consent state. Search matches research codes only &mdash; never a name or
+  an email address.
+</p>
+
+<form method="get" action="{{ list_url }}" class="ds-row"
+      style="margin-bottom: var(--space-4); align-items: flex-end; gap: var(--space-3); flex-wrap: wrap">
+  <div class="field" style="margin: 0">
+    <label class="field__label" for="status">Status</label>
+    <select name="status" id="status" class="field__input" style="width: auto">
+      {% for value, label in status_filters.items() %}
+      <option value="{{ value }}" {{ "selected" if status == value else "" }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field" style="margin: 0">
+    <label class="field__label" for="q">Research code</label>
+    <input type="search" name="q" id="q" class="field__input" style="width: auto"
+           value="{{ search }}" maxlength="40" placeholder="RP-XXXXXXXXXX">
+  </div>
+  <button type="submit" class="btn btn--secondary">Apply</button>
+  {% if filtered %}<a class="btn btn--secondary" href="{{ list_url }}">Clear</a>{% endif %}
+</form>
+
+{% if records %}
+<div class="dash-scroll" style="overflow-x: auto">
+<table class="dash-table" style="width: 100%">
+  <thead>
+    <tr>
+      <th scope="col">Research code</th>
+      <th scope="col">Status</th>
+      <th scope="col">Consent version</th>
+      <th scope="col">Invited ({{ tz_name }})</th>
+      <th scope="col">Decided ({{ tz_name }})</th>
+      <th scope="col"><span class="ds-section__desc" style="margin:0">Detail</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for record in records %}
+    <tr data-participant="{{ record.participant_code }}">
+      <td style="white-space: nowrap"><strong>{{ record.participant_code }}</strong></td>
+      <td>
+        {% if record.status == 'active' %}<span class="badge badge--success">{{ record.status_label }}</span>
+        {% elif record.status == 'invited' %}<span class="badge badge--warning">{{ record.status_label }}</span>
+        {% elif record.status == 'withdrawn' %}<span class="badge badge--danger">{{ record.status_label }}</span>
+        {% else %}<span class="badge badge--neutral">{{ record.status_label }}</span>{% endif %}
+      </td>
+      <td>{{ record.consent_version or "—" }}</td>
+      <td style="white-space: nowrap">{{ record.invited_local.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td style="white-space: nowrap">
+        {{ record.decided_local.strftime("%Y-%m-%d %H:%M") if record.decided_local else "—" }}
+      </td>
+      <td><a class="btn btn--secondary" href="{{ record.detail_url }}">View</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state__title">No participants</div>
+  <div>
+    {% if filtered %}Nothing matches these filters.{% else %}
+    No student has been invited into the study yet.{% endif %}
+  </div>
+</div>
+{% endif %}
+
+<nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3); flex-wrap: wrap"
+     aria-label="Participant pages">
+  {% if pagination.prev_url %}<a class="btn btn--secondary" href="{{ pagination.prev_url }}">Previous</a>{% endif %}
+  <span class="ds-section__desc" style="margin: 0">
+    Participants {{ pagination.first }}&ndash;{{ pagination.last }} of {{ pagination.total }}, newest first
+  </span>
+  {% if pagination.next_url %}<a class="btn btn--secondary" href="{{ pagination.next_url }}">Next</a>{% endif %}
+</nav>
+{% endblock %}
