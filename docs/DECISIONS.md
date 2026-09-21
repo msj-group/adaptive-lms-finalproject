@@ -9698,12 +9698,17 @@ to Student accounts, a **pseudonymous identity** separate from a Student's
 operational identity, **versioned consent documents**, and explicit Student
 **acceptance, refusal and withdrawal** with permanent history.
 
-**M01 collects no research data.** There is no interaction tracking, no
-browser JavaScript, no `sendBeacon`, no experiment, no assignment to a
-condition, no experiment or task session, no survey, no frustration rating,
-no observer annotation, no export, no dataset, no feature engineering, no
-model and no inference. No table, column or route exists for any of them, and
-the Researcher-facing suite asserts the absence rather than trusting it.
+**M01 collects no behavioural interaction data** (corrected by M01R; the
+original text said "no research data", which was not accurate). What M01
+*does* record is research administration: the participant invitation, the
+consent status, the consent-document reference and the append-only consent
+events. What it does **not** collect is behavioural interaction data --
+there is no interaction tracking, no browser JavaScript, no `sendBeacon`, no
+experiment, no assignment to a condition, no experiment or task session, no
+survey, no frustration rating, no observer annotation, no export, no
+dataset, no feature engineering, no model, no inference and no adaptive
+intervention. No table, column or route exists for any of them, and the
+Researcher-facing suite asserts the absence rather than trusting it.
 
 ### A. Participants are existing Students, and that is rechecked
 
@@ -9846,10 +9851,12 @@ consent history are preserved. M01 deletes no interaction events **because it
 creates none**. There is no automatic deletion, no retention job and no
 invented retention duration.
 
-**Unresolved, and stated as unresolved on the Student's own page**: how long
-any future research data would be kept, and what happens to data collected
-before a withdrawal. Both require ethics approval before any real collection
-begins.
+**Unresolved**: how long any future research data would be kept, and what
+happens to data collected before a withdrawal. Both require approval before
+any real collection begins. M01R moved both questions **out** of the static
+Student page and into the activated consent document, so whatever a
+participant is told about them is sealed by the digest their consent event
+stores -- see Part M01R below.
 
 ### G. Lock order
 
@@ -9934,15 +9941,19 @@ and their own page still states their current status correctly.
 
 ### I. Wording
 
-No page claims to detect, measure or prove an emotion. Where the study is
-described, the approved phrasing is **"behavioral patterns associated with
-possible frustration"**, alongside an explicit statement that the platform
-does not know how any Student feels, that no research data is being collected
-at this stage, and that no keystrokes, passwords, form contents, audio, camera
-or browser fingerprinting are involved. Accepting, declining or withdrawing
-changes nothing about courses, lessons, assignments, quizzes, attendance,
-grades, messages or fees, and the Student portal stays fully usable either
-way.
+No page claims to detect, measure or prove an emotion, and no page claims the
+platform knows how any Student feels.
+
+**Superseded by M01R.** M01 originally described the study on the static
+Student page -- its purpose, the "behavioral patterns associated with
+possible frustration" phrasing, a list of what is never collected, and the
+unresolved retention question -- and stated that accepting or declining
+changes nothing about courses, grades, messages or fees. All of that is
+substantive wording a participant could reasonably rely on, and none of it
+was covered by the consent digest. M01R removed it from the template and
+made the activated consent document the only place it may live; the static
+page keeps only status, instructions, the action, and a precise statement of
+what the software records and does not collect. See Part M01R below.
 
 ### J. Migration `f2a6d1c84b37` (parent `b3d8f1a6c472`)
 
@@ -9983,3 +9994,118 @@ account, enrollment and financial row byte-identical.
   approval.
 - SQLite proves application logic and the requested lock structure only; it
   proves nothing about MySQL/InnoDB blocking, isolation or collation.
+
+
+## Consent wording integrity correction (Phase 6, Part M01R)
+
+M01 recorded the consent document's version and digest correctly, but the
+static Student consent page also carried substantive research, privacy,
+retention and future-scope wording **outside** the versioned document body.
+That wording is not covered by the stored digest: it can be edited at any
+time without a single consent record changing, so a consent event could not
+prove the complete substantive wording a Student actually saw when they
+decided. M01R fixes that. **No schema, migration, lifecycle, token, lock
+order, authorization rule, route or Phase 5 behaviour changed** -- this is a
+wording-integrity correction only, and the Alembic head and development
+MySQL both stay at `f2a6d1c84b37`.
+
+### A. One versioned source of substantive wording
+
+The activated `ResearchConsentDocument` body is now the **only** source of
+research-policy and ethics wording a Student is asked to accept. Removed from
+`app/templates/student/research/consent.html` and
+`app/templates/student/research/withdraw.html`:
+
+- the description of what the study looks at, including the
+  "behavioral patterns associated with possible frustration" phrasing;
+- "No research data is being collected at this stage";
+- the permanent promise that messages, fees and grades are "never part of any
+  research collection";
+- the unresolved retention question and the treatment of data collected
+  before a withdrawal;
+- "Taking part is entirely voluntary", "changes nothing about your courses,
+  lessons, assignments, quizzes, attendance, grades, messages or fees" and
+  "you keep full access to the platform either way";
+- on the withdrawal page, "not included in any future research activity",
+  "it is not research data", and the same courses/grades/messages/fees
+  promise;
+- in the flash messages, "This does not affect your courses, grades or
+  anything else in the platform" and "no longer eligible for any future
+  research session".
+
+**These are not deletions of obligations.** Voluntariness, scope, retention,
+withdrawal consequences and the study's purpose are exactly the things a
+participant information sheet must state, and they must now be written into
+the document the Administrator activates -- where the digest seals them. The
+platform ships none of that text, and the Administrator area already says so.
+
+What the static page may still contain, and nothing else: the Student's own
+current status; operational instructions; the accept, decline or withdraw
+action; a precise statement of what the software records and what it does not
+collect; and a pointer to the document for anything substantive. It never
+duplicates the document's policy wording.
+
+### B. The data-collection description is now accurate
+
+"M01 collects no research data" was wrong: M01 stores research
+administration -- the participant row, the consent status, the
+consent-document reference and the append-only consent events. The accurate
+distinction, applied in the Student UI, the Researcher UI, template comments,
+blueprint and model docstrings, this document and the tests, is:
+
+- **M01 records** the research participant invitation and the consent
+  decision.
+- **M01 does not collect behavioural interaction data**: no interaction
+  events, no browser tracking, no keystrokes or typing content, no mouse or
+  scroll tracking, no screen or audio recording, no camera, no browser
+  fingerprinting.
+- **M01 has no** experiment sessions, task sessions, surveys, frustration
+  ratings, observer annotations, exports, datasets, model training, inference
+  or adaptive intervention.
+
+### C. Approval terminology
+
+Application state never implies that an ethics committee approved anything:
+
+- **"active consent document"** for the lifecycle state;
+- **"activated by an Administrator"** for the system action;
+- **"approved wording"** only where it names the Administrator's external
+  responsibility or their explicit attestation -- which is why the
+  Administrator authoring form, its confirmation checkbox and the research
+  overview keep that phrasing, and the Student page does not.
+
+The Student empty state now reads **"There is no active consent document to
+read right now."** It no longer says "no approved consent wording", which
+would have implied that the absence of an active row proves no wording has
+external approval. The Researcher dashboard states plainly that activating a
+document here is an administrative action, not an ethics approval.
+
+### D. Verification actually performed, and what it does not prove
+
+- `tests/test_student_research_consent.py` gains the wording-integrity tests:
+  the page states the invitation and decision are recorded; it states
+  behavioural interaction data is not collected; it never claims no research
+  data at all is collected; it carries no unversioned retention or
+  pre-withdrawal policy; it makes no permanent promise about grades, fees or
+  messages; it does not present activation as an ethics approval; the exact
+  active document body is still rendered line by line; and the withdrawal
+  page carries no unversioned policy either. The two tests that *required*
+  the inaccurate wording were replaced rather than loosened.
+- `tests/test_researcher_portal.py` gains a test that the dashboard draws the
+  record-versus-collect distinction and one that it does not present
+  activation as an ethics approval.
+- Acceptance, refusal, withdrawal, stale-token handling, CSRF, authorization,
+  the private/no-store headers and the Phase 5 regressions are unchanged and
+  still pass.
+- **No browser, accessibility, responsive, keyboard, real-InnoDB concurrency
+  or MySQL query-plan verification was performed.** No migration was created
+  and no MySQL row or schema object was modified; Alembic and development
+  MySQL were confirmed read-only to remain at `f2a6d1c84b37`.
+
+### E. Limitation this correction does not remove
+
+Sealing the wording proves *what* a participant was shown. It does not make
+that wording adequate, and it is not an ethics approval. The centre must
+still obtain the required approval for the consent text, the retention period
+and the treatment of data collected before a withdrawal before any real
+research recruitment or collection begins.

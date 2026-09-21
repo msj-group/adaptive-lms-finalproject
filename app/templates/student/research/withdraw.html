@@ -3,22 +3,30 @@
 {% block title %}Withdraw From The Study{% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-{#- Phase 6 / M01. A separate confirmation page, and a separate POST. The
-    withdrawal is recorded against the exact document that was accepted. -#}
+{#- Phase 6 / M01, corrected by M01R. A separate confirmation page, and a
+    separate POST. The withdrawal is recorded against the exact document that
+    was accepted.
+
+    Like the consent page, this template states only what the *system* does
+    when the button is pressed. What withdrawing means for the study, and for
+    anything collected before it, belongs to the accepted document's wording,
+    which the participant's consent event seals by digest -- so it is pointed
+    at here rather than restated, where an edit could silently change what a
+    participant was told. -#}
 <h1>Withdraw from the study</h1>
 
 {{ macros.flash_messages() }}
 
 <div class="card" style="margin-bottom: var(--space-5)">
-  <div class="card__title">What withdrawing does</div>
+  <div class="card__title">What this action does</div>
   <div class="card__body">
     <ul style="margin: 0; padding-left: var(--space-5)">
-      <li>You stop taking part immediately, and are not included in any future research activity.</li>
-      <li>Your earlier decision is kept as a record, together with the date you withdrew. That
-        record is what shows you were asked properly and agreed freely; it is not research data.</li>
-      <li>Nothing about your courses, lessons, assignments, quizzes, attendance, grades, messages
-        or fees changes in any way.</li>
+      <li>Your participation is marked <strong>withdrawn</strong> immediately.</li>
+      <li>Your earlier acceptance is not erased or rewritten: the withdrawal is added as a
+        further permanent record, with the date and time.</li>
       <li>You do not have to give a reason, and you are not asked for one.</li>
+      <li>What withdrawing means for the study itself, and for anything collected before it, is
+        stated in the consent document you accepted.</li>
     </ul>
   </div>
 </div>

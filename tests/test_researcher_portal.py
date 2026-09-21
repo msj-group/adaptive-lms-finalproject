@@ -304,10 +304,41 @@ def test_the_dashboard_claims_no_experiment_result_or_emotion_detection(people, 
                   "prediction", "accuracy", "confidence", "engagement score",
                   "proves that"):
         assert claim not in html, claim
-    # ... and it states plainly what does not exist.
-    assert "no interaction tracking" in html
-    assert "ethics approval" in html
     assert "collected, measured or inferred" in html
+
+
+def test_the_dashboard_describes_what_m01_records_and_what_it_does_not(people, client):
+    """M01R. The old wording claimed the platform collected no research data
+    at all, which was untrue: it records research administration. The page
+    must now draw the real distinction."""
+    _login_researcher(client)
+    html = " ".join(rx.page(client, rx.RESEARCH_DASHBOARD_URL).lower().split())
+    # What it does record.
+    assert "what is recorded" in html
+    assert "consent status" in html
+    assert "append-only history" in html
+    # What it does not collect, named precisely.
+    assert "no behavioural interaction data" in html
+    for absent in ("no interaction events", "no experiment sessions",
+                   "no surveys", "no frustration ratings", "no exports",
+                   "no model training", "no inference"):
+        assert absent in html, absent
+    # And never the broad, false claim.
+    for false_claim in ("no research data", "collects no data",
+                        "nothing is recorded"):
+        assert false_claim not in html, false_claim
+
+
+def test_the_dashboard_does_not_present_activation_as_an_ethics_approval(people, client):
+    """M01R. Activating a document is an administrative action. The page may
+    say approvals are obtained outside the platform; it must not imply the
+    application state records or constitutes one."""
+    _login_researcher(client)
+    html = " ".join(rx.page(client, rx.RESEARCH_DASHBOARD_URL).lower().split())
+    assert "an administrative action, not an ethics approval" in html
+    for implication in ("ethics-approved", "approved by the ethics",
+                        "has been approved", "ethics approval has"):
+        assert implication not in html, implication
 
 
 def test_the_detail_page_shows_the_state_the_version_and_the_timestamps(people, client):

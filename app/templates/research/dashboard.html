@@ -2,10 +2,12 @@
 {% block title %}Research Dashboard{% endblock %}
 {% block portal_nav %}{% set active_nav = 'dashboard' %}{% include "research/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-{#- Phase 6 / M01. Real counts of real rows, and nothing else: no chart, no
-    rate, no experiment result, no behavioural metric. The platform collects
-    no research data at all yet, and this page says so rather than implying
-    otherwise with an empty graph. -#}
+{#- Phase 6 / M01, corrected by M01R. Real counts of real rows, and nothing
+    else: no chart, no rate, no experiment result, no behavioural metric.
+    What this milestone records is the invitation and the consent decision;
+    what it does not collect is behavioural interaction data. The page says
+    exactly that, rather than claiming no data at all is recorded or implying
+    a result with an empty graph. -#}
 <h1>Research</h1>
 <p class="ds-section__desc">
   Participation consent only. Participants are shown by research code; no student names,
@@ -44,16 +46,25 @@
   <div class="card">
     <div class="card__body">
       <p style="margin: 0 0 var(--space-3)">
-        This milestone builds the consent foundation only. There is no interaction tracking,
-        no experiment, no session recording, no survey, no rating, no export and no model.
-        Nothing about a student's behaviour is collected, measured or inferred here.
+        <strong>What is recorded.</strong> This milestone builds the consent foundation only, so
+        the data it holds is research administration: each participant&rsquo;s invitation, their
+        consent status, which consent document version they decided on, and an append-only
+        history of those decisions.
+      </p>
+      <p style="margin: 0 0 var(--space-3)">
+        <strong>What is not collected.</strong> There is no behavioural interaction data: no
+        interaction events, no browser tracking, no experiment sessions or task sessions, no
+        surveys, no frustration ratings, no observer annotations, no exports, no datasets, no
+        model training, no inference and no adaptive intervention. Nothing about a
+        student&rsquo;s behaviour is collected, measured or inferred here.
       </p>
       <p style="margin: 0">
         A participant shown as <strong>Active</strong> has read and accepted a specific version
         of the consent document. A participant shown as <strong>Withdrawn</strong> is no longer
-        eligible for any future research session. Consent wording, data retention and the
-        treatment of previously collected data still require ethics approval before any real
-        research collection begins.
+        eligible for any future research session. What any future collection would cover, how
+        long it would be kept and how it would be handled are matters for the consent document a
+        participant accepted and for the approvals the centre obtains outside this platform
+        &mdash; activating a document here is an administrative action, not an ethics approval.
       </p>
     </div>
   </div>

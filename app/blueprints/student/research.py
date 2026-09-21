@@ -41,6 +41,23 @@ an old form, a replayed POST or a back-button submit all fail closed.
 already satisfies is an authorized no-op -- no write, no version move, no
 second event -- and anything else whose state has moved is refused as stale.
 
+**The activated document is the only substantive wording (M01R).** The page
+carries the Student's own status, operational instructions, the action, a
+precise statement of what this milestone records and what it does not
+collect, and nothing else. Anything that could materially affect the
+decision -- what the study looks at, what would be collected, how long it
+would be kept, what withdrawing means for it -- is in the document body,
+which is exactly what the consent event's stored version and digest seal.
+Static template text is not covered by that digest and can be edited without
+any consent record changing, so it must never carry such a claim.
+
+**What M01 does record** is the invitation and the consent decision: the
+participant row, its status, the consent-document reference and the
+append-only consent events. **What M01 does not collect** is behavioural
+interaction data -- no interaction events, experiment or task sessions,
+surveys, frustration ratings, observer annotations, exports, datasets, model
+training, inference or adaptive intervention.
+
 Every response carries ``Cache-Control: private, no-store`` and
 ``Vary: Cookie``: this is one person's decision about taking part in
 research.
@@ -89,6 +106,10 @@ _CONFLICT_MESSAGE = (
 _UNAUTHORIZED_MESSAGE = "Your account is no longer able to record a consent decision."
 _CONFIRM_MESSAGE = "Tick the confirmation box before withdrawing from the study."
 
+#: M01R: each message states what was *recorded*, and nothing about the
+#: study's scope, retention or consequences. Those belong to the activated
+#: document, whose digest the consent event seals -- a flash message is
+#: unversioned text that could be edited without any record changing.
 _DONE = {
     tokens.ACTION_ACCEPT: (
         "Thank you. Your participation has been recorded, with the exact version of the "
@@ -96,13 +117,12 @@ _DONE = {
         "success",
     ),
     tokens.ACTION_DECLINE: (
-        "Recorded: you have declined to take part. This does not affect your courses, "
-        "grades or anything else in the platform.",
+        "Recorded: you have declined to take part.",
         "info",
     ),
     tokens.ACTION_WITHDRAW: (
-        "You have withdrawn from the study. You are no longer eligible for any future "
-        "research session, and your earlier consent history is kept as a record.",
+        "You have withdrawn from the study. Your earlier consent history is kept as a "
+        "permanent record.",
         "success",
     ),
 }

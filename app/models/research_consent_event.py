@@ -24,8 +24,9 @@ given is itself part of the record.
 **What is deliberately absent.** No IP address, no user-agent string, no
 browser or device fingerprint, no free-form comment, no extra personal
 information, and no generic research-event payload. M01 collects no
-research data at all; this table records consent decisions and nothing
-else, and there is no column shaped to hold anything more.
+**behavioural interaction** data at all; this table records consent
+decisions -- research administration, not observation -- and nothing else,
+and there is no column shaped to hold anything more.
 
 **Guards.** The mapper events below refuse any update or delete of a row.
 :func:`_refuse_bulk_rewrites_of_research_history` additionally refuses

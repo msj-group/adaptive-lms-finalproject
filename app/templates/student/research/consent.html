@@ -3,10 +3,25 @@
 {% block title %}Research Consent{% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-{#- Phase 6 / M01. The student's own consent decision. Nothing on this page
-    identifies the participant to anybody else, no field carries an object
-    identifier, and every action is an explicit POST with CSRF and a signed
-    stale-state token. There is no default and no pre-ticked box. -#}
+{#- Phase 6 / M01, corrected by M01R.
+
+    **The activated consent document is the only source of substantive
+    research policy on this page.** Everything a student is asked to agree to
+    -- what the study looks at, what would be collected, for how long, what
+    happens to it, what withdrawing means for it, and what taking part does
+    or does not affect -- lives in the document body below, which is sealed
+    by the digest their consent event stores. Static wording here can be
+    edited without any consent record changing, so it must never carry a
+    claim that could materially affect the decision.
+
+    What this template may say is therefore limited to: the student's own
+    current status, operational instructions, the action itself, a precise
+    statement of what this milestone records and what it does not collect,
+    and a pointer to the document for anything substantive.
+
+    Nothing here identifies the participant to anybody else, no field carries
+    an object identifier, and every action is an explicit POST with CSRF and
+    a signed stale-state token. There is no default and no pre-ticked box. -#}
 <h1>Research consent</h1>
 
 {{ macros.flash_messages() }}
@@ -25,17 +40,8 @@
     You declined to take part. Nothing further is asked of you.
     {% elif participant.status == 'withdrawn' %}
     <span class="badge badge--neutral">Withdrawn</span>
-    You withdrew from the study. You are not included in any future research activity.
+    You withdrew from the study.
     {% endif %}
-  </div>
-</div>
-
-<div class="card" style="margin-bottom: var(--space-5)">
-  <div class="card__title">This does not affect your studies</div>
-  <div class="card__body">
-    Taking part is entirely voluntary. Accepting, declining or withdrawing changes nothing about
-    your courses, lessons, assignments, quizzes, attendance, grades, messages or fees, and you
-    keep full access to the platform either way.
   </div>
 </div>
 
@@ -58,7 +64,7 @@
 <div class="empty-state" style="margin-bottom: var(--space-5)">
   <div class="empty-state__title">No consent document is available</div>
   <div>
-    There is no approved consent wording to read right now, so no decision can be recorded.
+    There is no active consent document to read right now, so no decision can be recorded.
     Nothing is expected of you until there is.
   </div>
 </div>
@@ -89,27 +95,36 @@
 {% elif actions.ACTION_WITHDRAW in offered %}
 <h2>Withdrawing</h2>
 <p class="ds-section__desc">
-  You can withdraw at any time, without giving a reason. Withdrawing stops you being included in
-  any future research activity from that moment.
+  You can withdraw at any time, without giving a reason.
 </p>
 <a class="btn btn--danger-outline" href="{{ withdraw_url }}">Withdraw from the study</a>
 {% endif %}
 
+{#- Facts about this software, not policy about the study. Each one describes
+    what the system does today and can be checked against the code; none of
+    them promises anything about the future, which is what the versioned
+    document is for. -#}
 <div class="card" style="margin-top: var(--space-6)">
-  <div class="card__title">What the study would look at</div>
+  <div class="card__title">What this platform records, and what it does not</div>
   <div class="card__body">
     <p style="margin: 0 0 var(--space-3)">
-      The research looks at how students move through learning activities, in order to study
-      behavioural patterns associated with possible frustration. The platform does not know, and
-      does not claim to know, how any student feels.
+      <strong>What is recorded.</strong> That you were invited to take part, and &mdash; once you
+      decide &mdash; your decision itself: which consent document version you read, a digest of
+      its exact wording, and the date and time. Accepting, declining and withdrawing each add a
+      permanent record that is never edited or deleted.
+    </p>
+    <p style="margin: 0 0 var(--space-3)">
+      <strong>What is not collected.</strong> This milestone collects no behavioural interaction
+      data: no keystrokes, no typing content, no mouse or scroll tracking, no screen or audio
+      recording, no camera and no browser fingerprinting. It runs no experiment sessions or task
+      sessions, and holds no surveys, frustration ratings, observer annotations, research
+      exports, datasets, trained models or inference of any kind.
     </p>
     <p style="margin: 0">
-      No research data is being collected at this stage. Nothing is recorded about what you type,
-      no keystrokes, no passwords or form contents, no audio, no camera and no browser
-      fingerprinting &mdash; not now and not as part of this consent. Your messages, your fees and
-      your grades are never part of any research collection. How long any future research data
-      would be kept, and what would happen to data collected before a withdrawal, still require
-      ethics approval and are not decided here.
+      <strong>Everything else is in the consent document.</strong> What the study looks at, what
+      would be collected, how long anything would be kept, and what happens to it if you withdraw
+      are stated in the consent document, never on this page &mdash; so the wording your decision
+      is recorded against is the wording that answers those questions.
     </p>
   </div>
 </div>

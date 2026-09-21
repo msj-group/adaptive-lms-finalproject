@@ -24,11 +24,16 @@ all. They also read nothing financial, academic, enrollment, group or
 messaging, and never the consent **body** -- ethics wording is for the
 Student who must read it.
 
-**No research data exists to show.** M01 collects none: no tracking, no
-experiment, no session, no survey, no rating, no export and no model. The
-dashboard therefore shows four real counts of real rows and nothing that
-could be mistaken for a result, and no page here claims to detect or measure
-anything about anybody.
+**No behavioural research data exists to show (M01R).** What M01 records is
+research administration -- the participant invitation, the consent decision,
+the consent-document reference and the append-only consent events. What it
+does **not** collect is behavioural interaction data: no interaction events,
+no browser tracking, no experiment or task sessions, no surveys, no
+frustration ratings, no observer annotations, no exports, no datasets, no
+model training, no inference and no adaptive intervention. The dashboard
+therefore shows four real counts of real rows and nothing that could be
+mistaken for a result, and no page here claims to detect or measure anything
+about anybody.
 
 ``roles_required(RESEARCHER)`` gives the role guard: an anonymous visitor is
 redirected to login, and a Student, Teacher or Administrator gets 403. A

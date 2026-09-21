@@ -651,24 +651,143 @@ def test_a_teacher_never_sees_a_research_consent_link(people, client):
 def test_the_consent_page_makes_no_claim_about_detecting_feelings(people, client):
     _invited(people)
     rx.login(client, rx.STUDENT_EMAIL)
-    html = rx.page(client, rx.CONSENT_URL)
-    assert "Behavioral patterns associated with possible frustration" in html or \
-        "behavioural patterns associated with possible frustration" in html.lower()
+    html = rx.page(client, rx.CONSENT_URL).lower()
     for claim in ("we detect", "detects", "knows how you feel", "proves that you",
                   "measures your emotion", "you are frustrated"):
-        assert claim not in html.lower(), claim
-    # And it is explicit that nothing is collected yet.
-    assert "no research data is being collected" in html.lower()
-    for promise in ("keystroke", "password", "audio", "camera", "fingerprinting"):
-        assert promise in html.lower(), promise
+        assert claim not in html, claim
 
 
-def test_the_consent_page_states_the_unresolved_retention_question(people, client):
+# ===========================================================================
+# M01R: the activated document is the only substantive wording
+#
+# The consent event seals the document's version and digest. Static template
+# text is not covered by that digest and can be edited later without any
+# consent record changing -- so a substantive claim rendered outside the
+# document body would make the record unable to prove what the Student was
+# actually told. These tests hold that boundary.
+# ===========================================================================
+
+
+def _page_text(client):
+    """The consent page, whitespace-collapsed and lower-cased, so an
+    assertion is about wording rather than line wrapping."""
+    return " ".join(rx.page(client, rx.CONSENT_URL).lower().split())
+
+
+def test_the_page_states_that_the_invitation_and_decision_are_recorded(people, client):
     _invited(people)
     rx.login(client, rx.STUDENT_EMAIL)
-    # Whitespace-collapsed: the sentence is wrapped across lines in the
-    # template, and the wrapping is not what this test is about.
-    html = " ".join(rx.page(client, rx.CONSENT_URL).lower().split())
-    assert "how long any future research data would be kept" in html
-    assert "what would happen to data collected before a withdrawal" in html
-    assert "ethics approval" in html
+    html = _page_text(client)
+    assert "what is recorded" in html
+    assert "you were invited to take part" in html
+    assert "which consent document version you read" in html
+    assert "a digest of its exact wording" in html
+    assert "date and time" in html
+    assert "never edited or deleted" in html
+
+
+def test_the_page_states_that_behavioural_interaction_data_is_not_collected(
+    people, client
+):
+    _invited(people)
+    rx.login(client, rx.STUDENT_EMAIL)
+    html = _page_text(client)
+    assert "no behavioural interaction data" in html
+    for absent in ("no keystrokes", "no typing content", "no mouse or scroll tracking",
+                   "no screen or audio recording", "no camera",
+                   "no browser fingerprinting"):
+        assert absent in html, absent
+    for absent in ("no experiment sessions", "task sessions", "surveys",
+                   "frustration ratings", "observer annotations", "research exports",
+                   "datasets", "trained models", "inference"):
+        assert absent in html, absent
+
+
+def test_the_page_never_claims_that_no_research_data_at_all_is_collected(people, client):
+    """The old wording said "no research data is being collected at this
+    stage", which was untrue: the participant row, the consent status, the
+    document reference and the consent events are all recorded."""
+    _invited(people)
+    rx.login(client, rx.STUDENT_EMAIL)
+    html = _page_text(client)
+    for false_claim in ("no research data is being collected",
+                        "no research data is collected",
+                        "no data is collected",
+                        "nothing is collected",
+                        "nothing is recorded"):
+        assert false_claim not in html, false_claim
+
+
+def test_the_page_carries_no_unversioned_retention_or_pre_withdrawal_policy(
+    people, client
+):
+    _invited(people)
+    rx.login(client, rx.STUDENT_EMAIL)
+    html = _page_text(client)
+    for policy in ("how long any future research data would be kept",
+                   "what would happen to data collected before a withdrawal",
+                   "still require ethics approval",
+                   "are not decided here",
+                   "would be kept for",
+                   "retention period"):
+        assert policy not in html, policy
+    # Instead the page points at the document for exactly those questions.
+    assert "how long anything would be kept" in html
+    assert "stated in the consent document, never on this page" in html
+
+
+def test_the_page_makes_no_permanent_promise_about_grades_fees_or_messages(
+    people, client
+):
+    """Scope promises are decision-affecting, so they belong inside the
+    digest-sealed document, not in editable template text."""
+    _invited(people)
+    rx.login(client, rx.STUDENT_EMAIL)
+    html = _page_text(client)
+    for promise in ("your messages, your fees and your grades are never",
+                    "never part of any research collection",
+                    "changes nothing about your courses",
+                    "does not affect your courses",
+                    "you keep full access to the platform",
+                    "entirely voluntary"):
+        assert promise not in html, promise
+
+
+def test_the_page_does_not_present_activation_as_an_ethics_approval(people, client):
+    """An empty state means no *active* document row, which proves nothing
+    about external approval; and activation is an administrative action."""
+    rx.participant_row(people["student"], people["admin"])
+    rx.login(client, rx.STUDENT_EMAIL)
+    html = _page_text(client)
+    assert "there is no active consent document to read right now" in html
+    for implication in ("no approved consent wording", "approved consent wording",
+                        "ethics approval", "ethics-approved", "has been approved"):
+        assert implication not in html, implication
+
+
+def test_the_exact_active_document_body_is_still_rendered(people, client):
+    """The correction removes wording *around* the document; the document
+    itself must still be shown in full, exactly as stored."""
+    document, _ = _invited(people, body=rx.BODY_V1)
+    rx.login(client, rx.STUDENT_EMAIL)
+    html = rx.page(client, rx.CONSENT_URL)
+    assert document.body in html
+    assert document.title in html
+    assert document.version_identifier in html
+    # Every line of it, not a truncated preview.
+    for line in document.body.splitlines():
+        assert line in html, line
+
+
+def test_the_withdrawal_page_carries_no_unversioned_policy(people, client):
+    _accepted(people, client)
+    html = " ".join(rx.page(client, rx.WITHDRAW_URL).lower().split())
+    for policy in ("it is not research data",
+                   "not included in any future research activity",
+                   "nothing about your courses",
+                   "grades, messages or fees changes in any way"):
+        assert policy not in html, policy
+    # It states what the action does, and points at the accepted document.
+    assert "marked <strong>withdrawn</strong> immediately" in html
+    assert "not erased or rewritten" in html
+    assert "stated in the consent document you accepted" in html

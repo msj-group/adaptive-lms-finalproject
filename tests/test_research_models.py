@@ -107,9 +107,11 @@ def test_the_three_tables_exist_with_exactly_the_expected_columns(app):
 
 
 def test_no_column_is_shaped_to_hold_tracking_or_personal_extras(app):
-    """M01 collects no research data, so no column exists that could hold
-    any -- not an address, an agent string, a fingerprint, a keystroke, a
-    comment, a rating, a survey answer or a generic event payload."""
+    """M01 collects no behavioural interaction data, so no column exists
+    that could hold any -- not an address, an agent string, a fingerprint,
+    a keystroke, a comment, a rating, a survey answer or a generic event
+    payload. The participant row and the consent events it *does* store are
+    research administration, not observation."""
     forbidden = (
         "ip_address", "remote_addr", "user_agent", "agent", "fingerprint", "device",
         "browser", "keystroke", "screen", "audio", "video", "recording", "comment",
