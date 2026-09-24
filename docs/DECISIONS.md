@@ -10011,9 +10011,14 @@ MySQL both stay at `f2a6d1c84b37`.
 
 ### A. One versioned source of substantive wording
 
-The activated `ResearchConsentDocument` body is now the **only** source of
-research-policy and ethics wording a Student is asked to accept. Removed from
-`app/templates/student/research/consent.html` and
+The activated `ResearchConsentDocument` body is the source of research-policy
+and ethics wording a Student is asked to accept. **M01R did not finish the
+job** -- see Part M01R2 below, which removed the participant-right and
+retention statements ("you can withdraw at any time", "without giving a
+reason", "a permanent record", "never edited or deleted") that M01R left in
+place. Read this section as the first of two passes, not as a complete one.
+
+Removed by M01R from `app/templates/student/research/consent.html` and
 `app/templates/student/research/withdraw.html`:
 
 - the description of what the study looks at, including the
@@ -10043,7 +10048,9 @@ What the static page may still contain, and nothing else: the Student's own
 current status; operational instructions; the accept, decline or withdraw
 action; a precise statement of what the software records and what it does not
 collect; and a pointer to the document for anything substantive. It never
-duplicates the document's policy wording.
+duplicates the document's policy wording. **M01R2 tightened what counts as
+"substantive" to include participant rights and retention**, which this pass
+had wrongly treated as operational fact.
 
 ### B. The data-collection description is now accurate
 
@@ -10109,3 +10116,110 @@ that wording adequate, and it is not an ethics approval. The centre must
 still obtain the required approval for the consent text, the retention period
 and the treatment of data collected before a withdrawal before any real
 research recruitment or collection begins.
+
+
+## Removing the last unversioned consent policy (Phase 6, Part M01R2)
+
+M01R moved most substantive wording into the versioned
+`ResearchConsentDocument`, but it kept several statements on the static
+Student pages that it had classified as operational fact. They are not:
+
+- "You can withdraw at any time."
+- "You can withdraw at any time, without giving a reason."
+- "You do not have to give a reason, and you are not asked for one."
+- consent decisions add "a permanent record";
+- that record is "never edited or deleted";
+- the earlier acceptance is "not erased or rewritten";
+- the flash messages "You can withdraw at any time" and "Your earlier consent
+  history is kept as a permanent record."
+
+Each states a **participant right or a retention term** -- exactly the kind of
+thing a person weighs before agreeing -- and each sat outside the digest the
+consent event stores. M01R2 removes them. As with M01R, **no schema,
+migration, model, lifecycle, token, lock order, authorization rule, route,
+CSRF behaviour or Phase 5 behaviour changed**, and the Alembic head and
+development MySQL both stay at `f2a6d1c84b37`.
+
+### A. Why "true of the code" is not "safe to promise"
+
+The append-only claim was not false. `ResearchConsentEvent` has mapper guards
+that refuse an update or a delete, a session guard that refuses bulk
+statements against all three M01 tables, no `ON DELETE` action on any foreign
+key, and no route that deletes a consent record. Section E of Part M01
+records all of it.
+
+But that is a property of **this implementation**, and an implementation can
+change in a later Part: a retention job, an erasure request or a schema
+migration could all be added by a future decision. A term a participant
+accepted cannot change, because the document is frozen at activation and the
+event stores its digest. Telling a participant "your record is never deleted"
+in editable page text therefore promises, in the weakest possible place,
+something only the document can guarantee. The same reasoning applies to
+withdrawal timing and to whether a reason is required.
+
+**So the database stays append-only under the implemented design -- that is
+unchanged -- while the participant-facing statement of retention and
+withdrawal terms belongs in the activated consent document.** The
+Administrator writing that document is the one who must state them, and the
+digest is what makes the statement provable.
+
+### B. What the Student pages may now say
+
+Operational facts about the immediate software action, and nothing that
+defines a right or a retention term:
+
+- the Student's own current status ("You accepted the consent document shown
+  below."), with no trailing right attached to it;
+- what the system records: that the Student was invited, and the decision
+  they submit -- the consent document version, a digest of its wording, and
+  the **server** date and time -- each adding one record to their consent
+  history;
+- what is not collected, unchanged from M01R;
+- the action itself: "Use the action below to record a withdrawal";
+- on the withdrawal page: submitting the form sets the participation state to
+  `withdrawn`, and the system adds a withdrawal record with the version,
+  digest and server date and time;
+- a pointer, on both pages, to the accepted document for the withdrawal terms
+  and the data-handling terms.
+
+The flash messages are operational confirmations only: "Your acceptance was
+recorded against the consent document version you read." and "Your withdrawal
+was recorded."
+
+**The banned phrases are banned on the page, never in the document.** An
+Administrator may and should write "you may withdraw at any time, without
+giving a reason" into the consent wording; a test renders exactly that body
+and proves it appears verbatim and that accepting still seals its digest.
+
+### C. Verification actually performed, and what it does not prove
+
+- `tests/test_student_research_consent.py` gains a shared list of banned
+  right-and-retention phrases checked against the consent page in all four
+  participant states, the withdrawal page, and every flash message those
+  actions raise; tests that both pages point at the document for withdrawal
+  and retention terms; and a test that a document body containing those very
+  phrases is still rendered line by line and still sealed by digest on
+  acceptance. The M01R assertions that required the removed wording were
+  updated to the new text rather than deleted.
+- `tests/research_fixtures.py` holds the flash-wording constants the suite
+  asserts against, so `ACCEPTED_TEXT` and `WITHDRAWN_TEXT` moved with the
+  route wording. That file exists precisely to keep route wording in one
+  place.
+- Acceptance, refusal, withdrawal, stale-token protection, CSRF,
+  authorization, the private/no-store headers and the Phase 5 regressions are
+  unchanged and still pass.
+- **No browser, accessibility, responsive, keyboard, real-InnoDB concurrency
+  or MySQL query-plan verification was performed.** No migration was created
+  and no MySQL row or schema object was modified; Alembic and development
+  MySQL were confirmed read-only to remain at `f2a6d1c84b37`.
+
+### D. Limitation this correction does not remove
+
+Sealing the wording proves what a participant was shown. It does not make the
+wording adequate, and it is not an ethics approval. A consent document that
+says nothing about withdrawal or retention now says nothing about them
+anywhere in the product -- which is the correct failure mode, because it is
+visible to whoever reviews the document, rather than hidden in template text
+nobody versions. The centre must still obtain the required approval for the
+consent text, the retention period and the treatment of data collected before
+a withdrawal before any real research recruitment or collection begins.

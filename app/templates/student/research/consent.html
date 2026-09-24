@@ -3,16 +3,27 @@
 {% block title %}Research Consent{% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-{#- Phase 6 / M01, corrected by M01R.
+{#- Phase 6 / M01, corrected by M01R and M01R2.
 
     **The activated consent document is the only source of substantive
     research policy on this page.** Everything a student is asked to agree to
     -- what the study looks at, what would be collected, for how long, what
-    happens to it, what withdrawing means for it, and what taking part does
-    or does not affect -- lives in the document body below, which is sealed
-    by the digest their consent event stores. Static wording here can be
-    edited without any consent record changing, so it must never carry a
-    claim that could materially affect the decision.
+    happens to it, what withdrawing means for it, whether a reason is needed,
+    how long any record is kept, and what taking part does or does not affect
+    -- lives in the document body below, which is sealed by the digest their
+    consent event stores. Static wording here can be edited without any
+    consent record changing, so it must never carry a claim that could
+    materially affect the decision.
+
+    **That includes participant rights and retention (M01R2).** "You can
+    withdraw at any time", "without giving a reason", "a permanent record"
+    and "never edited or deleted" all state terms a participant may rely on.
+    The append-only guards and the absence of a delete path are real
+    properties of this implementation, but an implementation detail is not a
+    promise to a participant: it can change in a later Part, while the
+    document a participant accepted cannot. So this page describes only the
+    action the software takes right now, and points at the document for the
+    terms.
 
     What this template may say is therefore limited to: the student's own
     current status, operational instructions, the action itself, a precise
@@ -34,7 +45,7 @@
     <strong>You have not agreed to anything yet.</strong>
     {% elif participant.status == 'active' %}
     <span class="badge badge--success">Taking part</span>
-    You accepted the consent document shown below. You can withdraw at any time.
+    You accepted the consent document shown below.
     {% elif participant.status == 'declined' %}
     <span class="badge badge--neutral">Declined</span>
     You declined to take part. Nothing further is asked of you.
@@ -95,7 +106,8 @@
 {% elif actions.ACTION_WITHDRAW in offered %}
 <h2>Withdrawing</h2>
 <p class="ds-section__desc">
-  You can withdraw at any time, without giving a reason.
+  Use the action below to record a withdrawal. The consent document you accepted states the
+  withdrawal terms that apply to you.
 </p>
 <a class="btn btn--danger-outline" href="{{ withdraw_url }}">Withdraw from the study</a>
 {% endif %}
@@ -109,9 +121,9 @@
   <div class="card__body">
     <p style="margin: 0 0 var(--space-3)">
       <strong>What is recorded.</strong> That you were invited to take part, and &mdash; once you
-      decide &mdash; your decision itself: which consent document version you read, a digest of
-      its exact wording, and the date and time. Accepting, declining and withdrawing each add a
-      permanent record that is never edited or deleted.
+      submit one &mdash; the decision you submit: which consent document version you read, a
+      digest of its exact wording, and the server date and time. Accepting, declining and
+      withdrawing each add one such record to your consent history.
     </p>
     <p style="margin: 0 0 var(--space-3)">
       <strong>What is not collected.</strong> This milestone collects no behavioural interaction
@@ -122,9 +134,10 @@
     </p>
     <p style="margin: 0">
       <strong>Everything else is in the consent document.</strong> What the study looks at, what
-      would be collected, how long anything would be kept, and what happens to it if you withdraw
-      are stated in the consent document, never on this page &mdash; so the wording your decision
-      is recorded against is the wording that answers those questions.
+      would be collected, how long anything is kept, the terms for withdrawing and what happens
+      to your information afterwards are stated in the consent document, never on this page
+      &mdash; so the wording your decision is recorded against is the wording that answers those
+      questions.
     </p>
   </div>
 </div>

@@ -244,7 +244,12 @@ def test_the_researcher_urls_use_public_ids_and_never_numeric_ids(people, client
     html = rx.page(client, rx.RESEARCH_PARTICIPANTS_URL)
     links = re.findall(r'href="(/research/participants/[^"]+)"', html)
     assert links == [f"/research/participants/{participant.public_id}"]
-    assert f"/research/participants/{participant.id}" not in html
+    # Compared against the extracted links, never as a raw-HTML substring: a
+    # v4 public id starts with "1" about 6% of the time, and the
+    # participant's own href would then *contain* "/research/participants/1"
+    # and fail a substring check for reasons that have nothing to do with
+    # numeric ids being exposed.
+    assert f"/research/participants/{participant.id}" not in links
     # The numeric id is not a usable address either.
     assert client.get(f"/research/participants/{participant.id}").status_code == 404
 
@@ -357,6 +362,36 @@ def test_an_invited_participant_shows_no_consent_version(people, client):
     html = rx.page(client, f"{rx.RESEARCH_PARTICIPANTS_URL}/{participant.public_id}")
     assert "None accepted" in html
     assert "has not decided yet" in html
+
+
+#: Participant rights and retention terms belong to the accepted consent
+#: document, so no page may assert one -- the Researcher detail page included.
+_UNVERSIONED_RIGHTS = (
+    "withdraw at any time",
+    "without giving a reason",
+    "permanent record",
+    "never edited or deleted",
+)
+
+
+@pytest.mark.parametrize("status", [_INVITED, _ACTIVE, _DECLINED, _WITHDRAWN])
+def test_the_detail_page_asserts_no_participant_right(people, client, status):
+    """M01R2. The detail page used to tell a Researcher that an active
+    participant "may withdraw at any time". Whether, when and on what terms
+    they may is a term of the consent version they accepted, not something
+    unversioned page text should assert -- here no less than on the Student
+    page. Every status branch is checked, since each renders its own line."""
+    _login_researcher(client)
+    _, participant = _seed(people, status=status)
+    html = " ".join(
+        rx.page(client, f"{rx.RESEARCH_PARTICIPANTS_URL}/{participant.public_id}")
+        .lower().split()
+    )
+    for phrase in _UNVERSIONED_RIGHTS:
+        assert phrase not in html, (status, phrase)
+    # The active branch still says what it is for: which version was accepted.
+    if status == _ACTIVE:
+        assert "accepted the consent version shown above" in html
 
 
 def test_the_list_is_paginated_and_bounded(people, client):

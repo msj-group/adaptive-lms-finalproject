@@ -52,12 +52,15 @@ TITLE = "Participant Information And Consent"
 STATE_FIELD = "state_token"
 
 # Wording the routes flash, asserted by name rather than by retyping it.
+# M01R2 rewrote the acceptance and withdrawal confirmations to state only
+# what was recorded, so the two constants that mirror them moved with the
+# route wording -- which is what this block exists for.
 STALE_TEXT = "no longer describes the current"
 ACTIVATED_TEXT = "now the current one"
 DRAFT_SAVED_TEXT = "draft saved"
-ACCEPTED_TEXT = "participation has been recorded"
+ACCEPTED_TEXT = "acceptance was recorded"
 DECLINED_TEXT = "you have declined to take part"
-WITHDRAWN_TEXT = "withdrawn from the study"
+WITHDRAWN_TEXT = "withdrawal was recorded"
 ALREADY_ACCEPTED_TEXT = "already accepted"
 ALREADY_WITHDRAWN_TEXT = "already withdrawn"
 NOT_ALLOWED_TEXT = "not a decision you can take"

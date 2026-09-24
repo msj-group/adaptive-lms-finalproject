@@ -47,8 +47,11 @@
 <p class="ds-section__desc" style="margin-top: var(--space-4)">
   {% if record.status == 'withdrawn' %}
   This participant withdrew. They are not eligible for any future research session.
+  {#- M01R2: no withdrawal-right claim here either. Whether, when and on what
+      terms this participant may withdraw is stated in the consent version
+      they accepted, not in unversioned page text. -#}
   {% elif record.status == 'active' %}
-  This participant accepted the consent version shown above. They may withdraw at any time.
+  This participant accepted the consent version shown above.
   {% elif record.status == 'declined' %}
   This participant declined to take part.
   {% else %}

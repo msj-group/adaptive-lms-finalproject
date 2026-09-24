@@ -41,15 +41,25 @@ an old form, a replayed POST or a back-button submit all fail closed.
 already satisfies is an authorized no-op -- no write, no version move, no
 second event -- and anything else whose state has moved is refused as stale.
 
-**The activated document is the only substantive wording (M01R).** The page
-carries the Student's own status, operational instructions, the action, a
-precise statement of what this milestone records and what it does not
-collect, and nothing else. Anything that could materially affect the
-decision -- what the study looks at, what would be collected, how long it
-would be kept, what withdrawing means for it -- is in the document body,
-which is exactly what the consent event's stored version and digest seal.
-Static template text is not covered by that digest and can be edited without
-any consent record changing, so it must never carry such a claim.
+**The activated document is the only substantive wording (M01R, M01R2).**
+The page carries the Student's own status, operational instructions, the
+action, a precise statement of what this milestone records and what it does
+not collect, and nothing else. Anything that could materially affect the
+decision -- what the study looks at, what would be collected, how long it is
+kept, what withdrawing means for it, whether a reason is required, and
+whether a record is ever removed -- is in the document body, which is exactly
+what the consent event's stored version and digest seal. Static template text
+is not covered by that digest and can be edited without any consent record
+changing, so it must never carry such a claim.
+
+**Participant rights are terms, not implementation notes (M01R2).** This
+implementation really is append-only: the mapper guards refuse an update or a
+delete of a consent event, and no route deletes one. That is a property of
+the code, which a later Part could change; a term a participant accepted
+cannot be changed. So "you can withdraw at any time", "without giving a
+reason", "a permanent record" and "never edited or deleted" are no longer
+stated here or in any flash message -- they belong to the document, and the
+pages point at it.
 
 **What M01 does record** is the invitation and the consent decision: the
 participant row, its status, the consent-document reference and the
@@ -106,14 +116,15 @@ _CONFLICT_MESSAGE = (
 _UNAUTHORIZED_MESSAGE = "Your account is no longer able to record a consent decision."
 _CONFIRM_MESSAGE = "Tick the confirmation box before withdrawing from the study."
 
-#: M01R: each message states what was *recorded*, and nothing about the
-#: study's scope, retention or consequences. Those belong to the activated
-#: document, whose digest the consent event seals -- a flash message is
-#: unversioned text that could be edited without any record changing.
+#: M01R, tightened by M01R2: each message confirms what was *recorded* and
+#: nothing else -- not the study's scope, not retention, not consequences,
+#: and not a participant right such as withdrawing at any time or history
+#: being kept permanently. Those belong to the activated document, whose
+#: digest the consent event seals; a flash message is unversioned text that
+#: could be edited without any record changing.
 _DONE = {
     tokens.ACTION_ACCEPT: (
-        "Thank you. Your participation has been recorded, with the exact version of the "
-        "consent document you read. You can withdraw at any time.",
+        "Your acceptance was recorded against the consent document version you read.",
         "success",
     ),
     tokens.ACTION_DECLINE: (
@@ -121,8 +132,7 @@ _DONE = {
         "info",
     ),
     tokens.ACTION_WITHDRAW: (
-        "You have withdrawn from the study. Your earlier consent history is kept as a "
-        "permanent record.",
+        "Your withdrawal was recorded.",
         "success",
     ),
 }

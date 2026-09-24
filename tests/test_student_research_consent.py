@@ -680,10 +680,12 @@ def test_the_page_states_that_the_invitation_and_decision_are_recorded(people, c
     html = _page_text(client)
     assert "what is recorded" in html
     assert "you were invited to take part" in html
+    # The three facts that make a consent record checkable: which version,
+    # its digest, and the server's own clock reading.
     assert "which consent document version you read" in html
     assert "a digest of its exact wording" in html
-    assert "date and time" in html
-    assert "never edited or deleted" in html
+    assert "the server date and time" in html
+    assert "add one such record to your consent history" in html
 
 
 def test_the_page_states_that_behavioural_interaction_data_is_not_collected(
@@ -732,7 +734,8 @@ def test_the_page_carries_no_unversioned_retention_or_pre_withdrawal_policy(
                    "retention period"):
         assert policy not in html, policy
     # Instead the page points at the document for exactly those questions.
-    assert "how long anything would be kept" in html
+    # M01R2 reworded the pointer to name the withdrawal terms too.
+    assert "how long anything is kept" in html
     assert "stated in the consent document, never on this page" in html
 
 
@@ -788,6 +791,133 @@ def test_the_withdrawal_page_carries_no_unversioned_policy(people, client):
                    "grades, messages or fees changes in any way"):
         assert policy not in html, policy
     # It states what the action does, and points at the accepted document.
-    assert "marked <strong>withdrawn</strong> immediately" in html
-    assert "not erased or rewritten" in html
-    assert "stated in the consent document you accepted" in html
+    assert "sets your participation state to <strong>withdrawn</strong>" in html
+    assert "adds a withdrawal record to your consent history" in html
+    assert "states the withdrawal terms" in html
+
+
+# ===========================================================================
+# M01R2: participant rights and retention are terms, not page text
+#
+# "You can withdraw at any time", "without giving a reason", "a permanent
+# record" and "never edited or deleted" all state something a participant may
+# rely on. The append-only guards make the last two true of *this* build, but
+# an implementation detail is not a promise: a later Part could change the
+# code, while a document a participant accepted cannot be changed. So these
+# belong to the digest-sealed document, and the pages point at it.
+# ===========================================================================
+
+#: Every phrase that would state a participant right or a retention term.
+#: Checked on both Student pages and in every flash message they can raise.
+_UNVERSIONED_RIGHTS = (
+    "withdraw at any time",
+    "without giving a reason",
+    "do not have to give a reason",
+    "you are not asked for one",
+    "permanent record",
+    "permanently",
+    "never edited or deleted",
+    "never deleted",
+    "not erased or rewritten",
+    "kept as a record",
+    "kept for",
+    "we will never",
+)
+
+
+def _withdraw_page_text(client):
+    return " ".join(rx.page(client, rx.WITHDRAW_URL).lower().split())
+
+
+def test_the_consent_page_states_no_withdrawal_right_or_retention_term(people, client):
+    """Checked in all four participant states, because each renders a
+    different status line and a different action block."""
+    document = rx.document_row(people["admin"], status=_DOC_ACTIVE)
+    rx.participant_row(people["student"], people["admin"])
+    rx.login(client, rx.STUDENT_EMAIL)
+    assert all(phrase not in _page_text(client) for phrase in _UNVERSIONED_RIGHTS)
+
+    for step in ("accept", "withdraw"):
+        rx.decide(client, step)
+        html = _page_text(client)
+        for phrase in _UNVERSIONED_RIGHTS:
+            assert phrase not in html, (step, phrase)
+    assert document.version_identifier  # the document itself is untouched
+
+
+def test_a_declined_consent_page_states_no_withdrawal_right_or_retention_term(
+    people, client
+):
+    _invited(people)
+    rx.login(client, rx.STUDENT_EMAIL)
+    rx.decide(client, "decline")
+    html = _page_text(client)
+    for phrase in _UNVERSIONED_RIGHTS:
+        assert phrase not in html, phrase
+
+
+def test_the_withdrawal_page_states_no_withdrawal_right_or_retention_term(
+    people, client
+):
+    _accepted(people, client)
+    html = _withdraw_page_text(client)
+    for phrase in _UNVERSIONED_RIGHTS:
+        assert phrase not in html, phrase
+
+
+def test_no_flash_message_promises_a_right_or_a_retention_term(people, client):
+    """Flash text is unversioned too, so each confirmation states only that
+    the decision was recorded."""
+    _invited(people)
+    rx.login(client, rx.STUDENT_EMAIL)
+    accepted = " ".join(rx.decide(client, "accept").get_data(as_text=True).lower().split())
+    assert rx.ACCEPTED_TEXT in accepted
+    assert "against the consent document version you read" in accepted
+    for phrase in _UNVERSIONED_RIGHTS:
+        assert phrase not in accepted, phrase
+
+    withdrawn = " ".join(rx.decide(client, "withdraw").get_data(as_text=True).lower().split())
+    assert rx.WITHDRAWN_TEXT in withdrawn
+    for phrase in _UNVERSIONED_RIGHTS:
+        assert phrase not in withdrawn, phrase
+
+
+def test_both_pages_point_at_the_document_for_withdrawal_and_retention(people, client):
+    """Removing the terms is only half the correction: the pages must send
+    the Student to the wording that does state them."""
+    _invited(people)
+    rx.login(client, rx.STUDENT_EMAIL)
+    consent = _page_text(client)
+    assert "how long anything is kept" in consent
+    assert "the terms for withdrawing" in consent
+    assert "stated in the consent document, never on this page" in consent
+
+    rx.decide(client, "accept")
+    active = _page_text(client)
+    assert "use the action below to record a withdrawal" in active
+    assert "states the withdrawal terms that apply to you" in active
+    assert "states the withdrawal terms" in _withdraw_page_text(client)
+
+
+def test_the_document_body_is_still_rendered_after_the_rights_wording_is_gone(
+    people, client
+):
+    """The phrases M01R2 bans are banned on the *page*, never inside the
+    document: an Administrator may and should state them there."""
+    body = (
+        "You may withdraw at any time, without giving a reason.\n"
+        "Your consent record is kept as a permanent record and is never deleted."
+    )
+    document, _ = _invited(people, body=body)
+    rx.login(client, rx.STUDENT_EMAIL)
+    html = rx.page(client, rx.CONSENT_URL)
+    # Rendered verbatim, every line, even though the page may not say it.
+    assert document.body in html
+    for line in body.splitlines():
+        assert line in html, line
+    # And accepting still seals that exact wording.
+    rx.decide(client, "accept")
+    db.session.expire_all()
+    event = ResearchConsentEvent.query.one()
+    assert event.consent_digest == document.body_digest
+    assert event.consent_version == document.version_identifier
