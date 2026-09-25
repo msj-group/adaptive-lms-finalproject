@@ -62,11 +62,17 @@
 <div class="card" style="margin-bottom: var(--space-5)">
   <div class="card__body" style="white-space: pre-wrap">{{ document.body }}</div>
 </div>
+{#- The participant decided on this version and a newer one has since been
+    activated, so they keep reading the wording they actually agreed to.
+    M01R3: the line identifies that version and stops there. It previously
+    added "It is kept unchanged as a record of what you read", which is a
+    retention and immutability term -- the same class M01R2 removed
+    everywhere else, and one this page must not supply when the document
+    itself does not. -#}
 {% elif document and participant.consent_document_id %}
 <h2>{{ document.title }}</h2>
 <p class="ds-section__desc">
-  Version {{ document.version_identifier }} &mdash; the exact version you decided on. It is kept
-  unchanged as a record of what you read.
+  Version {{ document.version_identifier }} &mdash; the exact version you decided on.
 </p>
 <div class="card" style="margin-bottom: var(--space-5)">
   <div class="card__body" style="white-space: pre-wrap">{{ document.body }}</div>

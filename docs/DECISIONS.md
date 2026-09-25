@@ -10223,3 +10223,106 @@ visible to whoever reviews the document, rather than hidden in template text
 nobody versions. The centre must still obtain the required approval for the
 consent text, the retention period and the treatment of data collected before
 a withdrawal before any real research recruitment or collection begins.
+
+
+## The last unversioned retention claim (Phase 6, Part M01R3)
+
+M01R2 established that participant-facing retention and immutability terms
+exist only in the digest-sealed consent document. One statement survived it,
+in `app/templates/student/research/consent.html`:
+
+> Version {{ document.version_identifier }} -- the exact version you decided
+> on. **It is kept unchanged as a record of what you read.**
+
+M01R3 removes the second sentence. The line now identifies the version and
+stops. **No schema, migration, model, lifecycle, authorization rule, token,
+lock order, consent-event creation, digest calculation, route or Phase 5
+behaviour changed**, and the Alembic head and development MySQL both stay at
+`f2a6d1c84b37`.
+
+### A. Why it is a term, not an operational fact
+
+"It is kept unchanged" says two things a participant can rely on: that the
+wording will not change, and that the record will continue to exist. Both are
+retention and immutability terms, exactly the class M01R2 removed from every
+other place on the Student surface. They are true of this implementation --
+an activated document's wording is frozen by `before_update` and the
+consent event is append-only -- but an implementation can be changed by a
+later Part, whereas a document a participant accepted cannot. A page that
+supplies a retention term the document does not state is precisely what
+M01R2 forbade.
+
+It also contradicted the M01R2 record directly: a consent document that says
+nothing about retention should not have a retention statement supplied for it
+elsewhere by the product.
+
+### B. The branch, and why no test read it
+
+The sentence lives in the **superseded-document branch** -- the page a
+participant sees once they have accepted a version and a newer one has since
+been activated. M01R and M01R2 audited the pages an *invited* and an *active*
+participant sees, and their wording tests rendered exactly those. The one
+test that reached this branch,
+`test_an_accepted_version_keeps_showing_the_student_what_they_read`, asserted
+only that version 1 was rendered and version 2 was not. It never read the
+surrounding wording, so the claim was invisible to the suite.
+
+The lesson is about coverage shape rather than about the phrase: a wording
+rule needs a test per *rendered branch*, not per page.
+
+### C. The corrected wording and the new coverage
+
+The branch now reads `Version <v> -- the exact version you decided on.` and
+nothing further. Nothing replaced it: no promise about preservation,
+retention, deletion, permanence, immutability or future availability.
+
+`test_an_accepted_version_keeps_showing_the_student_what_they_read` now
+builds the superseded state, then asserts that version 1's body is rendered
+and version 2's is absent, that every phrase in the shared
+`_UNVERSIONED_RIGHTS` list is absent from the **rendered** page (Jinja strips
+`{# #}` comments, and the test asserts none survive, so the template's own
+explanatory comments can neither satisfy nor defeat it), that
+`kept unchanged as a record` and `unchanged as a record` are absent by name,
+and that behaviour is unchanged -- the withdrawal action is still offered and
+still recorded against the accepted version and its digest.
+
+`_UNVERSIONED_RIGHTS` gained the retention phrases, so every other M01R2
+wording test checks them too. The correction was verified by reintroducing
+the removed sentence and confirming the test fails, then restoring the
+template byte-identically: the test catches the defect rather than merely
+passing.
+
+### D. Audit performed, and what was deliberately left alone
+
+A bounded semantic audit of the Phase 6 research templates and the Student
+research flash messages looked for equivalent claims -- permanent retention,
+preservation forever, never deleting or editing, keeping a record unchanged,
+and withdrawal rights or timing -- not only for the previously banned
+phrases. On the participant-facing surface it found exactly the one sentence
+above; every flash message was already clean, and the other matches were
+Jinja or Python comments, or the pointer sentence that explicitly says these
+matters are "stated in the consent document, never on this page".
+
+Three **Administrator-facing** statements matched the same words and were
+reported and deliberately left unchanged:
+
+- `app/templates/admin/research/consent_document.html` -- a superseded
+  document "is kept unchanged as a record ... and is never deleted", and
+  activation "freezes its version, title and wording permanently";
+- `app/templates/admin/research/participant.html` -- "Records are never
+  changed or deleted".
+
+The M01R2 boundary is about what a **participant** is asked to rely on and
+what the digest seals. An Administrator is not consenting to anything; these
+sentences describe the system's own lifecycle to its operator, and they are
+accurate. They also serve the correction: an Administrator who knows the
+store is append-only can write truthful retention wording into the document.
+Removing them would cost operator accuracy and buy no integrity.
+
+### E. Limitation
+
+Unchanged from M01R2. Sealing the wording proves what a participant was
+shown; it does not make the wording adequate, and it is not an ethics
+approval. A consent document that states no retention or withdrawal term now
+states none anywhere in the product -- visible to whoever reviews the
+document, which is the correct failure mode.

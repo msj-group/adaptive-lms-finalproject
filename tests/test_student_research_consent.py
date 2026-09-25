@@ -458,8 +458,17 @@ def test_a_document_replaced_after_the_page_was_opened_fails_without_a_partial_w
 
 def test_an_accepted_version_keeps_showing_the_student_what_they_read(people, client):
     """After version 2 is published, a Student who accepted version 1 still
-    sees version 1 on their own page -- not wording they never agreed to."""
-    _accepted(people, client)
+    sees version 1 on their own page -- not wording they never agreed to.
+
+    This is the **superseded-document branch**, and it is the one branch no
+    earlier test read the wording of: M01R and M01R2 checked the page an
+    invited or active Student sees, so an unversioned retention claim
+    survived here until M01R3. The branch is now held to the same rule as
+    every other.
+    """
+    document, _ = _invited(people, version="v1.0", body=rx.BODY_V1)
+    rx.login(client, rx.STUDENT_EMAIL)
+    rx.decide(client, "accept")
     rx.logout(client)
     rx.login(client, rx.ADMIN_EMAIL)
     rx.publish_document(client, version="v2.0", body=rx.BODY_V2)
@@ -467,9 +476,34 @@ def test_an_accepted_version_keeps_showing_the_student_what_they_read(people, cl
 
     rx.login(client, rx.STUDENT_EMAIL)
     html = rx.page(client, rx.CONSENT_URL)
+    # The accepted wording, and only it.
     assert rx.BODY_V1 in html
     assert rx.BODY_V2 not in html
+    assert "v1.0" in html
+    assert "v2.0" not in html
     assert "the exact version you decided on" in html
+
+    # ... and that branch states no retention or immutability term. Checked
+    # against the *rendered* page: Jinja strips `{# #}` comments, so the
+    # explanatory comments in the template cannot satisfy or defeat this.
+    rendered = _page_text(client)
+    assert "{#" not in rendered and "-#}" not in rendered
+    for phrase in _UNVERSIONED_RIGHTS:
+        assert phrase not in rendered, phrase
+    # The two the superseded branch actually carried, named explicitly.
+    assert "kept unchanged as a record" not in rendered
+    assert "unchanged as a record" not in rendered
+
+    # Behaviour is unchanged: the accepted document is still what a
+    # withdrawal is offered and recorded against.
+    assert "use the action below to record a withdrawal" in rendered
+    rx.decide(client, "withdraw")
+    db.session.expire_all()
+    assert _participant().status == _WITHDRAWN
+    assert [e.consent_version for e in
+            ResearchConsentEvent.query.order_by(ResearchConsentEvent.id)] == ["v1.0", "v1.0"]
+    assert ResearchConsentEvent.query.order_by(
+        ResearchConsentEvent.id).all()[-1].consent_digest == document.body_digest
 
 
 # ===========================================================================
@@ -822,6 +856,15 @@ _UNVERSIONED_RIGHTS = (
     "kept as a record",
     "kept for",
     "we will never",
+    # M01R3: the superseded-document branch said the accepted version "is
+    # kept unchanged as a record of what you read". Immutability and
+    # preservation are retention terms like the rest of this list, and they
+    # reached a real page because no test read that branch's wording.
+    "kept unchanged as a record",
+    "unchanged as a record",
+    "kept unchanged",
+    "will remain available",
+    "always be available",
 )
 
 
