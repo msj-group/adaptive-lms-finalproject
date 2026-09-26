@@ -17,6 +17,7 @@ These route tests still use SQLite and do not claim real MySQL execution.
 
 import re
 from datetime import date, datetime
+from html.parser import HTMLParser
 from unittest.mock import patch
 
 import pytest
@@ -1249,20 +1250,79 @@ def test_the_prompt_preview_is_bounded(app, client):
     assert "&hellip;" in html
 
 
+class _QuestionRows(HTMLParser):
+    """The Questions table's body rows as (number, prompt): only the cells the
+    page renders for each question, never an attribute or a hidden token."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.tables = 0
+        self.rows = []
+        self._body = False
+        self._row = None
+        self._cell = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "table" and "dash-table" in (dict(attrs).get("class") or "").split():
+            self.tables += 1
+        elif tag == "tbody" and self.tables:
+            self._body = True
+        elif tag == "tr" and self._body:
+            self._row = []
+        elif tag == "td" and self._row is not None:
+            self._cell = []
+
+    def handle_endtag(self, tag):
+        if tag == "td" and self._cell is not None:
+            self._row.append(" ".join("".join(self._cell).split()))
+            self._cell = None
+        elif tag == "tr" and self._row is not None:
+            self.rows.append(tuple(self._row[:2]))
+            self._row = None
+        elif tag == "tbody":
+            self._body = False
+
+    def handle_data(self, data):
+        if self._cell is not None:
+            self._cell.append(data)
+
+
+def _question_rows(html):
+    parser = _QuestionRows()
+    parser.feed(html)
+    parser.close()
+    assert parser.tables == 1, parser.tables
+    return parser.rows
+
+
 def test_question_pagination_is_bounded_at_twenty(app, client):
     with app.app_context():
         _, group, quiz = _setup()
         _make_questions(quiz, 21)
         gpid, qpid = group.public_id, quiz.public_id
     _login_as(client, "teacher@example.com")
+    # Read from the rendered question rows, never the whole page: a CSRF or
+    # signed move token is random base64 and can contain "Q19" or "Q20".
     first = client.get(_detail_url(gpid, qpid)).get_data(as_text=True)
-    assert "Q0" in first and "Q19" in first
-    assert "Q20" not in first
-    assert "page=2" in first
+    assert _question_rows(first) == [(str(n + 1), f"Q{n}") for n in range(20)]
+    assert f'href="{_detail_url(gpid, qpid)}?page=2"' in first
 
     second = client.get(f"{_detail_url(gpid, qpid)}?page=2").get_data(as_text=True)
-    assert "Q20" in second
-    assert "Q19" not in second
+    assert _question_rows(second) == [("21", "Q20")]
+
+
+def test_a_question_marker_inside_a_signed_value_is_not_a_rendered_question(app, client):
+    with app.app_context():
+        _, group, quiz = _setup()
+        _make_questions(quiz, 21)
+        gpid, qpid = group.public_id, quiz.public_id
+    _login_as(client, "teacher@example.com")
+    first = client.get(_detail_url(gpid, qpid)).get_data(as_text=True)
+    hidden = re.compile(r'(<input type="hidden" name="(?:csrf_token|question_state)" value=")[^"]*"')
+    collided = hidden.sub(lambda match: f'{match.group(1)}.Q20Q21.Q20-Q20_Q21"', first)
+    assert collided != first and "Q20" in collided  # what the old check tripped on
+    assert _question_rows(collided) == _question_rows(first)
+    assert ("21", "Q20") not in _question_rows(collided)
 
 
 @pytest.mark.parametrize("bad", ["0", "-3", "abc", "", "99999999", "2.5"])

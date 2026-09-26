@@ -18,6 +18,7 @@ from sqlalchemy.orm import Query
 
 import app.blueprints.admin.fee_plans as routes
 import tests.fee_plan_fixtures as fx
+import tests.structural_checks as sc
 from app.extensions import db
 from app.models import FeePlan, FeePlanItem, User, UserRole, UserStatus
 from app.services import fee_plan_tokens as tokens
@@ -156,9 +157,16 @@ def test_a_rendered_token_carries_no_text_money_or_internal_id(app, client):
         for purpose, token in rendered.items():
             payload = tokens.load_token(token, purpose)
             assert payload is not None, purpose
-            text = str(payload)
-            for secret in ("Secret plan", "Private words", "Hidden label", "4321"):
-                assert secret not in text, (purpose, secret)
+            # By key and exact value, never as one string: a public id is
+            # random hexadecimal and contains "4321" about once in two
+            # thousand ids. Each public id is exactly a UUID; every other
+            # value is searched.
+            for key, value in payload.items():
+                if key.endswith("_public_id"):
+                    assert sc.is_public_id(value), (purpose, key, value)
+                    continue
+                for secret in ("Secret plan", "Private words", "Hidden label", "4321"):
+                    assert secret not in str(value), (purpose, key, secret)
             assert payload["plan_public_id"] == pp
             assert payload["plan_version"] == 3
             values = set(map(str, payload.values()))

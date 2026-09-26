@@ -11,8 +11,10 @@ verification is performed anywhere.
 """
 
 import re
+import uuid
 from datetime import date, timedelta
 from unittest.mock import patch
+from urllib.parse import urlsplit
 
 import pytest
 from sqlalchemy import event
@@ -1404,6 +1406,31 @@ def test_the_confirmation_page_also_carries_the_headers(app, client):
     assert "Cookie" in resp.headers.get("Vary", "")
 
 
+def _url_path_segments(html):
+    """Every complete path segment of every link and form target in `html`.
+
+    Compared whole, never as a raw-HTML substring: a public UUID beginning
+    with "1" makes "/attendance/1" a substring of a perfectly correct link.
+    """
+    return {
+        segment
+        for target in re.findall(r'(?:href|action)="([^"]*)"', html)
+        for segment in urlsplit(target).path.split("/")
+    }
+
+
+def test_a_public_id_beginning_with_an_internal_id_is_not_that_id():
+    public_id = "1" + str(uuid.uuid4())[1:]
+    html = (f'<a href="/teacher/groups/g/attendance/{public_id}">Open</a>'
+            f'<form action="/teacher/groups/g/attendance/{public_id}/mark"></form>')
+    assert "/attendance/1" in html  # what the old substring check tripped on
+    assert "1" not in _url_path_segments(html)
+    assert public_id in _url_path_segments(html)
+    # A real numeric segment is still found, in any position.
+    assert "7" in _url_path_segments('<a href="/teacher/groups/7/attendance/x">')
+    assert "7" in _url_path_segments('<form action="/teacher/groups/g/attendance/7?page=2">')
+
+
 def test_no_internal_numeric_id_appears_in_any_url_or_field(app, client):
     with app.app_context():
         _, group, schedule, students = _setup(app)
@@ -1424,15 +1451,14 @@ def test_no_internal_numeric_id_appears_in_any_url_or_field(app, client):
             fx.teacher_mark(gpid, spid),
         ):
             html = client.get(url).get_data(as_text=True)
-            hrefs = re.findall(r'href="([^"]*)"', html)
+            segments = _url_path_segments(html)
             names = re.findall(r'name="([^"]*)"', html)
             for label, value in ids.items():
-                assert f"/attendance/{value}" not in html, (url, label)
+                assert str(value) not in segments, (url, label)
                 assert not any(
-                    href.rstrip("/").endswith(f"/{value}") for href in hrefs
+                    str(value) in name.split("__") for name in names
                 ), (url, label)
-                assert not any(name.endswith(f"__{value}") for name in names), (url, label)
-            assert spid in html
+            assert spid in segments, url
 
 
 def test_unsupported_methods_are_refused(app, client):

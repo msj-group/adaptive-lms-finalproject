@@ -19,6 +19,7 @@ from app.models import (
 )
 from app.security.passwords import hash_password
 from tests.conftest import login, make_user
+from tests.structural_checks import redact_signed_values
 
 
 def _get_course_edit_snapshot(client, public_id):
@@ -1160,7 +1161,9 @@ def test_safe_integrity_error_rollback_and_generic_message(app, client, monkeypa
         data=_course_edit_post_data(level_id, title="Attempted", edit_snapshot=snapshot),
     )
     assert resp.status_code == 200
-    html = resp.get_data(as_text=True).lower()
+    # The signed CSRF and edit-snapshot values are random base64 that spell
+    # "sql" by chance once lowered; a leaked "[SQL: ...]" is never token-shaped.
+    html = redact_signed_values(resp.get_data(as_text=True)).lower()
     assert "could not be saved" in html
     assert "sql" not in html
     assert "integrityerror" not in html

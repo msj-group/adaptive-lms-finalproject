@@ -10326,3 +10326,102 @@ shown; it does not make the wording adequate, and it is not an ethics
 approval. A consent document that states no retention or withdrawal term now
 states none anywhere in the product -- visible to whoever reviews the
 document, which is the correct failure mode.
+
+## Structural negative assertions (Phase 6, Part M01S)
+
+A complete-suite run after M01R3 reported three failures that passed in
+isolation; a fourth test had failed the same way in an earlier run. None was
+a product defect. Each searched a short marker as a raw substring of output
+that also carries random values:
+
+- a CSRF or signed state token in a hidden input -- random URL-safe base64
+  that spells "cvc", "pin", "sql", "LYD" or "Q20" by chance;
+- a public UUID -- random hexadecimal that contains "1250" or "4321", or
+  begins with an internal id's digit so that "/attendance/1" is a substring
+  of a correct link;
+- a clock-derived `expires_at`, which contains any given four digits in some
+  second.
+
+M01S changes tests and this record only. **No route, template, service,
+model, migration, token, CSRF, UUID generation, authorization or Phase 5/M01
+behaviour changed**, and the Alembic head and development MySQL stay at
+`f2a6d1c84b37`.
+
+### A. The rule
+
+A negative assertion searches only what the output says, and recognises a
+random value as what it is (`tests/structural_checks.py`):
+
+1. **Pages.** `redact_signed_values()` blanks a hidden input's value only
+   when it has the signed itsdangerous shape: dot-joined URL-safe base64
+   ending in a signature of at least 27 characters. Every other tag,
+   attribute, text node, comment, script, link and plain hidden value is
+   still searched, so a plain "LYD", "Bob" or "[SQL: ...]" is never taken for
+   a token. A signed token is base64 of its payload, so a word inside it was
+   never a literal disclosure; payload content is proven by decoding it.
+2. **Payloads.** A decoded payload is inspected by key and exact value. A
+   value that is exactly a canonical UUID (`is_public_id()`) carries no name,
+   amount or internal id and is not substring-searched; every other value --
+   purpose, status, version, provider mode -- still is. Internal ids are
+   compared by exact equality, as before.
+3. **URLs.** Internal ids are compared with the complete path segments of
+   every `href` and form `action`, in every position, as
+   `test_the_researcher_urls_use_public_ids_and_never_numeric_ids` already
+   did.
+4. **Lists.** Pagination is read from the rendered rows of the page's one
+   list table, never from short labels anywhere on the page.
+
+Deterministic regressions inject collision-shaped values -- a token spelling
+"cvc", "pin" or "Q20", a UUID beginning with "1" or containing "1250" -- and
+prove both that a correct page no longer fails and that a real disclosure is
+still found.
+
+### B. Tests corrected
+
+Named by the Part: `test_the_checkout_is_labelled_and_collects_no_credential`,
+`test_rendered_tokens_carry_no_internal_id_name_or_money` (fee assignments),
+`test_no_internal_numeric_id_appears_in_any_url_or_field` (teacher
+attendance) and `test_question_pagination_is_bounded_at_twenty`.
+
+Found by the bounded audit, same mechanism:
+
+- `test_admin_payment_intents.py`: `test_the_checkout_context_carries_only_its_bound_fields`
+  and `test_rendered_tokens_carry_no_internal_id_name_or_amount` ("1250" in
+  JSON holding a UUID, a random sandbox reference and the clock);
+- `test_fee_plan_transactions.py::test_a_rendered_token_carries_no_text_money_or_internal_id`
+  ("4321") and
+  `test_payment_transactions.py::test_rendered_tokens_carry_no_internal_id_name_amount_reference_or_reason`
+  ("1250");
+- `test_admin_courses.py::test_safe_integrity_error_rollback_and_generic_message`
+  ("sql" in a lowered page carrying two signed values);
+- "LYD" or "Bob" across a page carrying a CSRF token:
+  `test_admin_financial_workspaces.py::test_every_computed_status_is_shown_and_nothing_is_stored`,
+  `test_admin_research.py::test_the_administrator_sees_the_protected_mapping`,
+  `test_researcher_portal.py::test_the_researcher_pages_never_render_a_name_email_or_identifier`
+  and `test_student_grades.py::test_a_student_sees_only_their_own_score_and_comment`.
+
+### C. The audit boundary
+
+Measured collision rates set it: about 5e-4 per UUID for "4321" and 2e-4 for
+"1250"; roughly 0.2-0.7% per lowered signed state token for "cvc" or "sql";
+about 1e-4 per CSRF token for a case-sensitive three-letter marker, falling to
+about 5e-6 for four letters. Deliberately left unchanged:
+
+- page markers of four or more characters ("Soon", "MINE", "Pass", "INV-",
+  ".ics", "boom"), at about 5e-6 per token -- rewriting them would be the
+  broad rewrite this Part excludes;
+- markers outside the random value's alphabet: uppercase or punctuated text
+  against lowercase UUIDs ("TRX", "LYD", "draft", "1200.5"), and anything
+  containing a space, `<`, `>`, `=`, `%`, `#`, `{` or `/` against base64url
+  tokens, including complete `value="7"` attributes and `>7<` text nodes;
+- the two `test_admin_research.py` checks scoped to the page body, whose
+  scanned region carries no signed value;
+- deterministic targets: DDL, source code, column names, route rules,
+  fixed-key references and notification messages.
+
+### D. Limitation
+
+This removes the known random collisions; it does not prove the suite has no
+other source of nondeterminism. A new test that searches raw output holding
+random values reintroduces the problem -- the helpers exist so that it need
+not.

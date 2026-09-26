@@ -20,6 +20,7 @@ from app.models import (
     UserStatus,
 )
 from tests import grade_fixtures as fx
+from tests import structural_checks as sc
 from tests.conftest import make_user
 
 LIST = "/student/grades"
@@ -138,10 +139,11 @@ def test_a_student_sees_only_their_own_score_and_comment(app, client):
     html = _detail(client, gpid)
     assert "18.00" in html
     assert "Well argued." in html
-    # Bob's score, Bob's comment and Bob's name are simply not there.
+    # Bob's score, Bob's comment and Bob's name are simply not there. The
+    # signed CSRF value is random base64 and can spell "Bob" by chance.
     assert "15.50" not in html
     assert "Please reread the brief." not in html
-    assert "Bob" not in html
+    assert "Bob" not in sc.redact_signed_values(html)
 
 
 def test_the_other_student_sees_their_own_and_only_their_own(app, client):

@@ -10,6 +10,7 @@ import re
 import pytest
 
 import tests.research_fixtures as rx
+import tests.structural_checks as sc
 from app.extensions import db
 from app.models import (
     Enrollment,
@@ -468,9 +469,10 @@ def test_the_administrator_sees_the_protected_mapping(people, client):
     assert people["student"].full_name in html
     assert people["student"].email in html
     assert "No decision yet" in html
-    # No internal id, and no financial figure.
+    # No internal id, and no financial figure. The signed CSRF value is random
+    # base64 and can spell "LYD" by chance, so it is not searched.
     assert f">{participant.id}<" not in html
-    assert "LYD" not in html
+    assert "LYD" not in sc.redact_signed_values(html)
 
 
 def test_the_participant_list_searches_codes_and_not_names(people, client):

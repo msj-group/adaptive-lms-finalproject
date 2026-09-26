@@ -22,6 +22,7 @@ from sqlalchemy.orm import Query
 import app.blueprints.admin.fee_assignments as routes
 import tests.fee_assignment_fixtures as fx
 import tests.fee_plan_fixtures as plans
+import tests.structural_checks as sc
 from app.extensions import db
 from app.models import (
     AcademicTerm,
@@ -196,11 +197,24 @@ def test_rendered_tokens_carry_no_internal_id_name_or_money(app, client):
         for purpose, token in ((tokens.PURPOSE_ASSIGN, assign_token),
                                (tokens.PURPOSE_CANCEL, cancel_token)):
             payload = tokens.load_token(token, purpose)
-            text = str(payload)
-            for secret in ("Secret Student", "Charged Student", "Hidden plan", "Hidden label",
-                           "4321", "LYD", "active", "assigned"):
-                assert secret not in text, (purpose, secret)
-            assert not set(map(str, payload.values())) & internal, purpose
+            # By key and exact value, never as one string: a public id is
+            # random hexadecimal and contains "4321" about once in two
+            # thousand ids, which discloses nothing about the 4321.5 amount.
+            for key, value in payload.items():
+                parts = key.split("_")
+                assert "id" not in parts or key.endswith("_public_id"), (purpose, key)
+                assert not set(parts) & {"name", "label", "amount", "total", "currency",
+                                         "status"}, (purpose, key)
+                if key.endswith("_public_id"):
+                    assert sc.is_public_id(value), (purpose, key, value)
+                elif key.endswith("_version"):
+                    assert type(value) is int, (purpose, key, value)
+                else:
+                    assert (key, value) == ("purpose", purpose)
+            carried = set(map(str, payload.values()))
+            assert not carried & {"Secret Student", "Charged Student", "Hidden plan",
+                                  "Hidden label", "4321.5", "LYD", "active", "assigned"}, purpose
+            assert not carried & internal, purpose
 
 
 # ===========================================================================

@@ -26,6 +26,7 @@ import app.services.payment_audit as audit
 import tests.fee_assignment_fixtures as fees
 import tests.invoice_fixtures as fx
 import tests.payment_fixtures as px
+import tests.structural_checks as sc
 from app.extensions import db
 from app.models import (
     MAX_RECEIPT_SEQUENCE_NUMBER,
@@ -233,10 +234,16 @@ def test_rendered_tokens_carry_no_internal_id_name_amount_reference_or_reason(ap
             assert token, purpose
             payload = tokens.load_token(token, purpose)
             assert payload == dict(expected[purpose], purpose=purpose), purpose
-            flat = str(payload)
-            for secret in ("Student One", "Standard plan", "100.000", "1250", "LYD",
-                           "TRX-SECRET", "Not received", "RCT-", "INV-"):
-                assert secret not in flat, (purpose, secret)
+            # Value by value, never as one string: a public id is random
+            # hexadecimal and contains "1250" by chance. A value that is
+            # exactly a public id carries nothing else; every other value is
+            # searched.
+            for leaf in sc.leaves(payload):
+                if sc.is_public_id(leaf):
+                    continue
+                for secret in ("Student One", "Standard plan", "100.000", "1250", "LYD",
+                               "TRX-SECRET", "Not received", "RCT-", "INV-"):
+                    assert secret not in str(leaf), (purpose, leaf, secret)
             # Every identifier a token carries is a public id; versions are
             # small integers and are compared as such above.
             values = [str(v) for k, v in payload.items() if k.endswith("public_id")]

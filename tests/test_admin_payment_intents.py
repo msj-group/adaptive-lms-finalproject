@@ -16,6 +16,7 @@ import re
 import time
 import zlib
 from decimal import Decimal
+from html.parser import HTMLParser
 
 import pytest
 from sqlalchemy import event as sa_event
@@ -27,6 +28,7 @@ import tests.fee_assignment_fixtures as fees
 import tests.invoice_fixtures as fx
 import tests.payment_fixtures as px
 import tests.payment_intent_fixtures as ix
+import tests.structural_checks as sc
 from app.extensions import db
 from app.models import (
     Enrollment,
@@ -605,23 +607,108 @@ def test_the_money_bounds_are_inclusive(app, client, amount):
 # ===========================================================================
 
 
+class _Elements(HTMLParser):
+    """Every start tag with its attributes, and the page's text."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.elements = []
+        self.text = []
+
+    def handle_starttag(self, tag, attrs):
+        self.elements.append((tag, dict(attrs)))
+
+    handle_startendtag = handle_starttag
+
+    def handle_data(self, data):
+        self.text.append(data)
+
+
+def _elements(html):
+    parser = _Elements()
+    parser.feed(html)
+    parser.close()
+    return parser
+
+
+#: Words that ask for a card, bank or login credential.
+_CREDENTIAL_WORDS = ("card number", "cvv", "cvc", "expiry", "iban", "account number", "password")
+#: Autofill names that ask a browser to fill a card or login credential.
+_CREDENTIAL_AUTOFILL = ("current-password", "new-password", "one-time-code")
+
+
+def _credential_words(text):
+    lowered = (text or "").lower()
+    return [word for word in _CREDENTIAL_WORDS if word in lowered] + re.findall(
+        r"\bpin\b", lowered)
+
+
+def _credential_requests(html):
+    """Every way `html` asks for a credential, read structurally: a control
+    other than a hidden input, a credential autofill name, or a credential
+    word in the page's text or in any attribute.
+
+    Searched only after the signed CSRF and checkout-context values are
+    blanked. Those are random base64 and spell "cvc", "CVV" or "pin" by
+    chance, which is not a field asking for one; each is still proven to be
+    a signed token by the checkout test.
+    """
+    page = _elements(sc.redact_signed_values(html))
+    found = []
+    for tag, attrs in page.elements:
+        if tag in ("select", "textarea") or (
+                tag == "input" and (attrs.get("type") or "").lower() != "hidden"):
+            found.append((tag, attrs))
+        autofill = (attrs.get("autocomplete") or "").lower().split()
+        if any(name.startswith("cc-") or name in _CREDENTIAL_AUTOFILL for name in autofill):
+            found.append((tag, "autocomplete", attrs["autocomplete"]))
+        for name, value in attrs.items():
+            for word in _credential_words(name) + _credential_words(value):
+                found.append((tag, name, word))
+    found += [("text", word) for word in _credential_words(" ".join(page.text))]
+    return found
+
+
 def test_the_checkout_is_labelled_and_collects_no_credential(app, client):
     w = ix.login_world(app, client)
     xp = ix.create_intent(client, w)
     html = ix.page(client, ix.checkout_url(w, xp))
     assert "Mock/Sandbox checkout" in html and ix.SANDBOX_LABEL_TEXT in html
-    inputs = re.findall(r"<input\b[^>]*>", html)
-    assert inputs and all('type="hidden"' in tag for tag in inputs), inputs
-    assert {re.search(r'name="([^"]+)"', tag).group(1) for tag in inputs} == {
-        "csrf_token", ix.CHECKOUT_FIELD}
+    inputs = [attrs for tag, attrs in _elements(html).elements if tag == "input"]
+    assert inputs and all(attrs.get("type") == "hidden" for attrs in inputs), inputs
+    assert {attrs["name"] for attrs in inputs} == {"csrf_token", ix.CHECKOUT_FIELD}
+    # Every hidden value is a signed token: opaque, never a field of its own.
+    assert all(sc.SIGNED_TOKEN_SHAPE.fullmatch(attrs["value"]) for attrs in inputs), inputs
     assert not re.search(r"<(select|textarea)\b", html)
     assert re.findall(r'<button[^>]*name="outcome"[^>]*value="([^"]+)"', html) == [
         "success", "failure", "cancellation"]
-    lowered = html.lower()
-    for forbidden in ("card number", "cvv", "cvc", "expiry", "iban", "account number",
-                      "password", "autocomplete=\"cc", "type=\"file\"", "type=\"password\""):
-        assert forbidden not in lowered, forbidden
-    assert not re.search(r"\bpin\b", lowered)
+    assert _credential_requests(html) == []
+
+
+def test_a_credential_word_inside_a_signed_value_is_not_a_credential_request(app, client):
+    """The random collision that made the checkout test flaky, pinned: a signed
+    value's base64 can spell "cvc", "CVV" or "pin". That is not a request for
+    a credential, and the same words are still found wherever the page itself
+    says or asks for them."""
+    w = ix.login_world(app, client)
+    xp = ix.create_intent(client, w)
+    html = ix.page(client, ix.checkout_url(w, xp))
+    unlucky = ".cvcPINcvv-pin.cvc-pin." + "CVV_iban-pin" * 3
+    assert sc.SIGNED_TOKEN_SHAPE.fullmatch(unlucky)
+    opaque = re.compile(
+        rf'(<input type="hidden" name="(?:csrf_token|{ix.CHECKOUT_FIELD})" value=")[^"]*"')
+    collided = opaque.sub(lambda match: f'{match.group(1)}{unlucky}"', html)
+    assert collided.count(unlucky) == len(opaque.findall(html)) > 0
+    assert "cvc" in collided.lower() and re.search(r"\bpin\b", collided.lower())
+    assert _credential_requests(collided) == []
+    for said in (
+        collided.replace("</h1>", " Enter your CVC</h1>", 1),
+        collided.replace('<input type="hidden"', '<input type="hidden" aria-label="PIN"', 1),
+        collided.replace('<input type="hidden"', '<input type="text"', 1),
+        collided.replace("<form ", '<form autocomplete="cc-number" ', 1),
+        collided.replace("<form ", '<textarea name="note"></textarea><form ', 1),
+    ):
+        assert said != collided and _credential_requests(said), said
 
 
 def test_the_checkout_context_carries_only_its_bound_fields(app, client):
@@ -637,9 +724,17 @@ def test_the_checkout_context_carries_only_its_bound_fields(app, client):
                     "intent_version": 1, "intent_status": "pending",
                     "provider_reference": row.provider_reference}
         assert {k: v for k, v in payload.items() if k != "expires_at"} == expected
-        text = json.dumps(payload)
-        for value in (row.idempotency_key, "1250", "Student", "LYD", "INV-"):
-            assert value not in text, value
+        # By key and exact value, never as one JSON string: the public id and
+        # the sandbox reference are random hexadecimal and expires_at is the
+        # clock, so each can contain "1250" by chance. Those three are pinned
+        # exactly; every other value is searched.
+        assert sc.is_public_id(payload["intent_public_id"])
+        for key, value in payload.items():
+            assert row.idempotency_key not in str(value), key
+            if key in ("intent_public_id", "provider_reference", "expires_at"):
+                continue
+            for secret in ("1250", "Student", "LYD", "INV-"):
+                assert secret not in str(value), (key, secret)
     assert isinstance(payload["expires_at"], int)
     assert 0 < payload["expires_at"] - time.time() <= tokens.CHECKOUT_CONTEXT_MAX_AGE_SECONDS
 
@@ -1186,7 +1281,12 @@ def test_rendered_tokens_carry_no_internal_id_name_or_amount(app, client):
         row = ix.stored_intent(xp)
         forbidden = [row.idempotency_key, row.provider_reference, "1250", "Student One",
                      "admin@example.com", "INV-"]
+    # Value by value, never as one JSON string: a public id is random
+    # hexadecimal and contains "1250" by chance. A value that is exactly a
+    # public id carries nothing else; every other value is searched.
     for payload in (create, cancel):
-        text = json.dumps(payload)
-        for value in forbidden:
-            assert value not in text, value
+        for leaf in sc.leaves(payload):
+            if sc.is_public_id(leaf):
+                continue
+            for value in forbidden:
+                assert value not in str(leaf), (leaf, value)

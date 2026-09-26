@@ -23,6 +23,7 @@ import tests.financial_report_fixtures as rx
 import tests.invoice_fixtures as fx
 import tests.payment_fixtures as px
 import tests.payment_intent_fixtures as ix
+import tests.structural_checks as sc
 from app import create_app
 from app.extensions import db
 from app.models import (
@@ -439,7 +440,8 @@ def test_every_computed_status_is_shown_and_nothing_is_stored(app, client):
         got_status, text = rows[students[name]]
         assert got_status == status, name
         assert text.startswith(name) and text.endswith(cells + " Financial Record"), (name, text)
-    assert "LYD" not in page
+    # The signed CSRF value is random base64 and can spell "LYD" by chance.
+    assert "LYD" not in sc.redact_signed_values(page)
     with app.app_context():
         assert _state() == before
 

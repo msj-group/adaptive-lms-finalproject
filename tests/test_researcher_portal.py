@@ -12,6 +12,7 @@ import re
 import pytest
 
 import tests.research_fixtures as rx
+import tests.structural_checks as sc
 from app.extensions import db
 from app.models import (
     PARTICIPANT_CODE_ALPHABET,
@@ -232,10 +233,12 @@ def test_the_researcher_pages_never_render_a_name_email_or_identifier(people, cl
                        document.body, people["admin"].full_name,
                        people["admin"].email, people["admin"].public_id):
             assert secret not in html, (url, secret)
-        # No financial, messaging or academic content either.
+        # No financial, messaging or academic content either -- searched with
+        # the signed CSRF value blanked, as its random base64 can spell "LYD".
+        said = sc.redact_signed_values(html)
         for forbidden in ("LYD", "Invoice", "Payment", "Balance", "Enrollment",
                           "Group", "Message", "password"):
-            assert forbidden not in html, (url, forbidden)
+            assert forbidden not in said, (url, forbidden)
 
 
 def test_the_researcher_urls_use_public_ids_and_never_numeric_ids(people, client):
