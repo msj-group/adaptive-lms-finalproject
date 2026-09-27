@@ -17,9 +17,11 @@ a command line lands in the shell history, in the process list and in any
 terminal recording, which is exactly what ``getpass`` exists to avoid -- so
 this script takes no arguments at all and refuses to run non-interactively.
 
-**A Researcher can read the Researcher portal and nothing else.** The
-account created here reaches ``/research/dashboard`` and the pseudonymous
-participant pages; it cannot open any Administrator page, cannot create a
+**A Researcher works inside the Researcher portal and nowhere else.** The
+account created here reaches ``/research/dashboard``, reads the pseudonymous
+participant pages, and (Phase 6 / M02A) writes and internally activates
+experiment protocol versions in the protocol catalogue, which holds no
+participant data. It cannot open any Administrator page, cannot create a
 participant, cannot author or activate consent wording, and cannot consent
 for anybody.
 

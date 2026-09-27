@@ -1,0 +1,112 @@
+{% extends "layouts/portal_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Protocol {{ protocol.version_identifier }}{% endblock %}
+{% block portal_nav %}{% set active_nav = 'protocols' %}{% include "research/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 6 / M02A. One protocol version. A draft shows its edit, move, add,
+    review and discard controls; an active or superseded version shows its
+    frozen content, its digest and the control to copy it into a new draft; a
+    discarded draft shows only its content. No participant, author name or
+    numeric id is loaded by the queries behind this page. -#}
+<div class="ds-row" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3)">
+  <h1 style="margin: 0">{{ protocol.version_identifier }}</h1>
+  <a class="btn btn--secondary" href="{{ list_url }}">Back to protocols</a>
+</div>
+<p class="ds-section__desc">{{ protocol.title }}</p>
+
+{{ macros.flash_messages() }}
+
+<div class="card" style="margin-top: var(--space-4)">
+  <dl style="display: grid; grid-template-columns: auto 1fr; gap: var(--space-2) var(--space-4); margin: 0">
+    <dt style="color: var(--color-text-secondary)">Status</dt>
+    <dd style="margin: 0">
+      {% if protocol.status == 'active' %}<span class="badge badge--success">{{ protocol.status_label }}</span>
+      {% elif protocol.status == 'draft' %}<span class="badge badge--warning">{{ protocol.status_label }}</span>
+      {% else %}<span class="badge badge--neutral">{{ protocol.status_label }}</span>{% endif %}
+    </dd>
+
+    <dt style="color: var(--color-text-secondary)">Study stage</dt>
+    <dd style="margin: 0">{{ protocol.stage_label }}</dd>
+
+    <dt style="color: var(--color-text-secondary)">Equivalence rationale</dt>
+    <dd style="margin: 0; white-space: pre-line">{{ protocol.equivalence_rationale or "None written" }}</dd>
+
+    {% if protocol.derived_from_url %}
+    <dt style="color: var(--color-text-secondary)">Copied from</dt>
+    <dd style="margin: 0"><a href="{{ protocol.derived_from_url }}">{{ protocol.derived_from_version }}</a></dd>
+    {% endif %}
+
+    <dt style="color: var(--color-text-secondary)">Created ({{ tz_name }})</dt>
+    <dd style="margin: 0">{{ protocol.created_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+
+    {% if protocol.activated_local %}
+    <dt style="color: var(--color-text-secondary)">Activated ({{ tz_name }})</dt>
+    <dd style="margin: 0">{{ protocol.activated_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+    {% endif %}
+    {% if protocol.superseded_local %}
+    <dt style="color: var(--color-text-secondary)">Superseded ({{ tz_name }})</dt>
+    <dd style="margin: 0">{{ protocol.superseded_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+    {% endif %}
+    {% if protocol.discarded_local %}
+    <dt style="color: var(--color-text-secondary)">Discarded ({{ tz_name }})</dt>
+    <dd style="margin: 0">{{ protocol.discarded_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+    {% endif %}
+    {% if protocol.content_digest %}
+    <dt style="color: var(--color-text-secondary)">Content digest</dt>
+    <dd style="margin: 0; word-break: break-all"><code>{{ protocol.content_digest }}</code></dd>
+    {% endif %}
+  </dl>
+</div>
+
+<div class="alert alert--info" style="margin-top: var(--space-4)">
+  Sets are intended to be equivalent. That is a methodological assertion this software records
+  but has not validated. Completion criteria state what the protocol intends; nothing here
+  verifies that any task was completed.
+</div>
+
+{% if editable %}
+<div class="ds-row" style="margin-top: var(--space-4); gap: var(--space-3); flex-wrap: wrap">
+  <a class="btn btn--secondary" href="{{ edit_url }}">Edit details</a>
+  {% if add_set_url %}<a class="btn btn--secondary" href="{{ add_set_url }}">Add task set</a>{% endif %}
+  <a class="btn btn--primary" href="{{ review_url }}">Review and activate</a>
+</div>
+<p class="ds-section__desc" style="margin-top: var(--space-2)">
+  At most {{ max_sets }} task sets, each with at most {{ max_tasks }} tasks.
+</p>
+{% elif derivable %}
+<p class="ds-section__desc" style="margin-top: var(--space-4)">
+  This version is frozen. Its content, digest and activation cannot change. To make a
+  correction, copy it into a new draft.
+</p>
+<a class="btn btn--primary" href="{{ derive_url }}">Create new version</a>
+{% else %}
+<p class="ds-section__desc" style="margin-top: var(--space-4)">
+  This draft was discarded. It is kept, frozen, and cannot be edited or activated.
+</p>
+{% endif %}
+
+{% include "research/protocols/_content.html" %}
+
+{% if editable %}
+<section class="card" style="margin-top: var(--space-6)" aria-labelledby="discard-heading">
+  <div class="card__body">
+    <h2 id="discard-heading" style="margin: 0 0 var(--space-2)">Discard this draft</h2>
+    <p class="ds-section__desc">
+      A discarded draft is kept and frozen; nothing is deleted. Use this for a mistaken draft,
+      then start a new one.
+    </p>
+    <form method="post" action="{{ discard_url }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="{{ state_field }}" value="{{ discard_token }}">
+      <div class="field">
+        <label class="field__label" for="discard-confirm" style="display: flex; align-items: center; gap: var(--space-2)">
+          <input type="checkbox" id="discard-confirm" name="confirm" value="yes">
+          I want to discard this draft.
+        </label>
+      </div>
+      <button type="submit" class="btn btn--danger-outline">Discard draft</button>
+    </form>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

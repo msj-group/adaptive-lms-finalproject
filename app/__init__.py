@@ -79,8 +79,9 @@ def create_app(config_name=None, **config_overrides):
     app.register_blueprint(admin_bp)
     app.register_blueprint(teacher_bp)
     app.register_blueprint(student_bp)
-    # Phase 6 / M01: the Researcher portal. Read-only, and gated to an
-    # active Researcher account.
+    # Phase 6 / M01: the Researcher portal, gated to an active Researcher
+    # account. Its participation pages are read-only; Phase 6 / M02A adds
+    # the experiment protocol catalogue, the Researcher's only writes.
     app.register_blueprint(research_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(messages_bp)

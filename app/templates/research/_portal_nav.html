@@ -1,8 +1,11 @@
-{# Shared Researcher portal navigation (Phase 6 / M01). A caller sets
-   `active_nav` to 'dashboard' or 'participants' before including this.
-   Student / Teacher / Administrator pages are unaffected -- they define their
-   own `portal_nav` block and never include this file. #}
+{# Shared Researcher portal navigation (Phase 6 / M01; Protocols is M02A). A
+   caller sets `active_nav` to 'dashboard', 'participants' or 'protocols'
+   before including this. Student / Teacher / Administrator pages are
+   unaffected -- they define their own `portal_nav` block and never include
+   this file. #}
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'dashboard' else '' }}"
    href="{{ url_for('research.dashboard') }}">Dashboard</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'participants' else '' }}"
    href="{{ url_for('research.participants') }}">Participants</a>
+<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'protocols' else '' }}"
+   href="{{ url_for('research.protocols') }}">Protocols</a>

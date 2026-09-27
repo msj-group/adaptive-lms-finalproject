@@ -1,0 +1,43 @@
+{% extends "layouts/portal_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}New Version of {{ source_version }}{% endblock %}
+{% block portal_nav %}{% set active_nav = 'protocols' %}{% include "research/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 6 / M02A. A new draft copied from a frozen version: every task set
+    and task is copied exactly, in order, and the new draft records which
+    version it came from. The source itself never changes. -#}
+<h1 style="margin: 0 0 var(--space-2)">New version of {{ source_version }}</h1>
+<p class="ds-section__desc">
+  The new draft copies every task set and task of {{ source_version }} exactly. {{ source_version }}
+  itself stays frozen. Correct the draft, then review and activate it.
+</p>
+
+{{ macros.flash_messages() }}
+
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <input type="hidden" name="{{ state_field }}" value="{{ state_token }}">
+
+  <div class="field">
+    {{ form.version_identifier.label(class="field__label") }}
+    {{ form.version_identifier(class="field__input", maxlength=version_max_length,
+                               placeholder="VA-2026-02", autocomplete="off") }}
+    {% for error in form.version_identifier.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="field">
+    {{ form.title.label(class="field__label") }}
+    {{ form.title(class="field__input", maxlength=title_max_length, autocomplete="off") }}
+    {% for error in form.title.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="ds-row" style="margin-top: var(--space-4); gap: var(--space-3)">
+    {{ form.submit(class="btn btn--primary") }}
+    <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

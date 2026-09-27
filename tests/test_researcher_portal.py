@@ -29,6 +29,32 @@ _ROUTES = {
     "research.participant_detail": "/research/participants/<participant_public_id>",
 }
 
+_GET = frozenset({"GET"})
+_POST = frozenset({"POST"})
+_GET_POST = frozenset({"GET", "POST"})
+_PROTOCOL = "/research/protocols/<protocol_public_id>"
+_SET = _PROTOCOL + "/sets/<set_public_id>"
+_TASK = _SET + "/tasks/<task_public_id>"
+
+#: Phase 6 / M02A: the experiment protocol catalogue, the Researcher's only
+#: writes. Declared here so the portal's complete inventory stays in one
+#: place; tests/test_researcher_protocols.py exercises each rule.
+_PROTOCOL_ROUTES = {
+    "research.protocols": ("/research/protocols", _GET),
+    "research.protocol_new": ("/research/protocols/new", _GET_POST),
+    "research.protocol_detail": (_PROTOCOL, _GET),
+    "research.protocol_edit": (_PROTOCOL + "/edit", _GET_POST),
+    "research.protocol_set_new": (_PROTOCOL + "/sets/new", _GET_POST),
+    "research.protocol_set_edit": (_SET + "/edit", _GET_POST),
+    "research.protocol_set_move": (_SET + "/move", _POST),
+    "research.protocol_task_new": (_SET + "/tasks/new", _GET_POST),
+    "research.protocol_task_edit": (_TASK + "/edit", _GET_POST),
+    "research.protocol_task_move": (_TASK + "/move", _POST),
+    "research.protocol_activate": (_PROTOCOL + "/activate", _GET_POST),
+    "research.protocol_discard": (_PROTOCOL + "/discard", _POST),
+    "research.protocol_new_version": (_PROTOCOL + "/new-version", _GET_POST),
+}
+
 _INVITED = ResearchParticipantStatus.INVITED.value
 _ACTIVE = ResearchParticipantStatus.ACTIVE.value
 _DECLINED = ResearchParticipantStatus.DECLINED.value
@@ -61,12 +87,20 @@ def _seed(people, status=_ACTIVE):
 
 
 def test_the_route_and_method_inventory_is_exact(app):
+    """M01's three participation rules stay GET-only; M02A adds exactly the
+    protocol catalogue rules and nothing else -- in particular no removal
+    rule for a task set or a task, and no participant-facing rule."""
     rules = {
         rule.endpoint: (str(rule), frozenset(rule.methods - {"HEAD", "OPTIONS"}))
         for rule in app.url_map.iter_rules()
         if rule.endpoint.startswith("research.")
     }
-    assert rules == {e: (u, frozenset({"GET"})) for e, u in _ROUTES.items()}
+    expected = {e: (u, _GET) for e, u in _ROUTES.items()}
+    expected.update(_PROTOCOL_ROUTES)
+    assert rules == expected
+    for endpoint, (url, _methods) in rules.items():
+        for word in ("remove", "delete", "participant_session", "assign", "export"):
+            assert word not in url and word not in endpoint, (endpoint, word)
 
 
 def test_an_anonymous_visitor_is_redirected_to_login(people, client):
@@ -118,6 +152,9 @@ def test_the_login_redirect_and_the_403_also_carry_the_headers(people, client):
 
 
 def test_the_portal_is_read_only(people, client):
+    """The M01 participation pages stay read-only. M02A's protocol catalogue
+    is the Researcher's only write surface and holds no participant data;
+    it adds no form to these pages -- the only one is still the logout."""
     _login_researcher(client)
     _, participant = _seed(people)
     for url in (rx.RESEARCH_DASHBOARD_URL, rx.RESEARCH_PARTICIPANTS_URL,

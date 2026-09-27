@@ -34,8 +34,8 @@ _MIGRATIONS = pathlib.Path(__file__).resolve().parents[1] / "migrations" / "vers
 _REVISION = "f9b2d6e4a318"
 _DOWN_REVISION = "e4a1c6b9d273"
 #: Phase 5 / M04's and then M05's revisions follow this one, so M05's is the single head.
-#: Phase 5 / M10's revision is the single head.
-_HEAD = "f2a6d1c84b37"
+#: Phase 6 / M02A's revision is the single head.
+_HEAD = "b86838ce23db"
 _TABLE = "student_fee_assignments"
 
 _EXPECTED_COLUMNS = {

@@ -2,16 +2,20 @@
 {% block title %}Research Dashboard{% endblock %}
 {% block portal_nav %}{% set active_nav = 'dashboard' %}{% include "research/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-{#- Phase 6 / M01, corrected by M01R. Real counts of real rows, and nothing
-    else: no chart, no rate, no experiment result, no behavioural metric.
-    What this milestone records is the invitation and the consent decision;
-    what it does not collect is behavioural interaction data. The page says
-    exactly that, rather than claiming no data at all is recorded or implying
-    a result with an empty graph. -#}
+{#- Phase 6 / M01, corrected by M01R, extended by M02A. Real counts of real
+    rows, and nothing else: no chart, no rate, no experiment result, no
+    behavioural metric. What this workspace records is research
+    administration (the invitation and the consent decision) and
+    Researcher-authored experiment protocol versions; what it does not collect
+    is behavioural interaction data. The page says exactly that, rather than
+    claiming no data at all is recorded or implying a result with an empty
+    graph. M02A removed the M01 statements that this workspace holds consent
+    only: once a protocol row exists they would be false. -#}
 <h1>Research</h1>
 <p class="ds-section__desc">
-  Participation consent only. Participants are shown by research code; no student names,
-  email addresses or account identifiers appear anywhere in this portal.
+  Participants are shown by research code; no student names, email addresses or account
+  identifiers appear anywhere in this portal. Experiment protocols are task catalogues written
+  by researchers.
 </p>
 
 <div class="stat-grid">
@@ -42,14 +46,36 @@
 </div>
 
 <div class="dash-section">
+  <h2>Experiment protocols</h2>
+  <div class="stat-grid">
+    {% for status in protocol_status_order %}
+    <div class="stat-card" data-protocol-count="{{ status }}">
+      <div class="stat-card__value">{{ protocol_counts[status] }}</div>
+      <div class="stat-card__label">{{ protocol_status_labels[status] }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="ds-section__desc">
+    {% if protocol_total %}
+    {{ protocol_total }} protocol version{{ "" if protocol_total == 1 else "s" }} in the catalogue.
+    {% else %}
+    No protocol versions yet. A researcher writes a draft, reviews it, and activates it inside
+    the catalogue.
+    {% endif %}
+  </p>
+  <a class="btn btn--primary" href="{{ protocols_url }}">Open protocols</a>
+</div>
+
+<div class="dash-section">
   <h2>What this workspace contains</h2>
   <div class="card">
     <div class="card__body">
       <p style="margin: 0 0 var(--space-3)">
-        <strong>What is recorded.</strong> This milestone builds the consent foundation only, so
-        the data it holds is research administration: each participant&rsquo;s invitation, their
-        consent status, which consent document version they decided on, and an append-only
-        history of those decisions.
+        <strong>What is recorded.</strong> Research administration: each participant&rsquo;s
+        invitation, their consent status, which consent document version they decided on, and
+        an append-only history of those decisions. Researchers also write experiment protocol
+        versions &mdash; task wording, intended difficulty, recommended duration and intended
+        completion criteria. A protocol is a task definition; no participant is linked to one.
       </p>
       <p style="margin: 0 0 var(--space-3)">
         <strong>What is not collected.</strong> There is no behavioural interaction data: no
@@ -57,6 +83,11 @@
         surveys, no frustration ratings, no observer annotations, no exports, no datasets, no
         model training, no inference and no adaptive intervention. Nothing about a
         student&rsquo;s behaviour is collected, measured or inferred here.
+      </p>
+      <p style="margin: 0 0 var(--space-3)">
+        <strong>Protocol activation.</strong> Activating a protocol version freezes its wording
+        inside this catalogue and makes it the one active version for Version A collection. It
+        starts no session and no collection, and it is not an ethics approval.
       </p>
       <p style="margin: 0">
         A participant shown as <strong>Active</strong> has read and accepted a specific version

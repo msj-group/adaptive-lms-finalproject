@@ -46,8 +46,8 @@ _REVISION = "a8d3f5c29e61"
 _DOWN_REVISION = "f9b2d6e4a318"
 #: Phase 5 / M05, M06 and then M07 follow this revision; the single head is
 #: M07's.
-#: Phase 5 / M10 follows M07, so the single head is now M10's.
-_HEAD = "f2a6d1c84b37"
+#: Phase 5 / M10 follows M07; Phase 6 / M02A's revision is now the single head.
+_HEAD = "b86838ce23db"
 #: Phase 5 / M05, the revision that follows this one.
 _M05 = "c5e8f2a7d914"
 

@@ -1,0 +1,107 @@
+{% extends "layouts/portal_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ heading }}{% endblock %}
+{% block portal_nav %}{% set active_nav = 'protocols' %}{% include "research/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 6 / M02A. One task of a draft task set. Every choice is one of the
+    closed sets the database CHECKs name, and the completion criterion must
+    be one this task type allows. There is no target field: a task is not
+    bound to any real lesson, quiz or assignment in this catalogue. -#}
+<h1 style="margin: 0 0 var(--space-2)">{{ heading }}</h1>
+<p class="ds-section__desc">Protocol draft {{ protocol_version_identifier }}, task set {{ set_code }}.</p>
+
+{{ macros.flash_messages() }}
+
+<div class="alert alert--info" style="margin-bottom: var(--space-4)">
+  This defines a future task. It is not linked to any real lesson, quiz or assignment, and the
+  completion criterion records what the protocol intends; nothing here checks it. Assignment
+  submission is the existing text submission, not a file upload. Login and profile-settings
+  tasks are not available in this catalogue.
+</div>
+
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <input type="hidden" name="{{ state_field }}" value="{{ state_token }}">
+
+  <div class="field">
+    {{ form.task_type.label(class="field__label") }}
+    {{ form.task_type(class="field__input") }}
+    {% for error in form.task_type.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="field">
+    {{ form.title.label(class="field__label") }}
+    {{ form.title(class="field__input", maxlength=title_max_length, autocomplete="off") }}
+    {% for error in form.title.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="field">
+    {{ form.participant_instructions.label(class="field__label") }}
+    {{ form.participant_instructions(class="field__input", rows=6, maxlength=instructions_max_length,
+                                     **{"aria-describedby": "instructions-help"}) }}
+    <p id="instructions-help" class="ds-section__desc" style="margin: var(--space-1) 0 0">
+      The wording a participant would read. Plain text, at most {{ instructions_max_length }} characters.
+    </p>
+    {% for error in form.participant_instructions.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="field">
+    {{ form.expected_goal.label(class="field__label") }}
+    {{ form.expected_goal(class="field__input", rows=4, maxlength=goal_max_length,
+                          **{"aria-describedby": "goal-help"}) }}
+    <p id="goal-help" class="ds-section__desc" style="margin: var(--space-1) 0 0">
+      What success means, for researchers. At most {{ goal_max_length }} characters.
+    </p>
+    {% for error in form.expected_goal.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="field">
+    {{ form.difficulty.label(class="field__label") }}
+    {{ form.difficulty(class="field__input") }}
+    {% for error in form.difficulty.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="field">
+    {{ form.recommended_duration_seconds.label(class="field__label") }}
+    {{ form.recommended_duration_seconds(class="field__input", inputmode="numeric",
+                                         autocomplete="off", **{"aria-describedby": "duration-help"}) }}
+    <p id="duration-help" class="ds-section__desc" style="margin: var(--space-1) 0 0">
+      Guidance only, from {{ min_duration }} to {{ max_duration }} seconds. It is not a time limit.
+    </p>
+    {% for error in form.recommended_duration_seconds.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="field">
+    {{ form.completion_criterion.label(class="field__label") }}
+    {{ form.completion_criterion(class="field__input", **{"aria-describedby": "criterion-help"}) }}
+    <div id="criterion-help" class="ds-section__desc" style="margin: var(--space-1) 0 0">
+      Allowed criteria by task type:
+      <ul style="margin: var(--space-1) 0 0">
+        {% for task_type, labels in allowed_criteria.items() %}
+        <li>{{ task_type_labels[task_type] }}: {{ labels | join("; ") }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% for error in form.completion_criterion.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="ds-row" style="margin-top: var(--space-4); gap: var(--space-3)">
+    {{ form.submit(class="btn btn--primary") }}
+    <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

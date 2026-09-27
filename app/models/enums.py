@@ -848,3 +848,106 @@ class ResearchConsentAction(str, enum.Enum):
     ACCEPTED = "accepted"
     DECLINED = "declined"
     WITHDRAWN = "withdrawn"
+
+
+class ExperimentDefinitionStatus(str, enum.Enum):
+    """The lifecycle of one experiment protocol version (Phase 6 / M02A).
+
+    - ``draft`` -- written and edited by a Researcher. Its header, task sets
+      and tasks may still change, one aggregate version at a time.
+    - ``active`` -- internally activated by a Researcher: the version, its
+      task sets and its tasks are frozen and sealed by a content digest.
+      **This is a catalogue state, not an ethics approval**, and it starts no
+      session and no collection -- none exists in M02A. At most one version
+      per study stage is ``active``.
+    - ``superseded`` -- a previously active version replaced by a newer
+      activation for the same study stage. Frozen and never deleted.
+    - ``discarded`` -- a draft a Researcher abandoned. Frozen and never
+      deleted: a mistaken draft is discarded and recreated rather than
+      physically removed.
+
+    Adding a member is a schema change (the ``experiment_definitions.status``
+    CHECK), which is the point.
+    """
+
+    DRAFT = "draft"
+    ACTIVE = "active"
+    SUPERSEDED = "superseded"
+    DISCARDED = "discarded"
+
+
+class ExperimentStudyStage(str, enum.Enum):
+    """The study stage one protocol version belongs to (Phase 6 / M02A).
+
+    Exactly one member: ``version_a_collection``, the Version A-only stage in
+    which real behavioural data would later be collected for model
+    development. A/B evaluation protocols are a later stage and need a
+    deliberate schema change (the ``experiment_definitions.study_stage``
+    CHECK) and a methodology decision; nothing here anticipates them. The
+    stage also scopes the one-active-version rule.
+    """
+
+    VERSION_A_COLLECTION = "version_a_collection"
+
+
+class ExperimentTaskType(str, enum.Enum):
+    """The LMS workflow one catalogue task describes (Phase 6 / M02A).
+
+    A **staged subset** of the supervisor's seven task areas, limited to
+    Student workflows that exist in this repository today:
+
+    - ``dashboard_navigation`` -- the Student dashboard;
+    - ``find_lesson`` -- the Group outline and a Lesson page;
+    - ``search`` -- the Student learning-content search;
+    - ``quiz_completion`` -- a published multiple-choice Quiz attempt;
+    - ``assignment_submission`` -- a **text** Assignment submission. The
+      file-upload assignment workflow in the supervisor requirements does
+      not exist yet.
+
+    Deliberately absent: ``login`` (a login task needs a participant who is
+    logged out while the future session requires one who is logged in, and
+    nothing attributes a failed login to anybody) and ``profile_settings``
+    (no Student profile or settings page exists). Adding either is a
+    deliberate schema change (the ``experiment_tasks.task_type`` CHECK) and a
+    methodology decision, not a form option.
+    """
+
+    DASHBOARD_NAVIGATION = "dashboard_navigation"
+    FIND_LESSON = "find_lesson"
+    SEARCH = "search"
+    QUIZ_COMPLETION = "quiz_completion"
+    ASSIGNMENT_SUBMISSION = "assignment_submission"
+
+
+class ExperimentTaskDifficulty(str, enum.Enum):
+    """The difficulty a Researcher **intends** a task to have (Phase 6 /
+    M02A). A design label, never a measured value."""
+
+    EASY = "easy"
+    MEDIUM = "medium"
+    HARD = "hard"
+
+
+class ExperimentCompletionCriterion(str, enum.Enum):
+    """The criterion a protocol **intends** to use to decide that a task was
+    completed (Phase 6 / M02A).
+
+    **An intended protocol criterion only.** M02A has no session, reads no
+    Student's lesson progress, quiz attempt or submission, and verifies
+    nothing: this value records what a later, separately approved Part would
+    have to check, against a target that is not bound to any real Lesson,
+    Quiz or Assignment here.
+
+    - ``participant_declared`` -- the participant states they have finished;
+    - ``lesson_opened`` -- a target Lesson is opened;
+    - ``quiz_attempt_submitted`` -- a target Quiz attempt is submitted;
+    - ``assignment_submitted`` -- a target Assignment is submitted.
+
+    Which criterion each task type may use is fixed by
+    ``ck_experiment_tasks_type_criterion_pair``.
+    """
+
+    PARTICIPANT_DECLARED = "participant_declared"
+    LESSON_OPENED = "lesson_opened"
+    QUIZ_ATTEMPT_SUBMITTED = "quiz_attempt_submitted"
+    ASSIGNMENT_SUBMITTED = "assignment_submitted"

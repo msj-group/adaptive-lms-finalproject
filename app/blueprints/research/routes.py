@@ -1,16 +1,20 @@
-"""The Researcher portal (Phase 6 / M01).
+"""The Researcher portal (Phase 6 / M01; the protocol catalogue is M02A).
 
-Three read-only GET rules, every object addressed by ``public_id``::
+This module holds the portal's three read-only participation rules, every
+object addressed by ``public_id``::
 
     GET  /research/dashboard
     GET  /research/participants[?status=][&q=][&page=]
     GET  /research/participants/<participant_public_id>
 
-**Read-only.** Nothing here writes, locks or commits, and there is no form
-that posts: a POST, PUT, PATCH or DELETE to any of these is a 405. A
-Researcher cannot create a participant, cannot author or edit consent
-wording, and cannot consent for anybody -- those are the Administrator's and
-the Student's surfaces respectively.
+**These three are read-only.** Nothing here writes, locks or commits, and
+there is no form on them that posts: a POST, PUT, PATCH or DELETE to any of
+them is a 405. A Researcher cannot create a participant, cannot author or
+edit consent wording, and cannot consent for anybody -- those are the
+Administrator's and the Student's surfaces respectively, and M02A leaves
+them exactly so. The Researcher's only writes are to the experiment protocol
+catalogue in ``app/blueprints/research/protocols.py``, which holds no
+participant data.
 
 **What a Researcher can see**, and nothing else: a participant's code, its
 research status, the version and title of the consent document it is bound
@@ -30,10 +34,12 @@ the consent-document reference and the append-only consent events. What it
 does **not** collect is behavioural interaction data: no interaction events,
 no browser tracking, no experiment or task sessions, no surveys, no
 frustration ratings, no observer annotations, no exports, no datasets, no
-model training, no inference and no adaptive intervention. The dashboard
-therefore shows four real counts of real rows and nothing that could be
-mistaken for a result, and no page here claims to detect or measure anything
-about anybody.
+model training, no inference and no adaptive intervention. M02A adds
+Researcher-authored experiment protocol versions -- task definitions, not
+observations -- and still collects none of the above. The dashboard
+therefore shows real counts of real participant and protocol rows and
+nothing that could be mistaken for a result, and no page here claims to
+detect or measure anything about anybody.
 
 ``roles_required(RESEARCHER)`` gives the role guard: an anonymous visitor is
 redirected to login, and a Student, Teacher or Administrator gets 403. A
@@ -42,6 +48,17 @@ suspended Researcher cannot hold a session at all (the Flask-Login
 private, no-store`` and ``Vary: Cookie``: these pages describe who is taking
 part in a study, and a shared or reused cache entry must never hand one to
 somebody else.
+
+**Where the headers come from (M02A).** :func:`_research_response` wraps each
+of the three views, so their pages, redirects, 403s and 404s carry the
+headers. A view wrapper never sees a response Flask produces **before** the
+view runs -- the 405 for a wrong method, or the 404 for an unknown path
+under ``/research`` -- so :func:`_no_store_under_research` adds the same two
+headers to every response whose request path is ``/research`` or lies under
+it, whatever produced it. Its guarantee is exactly that: any response Flask
+finalizes for such a path. A response that never passes through Flask's
+``after_request`` processing (a server or proxy error outside the
+application) is outside it.
 """
 
 from functools import wraps
@@ -52,9 +69,31 @@ from werkzeug.exceptions import HTTPException
 from app.blueprints.research import research_bp
 from app.models import UserRole
 from app.security.decorators import roles_required
+from app.services import experiment_protocol_queries as protocol_queries
 from app.services import research_queries as queries
 
 _RESEARCHER = UserRole.RESEARCHER.value
+
+
+def _is_research_path(path):
+    prefix = research_bp.url_prefix
+    return path == prefix or path.startswith(prefix + "/")
+
+
+@research_bp.after_app_request
+def _no_store_under_research(response):
+    """``Cache-Control: private, no-store`` and ``Vary: Cookie`` on every
+    response for a path under ``/research`` -- including Flask's own 404 and
+    405 responses, which never reach a view or a blueprint-level hook.
+
+    Registered application-wide (a blueprint's own ``after_request`` does
+    not run for a request whose routing failed, because such a request has
+    no blueprint), and scoped by path so no other page is affected.
+    """
+    if _is_research_path(request.path):
+        response.headers["Cache-Control"] = "private, no-store"
+        response.vary.add("Cookie")
+    return response
 
 
 def _tz_name():
@@ -89,8 +128,10 @@ def _research_response(view_func):
 @_research_response
 @roles_required(_RESEARCHER)
 def dashboard():
-    """Real participation counts, and an honest statement of what M01 is."""
+    """Real participation and protocol counts, and an honest statement of
+    what this workspace records and what it does not collect."""
     counts = queries.participant_counts()
+    protocol_counts = protocol_queries.protocol_counts()
     return render_template(
         "research/dashboard.html",
         counts=counts,
@@ -98,6 +139,11 @@ def dashboard():
         status_labels=queries.PARTICIPANT_STATUS_LABELS,
         total=sum(counts.values()),
         participants_url=url_for("research.participants"),
+        protocol_counts=protocol_counts,
+        protocol_status_order=protocol_queries.STATUS_ORDER,
+        protocol_status_labels=protocol_queries.STATUS_LABELS,
+        protocol_total=sum(protocol_counts.values()),
+        protocols_url=url_for("research.protocols"),
     )
 
 

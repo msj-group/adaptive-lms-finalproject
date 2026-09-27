@@ -10425,3 +10425,344 @@ This removes the known random collisions; it does not prove the suite has no
 other source of nondeterminism. A new test that searches raw output holding
 random values reintroduces the problem -- the helpers exist so that it need
 not.
+
+
+## Version A experiment protocol catalogue (Phase 6, Part M02A)
+
+M02A gives the Researcher an internal **catalogue of Version A experiment
+protocols**: a Researcher writes a protocol version as a draft -- a header, up
+to four ordered task sets, up to ten ordered tasks in each -- reviews it,
+internally activates it, and corrects it only by deriving a new draft from a
+frozen version. Three tables hold it: `experiment_definitions`,
+`experiment_task_sets` and `experiment_tasks`.
+
+**It is a catalogue, not an experiment.** M02A has no experiment assignment,
+no experiment or task session, no participant link, no tracking, no survey, no
+observer annotation, no export, no dataset, no Version B, no Demo Mode, no
+re-consent, no binding of a task to a real Lesson, Quiz or Assignment, and no
+participant-facing route. It reads no Student's data and touches no
+participant, consent or academic row. No table, column, route, enum value or
+placeholder exists for any of those.
+
+### A. Internal activation is not ethics approval
+
+`active` means "the one frozen catalogue version for this study stage inside
+the application". Activation records who activated which exact content and
+when; it starts nothing, and no page presents it as an approval. The review
+page, the detail page, the list and the dashboard all say so. Nothing is
+seeded: the migration creates no protocol, and no sample protocol is ever
+activated.
+
+### B. Task types: a staged subset
+
+`experiment_tasks.task_type` is the closed set `dashboard_navigation`,
+`find_lesson`, `search`, `quiz_completion` and `assignment_submission` --
+Student workflows that exist in this repository today. It is a **staged
+subset** of the supervisor's seven task areas, not their completion:
+
+- **`login` is deferred.** A login task needs a participant who is logged out,
+  while any future session needs one who is logged in, and nothing in the
+  project attributes a failed login attempt to anybody (there is no
+  login-attempt record). How a login task is bootstrapped is a methodology
+  decision that has not been made.
+- **`profile_settings` is deferred.** No Student profile or settings page
+  exists.
+- **`assignment_submission` is the existing text submission.** The file-upload
+  assignment workflow in the supervisor requirements does not exist; the task
+  type is labelled "Assignment submission (text)".
+
+Adding `login`, `profile_settings` or a file-upload task later is a
+**deliberate schema change** (the `ck_experiment_tasks_type_valid` CHECK, and
+`ck_experiment_tasks_type_criterion_pair` for its criteria) together with a
+methodology decision -- never a form option.
+
+### C. Structured contracts, recorded as intentions
+
+Each task records `task_type`, `title`, `participant_instructions`,
+`expected_goal` (researcher-facing), `difficulty` (`easy`, `medium`, `hard` --
+the intended level, never a measurement), `recommended_duration_seconds`
+(30 to 1,800; guidance, not a time limit) and `completion_criterion`
+(`participant_declared`, `lesson_opened`, `quiz_attempt_submitted`,
+`assignment_submitted`). Which criterion a type may use is a database CHECK
+generated from one mapping (`ALLOWED_CRITERIA_BY_TYPE`): objective criteria
+exist only where an existing workflow has a stored end state; navigation has
+only `participant_declared`, and search `lesson_opened` or
+`participant_declared`.
+
+**A completion criterion is an intended protocol criterion only.** M02A binds
+no target, reads no lesson progress, quiz attempt or submission, and verifies
+nothing; the pages say that nothing here verifies completion. Progress
+milestones are not modelled: every progress signal but a saved quiz answer
+would need interaction events, which do not exist. There is no JSON, no
+expression and no script anywhere in the three tables.
+
+### D. The lifecycle and the aggregate version
+
+`draft -> active -> superseded`, plus `draft -> discarded`, a closed set with
+`ck_experiment_definitions_lifecycle_state` as its truth table. A draft's
+header, sets and tasks may be edited and reordered; `superseded` and
+`discarded` are terminal. **At most one version per study stage is active**:
+`current_marker` is `1` exactly while `active` (NULL otherwise, with the
+explicit `IS NOT NULL` M01 established), and `uq_experiment_definitions_current`
+is unique over (`study_stage`, `current_marker`). The only stage is
+`version_a_collection`; an A/B-evaluation stage would be a later, deliberate
+schema change.
+
+**`definition.version` is the optimistic version of the whole
+definition/set/task aggregate.** Under the locked definition row, every
+successful header, set or task change -- add, edit, move -- and activation and
+discard move it by exactly one; an unchanged save and a refused change move
+nothing. Every draft form's signed token is bound to it, so a token rendered
+before **any** change anywhere in the draft is stale: with two forms open on
+one draft, saving one makes the other refuse to write. Activation also moves
+the superseded version's `version`.
+
+A mistaken draft is **soft-discarded** (`discarded_at` / `discarded_by_id`),
+kept, frozen and listed under Discarded. **No definition, set or task is ever
+physically deleted**, and there is deliberately no removal route or control
+for a set or a task: a draft is corrected by editing and reordering, or
+discarded and recreated.
+
+### E. Freezing, seals and lineage
+
+Activation computes `content_digest`: SHA-256 over a typed, length-prefixed
+serialisation tagged `experiment-protocol.v1` of the header (version
+identifier, title, stage, rationale) and every set and task in frozen order,
+with **ordinal** positions and element counts -- so order gaps never change
+the digest, order changes always do, and nothing can be re-split into a
+neighbour. The review page shows the digest it would seal; the activation
+token binds it; the transaction recomputes it from the locked rows.
+
+The freeze is enforced three ways: no route writes to a non-draft; every
+transaction re-proves `draft` under the definition lock; and ORM guards
+refuse the flush. The guards read the **stored** status through the flushing
+connection, never the in-memory attribute history, because an expired and
+then assigned attribute carries no old value. An active version may change
+only what its supersession moves (`status`, `current_marker`,
+`superseded_at`, `superseded_by_id`, `version`, `updated_at`); a superseded
+or discarded one may change nothing. A set or task may be inserted, updated
+or deleted only while its **stored** definition is a draft (and deleted
+never). `public_id`, `study_stage`, `derived_from_id`, `created_by_id` and
+`created_at` never change on any definition.
+
+**Parent links are immutable.** `experiment_task_sets.definition_id` and
+`experiment_tasks.task_set_id` can never change after insertion, even between
+two drafts, so no flush can move frozen content into a draft or detach it
+from its version. A session-level `do_orm_execute` guard refuses bulk ORM
+`update(...)` / `delete(...)` against all three tables. A raw SQL statement
+bypasses every ORM guard -- as in M01 -- and the digest is what exposes it:
+derivation recomputes the source's digest and refuses a source whose content
+no longer matches its seal.
+
+**Derivation** copies a frozen (active or superseded) version's header,
+rationale, sets (with their stable `set_code`s) and tasks exactly, in order,
+into a new draft whose `derived_from_id` records the lineage. The source never
+changes.
+
+### F. Equivalent task sets
+
+A set's `set_code` is its stable identifier, unique inside its version and
+kept by derivation. Equivalence is a **methodological assertion the software
+records but does not validate**: activation requires, when there is more than
+one set, the same number of tasks, the same task type and completion criterion
+at every position, and a written `equivalence_rationale`. Difficulty and
+duration are not forced equal. The pages say that equivalence has not been
+validated.
+
+### G. NOT NULL, CHECKs and the database as the final defense
+
+Every mandatory column is declared `NOT NULL` explicitly, because a CHECK such
+as `LENGTH(title) > 0` evaluates to NULL for a NULL value and a CHECK that
+evaluates to NULL passes on both backends. The CHECKs reject empty strings,
+closed-set violations, invalid type/criterion pairs, out-of-range durations,
+negative orders, impossible lifecycle combinations and unordered timestamps.
+Conditions a CHECK cannot express are stated in the models and proved against
+locked rows: that an actor is an active Researcher, the four-set and ten-task
+limits, and that `derived_from_id` names another version (MySQL refuses a
+CHECK over an `AUTO_INCREMENT` column). Every foreign key is plain -- no
+`ON DELETE`, no `ON UPDATE` -- and no ORM relationship is declared.
+
+### H. Authorization and identity
+
+Researcher only. Every rule is `roles_required(RESEARCHER)`; every write
+re-proves an active Researcher against the locked `users` row. A Student,
+Teacher or Administrator gets 403 on every rule, and no other portal links to
+or shows the catalogue -- a participant who could read the tasks in advance
+would bias the study. **M01 is unchanged**: Administrators create participant
+records and manage consent documents, Students make their own consent
+decisions, and the Researcher's access to those remains read-only.
+
+The protocol queries select **column tuples, never entities**, never an
+internal id or an actor column, and never join `users` -- not even to name the
+Researcher who activated a version. Nested objects are resolved through their
+parents by public id, so a set is found only inside the protocol in the URL
+and a task only inside that set; anything else is the same plain 404.
+
+**The catalogue does not claim to be free of personal information.** Its free
+text is written by Researchers. What is guaranteed is structural: no column
+references a participant or a Student, and nothing is shown to or collected
+from a participant. As defense in depth, every protocol text field --
+including codes -- refuses anything shaped like a research participant code
+(`RP-` plus ten code characters) or an email address. That catches obvious
+mistakes; it cannot recognise a name or a sentence describing somebody.
+
+### I. Text
+
+Plain text under M01's character policy (the rule in
+`app/services/research_text.py` is reused, not restated): control, bidi and
+Unicode line-separator characters are rejected, never dropped; multi-line
+fields keep `\n` and `\t`. Version identifiers and set codes are upper-case
+ASCII (`[A-Z0-9][A-Z0-9._-]*` and `[A-Z0-9][A-Z0-9-]*`), so the case- and
+accent-insensitive MySQL collation (`utf8mb4_0900_ai_ci`) and the
+case-sensitive SQLite test backend agree on uniqueness. Templates escape
+everything and render line breaks with `white-space: pre-line`.
+
+### J. Lock order and transactions
+
+The M01 order is extended, not replaced:
+
+```
+lock_academic_hierarchy() reset point
+  -> users rows (ascending internal id)
+  -> research_consent_documents (ascending id)        [M01; never locked by M02A]
+  -> research_participants                            [M01; never locked by M02A]
+  -> experiment_definitions (ascending id)            [M02A]
+  -> experiment_task_sets (ascending id)              [M02A]
+  -> experiment_tasks (ascending id)                  [M02A]
+```
+
+An M02A write takes the reset point, the acting Researcher's `users` row, then
+protocol rows. It never locks a consent document or a participant, and no M01
+write locks a protocol row, so neither graph gains a reverse edge. The
+definition row is the aggregate lock; a move locks the whole list it
+renumbers, ascending, and normalises `display_order` to `0..n-1` (bounded by
+the four- and ten-item limits). Activation locks the draft and the previewed
+current version ascending, re-reads which version is current after the
+locks, and clears the outgoing marker in its own flush before setting the new
+one. Two first-ever activations share no locked row; the unique marker is the
+final defense and the loser gets the generic conflict sentence with nothing
+written. Every write commits or rolls back before returning, and an
+`IntegrityError` never reaches a page.
+
+Tokens are purpose-specific (`experiment-draft-change`,
+`experiment-protocol-activate`, `experiment-protocol-discard`,
+`experiment-protocol-derive`, salts marked `phase6-m02a`), exact-shape,
+expiring after M01's twelve hours, checked before the locks and again against
+the locked rows, and carry no internal id, name or wording. A draft-change
+token binds the target and the action, so a Move Up token cannot be replayed
+as Move Down or on another item. Creating a draft needs no token: the unique
+version identifier refuses a repeat.
+
+### K. Routes and headers
+
+```
+GET       /research/protocols[?status=][&page=]
+GET|POST  /research/protocols/new
+GET       /research/protocols/<protocol_public_id>
+GET|POST  /research/protocols/<protocol_public_id>/edit
+GET|POST  /research/protocols/<protocol_public_id>/sets/new
+GET|POST  /research/protocols/<protocol_public_id>/sets/<set_public_id>/edit
+POST      /research/protocols/<protocol_public_id>/sets/<set_public_id>/move
+GET|POST  /research/protocols/<protocol_public_id>/sets/<set_public_id>/tasks/new
+GET|POST  /research/protocols/<protocol_public_id>/sets/<set_public_id>/tasks/<task_public_id>/edit
+POST      /research/protocols/<protocol_public_id>/sets/<set_public_id>/tasks/<task_public_id>/move
+GET|POST  /research/protocols/<protocol_public_id>/activate
+POST      /research/protocols/<protocol_public_id>/discard
+GET|POST  /research/protocols/<protocol_public_id>/new-version
+```
+
+Every mutation is POST with CSRF and its signed token; activation and discard
+also require a confirmation box. The list is paginated at 25.
+
+**Headers.** M01's view wrapper never sees a response Flask produces before a
+view runs -- the 405 for a wrong method or the 404 for an unknown path. An
+application-wide `after_request` hook registered by the research blueprint
+therefore adds `Cache-Control: private, no-store` and `Vary: Cookie` to every
+response whose request path is `/research` or lies under it: pages, redirects,
+the login redirect, 403, 404 and 405 alike, for M01's rules and M02A's. That
+is the exact guarantee -- any response Flask finalizes for such a path; a
+response produced outside the application (a server or proxy error) is
+outside it. The hook is scoped by path and changes no other page.
+
+M01 contract changes, all authorized by this Part: the Researcher route
+inventory test now lists the M01 rules (still GET-only) and the protocol
+rules; the "portal is read-only" test now documents that the M01 pages stay
+read-only; the Researcher dashboard no longer says "Participation consent
+only" or "consent foundation only" (false once a protocol row exists) and
+shows protocol counts, while still stating that there are no experiment
+sessions and no behavioural interaction data; and the docstrings of
+`app/blueprints/research/routes.py`, `scripts/create_researcher.py` and the
+blueprint comment in `app/__init__.py` no longer call the portal read-only.
+Moving the single Alembic head also moved the head pin in every earlier
+migration suite that asserts it (M01's included), exactly as M01 did.
+
+### L. Migration `b86838ce23db` (parent `f2a6d1c84b37`)
+
+One additive revision creating the three tables with their CHECKs, unique
+constraints, plain foreign keys and eight query-driven indexes. It alters no
+existing table, reads no existing row and seeds nothing. The downgrade
+**refuses while any protocol row exists**, before touching anything, then
+drops child before parent. **No MySQL execution plan has been measured.**
+
+### M. Verification actually performed, and what it does not prove
+
+- Four new suites, all under `pytest -W error`:
+  `tests/test_experiment_protocol_models.py` (44 -- columns, explicit
+  `NOT NULL` refused per column, closed sets, every type/criterion pair,
+  bounds, uniqueness, lifecycle combinations, freezing, immutable parents,
+  stored-status guards, no deletes, no bulk rewrites, the digest),
+  `tests/test_experiment_protocol_migration.py` (15 -- identity, DDL parity
+  with the models, execution over Phase 5 and M01 history with every earlier
+  row preserved, refused rows, downgrade refusal and reversal, offline MySQL
+  rendering), `tests/test_experiment_protocol_transactions.py` (28 -- the
+  requested lock order, the aggregate version, post-lock re-checks,
+  activation, derivation, discard, review rules, text rules, tokens) and
+  `tests/test_researcher_protocols.py` (38 -- authorization and headers on
+  every rule including Flask's 404 and 405, nested 404s, two open forms,
+  replay, the frozen version, activation, derivation, discard, privacy,
+  escaping, wording, and M01 left byte-identical): **125 passed**.
+- The M01 suites pass with the contract changes listed in K; every earlier
+  migration suite passes with its head pin moved.
+- Three deliberate defects were introduced one at a time -- the path-scoped
+  header hook disabled, the version bump removed from adding a task set, and
+  `task_set_id` removed from a task's fixed columns -- and the targeted test
+  failed each time; each file was then restored byte-identically.
+- The complete strict-warning suite (`pytest -W error`) passed **7,078 tests
+  with the four inherited IANA-time-zone skips**, run as ten parallel
+  processes covering all 159 test files, with no failure and no error.
+- Development MySQL was confirmed at `f2a6d1c84b37`, upgraded by exactly
+  `f2a6d1c84b37 -> b86838ce23db`, and inspected read-only: `current` and
+  `heads` are both `b86838ce23db`; the three tables are InnoDB with
+  `utf8mb4_0900_ai_ci`, empty, every mandatory column `NOT NULL`, all 27
+  CHECKs present with `ENFORCED = YES`, the declared indexes and unique keys
+  present, and every foreign key without a referential action. `users`, the
+  three M01 tables, `enrollments`, `groups`, `invoices` and
+  `payment_transactions` were byte-identical (by row digest) before and after.
+  No downgrade was run.
+- An end-to-end run through the test client covered create, add set, add
+  task, review, activate, derive, and the 403, 404 and 405 headers.
+- **Not performed**: a live-browser session, accessibility, responsive or
+  keyboard review, real-InnoDB concurrency, MySQL query plans, and any MySQL
+  row insert to exercise a CHECK -- writing probe rows to the development
+  database was not authorized, so MySQL enforcement is shown by
+  `information_schema`, not by a refused insert. SQLite proves the requested
+  lock structure only, never real InnoDB blocking.
+
+### N. Limitations this Part does not remove
+
+- **Activation is not ethics approval** and starts nothing. Real collection
+  still needs the approvals M01 lists -- consent wording, retention, and the
+  treatment of data collected before a withdrawal -- and M02B's own decisions
+  (re-consent, resume and abandonment, target binding, the login task, and
+  the separation of real, demo and synthetic data) are still open.
+- Equivalence of task sets is recorded, never validated.
+- The catalogue's free text can hold personal information despite the
+  pattern checks; the guarantee is structural only.
+- Draft edits are not audited individually; only creation, activation,
+  supersession and discard are attributed.
+- A raw SQL statement bypasses every ORM guard; the digest exposes changed
+  content (derivation refuses it), but nothing prevents such a statement.
+- The first-ever activation race relies on the unique marker, answered with
+  the generic conflict sentence.
+- The Researcher now has write access without MFA; `MASTER_PROMPT.md`
+  requires TOTP for Researcher and Administrator accounts before production.

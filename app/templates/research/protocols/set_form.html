@@ -1,0 +1,43 @@
+{% extends "layouts/portal_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ heading }}{% endblock %}
+{% block portal_nav %}{% set active_nav = 'protocols' %}{% include "research/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}
+{#- Phase 6 / M02A. One task set of a draft. Its position is server-owned
+    and changed only by the move controls on the protocol page. -#}
+<h1 style="margin: 0 0 var(--space-2)">{{ heading }}</h1>
+<p class="ds-section__desc">Protocol draft {{ protocol_version_identifier }}.</p>
+
+{{ macros.flash_messages() }}
+
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <input type="hidden" name="{{ state_field }}" value="{{ state_token }}">
+
+  <div class="field">
+    {{ form.set_code.label(class="field__label") }}
+    {{ form.set_code(class="field__input", maxlength=code_max_length, placeholder="SET-A",
+                     autocomplete="off", **{"aria-describedby": "code-help"}) }}
+    <p id="code-help" class="ds-section__desc" style="margin: var(--space-1) 0 0">
+      A stable code, unique inside this protocol version and kept when a new version is
+      created. At most {{ code_max_length }} characters, stored in upper case.
+    </p>
+    {% for error in form.set_code.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="field">
+    {{ form.title.label(class="field__label") }}
+    {{ form.title(class="field__input", maxlength=title_max_length, autocomplete="off") }}
+    {% for error in form.title.errors %}
+    <div class="field__error">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="ds-row" style="margin-top: var(--space-4); gap: var(--space-3)">
+    {{ form.submit(class="btn btn--primary") }}
+    <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}
