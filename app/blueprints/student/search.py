@@ -26,6 +26,7 @@ generous than the announcement feed itself.
 from flask import make_response, render_template, request
 from flask_login import current_user
 
+from app.blueprints.collector.hooks import note_outcome
 from app.blueprints.student import student_bp
 from app.models import UserRole
 from app.security.decorators import roles_required
@@ -99,6 +100,10 @@ def search():
                 group_public_id=selected_group["public_id"] if selected_group else None,
                 material_kind=material_kind,
             )
+
+    if results is not None:
+        found = sum(len(section["items"]) for section in results.values())
+        note_outcome("search", "results" if found else "no_results", count=min(found, 1000))
 
     response = make_response(
         render_template(

@@ -17,8 +17,10 @@
  *     locks; nothing here can influence any of them.
  *   - it enforces no playback limit, no forced sequential listening and
  *     no DRM, generates no waveform, transcodes nothing, transcribes
- *     nothing, recognises no speech and records no analytics. None of
- *     that was approved, and none of it exists server-side either.
+ *     nothing, recognises no speech and records nothing itself. (Phase 6:
+ *     while natural-use collection runs for a Student, the separate
+ *     usage_collector.js observes play/pause/seek events of the element
+ *     -- never the audio -- under the documented event dictionary.)
  *   - it never fetches anything. The <audio> element's own src is an
  *     authorized server route that re-checks the whole nested chain on
  *     every request, including every Range request the browser makes

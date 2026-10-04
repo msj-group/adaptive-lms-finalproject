@@ -1,0 +1,40 @@
+{% extends "layouts/research_base.html" %}
+{% from "research/_macros.html" import pager, provenance_filter, ms_time %}
+{% block title %}Natural-use sessions{% endblock %}
+{% block research_content %}
+<h1>Natural-use sessions</h1>
+<p class="ds-section__desc">Pseudonymous sessions: subject codes only. Refused events are
+  counted, never stored.</p>
+{{ provenance_filter('research.sessions', provenance, provenance_labels) }}
+{% if rows %}
+<div style="overflow-x: auto">
+<table class="dash-table" style="width:100%">
+  <thead>
+    <tr><th scope="col">Subject</th><th scope="col">Config</th><th scope="col">Started ({{ tz_name }})</th>
+        <th scope="col">Last seen</th><th scope="col">End</th><th scope="col">Events</th>
+        <th scope="col">Refused</th><th scope="col">Prompts</th>
+        <th scope="col"><span class="ds-section__desc" style="margin:0">Detail</span></th></tr>
+  </thead>
+  <tbody>
+  {% for row in rows %}
+    <tr data-session-row>
+      <td style="white-space: nowrap"><strong>{{ row[1] }}</strong></td>
+      <td>{{ row[2] }}</td>
+      <td style="white-space: nowrap">{{ ms_time(to_local, row[3]) }}</td>
+      <td style="white-space: nowrap">{{ ms_time(to_local, row[4]) }}</td>
+      <td>{% if row[5] is not none %}{{ end_reason_labels.get(row[6], row[6]) }}{% else %}Open{% endif %}</td>
+      <td>{{ row[7] }}</td>
+      <td>{{ row[8] }}</td>
+      <td>{{ row[9] }}</td>
+      <td><a class="btn btn--secondary" href="{{ url_for('research.session_detail', session_public_id=row[0]) }}">View</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{{ pager(pagination, "Sessions") }}
+{% else %}
+<div class="empty-state"><div class="empty-state__title">No sessions</div>
+  <div>No natural-use session with this provenance has been recorded.</div></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "layouts/research_base.html" %}
+{% from "research/_macros.html" import pager %}
+{% block title %}Research audit log{% endblock %}
+{% block research_content %}
+<h1>Audit log</h1>
+<p class="ds-section__desc">Configuration changes, collection pauses and resumptions, exclusions
+  and reinstatements recorded by an operator, exports, downloads and retention purges. No student
+  content is recorded.</p>
+{% if rows %}
+<div style="overflow-x: auto">
+<table class="dash-table" style="width:100%">
+  <thead><tr><th scope="col">When (UTC)</th><th scope="col">Action</th><th scope="col">By</th>
+    <th scope="col">Configuration</th><th scope="col">Subject</th><th scope="col">Detail</th></tr></thead>
+  <tbody>
+  {% for row in rows %}
+    <tr data-audit="{{ row[0] }}">
+      <td style="white-space: nowrap">{{ row[3].strftime("%Y-%m-%d %H:%M:%S") }}</td>
+      <td>{{ row[0]|replace('_', ' ') }}</td>
+      <td>{% if row[1] == 'workspace' %}{{ "You" if row[2] == me else "Another researcher" }}{% elif row[1] == 'operator' %}Operator tool{% else %}Migration{% endif %}</td>
+      <td>{{ row[6] if row[6] is not none else "—" }}</td>
+      <td>{{ row[8] or "—" }}</td>
+      <td>{{ row[4]|replace('_', ' ') if row[4] else "" }}{% if row[5] is not none %} ({{ row[5] }}){% endif %}{% if row[7] %} export{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{{ pager(pagination, "Audit events") }}
+{% else %}
+<div class="empty-state"><div class="empty-state__title">No audit events</div><div>Nothing has been audited yet.</div></div>
+{% endif %}
+{% endblock %}

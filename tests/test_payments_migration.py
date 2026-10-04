@@ -50,8 +50,8 @@ _DOWN_REVISION = "a8d3f5c29e61"
 #: Phase 5 / M06 and then M07 follow this revision, so the single head is now
 #: M07's. M07 extends three of this revision's tables; its revision records the
 #: M05 text of every CHECK it replaces, which this suite compares against.
-#: Phase 5 / M10 follows M07; Phase 6 / M02A's revision is now the single head.
-_HEAD = "b86838ce23db"
+#: Phase 5 / M10 follows M07; the Phase 6 replacement's destructive revision is now the single head.
+_HEAD = "d574ab56594f"
 _M07 = "e9c4b2d7a1f3"
 
 _NEW_TABLES = ["payment_transactions", "receipt_number_sequences", "receipts"]

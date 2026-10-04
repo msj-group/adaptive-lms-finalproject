@@ -27,7 +27,7 @@
 <div class="alert alert--danger" role="alert" style="margin-bottom: var(--space-4)">{{ form_error }}</div>
 {% endif %}
 
-<form method="post" action="{{ url_for('messages.create_thread') }}" class="card" novalidate>
+<form method="post" action="{{ url_for('messages.create_thread') }}" class="card" novalidate data-research-form="message_send">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="recipient" value="{{ recipient.public_id }}">
   <input type="hidden" name="message_state" value="{{ message_state }}">
@@ -47,7 +47,7 @@
     </p>
   </div>
   <div class="ds-row" style="gap: var(--space-3)">
-    <button type="submit" class="btn btn--primary">Send message</button>
+    <button type="submit" class="btn btn--primary" data-research-id="message_send">Send message</button>
     <a class="btn btn--secondary" href="{{ url_for('messages.inbox') }}">Cancel</a>
   </div>
 </form>

@@ -1,0 +1,32 @@
+{% extends "layouts/research_base.html" %}
+{% block title %}Research export{% endblock %}
+{% block research_content %}
+<h1>Research export</h1>
+<table class="dash-table" style="width:100%">
+  <tbody>
+    <tr><th scope="row" style="text-align:left">Format</th><td>{{ export.export_format }}</td></tr>
+    <tr><th scope="row" style="text-align:left">Event schema</th><td>{{ export.event_schema_version }}</td></tr>
+    <tr><th scope="row" style="text-align:left">Configuration version</th><td>{{ version if version is not none else "All versions" }}</td></tr>
+    <tr><th scope="row" style="text-align:left">Session start period ({{ export.timezone }})</th><td>{{ export.period_from or "unbounded" }} &ndash; {{ export.period_to or "unbounded" }}</td></tr>
+    <tr><th scope="row" style="text-align:left">Provenance</th><td>Study data only</td></tr>
+    <tr><th scope="row" style="text-align:left">Snapshot cutoff (epoch ms, UTC)</th><td>{{ export.cutoff_ms }}</td></tr>
+    <tr><th scope="row" style="text-align:left">Rows</th><td>{{ export.subjects_count }} subjects, {{ export.sessions_count }} sessions, {{ export.events_count }} events, {{ export.prompts_count }} prompts</td></tr>
+    <tr><th scope="row" style="text-align:left">Manifest SHA-256</th><td><code style="word-break: break-all">{{ export.manifest_digest }}</code></td></tr>
+    <tr><th scope="row" style="text-align:left">Created (UTC)</th><td>{{ export.created_at.strftime("%Y-%m-%d %H:%M:%S") }}</td></tr>
+  </tbody>
+</table>
+<p class="ds-section__desc" style="margin-top: var(--space-3)">
+  Every value in the archive was read in one database snapshot taken before the cutoff: it
+  contains only what had been saved by then, and nothing dated after it. The archive was built once, when this export was created. Every download serves exactly those
+  stored bytes; nothing is rebuilt from data that changed later. The archive is removed when the
+  oldest data in it reaches the deployment's retention. Every download is audited.
+</p>
+<div class="ds-row" style="gap: var(--space-3)">
+  {% if available %}
+  <a class="btn btn--primary" href="{{ url_for('research.export_download', export_public_id=export.public_id) }}">Download ZIP</a>
+  {% else %}
+  <span class="badge badge--neutral" data-archive-state="expired">Archive removed under the retention rule</span>
+  {% endif %}
+  <a class="btn btn--secondary" href="{{ url_for('research.exports') }}">Back to exports</a>
+</div>
+{% endblock %}

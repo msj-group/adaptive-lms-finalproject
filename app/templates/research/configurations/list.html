@@ -1,0 +1,42 @@
+{% extends "layouts/research_base.html" %}
+{% from "research/_macros.html" import pager %}
+{% block title %}Collection configurations{% endblock %}
+{% block research_content %}
+<div class="ds-row" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3)">
+  <h1 style="margin:0">Collection configurations</h1>
+  <a class="btn btn--primary" href="{{ url_for('research.configuration_new') }}">New draft</a>
+</div>
+<p class="ds-section__desc">
+  A configuration version fixes the event schema, the collection period, the observed workflow
+  areas and the feedback sampling policy. It is not a consent document and not an ethics approval.
+</p>
+{% if rows %}
+<div style="overflow-x: auto">
+<table class="dash-table" style="width:100%">
+  <thead>
+    <tr><th scope="col">Version</th><th scope="col">Label</th><th scope="col">Status</th>
+        <th scope="col">Period ({{ tz_name }})</th><th scope="col"><span class="ds-section__desc" style="margin:0">Detail</span></th></tr>
+  </thead>
+  <tbody>
+  {% for row in rows %}
+    <tr data-configuration="{{ row.version_number }}">
+      <td>{{ row.version_number }}</td>
+      <td>{{ row.label }}</td>
+      <td>
+        {% if row.status == 'active' %}<span class="badge badge--success">Active{{ ", collecting" if row.is_collecting else ", paused" }}</span>
+        {% elif row.status == 'draft' %}<span class="badge badge--warning">Draft</span>
+        {% else %}<span class="badge badge--neutral">Retired</span>{% endif %}
+      </td>
+      <td style="white-space: nowrap">{{ local(row.collection_starts_at).strftime("%Y-%m-%d %H:%M") }} &ndash; {{ local(row.collection_ends_at).strftime("%Y-%m-%d %H:%M") }}</td>
+      <td><a class="btn btn--secondary" href="{{ url_for('research.configuration_detail', configuration_public_id=row.public_id) }}">View</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{{ pager(pagination, "Configurations") }}
+{% else %}
+<div class="empty-state"><div class="empty-state__title">No configurations</div>
+  <div>Create a draft to define how natural-use collection will run.</div></div>
+{% endif %}
+{% endblock %}

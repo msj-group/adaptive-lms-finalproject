@@ -182,10 +182,11 @@ def test_login_unsafe_next_falls_back_to_role_home_for_teacher(app, client):
     assert "evil.example" not in resp.headers["Location"]
 
 
-def test_researcher_is_sent_to_the_researcher_dashboard(app, client):
-    """Phase 6 / M01 built the Researcher portal, so Researcher now has a
-    real role home and no longer falls back to DEFAULT_HOME_ENDPOINT. The
-    fallback itself is kept for a role added later with no dashboard yet."""
+def test_the_lms_login_refuses_a_researcher_account_generically(app, client):
+    """Phase 6 replacement: Researcher accounts sign in only through the
+    dedicated research login, so a future Researcher MFA cannot be bypassed
+    here. The refusal is the same generic message a wrong password gets, so
+    the LMS login does not disclose that the account exists or its role."""
     with app.app_context():
         make_user("researcher@example.com", UserRole.RESEARCHER.value, password=PASSWORD)
 
@@ -194,6 +195,23 @@ def test_researcher_is_sent_to_the_researcher_dashboard(app, client):
         data={"email": "researcher@example.com", "password": PASSWORD},
         follow_redirects=False,
     )
+    assert resp.status_code == 200
+    assert b"Invalid email or password." in resp.data
+    assert client.get("/research/dashboard").status_code == 302
+
+
+def test_a_signed_in_researcher_opening_the_lms_login_is_sent_to_the_workspace(app, client):
+    """Researcher still has a real role home (not DEFAULT_HOME_ENDPOINT), which
+    is where the LMS login sends an already signed-in Researcher."""
+    with app.app_context():
+        make_user("researcher@example.com", UserRole.RESEARCHER.value, password=PASSWORD)
+
+    client.post(
+        "/research/login",
+        data={"email": "researcher@example.com", "password": PASSWORD},
+        follow_redirects=False,
+    )
+    resp = client.get("/auth/login", follow_redirects=False)
     assert resp.status_code == 302
     assert resp.headers["Location"] == "/research/dashboard"
     assert resp.headers["Location"] != "/design-system/"

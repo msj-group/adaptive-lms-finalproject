@@ -25,7 +25,7 @@
     {% for lesson in unit.lessons %}
     <li>
       <a class="card" style="display:flex; justify-content: space-between; align-items: center; gap: var(--space-3); text-decoration:none;"
-         href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">
+         href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}" data-research-id="lesson_open">
         <span class="card__title">{{ lesson.title }}</span>
         {#- Phase 4 / M13: this student's own completion mark in this group. -#}
         {% if lesson.is_completed %}<span class="badge badge--success">Completed</span>{% endif %}

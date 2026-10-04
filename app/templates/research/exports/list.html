@@ -1,0 +1,59 @@
+{% extends "layouts/research_base.html" %}
+{% from "research/_macros.html" import pager %}
+{% block title %}Research exports{% endblock %}
+{% block research_content %}
+<h1>Research exports</h1>
+<p class="ds-section__desc">
+  Exports contain study data only, grouped by pseudonymous subject code, with a data dictionary
+  and a manifest. They never contain names, email addresses, account identifiers, the
+  subject-to-account mapping or any content. Raw 1&ndash;5 ratings are preserved and unrated data
+  stays unlabeled.
+</p>
+
+<section class="card" style="margin-bottom: var(--space-6)"><div class="card__body">
+  <h2 style="margin-top:0">New export</h2>
+  <form method="post" novalidate>
+    {{ form.csrf_token }}
+    <div class="ds-row" style="gap: var(--space-4); flex-wrap: wrap; align-items: flex-end">
+      <div class="field" style="margin:0">
+        {{ form.configuration.label(class_="field__label") }}
+        {{ form.configuration(class_="field__input", style="width:auto") }}
+      </div>
+      <div class="field" style="margin:0">
+        {{ form.period_from.label(class_="field__label") }}
+        {{ form.period_from(class_="field__input") }}
+      </div>
+      <div class="field" style="margin:0">
+        {{ form.period_to.label(class_="field__label") }}
+        {{ form.period_to(class_="field__input") }}
+      </div>
+      {{ form.submit(class_="btn btn--primary") }}
+    </div>
+    <p class="ds-section__desc" style="margin-top: var(--space-3)">Dates are local ({{ tz_name }}) and filter by session start.</p>
+  </form>
+</div></section>
+
+{% if rows %}
+<div style="overflow-x: auto">
+<table class="dash-table" style="width:100%">
+  <thead><tr><th scope="col">Created (UTC)</th><th scope="col">Configuration</th><th scope="col">Period</th>
+    <th scope="col">Subjects</th><th scope="col">Sessions</th><th scope="col">Events</th><th scope="col">Prompts</th>
+    <th scope="col"><span class="ds-section__desc" style="margin:0">Detail</span></th></tr></thead>
+  <tbody>
+  {% for row in rows %}
+    <tr data-export>
+      <td style="white-space: nowrap">{{ row[1].strftime("%Y-%m-%d %H:%M") }}</td>
+      <td>{{ row[4] if row[4] is not none else "All" }}</td>
+      <td>{{ row[2] or "…" }} &ndash; {{ row[3] or "…" }}</td>
+      <td>{{ row[5] }}</td><td>{{ row[6] }}</td><td>{{ row[7] }}</td><td>{{ row[8] }}</td>
+      <td><a class="btn btn--secondary" href="{{ url_for('research.export_detail', export_public_id=row[0]) }}">View</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{{ pager(pagination, "Exports") }}
+{% else %}
+<div class="empty-state"><div class="empty-state__title">No exports</div><div>No export has been created.</div></div>
+{% endif %}
+{% endblock %}

@@ -57,6 +57,15 @@ class Config:
     # ``mock``; ignored otherwise. Held by the mock adapter alone.
     MOCK_PAYMENT_WEBHOOK_SECRET = os.environ.get("MOCK_PAYMENT_WEBHOOK_SECRET")
 
+    # ---- Phase 6: natural-use research collection ----
+    # Resolved and validated once at start-up by
+    # app.services.research_settings.resolve_research_settings (fail-closed).
+    # RESEARCH_RETENTION_DAYS has no default on purpose: until the deployment
+    # supplies one, no collection configuration can be activated.
+    RESEARCH_DATA_PROVENANCE = os.environ.get("RESEARCH_DATA_PROVENANCE", "development")
+    RESEARCH_RETENTION_DAYS = os.environ.get("RESEARCH_RETENTION_DAYS")
+    RESEARCHER_EMAIL_ALLOWLIST = os.environ.get("RESEARCHER_EMAIL_ALLOWLIST", "")
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
@@ -73,11 +82,17 @@ class TestingConfig(Config):
     # opts in explicitly and injects its own test-only webhook secret.
     PAYMENT_PROVIDER_MODE = "disabled"
     MOCK_PAYMENT_WEBHOOK_SECRET = None
+    # Pinned for the same reason: a test opts in to "study" data or a
+    # retention value explicitly.
+    RESEARCH_DATA_PROVENANCE = "development"
+    RESEARCH_RETENTION_DAYS = None
+    RESEARCHER_EMAIL_ALLOWLIST = ""
 
 
 class ProductionConfig(Config):
     DEBUG = False
     SESSION_COOKIE_SECURE = True
+    RESEARCH_DATA_PROVENANCE = os.environ.get("RESEARCH_DATA_PROVENANCE", "study")
 
 
 config_by_name = {

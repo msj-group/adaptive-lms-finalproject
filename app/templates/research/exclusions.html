@@ -1,0 +1,31 @@
+{% extends "layouts/research_base.html" %}
+{% from "research/_macros.html" import pager %}
+{% block title %}Excluded subjects{% endblock %}
+{% block research_content %}
+<h1>Excluded subjects</h1>
+<p class="ds-section__desc">
+  These Student accounts are kept out of collection on every path: logging in or opening a page
+  never adds them back. They appear here only as pseudonymous subject codes. An operator can
+  reinstate a subject with the operator tool; a carried-over exclusion needs an explicit override.
+</p>
+{% if rows %}
+<div style="overflow-x: auto">
+<table class="dash-table" style="width:100%">
+  <thead><tr><th scope="col">Subject</th><th scope="col">Basis</th><th scope="col">Since (UTC)</th></tr></thead>
+  <tbody>
+  {% for row in rows %}
+    <tr data-excluded-subject="{{ row[0] }}" data-basis="{{ row[1] }}">
+      <td><code>{{ row[0] }}</code>{% if row[3] != 'study' %} <span class="badge badge--neutral">{{ row[3] }}</span>{% endif %}</td>
+      <td>{{ basis_labels.get(row[1], row[1]) }}</td>
+      <td style="white-space: nowrap">{{ row[2].strftime("%Y-%m-%d %H:%M") }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{{ pager(pagination, "Excluded subjects") }}
+{% else %}
+<div class="empty-state"><div class="empty-state__title">No exclusions</div>
+  <div>No Student account is excluded. Every eligible Student is collected while a configuration collects.</div></div>
+{% endif %}
+{% endblock %}

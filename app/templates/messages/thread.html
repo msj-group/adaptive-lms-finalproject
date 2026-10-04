@@ -49,7 +49,7 @@
   {% if form_error %}
   <div class="alert alert--danger" role="alert" style="margin-bottom: var(--space-4)">{{ form_error }}</div>
   {% endif %}
-  <form method="post" action="{{ url_for('messages.reply', thread_public_id=thread.public_id) }}" novalidate>
+  <form method="post" action="{{ url_for('messages.reply', thread_public_id=thread.public_id) }}" novalidate data-research-form="message_send">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="message_state" value="{{ message_state }}">
     <div class="field">
@@ -60,7 +60,7 @@
         Plain text, up to {{ body_max }} characters. A message cannot be edited or deleted once it is sent.
       </p>
     </div>
-    <button type="submit" class="btn btn--primary">Send reply</button>
+    <button type="submit" class="btn btn--primary" data-research-id="message_send">Send reply</button>
   </form>
   {% else %}
   <div class="alert alert--warning" role="status">

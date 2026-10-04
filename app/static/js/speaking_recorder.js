@@ -228,7 +228,18 @@
       }
     }
 
-    function fail(message) {
+    /* Phase 6: a closed failure code (never a message, never audio) that
+       the separate natural-use collector may observe when, and only
+       when, collection runs for this Student. This recorder itself
+       sends nothing anywhere. */
+    function markFailure(code) {
+      if (root) {
+        root.setAttribute("data-recorder-failure", code);
+      }
+    }
+
+    function fail(message, code) {
+      markFailure(code || "recorder_error");
       stopTracks();
       recorder = null;
       discardRecording();
@@ -298,7 +309,8 @@
           } catch (creationError) {
             fail(
               "This browser could not start a recording. You can choose an audio file to " +
-                "upload instead."
+                "upload instead.",
+              "unsupported"
             );
             revealFallback("");
             return;
@@ -320,6 +332,11 @@
         .catch(function (permissionError) {
           stopTracks();
           var name = permissionError && permissionError.name;
+          markFailure(
+            name === "NotAllowedError" || name === "SecurityError"
+              ? "permission_denied"
+              : "recorder_error"
+          );
           var message;
           if (name === "NotAllowedError" || name === "SecurityError") {
             message =

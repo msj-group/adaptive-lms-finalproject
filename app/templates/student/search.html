@@ -34,7 +34,7 @@
   {% endfor %}
 {% endwith %}
 
-<form class="search-form" method="get" action="{{ url_for('student.search') }}" role="search">
+<form class="search-form" method="get" action="{{ url_for('student.search') }}" role="search" data-research-form="search_submit">
   <div class="field search-form__query">
     <label class="field__label" for="search-q">Search</label>
     <input class="field__input" type="search" id="search-q" name="q" value="{{ q }}"
@@ -75,7 +75,7 @@
   </div>
 
   <div class="ds-row search-form__actions">
-    <button type="submit" class="btn btn--primary">Search</button>
+    <button type="submit" class="btn btn--primary" data-research-id="search_submit">Search</button>
     {% if content_type != 'all' or group_param or material_kind != 'all' %}
     <a class="btn btn--secondary" href="{{ url_for('student.search', q=q) }}">Clear filters</a>
     {% endif %}
@@ -123,7 +123,7 @@
           <li class="search-result card">
             <div class="search-result__head">
               <span class="badge badge--primary">{{ item.badge }}</span>
-              <a class="search-result__title" href="{{ destination(item) | trim }}">{{ item.title }}</a>
+              <a class="search-result__title" href="{{ destination(item) | trim }}" data-research-id="search_result" data-research-position="{{ loop.index }}">{{ item.title }}</a>
             </div>
             {% if item.breadcrumb %}
             <div class="search-result__crumb">{{ item.breadcrumb | join(' › ') }}</div>

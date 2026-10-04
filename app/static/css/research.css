@@ -1,0 +1,77 @@
+/* Phase 6: the optional feedback question. A non-blocking card: the page
+   behind it stays usable, and nothing is hidden or dimmed. */
+.research-feedback {
+  position: fixed;
+  right: var(--space-4, 16px);
+  bottom: var(--space-4, 16px);
+  z-index: 1000;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--color-bg-surface, #fff);
+  color: var(--color-text-primary, #1a1a1a);
+  border: 1px solid var(--color-border, #d0d7e2);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: var(--shadow-lg, 0 12px 32px rgba(15, 23, 42, 0.18));
+  padding: var(--space-4, 16px);
+}
+
+.research-feedback[hidden] {
+  display: none;
+}
+
+.research-feedback__title {
+  font-size: var(--font-size-lg, 1.1rem);
+  margin: 0 0 var(--space-2, 8px);
+}
+
+.research-feedback__title:focus {
+  outline: 2px solid var(--color-primary-600, #1d4ed8);
+  outline-offset: 2px;
+}
+
+.research-feedback__note,
+.research-feedback__optional {
+  color: var(--color-text-secondary, #475569);
+  font-size: 0.9rem;
+}
+
+.research-feedback__group {
+  border: 0;
+  padding: 0;
+  margin: var(--space-3, 12px) 0 0;
+}
+
+.research-feedback__group legend {
+  font-weight: 600;
+  margin-bottom: var(--space-2, 8px);
+}
+
+.research-feedback__choice {
+  display: flex;
+  gap: var(--space-2, 8px);
+  align-items: flex-start;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.research-feedback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  margin-top: var(--space-4, 16px);
+}
+
+.research-feedback__status {
+  margin: var(--space-2, 8px) 0 0;
+  min-height: 1em;
+}
+
+@media (max-width: 480px) {
+  .research-feedback {
+    right: 8px;
+    left: 8px;
+    bottom: 8px;
+    width: auto;
+  }
+}

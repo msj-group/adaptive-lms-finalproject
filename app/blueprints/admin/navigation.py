@@ -21,7 +21,7 @@ ADMIN_NAV_SECTIONS = [
         ],
     },
     {
-        "label": "Finance & Research",
+        "label": "Finance",
         "links": [
             {"label": "Student Accounts", "endpoint": "admin.student_accounts"},
             {"label": "Invoices", "endpoint": "admin.invoice_register"},
@@ -29,12 +29,8 @@ ADMIN_NAV_SECTIONS = [
             {"label": "Fee Plans", "endpoint": "admin.fee_plans_list"},
             {"label": "Financial reports", "endpoint": "admin.financial_reports_index"},
             {"label": "Deleted Records", "endpoint": "admin.deleted_financial_records"},
-            # Phase 6 / M01 built the Administrator research area, so this
-            # entry links now. It stays last, after every Phase 5 financial
-            # workspace, and Research is a separate area: it is not merged
-            # into Student Accounts or Deleted Records and shows no
-            # financial figure.
-            {"label": "Research", "endpoint": "admin.research_overview"},
+            # No research entry: research management lives only in the
+            # separate Researcher workspace (Phase 6 replacement).
         ],
     },
 ]

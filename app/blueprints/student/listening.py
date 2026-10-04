@@ -75,6 +75,7 @@ from flask_login import current_user
 from itsdangerous import BadSignature
 from sqlalchemy.exc import IntegrityError
 
+from app.blueprints.collector.hooks import note_outcome
 from app.blueprints.student import student_bp
 from app.blueprints.student.quizzes import (
     _STALE_MESSAGE,
@@ -541,6 +542,7 @@ def listening_start(group_public_id, listening_public_id):
 
     if not can_start_attempt_now(quiz, reference_utc):
         db.session.rollback()
+        note_outcome("listening_start", "refused")
         flash(
             "This listening activity is not open right now, so a new attempt cannot be "
             "started.",
@@ -554,6 +556,7 @@ def listening_start(group_public_id, listening_public_id):
         # Already running: return it rather than creating a second one.
         # The at-most-one-in-progress rule is a cross-row invariant, so it
         # is enforced here against the locked rows, not by a constraint.
+        note_outcome("listening_start", "resumed")
         db.session.rollback()
         return redirect(
             _first_question_redirect(group_public_id, listening_public_id, existing)
@@ -561,6 +564,7 @@ def listening_start(group_public_id, listening_public_id):
 
     if len(attempts) >= quiz.attempt_limit:
         db.session.rollback()
+        note_outcome("listening_start", "refused")
         flash(
             f"You have used all {quiz.attempt_limit} attempts at this listening activity.",
             "danger",
@@ -600,15 +604,18 @@ def listening_start(group_public_id, listening_public_id):
             student_attempt_rows(recovered[0].id, student_id)
         )
         if rerun is not None:
+            note_outcome("listening_start", "resumed")
             return redirect(
                 _first_question_redirect(group_public_id, listening_public_id, rerun)
             )
+        note_outcome("listening_start", "refused")
         flash(
             "This attempt could not be started. Please reload the page and try again.",
             "danger",
         )
         return redirect(_activity_url(group_public_id, listening_public_id))
 
+    note_outcome("listening_start", "started")
     return redirect(
         _first_question_redirect(group_public_id, listening_public_id, attempt)
     )
@@ -824,6 +831,7 @@ def listening_answer(
     # accepted -- a request that arrives one second late must not write.
     if expire_if_due(attempt, reference_utc):
         db.session.commit()
+        note_outcome("listening_answer", "expired")
         flash("Your time ran out, so this attempt was submitted as it was.", "danger")
         return redirect(
             _result_url(group_public_id, listening_public_id, attempt_public_id)
@@ -851,6 +859,7 @@ def listening_answer(
         attempt_status=attempt.status,
     ):
         db.session.rollback()
+        note_outcome("listening_answer", "rejected")
         flash(_STALE_MESSAGE, "danger")
         return redirect(
             _question_url(
@@ -863,6 +872,7 @@ def listening_answer(
     error = _validate_selection(submitted_options, locked_options, locked_question)
     if error is not None:
         db.session.rollback()
+        note_outcome("listening_answer", "rejected")
         flash(error, "danger")
         return redirect(
             _question_url(
@@ -884,6 +894,7 @@ def listening_answer(
             student_id, group_public_id, listening_public_id, reference_utc
         ) is None:
             abort(404)
+        note_outcome("listening_answer", "rejected")
         flash(
             "This answer could not be saved. Please reload the page and try again.",
             "danger",
@@ -897,6 +908,7 @@ def listening_answer(
 
     navigation = question_navigation(quiz_id, question_public_id)
     next_id = navigation[3] if navigation else None
+    note_outcome("listening_answer", "saved")
     flash("Answer saved.", "success")
     if request.form.get("go") == "next" and next_id:
         return redirect(
@@ -992,6 +1004,7 @@ def listening_submit(group_public_id, listening_public_id, attempt_public_id):
 
     if expire_if_due(attempt, reference_utc):
         db.session.commit()
+        note_outcome("listening_submission", "expired")
         flash("Your time ran out, so this attempt was submitted as it was.", "danger")
         return redirect(
             _result_url(group_public_id, listening_public_id, attempt_public_id)
@@ -1004,6 +1017,7 @@ def listening_submit(group_public_id, listening_public_id, attempt_public_id):
         quiz_version=quiz.version, attempt_status=attempt.status,
     ):
         db.session.rollback()
+        note_outcome("listening_submission", "rejected")
         flash(_STALE_MESSAGE, "danger")
         return redirect(_activity_url(group_public_id, listening_public_id))
 
@@ -1012,6 +1026,7 @@ def listening_submit(group_public_id, listening_public_id, attempt_public_id):
     unanswered = len(question_ids) - len(answered)
     if unanswered > 0 and not confirmed:
         db.session.rollback()
+        note_outcome("listening_submission", "rejected")
         flash(
             f"You have not answered {unanswered} "
             f"{'question' if unanswered == 1 else 'questions'}. Unanswered questions are "
@@ -1036,12 +1051,14 @@ def listening_submit(group_public_id, listening_public_id, attempt_public_id):
             student_id, group_public_id, listening_public_id, reference_utc
         ) is None:
             abort(404)
+        note_outcome("listening_submission", "rejected")
         flash(
             "This attempt could not be submitted. Please reload the page and try again.",
             "danger",
         )
         return redirect(_activity_url(group_public_id, listening_public_id))
 
+    note_outcome("listening_submission", "submitted")
     flash("Attempt submitted.", "success")
     return redirect(
         _result_url(group_public_id, listening_public_id, attempt_public_id)

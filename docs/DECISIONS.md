@@ -9692,6 +9692,11 @@ expressions unchanged. **No MySQL execution plan has been measured.**
 
 ## Researcher workspace, participants and consent (Phase 6, Part M01)
 
+> **Superseded** by "Natural-use research collection (Phase 6 replacement)" below.
+> The in-app consent workflow, the participant registry and the Administrator
+> research area described here were removed from the application; this record is
+> kept as history only.
+
 M01 builds the safe foundation for the first research workspace: a dedicated
 **Researcher portal**, a **research-participant registry** linked internally
 to Student accounts, a **pseudonymous identity** separate from a Student's
@@ -9998,6 +10003,9 @@ account, enrollment and financial row byte-identical.
 
 ## Consent wording integrity correction (Phase 6, Part M01R)
 
+> **Superseded** with M01 by "Natural-use research collection (Phase 6
+> replacement)". History only.
+
 M01 recorded the consent document's version and digest correctly, but the
 static Student consent page also carried substantive research, privacy,
 retention and future-scope wording **outside** the versioned document body.
@@ -10120,6 +10128,9 @@ research recruitment or collection begins.
 
 ## Removing the last unversioned consent policy (Phase 6, Part M01R2)
 
+> **Superseded** with M01 by "Natural-use research collection (Phase 6
+> replacement)". History only.
+
 M01R moved most substantive wording into the versioned
 `ResearchConsentDocument`, but it kept several statements on the static
 Student pages that it had classified as operational fact. They are not:
@@ -10227,6 +10238,9 @@ a withdrawal before any real research recruitment or collection begins.
 
 ## The last unversioned retention claim (Phase 6, Part M01R3)
 
+> **Superseded** with M01 by "Natural-use research collection (Phase 6
+> replacement)". History only.
+
 M01R2 established that participant-facing retention and immutability terms
 exist only in the digest-sealed consent document. One statement survived it,
 in `app/templates/student/research/consent.html`:
@@ -10329,6 +10343,10 @@ document, which is the correct failure mode.
 
 ## Structural negative assertions (Phase 6, Part M01S)
 
+> The rule in section A still applies to every suite. The M01 and M02A tests it
+> names were removed with those features by "Natural-use research collection
+> (Phase 6 replacement)".
+
 A complete-suite run after M01R3 reported three failures that passed in
 isolation; a fourth test had failed the same way in an earlier run. None was
 a product defect. Each searched a short marker as a raw substring of output
@@ -10428,6 +10446,10 @@ not.
 
 
 ## Version A experiment protocol catalogue (Phase 6, Part M02A)
+
+> **Superseded** by "Natural-use research collection (Phase 6 replacement)".
+> The prescribed-task catalogue was removed from the application; this record is
+> kept as history only.
 
 M02A gives the Researcher an internal **catalogue of Version A experiment
 protocols**: a Researcher writes a protocol version as a draft -- a header, up
@@ -10766,3 +10788,688 @@ drops child before parent. **No MySQL execution plan has been measured.**
   the generic conflict sentence.
 - The Researcher now has write access without MFA; `MASTER_PROMPT.md`
   requires TOTP for Researcher and Administrator accounts before production.
+
+
+## Natural-use research collection (Phase 6 replacement)
+
+> **Amended** by "Phase 6 follow-up — population rule, platform-wide
+> collection, immutable exports" and "Phase 6 final data-integrity
+> corrections" below. That correction replaces section B
+> (operator inclusion becomes the automatic population rule), the per-area
+> scope in D and G, the unload-only `keepalive` in F, the regenerated exports
+> in J, the offline rendering and table count in L, and the statements about
+> the Student information page and its portal indicator in N and O. The rest
+> of this record stands.
+
+The owners replaced the Phase 6 method. Version A collection now observes
+adult Students using the LMS **naturally** -- no prescribed tasks, task sets,
+task order or task-completion declaration -- through a documented allowlist of
+interaction events and server-confirmed outcomes, labelled only by occasional,
+optional frustration ratings. Participation is arranged **outside** the
+application by the centre; the application enforces the resulting inclusions
+and exclusions and never records that a Student accepted anything. This is an
+explicit change to the M01/M02A product requirements: the in-app consent
+workflow and the experiment protocol catalogue are **removed**, not archived,
+disabled or kept behind a flag.
+
+The contract, event dictionary, sampling policy, workspace, export format and
+migration plan are in `docs/PHASE6_NATURAL_USE_RESEARCH.md`; the deployment
+order is in `docs/RESEARCH_DEPLOYMENT_RUNBOOK.md`. The sections below record
+the decisions that are not obvious from that contract and the verification
+actually performed.
+
+### A. Removed, and what stays
+
+Removed from the running application, the route map, the navigation, the
+data model and the tests: the Administrator research area and its sidebar
+entry (the heading is now "Finance"), the Student consent pages and the
+portal consent link, consent documents, consent events and consent-dependent
+participants, the experiment protocol catalogue, their services, tokens,
+forms, templates, enums and fixtures. `tests/test_research_removal.py`
+proves the absence by route map, direct URL for every role, a fresh
+interpreter's imported modules, the metadata and the templates -- a hidden
+button is not a removal. The historical revisions `f2a6d1c84b37` and
+`b86838ce23db` stay only for the upgrade chain; their suites now assert the
+literal historical schema and import no runtime model.
+
+Kept because a new consumer uses them: the Researcher role,
+`roles_required`, safe redirects, Argon2 hashing, public identifiers, the
+path-scoped `private, no-store` hook, bounded pagination, CSRF, the
+`secrets`-based code generator (now `RS-` subject codes), and the
+interactive `scripts/create_researcher.py` (now allowlist-gated).
+
+### B. Scope is an operator record of an external arrangement
+
+The application never records that a Student accepted anything. An operator
+(`scripts/research_operator.py`, outside every portal) includes a Student
+only with `--confirm-external-arrangement`; an email address or domain never
+grants anything. A Student is collected only while the account is an active
+Student, the subject is `included`, a configuration is active **and
+collecting**, the server moment is inside its period, and the page's or
+outcome's workflow area is in scope. Every write re-proves the first four
+after its locks, so a delayed batch after a suspension, exclusion, pause or
+period end is refused. An exclusion closes open sessions at once. The
+application cannot verify age: the adult-only population is part of the
+external arrangement the operator confirms.
+
+### C. Identity: pseudonymization, not anonymization
+
+`research_subject_links` is the only link from a subject to `users`. No
+Researcher-facing query and no export joins it or `users`; the workspace does
+not even name Researchers (the audit says "you" or "another researcher").
+`status` in the operator tool is identity recovery and is kept outside every
+product view. Anyone with database access can still follow the link; nothing
+here protects the data from a server or database owner.
+
+### D. Configurations
+
+Versioned, immutable once activated (an ORM guard reading the stored status,
+plus the lifecycle CHECK), at most one active (`current_marker` with an
+explicit `IS NOT NULL`). Activation needs the deployment's
+`RESEARCH_RETENTION_DAYS` (no default exists), records it, retires the
+previous version, closes its sessions, and does **not** start collection;
+pause and resume are separate audited operations, and a pause closes open
+sessions. Every write is bound to the version by a purpose-specific signed
+token.
+
+### E. Sessions
+
+The browser's session reference is a server-generated UUID in the signed
+Flask session cookie, never a request field; a reference whose row belongs to
+another subject is never adopted. Tabs of one browser share a session and
+carry their own random tab reference; a second browser is a second session.
+A stale session ends at its last activity; rotation uses a deterministic
+successor reference, so two tabs rotating together converge on one session.
+Logout, a configuration change, a pause and an exclusion end sessions with
+the matching reason. All interaction timing is integer epoch milliseconds on
+the server timescale.
+
+### F. Events and delivery
+
+`app/services/research_event_dictionary.py` is the single declaration (14
+client and 12 server event types, allowlisted pages and elements, closed
+detail codes, bounded integers); the validator refuses anything else per
+event, and a malformed batch whole. Client time and server receipt are stored
+separately; corrected time is `t + (receipt - sent_at)`; events older than
+ten minutes, later than `sent_at`, or older than their session are refused.
+`event_uid` is unique: replays are counted, never stored. Delivery is a
+CSRF-protected JSON POST with `X-CSRFToken`, with `fetch(..., {keepalive:
+true})` on unload -- no CSRF exemption and no `sendBeacon`. No column can hold
+text, URLs, values, coordinates, keystrokes or fingerprints (a test
+enumerates every text column).
+
+### G. Server outcomes and failure isolation
+
+Covered Student POST routes (and the search page) note outcomes in a
+request-scoped list -- no query, no write -- and an application
+`after_request` hook records them after the LMS request committed or rolled
+back. `record_outcomes` never raises. A Student outside the scope costs one
+query; Teachers and Administrators none; the portal layout keeps the single
+research query the removed consent link used. Tests prove that a failing
+context, a failing write and a failing research commit leave the lesson
+completion or assignment submission committed and the response unchanged.
+The per-request memo lives on the request, never on `g`, because an
+application context (and so `g`) can span several requests.
+
+### H. Sampling and the question
+
+Random eligible moments and natural activity endings, never error-driven.
+The budgets (1 per session, 2 per subject per local `APP_TIMEZONE` day) are
+re-proved under the subject lock at the display grant; the per-session slot
+is a unique constraint, while the daily budget relies on the lock (see O).
+The grant moment ends the window, and `observed_ms` is the continuously
+observed part of it. Deferral reasons are stored; offers never shown and
+displays never answered are derived, not stored. The raw 1-5 rating and the
+optional causes are stored; a dismissal stores no label and stops prompts in
+that session; a late answer sets only a flag. The question names its window
+from the versioned lookback value and keeps the full anchors. The lifecycle
+CHECK caught a real bug during testing: the display grant issued a query
+between assignments and autoflushed a half-displayed prompt; it now computes
+every value first.
+
+### I. Researcher access
+
+`/research/login` authenticates only active Researchers; `/auth/login`
+refuses Researcher accounts with the same generic message, so a future MFA
+cannot be bypassed there. A signed-in account of another role opening the
+research login is sent back to its own portal without being signed out.
+`next` is honoured only inside `/research`, and anonymous visitors to the
+workspace are sent to its own login. **Researcher MFA is not implemented**:
+no supported TOTP dependency is installed, and the dashboard's readiness list
+says so.
+
+### J. Exports
+
+A ZIP of `sessions.csv`, `events.csv`, `prompts.csv`, `data_dictionary.csv`
+and `manifest.json`; study provenance only; an `as_of_ms` cut-off, fixed ZIP
+timestamps and sorted JSON make a re-download byte-identical on an unchanged
+database, and a retention purge in between is reported
+(`X-Export-Matches-Snapshot: no`, audited). Text cells beginning with `=`,
+`+`, `-`, `@`, a tab or a carriage return are neutralised; integers are not.
+
+### K. Lock order
+
+```
+lock_academic_hierarchy() reset point
+  -> users (the acting account: a Researcher, or a Student)
+  -> research_configurations (shared for collection writes,
+                              exclusive for Researcher writes)
+  -> research_subjects
+  -> research_sessions (the resolution chain, or ascending when closing)
+  -> research_feedback_prompts
+```
+
+SQLite honours neither `FOR UPDATE` nor `FOR SHARE`; the tests assert the
+requested order only.
+
+### L. Migrations `69c4bae553fe` (parent `b86838ce23db`) and `d574ab56594f`
+
+The first is additive: eight tables, and every legacy `declined` or
+`withdrawn` participant becomes an `excluded` subject with basis
+`legacy_collection_exclusion` and a migration audit row; `invited` and
+`active` participants are not carried over, and nothing is fabricated. The
+second checks everything before its first `DROP` (MySQL DDL commits per
+statement): every legacy refusal or withdrawal must have its exclusion, and
+populated legacy tables are refused unless the run passes
+`-x legacy_research_disposition=discard` and
+`-x legacy_research_reviewed_counts=<the exact counts>`; the refusal prints
+table names and counts only. Offline rendering refuses without the same
+arguments. Its downgrade recreates the empty legacy schema by running the
+historical revisions; legacy data returns only from the backup. The
+plumbing was proved end to end through `env.py` and Flask-Migrate's `x_arg`.
+
+### M. Contract changes to existing tests
+
+Authorized by this Part and applied explicitly, not loosened: the
+Administrator navigation tests now assert that no research entry or route
+exists and that the heading is "Finance"; the auth test now asserts that the
+LMS login refuses Researcher accounts and that a signed-in Researcher is sent
+to the workspace; the shared test login helpers sign Researcher accounts in
+through `/research/login` (the existing 403 tests are otherwise unchanged);
+fourteen other migration suites pin the new head `d574ab56594f`, and the two
+historical Phase 6 suites no longer import runtime models.
+
+Two contract tests also caught conflicts with the first draft and were kept
+as they are: the financial suites forbid any route containing "audit", so the
+Researcher audit page lives at `/research/activity-log`; and the Student quiz
+list test forbids `COUNT` in any statement mentioning "quizzes", which the
+first table name (`research_subject_accounts`) matched by accident, so the
+mapping table is `research_subject_links`. The Listening player test pins
+`<audio data-audio-element controls`, so the research media attribute comes
+last on that element.
+
+### N. Verification actually performed, and what it does not prove
+
+- New suites under `pytest -W error`: `test_research_removal.py` (17),
+  `test_research_access.py` (79), `test_research_collection.py` (67),
+  `test_research_feedback.py` (39), `test_research_outcomes.py` (23),
+  `test_research_workspace.py` (29), `test_research_operator.py` (27),
+  `test_research_schema.py` (17) and `test_research_replacement_migration.py`
+  (19); the adapted historical suites `test_research_migration.py` and
+  `test_experiment_protocol_migration.py` (29).
+- The complete strict-warning suite (`pytest -W error`, ten parallel
+  processes over all 161 test files): **7,111 passed, 4 skipped** (the
+  inherited IANA-time-zone skips), no failure and no error.
+- Migrations on isolated SQLite only: a fresh install of all 38 revisions
+  (table set equal to the model metadata, new tables' shapes equal to the
+  models, foreign-key check clean); an upgrade from `b86838ce23db` with empty
+  and with populated legacy tables; the exclusion transfer; the default
+  refusal; stale and wrong dispositions refused; the reviewed disposition;
+  the missing-exclusion refusal; both downgrades; and the per-run arguments
+  end to end through `env.py` and Flask-Migrate. Offline MySQL scripts were
+  rendered; no MySQL server executed them.
+- Development MySQL was only **read**, in a `READ ONLY` session: revision
+  `b86838ce23db`, 59 tables, all six legacy research tables empty, no
+  Researcher account. No revision was applied and nothing was written.
+- A real browser: the collector ran in headless Chrome (installed on this
+  machine) on the application's own rendered Student dashboard, with only `fetch` mocked.
+  Every batch it produced passed the server's validator; three rapid clicks
+  became one `control_click` plus `repeated_click` (count 3); a keypress
+  produced only an `active` heartbeat; a timed page deferred the prompt with
+  `timed_activity`; focus moved to the dialog title; the answer was sent as
+  `{rating, causes}` and Escape as a dismissal. Screenshots at 1280 px and in
+  a 375 px viewport showed the dialog fully readable. The run exposed a
+  client weakness -- a repeated offer of an already handled prompt would
+  re-open the dialog -- now guarded.
+- **Not performed**: a browser session against a running server with real
+  cookies, assistive-technology testing, real keyboard navigation of native
+  controls (synthetic key events cannot drive native defaults), real-device
+  mobile testing, InnoDB locking or isolation, MySQL execution plans, and any
+  collection of real data.
+
+### O. Honest limitations
+
+- **Not deployment-ready**: the live schema is `b86838ce23db`; the new code
+  must not run against it (the runbook's order is required); no retention is
+  configured; **Researcher MFA is missing**.
+- The daily prompt budget relies on the subject row lock (InnoDB); only the
+  per-session slot is a database constraint.
+- Corrected event times are relative to the browser's own clock within a
+  batch; a manipulated client can shift its events by up to ten minutes.
+- An observation run is ended by any tab going hidden, so observation is
+  under-counted in multi-tab use, never over-counted.
+- Two tabs whose very first pages render at the same instant can each mint a
+  session reference; a batch sent before the browser keeps one of them leaves
+  a short extra session, which is recorded as it is, never merged.
+- The prompt wording, the lookback and the sampling rates are pilot values,
+  not validated measures; comprehension must be checked in the pilot.
+- The portal header's navigation already overflows at narrow widths; the
+  "Usage research on" link adds one more item to it.
+- Pseudonymization only: anyone with database access can follow
+  `research_subject_links`.
+
+## Phase 6 follow-up — population rule, platform-wide collection, immutable exports
+
+An approved correction of the uncommitted "Natural-use research collection
+(Phase 6 replacement)" work, not a restart. The owners settled how the
+population is defined and asked for five defects found in review to be
+fixed. `docs/PHASE6_NATURAL_USE_RESEARCH.md` and
+`docs/RESEARCH_DEPLOYMENT_RUNBOOK.md` are updated to match; the earlier
+record above is amended where it said otherwise.
+
+### A. Population rule replaces operator inclusion
+
+While an authorized configuration is active, collecting and inside its
+period, every **eligible Student** is collected automatically: an
+authenticated account whose role is Student and whose status is `active`
+(the only other status is `suspended`), and whose subject, if any, is not
+excluded. Students created or activated later are covered with no step.
+Teachers, Administrators, Researchers, anonymous visitors and suspended
+Students are never collected. The operator `include` command and its
+`--confirm-external-arrangement` flag are removed.
+
+- **Truthful basis.** `ResearchStatusBasis` is now `population_rule`,
+  `operator_reinstatement` (an included subject), `external_exclusion` and
+  `legacy_collection_exclusion` (an excluded subject); the old
+  `external_arrangement` value is gone, and the pair CHECK allows only these
+  combinations. Nothing records or implies consent, and silence is not
+  treated as consent.
+- **Automatic, idempotent provisioning** in `lock_collection_chain`: after
+  the reset point, the `users` row and the shared configuration lock, a
+  Student with no link gets a subject (`included`, `population_rule`,
+  provenance `study`) and its link, then the chain continues. The `users`
+  lock serialises a Student's concurrent first writes on InnoDB; the unique
+  `uq_research_subject_links_user_id` is the final defense, and a request
+  that loses the race rolls back and retries (three attempts), reusing the
+  winner's subject. Identity is never read from the client. Feedback-prompt
+  actions never provision (they concern an existing subject). Rendering a
+  page writes nothing: the subject appears at the first collection write (a
+  batch or a server outcome).
+- **Exclusions on every path.** `exclude` creates an excluded subject when
+  none exists, so an exclusion recorded before any collection holds; an
+  excluded subject is never modified by the collection path, so login, page
+  visits and delayed batches cannot re-enrol it. `reinstate` lifts an
+  exclusion (audited as `lifted:<previous basis>`); a legacy exclusion needs
+  `--lift-legacy-exclusion`. `mark-demo` marks a demonstration account (data
+  stored as `demo`, never exported); subject provenance is therefore no
+  longer an identity column. Demonstration and development accounts are kept
+  out of the real population this way: their data is never research data.
+- **Visible only where restricted.** Researchers see excluded subjects by
+  pseudonymous code, basis and date on a new Exclusions page
+  (`/research/exclusions`); the operator's `list-excluded` adds account
+  emails. The dashboard counts collected, reinstated, excluded and legacy
+  subjects and says that subjects appear only once collection reached them.
+- An operator write that the database refuses (`IntegrityError`) rolls back
+  and reports a generic conflict.
+
+### B. Platform-wide background collection and route classification
+
+The per-area configuration switches (`scope_learning` ... `scope_records`)
+and every check of them are removed; an active configuration covers the
+whole Student platform. The page-to-area map stays only to report coverage.
+`research_event_dictionary` now classifies every route of the `student`,
+`messages` and `notifications` blueprints on purpose: a page
+(`PAGE_IDS`), a POST that re-renders a page (`PAGE_ID_ALIASES`), a server
+outcome (`OUTCOME_ENDPOINTS`), a client-observed action
+(`CLIENT_OBSERVED_POSTS`: the three notification POSTs), or a **technical
+exclusion** with its reason (`TECHNICAL_EXCLUSIONS`: the five routes that
+serve material or audio bytes, including Range requests -- data
+minimisation). A test fails for any unclassified GET or POST, another for
+any classification naming a route that does not exist, and a static test
+proves every full page template of those blueprints extends the portal
+layout that carries the bootstrap. Rendering tests prove the bootstrap and
+the hidden question on every page reachable without an object id, and their
+absence for an excluded Student, a Teacher (including on the shared messages
+and notifications pages), an Administrator, a Researcher and anonymous
+pages. No content is collected (the event dictionary is unchanged).
+
+### C. No research UI in ordinary portals
+
+The Student "usage research" page (`/student/usage-research`), its template
+and context, and the portal's "Usage research on" link are removed and not
+replaced by any other indicator. A test strips scripts, styles and tags from
+every tested Student, Teacher and Administrator page and finds none of
+"research", "usage", "study", "experiment", "monitor" or "tracking" in the
+visible text and no link to a research or usage URL. The optional question
+stays, with no research or study wording, no claim of a purpose (grades,
+performance or support), and "Answering is optional. Skipping does not
+affect your grades or your access." The page source still contains technical
+identifiers (`research-feedback`, `research-collector-config`,
+`research.css`, `data-research-id`); they are not visible and were kept to
+avoid an unrelated rename.
+
+### D. Correction 1 — offline rendering is refused
+
+`69c4bae553fe` silently skipped its legacy exclusion transfer under
+`--sql`, so an offline script would have dropped those exclusions without a
+word. Both its directions (the transfer on upgrade, the emptiness check on
+downgrade) now raise a clear `RuntimeError` before emitting anything, and
+`d574ab56594f`'s upgrade refuses offline even with the reviewed arguments
+(an offline script cannot verify the exclusions or count rows). The pure DDL
+moved to `_create_tables()`, regenerated from the models, so it can still be
+rendered for MySQL review; the old test that expected offline `DROP` output
+was replaced. `d574ab56594f`'s downgrade is plain DDL and still renders. No
+applied historical revision was edited; both revisions are unapplied.
+
+### E. Correction 2 — the exclusion state is verified before any DDL
+
+`d574ab56594f._missing_exclusions` now requires, for every legacy `declined`
+or `withdrawn` participant, a link to a subject that is **currently**
+`excluded` **and** has basis `legacy_collection_exclusion`. A missing link,
+a subject changed to `included` (by reinstatement or otherwise) or any other
+basis refuses before the first `DROP`, with nothing changed and a message
+without identifiers. A legacy `active` row is a decision about one specific
+consent document: it is neither checked here nor reinterpreted anywhere;
+such Students are collected by the population rule like everyone else.
+
+### F. Correction 3 — a navigating form submission keeps its batch
+
+Every batch is now sent with `fetch(..., {keepalive: true})`, not only on
+unload, and is first written to a bounded per-tab outbox (`sessionStorage`,
+four batches). `form_submit` hands its batch to the browser at once without
+delaying or preventing the submission. A batch whose answer never arrived
+(network failure, 409/429/5xx, or a page that left first) is re-sent from
+the outbox with the same event ids and `"replay": true`, at most three
+times; the outbox is cleared when the server stops collection. The server
+validates `replay` as a boolean. Because a batch is stored atomically, a
+marked replay whose accepted events are all stored already is a
+re-delivery and changes no counter; a replay of a batch that never arrived
+is stored and counted normally; an unmarked re-send still counts
+duplicates.
+
+### G. Correction 4 — no acknowledgement without a recorded answer
+
+The card waits for the server. "Thank you." appears only for a 200 with
+`recorded: true`, or for a 409 `already` (an earlier attempt was recorded
+but its answer lost). Any other failure keeps the card open with the
+Student's rating and causes, shows "Your answer could not be sent. Please
+try again." and re-enables Submit and Skip; the server keeps at most one
+answer per prompt, so a retry cannot create a duplicate. A 409 `late` shows
+"This question has expired. Nothing was recorded."; other refusals show
+"This question is no longer available.". The question's own interaction
+stays outside the feature window (the window ends at the display).
+
+### H. Correction 5 — an export id serves one archive, forever
+
+An export's ZIP is built once at creation and stored in the new
+`research_export_archives` table (unique per export, SHA-256, size,
+`LONGBLOB` on MySQL, at most 16 MiB; larger exports are refused with nothing
+written). `research_exports` records the timezone its period was read in and
+the oldest `last_seen` of the sessions it holds. A download serves only the
+stored bytes after re-checking the digest and size: a later rating, event,
+session end or `APP_TIMEZONE` change cannot change them; a tampered archive
+is refused (409) and not audited as a download. The ORM refuses to edit or
+delete an archive; only the retention purge removes one (a bulk delete),
+as soon as its oldest data passes the retention, so an archive never
+outlives the data it copied; the download then answers 410 and nothing is
+rebuilt. The `X-Export-Matches-Snapshot` header and the regeneration
+promise are gone.
+
+### I. Contract changes to existing tests
+
+Applied explicitly, not loosened: the workspace route inventory now
+includes `/research/exclusions`; the shared test world no longer includes
+anybody and its third Student is excluded instead of "without a subject";
+the scope, inclusion, information-page and indicator tests were replaced by
+the population-rule, classification, coverage and no-indicator tests above;
+the export reproducibility test became the immutability tests; the offline
+`DROP` test became the offline refusal and DDL review tests. While doing
+this, a regular expression in the workspace dashboard test that had been
+written with literal backspace characters (so it could never match) was
+corrected to `\bpredictions?\b`.
+
+### J. Verification actually performed, and what it does not prove
+
+- Research suites under `pytest -W error`: `test_research_collection.py`
+  (85), `test_research_outcomes.py` (50), `test_research_workspace.py` (37),
+  `test_research_operator.py` (35), `test_research_feedback.py` (39),
+  `test_research_replacement_migration.py` (26), `test_research_schema.py`
+  (20), `test_research_removal.py` (18), `test_research_access.py` (83),
+  `test_research_collector_browser.py` (2), and the historical
+  `test_research_migration.py` (15) and
+  `test_experiment_protocol_migration.py` (14).
+- The complete strict-warning suite (`pytest -W error`, ten parallel
+  processes over all 162 test files): **7,189 passed, 4 skipped** (the
+  inherited IANA-time-zone skips), no failure and no error.
+- **Real browser against a running server**: `test_research_collector_browser.py`
+  serves the application on a local port (an isolated SQLite file) and drives
+  headless Chrome through real sign-in cookies, real pages and the real
+  collection routes. (1) A search form submitted while the answer to its
+  `form_submit` batch was held back: the browser was already on the results
+  page before that answer was sent; the batch was stored; the next page
+  re-sent it from the outbox with the same ids and `replay: true`; the server
+  answered 0 accepted and all duplicates; exactly one `form_submit` and one
+  search outcome are stored; the session counted no duplicate; the outbox
+  ended empty; every batch used `keepalive`. (2) A displayed prompt answered
+  three times -- a request failed before the server, an answer recorded but
+  lost, then a retry answered "already": the card kept rating 4 and its cause
+  with the failure message after each of the first two, said "Thank you."
+  only after the third, then closed; exactly one answer is stored, with the
+  window ending at the display. Both passed four consecutive runs.
+- Migrations on isolated SQLite only: fresh install of the whole history;
+  upgrade from `b86838ce23db` with empty and populated legacy tables; the
+  transfer; refusals for a missing link, a subject changed to `included`
+  (by reinstatement and under the population rule) and another exclusion
+  basis, each with no row or table changed; the reviewed disposition; the old
+  `active` row left alone; both downgrades; offline refusal of both
+  revisions; the regenerated DDL rendered for MySQL (nine tables,
+  `LONGBLOB`, the new CHECKs); the `-x` plumbing through Flask-Migrate.
+- Development MySQL was only **read** again (2026-10-01, `READ ONLY`
+  session, aggregate counts only): revision `b86838ce23db`, 59 tables, the
+  six legacy research tables empty, no Researcher account. No revision was
+  applied and nothing was written.
+- **Not performed**: any MySQL execution of these revisions, InnoDB locking
+  or isolation, MySQL plans, a browser run of the expired-answer message
+  (proved at the service level only), assistive-technology or real-device
+  testing, and any collection of real data.
+
+### K. Honest limitations
+
+- **Not production-ready.** Researcher MFA is missing and no retention value
+  is configured; both are prerequisites. The live schema is `b86838ce23db`.
+- The provisioning race is serialised by the `users` row lock on InnoDB; on
+  SQLite only the unique link and the retry were exercised (by a forced
+  `IntegrityError`).
+- The outbox lives in `sessionStorage`: a closed tab whose last batch was
+  never answered cannot replay it, and storage refused by the browser makes
+  delivery best-effort (keepalive still applies).
+- A replay counts as a re-delivery only when its events are already stored;
+  a re-sent batch whose events were all refused as invalid or late is
+  counted again.
+- The daily prompt budget still relies on the subject row lock; the
+  per-session slot is a database constraint.
+- Archives are kept in the database; the 16 MiB limit is sized for the pilot
+  (20-50 Students), not for a large study.
+- Demonstration accounts are kept out of the real population by `mark-demo`
+  (data stored as `demo`, never exported); an unmarked demonstration Student
+  account would be collected as a real Student, so marking is a pre-collection
+  step in the runbook.
+- Pseudonymization only: anyone with database access can follow
+  `research_subject_links`.
+
+## Phase 6 final data-integrity corrections
+
+A narrow correction of the uncommitted Phase 6 work after an independent
+review, not a redesign: automatic Student enrolment, platform-wide
+background collection, the Student UI without research notices, the
+optional question, the separate Researcher workspace, the offline migration
+refusal and the immutable stored exports are unchanged. Two cases could still
+misstate data.
+
+### A. An uncertain answer is never replaced or falsely acknowledged
+
+The card re-read the form on every retry and treated any `already` as
+success, while the server answered `already` for any second response,
+whatever it was. After a lost answer, a Student could change the rating or
+causes, or press Skip, and see "Thank you." although the server had kept the
+first choice; the reverse (a stored Skip, then a rating) was the same.
+
+- **Server.** `research_sampling.respond` compares a second response with
+  the stored one after ownership is proved: the same choice (same rating and
+  same set of causes, or a second Skip) is `already`; anything else is the
+  new status `different` (HTTP 409). Nothing is ever replaced, and another
+  Student still gets the same 404 whatever is stored. The repeated-answer
+  test is changed accordingly (a different second rating was `already`, now
+  `different`); this is the behaviour this correction exists to change.
+- **Browser.** The first response the card sends is frozen until the server
+  settles it. While its outcome is unknown, the inputs are disabled, the
+  status reads "We could not confirm that your response was saved. Please
+  try again.", the primary button becomes "Try again" and resends exactly
+  the frozen choice, and the secondary becomes "Close", which closes the card
+  without sending or claiming anything (it is not a Skip). "Thank you." (or,
+  for a Skip, a silent close) appears only for `recorded` or `already`;
+  `different` shows "Your earlier response to this question was already
+  saved. It has not been changed."
+- **Regressions, in headless Chrome against a running server**: a failed
+  request, a lost answer, then `already`; a lost answer followed by an
+  attempt to choose another rating and other causes (nothing changes, the
+  retry carries the original); a lost answer followed by Close (no second
+  request, no acknowledgement); a lost Skip followed by an attempt to rate
+  (the dismissal is resent and stays stored, no "Thank you."); and a retry
+  the server receives as a different choice (the card reports the earlier
+  response as kept). Each run checks every status text the card showed, the
+  request bodies, and the stored row. Against the previous card, four of
+  these five tests fail.
+
+### B. The time contract of an export
+
+`create_export` read its `as_of_ms` before reading, did not read in one
+snapshot, and filtered only by some timestamps, so a response or session
+update committed while the archive was being built could appear in it
+although it happened after `as_of_ms`; derived prompt states also ignored the
+response moment.
+
+- **Contract.** Every file is read inside one read transaction whose
+  snapshot is established by its first read: REPEATABLE READ is set
+  explicitly for that transaction on MySQL (InnoDB creates the read view at
+  the first consistent read), and on SQLite the read transaction is opened
+  with an explicit `BEGIN` (pysqlite would otherwise run each SELECT on its
+  own). The cutoff is read from the server clock only after the snapshot
+  exists, and is stored and published as `cutoff_ms` (renamed from
+  `as_of_ms`, which claimed more than the data can support). Every row and
+  value -- mutable ones included -- is the committed state of that snapshot,
+  saved before `cutoff_ms`; a write still in progress at the cutoff is not
+  included even when its own moment is earlier, and the manifest says so in
+  `time_contract`. Derived states are evaluated at `cutoff_ms` and count a
+  display or a response only from its own moment.
+- **No clamping.** The silent `<= as_of` filters are gone. Instead, any
+  included server moment later than the cutoff -- possible only when a
+  server clock runs ahead -- refuses the export (`clock_ahead`) with nothing
+  stored and a clear message; a later export, whose cutoff has passed that
+  moment, includes it unchanged. The archive and its row are written in a
+  separate transaction that re-proves the Researcher, so the snapshot is
+  never upgraded to a write. Authorization, digest, audit, timezone,
+  privacy and retention behaviour are unchanged; each export id still
+  serves only its stored bytes.
+- **Regressions**: on a file SQLite database in WAL mode (so a second
+  connection can commit while the snapshot is open), another thread answers
+  the displayed prompt, stores an event and ends the session after the
+  cutoff and before the archive is finished. The archive shows the prompt
+  displayed and unanswered, the session open with its earlier last activity
+  and counters, no new event, nothing dated after the cutoff, and the
+  manifest's contract; the database and the next export show all three
+  writes; the first id still serves its bytes. A session, event or prompt
+  moment stored a minute ahead refuses the export with nothing stored and
+  is exported unchanged once the cutoff passes it. Removing the explicit
+  `BEGIN` makes the concurrency test fail (the export is then refused, not
+  silently mixed); removing the clock check makes the four clock tests fail.
+
+### C. Verification actually performed, and what it does not prove
+
+- The new regressions under `pytest -W error`:
+  `test_research_collector_browser.py` (6: the navigation test, the
+  rewritten failed-then-lost-then-already test and the four new
+  uncertain-answer scenarios) and `test_research_export_snapshot.py` (6:
+  the concurrent writer, three clock-ahead cases, the workspace message, the
+  derived states). The changed and added service tests in
+  `test_research_feedback.py` (41 in the file).
+- Mutation checks, reverted byte-for-byte afterwards: with the old card
+  behaviour (inputs re-enabled, the form re-read, `different` treated as
+  success) four of the five answer scenarios fail; without the explicit read
+  transaction the concurrency test fails (the export is refused, not
+  silently mixed); without the clock check the four clock tests fail.
+- All research suites (13 files): **436 passed**.
+- The complete strict-warning suite (`pytest -W error`, ten parallel
+  processes over all 163 test files): **7,201 passed, 4 skipped** (the
+  inherited IANA-time-zone skips), no failure and no error.
+- The only migration change is the rename `as_of_ms` -> `cutoff_ms` in the
+  unapplied `69c4bae553fe`, regenerated from the model (a one-line diff) and
+  covered by the migration suites on isolated SQLite.
+- Development MySQL was only **read** again (aggregate counts): revision
+  `b86838ce23db`, 59 tables, legacy research tables empty. Nothing was
+  applied or written.
+- **Not proved**: InnoDB's read view and the explicit REPEATABLE READ
+  setting on PyMySQL (SQLite in WAL mode stood in for them); concurrent
+  writers on MySQL; real multi-server clock skew; the expired-answer message
+  in a browser (service level only); assistive technology and real devices.
+
+Limits that remain:
+
+- The card cannot tell a request that never reached the server from an
+  answer that was stored and lost, so it says only that it could not confirm
+  the save. A Student who chooses Close in that state is not told whether
+  the earlier choice was stored; the stored row, if any, is unchanged, and
+  an unstored prompt is derived as `no_response` after its window.
+- The clock check covers the timestamped moments of an export. Untimestamped
+  values (deferral count, late flag, session counters) rely on the snapshot
+  alone; under a correct snapshot they were all committed before the cutoff.
+- A server clock that stays ahead keeps refusing exports until the clocks
+  agree; the message asks to check them.
+- Not production-ready: Researcher MFA and a configured retention period
+  are still missing, and the live migration needs its own authorization.
+
+## Phase 6 local close-out — 2026-10-04
+
+The owners authorized completing the remaining Phase 6 work, expressly
+removed Researcher multi-factor authentication, selected 15-day retention
+and supplied one approved Researcher account. This supersedes the earlier
+MFA requirement and the earlier statements that retention was undecided
+or that development migration execution lacked authorization.
+
+### Current contract
+
+- Researcher accounts use the dedicated email/password entry, the existing
+  Argon2id password service, CSRF protection, login rate limiting and
+  server-side role checks. No MFA gate or readiness failure is required.
+- The approved local address and retention are environment configuration,
+  not source constants. The supplied password is used only for provisioning
+  and stored as a hash; no plaintext password belongs in source or reports.
+- Daily expiry uses `scripts/run_research_retention.py`. On Windows the
+  registration script schedules it at 03:00 local time, catches missed runs
+  when available and refuses concurrent instances or an unreviewed task
+  overwrite. Failures return a failing exit status and count-only local logs.
+- The 15-day window expires sessions by last activity, their events/prompts
+  and archives containing expired data. Exclusions, subject links,
+  configurations, export descriptions and audit history remain. It does not
+  delete ordinary LMS data or already downloaded files on other computers.
+- Development provenance stays `development`. A Researcher still supplies
+  the collection period and explicitly starts collection; close-out does
+  not invent a real study period or real study records.
+
+### Additional evidence and current state
+
+Actual MySQL 8.0.46/InnoDB verification now covers the gaps in the preceding
+report: a restored whole-database backup (59 tables, 133 rows), fresh
+migrations, the two-revision upgrade with unchanged row digests for all 52
+earlier LMS tables, concurrent automatic subject provisioning, an immutable
+export snapshot during a concurrent writer, role/exclusion checks and
+15-day expiry. The six Chrome collector/feedback scenarios also passed
+against MySQL rather than SQLite. Temporary databases contained synthetic
+records; the development database was unchanged by those checks.
+
+`docs/PHASE6_COMPLETION.md` records the final strict-warning results, exact
+development revision, account/login checks, scheduler verification and
+recovery location. Those executed results supersede historical read-only
+deployment statements above. Multi-server clock skew, real device and
+assistive-technology coverage, questionnaire validity and model performance
+are not established by this close-out.

@@ -53,6 +53,7 @@ from flask import (
 )
 from flask_login import current_user
 
+from app.blueprints.collector.hooks import note_outcome
 from app.blueprints.messages import messages_bp
 from app.models import MESSAGE_BODY_MAX_LENGTH, MESSAGE_SUBJECT_MAX_LENGTH, UserRole
 from app.security.decorators import roles_required
@@ -120,6 +121,10 @@ _READ_ONLY = (
     "group. You can still read it."
 )
 _CONFLICT = "Your message could not be sent because of a conflicting change. Please try again."
+
+
+#: Research outcomes are noted only for Student senders (Phase 6).
+_STUDENT_ROLE = UserRole.STUDENT.value
 
 
 def _tz_name():
@@ -277,6 +282,8 @@ def create_thread():
     if body_error:
         errors["body"] = _BODY_ERRORS[body_error]
     if errors:
+        if actor_role == _STUDENT_ROLE:
+            note_outcome("message_send", "rejected")
         return _render_compose(
             recipient, actor_public_id, subject=subject_raw, body=body_raw,
             nonce=payload["nonce"], errors=errors,
@@ -291,6 +298,8 @@ def create_thread():
     )
 
     if outcome.status == message_transactions.SENT:
+        if actor_role == _STUDENT_ROLE:
+            note_outcome("message_send", "sent")
         flash("Message sent.", "success")
         response = redirect(
             url_for("messages.thread", thread_public_id=outcome.thread_public_id)
@@ -373,6 +382,7 @@ def reply(thread_public_id):
     """Append one reply, only while the relationship still allows it."""
     actor_id = current_user.id
     actor_public_id = current_user.public_id
+    actor_role = current_user.role
 
     found = _thread_or_404(actor_id, thread_public_id)
     thread_url = url_for("messages.thread", thread_public_id=found["public_id"])
@@ -396,6 +406,8 @@ def reply(thread_public_id):
 
     body, body_error = normalize_body(body_raw)
     if body_error:
+        if actor_role == _STUDENT_ROLE:
+            note_outcome("message_send", "rejected")
         return _render_thread(
             found, actor_id, actor_public_id, draft=body_raw, nonce=payload["nonce"],
             body_error=_BODY_ERRORS[body_error],
@@ -406,6 +418,8 @@ def reply(thread_public_id):
         found["id"], body, payload["nonce"],
     )
     if outcome.status == message_transactions.SENT:
+        if actor_role == _STUDENT_ROLE:
+            note_outcome("message_send", "sent")
         flash("Reply sent.", "success")
         response = redirect(thread_url)
         notify_message_received(outcome.message_id)

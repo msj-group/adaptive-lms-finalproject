@@ -1,0 +1,55 @@
+{#- Phase 6: the optional frustration question. Rendered hidden, only for an
+    eligible Student, and shown by usage_collector.js only after the server
+    granted a display. It asks exactly what it says -- how frustrated the
+    Student felt during recent use of the platform -- keeps the full 1-5 scale
+    and its anchors, has a clear Skip, and collects no free text. It claims no
+    other purpose (not grades, not support). Its own interaction is outside the
+    window it asks about. -#}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/research.css') }}">
+<section class="research-feedback" id="research-feedback" hidden
+         role="dialog" aria-modal="false" aria-labelledby="research-feedback-title"
+         aria-describedby="research-feedback-note">
+  <form class="research-feedback__form" data-feedback-form novalidate>
+    <h2 class="research-feedback__title" id="research-feedback-title" tabindex="-1">A quick question</h2>
+    <p class="research-feedback__note" id="research-feedback-note">
+      Answering is optional. Skipping does not affect your grades or your access.
+    </p>
+    <fieldset class="research-feedback__group">
+      <legend>Thinking about the last {{ research.lookback_phrase }} on this platform, how frustrated did you feel?</legend>
+      {% for value, label in research.anchors %}
+      <label class="research-feedback__choice">
+        <input type="radio" name="rating" value="{{ value }}" required>
+        <span><strong>{{ value }}</strong> &mdash; {{ label }}</span>
+      </label>
+      {% endfor %}
+    </fieldset>
+    <fieldset class="research-feedback__group">
+      <legend>What contributed to that feeling? <span class="research-feedback__optional">(optional, choose any)</span></legend>
+      {% for code, _column, label in research.causes %}
+      <label class="research-feedback__choice">
+        <input type="checkbox" name="cause" value="{{ code }}">
+        <span>{{ label }}</span>
+      </label>
+      {% endfor %}
+    </fieldset>
+    <div class="research-feedback__actions">
+      <button type="submit" class="btn btn--primary" data-feedback-submit disabled>Submit</button>
+      <button type="button" class="btn btn--secondary" data-feedback-skip>Skip</button>
+    </div>
+    <p class="research-feedback__status" data-feedback-status role="status" aria-live="polite"></p>
+    {#- The browser shows exactly one of these, by the server's answer.
+        "Thank you." only when the server confirms the exact choice sent;
+        after an unconfirmed attempt the sent choice stays frozen, the
+        buttons become "Try again" (resend it unchanged) and "Close"
+        (send nothing, claim nothing). -#}
+    <template data-feedback-messages>
+      <span data-message="recorded">Thank you.</span>
+      <span data-message="failed">We could not confirm that your response was saved. Please try again.</span>
+      <span data-message="kept">Your earlier response to this question was already saved. It has not been changed.</span>
+      <span data-message="expired">This question has expired. Nothing was recorded.</span>
+      <span data-message="unavailable">This question is no longer available.</span>
+      <span data-message="retry_label">Try again</span>
+      <span data-message="close_label">Close</span>
+    </template>
+  </form>
+</section>

@@ -1,0 +1,75 @@
+{% extends "layouts/research_base.html" %}
+{% from "research/_macros.html" import ms_time %}
+{% block title %}Session {{ session.subject_code }}{% endblock %}
+{% block research_content %}
+<h1>Session of {{ session.subject_code }}</h1>
+<p class="ds-section__desc">{{ provenance_labels[session.provenance] }} &middot; configuration version {{ session.version_number }}
+  &middot; times in {{ tz_name }}</p>
+
+<table class="dash-table" style="width:100%">
+  <tbody>
+    <tr><th scope="row" style="text-align:left">Started</th><td>{{ ms_time(to_local, session.started_at_ms) }}</td></tr>
+    <tr><th scope="row" style="text-align:left">Last activity</th><td>{{ ms_time(to_local, session.last_seen_at_ms) }}</td></tr>
+    <tr><th scope="row" style="text-align:left">End</th><td>{% if session.ended_at_ms is not none %}{{ ms_time(to_local, session.ended_at_ms) }} &mdash; {{ end_reason_labels.get(session.end_reason, session.end_reason) }}{% else %}Open (ends after {{ session.session_inactivity_minutes }} minutes without activity){% endif %}</td></tr>
+    {% for key, label in [('batches_received', 'Batches'), ('events_accepted', 'Events stored'), ('events_duplicate', 'Duplicates refused'),
+                          ('events_invalid', 'Invalid refused'), ('events_late', 'Late refused'), ('events_dropped_client', 'Dropped in browser'),
+                          ('sampling_eligible_checks', 'Eligible sampling checks'), ('sampling_ineligible_checks', 'Ineligible sampling checks')] %}
+    <tr><th scope="row" style="text-align:left">{{ label }}</th><td>{{ session[key] }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="dash-section">
+  <h2>Feedback prompts</h2>
+  {% if prompts %}
+  <table class="dash-table" style="width:100%">
+    <thead><tr><th scope="col">Reason</th><th scope="col">State</th><th scope="col">Offered</th><th scope="col">Deferrals</th>
+      <th scope="col">Shown</th><th scope="col">Observed in window</th><th scope="col">Rating (1&ndash;5)</th></tr></thead>
+    <tbody>
+    {% for item in prompts %}{% set p = item.row %}
+      <tr data-prompt>
+        <td>{{ p[1]|replace('_', ' ') }}</td>
+        <td>{{ prompt_state_labels[item.state] }}{% if p[10] %} (late answer not stored){% endif %}</td>
+        <td>{{ ms_time(to_local, p[2]) }}</td>
+        <td>{{ p[3] }}{% if p[4] %} ({{ p[4]|replace('_', ' ') }}){% endif %}</td>
+        <td>{{ ms_time(to_local, p[5]) }}</td>
+        <td>{% if p[7] is not none %}{{ (p[7] / 1000)|round|int }} s{% else %}&mdash;{% endif %}</td>
+        <td>{% if item.state == 'answered' %}{{ p[9] }}{% else %}&mdash;{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><div class="empty-state__title">No prompts</div><div>This session was not sampled. It is unlabeled.</div></div>
+  {% endif %}
+</div>
+
+<div class="dash-section">
+  <h2>Event timeline</h2>
+  <p class="ds-section__desc">Up to {{ timeline_cap }} events, in order of occurrence (server timescale). No content is stored for any event.</p>
+  {% if timeline %}
+  <div style="overflow-x: auto">
+  <table class="dash-table" style="width:100%">
+    <thead><tr><th scope="col">Time</th><th scope="col">Source</th><th scope="col">Event</th><th scope="col">Page</th>
+      <th scope="col">Element</th><th scope="col">Detail</th><th scope="col">Values</th></tr></thead>
+    <tbody>
+    {% for e in timeline %}
+      <tr data-event="{{ e[1] }}">
+        <td style="white-space: nowrap">{{ ms_time(to_local, e[8]) }}</td>
+        <td>{{ e[0] }}</td>
+        <td>{{ e[1] }}</td>
+        <td>{{ e[2] or "—" }}</td>
+        <td>{{ e[3] or "—" }}</td>
+        <td>{{ e[4] or "—" }}</td>
+        <td>{% if e[5] is not none %}count {{ e[5] }} {% endif %}{% if e[6] is not none %}{{ e[6] }} ms {% endif %}{% if e[7] is not none %}position {{ e[7] }}{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="empty-state__title">No events</div><div>No event was stored for this session.</div></div>
+  {% endif %}
+</div>
+<p><a class="btn btn--secondary" href="{{ url_for('research.sessions', provenance=session.provenance) }}">Back to sessions</a></p>
+{% endblock %}

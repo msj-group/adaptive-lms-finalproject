@@ -170,9 +170,9 @@ def test_the_navigation_and_index_lead_to_the_three_reports(app, client):
     px.login_world(app, client)
     html = rx.page(client, "/admin/dashboard")
     assert re.search(r'href="/admin/financial-reports">Financial reports</a>', html)
-    # Phase 6 / M01: Research is a real link now, and still a separate entry
-    # after every financial workspace.
-    assert re.search(r'href="/admin/research">Research</a>', html)
+    # The Phase 6 replacement removed research from the Administrator
+    # portal: there is no Research entry after the financial workspaces.
+    assert not re.search(r'href="/admin/research"', html)
     index = _html(client, rx.INDEX_URL)
     for url, title in ((rx.COLLECTIONS_URL, "Collections report"),
                        (rx.OUTSTANDING_URL, "Outstanding invoices report"),

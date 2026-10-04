@@ -161,7 +161,7 @@
   <div class="alert alert--danger" role="alert" style="margin-bottom: var(--space-4)">{{ form_error }}</div>
   {% endif %}
   {% if can_reply %}
-  <form method="post" action="{{ action }}" novalidate>
+  <form method="post" action="{{ action }}" novalidate data-research-form="discussion_reply">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="reply_state" value="{{ reply_state }}">
     <div class="field">
@@ -173,7 +173,7 @@
         and it cannot be edited or deleted once it is posted.
       </p>
     </div>
-    <button type="submit" class="btn btn--primary">Post reply</button>
+    <button type="submit" class="btn btn--primary" data-research-id="discussion_reply">Post reply</button>
   </form>
   {% else %}
   <div class="alert alert--warning" role="status">

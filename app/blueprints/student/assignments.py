@@ -65,6 +65,7 @@ from flask_login import current_user
 from itsdangerous import BadSignature, URLSafeSerializer
 from sqlalchemy.exc import IntegrityError
 
+from app.blueprints.collector.hooks import note_outcome
 from app.blueprints.student import student_bp
 from app.blueprints.student.forms import SubmissionForm
 from app.blueprints.student.routes import private_no_store
@@ -599,6 +600,7 @@ def assignment_submit(group_public_id, assignment_public_id):
     # ------------------------------------------------------------------
     if submission is not None:
         db.session.rollback()
+        note_outcome("assignment_submission", "duplicate")
         flash(
             "You have already submitted this assignment. Submissions are final and cannot be "
             "changed or replaced.",
@@ -616,6 +618,7 @@ def assignment_submit(group_public_id, assignment_public_id):
         # fresh token with the answer that was written against the OLD
         # wording is precisely the bypass this rejection exists to close.
         db.session.rollback()
+        note_outcome("assignment_submission", "rejected_stale")
         flash(
             "This assignment was changed since this page was opened. Please read the current "
             "version and write your answer again.",
@@ -625,6 +628,7 @@ def assignment_submit(group_public_id, assignment_public_id):
 
     if now_utc >= assignment.due_at:
         db.session.rollback()
+        note_outcome("assignment_submission", "rejected_closed")
         flash(
             "The deadline for this assignment has passed, so it can no longer be submitted.",
             "danger",
@@ -636,6 +640,7 @@ def assignment_submit(group_public_id, assignment_public_id):
         # the attempted answer again with the ORIGINAL token, so the
         # Student can fix it without losing what they wrote.
         db.session.rollback()
+        note_outcome("assignment_submission", "rejected_invalid")
         return _render_assignment_detail(
             group_public_id,
             assignment_public_id,
@@ -689,18 +694,21 @@ def assignment_submit(group_public_id, assignment_public_id):
         #    parameter or internal id ever reaches the Student. Nothing
         #    is written, overwritten or deleted on this path.
         if student_submission(recovered[0].id, student_id) is not None:
+            note_outcome("assignment_submission", "duplicate")
             flash(
                 "You have already submitted this assignment. Submissions are final and cannot "
                 "be changed or replaced.",
                 "info",
             )
             return redirect(detail_url)
+        note_outcome("assignment_submission", "failed")
         flash(
             "Your answer could not be submitted. Please reload the page and try again.",
             "danger",
         )
         return redirect(detail_url)
 
+    note_outcome("assignment_submission", "submitted")
     flash(
         "Your answer was submitted. It is final and cannot be edited or resubmitted.",
         "success",

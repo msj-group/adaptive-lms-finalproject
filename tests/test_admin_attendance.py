@@ -484,9 +484,10 @@ def test_the_admin_navigation_now_links_attendance(app, client):
     fx.login_as(client, "admin@example.com")
     html = client.get("/admin/dashboard").get_data(as_text=True)
     assert 'href="/admin/attendance"' in html
-    # Phase 4 / M08 enabled Grades, Phase 5 / M05 Payments and Phase 6 / M01
-    # Research -- the last disabled entry, so no "Soon" placeholder remains.
+    # Phase 4 / M08 enabled Grades and Phase 5 / M05 Payments; no "Soon"
+    # placeholder remains. The Phase 6 replacement removed research from the
+    # Administrator portal entirely, so no research entry is linked.
     assert 'href="/admin/grades"' in html
     assert 'href="/admin/payments"' in html
-    assert 'href="/admin/research"' in html
+    assert 'href="/admin/research"' not in html
     assert "Soon" not in html

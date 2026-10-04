@@ -36,6 +36,7 @@ surface (``app/blueprints/teacher/discussions.py``).
 from flask import abort, current_app, flash, redirect, request, url_for
 from flask_login import current_user
 
+from app.blueprints.collector.hooks import note_outcome
 from app.blueprints.student import student_bp
 from app.blueprints.student.routes import private_no_store
 from app.models import DISCUSSION_BODY_MAX_LENGTH, DiscussionTopicStatus, UserRole
@@ -224,19 +225,23 @@ def discussions_reply(group_public_id, topic_public_id):
             flash("This reply was already posted.", "info")
             return redirect(_reply_url(group["public_id"], topic, existing))
     if topic["status"] != _OPEN:
+        note_outcome("discussion_reply", "rejected")
         flash(_TOPIC_LOCKED, "warning")
         return redirect(topic_url)
     if payload is None:
+        note_outcome("discussion_reply", "rejected")
         return _render_topic(
             group, topic, actor_id, actor_public_id, draft=body_raw, form_error=_FORM_UNVERIFIED
         )
     if payload["topic_version"] != topic["version"]:
+        note_outcome("discussion_reply", "rejected")
         return _render_topic(
             group, topic, actor_id, actor_public_id, draft=body_raw, form_error=_TOPIC_CHANGED
         )
 
     body, body_error = normalize_body(body_raw)
     if body_error:
+        note_outcome("discussion_reply", "rejected")
         return _render_topic(
             group, topic, actor_id, actor_public_id, draft=body_raw, nonce=payload["nonce"],
             body_error=_REPLY_ERRORS[body_error],
@@ -247,6 +252,7 @@ def discussions_reply(group_public_id, topic_public_id):
         payload["nonce"],
     )
     if outcome.status == tx.CREATED:
+        note_outcome("discussion_reply", "posted")
         flash("Reply posted.", "success")
         return redirect(_reply_url(group["public_id"], topic, outcome.public_id))
     if outcome.status == tx.DUPLICATE:
@@ -255,12 +261,15 @@ def discussions_reply(group_public_id, topic_public_id):
     if outcome.status == tx.UNAVAILABLE:
         abort(404)
     if outcome.status == tx.TOPIC_LOCKED:
+        note_outcome("discussion_reply", "rejected")
         flash(_TOPIC_LOCKED, "warning")
         return redirect(topic_url)
     if outcome.status == tx.STALE:
+        note_outcome("discussion_reply", "rejected")
         current = _topic_or_404(group, topic["public_id"])
         return _render_topic(
             group, current, actor_id, actor_public_id, draft=body_raw, form_error=_TOPIC_CHANGED
         )
+    note_outcome("discussion_reply", "rejected")
     flash(_CONFLICT, "danger")
     return redirect(topic_url)

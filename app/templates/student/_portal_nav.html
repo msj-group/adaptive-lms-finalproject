@@ -6,22 +6,22 @@
    Teacher / Administrator pages are unaffected -- they define their own
    `portal_nav` block and never include this file. #}
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'dashboard' else '' }}"
-   href="{{ url_for('student.dashboard') }}">Dashboard</a>
+   href="{{ url_for('student.dashboard') }}" data-research-id="nav_dashboard">Dashboard</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'assignments' else '' }}"
-   href="{{ url_for('student.assignments_list') }}">Assignments</a>
+   href="{{ url_for('student.assignments_list') }}" data-research-id="nav_assignments">Assignments</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'quizzes' else '' }}"
-   href="{{ url_for('student.quiz_list') }}">Quizzes</a>
+   href="{{ url_for('student.quiz_list') }}" data-research-id="nav_quizzes">Quizzes</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'listening' else '' }}"
-   href="{{ url_for('student.listening_list') }}">Listening</a>
+   href="{{ url_for('student.listening_list') }}" data-research-id="nav_listening">Listening</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'speaking' else '' }}"
-   href="{{ url_for('student.speaking_list') }}">Speaking</a>
+   href="{{ url_for('student.speaking_list') }}" data-research-id="nav_speaking">Speaking</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'attendance' else '' }}"
-   href="{{ url_for('student.attendance_list') }}">Attendance</a>
+   href="{{ url_for('student.attendance_list') }}" data-research-id="nav_attendance">Attendance</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'grades' else '' }}"
-   href="{{ url_for('student.grades_list') }}">Grades</a>
+   href="{{ url_for('student.grades_list') }}" data-research-id="nav_grades">Grades</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'announcements' else '' }}"
-   href="{{ url_for('student.announcements_list') }}">Announcements</a>
+   href="{{ url_for('student.announcements_list') }}" data-research-id="nav_announcements">Announcements</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'calendar' else '' }}"
-   href="{{ url_for('student.calendar') }}">Calendar</a>
+   href="{{ url_for('student.calendar') }}" data-research-id="nav_calendar">Calendar</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'search' else '' }}"
-   href="{{ url_for('student.search') }}">Search</a>
+   href="{{ url_for('student.search') }}" data-research-id="nav_search">Search</a>

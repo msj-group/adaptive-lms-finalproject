@@ -2,7 +2,7 @@ import pytest
 
 from app import create_app
 from app.extensions import db
-from app.models import User, UserStatus
+from app.models import User, UserRole, UserStatus
 from app.security.passwords import hash_password
 
 
@@ -55,5 +55,19 @@ def make_user(email, role, status=UserStatus.ACTIVE.value, password="Sup3rSecret
     return user
 
 
+def login_path(email):
+    """The login entry an account signs in through.
+
+    Phase 6: Researcher accounts sign in only through the dedicated research
+    login; the LMS login refuses them. Every other role uses ``/auth/login``.
+    """
+    from flask import has_app_context
+
+    if not has_app_context():
+        return "/auth/login"
+    role = db.session.query(User.role).filter(User.email == email.strip().lower()).scalar()
+    return "/research/login" if role == UserRole.RESEARCHER.value else "/auth/login"
+
+
 def login(client, email, password="Sup3rSecret!123"):
-    return client.post("/auth/login", data={"email": email, "password": password}, follow_redirects=True)
+    return client.post(login_path(email), data={"email": email, "password": password}, follow_redirects=True)

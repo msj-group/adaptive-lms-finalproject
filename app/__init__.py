@@ -7,6 +7,7 @@ from app.extensions import csrf, db, limiter, login_manager, migrate
 from app.errors import register_error_handlers
 from app.services.material_config import resolve_material_config
 from app.services.payment_providers import resolve_payment_provider
+from app.services.research_settings import resolve_research_settings
 
 
 def create_app(config_name=None, **config_overrides):
@@ -42,6 +43,10 @@ def create_app(config_name=None, **config_overrides):
     # environment) configured for the mock provider refuses to start.
     app.extensions["payment_provider"] = resolve_payment_provider(app.config, config_name)
 
+    # Phase 6: research deployment settings (provenance, retention, the
+    # Researcher provisioning allowlist). Fail closed on an invalid value.
+    resolve_research_settings(app.config)
+
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
@@ -49,6 +54,9 @@ def create_app(config_name=None, **config_overrides):
     limiter.init_app(app)
 
     login_manager.login_view = "auth.login"
+    # Phase 6: an anonymous visitor to the Researcher workspace is sent to its
+    # own login entry, never to the LMS login.
+    login_manager.blueprint_login_views = {"research": "research.login"}
 
     from app.models import User
 
@@ -73,21 +81,24 @@ def create_app(config_name=None, **config_overrides):
     from app.blueprints.notifications import notifications_bp
     from app.blueprints.messages import messages_bp
     from app.blueprints.webhooks import webhooks_bp
+    from app.blueprints.collector import collector_bp
 
     app.register_blueprint(design_system_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(teacher_bp)
     app.register_blueprint(student_bp)
-    # Phase 6 / M01: the Researcher portal, gated to an active Researcher
-    # account. Its participation pages are read-only; Phase 6 / M02A adds
-    # the experiment protocol catalogue, the Researcher's only writes.
+    # Phase 6: the separate Researcher workspace, with its own login entry,
+    # gated to an active Researcher account on every rule.
     app.register_blueprint(research_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(messages_bp)
     # Phase 5 / M07: the public, CSRF-exempt, signature-verified provider
     # webhook endpoint (404 unless the Mock/Sandbox provider is enabled).
     app.register_blueprint(webhooks_bp)
+    # Phase 6: the Student-side research collector (authenticated, CSRF-
+    # protected JSON endpoints; inert for anyone outside collection scope).
+    app.register_blueprint(collector_bp)
 
     # M14: the shared Student/Teacher portal header renders a
     # Notifications link and unread badge. This injects a *callable*, not
@@ -105,21 +116,23 @@ def create_app(config_name=None, **config_overrides):
 
         return {"notification_header": lambda: header_badge(current_user)}
 
-    # Phase 6 / M01: the shared Student/Teacher portal header renders a
-    # Research consent link for a Student who has an invitation to answer or
-    # an acceptance they may withdraw. Injected as a *callable*, exactly like
-    # the notification badge above, so a template that never calls it (every
-    # Administrator page, the Researcher portal, the login page, the error
-    # pages) costs no query at all; the helper itself is role-gated and
-    # returns None for every other case -- so no Student is ever shown a
-    # consent prompt that is not theirs.
+    # Phase 6: the shared portal layout renders the research collector and
+    # the optional feedback dialog only for a Student inside the collection
+    # scope. Injected as a *callable*, like the notification badge: one
+    # memoised, bounded query per request, failing closed to "render
+    # nothing" -- the same query budget the removed consent link used.
     @app.context_processor
-    def inject_research_consent_link():
-        from flask_login import current_user
+    def inject_research_collector():
+        from app.blueprints.collector.hooks import collector_view
 
-        from app.services.research_queries import portal_consent_status
+        return {"research_collector": collector_view}
 
-        return {"research_consent_status": lambda: portal_consent_status(current_user)}
+    # Phase 6: server-confirmed outcomes that Student routes noted are
+    # recorded after the route committed or rolled back. Best-effort and
+    # isolated: it never raises and never changes the response.
+    from app.blueprints.collector.hooks import flush_outcomes
+
+    app.after_request(flush_outcomes)
 
     register_error_handlers(app)
 

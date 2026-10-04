@@ -70,6 +70,7 @@ from itsdangerous import BadSignature, URLSafeSerializer
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import HTTPException
 
+from app.blueprints.collector.hooks import note_outcome
 from app.blueprints.student import student_bp
 from app.blueprints.student.routes import private_no_store
 from app.blueprints.student.speaking_forms import SpeakingSubmissionForm
@@ -774,6 +775,7 @@ def speaking_submit(group_public_id, speaking_public_id):
     # request writes no file, no UploadedFile, no access-log row and no
     # submission. It is re-proved under the locks below as well.
     if student_speaking_submission(preview_activity.id, student_id) is not None:
+        note_outcome("speaking_submission", "duplicate")
         flash(
             "You have already submitted a recording for this speaking activity. It is final "
             "and cannot be changed or replaced.",
@@ -789,6 +791,7 @@ def speaking_submit(group_public_id, speaking_public_id):
         or payload["group_public_id"] != group_public_id
         or payload["speaking_public_id"] != speaking_public_id
     ):
+        note_outcome("speaking_submission", "rejected_stale")
         flash(
             "This page could not be verified (it may be old or was opened in another tab). "
             "Please open the recording page again.",
@@ -802,6 +805,7 @@ def speaking_submit(group_public_id, speaking_public_id):
 
     form = SpeakingSubmissionForm()
     if not form.validate_on_submit():
+        note_outcome("speaking_submission", "rejected_invalid")
         return _render_record_page(
             group_public_id, speaking_public_id, item, form, submitted_token
         )
@@ -815,6 +819,7 @@ def speaking_submit(group_public_id, speaking_public_id):
     upload = form.audio.data
     if candidate_extension(getattr(upload, "filename", "") or "") not in SPEAKING_AUDIO_EXTENSIONS:
         form.audio.errors.append(UNSUPPORTED_AUDIO_MESSAGE)
+        note_outcome("speaking_submission", "rejected_invalid")
         return _render_record_page(
             group_public_id, speaking_public_id, item, form, submitted_token
         )
@@ -826,6 +831,7 @@ def speaking_submit(group_public_id, speaking_public_id):
         # Student-caused: this message is deliberately safe -- no path, no
         # SQL, no exception internals.
         form.audio.errors.append(str(exc))
+        note_outcome("speaking_submission", "rejected_invalid")
         return _render_record_page(
             group_public_id, speaking_public_id, item, form, submitted_token
         )
@@ -879,6 +885,7 @@ def speaking_submit(group_public_id, speaking_public_id):
         # covers a submission that committed while this one was streaming.
         if submission is not None:
             db.session.rollback()
+            note_outcome("speaking_submission", "duplicate")
             flash(
                 "You have already submitted a recording for this speaking activity. It is "
                 "final and cannot be changed or replaced.",
@@ -895,6 +902,7 @@ def speaking_submit(group_public_id, speaking_public_id):
             assignment, activity,
         ):
             db.session.rollback()
+            note_outcome("speaking_submission", "rejected_stale")
             flash(
                 "This speaking activity was changed since this page was opened. Please read "
                 "the current version and record your answer again.",
@@ -904,6 +912,7 @@ def speaking_submit(group_public_id, speaking_public_id):
 
         if now_utc >= assignment.due_at:
             db.session.rollback()
+            note_outcome("speaking_submission", "rejected_closed")
             flash(
                 "The deadline for this speaking activity has passed, so your recording was "
                 "not submitted.",
@@ -972,12 +981,14 @@ def speaking_submit(group_public_id, speaking_public_id):
             #    Nothing is written, overwritten or deleted on this path,
             #    and `finally` removes only THIS request's own file.
             if student_speaking_submission(recovered[5].id, student_id) is not None:
+                note_outcome("speaking_submission", "duplicate")
                 flash(
                     "You have already submitted a recording for this speaking activity. It "
                     "is final and cannot be changed or replaced.",
                     "info",
                 )
                 return redirect(receipt_url)
+            note_outcome("speaking_submission", "failed")
             flash(
                 "Your recording could not be submitted. Please reload the page and try "
                 "again.",
@@ -1004,6 +1015,7 @@ def speaking_submit(group_public_id, speaking_public_id):
         if not committed:
             _cleanup_orphan_upload(material_config, stored.storage_key)
 
+    note_outcome("speaking_submission", "submitted")
     flash(
         "Your recording was submitted. It is final and cannot be edited, replaced, or "
         "submitted again.",

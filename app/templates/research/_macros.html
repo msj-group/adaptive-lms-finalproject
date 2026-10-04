@@ -1,0 +1,34 @@
+{% macro pager(pagination, noun) -%}
+<nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3); flex-wrap: wrap"
+     aria-label="{{ noun }} pages">
+  {% if pagination.prev_url %}<a class="btn btn--secondary" href="{{ pagination.prev_url }}">Previous</a>{% endif %}
+  <span class="ds-section__desc" style="margin: 0">
+    {{ noun }} {{ pagination.first }}&ndash;{{ pagination.last }} of {{ pagination.total }}, newest first
+  </span>
+  {% if pagination.next_url %}<a class="btn btn--secondary" href="{{ pagination.next_url }}">Next</a>{% endif %}
+</nav>
+{%- endmacro %}
+
+{% macro provenance_filter(endpoint, provenance, labels) -%}
+<form method="get" action="{{ url_for(endpoint) }}" class="ds-row"
+      style="margin-bottom: var(--space-4); align-items: flex-end; gap: var(--space-3); flex-wrap: wrap">
+  <div class="field" style="margin: 0">
+    <label class="field__label" for="provenance">Data shown</label>
+    <select name="provenance" id="provenance" class="field__input" style="width: auto">
+      {% for value, label in labels.items() %}
+      <option value="{{ value }}" {{ "selected" if provenance == value else "" }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn btn--secondary">Show</button>
+</form>
+{% if provenance != 'study' %}
+<div class="alert alert--warning" style="margin-bottom: var(--space-4)">
+  {{ labels[provenance] }}. It is never exported and must not be reported as a finding.
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro ms_time(to_local, ms) -%}
+{%- if ms is not none %}{{ to_local(ms).strftime("%Y-%m-%d %H:%M:%S") }}{% else %}&mdash;{% endif -%}
+{%- endmacro %}

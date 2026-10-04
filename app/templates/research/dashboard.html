@@ -1,103 +1,154 @@
-{% extends "layouts/portal_base.html" %}
-{% block title %}Research Dashboard{% endblock %}
-{% block portal_nav %}{% set active_nav = 'dashboard' %}{% include "research/_portal_nav.html" %}{% endblock %}
-{% block portal_content %}
-{#- Phase 6 / M01, corrected by M01R, extended by M02A. Real counts of real
-    rows, and nothing else: no chart, no rate, no experiment result, no
-    behavioural metric. What this workspace records is research
-    administration (the invitation and the consent decision) and
-    Researcher-authored experiment protocol versions; what it does not collect
-    is behavioural interaction data. The page says exactly that, rather than
-    claiming no data at all is recorded or implying a result with an empty
-    graph. M02A removed the M01 statements that this workspace holds consent
-    only: once a protocol row exists they would be false. -#}
-<h1>Research</h1>
+{% extends "layouts/research_base.html" %}
+{% from "research/_macros.html" import provenance_filter %}
+{% block title %}Research dashboard{% endblock %}
+{% block research_content %}
+{#- Real counts of stored rows only, with explicit empty states. No
+    prediction, no accuracy figure, no chart of measured emotion. -#}
+<h1>Research dashboard</h1>
 <p class="ds-section__desc">
-  Participants are shown by research code; no student names, email addresses or account
-  identifiers appear anywhere in this portal. Experiment protocols are task catalogues written
-  by researchers.
+  Version A natural-use collection. Students appear only as pseudonymous subject codes: no
+  names, email addresses or account identifiers appear in this workspace. Nothing here detects,
+  predicts or measures frustration; ratings are optional self-reports.
 </p>
 
-<div class="stat-grid">
-  {% for status in status_order %}
-  <div class="stat-card" data-count="{{ status }}">
-    <div class="stat-card__value">{{ counts[status] }}</div>
-    <div class="stat-card__label">{{ status_labels[status] }}</div>
-  </div>
-  {% endfor %}
-</div>
-
 <div class="dash-section">
-  <h2>Participants</h2>
-  {% if total %}
-  <p class="ds-section__desc">
-    {{ total }} participant{{ "" if total == 1 else "s" }} in total, by research code and consent state.
-  </p>
-  <a class="btn btn--primary" href="{{ participants_url }}">Open participants</a>
+  <h2>Collection status</h2>
+  {% if active %}
+  <div class="card"><div class="card__body">
+    <p style="margin:0 0 var(--space-2)">
+      Active configuration: <strong>version {{ active.version_number }}</strong> &mdash; {{ active.label }}
+      <a href="{{ url_for('research.configuration_detail', configuration_public_id=active.public_id) }}">Open</a>
+    </p>
+    <p style="margin:0" data-collection-state>
+      {% if active.is_collecting and period_state == 'open' %}
+      <span class="badge badge--success">Collecting</span>
+      {% elif active.is_collecting %}
+      <span class="badge badge--warning">Collecting enabled, outside the period ({{ period_state|replace('_', ' ') }})</span>
+      {% else %}
+      <span class="badge badge--neutral">Paused</span>
+      {% endif %}
+    </p>
+  </div></div>
   {% else %}
   <div class="empty-state">
-    <div class="empty-state__title">No participants yet</div>
-    <div>
-      An administrator invites a student into the study, and only that student can accept.
-      Invited participants will appear here by research code.
-    </div>
+    <div class="empty-state__title">No active configuration</div>
+    <div>Nothing is being collected. Create and activate a configuration, then start collecting.</div>
   </div>
   {% endif %}
 </div>
 
 <div class="dash-section">
-  <h2>Experiment protocols</h2>
-  <div class="stat-grid">
-    {% for status in protocol_status_order %}
-    <div class="stat-card" data-protocol-count="{{ status }}">
-      <div class="stat-card__value">{{ protocol_counts[status] }}</div>
-      <div class="stat-card__label">{{ protocol_status_labels[status] }}</div>
-    </div>
+  <h2>Production readiness</h2>
+  <table class="dash-table" style="width:100%">
+    <tbody>
+    {% for item in readiness %}
+      <tr>
+        <th scope="row" style="text-align:left">{{ item.label }}</th>
+        <td>
+          {% if item.ok is none %}<span class="badge badge--neutral">External</span>
+          {% elif item.ok %}<span class="badge badge--success">Yes</span>
+          {% else %}<span class="badge badge--danger">No</span>{% endif %}
+        </td>
+        <td>{{ item.detail }}</td>
+      </tr>
     {% endfor %}
-  </div>
-  <p class="ds-section__desc">
-    {% if protocol_total %}
-    {{ protocol_total }} protocol version{{ "" if protocol_total == 1 else "s" }} in the catalogue.
-    {% else %}
-    No protocol versions yet. A researcher writes a draft, reviews it, and activates it inside
-    the catalogue.
-    {% endif %}
-  </p>
-  <a class="btn btn--primary" href="{{ protocols_url }}">Open protocols</a>
+    </tbody>
+  </table>
 </div>
 
 <div class="dash-section">
-  <h2>What this workspace contains</h2>
-  <div class="card">
-    <div class="card__body">
-      <p style="margin: 0 0 var(--space-3)">
-        <strong>What is recorded.</strong> Research administration: each participant&rsquo;s
-        invitation, their consent status, which consent document version they decided on, and
-        an append-only history of those decisions. Researchers also write experiment protocol
-        versions &mdash; task wording, intended difficulty, recommended duration and intended
-        completion criteria. A protocol is a task definition; no participant is linked to one.
-      </p>
-      <p style="margin: 0 0 var(--space-3)">
-        <strong>What is not collected.</strong> There is no behavioural interaction data: no
-        interaction events, no browser tracking, no experiment sessions or task sessions, no
-        surveys, no frustration ratings, no observer annotations, no exports, no datasets, no
-        model training, no inference and no adaptive intervention. Nothing about a
-        student&rsquo;s behaviour is collected, measured or inferred here.
-      </p>
-      <p style="margin: 0 0 var(--space-3)">
-        <strong>Protocol activation.</strong> Activating a protocol version freezes its wording
-        inside this catalogue and makes it the one active version for Version A collection. It
-        starts no session and no collection, and it is not an ethics approval.
-      </p>
-      <p style="margin: 0">
-        A participant shown as <strong>Active</strong> has read and accepted a specific version
-        of the consent document. A participant shown as <strong>Withdrawn</strong> is no longer
-        eligible for any future research session. What any future collection would cover, how
-        long it would be kept and how it would be handled are matters for the consent document a
-        participant accepted and for the approvals the centre obtains outside this platform
-        &mdash; activating a document here is an administrative action, not an ethics approval.
-      </p>
-    </div>
+  <h2>Population</h2>
+  <p class="ds-section__desc">While a configuration collects, every active Student account is
+    collected automatically unless it is excluded. A subject code is created the first time
+    collection reaches an account, so these are counts of subjects created so far, not of the
+    whole population. Exclusions and reinstatements are recorded with the operator tool.
+    <a href="{{ url_for('research.exclusions') }}">View exclusions</a></p>
+  <div class="stat-grid">
+    <div class="stat-card" data-subjects="included"><div class="stat-card__value">{{ subjects.included }}</div><div class="stat-card__label">Collected subjects</div></div>
+    <div class="stat-card" data-subjects="reinstated"><div class="stat-card__value">{{ subjects.reinstated }}</div><div class="stat-card__label">Of which reinstated</div></div>
+    <div class="stat-card" data-subjects="excluded"><div class="stat-card__value">{{ subjects.excluded }}</div><div class="stat-card__label">Excluded</div></div>
+    <div class="stat-card" data-subjects="legacy"><div class="stat-card__value">{{ subjects.legacy_excluded }}</div><div class="stat-card__label">Of which legacy exclusions</div></div>
+    <div class="stat-card" data-subjects="demo"><div class="stat-card__value">{{ subjects.demo }}</div><div class="stat-card__label">Demonstration subjects</div></div>
   </div>
+</div>
+
+{{ provenance_filter('research.dashboard', provenance, provenance_labels) }}
+
+<div class="dash-section">
+  <h2>Sessions and delivery quality</h2>
+  {% if sessions.sessions %}
+  <div class="stat-grid">
+    {% for key, label in [('sessions', 'Sessions'), ('ended', 'Ended sessions'), ('subjects', 'Subjects with sessions'),
+                          ('batches_received', 'Batches'), ('events_accepted', 'Events stored'),
+                          ('events_duplicate', 'Duplicates refused'), ('events_invalid', 'Invalid refused'),
+                          ('events_late', 'Late refused'), ('events_dropped_client', 'Dropped in browser')] %}
+    <div class="stat-card" data-sessions="{{ key }}"><div class="stat-card__value">{{ sessions[key] }}</div><div class="stat-card__label">{{ label }}</div></div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="empty-state__title">No sessions</div>
+    <div>No natural-use session with this provenance has been recorded.</div></div>
+  {% endif %}
+</div>
+
+<div class="dash-section">
+  <h2>Feedback prompts and label coverage</h2>
+  {% if prompts.offered %}
+  <p class="ds-section__desc">
+    Sampling checks: {{ sessions.sampling_eligible_checks }} eligible, {{ sessions.sampling_ineligible_checks }} ineligible.
+    Prompts offered: {{ prompts.offered }}; shown: {{ prompts.displayed }}; answered: {{ prompts.answered }}.
+    Label coverage (answered of shown):
+    <strong data-label-coverage>{% if prompts.label_coverage is not none %}{{ '%.1f'|format(prompts.label_coverage * 100) }}%{% else %}&mdash;{% endif %}</strong>.
+    Late answers not stored: {{ prompts.late_responses }}.
+  </p>
+  <table class="dash-table" style="width:100%">
+    <thead><tr><th scope="col">State</th><th scope="col">Prompts</th></tr></thead>
+    <tbody>
+    {% for state, count in prompts.states.items() %}
+      <tr data-prompt-state="{{ state }}"><td>{{ prompt_state_labels[state] }}</td><td>{{ count }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="ds-section__desc" style="margin-top: var(--space-3)">
+    Sampling reasons:
+    {% for reason, count in prompts.reasons.items() %}{{ reason|replace('_', ' ') }} {{ count }}{{ ", " if not loop.last }}{% else %}none{% endfor %}.
+    Deferrals:
+    {% for reason, count in prompts.deferrals.items() %}{{ reason|replace('_', ' ') }} {{ count }}{{ ", " if not loop.last }}{% else %}none{% endfor %}.
+  </p>
+  {% else %}
+  <div class="empty-state"><div class="empty-state__title">No prompts</div>
+    <div>No feedback prompt has been offered with this provenance. Data without a rating stays unlabeled.</div></div>
+  {% endif %}
+</div>
+
+<div class="dash-section">
+  <h2>Coverage</h2>
+  <div class="stat-grid">
+    {% for size, count in devices.items() %}
+    <div class="stat-card" data-device="{{ size }}"><div class="stat-card__value">{{ count }}</div><div class="stat-card__label">Page views, {{ size }} screens</div></div>
+    {% endfor %}
+  </div>
+  <table class="dash-table" style="width:100%; margin-top: var(--space-3)">
+    <thead><tr><th scope="col">Workflow area</th><th scope="col">Page views</th></tr></thead>
+    <tbody>
+    {% for area in coverage_areas %}<tr data-area="{{ area }}"><td>{{ area }}</td><td>{{ areas[area] }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="dash-section">
+  <h2>Event types</h2>
+  {% if event_types %}
+  <table class="dash-table" style="width:100%">
+    <thead><tr><th scope="col">Source</th><th scope="col">Event type</th><th scope="col">Stored</th></tr></thead>
+    <tbody>
+    {% for source, event_type, count in event_types %}
+      <tr><td>{{ source }}</td><td>{{ event_type }}</td><td>{{ count }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><div class="empty-state__title">No events</div><div>Nothing has been stored with this provenance.</div></div>
+  {% endif %}
 </div>
 {% endblock %}

@@ -790,164 +790,138 @@ class ProviderEventOutcome(str, enum.Enum):
     RECONCILIATION_REQUIRED = "reconciliation_required"
 
 
-class ResearchConsentDocumentStatus(str, enum.Enum):
-    """The lifecycle of one versioned research consent document
-    (Phase 6 / M01).
+class ResearchCollectionStatus(str, enum.Enum):
+    """Whether one research subject is inside the natural-use collection
+    population (Phase 6 replacement).
 
-    - ``draft`` -- written by an Administrator and **never shown to a
-      Student as valid consent text**. It may still be edited.
-    - ``active`` -- activated by an Administrator. Its version, title, body
-      and digest are frozen forever, and it is the one document a Student
-      may consent to. At most one document is ``active`` at any moment.
-    - ``superseded`` -- a previously active document replaced by a newer
-      activation. It is never edited and never deleted: participants who
-      accepted it keep pointing at exactly the text they read.
+    - ``included`` -- collected while a configuration is live. **This is not a
+      consent decision the Student took inside the application**, and nothing
+      here claims one.
+    - ``excluded`` -- collection must not happen for this Student, whatever
+      the configuration says. Rechecked on every write, including a delayed
+      batch, and never reversed by logging in or visiting a page.
 
-    Adding a member is a schema change (the
-    ``research_consent_documents.status`` CHECK), which is the point.
+    Adding a member is a schema change (the ``research_subjects`` CHECK).
+    """
+
+    INCLUDED = "included"
+    EXCLUDED = "excluded"
+
+
+class ResearchStatusBasis(str, enum.Enum):
+    """The truthful provenance of a subject's collection status.
+
+    - ``population_rule`` -- included automatically because the account is an
+      eligible Student; the server provisioned the subject at its first
+      collection write. Not an individual acceptance, and not an operator
+      confirmation;
+    - ``operator_reinstatement`` -- an operator lifted an earlier exclusion
+      (audited);
+    - ``external_exclusion`` -- excluded through the centre's external
+      process, as recorded by an operator (audited);
+    - ``legacy_collection_exclusion`` -- excluded by the replacement migration
+      because the superseded in-app workflow held a refusal or a withdrawal
+      for this Student. It preserves that exclusion; it never restores or
+      implies an acceptance.
+    """
+
+    POPULATION_RULE = "population_rule"
+    OPERATOR_REINSTATEMENT = "operator_reinstatement"
+    EXTERNAL_EXCLUSION = "external_exclusion"
+    LEGACY_COLLECTION_EXCLUSION = "legacy_collection_exclusion"
+
+
+class ResearchProvenance(str, enum.Enum):
+    """Server-controlled data provenance. A client can never set it.
+
+    - ``study`` -- real research data. The only provenance ever exported.
+    - ``demo`` -- a subject an operator marked as a demonstration account;
+      everything collected for it is demo data.
+    - ``development`` -- collected by an application not configured as a
+      study deployment (``RESEARCH_DATA_PROVENANCE``).
+    """
+
+    STUDY = "study"
+    DEMO = "demo"
+    DEVELOPMENT = "development"
+
+
+class ResearchConfigurationStatus(str, enum.Enum):
+    """The lifecycle of one versioned collection configuration.
+
+    ``draft`` may be edited by a Researcher; ``active`` is frozen and is the
+    one configuration collection runs under (its operational collecting or
+    paused state still changes); ``retired`` is frozen forever. At most one
+    configuration is ``active``.
     """
 
     DRAFT = "draft"
     ACTIVE = "active"
-    SUPERSEDED = "superseded"
+    RETIRED = "retired"
 
 
-class ResearchParticipantStatus(str, enum.Enum):
-    """The stored lifecycle of one research participant (Phase 6 / M01).
+class ResearchSessionEndReason(str, enum.Enum):
+    """Why a natural-use session ended, when that is known."""
 
-    - ``invited`` -- an Administrator created the participant. **This is not
-      consent**: no Student decision has been recorded.
-    - ``active`` -- the linked Student explicitly accepted the active consent
-      document.
-    - ``declined`` -- the linked Student explicitly declined.
-    - ``withdrawn`` -- the linked Student accepted earlier and later withdrew.
-      Withdrawal is terminal in M01: re-invitation and re-consent are
-      deferred to a later Part.
+    LOGOUT = "logout"
+    INACTIVITY = "inactivity"
+    CONFIGURATION_CHANGED = "configuration_changed"
+    COLLECTION_STOPPED = "collection_stopped"
+    SUBJECT_INELIGIBLE = "subject_ineligible"
 
-    The status is **stored**, moved in the same transaction and the same
-    commit as the append-only consent event that explains it (see
-    ``docs/DECISIONS.md``, Phase 6 / M01). Adding a member is a schema change
-    (the ``research_participants.status`` CHECK).
+
+class ResearchPromptStatus(str, enum.Enum):
+    """The stored state of one sampled feedback prompt.
+
+    ``offered`` -- sampled, not yet shown; ``displayed`` -- shown, not yet
+    answered; ``answered`` -- a 1-5 rating was given; ``dismissed`` -- the
+    Student chose Skip. An offer that is never shown and a display that is
+    never answered are *derived* from the moments and the configuration's
+    lifetimes, never stored as a guess.
     """
 
-    INVITED = "invited"
-    ACTIVE = "active"
-    DECLINED = "declined"
-    WITHDRAWN = "withdrawn"
+    OFFERED = "offered"
+    DISPLAYED = "displayed"
+    ANSWERED = "answered"
+    DISMISSED = "dismissed"
 
 
-class ResearchConsentAction(str, enum.Enum):
-    """One meaningful transition in the append-only research consent history
-    (Phase 6 / M01).
+class ResearchSamplingReason(str, enum.Enum):
+    """Why a prompt was offered: a random eligible moment, or a natural
+    activity ending. Never a suspicion of frustration."""
 
-    Exactly the three decisions a Student can take. There is no ``invited``
-    action -- creating a participant is an Administrator act, not a consent
-    decision, and recording it here would read as history the Student made.
-    """
-
-    ACCEPTED = "accepted"
-    DECLINED = "declined"
-    WITHDRAWN = "withdrawn"
+    RANDOM = "random"
+    ACTIVITY_END = "activity_end"
 
 
-class ExperimentDefinitionStatus(str, enum.Enum):
-    """The lifecycle of one experiment protocol version (Phase 6 / M02A).
+class ResearchDeferralReason(str, enum.Enum):
+    """Why the browser deferred showing an offered prompt."""
 
-    - ``draft`` -- written and edited by a Researcher. Its header, task sets
-      and tasks may still change, one aggregate version at a time.
-    - ``active`` -- internally activated by a Researcher: the version, its
-      task sets and its tasks are frozen and sealed by a content digest.
-      **This is a catalogue state, not an ethics approval**, and it starts no
-      session and no collection -- none exists in M02A. At most one version
-      per study stage is ``active``.
-    - ``superseded`` -- a previously active version replaced by a newer
-      activation for the same study stage. Frozen and never deleted.
-    - ``discarded`` -- a draft a Researcher abandoned. Frozen and never
-      deleted: a mistaken draft is discarded and recreated rather than
-      physically removed.
-
-    Adding a member is a schema change (the ``experiment_definitions.status``
-    CHECK), which is the point.
-    """
-
-    DRAFT = "draft"
-    ACTIVE = "active"
-    SUPERSEDED = "superseded"
-    DISCARDED = "discarded"
+    TIMED_ACTIVITY = "timed_activity"
+    RECORDING = "recording"
+    UPLOADING = "uploading"
+    HIDDEN_TAB = "hidden_tab"
 
 
-class ExperimentStudyStage(str, enum.Enum):
-    """The study stage one protocol version belongs to (Phase 6 / M02A).
+class ResearchAuditAction(str, enum.Enum):
+    """One audited research administration action. No Student content."""
 
-    Exactly one member: ``version_a_collection``, the Version A-only stage in
-    which real behavioural data would later be collected for model
-    development. A/B evaluation protocols are a later stage and need a
-    deliberate schema change (the ``experiment_definitions.study_stage``
-    CHECK) and a methodology decision; nothing here anticipates them. The
-    stage also scopes the one-active-version rule.
-    """
-
-    VERSION_A_COLLECTION = "version_a_collection"
-
-
-class ExperimentTaskType(str, enum.Enum):
-    """The LMS workflow one catalogue task describes (Phase 6 / M02A).
-
-    A **staged subset** of the supervisor's seven task areas, limited to
-    Student workflows that exist in this repository today:
-
-    - ``dashboard_navigation`` -- the Student dashboard;
-    - ``find_lesson`` -- the Group outline and a Lesson page;
-    - ``search`` -- the Student learning-content search;
-    - ``quiz_completion`` -- a published multiple-choice Quiz attempt;
-    - ``assignment_submission`` -- a **text** Assignment submission. The
-      file-upload assignment workflow in the supervisor requirements does
-      not exist yet.
-
-    Deliberately absent: ``login`` (a login task needs a participant who is
-    logged out while the future session requires one who is logged in, and
-    nothing attributes a failed login to anybody) and ``profile_settings``
-    (no Student profile or settings page exists). Adding either is a
-    deliberate schema change (the ``experiment_tasks.task_type`` CHECK) and a
-    methodology decision, not a form option.
-    """
-
-    DASHBOARD_NAVIGATION = "dashboard_navigation"
-    FIND_LESSON = "find_lesson"
-    SEARCH = "search"
-    QUIZ_COMPLETION = "quiz_completion"
-    ASSIGNMENT_SUBMISSION = "assignment_submission"
+    CONFIGURATION_CREATED = "configuration_created"
+    CONFIGURATION_UPDATED = "configuration_updated"
+    CONFIGURATION_ACTIVATED = "configuration_activated"
+    COLLECTION_PAUSED = "collection_paused"
+    COLLECTION_RESUMED = "collection_resumed"
+    SUBJECT_EXCLUDED = "subject_excluded"
+    SUBJECT_REINSTATED = "subject_reinstated"
+    SUBJECT_MARKED_DEMO = "subject_marked_demo"
+    EXPORT_CREATED = "export_created"
+    EXPORT_DOWNLOADED = "export_downloaded"
+    RETENTION_PURGED = "retention_purged"
 
 
-class ExperimentTaskDifficulty(str, enum.Enum):
-    """The difficulty a Researcher **intends** a task to have (Phase 6 /
-    M02A). A design label, never a measured value."""
+class ResearchAuditChannel(str, enum.Enum):
+    """Where an audited action came from."""
 
-    EASY = "easy"
-    MEDIUM = "medium"
-    HARD = "hard"
-
-
-class ExperimentCompletionCriterion(str, enum.Enum):
-    """The criterion a protocol **intends** to use to decide that a task was
-    completed (Phase 6 / M02A).
-
-    **An intended protocol criterion only.** M02A has no session, reads no
-    Student's lesson progress, quiz attempt or submission, and verifies
-    nothing: this value records what a later, separately approved Part would
-    have to check, against a target that is not bound to any real Lesson,
-    Quiz or Assignment here.
-
-    - ``participant_declared`` -- the participant states they have finished;
-    - ``lesson_opened`` -- a target Lesson is opened;
-    - ``quiz_attempt_submitted`` -- a target Quiz attempt is submitted;
-    - ``assignment_submitted`` -- a target Assignment is submitted.
-
-    Which criterion each task type may use is fixed by
-    ``ck_experiment_tasks_type_criterion_pair``.
-    """
-
-    PARTICIPANT_DECLARED = "participant_declared"
-    LESSON_OPENED = "lesson_opened"
-    QUIZ_ATTEMPT_SUBMITTED = "quiz_attempt_submitted"
-    ASSIGNMENT_SUBMITTED = "assignment_submitted"
+    WORKSPACE = "workspace"
+    OPERATOR = "operator"
+    MIGRATION = "migration"

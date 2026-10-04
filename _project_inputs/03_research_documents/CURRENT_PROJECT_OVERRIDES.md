@@ -207,3 +207,17 @@ For every step explain in Arabic:
 Do not provide the complete project code at once.
 
 Stop after every step and wait for the actual result.
+
+## Phase 6 Research Method (supersedes task-based collection and in-app consent)
+
+This section overrides MASTER_PROMPT.md sections 6 (Researcher capabilities that assume tasks, consent recording and observer annotation), 11 (Stage 1 predefined tasks and in-app informed consent), 12 (Experiment Tasks), 15 (post-task rating) and the Phase 6 bullets of section 30, and it supersedes the Phase 6 M01 and M02A implementation.
+
+- Version A collection uses natural use of the LMS by adult Students. There are no researcher-assigned tasks, task sets, task order, task start button or task-completion declaration.
+- Population rule: while an authorized configuration is active, collecting and inside its period, collection runs automatically for every eligible Student (an active, authenticated Student account that is not excluded), including Students created or activated later. There is no operator inclusion or batch enrolment. Teachers, Administrators, Researchers, anonymous visitors, suspended Students and accounts marked as demonstration or development data are outside the real population.
+- Participation arrangements are handled externally by the center. The application has no consent screen and no institutional agreement workflow, never records that a Student accepted anything, never treats silence as consent, and never claims that external legal or ethics approval was verified. Stored bases describe what happened (population rule, operator reinstatement, external exclusion, legacy exclusion). An operator records exclusions and reinstatements; an exclusion, including one carried over from a legacy refusal or withdrawal, is enforced on every path and is never reversed by login, page visits or delayed batches.
+- Signals are a documented allowlist of interaction events plus server-confirmed workflow outcomes. Labels are occasional, optional frustration ratings (1-5, raw value preserved) sampled at random eligible moments and at natural activity endings, each linked to the exact observed interval before the prompt. Unrated data stays unlabeled.
+- The collector runs in the background on every authenticated Student page; every Student route has an intentional tracking classification, and only technical routes that serve file or audio bytes are excluded, for data minimisation. No content is collected.
+- Researchers use a separate workspace with a dedicated login, where excluded Students are listed by pseudonymous code. No research status, notice, indicator, information page, researcher identity, management surface, participant list, protocol catalogue or research result appears in the Administrator, Teacher or Student portals. The optional frustration question (with Skip, and no research or study wording) is the only Student-facing element.
+- Each research export is stored once as an immutable archive and served unchanged until the configured retention removes it.
+- Researchers authenticate with approved email/password accounts. On 2026-10-04 the owners removed the second-factor requirement. A configured retention period remains required before collection.
+- Phase 6 performs no model training, prediction or adaptive intervention. The current contract is docs/PHASE6_NATURAL_USE_RESEARCH.md.

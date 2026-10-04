@@ -5,6 +5,14 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css') }}">
 {% endblock %}
 {% block content %}
+{#- Phase 6: the background collector for this request. None for every
+    Teacher, Administrator, Researcher and anonymous visitor, for an excluded
+    or suspended Student, and while no configuration is collecting -- in
+    which case nothing below renders and nothing is collected. It renders no
+    visible notice or indicator; the only visible element is the optional
+    feedback question, and only when one is sampled. -#}
+{% set research = research_collector(position if position is defined else none,
+                                     total if total is defined else none) %}
 <div class="portal-shell">
   <header class="portal-header">
     <div class="portal-header__brand">
@@ -20,7 +28,7 @@
           Administrator, a Researcher or an anonymous visitor. -#}
       {% if current_user.is_authenticated and current_user.role in ('student', 'teacher') %}
       <a class="portal-nav__link{{ ' portal-nav__link--active' if request.blueprint == 'messages' else '' }}"
-         href="{{ url_for('messages.inbox') }}">Messages</a>
+         href="{{ url_for('messages.inbox') }}" data-research-id="nav_messages">Messages</a>
       {% endif %}
       {#- Phase 4 / M12: the Student Discussions link follows Messages. Like
           Messages it is rendered once here and costs no query. It is never
@@ -29,22 +37,7 @@
           marked active on the Student discussion pages only. -#}
       {% if current_user.is_authenticated and current_user.role == 'student' %}
       <a class="portal-nav__link{{ ' portal-nav__link--active' if (request.endpoint or '').startswith('student.discussions_') else '' }}"
-         href="{{ url_for('student.discussions_overview') }}">Discussions</a>
-      {% endif %}
-      {#- Phase 6 / M01: the Research consent link. Rendered only for a Student
-          who has a research invitation to answer or an acceptance they may
-          withdraw -- the helper returns nothing for every other role, for a
-          Student with no invitation, and for one who already declined or
-          withdrew, so nobody is shown a consent prompt that is not theirs and
-          nobody is prompted again after deciding. It is a link to a page, never
-          a consent control: consent itself is an explicit POST on that page. -#}
-      {% set research_status = research_consent_status() %}
-      {% if research_status %}
-      <a class="portal-nav__link{{ ' portal-nav__link--active' if (request.endpoint or '').startswith('student.research_consent') else '' }}"
-         href="{{ url_for('student.research_consent') }}">
-        Research consent
-        {%- if research_status == 'invited' %} <span class="badge badge--warning">Decide</span>{% endif %}
-      </a>
+         href="{{ url_for('student.discussions_overview') }}" data-research-id="nav_discussions">Discussions</a>
       {% endif %}
       {#- M14: the Notifications link and unread badge are part of the shared
           portal header, so every Student / Teacher page carries them without
@@ -55,7 +48,7 @@
       {% set notif = notification_header() %}
       {% if notif %}
       <a class="portal-nav__link{{ ' portal-nav__link--active' if request.blueprint == 'notifications' else '' }}"
-         href="{{ url_for('notifications.inbox') }}"
+         href="{{ url_for('notifications.inbox') }}" data-research-id="nav_notifications"
          {%- if notif.unread_count %} aria-label="Notifications, {{ notif.unread_count }} unread"{% endif %}>
         Notifications
         {%- if notif.unread_count %}<span class="notif-badge" aria-hidden="true">{{ notif.unread_label }}</span>{% endif %}
@@ -67,7 +60,7 @@
       <span class="badge badge--primary">{{ current_user.role|capitalize }}</span>
       <form method="post" action="{{ url_for('auth.logout') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn--secondary">Logout</button>
+        <button type="submit" class="btn btn--secondary" data-research-id="nav_logout">Logout</button>
       </form>
     </div>
   </header>
@@ -77,4 +70,9 @@
     </div>
   </div>
 </div>
+{% if research %}
+{% include "_research_feedback.html" %}
+<script type="application/json" id="research-collector-config">{{ research.config|tojson }}</script>
+<script src="{{ url_for('static', filename='js/usage_collector.js') }}" defer></script>
+{% endif %}
 {% endblock %}

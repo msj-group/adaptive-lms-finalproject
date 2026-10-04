@@ -62,6 +62,7 @@ from app.models import (
     UserStatus,
 )
 from app.security.passwords import hash_password
+from tests.conftest import login_path
 
 PW = "Sup3rSecret!123"
 
@@ -128,7 +129,8 @@ def login_as(client, email, password=PW):
     client.post("/auth/logout", follow_redirects=True)
     fresh_identity()
     return client.post(
-        "/auth/login", data={"email": email, "password": password}, follow_redirects=True
+        login_path(email), data={"email": email, "password": password},
+        follow_redirects=True
     )
 
 

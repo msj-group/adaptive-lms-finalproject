@@ -26,15 +26,15 @@
   <div class="card__title" style="margin-bottom: var(--space-2)">Recording</div>
   <audio data-audio-element controls preload="metadata" style="width:100%"
          src="{{ player.src }}"
-         aria-label="Audio recording for {{ player.label }}">
+         aria-label="Audio recording for {{ player.label }}" data-research-media="listening_audio">
     Your browser cannot play audio here.
     <a href="{{ player.src }}">Open the recording</a>.
   </audio>
 
   <div class="ds-row" style="align-items:center; gap: var(--space-2); margin-top: var(--space-3); flex-wrap: wrap"
        data-audio-controls hidden>
-    <button type="button" class="btn btn--primary" data-audio-toggle aria-pressed="false">Play</button>
-    <button type="button" class="btn btn--secondary" data-audio-replay>Replay from start</button>
+    <button type="button" class="btn btn--primary" data-audio-toggle data-research-id="audio_toggle" aria-pressed="false">Play</button>
+    <button type="button" class="btn btn--secondary" data-audio-replay data-research-id="audio_replay">Replay from start</button>
     <span class="ds-section__desc" style="margin:0 0 0 var(--space-3)" id="audio-speed-label">Speed</span>
     <span role="group" aria-labelledby="audio-speed-label" class="ds-row" style="gap: var(--space-2)">
       <button type="button" class="btn btn--secondary" data-audio-speed="0.75" aria-pressed="false">0.75&times;</button>

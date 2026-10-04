@@ -418,6 +418,7 @@ def test_the_admin_navigation_now_links_grades(app, client):
     fx.login_as(client, "admin@example.com")
     html = client.get("/admin/dashboard").get_data(as_text=True)
     assert 'href="/admin/grades"' in html
-    # Phase 5 / M05 enabled Payments and Phase 6 / M01 Research.
+    # Phase 5 / M05 enabled Payments; the Phase 6 replacement removed the
+    # Administrator research entry.
     assert 'href="/admin/payments"' in html
-    assert 'href="/admin/research"' in html
+    assert 'href="/admin/research"' not in html

@@ -11,10 +11,16 @@ revision runs forward and back with foreign keys **enforced** and ``PRAGMA
 foreign_key_check`` asserted after each step. Every Phase 5 and M01 row is
 compared before and after.
 
-The MySQL checks render the revision's offline (``--sql``) MySQL script and
-compile dialect DDL; neither connects to a database. The real upgrade of the
-authorized development MySQL database is a separate, manually executed
-check, and SQLite proves nothing about InnoDB.
+The MySQL checks render the revision's offline (``--sql``) MySQL script;
+nothing connects to a database. The real upgrade of the authorized
+development MySQL database is a separate, manually executed check, and SQLite
+proves nothing about InnoDB.
+
+**Historical.** The protocol catalogue this revision created was removed by
+the Phase 6 replacement (``69c4bae553fe`` / ``d574ab56594f``) and its runtime
+models no longer exist. This suite keeps proving what the historical revision
+does -- it stays in the upgrade chain -- against the literal historical shape
+below, never against a runtime model.
 """
 
 import io
@@ -25,22 +31,9 @@ import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy import inspect
-from sqlalchemy.dialects import mysql
-from sqlalchemy.schema import CreateTable
 
 import tests.test_payments_migration as m05
 import tests.test_research_migration as m01
-from app.extensions import db
-from app.models import (
-    ExperimentCompletionCriterion,
-    ExperimentDefinition,
-    ExperimentDefinitionStatus,
-    ExperimentStudyStage,
-    ExperimentTask,
-    ExperimentTaskDifficulty,
-    ExperimentTaskSet,
-    ExperimentTaskType,
-)
 
 _REVISION = "b86838ce23db"
 _DOWN_REVISION = "f2a6d1c84b37"
@@ -49,7 +42,17 @@ _DEFINITIONS = "experiment_definitions"
 _SETS = "experiment_task_sets"
 _TASKS = "experiment_tasks"
 _NEW_TABLES = [_DEFINITIONS, _SETS, _TASKS]
-_MODELS = {_DEFINITIONS: ExperimentDefinition, _SETS: ExperimentTaskSet, _TASKS: ExperimentTask}
+
+#: The historical closed sets, as the revision declared them.
+_CLOSED_SETS = (
+    ("status", ("draft", "active", "superseded", "discarded")),
+    ("study_stage", ("version_a_collection",)),
+    ("task_type", ("dashboard_navigation", "find_lesson", "search", "quiz_completion",
+                   "assignment_submission")),
+    ("difficulty", ("easy", "medium", "hard")),
+    ("completion_criterion", ("participant_declared", "lesson_opened",
+                              "quiz_attempt_submitted", "assignment_submitted")),
+)
 
 _EXPECTED = {
     _DEFINITIONS: {
@@ -205,7 +208,10 @@ def test_revision_identifiers_and_one_linear_head():
             r"^down_revision = (?:'([^']+)'|None)", source, re.M
         ).group(1)
     heads = set(parents) - {p for p in parents.values() if p is not None}
-    assert heads == {_REVISION}
+    # The Phase 6 replacement follows this revision and removed its tables;
+    # its destructive revision is now the single head.
+    assert heads == {"d574ab56594f"}
+    assert [r for r, p in parents.items() if p == _REVISION] == ["69c4bae553fe"]
     assert [r for r, p in parents.items() if p == _DOWN_REVISION] == [_REVISION]
     assert len([r for r, p in parents.items() if p is None]) == 1
 
@@ -229,28 +235,17 @@ def test_the_revision_creates_three_tables_and_alters_or_seeds_nothing():
         assert not re.search(rf"\b{forbidden}", code), forbidden
 
 
-def test_every_declared_check_is_exactly_the_models_check():
+def test_every_declared_check_is_the_historical_check_set():
     _, source = _load_migration()
-    flat = m01._flat(source)
     for table in _NEW_TABLES:
-        checks = m01._model_checks(_MODELS[table])
-        assert set(checks) == _EXPECTED[table]["checks"], table
-        for name, expression in checks.items():
-            assert f"name='{name}'" in source, name
-            assert expression in flat, (name, expression)
+        assert m01._declared_checks(source, table) == _EXPECTED[table]["checks"], table
 
 
-def test_the_migrations_closed_sets_match_the_application_enums():
+def test_the_migrations_closed_sets_are_the_historical_ones():
     _, source = _load_migration()
     flat = m01._flat(source)
-    for column, enum in (
-        ("status", ExperimentDefinitionStatus),
-        ("study_stage", ExperimentStudyStage),
-        ("task_type", ExperimentTaskType),
-        ("difficulty", ExperimentTaskDifficulty),
-        ("completion_criterion", ExperimentCompletionCriterion),
-    ):
-        expected = f"{column} IN (" + ", ".join(f"'{m.value}'" for m in enum) + ")"
+    for column, values in _CLOSED_SETS:
+        expected = f"{column} IN (" + ", ".join(f"'{v}'" for v in values) + ")"
         assert expected in flat, expected
 
 
@@ -258,19 +253,6 @@ def test_the_current_marker_check_is_null_safe():
     _, source = _load_migration()
     assert ("(status = 'active' AND current_marker IS NOT NULL AND current_marker = 1)"
             " OR (status <> 'active' AND current_marker IS NULL)") in m01._flat(source)
-
-
-def test_the_model_and_migration_agree_on_every_column(app):
-    _, source = _load_migration()
-    inspector = inspect(db.engine)
-    for table in _NEW_TABLES:
-        block = m05._table_block(source, table)
-        declared = dict(re.findall(r"sa\.Column\('([^']+)',.*?nullable=(True|False)", block))
-        actual = {c["name"]: str(c["nullable"]) for c in inspector.get_columns(table)}
-        declared.pop("id", None)
-        actual.pop("id", None)
-        assert declared == actual, table
-        assert m01._shape(db.engine.connect(), table) == _EXPECTED[table], table
 
 
 # ===========================================================================
@@ -453,13 +435,13 @@ _DDL_FRAGMENTS = {
 
 
 @pytest.mark.parametrize("table", _NEW_TABLES)
-def test_the_mysql_ddl_for_each_table(table):
-    ddl = str(CreateTable(_MODELS[table].__table__).compile(dialect=mysql.dialect()))
-    normalized = " ".join(ddl.split())
+def test_the_offline_mysql_ddl_for_each_table(table):
+    script = " ".join(_offline("upgrade").split())
+    block = script.split(f"CREATE TABLE {table} (", 1)[1].split(");", 1)[0]
     for fragment in _DDL_FRAGMENTS[table]:
-        assert fragment in normalized, (table, fragment)
+        assert fragment in block, (table, fragment)
     for forbidden in ("ENGINE=", "CHARSET=", "ON DELETE", "ON UPDATE", "ENUM(", "JSON"):
-        assert forbidden not in normalized, (table, forbidden)
+        assert forbidden not in block, (table, forbidden)
 
 
 def _offline(direction):

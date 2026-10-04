@@ -1,0 +1,48 @@
+{% extends "layouts/base.html" %}
+{#- The separate Researcher workspace layout (Phase 6 replacement). It shares
+    the design tokens with the portals but none of their navigation: no link
+    here leads into an Administrator, Teacher or Student page, and no portal
+    page links here. Logout posts to the workspace's own logout. -#}
+{% block extra_head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/portal.css') }}">
+{% endblock %}
+{% block content %}
+<div class="portal-shell">
+  <header class="portal-header">
+    <div class="portal-header__brand">
+      <img class="portal-header__logo" src="{{ url_for('static', filename='images/center_logo.svg') }}" alt="Center logo">
+      <span class="portal-header__brand-name">Research workspace</span>
+    </div>
+    <nav class="portal-nav" aria-label="Research workspace">
+      {% for key, label, endpoint in [
+          ('dashboard', 'Dashboard', 'research.dashboard'),
+          ('configurations', 'Configurations', 'research.configurations'),
+          ('sessions', 'Sessions', 'research.sessions'),
+          ('exports', 'Exports', 'research.exports'),
+          ('exclusions', 'Exclusions', 'research.exclusions'),
+          ('audit', 'Audit log', 'research.activity_log')] %}
+      <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == key else '' }}"
+         href="{{ url_for(endpoint) }}"{% if active_nav == key %} aria-current="page"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+    <div class="portal-header__user">
+      <span class="badge badge--primary">Researcher</span>
+      <form method="post" action="{{ url_for('research.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn--secondary">Log out</button>
+      </form>
+    </div>
+  </header>
+  <div class="portal-main">
+    <div class="ds-page">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="alert alert--{{ category }}" role="status" style="margin-bottom: var(--space-4)">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+      {% block research_content %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% endblock %}

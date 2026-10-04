@@ -14,10 +14,15 @@ tombstone -- at revision ``b3d8f1a6c472``, then run this revision forward
 and back with foreign keys **enforced** and ``PRAGMA foreign_key_check``
 asserted after each. Every Phase 5 row is compared before and after.
 
-The MySQL checks render the revision's offline (``--sql``) MySQL script and
-compile dialect DDL; neither connects to a database. The real upgrade of the
-authorized development MySQL database is a separate, manually executed
-check.
+The MySQL checks render the revision's offline (``--sql``) MySQL script;
+nothing connects to a database. The real upgrade of the authorized
+development MySQL database is a separate, manually executed check.
+
+**Historical.** The consent workflow this revision created was removed by
+the Phase 6 replacement (``69c4bae553fe`` / ``d574ab56594f``) and its runtime
+models no longer exist. This suite keeps proving what the historical revision
+does -- it stays in the upgrade chain -- against the literal historical shape
+below, never against a runtime model.
 """
 
 import io
@@ -31,21 +36,10 @@ import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy import inspect
-from sqlalchemy.dialects import mysql
-from sqlalchemy.schema import CreateTable
 
 import tests.test_financial_deletion_migration as m10
 import tests.test_payments_migration as m05
 import tests.test_verified_webhooks_migration as m07
-from app.extensions import db
-from app.models import (
-    ResearchConsentAction,
-    ResearchConsentDocument,
-    ResearchConsentDocumentStatus,
-    ResearchConsentEvent,
-    ResearchParticipant,
-    ResearchParticipantStatus,
-)
 
 _MIGRATIONS = pathlib.Path(__file__).resolve().parents[1] / "migrations" / "versions"
 _REVISION = "f2a6d1c84b37"
@@ -56,11 +50,12 @@ _PARTICIPANTS = "research_participants"
 _EVENTS = "research_consent_events"
 _NEW_TABLES = [_DOCUMENTS, _PARTICIPANTS, _EVENTS]
 
-_MODELS = {
-    _DOCUMENTS: ResearchConsentDocument,
-    _PARTICIPANTS: ResearchParticipant,
-    _EVENTS: ResearchConsentEvent,
-}
+#: The historical closed sets, as the revision declared them.
+_CLOSED_SETS = (
+    ("status", ("draft", "active", "superseded")),
+    ("status", ("invited", "active", "declined", "withdrawn")),
+    ("action", ("accepted", "declined", "withdrawn")),
+)
 
 _EXPECTED = {
     _DOCUMENTS: {
@@ -137,12 +132,9 @@ def _flat(source):
     return " ".join(source.split()).replace('" "', "")
 
 
-def _model_checks(model):
-    return {
-        constraint.name: " ".join(str(constraint.sqltext).split())
-        for constraint in model.__table__.constraints
-        if isinstance(constraint, sa.CheckConstraint)
-    }
+def _declared_checks(source, table):
+    """The CHECK names one ``op.create_table`` block of a revision declares."""
+    return set(re.findall(r"name='(ck_[a-z_]+)'", m05._table_block(source, table)))
 
 
 def _shape(conn, table):
@@ -197,9 +189,9 @@ def test_revision_identifiers_and_one_linear_head():
             r"^down_revision = (?:'([^']+)'|None)", source, re.M
         ).group(1)
     heads = set(parents) - {p for p in parents.values() if p is not None}
-    # Phase 6 / M02A follows this revision, so the single head is now M02A's
-    # and M02A is the one revision that follows this one.
-    assert heads == {"b86838ce23db"}
+    # Phase 6 / M02A follows this revision; the Phase 6 replacement removed
+    # both, and its destructive revision is now the single head.
+    assert heads == {"d574ab56594f"}
     assert [r for r, p in parents.items() if p == _REVISION] == ["b86838ce23db"]
     assert [r for r, p in parents.items() if p == _DOWN_REVISION] == [_REVISION]
     assert len([r for r, p in parents.items() if p is None]) == 1
@@ -232,27 +224,18 @@ def test_the_downgrade_drops_child_before_parent_and_nothing_else():
     assert "Refusing to downgrade" in downgrade
 
 
-def test_every_declared_check_is_exactly_the_models_check():
+def test_every_declared_check_is_the_historical_check_set():
     module, source = _load_migration()
-    flat = _flat(source)
     for table in _NEW_TABLES:
-        checks = _model_checks(_MODELS[table])
-        assert set(checks) == _EXPECTED[table]["checks"], table
-        for name, expression in checks.items():
-            assert f"name='{name}'" in source, name
-            assert expression in flat, (name, expression)
+        assert _declared_checks(source, table) == _EXPECTED[table]["checks"], table
     assert module.revision == _REVISION
 
 
-def test_the_migrations_closed_sets_match_the_application_enums():
+def test_the_migrations_closed_sets_are_the_historical_ones():
     _, source = _load_migration()
     flat = _flat(source)
-    for column, enum in (
-        ("status", ResearchConsentDocumentStatus),
-        ("status", ResearchParticipantStatus),
-        ("action", ResearchConsentAction),
-    ):
-        expected = f"{column} IN (" + ", ".join(f"'{m.value}'" for m in enum) + ")"
+    for column, values in _CLOSED_SETS:
+        expected = f"{column} IN (" + ", ".join(f"'{v}'" for v in values) + ")"
         assert expected in flat, expected
 
 
@@ -264,20 +247,6 @@ def test_the_current_marker_check_is_null_safe():
     flat = _flat(source)
     assert ("(status = 'active' AND current_marker IS NOT NULL AND current_marker = 1)"
             " OR (status <> 'active' AND current_marker IS NULL)") in flat
-
-
-def test_the_model_and_migration_agree_on_every_column(app):
-    _, source = _load_migration()
-    inspector = inspect(db.engine)
-    for table in _NEW_TABLES:
-        block = m05._table_block(source, table)
-        declared = dict(re.findall(
-            r"sa\.Column\('([^']+)',.*?nullable=(True|False)", block))
-        actual = {c["name"]: str(c["nullable"]) for c in inspector.get_columns(table)}
-        declared.pop("id", None)
-        actual.pop("id", None)
-        assert declared == actual, table
-        assert _shape(db.engine.connect(), table) == _EXPECTED[table], table
 
 
 # ===========================================================================
@@ -555,26 +524,31 @@ _DDL_FRAGMENTS = {
 }
 
 
+def _offline_upgrade():
+    module, _ = _load_migration()
+    buffer = io.StringIO()
+    context = MigrationContext.configure(
+        dialect_name="mysql", opts={"as_sql": True, "output_buffer": buffer}
+    )
+    with Operations.context(context):
+        module.upgrade()
+    return " ".join(buffer.getvalue().split())
+
+
 @pytest.mark.parametrize("table", _NEW_TABLES)
-def test_the_mysql_ddl_for_each_table(table):
-    ddl = str(CreateTable(_MODELS[table].__table__).compile(dialect=mysql.dialect()))
-    normalized = " ".join(ddl.split())
+def test_the_offline_mysql_ddl_for_each_table(table):
+    script = _offline_upgrade()
+    block = script.split(f"CREATE TABLE {table} (", 1)[1].split(");", 1)[0]
     for fragment in _DDL_FRAGMENTS[table]:
-        assert fragment in normalized, (table, fragment)
-    # No storage engine, character set, ON DELETE or ON UPDATE is declared:
-    # all three inherit the server's defaults, like every earlier table.
+        assert fragment in block, (table, fragment)
     for forbidden in ("ENGINE=", "CHARSET=", "ON DELETE", "ON UPDATE", "ENUM("):
-        assert forbidden not in normalized, (table, forbidden)
+        assert forbidden not in block, (table, forbidden)
 
 
-def test_the_offline_mysql_script_creates_the_three_tables_and_nothing_else(app):
+def test_the_offline_mysql_script_creates_the_three_tables_and_nothing_else():
     """Rendered with ``--sql``; nothing connects to a database."""
     module, _ = _load_migration()
     buffer = io.StringIO()
-    engine = sa.create_engine("mysql+pymysql://", strategy=None) \
-        if False else sa.create_mock_engine(
-            "mysql+pymysql://", lambda sql, *a, **kw: buffer.write(
-                str(sql.compile(dialect=mysql.dialect())) + ";\n"))
     context = MigrationContext.configure(
         dialect_name="mysql", opts={"as_sql": True, "output_buffer": buffer}
     )
@@ -587,10 +561,9 @@ def test_the_offline_mysql_script_creates_the_three_tables_and_nothing_else(app)
                       "ENGINE=", "ON DELETE", "ON UPDATE"):
         assert forbidden not in script, forbidden
     assert script.count("CREATE INDEX") == 10
-    assert engine is not None
 
 
-def test_the_offline_mysql_downgrade_does_not_count_rows(app):
+def test_the_offline_mysql_downgrade_does_not_count_rows():
     """With ``--sql`` there is no database to count, so the guard is skipped
     and the script is pure DDL. The guard still protects every real
     (online) downgrade."""

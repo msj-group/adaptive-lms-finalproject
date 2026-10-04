@@ -50,11 +50,11 @@
   </nav>
 
   {% if unread_total %}
-  <form method="post" action="{{ url_for('notifications.read_all') }}">
+  <form method="post" action="{{ url_for('notifications.read_all') }}" data-research-form="notification_read_all">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="filter" value="{{ filter_name }}">
     <input type="hidden" name="page" value="{{ page }}">
-    <button type="submit" class="btn btn--secondary">Mark all read</button>
+    <button type="submit" class="btn btn--secondary" data-research-id="notification_read_all">Mark all read</button>
   </form>
   {% endif %}
 </div>
@@ -84,11 +84,11 @@
     <div class="notif-item__foot">
       <span class="notif-item__time">{{ item.created_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</span>
       <div class="notif-item__actions">
-        <form method="post" action="{{ url_for('notifications.open_notification', public_id=item.public_id) }}">
+        <form method="post" action="{{ url_for('notifications.open_notification', public_id=item.public_id) }}" data-research-form="notification_open">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="filter" value="{{ filter_name }}">
           <input type="hidden" name="page" value="{{ page }}">
-          <button type="submit" class="btn btn--primary">Open</button>
+          <button type="submit" class="btn btn--primary" data-research-id="notification_open">Open</button>
         </form>
         {% if item.is_unread %}
         <form method="post" action="{{ url_for('notifications.read_notification', public_id=item.public_id) }}">

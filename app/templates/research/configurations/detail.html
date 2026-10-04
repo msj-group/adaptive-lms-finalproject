@@ -1,0 +1,67 @@
+{% extends "layouts/research_base.html" %}
+{% block title %}Configuration version {{ configuration.version_number }}{% endblock %}
+{% block research_content %}
+<h1>Configuration version {{ configuration.version_number }}</h1>
+<p class="ds-section__desc">{{ configuration.label }} &middot; event schema {{ configuration.event_schema_version }}</p>
+
+<p data-configuration-status>
+  {% if configuration.status == 'active' %}
+  <span class="badge badge--success">Active</span>
+  {% if configuration.is_collecting %}<span class="badge badge--success">Collecting</span>{% else %}<span class="badge badge--neutral">Paused</span>{% endif %}
+  {% elif configuration.status == 'draft' %}<span class="badge badge--warning">Draft</span>
+  {% else %}<span class="badge badge--neutral">Retired</span>{% endif %}
+</p>
+<p class="ds-section__desc">
+  Activating a version freezes it inside this application. It is not a consent document, not an
+  ethics approval, and it does not start collection by itself.
+</p>
+
+<table class="dash-table" style="width:100%">
+  <tbody>
+    <tr><th scope="row" style="text-align:left">Collection period ({{ tz_name }})</th>
+        <td>{{ local(configuration.collection_starts_at).strftime("%Y-%m-%d %H:%M") }} &ndash; {{ local(configuration.collection_ends_at).strftime("%Y-%m-%d %H:%M") }}</td></tr>
+    <tr><th scope="row" style="text-align:left">Retention in force</th>
+        <td>{% if configuration.retention_days %}{{ configuration.retention_days }} days (recorded at activation){% else %}Recorded at activation from the deployment{% endif %}</td></tr>
+    <tr><th scope="row" style="text-align:left">Coverage</th><td>Every Student page and outcome in the event dictionary, for every eligible Student account</td></tr>
+    {% for column, label in policy_labels.items() %}
+    <tr><th scope="row" style="text-align:left">{{ label }}</th><td>{{ configuration[column] }}</td></tr>
+    {% endfor %}
+    {% if configuration.activated_at %}<tr><th scope="row" style="text-align:left">Activated ({{ tz_name }})</th><td>{{ local(configuration.activated_at).strftime("%Y-%m-%d %H:%M") }}</td></tr>{% endif %}
+    {% if configuration.retired_at %}<tr><th scope="row" style="text-align:left">Retired ({{ tz_name }})</th><td>{{ local(configuration.retired_at).strftime("%Y-%m-%d %H:%M") }}</td></tr>{% endif %}
+  </tbody>
+</table>
+
+{% if configuration.status == 'draft' %}
+<div class="ds-row" style="gap: var(--space-3); margin-top: var(--space-6); flex-wrap: wrap">
+  <a class="btn btn--secondary" href="{{ url_for('research.configuration_edit', configuration_public_id=configuration.public_id) }}">Edit draft</a>
+</div>
+<section class="card" style="margin-top: var(--space-6)"><div class="card__body">
+  <h2 style="margin-top:0">Activate</h2>
+  {% if retention_days is none %}
+  <div class="alert alert--danger">The deployment has not supplied RESEARCH_RETENTION_DAYS. No configuration can be activated until it does.</div>
+  {% else %}
+  <p class="ds-section__desc">The deployment retention of {{ retention_days }} days will be recorded with this version.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('research.configuration_activate', configuration_public_id=configuration.public_id) }}">
+    {{ activate_form.csrf_token }}
+    {{ activate_form.state }}
+    <label style="display:block; margin-bottom: var(--space-3)">{{ activate_form.confirm() }} {{ activate_form.confirm.label.text }}</label>
+    {{ activate_form.submit(class_="btn btn--primary") }}
+  </form>
+</div></section>
+{% elif configuration.status == 'active' %}
+<section class="card" style="margin-top: var(--space-6)"><div class="card__body">
+  <h2 style="margin-top:0">{{ "Pause collection" if configuration.is_collecting else "Start collecting" }}</h2>
+  <p class="ds-section__desc">
+    {% if configuration.is_collecting %}Pausing stops every new write at once and closes open sessions.
+    {% else %}Collection runs for every eligible Student account (active Students who are not excluded), within the period above.{% endif %}
+  </p>
+  <form method="post" action="{{ url_for('research.configuration_collecting', configuration_public_id=configuration.public_id) }}">
+    {{ collecting_form.csrf_token }}
+    {{ collecting_form.state }}
+    <button type="submit" class="btn {{ 'btn--secondary' if configuration.is_collecting else 'btn--primary' }}">
+      {{ "Pause collection" if configuration.is_collecting else "Start collecting" }}</button>
+  </form>
+</div></section>
+{% endif %}
+{% endblock %}

@@ -123,7 +123,7 @@
   </div>
   <form method="post"
         action="{{ url_for('student.assignment_submit', group_public_id=assignment.group_public_id, assignment_public_id=assignment.public_id) }}"
-        novalidate
+        novalidate data-research-form="assignment_submit"
         data-confirm="Submit this answer? It is final and cannot be edited or resubmitted.">
     {{ form.hidden_tag() }}
     {#- The signed submission-context token. It binds this answer to the exact
@@ -142,7 +142,7 @@
     </div>
 
     <div class="ds-row" style="margin-top: var(--space-6)">
-      {{ form.submit(class_="btn btn--primary") }}
+      {{ form.submit(class_="btn btn--primary", **{"data-research-id": "assignment_submit"}) }}
       <a class="btn btn--secondary" href="{{ url_for('student.assignments_list') }}">Cancel</a>
     </div>
   </form>

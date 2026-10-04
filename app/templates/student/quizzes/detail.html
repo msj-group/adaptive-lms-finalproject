@@ -30,9 +30,9 @@
 <div class="ds-row" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('student.quiz_list') }}">Back to My Quizzes</a>
   {% if can_start %}
-  <form method="post" action="{{ url_for('student.quiz_start', group_public_id=group_public_id, quiz_public_id=quiz.public_id) }}">
+  <form method="post" action="{{ url_for('student.quiz_start', group_public_id=group_public_id, quiz_public_id=quiz.public_id) }}" data-research-form="quiz_start">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn btn--primary">
+    <button type="submit" class="btn btn--primary" data-research-id="quiz_start">
       {% if open_attempt %}Continue attempt{% else %}Start attempt{% endif %}
     </button>
   </form>

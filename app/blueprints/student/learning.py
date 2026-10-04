@@ -49,6 +49,7 @@ from flask import abort, current_app, flash, redirect, request, url_for
 from flask_login import current_user
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.blueprints.collector.hooks import note_outcome
 from app.blueprints.student import student_bp
 from app.blueprints.student.routes import private_no_store
 from app.extensions import db
@@ -201,6 +202,7 @@ def _change_completion(group_public_id, unit_public_id, lesson_public_id, action
         action,
     )
     if payload is None:
+        note_outcome("lesson_completion", "rejected")
         flash(_FORM_UNVERIFIED, "warning")
         return redirect(lesson_url)
 
@@ -215,11 +217,15 @@ def _change_completion(group_public_id, unit_public_id, lesson_public_id, action
     if outcome == progress_tx.UNAVAILABLE:
         abort(404)
     if outcome == progress_tx.CHANGED:
+        note_outcome("lesson_completion", "completed" if action == ACTION_COMPLETE else "undone")
         flash(_DONE[action], "success")
     elif outcome == progress_tx.ALREADY:
+        note_outcome("lesson_completion", "unchanged")
         flash(_ALREADY[action], "info")
     elif outcome == progress_tx.STALE:
+        note_outcome("lesson_completion", "rejected")
         flash(_STALE, "warning")
     else:
+        note_outcome("lesson_completion", "rejected")
         flash(_CONFLICT, "danger")
     return redirect(lesson_url)

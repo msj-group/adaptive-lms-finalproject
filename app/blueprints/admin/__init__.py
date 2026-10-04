@@ -35,4 +35,3 @@ from app.blueprints.admin import student_accounts  # noqa: E402,F401
 from app.blueprints.admin import invoice_workspace  # noqa: E402,F401
 from app.blueprints.admin import payment_workspace  # noqa: E402,F401
 from app.blueprints.admin import deleted_records  # noqa: E402,F401
-from app.blueprints.admin import research  # noqa: E402,F401

@@ -1,0 +1,49 @@
+{% extends "layouts/research_base.html" %}
+{% block title %}{{ "Edit draft" if configuration else "New draft" }}{% endblock %}
+{% block research_content %}
+<h1>{% if configuration %}Edit draft version {{ configuration.version_number }}{% else %}New configuration draft{% endif %}</h1>
+<p class="ds-section__desc">
+  Times are in {{ tz_name }}. The sampling values are pilot settings to be versioned and
+  revisited, not validated scientific constants. Saving a draft collects nothing.
+</p>
+<form method="post" novalidate>
+  {{ form.csrf_token }}
+  {{ form.state }}
+  <div class="field">
+    {{ form.label.label(class_="field__label") }}
+    {{ form.label(class_="field__input", maxlength=80) }}
+    {% for error in form.label.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+  </div>
+  <div class="ds-row" style="gap: var(--space-4); flex-wrap: wrap; margin-top: var(--space-4)">
+    {% for field in (form.collection_starts_at, form.collection_ends_at) %}
+    <div class="field" style="margin:0">
+      {{ field.label(class_="field__label") }}
+      {{ field(class_="field__input") }}
+      {% for error in field.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <p class="ds-section__desc" style="margin-top: var(--space-6)">
+    An active configuration covers every Student page and outcome in the event dictionary, for
+    every eligible Student account. There is no setting that narrows it.
+  </p>
+
+  <fieldset style="margin-top: var(--space-6)">
+    <legend><strong>Sessions and feedback sampling</strong></legend>
+    {% for column, label in policy_labels.items() %}
+    <div class="field" style="margin-top: var(--space-3)">
+      <label class="field__label" for="{{ column }}">{{ label }}
+        <span class="ds-section__desc">({{ policy_bounds[column][0] }}&ndash;{{ policy_bounds[column][1] }})</span></label>
+      {{ form[column](class_="field__input", min=policy_bounds[column][0], max=policy_bounds[column][1], style="width: 12rem") }}
+      {% for error in form[column].errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    {% endfor %}
+  </fieldset>
+
+  <div class="ds-row" style="gap: var(--space-3); margin-top: var(--space-6)">
+    {{ form.submit(class_="btn btn--primary") }}
+    <a class="btn btn--secondary" href="{{ url_for('research.configuration_detail', configuration_public_id=configuration.public_id) if configuration else url_for('research.configurations') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

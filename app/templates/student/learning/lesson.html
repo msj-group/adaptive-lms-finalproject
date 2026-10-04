@@ -37,13 +37,14 @@
       <div class="card__body" style="margin-top: var(--space-2)">Mark this lesson complete when you have finished working through it.</div>
       {% endif %}
     </div>
-    <form method="post" action="{{ url_for('student.lesson_undo_complete' if progress_action == 'undo' else 'student.lesson_mark_complete', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id) }}">
+    <form method="post" action="{{ url_for('student.lesson_undo_complete' if progress_action == 'undo' else 'student.lesson_mark_complete', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id) }}"
+          data-research-form="{{ 'lesson_undo_complete' if progress_action == 'undo' else 'lesson_complete' }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="progress_state" value="{{ progress_state }}">
       {% if progress_action == 'undo' %}
-      <button type="submit" class="btn btn--secondary">Undo completion</button>
+      <button type="submit" class="btn btn--secondary" data-research-id="lesson_undo_complete">Undo completion</button>
       {% else %}
-      <button type="submit" class="btn btn--primary">Mark as complete</button>
+      <button type="submit" class="btn btn--primary" data-research-id="lesson_complete">Mark as complete</button>
       {% endif %}
     </form>
   </div>
@@ -79,27 +80,27 @@
 
     {% elif material.kind == "external_link" %}
     <p style="margin:0">
-      <a href="{{ material.external_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ material.external_url }}</a>
+      <a href="{{ material.external_url }}" target="_blank" rel="noopener noreferrer nofollow" data-research-id="material_external_link">{{ material.external_url }}</a>
     </p>
 
     {% elif material.kind == "file" and material.category == "image" %}
     <img class="material-media" src="{{ url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" alt="{{ material.title }}">
 
     {% elif material.kind == "file" and material.category == "audio" %}
-    <audio class="material-media" controls preload="none">
+    <audio class="material-media" controls preload="none" data-research-media="lesson_audio">
       <source src="{{ url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" type="{{ material.content_type }}">
       Your browser does not support inline audio playback.
     </audio>
 
     {% elif material.kind == "file" and material.category == "video" %}
-    <video class="material-media" controls preload="none">
+    <video class="material-media" controls preload="none" data-research-media="lesson_video">
       <source src="{{ url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" type="{{ material.content_type }}">
       Your browser does not support inline video playback.
     </video>
 
     {% elif material.kind == "file" %}
     <p class="ds-section__desc" style="margin: 0 0 var(--space-2)">{{ material.original_filename }} &middot; {{ material.extension|upper }}</p>
-    <a class="btn btn--secondary" href="{{ url_for('student.material_download', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}">Download</a>
+    <a class="btn btn--secondary" href="{{ url_for('student.material_download', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" data-research-id="material_download">Download</a>
 
     {% else %}
     <p class="ds-section__desc" style="margin:0">This material is not available.</p>

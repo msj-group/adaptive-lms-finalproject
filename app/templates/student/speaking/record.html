@@ -73,9 +73,9 @@
         a button that would do nothing. -#}
     <div data-recorder-controls hidden>
       <div class="ds-row" style="gap: var(--space-2); flex-wrap: wrap">
-        <button type="button" class="btn btn--primary" data-recorder-start>Start recording</button>
-        <button type="button" class="btn btn--secondary" data-recorder-stop disabled hidden>Stop recording</button>
-        <button type="button" class="btn btn--secondary" data-recorder-again disabled hidden>Record again</button>
+        <button type="button" class="btn btn--primary" data-recorder-start data-research-id="speaking_record_start">Start recording</button>
+        <button type="button" class="btn btn--secondary" data-recorder-stop data-research-id="speaking_record_stop" disabled hidden>Stop recording</button>
+        <button type="button" class="btn btn--secondary" data-recorder-again data-research-id="speaking_record_again" disabled hidden>Record again</button>
       </div>
       <p class="ds-section__desc" style="margin: var(--space-3) 0 0" data-recorder-status role="status" aria-live="polite">
         Press Start recording when you are ready.
@@ -87,7 +87,7 @@
         as soon as it is replaced or discarded. -#}
     <div data-recorder-preview-block hidden style="margin-top: var(--space-4)">
       <div class="card__title" style="margin-bottom: var(--space-2)">Listen to your recording</div>
-      <audio data-recorder-preview controls preload="metadata" style="width:100%"
+      <audio data-recorder-preview data-research-media="speaking_playback" controls preload="metadata" style="width:100%"
              aria-label="Your recording, before you submit it"></audio>
       <p class="ds-section__desc" style="margin: var(--space-2) 0 0">
         This is only on your device. Press <strong>Record again</strong> to throw it away and
@@ -107,7 +107,7 @@
   </div>
 
   <form method="post" action="{{ submit_url }}" enctype="multipart/form-data" novalidate
-        data-speaking-form
+        data-speaking-form data-research-form="speaking_submit"
         data-confirm="Submit this recording? It is final and cannot be edited or submitted again.">
     {{ form.hidden_tag() }}
     {#- The signed submission token. It binds this recording to the exact task
@@ -119,7 +119,7 @@
 
     <div class="field" style="max-width:none" data-speaking-fallback>
       {{ form.audio.label(class_="field__label") }}
-      {{ form.audio(class_="field__input", accept=audio_accept, **{"data-speaking-file": "1"}) }}
+      {{ form.audio(class_="field__input", accept=audio_accept, **{"data-speaking-file": "1", "data-research-id": "speaking_file_select"}) }}
       <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
         {{ supported_formats }} audio files only. The file is checked on the server.
       </span>
@@ -127,7 +127,7 @@
     </div>
 
     <div class="ds-row" style="margin-top: var(--space-6)">
-      {{ form.submit(class_="btn btn--primary", **{"data-speaking-submit": "1"}) }}
+      {{ form.submit(class_="btn btn--primary", **{"data-speaking-submit": "1", "data-research-id": "speaking_submit"}) }}
       <a class="btn btn--secondary" href="{{ detail_url }}">Cancel</a>
     </div>
   </form>

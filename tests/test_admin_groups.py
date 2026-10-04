@@ -184,9 +184,8 @@ def test_empty_state_when_no_groups_exist(app, client):
     assert "No groups yet" in html
     # Phase 6 / M01: this used to assert "disabled" in the page, which was
     # only ever satisfied by the sidebar's disabled Research "Soon"
-    # placeholder -- the last one, now a real link. The Groups empty state
-    # never had a disabled control of its own, so the assertion now checks
-    # what this test is actually named for.
+    # placeholder. The Groups empty state never had a disabled control of its
+    # own, so the assertion checks what this test is actually named for.
     assert "Groups will appear here once created" in html
     assert 'href="/admin/groups/new"' in html
 

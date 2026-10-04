@@ -201,11 +201,11 @@ def test_every_nav_item_now_links_to_a_real_page(app, client):
     """Phase 4 / M07 enabled **Attendance** and M08 enabled **Grades**.
 
     Both review surfaces are real now, so their nav entries link to them.
-    Phase 5 / M05 implemented Payments, and Phase 6 / M01 the Administrator
-    research area -- which was the last disabled entry, so no "Soon"
-    placeholder remains anywhere in the sidebar. The assertions are updated
-    explicitly rather than loosened, so an entry that silently stopped
-    linking would still fail here.
+    Phase 5 / M05 implemented Payments, so no "Soon" placeholder remains
+    anywhere in the sidebar. The Phase 6 replacement removed the research area
+    from the Administrator portal: no research entry, and the old route is
+    gone. The assertions are updated explicitly rather than loosened, so an
+    entry that silently stopped linking -- or came back -- would fail here.
     """
     with app.app_context():
         make_user("admin@example.com", UserRole.ADMINISTRATOR.value)
@@ -216,21 +216,20 @@ def test_every_nav_item_now_links_to_a_real_page(app, client):
     assert "Attendance" in html
     assert "Grades" in html
     assert "Payments" in html
-    assert "Research" in html
+    assert "Research" not in html
     assert 'href="/admin/attendance"' in html
     assert 'href="/admin/grades"' in html
     # Phase 5 / M02 added the Fee Plans catalogue beside them, and Phase 5 /
-    # M05 enabled Payments. Phase 6 / M01 enabled Research.
+    # M05 enabled Payments. The Phase 6 replacement removed Research.
     assert "Fee Plans" in html
     assert 'href="/admin/fee-plans"' in html
     assert not re.search(r'Payments <span class="badge badge--neutral">Soon</span>', html)
     assert 'href="/admin/payments"' in html
-    assert not re.search(r'Research <span class="badge badge--neutral">Soon</span>', html)
-    assert 'href="/admin/research"' in html
+    assert 'href="/admin/research"' not in html
     # No disabled placeholder is left in the sidebar at all.
     assert "Soon" not in html
     assert client.get("/admin/payments").status_code == 200
-    assert client.get("/admin/research").status_code == 200
+    assert client.get("/admin/research").status_code == 404
 
 
 def test_logout_works(app, client):
@@ -377,13 +376,14 @@ def test_dashboard_links_only_to_implemented_pages(app, client):
     # and M08 the gradebook report, so /admin/attendance and /admin/grades
     # both moved from the "not implemented" list to the linked one.
     # Phase 5 / M02 implemented /admin/fee-plans and M05 /admin/payments.
-    # Phase 6 / M01 implemented /admin/research, so every sidebar entry now
-    # links to a page that exists.
+    # Every sidebar entry links to a page that exists; the Phase 6
+    # replacement removed /admin/research and its entry.
     for path in ("/admin/academic-terms", "/admin/levels", "/admin/courses",
                  "/admin/groups", "/admin/schedules", "/admin/students",
                  "/admin/teachers", "/admin/attendance", "/admin/grades",
-                 "/admin/fee-plans", "/admin/payments", "/admin/research"):
+                 "/admin/fee-plans", "/admin/payments"):
         assert f'href="{path}"' in html
+    assert 'href="/admin/research"' not in html
 
 
 def test_dashboard_empty_states(app, client):

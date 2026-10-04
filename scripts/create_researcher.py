@@ -1,6 +1,5 @@
 """
-One-time local development helper to create a Researcher account
-(Phase 6 / M01).
+Deliberate provisioning of a Researcher account (Phase 6).
 
 Run this yourself in your own terminal (it must be run interactively so the
 password prompts can read your keystrokes):
@@ -17,13 +16,18 @@ a command line lands in the shell history, in the process list and in any
 terminal recording, which is exactly what ``getpass`` exists to avoid -- so
 this script takes no arguments at all and refuses to run non-interactively.
 
-**A Researcher works inside the Researcher portal and nowhere else.** The
-account created here reaches ``/research/dashboard``, reads the pseudonymous
-participant pages, and (Phase 6 / M02A) writes and internally activates
-experiment protocol versions in the protocol catalogue, which holds no
-participant data. It cannot open any Administrator page, cannot create a
-participant, cannot author or activate consent wording, and cannot consent
-for anybody.
+**Only approved addresses.** The email must appear in
+``RESEARCHER_EMAIL_ALLOWLIST`` (comma-separated, from the environment); the
+script refuses any other address and refuses to run when the allowlist is
+empty. No address is written into this source file. The allowlist is only a
+provisioning guard: the role comes from the account row this script creates,
+and no login ever grants a role because of an email address or its domain.
+
+**A Researcher works inside the separate research workspace and nowhere
+else.** The account signs in only at ``/research/login`` (the LMS login
+refuses it), manages collection configurations, reads pseudonymous sessions
+and creates exports. It cannot open any Administrator, Teacher or Student
+page, and it never sees a Student's name, email address or account.
 
 ``scripts/create_admin.py`` is deliberately untouched: the two scripts create
 different roles and share nothing but the password service, and editing a
@@ -55,9 +59,21 @@ def main() -> int:
 
     app = create_app("development")
     with app.app_context():
+        allowlist = app.config.get("RESEARCHER_EMAIL_ALLOWLIST") or frozenset()
+        if not allowlist:
+            print(
+                "RESEARCHER_EMAIL_ALLOWLIST is empty. Add the approved researcher addresses "
+                "to the environment first.",
+                file=sys.stderr,
+            )
+            return 1
+
         email = input("Researcher email: ").strip().lower()
         if not email:
             print("Email is required.", file=sys.stderr)
+            return 1
+        if email not in allowlist:
+            print("That address is not in RESEARCHER_EMAIL_ALLOWLIST.", file=sys.stderr)
             return 1
 
         if User.query.filter_by(email=email).first() is not None:
