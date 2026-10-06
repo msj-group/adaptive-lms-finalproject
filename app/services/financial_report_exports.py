@@ -67,7 +67,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import SimpleDocTemplate, Spacer, Table, TableStyle
 
-from app.services.financial_reports import AMOUNT, COUNT, TEXT
+from app.services.financial_report_types import AMOUNT, COUNT, TEXT
 from app.services.money import amount_input_text, format_amount
 
 CSV_CONTENT_TYPE = "text/csv; charset=utf-8"
@@ -113,7 +113,7 @@ def is_numeric(column):
 #: The characters a spreadsheet may treat as the start of a formula.
 FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
-_CSV_AMOUNT = re.compile(r"-?[0-9]+\.[0-9]{3,4}")
+_CSV_AMOUNT = re.compile(r"-?[0-9]+(?:\.[0-9]{1,4})?")
 _CSV_COUNT = re.compile(r"[0-9]+")
 
 

@@ -147,15 +147,11 @@
             <div class="ds-row" style="gap: var(--space-2); flex-wrap: wrap">
             {% if group.status == "active" %}
               {% if enrollment.status == "active" %}
-              <form method="post" action="{{ url_for('admin.group_enrollment_withdraw', group_public_id=group.public_id, enrollment_public_id=enrollment.public_id) }}" data-confirm="Withdraw {{ enrollment.student.full_name }} from {{ group.name }}? This can be reversed later with Reactivate.">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn--danger-outline">Withdraw</button>
-              </form>
+              {% for action, label in [('withdraw','Withdraw'), ('transfer','Transfer'), ('correct_course','Correct course')] %}
+              <a class="btn btn--secondary" href="{{ url_for('admin.enrollment_operation', group_public_id=group.public_id, action=action, episode=enrollment.public_id) }}">{{ label }}</a>
+              {% endfor %}
               {% else %}
-              <form method="post" action="{{ url_for('admin.group_enrollment_reactivate', group_public_id=group.public_id, enrollment_public_id=enrollment.public_id) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn--secondary">Reactivate</button>
-              </form>
+              <a class="btn btn--secondary" href="{{ url_for('admin.enrollment_operation', group_public_id=group.public_id, action='enroll', student=enrollment.student.public_id) }}">Re-enroll in a new episode</a>
               {% endif %}
             {% endif %}
             </div>
@@ -176,18 +172,8 @@
       <div class="alert alert--warning">This group must have at least one active teacher before students can be enrolled.</div>
       {% elif remaining_seats == 0 %}
       <div class="alert alert--warning">Group is at full capacity.</div>
-      {% elif not student_form.student_public_id.choices %}
-      <div class="alert alert--info">No eligible Student accounts are available to add to this group.</div>
       {% else %}
-      <form method="post" action="{{ url_for('admin.group_enrollment_create', group_public_id=group.public_id) }}" class="ds-row" style="align-items:flex-end; gap: var(--space-2); flex-wrap: wrap;">
-        {{ student_form.hidden_tag() }}
-        <div class="field">
-          {{ student_form.student_public_id.label(class_="field__label") }}
-          {{ student_form.student_public_id(class_="field__input") }}
-          {% for error in student_form.student_public_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
-        </div>
-        {{ student_form.submit(class_="btn btn--primary") }}
-      </form>
+      <a class="btn btn--primary" href="{{ url_for('admin.enrollment_operation', group_public_id=group.public_id, action='enroll') }}">New enrollment</a>
       {% endif %}
     {% endif %}
   </section>

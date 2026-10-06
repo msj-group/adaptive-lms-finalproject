@@ -28,6 +28,7 @@
             {% if student.status == "active" %}data-confirm="Suspend {{ student.full_name }}? They will be signed out of any active session and unable to log in until reactivated."{% endif %}
           >
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="account_snapshot" value="{{ account_token(student) }}">
             <input type="hidden" name="source" value="list">
             <input type="hidden" name="q" value="{{ search }}">
             <input type="hidden" name="status" value="{{ selected_status }}">

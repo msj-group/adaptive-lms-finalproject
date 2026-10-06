@@ -68,7 +68,7 @@ from sqlalchemy.exc import IntegrityError
 from app.blueprints.collector.hooks import note_outcome
 from app.blueprints.student import student_bp
 from app.blueprints.student.forms import SubmissionForm
-from app.blueprints.student.routes import private_no_store
+from app.blueprints.student.routes import private_no_store, private_redirect
 from app.extensions import db
 from app.models import (
     AcademicStatus,
@@ -330,42 +330,8 @@ def _render_assignment_detail(
 @student_bp.get("/assignments")
 @roles_required(UserRole.STUDENT.value)
 def assignments_list():
-    """Every Assignment this Student can currently see, in fixed pages of
-    :data:`PAGE_SIZE`: **open work by nearest deadline, then past-due
-    work most recent first** (``student_list_order``).
-
-    That bucketing is what stops a long history of overdue work from
-    pushing an approaching deadline onto a later page. One reference
-    moment is derived here and passed into the query and the presentation
-    builder, so the visibility gate, the bucketing, the ordering, and the
-    Open / Past due labels on this page all agree.
-
-    M02 deliberately leaves this list -- and the dashboard section --
-    exactly as M01 built them. Neither runs a per-Assignment submission
-    query, and neither becomes an outstanding-work tracker: that would be
-    a per-row read on every page load, for a feature nobody asked for.
-    """
-    tz_name = _tz_name()
-    reference_utc = utc_reference_now()
-    page = normalize_page(request.args.get("page"))
-
-    rows, has_next = student_assignments_page(current_user.id, reference_utc, page)
-    if not rows and page > 1:
-        # A page past the end (a stale bookmark, or an Assignment that
-        # has since become invisible) shows page 1 rather than a
-        # confusing empty page with a "Previous" button.
-        page = 1
-        rows, has_next = student_assignments_page(current_user.id, reference_utc, page)
-
-    return private_no_store(
-        "student/assignments/list.html",
-        assignments=build_student_view(rows, tz_name, reference_utc),
-        tz_name=tz_name,
-        page=page,
-        has_next=has_next,
-        has_prev=page > 1,
-        page_size=PAGE_SIZE,
-    )
+    """Preserve old bookmarks through the unified Activities hub."""
+    return private_redirect(url_for("student.activities", type="assignment"))
 
 
 @student_bp.get("/groups/<group_public_id>/assignments/<assignment_public_id>")
@@ -422,13 +388,13 @@ def _lock_submission_chain(
     enrollment = None
     if group is not None:
         enrollment = (
-            Enrollment.query.filter_by(group_id=group.id, student_id=student_id)
+            Enrollment.query.filter_by(group_id=group.id, student_id=student_id, status="active")
             .with_for_update()
             .first()
         )
     assignment = Assignment.query.filter_by(id=assignment_id).with_for_update().first()
     submission = (
-        Submission.query.filter_by(assignment_id=assignment_id, student_id=student_id)
+        Submission.query.filter_by(assignment_id=assignment_id, student_id=student_id, enrollment_id=enrollment.id if enrollment else None)
         .with_for_update()
         .first()
     )

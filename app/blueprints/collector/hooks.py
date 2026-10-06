@@ -34,6 +34,7 @@ from app.services.research_event_dictionary import (
     SOURCE_SERVER,
     page_id_for_endpoint,
 )
+from app.services.research_delivery_scope import issue_delivery_scope
 from app.services.research_event_validation import is_uuid
 from app.services.research_scope import collection_context
 
@@ -110,6 +111,11 @@ def collector_view(progress_position=None, progress_total=None):
         }
         view["config"] = {
             "schema": EVENT_SCHEMA_VERSION,
+            "deliveryScope": issue_delivery_scope(
+                current_app.config["SECRET_KEY"], context.user_public_id,
+                context.auth_version, context.configuration_public_id,
+                context.configuration_version,
+            ),
             "page": page_id,
             "progress": progress,
             "csrf": generate_csrf(),

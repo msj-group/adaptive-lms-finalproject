@@ -1,4 +1,7 @@
 from app.models.user import User, UserRole, UserStatus
+from app.models.account_revision import AccountRevision
+from app.models.room import Room
+from app.models.scheduling_revision import SchedulingRevision
 from app.models.enums import (
     AcademicStatus,
     AnnouncementScope,
@@ -48,6 +51,7 @@ from app.models.level import Level
 from app.models.course import Course
 from app.models.group import Group
 from app.models.enrollment import Enrollment, EnrollmentStatus
+from app.models.enrollment_history import EnrollmentMembership, EnrollmentEvent
 from app.models.group_teacher_assignment import GroupTeacherAssignment, GroupTeacherAssignmentStatus
 from app.models.schedule import Schedule
 from app.models.unit import Unit
@@ -166,6 +170,7 @@ from app.models.payment_transaction import (
     PAYMENT_REASON_MAX_LENGTH,
     PaymentTransaction,
 )
+from app.models.financial_revision import FinancialRevision
 from app.models.receipt import Receipt
 from app.models.payment_intent import (
     ACTIVE_PAYMENT_INTENT_STATUSES,
@@ -205,6 +210,9 @@ from app.models.research_audit_event import ResearchAuditEvent
 
 __all__ = [
     "User",
+    "AccountRevision",
+    "Room",
+    "SchedulingRevision",
     "UserRole",
     "UserStatus",
     "AcademicStatus",
@@ -220,6 +228,8 @@ __all__ = [
     "Course",
     "Group",
     "Enrollment",
+    "EnrollmentMembership",
+    "EnrollmentEvent",
     "EnrollmentStatus",
     "GroupTeacherAssignment",
     "GroupTeacherAssignmentStatus",
@@ -319,6 +329,7 @@ __all__ = [
     "Invoice",
     "MAX_INVOICE_SEQUENCE_NUMBER",
     "FinancialHistoryError",
+    "FinancialRevision",
     "InvoiceItem",
     "INVOICE_ITEM_LABEL_MAX_LENGTH",
     "MAX_ACTIVE_INVOICE_ITEMS",
@@ -381,3 +392,14 @@ __all__ = [
     "EXPORT_FORMAT",
     "ResearchAuditEvent",
 ]
+
+from app.models.academic_revision import AcademicRevision
+from app.models.attempt_submission_receipt import AttemptSubmissionReceipt
+from app.models.research_storage import ResearchConfigurationSequence, ResearchDataGap, ResearchExportSession
+from app.services import history_write_guards
+from app.services import attempt_finalization_guards
+from app.services.academic_episode_binding import register_episode_events
+register_episode_events(
+    [Submission, SpeakingSubmission, QuizAttempt, AttendanceRecord, GradeRecord, LessonProgress],
+    [GradeRecord, AttendanceRecord, SubmissionFeedback, SpeakingFeedback],
+)

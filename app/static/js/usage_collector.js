@@ -60,7 +60,9 @@
   } catch (error) {
     return;
   }
-  if (!config || !config.page || !config.eventsUrl) {
+  if (!config || !config.page || !config.eventsUrl ||
+      typeof config.deliveryScope !== "string" || config.deliveryScope.length !== 64 ||
+      !/^[0-9a-f]{64}$/.test(config.deliveryScope)) {
     return;
   }
 
@@ -71,6 +73,7 @@
   var sending = false;
   var inFlight = {};
   var OUTBOX_KEY = "usageResearchOutbox";
+  var SCOPE_KEY = "usageResearchDeliveryScope";
   var MAX_OUTBOX = 4;
   var MAX_ATTEMPTS = 3;
   var REPEAT_WINDOW_MS = 1000;
@@ -137,7 +140,9 @@
   function stop() {
     stopped = true;
     buffer = [];
-    writeOutbox([]);
+    dropped = 0;
+    // A late answer for an earlier page must preserve a newer scope's data.
+    writeOutbox(readOutbox().filter(function (entry) { return !ownEntry(entry); }));
   }
 
   // ---------------------------------------------------------------- delivery
@@ -167,28 +172,56 @@
     } catch (error) { /* no storage: delivery is then best-effort only */ }
   }
 
+  function ownEntry(entry) {
+    return !!(entry && entry.body && entry.body.delivery_scope === config.deliveryScope &&
+              Array.isArray(entry.body.events));
+  }
+
+  function currentScope() {
+    try {
+      return window.sessionStorage.getItem(SCOPE_KEY) === config.deliveryScope;
+    } catch (error) {
+      return true; // Without storage, server verification still binds delivery.
+    }
+  }
+
+  function adoptOutboxScope() {
+    try {
+      window.sessionStorage.setItem(SCOPE_KEY, config.deliveryScope);
+    } catch (error) { /* Storage is optional, scope verification is not. */ }
+    // No old-scope event or dropped count belongs to this new page's scope.
+    writeOutbox(readOutbox().filter(ownEntry));
+  }
+
   function remember(entry) {
-    var list = readOutbox();
+    if (!currentScope()) {
+      stop();
+      return false;
+    }
+    var list = readOutbox().filter(ownEntry);
     list.push(entry);
     while (list.length > MAX_OUTBOX) {
       dropped += list.shift().body.events.length;
     }
     writeOutbox(list);
+    return true;
   }
 
   function forget(key) {
-    writeOutbox(readOutbox().filter(function (entry) { return entry.key !== key; }));
+    writeOutbox(readOutbox().filter(function (entry) {
+      return !(ownEntry(entry) && entry.key === key);
+    }));
   }
 
   function failedAttempt(key) {
     var list = readOutbox();
     list.forEach(function (entry) {
-      if (entry.key === key) {
+      if (ownEntry(entry) && entry.key === key) {
         entry.attempts += 1;
       }
     });
     writeOutbox(list.filter(function (entry) {
-      if (entry.attempts >= MAX_ATTEMPTS) {
+      if (ownEntry(entry) && entry.attempts >= MAX_ATTEMPTS) {
         dropped += entry.body.events.length;
         return false;
       }
@@ -197,6 +230,10 @@
   }
 
   function handleAnswer(answer) {
+    if (!currentScope()) {
+      stop();
+      return;
+    }
     if (!answer) {
       return;
     }
@@ -213,7 +250,11 @@
      answers -- accepted, or refused for good (a 4xx other than 409/429,
      which a resend could not change). */
   function deliver(entry, replay) {
-    if (inFlight[entry.key]) {
+    if (!ownEntry(entry) || !currentScope()) {
+      stop();
+      return Promise.resolve();
+    }
+    if (stopped || inFlight[entry.key]) {
       return Promise.resolve();
     }
     inFlight[entry.key] = true;
@@ -236,7 +277,15 @@
           throw new Error("retry");
         }
         forget(entry.key);
-        return response.ok ? response.json() : null;
+        if (response.ok) {
+          return response.json();
+        }
+        return response.json().then(function (answer) {
+          if (answer && answer.error === "stale_delivery_scope") {
+            stop();
+          }
+          return null;
+        }, function () { return null; });
       })
       .then(function (answer) {
         delete inFlight[entry.key];
@@ -253,13 +302,16 @@
       return;
     }
     var body = { schema: config.schema, sent_at: Date.now(),
+                 delivery_scope: config.deliveryScope,
                  events: buffer.splice(0, config.batchSize) };
     if (dropped) {
       body.dropped = Math.min(dropped, 10000);
       dropped = 0;
     }
     var entry = { key: uuid(), attempts: 0, body: body };
-    remember(entry);
+    if (!remember(entry)) {
+      return;
+    }
     if (unloading) {
       deliver(entry, false);
       return;
@@ -273,8 +325,10 @@
     if (stopped) {
       return;
     }
-    readOutbox().forEach(function (entry) { deliver(entry, true); });
+    readOutbox().filter(ownEntry).forEach(function (entry) { deliver(entry, true); });
   }
+
+  adoptOutboxScope();
 
   // ----------------------------------------------------------- observations
 

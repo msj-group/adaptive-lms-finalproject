@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import uuid
 
 from sqlalchemy.orm import validates
@@ -125,6 +126,7 @@ class AttendanceRecord(db.Model):
 
     __tablename__ = "attendance_records"
     __table_args__ = (
+        db.ForeignKeyConstraint(['enrollment_id', 'student_id'], ['enrollments.id', 'enrollments.student_id'], name='fk_attendance_record_episode_student'),
         db.UniqueConstraint(
             "attendance_session_id",
             "student_id",
@@ -137,23 +139,24 @@ class AttendanceRecord(db.Model):
         db.CheckConstraint("version > 0", name="ck_attendance_records_version_positive"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    enrollment_id = db.Column(db.BigInteger, db.ForeignKey('enrollments.id', name='fk_attendance_record_episode'), nullable=False, index=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     attendance_session_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("attendance_sessions.id"),
         nullable=False,
     )
     student_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
         index=True,
     )
     status = db.Column(
-        db.String(32), nullable=False, default=DEFAULT_ATTENDANCE_STATUS
+        db.String(32, collation=CODE_COLLATION), nullable=False, default=DEFAULT_ATTENDANCE_STATUS
     )
     note = db.Column(db.Text, nullable=True)
     #: 1 on creation, +1 per meaningful draft update. See the class

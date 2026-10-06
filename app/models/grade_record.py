@@ -172,6 +172,7 @@ class GradeRecord(db.Model):
 
     __tablename__ = "grade_records"
     __table_args__ = (
+        db.ForeignKeyConstraint(['enrollment_id', 'student_id'], ['enrollments.id', 'enrollments.student_id'], name='fk_grade_record_episode_student'),
         db.UniqueConstraint(
             "grade_item_id", "student_id", name="uq_grade_records_item_student"
         ),
@@ -188,17 +189,18 @@ class GradeRecord(db.Model):
         db.Index("ix_grade_records_graded_by_id", "graded_by_id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    enrollment_id = db.Column(db.BigInteger, db.ForeignKey('enrollments.id', name='fk_grade_record_episode'), nullable=False, index=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     grade_item_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("grade_items.id"),
         nullable=False,
     )
     student_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
     )
@@ -212,7 +214,7 @@ class GradeRecord(db.Model):
     #: Both NULL until the first meaningful write; both set together
     #: afterwards.
     graded_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )

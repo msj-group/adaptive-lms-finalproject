@@ -121,10 +121,11 @@ class SpeakingSubmission(db.Model):
 
     __tablename__ = "speaking_submissions"
     __table_args__ = (
+        db.ForeignKeyConstraint(['enrollment_id', 'student_id'], ['enrollments.id', 'enrollments.student_id'], name='fk_speaking_submission_episode_student'),
         db.UniqueConstraint(
             "speaking_activity_id",
-            "student_id",
-            name="uq_speaking_submissions_activity_student",
+            "enrollment_id",
+            name="uq_speaking_submissions_activity_episode",
         ),
         db.Index(
             "ix_speaking_submissions_activity_submitted_id",
@@ -134,17 +135,18 @@ class SpeakingSubmission(db.Model):
         ),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    enrollment_id = db.Column(db.BigInteger, db.ForeignKey('enrollments.id', name='fk_speaking_submission_episode'), nullable=False, index=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     speaking_activity_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("speaking_activities.id"),
         nullable=False,
     )
     student_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
         index=True,
@@ -153,7 +155,7 @@ class SpeakingSubmission(db.Model):
     #: one submission. The ``audio`` category is an application invariant
     #: -- see the class docstring.
     audio_file_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("uploaded_files.id"),
         nullable=False,
         unique=True,

@@ -16,7 +16,7 @@
     <tr data-audit="{{ row[0] }}">
       <td style="white-space: nowrap">{{ row[3].strftime("%Y-%m-%d %H:%M:%S") }}</td>
       <td>{{ row[0]|replace('_', ' ') }}</td>
-      <td>{% if row[1] == 'workspace' %}{{ "You" if row[2] == me else "Another researcher" }}{% elif row[1] == 'operator' %}Operator tool{% else %}Migration{% endif %}</td>
+      <td>{% if row[1] in ['workspace','operator'] %}{{ ("You" if row[2] == me else "Another researcher") if row[2] is not none else "Historical operator (identity unavailable)" }}{% if row[1] == 'operator' %} · Operator tool{% endif %}{% elif row[1] == 'service' %}Daily retention service{% else %}Migration{% endif %}</td>
       <td>{{ row[6] if row[6] is not none else "—" }}</td>
       <td>{{ row[8] or "—" }}</td>
       <td>{{ row[4]|replace('_', ' ') if row[4] else "" }}{% if row[5] is not none %} ({{ row[5] }}){% endif %}{% if row[7] %} export{% endif %}</td>

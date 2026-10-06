@@ -27,6 +27,7 @@ the deployment supplies none.
 Guards read the **stored** status through the flushing connection, so an
 expired-then-assigned attribute cannot slip a frozen column past them.
 """
+from app.models.code_types import CODE_COLLATION
 
 import uuid
 
@@ -143,8 +144,8 @@ class ResearchConfiguration(db.Model):
     )
     version_number = db.Column(db.Integer, nullable=False)
     label = db.Column(db.String(CONFIGURATION_LABEL_MAX_LENGTH), nullable=False)
-    event_schema_version = db.Column(db.String(40), nullable=False)
-    status = db.Column(db.String(16), nullable=False, default=_DRAFT)
+    event_schema_version = db.Column(db.String(40, collation=CODE_COLLATION), nullable=False)
+    status = db.Column(db.String(16, collation=CODE_COLLATION), nullable=False, default=_DRAFT)
     current_marker = db.Column(db.SmallInteger, nullable=True)
     is_collecting = db.Column(db.Boolean, nullable=False, default=False)
     collection_starts_at = db.Column(db.DateTime, nullable=False)

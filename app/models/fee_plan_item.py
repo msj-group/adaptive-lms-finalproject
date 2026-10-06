@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import uuid
 
 from sqlalchemy.orm import validates
@@ -116,16 +117,16 @@ class FeePlanItem(db.Model):
         db.Index("ix_fee_plan_items_removed_by_id", "removed_by_id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     fee_plan_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("fee_plans.id"),
         nullable=False,
     )
-    kind = db.Column(db.String(32), nullable=False)
+    kind = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False)
     label = db.Column(db.String(FEE_PLAN_ITEM_LABEL_MAX_LENGTH), nullable=False)
     #: Exact fixed point, never a float -- see :mod:`app.services.money`.
     amount = db.Column(
@@ -133,12 +134,12 @@ class FeePlanItem(db.Model):
         nullable=False,
     )
     status = db.Column(
-        db.String(32), nullable=False, default=FeePlanItemStatus.ACTIVE.value
+        db.String(32, collation=CODE_COLLATION), nullable=False, default=FeePlanItemStatus.ACTIVE.value
     )
     #: NULL exactly while ``active``; set once, at removal.
     removed_at = db.Column(db.DateTime, nullable=True)
     removed_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )

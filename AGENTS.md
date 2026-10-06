@@ -7,6 +7,9 @@ checkpoint, scope, and any explicit exceptions.
 
 - The current user request and approved Part define authorization and intended changes.
 - The repository, Git state, migrations, and checks actually executed define current state.
+- `docs/APPROVED_REPAIR_CONTRACT.md` records the owner-approved rehabilitation target;
+  `docs/IMPLEMENTATION_PLAN.md` and `docs/PROJECT_STATUS.md` distinguish planned work from
+  implemented/verified work. Read their latest authority before interpreting historical policy.
 - `docs/DECISIONS.md` records accepted architecture and domain policy.
 - Historical chats, reports, handoffs, and `MASTER_PROMPT.md` are context only, not current authorization.
 - If the Part, documentation, code, migrations, or tests disagree materially, stop before mutation
@@ -42,15 +45,34 @@ checkpoint, scope, and any explicit exceptions.
 - Reports and explanations to the owners are Arabic.
 - Code, filenames, routes, UI text, tests, repository documentation, and commit messages are English.
 - The application is a Flask modular monolith using SQLAlchemy/Alembic and MySQL/PyMySQL.
-- Automated tests use SQLite in memory. They can validate application logic and requested lock/query
-  structure, but they do not prove MySQL/InnoDB blocking, isolation, collation, or migration behavior.
+- MySQL/InnoDB is the only approved application database. Any separately authorized future
+  database-backed automated tests must use an owned isolated MySQL target, never development
+  or production. The owner deleted the test package on 2026-10-06 and explicitly declined
+  creating a replacement. Historical focused results are evidence of earlier builds only.
+- Preserve the shared `/auth/login` and separate role-gated Researcher workspace. The owners
+  reconfirmed password-only Researcher authentication and 15-day daily retention on 2026-10-05;
+  the repair's earlier MFA and pressure-only proposals are superseded. Preserve research sampling,
+  windows, display/provenance/label and session meanings unless separately approved.
+- On 2026-10-05 the owners authorized isolated MySQL resources throughout the repair's tests,
+  migrations and browser checks: existing mysqld, unique ignored `instance/repair_mysql_tests`
+  directories, random loopback ports, owned synthetic schemas and generated temporary credentials.
+  This scope does not authorize development DB access, installations or machine/service/task changes.
+- On 2026-10-06 the owner separately authorized integration, legacy entry points,
+  documentation and the new development database migrations. The exact local
+  upgrade from `d574ab56594f` to `085b7a4e9012`, recovery and current evidence are
+  recorded in `docs/REPAIR_INTEGRATION.md`. The owner then separately authorized a complete
+  development-data reset, deletion of old tests and fictional data for four demo accounts.
+  That bounded operation is complete; it is not continuing permission to reset or seed again.
+  The latest follow-up authorizes remaining source cleanup, interface review and documentation.
+  Scheduler changes, production deployment and Git mutation are outside this follow-up.
 - Credentials and secrets come only from environment configuration and must never be exposed.
 
 ## 5. Scope, architecture, and security
 
 - Complete only the named Part; do not begin later modules or unrelated refactors.
 - Read the relevant code, tests, migrations, and `docs/DECISIONS.md` before changing behavior.
-- Existing regression tests are contracts unless the current Part explicitly changes their documented behavior.
+- Existing regression tests preserve valid contracts; owner-approved changes take precedence over
+  assertions for superseded behavior. Never treat code as correct merely because its tests pass.
 - Preserve normalized relationships and approved history/lifecycle policies; do not introduce hard deletion,
   cascades, or duplicated identity columns without explicit approval.
 - Admin object URLs use public identifiers. Numeric database IDs may remain in established internal
@@ -72,11 +94,19 @@ checkpoint, scope, and any explicit exceptions.
 
 ## 6. Verification truthfulness
 
+- Latest owner instruction on 2026-10-06: do not create a new automated test package.
+  Old tests were deleted at the owner's explicit request. Complete remaining source cleanup,
+  bounded manual browser review with the existing fictional accounts, static source/template
+  review and current documentation. Do not recreate or execute automated tests, invoke pytest
+  collection, or start a background test supervisor. This explicitly overrides the default
+  focused/full-suite gates below for this repair close-out. Report this verification boundary;
+  do not describe manual/static review as comprehensive automated regression acceptance.
+
 - Run technically available focused tests and relevant regressions after code changes.
 - Run the full suite and strict-warning checks before final approval of cross-cutting/high-risk code or when
   the Part requires them. Documentation-only work does not automatically require the full suite.
-- Use migration checks separately from pytest when schema/model work is involved; SQLite `create_all()` is
-  not proof that Alembic migrations work on MySQL. Unless the approved Part explicitly
+- Use migration checks separately from pytest when schema/model work is involved; `create_all()` or
+  historical SQLite results are not proof that Alembic migrations work on MySQL. Unless the approved Part explicitly
   opts out, after all required tests pass, apply the exact new revision to development
   MySQL only after confirming the stated parent revision, then inspect the result and
   record the evidence.

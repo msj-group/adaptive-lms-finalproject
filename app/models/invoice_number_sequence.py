@@ -55,7 +55,7 @@ class InvoiceNumberSequence(db.Model):
         ),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     calendar_year = db.Column(db.Integer, nullable=False)
     last_number = db.Column(db.Integer, nullable=False, default=0)
     created_at = db.Column(db.DateTime, nullable=False, default=whole_second_utc)

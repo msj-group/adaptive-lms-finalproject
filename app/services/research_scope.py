@@ -67,7 +67,8 @@ DEPLOYMENT_PROVENANCES = (ResearchProvenance.STUDY.value, ResearchProvenance.DEV
 CollectionContext = namedtuple(
     "CollectionContext",
     "user_id subject_id subject_provenance configuration_id configuration_version "
-    "event_schema_version starts_at ends_at is_collecting policy",
+    "event_schema_version starts_at ends_at is_collecting policy "
+    "user_public_id auth_version configuration_public_id",
 )
 
 #: The configuration policy columns every collection decision needs.
@@ -118,6 +119,9 @@ def collection_context(user_id):
             ResearchConfiguration.collection_ends_at,
             ResearchConfiguration.is_collecting,
             *(getattr(ResearchConfiguration, column) for column in POLICY_COLUMNS),
+            User.public_id,
+            User.auth_version,
+            ResearchConfiguration.public_id,
         )
         .select_from(User)
         .join(ResearchConfiguration, ResearchConfiguration.current_marker == 1)
@@ -142,6 +146,9 @@ def collection_context(user_id):
         ends_at=row[9],
         is_collecting=bool(row[10]),
         policy={column: int(row[11 + i]) for i, column in enumerate(POLICY_COLUMNS)},
+        user_public_id=row[11 + len(POLICY_COLUMNS)],
+        auth_version=row[12 + len(POLICY_COLUMNS)],
+        configuration_public_id=row[13 + len(POLICY_COLUMNS)],
     )
     if not context.is_collecting:
         return None

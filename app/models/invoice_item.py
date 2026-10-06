@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import uuid
 
 from sqlalchemy import event
@@ -100,26 +101,26 @@ class InvoiceItem(db.Model):
         db.Index("ix_invoice_items_removed_by_id", "removed_by_id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     invoice_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("invoices.id"),
         nullable=False,
     )
-    kind = db.Column(db.String(32), nullable=False)
+    kind = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False)
     label = db.Column(db.String(INVOICE_ITEM_LABEL_MAX_LENGTH), nullable=False)
     #: Exact fixed point, never a float -- see :mod:`app.services.money`.
     amount = db.Column(
         db.DECIMAL(precision=AMOUNT_PRECISION, scale=AMOUNT_SCALE, asdecimal=True),
         nullable=False,
     )
-    status = db.Column(db.String(32), nullable=False, default=InvoiceItemStatus.ACTIVE.value)
+    status = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False, default=InvoiceItemStatus.ACTIVE.value)
     removed_at = db.Column(db.DateTime, nullable=True)
     removed_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )

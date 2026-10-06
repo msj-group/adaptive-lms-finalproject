@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import uuid
 
 from sqlalchemy.orm import validates
@@ -121,34 +122,34 @@ class StudentFeeAssignment(db.Model):
         db.Index("ix_student_fee_assignments_cancelled_by_id", "cancelled_by_id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     enrollment_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("enrollments.id"),
         nullable=False,
     )
     fee_plan_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("fee_plans.id"),
         nullable=False,
     )
     status = db.Column(
-        db.String(32), nullable=False, default=StudentFeeAssignmentStatus.ASSIGNED.value
+        db.String(32, collation=CODE_COLLATION), nullable=False, default=StudentFeeAssignmentStatus.ASSIGNED.value
     )
     #: Set once, when the row is inserted.
     assigned_at = db.Column(db.DateTime, nullable=False)
     assigned_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
     )
     #: NULL exactly while ``assigned``; set once, at cancellation.
     cancelled_at = db.Column(db.DateTime, nullable=True)
     cancelled_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )

@@ -1,0 +1,18 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Rooms{% endblock %}
+{% block admin_content %}
+<div class="ds-page">
+  <div class="ds-row"><h1>Rooms</h1><a class="btn btn--primary" href="{{ url_for('admin.room_edit') }}">New room</a></div>
+  {{ macros.flash_messages() }}
+  <div style="overflow-x:auto"><table class="table"><thead><tr><th>Name</th><th>Capacity</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+  {% for room in page.items %}<tr><td>{{ room.name }} <a href="{{ url_for('admin.operational_history',kind='room',public_id=room.public_id) }}">History</a></td><td>{{ room.capacity }}</td><td>{{ room.status|title }}</td><td>
+    <a href="{{ url_for('admin.room_edit', public_id=room.public_id) }}">Edit</a>
+    <form method="post" action="{{ url_for('admin.room_toggle_status', public_id=room.public_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="snapshot" value="{{ room_token(room) }}">
+      <button class="btn btn--secondary" type="submit">{{ 'Archive' if room.status == 'active' else 'Reactivate' }}</button>
+    </form></td></tr>{% else %}<tr><td colspan="4">No rooms yet.</td></tr>{% endfor %}
+  </tbody></table></div>
+  <nav aria-label="Room pages">{% if page.has_prev %}<a href="{{ url_for('admin.rooms_list', page=page.prev_num) }}">Previous</a>{% endif %} Page {{ page.page }} {% if page.has_next %}<a href="{{ url_for('admin.rooms_list', page=page.next_num) }}">Next</a>{% endif %}</nav>
+</div>
+{% endblock %}

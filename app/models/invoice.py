@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import re
 import uuid
 
@@ -209,6 +210,11 @@ class Invoice(db.Model):
     __tablename__ = "invoices"
     __table_args__ = (
         db.UniqueConstraint("invoice_number", name="uq_invoices_invoice_number"),
+        db.UniqueConstraint("id", "student_id", name="uq_invoices_id_student"),
+        db.ForeignKeyConstraint(["enrollment_id", "student_id"], ["enrollments.id", "enrollments.student_id"], name="fk_invoices_episode_student"),
+        db.Index("ix_invoices_student_status", "student_id", "status", "id"),
+        db.CheckConstraint("charge_amount IS NULL OR (charge_amount >= 0 AND MOD(charge_amount, 0.001) = 0)", name="ck_invoices_charge_amount"),
+        db.CheckConstraint("discount_amount >= 0 AND (charge_amount IS NULL OR discount_amount <= charge_amount) AND MOD(discount_amount, 0.001) = 0", name="ck_invoices_discount_amount"),
         db.CheckConstraint(_STATUS_CHECK_SQL, name="ck_invoices_status_valid"),
         db.CheckConstraint(_CURRENCY_CHECK_SQL, name="ck_invoices_currency_code"),
         db.CheckConstraint("version > 0", name="ck_invoices_version_positive"),
@@ -228,28 +234,37 @@ class Invoice(db.Model):
         db.Index("ix_invoices_deleted_by_id", "deleted_by_id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     student_fee_assignment_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("student_fee_assignments.id"),
-        nullable=False,
+        nullable=True,
     )
-    currency_code = db.Column(db.String(3), nullable=False, default=CURRENCY_CODE)
-    status = db.Column(db.String(32), nullable=False, default=InvoiceStatus.DRAFT.value)
+    student_id = db.Column(db.BigInteger, db.ForeignKey("users.id", name="fk_invoices_student_id"), nullable=False)
+    enrollment_id = db.Column(db.BigInteger, db.ForeignKey("enrollments.id", name="fk_invoices_enrollment_id"), nullable=True, index=True)
+    charge_amount = db.Column(db.Numeric(19, 4), nullable=True)
+    discount_amount = db.Column(db.Numeric(19, 4), nullable=False, default=0)
+    discount_kind = db.Column(db.String(16), nullable=False, default="none")
+    discount_value = db.Column(db.String(32), nullable=False, default="0")
+    discount_actor_id = db.Column(db.BigInteger, db.ForeignKey("users.id", name="fk_invoices_discount_actor_id"), nullable=True)
+    discount_reason = db.Column(db.String(500), nullable=True)
+    course_snapshot = db.Column(db.JSON, nullable=True)
+    currency_code = db.Column(db.String(3, collation=CODE_COLLATION), nullable=False, default=CURRENCY_CODE)
+    status = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False, default=InvoiceStatus.DRAFT.value)
     #: NULL exactly until the first issue; then permanent.
     invoice_number = db.Column(db.String(INVOICE_NUMBER_LENGTH), nullable=True)
     issued_at = db.Column(db.DateTime, nullable=True)
     issued_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )
     cancelled_at = db.Column(db.DateTime, nullable=True)
     cancelled_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )
@@ -262,7 +277,7 @@ class Invoice(db.Model):
     #: revision that added it to an existing table must be able to name it.
     deleted_at = db.Column(db.DateTime, nullable=True)
     deleted_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id", name="fk_invoices_deleted_by_id"),
         nullable=True,
     )
@@ -400,9 +415,20 @@ def refuse_or_allow_deletion(target, stored, noun):
 _SET_ONCE_COLUMNS = ("student_fee_assignment_id", "invoice_number", "issued_at", "issued_by_id")
 
 
+@event.listens_for(Invoice, "before_insert")
+def _resolve_legacy_invoice_account(_mapper, connection, target):
+    if target.student_id is None and target.student_fee_assignment_id:
+        row = connection.execute(sa.text("SELECT e.student_id, e.id FROM student_fee_assignments a JOIN enrollments e ON e.id = a.enrollment_id WHERE a.id = :id"), {"id": target.student_fee_assignment_id}).first()
+        if row:
+            target.student_id, target.enrollment_id = row
+
+
 @event.listens_for(Invoice, "before_update")
 def _refuse_rewriting_invoice_history(_mapper, connection, target):
     if not is_changing(target):
+        return
+    from app.services.financial_history import revision_authorizes_update
+    if revision_authorizes_update(connection, target):
         return
     stored = stored_row(
         connection, target, ("status", "version", "deleted_at") + _SET_ONCE_COLUMNS

@@ -72,7 +72,7 @@ from werkzeug.exceptions import HTTPException
 
 from app.blueprints.collector.hooks import note_outcome
 from app.blueprints.student import student_bp
-from app.blueprints.student.routes import private_no_store
+from app.blueprints.student.routes import private_no_store, private_redirect
 from app.blueprints.student.speaking_forms import SpeakingSubmissionForm
 from app.blueprints.teacher.materials import _cleanup_orphan_upload
 from app.extensions import db
@@ -397,46 +397,8 @@ def _feedback_panel_for(submission, tz_name):
 @student_bp.get("/speaking")
 @roles_required(UserRole.STUDENT.value)
 def speaking_list():
-    """Every Speaking activity this Student can currently see, in fixed
-    pages: **open work by nearest deadline, then past-due work most recent
-    first**.
-
-    That bucketing is the M01 ``student_list_order``, reused rather than
-    restated, so a Student meets one ordering rule for time-gated work
-    rather than two. One reference moment is derived here and passed into
-    the query and the presentation builder, so the visibility gate, the
-    bucketing, the ordering and the Open / Past due labels on this page
-    all agree.
-
-    **One** extra bounded query resolves which of the at-most-PAGE_SIZE
-    rows this Student has already submitted -- scoped by ``student_id``,
-    so it discloses nothing about anybody else, and asked once for the
-    whole page rather than per row.
-    """
-    tz_name = _tz_name()
-    reference_utc = _now()
-    page = normalize_page(request.args.get("page"))
-
-    rows, has_next = student_speaking_page(current_user.id, reference_utc, page)
-    if not rows and page > 1:
-        page = 1
-        rows, has_next = student_speaking_page(current_user.id, reference_utc, page)
-
-    submitted_ids = student_submitted_activity_ids(
-        [row[5].id for row in rows], current_user.id
-    )
-
-    return private_no_store(
-        "student/speaking/list.html",
-        activities=build_student_speaking_view(
-            rows, tz_name, reference_utc, submitted_ids
-        ),
-        tz_name=tz_name,
-        page=page,
-        has_next=has_next,
-        has_prev=page > 1,
-        page_size=PAGE_SIZE,
-    )
+    """Preserve old bookmarks through the unified Activities hub."""
+    return private_redirect(url_for("student.activities", type="speaking"))
 
 
 @student_bp.get("/groups/<group_public_id>/speaking/<speaking_public_id>")
@@ -629,7 +591,7 @@ def _lock_submission_chain(
     enrollment = None
     if group is not None:
         enrollment = (
-            Enrollment.query.filter_by(group_id=group.id, student_id=student_id)
+            Enrollment.query.filter_by(group_id=group.id, student_id=student_id, status="active")
             .with_for_update()
             .first()
         )
@@ -637,7 +599,7 @@ def _lock_submission_chain(
     activity = SpeakingActivity.query.filter_by(id=activity_id).with_for_update().first()
     submission = (
         SpeakingSubmission.query.filter_by(
-            speaking_activity_id=activity_id, student_id=student_id
+            speaking_activity_id=activity_id, student_id=student_id, enrollment_id=enrollment.id if enrollment else None
         )
         .with_for_update()
         .first()

@@ -77,9 +77,10 @@ class LessonProgress(db.Model):
 
     __tablename__ = "lesson_progress"
     __table_args__ = (
+        db.ForeignKeyConstraint(['enrollment_id', 'student_id'], ['enrollments.id', 'enrollments.student_id'], name='fk_lesson_progress_episode_student'),
         db.UniqueConstraint(
-            "student_id", "group_id", "lesson_id",
-            name="uq_lesson_progress_student_group_lesson",
+            "enrollment_id", "group_id", "lesson_id",
+            name="uq_lesson_progress_episode_group_lesson",
         ),
         db.CheckConstraint("version > 0", name="ck_lesson_progress_version_positive"),
         db.Index("ix_lesson_progress_student_opened_id", "student_id", "last_opened_at", "id"),
@@ -87,19 +88,20 @@ class LessonProgress(db.Model):
         db.Index("ix_lesson_progress_lesson_group", "lesson_id", "group_id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    enrollment_id = db.Column(db.BigInteger, db.ForeignKey('enrollments.id', name='fk_lesson_progress_episode'), nullable=False, index=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     student_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
     )
     group_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("groups.id"),
         nullable=False,
     )
     lesson_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("lessons.id"),
         nullable=False,
     )

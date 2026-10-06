@@ -62,10 +62,11 @@
         <td style="padding: var(--space-3)">{{ weekday_names[schedule.day_of_week] }}</td>
         <td style="padding: var(--space-3)">{{ schedule.start_time.strftime("%H:%M") }}–{{ schedule.end_time.strftime("%H:%M") }}</td>
         <td style="padding: var(--space-3)">{{ schedule.effective_start_date.isoformat() }} → {{ schedule.effective_end_date.isoformat() }}</td>
-        <td style="padding: var(--space-3)">{{ schedule.location or "—" }}</td>
+        <td style="padding: var(--space-3)">{{ schedule.room.name if schedule.room else (schedule.location or "—") }}</td>
         <td style="padding: var(--space-3)">{{ macros.status_badge(schedule.status) }}</td>
         <td style="padding: var(--space-3)">
           <div class="ds-row" style="gap: var(--space-2)">
+            <a class="btn btn--secondary" href="{{ url_for('admin.operational_history', kind='schedule', public_id=schedule.public_id) }}">History</a>
             {% if group_is_active and not ancestor_archived and schedule.status == "active" %}
             <a class="btn btn--secondary" href="{{ url_for('admin.group_schedule_edit', group_public_id=group.public_id, schedule_public_id=schedule.public_id) }}">Edit</a>
             {% endif %}

@@ -1,5 +1,34 @@
 # Research deployment runbook (Phase 6 replacement)
 
+## Current local demonstration workspace — 2026-10-06
+
+The owner-requested reset preserves development schema `085b7a4e9012` and
+fictional four-role data. Research authentication is password-only. Retention
+is explicitly configured as 15 days. The existing daily local retention task
+was previously read as enabled/Ready with last result 0; this close-out does
+not register, alter or manually run it.
+
+Use the Researcher Demo data filter to inspect demonstration sessions. The
+Student is classified as demo; development/demo events never enter study
+exports. The manual close-out observed a paused active configuration with a
+period beginning `2026-10-07`. Launching Flask alone does not start collection.
+Select an appropriate configuration/period and deliberately start collection
+in the Researcher workspace before expecting new sessions. A real study and
+any production-provenance change require their own operational decision.
+
+Old tests were removed and replacement tests explicitly declined by the owner.
+Historical test and deployment procedures below are records of earlier builds;
+follow current `PROJECT_STATUS.md` and `REPAIR_INTEGRATION.md` for close-out
+evidence rather than replaying deleted runners or historical migration commands.
+
+> The repair contract on 2026-10-05 reconfirms password-only/shared login and
+> 15-day daily expiry. Read `APPROVED_REPAIR_CONTRACT.md` and `PROJECT_STATUS.md`
+> for pending repair work. Part P0 changes documentation only and neither
+> runs/re-registers this job nor verifies the live database revision.
+> The migration steps below are historical upgrade instructions: first check
+> the actual approved target/revision; never rerun them against an already
+> upgraded database just because they appear in this runbook.
+
 This runbook moves an existing deployment from the superseded Phase 6 schema
 (`b86838ce23db`) to the natural-use research schema (`d574ab56594f`) and then
 to a pilot. It describes operations; it does not authorize them. Applying
@@ -37,8 +66,11 @@ Every exclusion and every demonstration account must therefore be recorded
 ## 2. Deployment requirements
 
 - **Researcher authentication.** Approved email/password accounts use the
-  dedicated login. The owners removed the second-factor requirement on
-  2026-10-04; password authentication is the accepted contract.
+  shared `/auth/login` page. The database role selects the destination and
+  permissions, with no Researcher option or link shown in the shared form.
+  The owners removed the second-factor requirement on 2026-10-04 and
+  approved the shared login on 2026-10-05; password authentication is the
+  accepted contract.
 - **Retention.** The owners selected 15 days on 2026-10-04, configured
   locally as `RESEARCH_RETENTION_DAYS=15`. Other deployments must supply
   their setting explicitly; no configuration can be activated without it.
@@ -96,27 +128,38 @@ act.
    `research_export_archives.content` is `LONGBLOB`; the six legacy tables
    are gone; every foreign key has no referential action; and the earlier LMS
    tables' row counts equal the pre-migration counts.
-7. Start the application and check: LMS login, a Student dashboard (no
+7. Start the application and check: shared login, a Student dashboard (no
    research link, notice or indicator), a Teacher dashboard, an
-   Administrator dashboard (no research entry), and the research login page.
+   Administrator dashboard (no research entry), and Researcher sign-in
+   through the same form with automatic routing to its separate workspace.
+   Check `/research/login` compatibility, Researcher `next` targets staying
+   inside the workspace, and destination authorization for other roles.
    With no active configuration nothing is collected.
 
 ## 5. Researcher access
 
 1. Put the approved addresses in `RESEARCHER_EMAIL_ALLOWLIST`.
 2. Run `python scripts/create_researcher.py` interactively for each address.
-3. Researchers sign in only at `/research/login` (the LMS login refuses them).
+3. Researchers sign in at `/auth/login`, like the other roles. Their stored
+   role routes them to the separate research workspace; the ordinary portals
+   and shared login show no Researcher choice, link or label.
+4. Anonymous `GET /research/login` requests redirect to the shared form and
+   preserve only safe `next` targets. Authenticated requests invoke the
+   shared handler and return to the account's own workspace. Old form
+   `POST` requests use the identical shared handler and `account-login`
+   rate-limit scope, rather than a second login flow. Researcher logout
+   remains a protected `POST` and returns to `/auth/login`.
 
 ## 6. Pilot enablement (separately authorized)
 
 1. **Before anything collects**, the operator records the exceptions with
    the operator tool, in a private terminal on the server:
    - every exclusion the centre's external process requires:
-     `python scripts/research_operator.py exclude EMAIL`;
+     `python scripts/research_operator.py --researcher RESEARCHER_EMAIL exclude EMAIL`;
    - every demonstration or development Student account:
-     `python scripts/research_operator.py mark-demo EMAIL` (its data is
+     `python scripts/research_operator.py --researcher RESEARCHER_EMAIL mark-demo EMAIL` (its data is
      stored as `demo` and never exported);
-   - review: `python scripts/research_operator.py list-excluded` (prints
+   - review: `python scripts/research_operator.py --researcher RESEARCHER_EMAIL list-excluded` (prints
      emails: keep the output private). Researchers see the same list by
      pseudonymous code under **Exclusions**.
 2. A Researcher creates a configuration draft (period and sampling settings;
@@ -128,7 +171,7 @@ act.
    subject is created at a Student's first collected request.
 4. Later exclusions take effect at once and close open sessions. A lifted
    exclusion is recorded with
-   `python scripts/research_operator.py reinstate EMAIL` (a legacy exclusion
+   `python scripts/research_operator.py --researcher RESEARCHER_EMAIL reinstate EMAIL` (a legacy exclusion
    additionally needs `--lift-legacy-exclusion`, stating that the external
    process changed it).
 5. During the pilot, check the dashboard daily: delivery quality (invalid,
@@ -140,11 +183,21 @@ act.
 ## 7. Exports and retention
 
 Each export is stored once as an immutable archive and served unchanged on
-every download. `python scripts/research_operator.py purge-expired` reports
+every download. `python scripts/research_operator.py --researcher RESEARCHER_EMAIL purge-expired` reports
 the sessions (with events and prompts) and the export archives that the
 retention would remove; `--execute` deletes them permanently and is audited.
 A purged export's download then answers 410 Gone and is never rebuilt.
 Running the purge on the real database needs its own authorization.
+
+The operator tool requires the actual active Researcher and prompts for their
+password privately; Administrator and Teacher identities cannot operate it.
+Actions retain that authenticated Researcher. The dedicated daily entry point
+records the `daily_retention` service principal; it does not invent a Researcher.
+Use the Researcher **Storage and cleanup** page for allocated-table estimates,
+archive bytes, measurement time, full started-session range/all previews, and
+gap history. Cleanup requires paused collection and preserves subjects/links,
+configuration, exclusions, export descriptions and audit/gap metadata. It never
+clips events at range boundaries or rebuilds a missing export ID.
 
 The owner-authorized local daily job uses `scripts/run_research_retention.py`.
 It reads the same environment, executes expiry and logs counts under ignored

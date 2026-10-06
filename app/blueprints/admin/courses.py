@@ -13,6 +13,7 @@ from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
 from app.services.academic_lifecycle import course_has_active_group
 from app.services.course_integrity import course_has_group_reference
 from app.services.course_transactions import lock_course_in_open_transaction
+from app.services.money import validate_course_price
 
 
 def _courses_query(level_id=None):
@@ -78,6 +79,7 @@ def course_create():
             title=title,
             code=code,
             description=description,
+            price=validate_course_price(form.price.data),
             display_order=_next_display_order(level_id),
         )
         db.session.add(course)
@@ -167,7 +169,12 @@ def _course_level_change_error(current_course, requested_level_id):
 # ----------------------------------------------------------------------
 
 _COURSE_EDIT_SNAPSHOT_SALT = "admin.course-edit-snapshot.v1"
-_COURSE_EDIT_SNAPSHOT_FIELDS = ("public_id", "level_id", "title", "code", "description")
+_COURSE_EDIT_SNAPSHOT_FIELDS = ("public_id", "level_id", "title", "code", "description", "price", "currency_code", "version")
+
+
+def _course_snapshot_value(course, field):
+    value = getattr(course, field)
+    return format(value, "f") if field == "price" and value is not None else value
 
 
 def _course_edit_snapshot_serializer():
@@ -181,7 +188,7 @@ def _make_course_edit_snapshot_token(course):
     changed since this particular form was opened -- never as a source of
     the values to write.
     """
-    payload = {field: getattr(course, field) for field in _COURSE_EDIT_SNAPSHOT_FIELDS}
+    payload = {field: _course_snapshot_value(course, field) for field in _COURSE_EDIT_SNAPSHOT_FIELDS}
     return _course_edit_snapshot_serializer().dumps(payload)
 
 
@@ -216,7 +223,7 @@ def _course_edit_is_stale(snapshot, course_public_id, locked_course):
         return True
     if snapshot["public_id"] != course_public_id:
         return True
-    return any(snapshot[field] != getattr(locked_course, field) for field in _COURSE_EDIT_SNAPSHOT_FIELDS)
+    return any(snapshot[field] != _course_snapshot_value(locked_course, field) for field in _COURSE_EDIT_SNAPSHOT_FIELDS)
 
 
 def _redirect_stale_course_edit(public_id):
@@ -349,6 +356,8 @@ def course_edit(public_id):
         course.title = title
         course.code = code
         course.description = description
+        course.price = validate_course_price(form.price.data)
+        course.version += 1
         if moving_to_new_level:
             # Computed only here, in the protected write phase, after the
             # Course lock -- never trusted from any pre-lock read.

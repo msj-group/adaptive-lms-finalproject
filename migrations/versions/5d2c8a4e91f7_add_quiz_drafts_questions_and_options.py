@@ -86,14 +86,18 @@ def upgrade():
 
 
 def downgrade():
-    with op.batch_alter_table('question_options', schema=None) as batch_op:
-        batch_op.drop_index('ix_question_options_question_active_order_id')
+    # Keep dependency order; MySQL releases each table's own indexes/FKs.
+    if op.get_context().dialect.name != 'mysql':
+        with op.batch_alter_table('question_options', schema=None) as batch_op:
+            batch_op.drop_index('ix_question_options_question_active_order_id')
     op.drop_table('question_options')
 
-    with op.batch_alter_table('quiz_questions', schema=None) as batch_op:
-        batch_op.drop_index('ix_quiz_questions_quiz_order_id')
+    if op.get_context().dialect.name != 'mysql':
+        with op.batch_alter_table('quiz_questions', schema=None) as batch_op:
+            batch_op.drop_index('ix_quiz_questions_quiz_order_id')
     op.drop_table('quiz_questions')
 
-    with op.batch_alter_table('quizzes', schema=None) as batch_op:
-        batch_op.drop_index('ix_quizzes_group_created_id')
+    if op.get_context().dialect.name != 'mysql':
+        with op.batch_alter_table('quizzes', schema=None) as batch_op:
+            batch_op.drop_index('ix_quizzes_group_created_id')
     op.drop_table('quizzes')

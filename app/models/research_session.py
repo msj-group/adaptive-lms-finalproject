@@ -27,6 +27,7 @@ invisible.
 changes: ``demo`` for a demonstration subject, otherwise the deployment's
 ``RESEARCH_DATA_PROVENANCE``.
 """
+from app.models.code_types import CODE_COLLATION
 
 import uuid
 
@@ -98,11 +99,11 @@ class ResearchSession(db.Model):
     configuration_id = db.Column(
         ID_TYPE, db.ForeignKey("research_configurations.id"), nullable=False
     )
-    provenance = db.Column(db.String(16), nullable=False)
+    provenance = db.Column(db.String(16, collation=CODE_COLLATION), nullable=False)
     started_at_ms = db.Column(db.BigInteger, nullable=False)
     last_seen_at_ms = db.Column(db.BigInteger, nullable=False)
     ended_at_ms = db.Column(db.BigInteger, nullable=True)
-    end_reason = db.Column(db.String(32), nullable=True)
+    end_reason = db.Column(db.String(32, collation=CODE_COLLATION), nullable=True)
     observed_since_ms = db.Column(db.BigInteger, nullable=True)
     last_observed_at_ms = db.Column(db.BigInteger, nullable=True)
     #: Armed by a server outcome that ends a natural activity; consumed by the

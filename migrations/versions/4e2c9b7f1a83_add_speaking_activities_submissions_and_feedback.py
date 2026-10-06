@@ -148,11 +148,13 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_index(op.f('ix_speaking_feedback_reviewer_id'), table_name='speaking_feedback')
+    if op.get_context().dialect.name != 'mysql':
+        op.drop_index(op.f('ix_speaking_feedback_reviewer_id'), table_name='speaking_feedback')
     op.drop_table('speaking_feedback')
-    op.drop_index(op.f('ix_speaking_submissions_student_id'), table_name='speaking_submissions')
-    op.drop_index(
-        'ix_speaking_submissions_activity_submitted_id', table_name='speaking_submissions'
-    )
+    if op.get_context().dialect.name != 'mysql':
+        op.drop_index(op.f('ix_speaking_submissions_student_id'), table_name='speaking_submissions')
+        op.drop_index(
+            'ix_speaking_submissions_activity_submitted_id', table_name='speaking_submissions'
+        )
     op.drop_table('speaking_submissions')
     op.drop_table('speaking_activities')

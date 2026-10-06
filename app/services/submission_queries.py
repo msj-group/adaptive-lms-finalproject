@@ -70,7 +70,7 @@ def student_submission(assignment_id, student_id):
     """
     return Submission.query.filter(
         Submission.assignment_id == assignment_id,
-        Submission.student_id == student_id,
+        Submission.student_id == student_id, active_episode_record(Submission),
     ).first()
 
 
@@ -261,3 +261,5 @@ def build_teacher_submission_view(rows, tz_name):
     """:func:`build_teacher_submission_item` over a list of rows (list
     page -- no answer bodies)."""
     return [build_teacher_submission_item(row, tz_name) for row in rows]
+
+from app.services.episode_queries import active_episode_record

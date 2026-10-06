@@ -9,6 +9,12 @@
 
   <form method="post" novalidate>
     {{ form.hidden_tag() }}
+    <div class="field">
+      {{ form.study_starts_at.label(class_="field__label") }}
+      {{ form.study_starts_at(class_="field__input") }}
+      {% for error in form.study_starts_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+      <p>New enrollment closes when study starts. Transfers within the same course use a separate action.</p>
+    </div>
     {% if group %}
     <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
     {% endif %}

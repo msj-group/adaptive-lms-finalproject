@@ -1,5 +1,11 @@
 # Phase 6 completion record
 
+> Subsequent rehabilitation: `APPROVED_REPAIR_CONTRACT.md` and
+> `PROJECT_STATUS.md` record the repair target and new evidence. The owners
+> reconfirmed password-only login and 15-day daily retention on 2026-10-05.
+> The results below remain evidence of the build checked at the stated time;
+> Part P0 did not rerun them or recheck the live database/scheduled task.
+
 Date: 2026-10-04. Scope: the natural-use research replacement and its
 owner-authorized local development deployment. No later model-training or
 adaptive-intervention phase is included.
@@ -8,8 +14,11 @@ adaptive-intervention phase is included.
 
 ## Accepted deployment settings
 
-- Researcher authentication uses the dedicated email/password login. The
-  owners removed the second-factor requirement.
+- Researcher authentication uses the shared `/auth/login` email/password
+  page, with a separate Researcher workspace selected by the database role.
+  The shared form and ordinary portals show no Researcher choice or link.
+  The owners removed the second-factor requirement on 2026-10-04 and
+  subsequently authorized unifying the login on 2026-10-05.
 - Retention is 15 days, supplied through the ignored local environment.
 - One approved Researcher address is configured and its active account was
   provisioned using the supplied password through the Argon2id service.
@@ -18,7 +27,11 @@ adaptive-intervention phase is included.
   should set `RESEARCH_DATA_PROVENANCE=study`; demonstrations are marked
   separately and are not exported as study data.
 
-## Verification completed
+## Original close-out verification completed
+
+The evidence in this section records the completed Phase 6 build before
+the shared-login follow-up below. Its counts are not new results for that
+follow-up.
 
 ### MySQL 8.0.46 / InnoDB
 
@@ -88,6 +101,53 @@ context and therefore reused Flask-Login's cached Researcher identity for
 a Student request, producing a false 403. Read-only verification was rerun
 with a separate context per request; all role checks above passed. No
 application authorization change or migration retry was needed.
+
+## Shared-login follow-up — 2026-10-05
+
+The owners subsequently authorized one login page for Administrator,
+Teacher, Student and Researcher accounts. `/auth/login` is the canonical
+entry; the stored database role selects the destination and permissions.
+The Researcher workspace remains separate, and neither the shared form nor
+ordinary portals show a Researcher option, link or label.
+
+For existing bookmarks, anonymous `GET /research/login` requests redirect
+to the shared entry, preserving only a safe `next` target. Authenticated
+requests invoke the shared handler and return to the account's own
+workspace. Legacy `POST` requests delegate to the identical shared handler
+and `account-login` rate-limit scope; there is no independent authentication
+logic, form or login budget. Protected Researcher logout returns to
+`/auth/login`.
+
+Follow-up verification performed under strict warnings:
+
+- Authentication redirect/foundation suites: **35 passed**.
+- Shared-login and workspace-access suite: **119 passed**. This includes
+  both URL paths, all four roles, shared CSRF tokens, suspension/auth-version
+  invalidation and ten alternating login attempts followed by a 429 on the
+  eleventh; the compatibility entry neither bypasses nor double-charges the
+  shared login budget.
+- Headless Chrome with synthetic accounts and an isolated SQLite database:
+  **1 passed**. It submitted the actual common form with CSRF enabled for
+  all four roles, checked the private workspace boundary, actual logout,
+  absence of research choices/links and the old entry's redirect.
+- Local MySQL-backed preview: the existing Researcher account authenticated
+  through `/auth/login`, reached its dashboard with 200 and signed out to
+  the shared entry. Anonymous access through the old entry reached the same
+  form, which showed no research hint. Revision remains `d574ab56594f`,
+  retention remains 15 days and collection configurations remain zero.
+- Complete strict-warning regression run, including the new browser test:
+  **7,240 passed, 4 skipped across 165 files**, with no failure or error.
+  All four test processes finished successfully. The four skips are the
+  inherited Windows IANA-time-zone cases. This is a new complete run against
+  the unified-login build.
+- Final source review and `git diff --check` passed. The former research
+  login template is removed; the common form and separate workspace remain.
+
+The shared-login follow-up is complete. The original close-out results
+above establish the earlier build; this section records the changed build.
+This correction needed no schema, migration, credential or research-data
+change. Its changes remain in the working tree, without staging or a new
+commit.
 
 ## Retention operation
 

@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import uuid
 from datetime import datetime, timezone
 
@@ -69,12 +70,12 @@ class Lesson(db.Model):
         ),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     unit_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("units.id"),
         nullable=False,
         index=True,
@@ -84,7 +85,7 @@ class Lesson(db.Model):
     search_keywords = db.Column(db.String(500), nullable=True)
     display_order = db.Column(db.Integer, nullable=False, default=0, index=True)
     status = db.Column(
-        db.String(32), nullable=False, default=LessonStatus.DRAFT.value, index=True
+        db.String(32, collation=CODE_COLLATION), nullable=False, default=LessonStatus.DRAFT.value, index=True
     )
     published_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))

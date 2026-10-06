@@ -29,7 +29,7 @@ def main():
             days = app.config.get('RESEARCH_RETENTION_DAYS')
             if days is None:
                 raise ValueError('Retention is not configured')
-            report = retention_report(days, execute=True)
+            report = retention_report(days, execute=True, service_principal="daily_retention")
             record.update(retention_days=days, sessions=report.sessions, events=report.events,
                           prompts=report.prompts, archives=report.archives,
                           executed=report.executed, success=True)

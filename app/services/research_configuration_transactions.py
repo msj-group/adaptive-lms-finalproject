@@ -85,6 +85,10 @@ def _lock_researcher(actor_id):
     if actor is None or actor.role != _RESEARCHER or actor.status != _ACTIVE_USER:
         db.session.rollback()
         return None
+    from app.services.actor_authorization import require_current_actor
+    actor = require_current_actor(actor_id, "researcher")
+    from app.services.research_control_gate import lock_research_control
+    lock_research_control()
     return actor
 
 
@@ -134,7 +138,12 @@ def create_draft(actor_id, values):
     actor = _lock_researcher(actor_id)
     if actor is None:
         return UNAUTHORIZED, None
-    number = int(db.session.query(func.max(ResearchConfiguration.version_number)).scalar() or 0)
+    from app.services.research_control_gate import lock_research_control
+    sequence = lock_research_control()
+    number = sequence.last_number
+    if number >= 2147483647:
+        raise ValueError("The configuration version number capacity has been reached.")
+    sequence.last_number += 1
     now = whole_second_utc()
     configuration = ResearchConfiguration(
         version_number=number + 1,

@@ -106,8 +106,9 @@ class Submission(db.Model):
 
     __tablename__ = "submissions"
     __table_args__ = (
+        db.ForeignKeyConstraint(['enrollment_id', 'student_id'], ['enrollments.id', 'enrollments.student_id'], name='fk_submission_episode_student'),
         db.UniqueConstraint(
-            "assignment_id", "student_id", name="uq_submissions_assignment_student"
+            "assignment_id", "enrollment_id", name="uq_submissions_assignment_episode"
         ),
         db.Index(
             "ix_submissions_assignment_submitted_id",
@@ -117,17 +118,18 @@ class Submission(db.Model):
         ),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    enrollment_id = db.Column(db.BigInteger, db.ForeignKey('enrollments.id', name='fk_submission_episode'), nullable=False, index=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     assignment_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("assignments.id"),
         nullable=False,
     )
     student_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
         index=True,

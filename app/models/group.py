@@ -19,16 +19,16 @@ class Group(db.Model):
         db.CheckConstraint("capacity > 0", name="ck_groups_positive_capacity"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4()))
     academic_term_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("academic_terms.id"),
         nullable=False,
         index=True,
     )
     course_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("courses.id"),
         nullable=False,
         index=True,
@@ -36,6 +36,7 @@ class Group(db.Model):
     name = db.Column(db.String(100), nullable=False)
     code = db.Column(db.String(20), nullable=True)
     capacity = db.Column(db.Integer, nullable=False)
+    study_starts_at = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(32), nullable=False, default=AcademicStatus.ACTIVE.value, index=True)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(

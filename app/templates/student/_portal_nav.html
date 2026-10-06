@@ -7,14 +7,10 @@
    `portal_nav` block and never include this file. #}
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'dashboard' else '' }}"
    href="{{ url_for('student.dashboard') }}" data-research-id="nav_dashboard">Dashboard</a>
-<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'assignments' else '' }}"
-   href="{{ url_for('student.assignments_list') }}" data-research-id="nav_assignments">Assignments</a>
-<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'quizzes' else '' }}"
-   href="{{ url_for('student.quiz_list') }}" data-research-id="nav_quizzes">Quizzes</a>
-<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'listening' else '' }}"
-   href="{{ url_for('student.listening_list') }}" data-research-id="nav_listening">Listening</a>
-<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'speaking' else '' }}"
-   href="{{ url_for('student.speaking_list') }}" data-research-id="nav_speaking">Speaking</a>
+<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav in ['activities','assignments','quizzes','listening','speaking'] else '' }}"
+   href="{{ url_for('student.activities') }}" data-research-id="nav_activities">Activities</a>
+<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'records' else '' }}"
+   href="{{ url_for('student.records') }}" data-research-id="nav_records">My records</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'attendance' else '' }}"
    href="{{ url_for('student.attendance_list') }}" data-research-id="nav_attendance">Attendance</a>
 <a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'grades' else '' }}"

@@ -1,4 +1,5 @@
-from flask import abort, flash, redirect, render_template, url_for
+from app.services.schedule_resources import teacher_assignment_conflict
+from flask import abort, flash, redirect, render_template, request, url_for
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 
@@ -62,6 +63,7 @@ def _get_assignment_for_group_or_404(group, assignment_public_id):
     return (
         GroupTeacherAssignment.query.options(joinedload(GroupTeacherAssignment.teacher))
         .filter_by(public_id=assignment_public_id, group_id=group.id)
+        .populate_existing().with_for_update()
         .first_or_404()
     )
 
@@ -128,7 +130,7 @@ def group_members(group_public_id):
     is_active_group = group.status == AcademicStatus.ACTIVE.value
 
     teacher_form = GroupTeacherAssignmentForm(group=group) if is_active_group else None
-    student_form = GroupEnrollmentForm(group=group) if is_active_group else None
+    student_form = None  # Registration has its own atomic preview form.
 
     return render_template(
         "admin/groups/members.html",
@@ -147,6 +149,8 @@ def group_members(group_public_id):
 @roles_required(UserRole.ADMINISTRATOR.value)
 def group_teacher_assign(group_public_id):
     group = _get_group_locked_or_404(group_public_id)
+    # Wait for the teacher before form queries can establish a read snapshot.
+    teacher = User.query.filter_by(public_id=request.form.get("teacher_public_id", "")).populate_existing().with_for_update().first()
 
     if group.status != AcademicStatus.ACTIVE.value:
         flash("This group is archived and cannot be modified.", "danger")
@@ -163,9 +167,14 @@ def group_teacher_assign(group_public_id):
     # enrollments.py) and re-check role/status against that locked,
     # current data before writing, rather than trusting the form's word
     # for it moments earlier.
-    teacher = User.query.filter_by(public_id=form.teacher_public_id.data).with_for_update().first()
+    teacher = User.query.filter_by(public_id=form.teacher_public_id.data).populate_existing().with_for_update().first()
     if teacher is None or teacher.role != UserRole.TEACHER.value or teacher.status != UserStatus.ACTIVE.value:
         flash("Selected teacher is no longer eligible to be assigned.", "danger")
+        return _redirect_to_group_members(group)
+
+    if teacher_assignment_conflict(teacher.id, group.id) is not None:
+        db.session.rollback()
+        flash("This teacher is already scheduled in another group at the same time.", "danger")
         return _redirect_to_group_members(group)
 
     assignment = GroupTeacherAssignment(
@@ -286,6 +295,11 @@ def group_teacher_reactivate(group_public_id, assignment_public_id):
 
     if teacher.status != UserStatus.ACTIVE.value:
         flash("This assignment cannot be reactivated: the teacher's account is not active.", "danger")
+        return _redirect_to_group_members(group)
+
+    if teacher_assignment_conflict(teacher.id, group.id) is not None:
+        db.session.rollback()
+        flash("This teacher is already scheduled in another group at the same time.", "danger")
         return _redirect_to_group_members(group)
 
     assignment.status = GroupTeacherAssignmentStatus.ACTIVE.value

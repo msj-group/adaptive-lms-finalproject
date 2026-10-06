@@ -147,7 +147,7 @@ def lock_progress_chain(target, student_id):
     enrollment = None
     if group is not None:
         enrollment = (
-            Enrollment.query.filter_by(group_id=group.id, student_id=student_id)
+            Enrollment.query.filter_by(group_id=group.id, student_id=student_id, status="active")
             .with_for_update()
             .first()
         )
@@ -157,7 +157,7 @@ def lock_progress_chain(target, student_id):
     if group is not None:
         progress = (
             LessonProgress.query.filter_by(
-                student_id=student_id, group_id=group.id, lesson_id=target.lesson_id
+                student_id=student_id, group_id=group.id, lesson_id=target.lesson_id, enrollment_id=enrollment.id if enrollment else None
             )
             .with_for_update()
             .first()

@@ -6,7 +6,7 @@ replacement).
   never absorbs it silently.
 - :func:`now_ms` -- the server clock as integer epoch milliseconds, the unit
   every interaction timing column uses (sessions, events, prompts). Integer
-  milliseconds keep sub-second ordering identical on MySQL and SQLite without
+  milliseconds keep sub-second ordering on MySQL without
   a dialect-specific fractional ``DATETIME``.
 - :func:`generate_subject_code` -- a pseudonymous research code drawn from
   ``secrets``. The generator takes no argument, so nothing about a Student
@@ -16,10 +16,10 @@ replacement).
 import secrets
 import time
 
-from sqlalchemy import BigInteger, Integer
+from sqlalchemy import BigInteger
 
 #: The integer primary/foreign key type every table in this project uses.
-ID_TYPE = BigInteger().with_variant(Integer, "sqlite")
+ID_TYPE = BigInteger()
 
 #: The code prefix: recognisable in a log or a screenshot, uninformative.
 SUBJECT_CODE_PREFIX = "RS-"

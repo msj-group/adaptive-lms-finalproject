@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import uuid
 
 from sqlalchemy.orm import validates
@@ -149,17 +150,17 @@ class QuizQuestion(db.Model):
         db.Index("ix_quiz_questions_quiz_order_id", "quiz_id", "display_order", "id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     quiz_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("quizzes.id"),
         nullable=False,
     )
     prompt = db.Column(db.Text, nullable=False)
-    answer_mode = db.Column(db.String(32), nullable=False)
+    answer_mode = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False)
     #: Server-owned authored order. Gaps are acceptable; `id` is the SQL
     #: tie-break only.
     display_order = db.Column(db.Integer, nullable=False)

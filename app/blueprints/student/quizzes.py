@@ -57,7 +57,9 @@ from sqlalchemy.exc import IntegrityError
 
 from app.blueprints.collector.hooks import note_outcome
 from app.blueprints.student import student_bp
-from app.blueprints.student.routes import private_no_store
+from app.blueprints.student.routes import private_no_store, private_redirect
+from app.services.request_arrival import submission_received_at
+from app.services.timely_submission import accept_timely_submission, is_timely
 from app.extensions import db
 from app.models import (
     AcademicStatus,
@@ -323,7 +325,7 @@ def _answer_token_is_stale(
 
 def _submit_token_is_stale(
     token, student_public_id, group_public_id, quiz_public_id, attempt_public_id,
-    quiz, attempt,
+    quiz, attempt, *, expected_status=None,
 ):
     payload = _load_token(
         token, _SUBMIT_SALT, _SUBMIT_PURPOSE, _SUBMIT_FIELDS, _SUBMIT_FIELDS[1:5]
@@ -336,7 +338,7 @@ def _submit_token_is_stale(
         or payload["quiz_public_id"] != quiz_public_id
         or payload["attempt_public_id"] != attempt_public_id
         or payload["quiz_version"] != quiz.version
-        or payload["attempt_status"] != attempt.status
+        or payload["attempt_status"] != (expected_status or attempt.status)
     )
 
 
@@ -363,7 +365,7 @@ def _own_attempt_or_404(quiz_id, attempt_public_id):
     different Quiz, and a nonexistent id all 404 identically."""
     attempt = QuizAttempt.query.filter_by(
         public_id=attempt_public_id, quiz_id=quiz_id, student_id=current_user.id
-    ).first()
+    ).filter(active_episode_record(QuizAttempt)).first()
     if attempt is None:
         abort(404)
     return attempt
@@ -382,7 +384,7 @@ def _lock_student_chain(group_public_id, term_id, level_id, course_id, student_i
     enrollment = None
     if group is not None:
         enrollment = (
-            Enrollment.query.filter_by(group_id=group.id, student_id=student_id)
+            Enrollment.query.filter_by(group_id=group.id, student_id=student_id, status="active")
             .with_for_update()
             .first()
         )
@@ -430,31 +432,8 @@ def _hierarchy_broken(hierarchy, group, term_id, level_id, course_id):
 @student_bp.get("/quizzes")
 @roles_required(UserRole.STUDENT.value)
 def quiz_list():
-    """One bounded page of the Quizzes this Student may currently see.
-
-    ``LIMIT PAGE_SIZE + 1`` supplies the next-page flag with no ``COUNT``,
-    and one grouped query resolves every row's attempt count -- so the
-    page costs a fixed number of statements however many Quizzes it shows.
-    """
-    reference_utc = _now()
-    tz_name = _tz_name()
-    page = normalize_page(request.args.get("page"))
-
-    rows, has_next = student_quizzes_page(current_user.id, reference_utc, page)
-    if not rows and page > 1:
-        page = 1
-        rows, has_next = student_quizzes_page(current_user.id, reference_utc, page)
-
-    counts = attempt_counts_by_quiz(current_user.id, [row[0].id for row in rows])
-    return private_no_store(
-        "student/quizzes/list.html",
-        quizzes=build_student_quiz_view(rows, tz_name, reference_utc, counts),
-        tz_name=tz_name,
-        page=page,
-        has_next=has_next,
-        has_prev=page > 1,
-        page_size=PAGE_SIZE,
-    )
+    """Preserve old bookmarks through the unified Activities hub."""
+    return private_redirect(url_for("student.activities", type="quiz"))
 
 
 # ======================================================================
@@ -845,6 +824,7 @@ def quiz_answer(
         attempt is None
         or attempt.quiz_id != quiz.id
         or attempt.student_id != student_id
+        or attempt.enrollment_id != enrollment.id
         or attempt.public_id != attempt_public_id
     ):
         db.session.rollback()
@@ -977,6 +957,10 @@ def _validate_selection(submitted, locked_options, question):
 def quiz_submit(group_public_id, quiz_public_id, attempt_public_id):
     """Finalize and grade this attempt.
 
+    The trusted complete-body receipt time controls deadline acceptance.
+    A competing expiry observer cannot discard a timely signed submission;
+    its frozen score is preserved and acceptance evidence is appended.
+
     **Idempotent.** A replayed submission returns the existing result and
     changes no timestamp, counter, answer, selection or grade -- the
     attempt is already finalized, and ``finalize_attempt`` refuses rather
@@ -986,11 +970,13 @@ def quiz_submit(group_public_id, quiz_public_id, attempt_public_id):
     after an explicit confirmation, so nobody submits a half-finished
     attempt by reflex.
     """
+    received_at = submission_received_at()
     reference_utc = _now()
     preview = _visible_quiz_or_404(group_public_id, quiz_public_id, reference_utc)
     preview_quiz, preview_group = preview[0], preview[1]
     preview_attempt = _own_attempt_or_404(preview_quiz.id, attempt_public_id)
 
+    student_auth_version = current_user.auth_version
     student_id = current_user.id
     student_public_id = current_user.public_id
     quiz_id = preview_quiz.id
@@ -1009,7 +995,8 @@ def quiz_submit(group_public_id, quiz_public_id, attempt_public_id):
     hierarchy, group, student, enrollment = _lock_student_chain(
         group_public_id, term_id, level_id, course_id, student_id
     )
-    if _student_authz_broken(group, student, enrollment):
+    if (_student_authz_broken(group, student, enrollment)
+            or student.auth_version != student_auth_version):
         db.session.rollback()
         abort(404)
     if _hierarchy_broken(hierarchy, group, term_id, level_id, course_id):
@@ -1026,17 +1013,19 @@ def quiz_submit(group_public_id, quiz_public_id, attempt_public_id):
         attempt is None
         or attempt.quiz_id != quiz.id
         or attempt.student_id != student_id
+        or attempt.enrollment_id != enrollment.id
         or attempt.public_id != attempt_public_id
     ):
         db.session.rollback()
         abort(404)
 
-    if attempt.is_finalized:
+    timely = is_timely(attempt, received_at)
+    if attempt.is_finalized and not (attempt.status == 'expired' and timely):
         # A replay. Return the existing result untouched.
         db.session.rollback()
         return redirect(_result_url(group_public_id, quiz_public_id, attempt_public_id))
 
-    if expire_if_due(attempt, reference_utc):
+    if expire_if_due(attempt, received_at):
         db.session.commit()
         note_outcome("quiz_submission", "expired")
         flash("Your time ran out, so this attempt was submitted as it was.", "danger")
@@ -1045,10 +1034,16 @@ def quiz_submit(group_public_id, quiz_public_id, attempt_public_id):
     if _submit_token_is_stale(
         submitted_token, student_public_id, group_public_id, quiz_public_id,
         attempt_public_id, quiz, attempt,
+        expected_status='in_progress',
     ):
         db.session.rollback()
         note_outcome("quiz_submission", "rejected")
         flash(_STALE_MESSAGE, "danger")
+        return redirect(_quiz_url(group_public_id, quiz_public_id))
+
+    if not timely:
+        db.session.rollback()
+        flash(_STALE_MESSAGE, 'danger')
         return redirect(_quiz_url(group_public_id, quiz_public_id))
 
     question_ids = quiz_question_ids(quiz.id)
@@ -1072,7 +1067,7 @@ def quiz_submit(group_public_id, quiz_public_id, attempt_public_id):
             )
         return redirect(_quiz_url(group_public_id, quiz_public_id))
 
-    finalize_attempt(attempt, _SUBMITTED, reference_utc)
+    accept_timely_submission(attempt, received_at, submitted_token, student_id)
     try:
         db.session.commit()
     except IntegrityError:
@@ -1158,3 +1153,5 @@ def quiz_result(group_public_id, quiz_public_id, attempt_public_id):
         results=student_result_rows(quiz.id, attempt.id),
         tz_name=tz_name,
     )
+
+from app.services.episode_queries import active_episode_record

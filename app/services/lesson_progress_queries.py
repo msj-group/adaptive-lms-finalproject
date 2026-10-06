@@ -145,6 +145,7 @@ def progress_join(student_id):
         LessonProgress.lesson_id == Lesson.id,
         LessonProgress.group_id == Group.id,
         LessonProgress.student_id == student_id,
+        LessonProgress.enrollment_id == Enrollment.id,
     )
 
 
@@ -414,6 +415,7 @@ def recently_opened(student_id, limit=RECENTLY_OPENED_LIMIT):
         scope_to_student(query, student_id)
         .filter(
             LessonProgress.student_id == student_id,
+            LessonProgress.enrollment_id == Enrollment.id,
             LessonProgress.last_opened_at.isnot(None),
             Lesson.status == _PUBLISHED,
             Unit.status == _ACTIVE,
@@ -554,8 +556,12 @@ def roster_progress(group_id, student_ids):
         .select_from(LessonProgress)
         .join(Lesson, Lesson.id == LessonProgress.lesson_id)
         .join(Unit, and_(Unit.id == Lesson.unit_id, Unit.group_id == LessonProgress.group_id))
+        .join(Enrollment, Enrollment.id == LessonProgress.enrollment_id)
         .filter(
             LessonProgress.group_id == group_id,
+            Enrollment.group_id == group_id,
+            Enrollment.student_id == LessonProgress.student_id,
+            Enrollment.status == _ENROLLMENT_ACTIVE,
             LessonProgress.student_id.in_(list(student_ids)),
             Unit.status == _ACTIVE,
             Lesson.status == _PUBLISHED,

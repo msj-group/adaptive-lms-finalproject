@@ -1,4 +1,7 @@
+from flask import current_app
 from flask_wtf import FlaskForm
+from wtforms.fields import DateTimeLocalField
+from app.services.schedule_occurrences import from_app_local, LocalTimeError
 from wtforms import (
     DateField,
     IntegerField,
@@ -30,6 +33,7 @@ from app.models import (
     GroupTeacherAssignment,
     GroupTeacherAssignmentStatus,
     Level,
+    Room,
     Schedule,
     User,
     UserRole,
@@ -135,6 +139,7 @@ class CourseForm(FlaskForm):
     title = StringField("Title", validators=[DataRequired(), Length(max=150)])
     code = StringField("Code", validators=[Optional(), Length(max=20)])
     description = TextAreaField("Description", validators=[Optional(), Length(max=5000)])
+    price = StringField("Course price (LYD)", validators=[InputRequired(), Length(max=32)])
     submit = SubmitField("Save")
 
     def __init__(self, *args, course_id=None, current_level_id=None, **kwargs):
@@ -152,6 +157,13 @@ class CourseForm(FlaskForm):
     def validate_level_id(self, field):
         if db.session.get(Level, field.data) is None:
             raise ValidationError("Selected level does not exist.")
+
+    def validate_price(self, field):
+        from app.services.money import validate_course_price
+        try:
+            validate_course_price(field.data)
+        except ValueError as error:
+            raise ValidationError(str(error)) from None
 
     def validate_title(self, field):
         query = Course.query.filter(
@@ -194,6 +206,7 @@ class GroupForm(FlaskForm):
     name = StringField("Group Name", validators=[DataRequired(), Length(max=100)])
     code = StringField("Group Code", validators=[Optional(), Length(max=20)])
     capacity = IntegerField("Capacity", validators=[DataRequired(), NumberRange(min=1)])
+    study_starts_at = DateTimeLocalField("Study starts (center local time)", format="%Y-%m-%dT%H:%M", validators=[InputRequired()])
     submit = SubmitField("Save")
 
     def __init__(self, *args, group_id=None, current_academic_term_id=None, current_course_id=None, **kwargs):
@@ -226,6 +239,12 @@ class GroupForm(FlaskForm):
     def validate_academic_term_id(self, field):
         if db.session.get(AcademicTerm, field.data) is None:
             raise ValidationError("Selected academic term does not exist.")
+
+    def validate_study_starts_at(self, field):
+        try:
+            self.study_starts_at_utc = from_app_local(current_app.config["APP_TIMEZONE"], field.data)
+        except LocalTimeError as exc:
+            raise ValidationError(str(exc)) from exc
 
     def validate_course_id(self, field):
         if db.session.get(Course, field.data) is None:
@@ -446,12 +465,25 @@ class ScheduleForm(FlaskForm):
         "Effective End Date", validators=[DataRequired()], render_kw={"type": "date"}
     )
     location = StringField("Location", validators=[Optional(), Length(max=255)])
+    room_id = SelectField("Room", coerce=int, validators=[Optional()], validate_choice=False)
     submit = SubmitField("Save Schedule")
 
     def __init__(self, *args, group=None, schedule_id=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._group = group
         self._schedule_id = schedule_id
+        current_room = kwargs.get("obj").room_id if kwargs.get("obj") is not None else None
+        self.room_id.choices = [(0, "No room assigned")] + [
+            (room.id, room.name + (" (Archived)" if room.status != "active" else ""))
+            for room in Room.query.order_by(Room.name, Room.id).all()
+            if room.status == "active" or room.id == current_room
+        ]
+
+    def validate_room_id(self, field):
+        if field.data:
+            room = db.session.get(Room, field.data)
+            if room is None or room.status != "active":
+                raise ValidationError("Select an active room.")
 
     def validate_day_of_week(self, field):
         if field.data is None or field.data < 0 or field.data > 6:

@@ -2,6 +2,17 @@
 
 This file contains the latest project decisions.
 
+> Repair authority (2026-10-05): read
+> `docs/APPROVED_REPAIR_CONTRACT.md`, `docs/IMPLEMENTATION_PLAN.md` and
+> `docs/PROJECT_STATUS.md` before the historical sections below.
+> The current scope is rehabilitation of the existing modular monolith,
+> MySQL-only DB testing, Course pricing/general student finance, Enrollment
+> episodes and history, Rooms/resource scheduling and unified Activities.
+> MySQL-only testing is a target pending P1, not a completed conversion.
+> The owners reconfirmed shared role-based login, password-only Researcher
+> authentication and 15-day retention with daily expiry; older proposed MFA
+> and pressure-only retention requirements do not apply.
+
 These decisions override conflicting requirements in MASTER_PROMPT.md, previous Claude responses, and any older document.
 
 ## Source Documents
@@ -217,7 +228,7 @@ This section overrides MASTER_PROMPT.md sections 6 (Researcher capabilities that
 - Participation arrangements are handled externally by the center. The application has no consent screen and no institutional agreement workflow, never records that a Student accepted anything, never treats silence as consent, and never claims that external legal or ethics approval was verified. Stored bases describe what happened (population rule, operator reinstatement, external exclusion, legacy exclusion). An operator records exclusions and reinstatements; an exclusion, including one carried over from a legacy refusal or withdrawal, is enforced on every path and is never reversed by login, page visits or delayed batches.
 - Signals are a documented allowlist of interaction events plus server-confirmed workflow outcomes. Labels are occasional, optional frustration ratings (1-5, raw value preserved) sampled at random eligible moments and at natural activity endings, each linked to the exact observed interval before the prompt. Unrated data stays unlabeled.
 - The collector runs in the background on every authenticated Student page; every Student route has an intentional tracking classification, and only technical routes that serve file or audio bytes are excluded, for data minimisation. No content is collected.
-- Researchers use a separate workspace with a dedicated login, where excluded Students are listed by pseudonymous code. No research status, notice, indicator, information page, researcher identity, management surface, participant list, protocol catalogue or research result appears in the Administrator, Teacher or Student portals. The optional frustration question (with Skip, and no research or study wording) is the only Student-facing element.
+- All roles sign in through the shared `/auth/login` email/password page. The database account role determines the destination and permissions; the page has no Researcher role choice, link or label. Researchers use a separate workspace, where excluded Students are listed by pseudonymous code. No research status, notice, indicator, information page, researcher identity, management surface, participant list, protocol catalogue or research result appears in the Administrator, Teacher or Student portals. The optional frustration question (with Skip, and no research or study wording) is the only Student-facing element.
 - Each research export is stored once as an immutable archive and served unchanged until the configured retention removes it.
 - Researchers authenticate with approved email/password accounts. On 2026-10-04 the owners removed the second-factor requirement. A configured retention period remains required before collection.
 - Phase 6 performs no model training, prediction or adaptive intervention. The current contract is docs/PHASE6_NATURAL_USE_RESEARCH.md.

@@ -1,0 +1,20 @@
+{% extends "layouts/admin_base.html" %}{% import "admin/_macros.html" as macros %}
+{% block admin_content %}<div class="ds-page" style="max-width:800px"><h1>{{ action.replace('_',' ').title() }} — {{ source.name }}</h1>{{ macros.flash_messages() }}
+{% if not ready %}<form method="get"><input type="hidden" name="episode" value="{{ episode.public_id if episode else '' }}"><label for="q">Search</label><input id="q" name="q" value="{{ search }}" maxlength="100"><button>Search</button></form>
+<p>Select a {{ 'Student' if action == 'enroll' else 'destination group' }} to review the operation. Up to 50 matches are shown; refine the search if needed.</p>
+<ul>{% for row in students %}<li><a href="{{ url_for('admin.enrollment_operation', group_public_id=source.public_id, action=action, student=row.public_id) }}">{{ row.full_name }} · {{ row.email }}</a></li>{% endfor %}
+{% for row in targets %}<li><a href="{{ url_for('admin.enrollment_operation', group_public_id=source.public_id, action=action, episode=episode.public_id, target=row.public_id) }}">{{ row.name }} · {{ row.course.title }}</a></li>{% endfor %}</ul>
+{% else %}<h2>Review before saving</h2><p>Student: {{ student.full_name }}</p>
+{% if episode %}<p>Current course/group: {{ source.course.title }} / {{ source.name }}. Existing episode and learning history will remain recorded.</p>{% endif %}
+{% if target %}<p>Destination: {{ target.course.title }} / {{ target.name }} · Study starts: {{ target.study_starts_at or 'Not configured' }}</p>{% endif %}
+{% if action in ['enroll','correct_course'] %}<p>New course price: {{ money(target.course.price) if target.course.price is not none else 'Not configured' }} LYD. The chosen discount and collection will be saved with the new invoice.</p>{% endif %}
+{% if action == 'correct_course' %}<p>The incorrect enrollment closes and its current obligation is cancelled. A new enrollment uses the actual destination course and group. Previous work keeps its original identity.</p>{% endif %}
+{% if action == 'transfer' %}<p>This transfer keeps the current course charge. Learning uses the destination group's content and progress; previous group records remain available.</p>{% endif %}
+{% if action == 'withdraw' %}<p>Withdrawal closes this episode. Select whether to cancel its obligation. Any money actually returned must be recorded separately as a payout.</p>{% endif %}
+<p>Current Student account balance: {{ money(facts.balance) }} LYD.</p>
+{% if invoice %}<p>Current invoice: {{ invoice.invoice_number }} · Net {{ money(invoice.charge_amount - invoice.discount_amount) }} LYD</p>{% endif %}
+<form method="post" novalidate>{{ form.hidden_tag() }}
+{% for field in form if field.type not in ['HiddenField','CSRFTokenField','SubmitField'] %}
+{% if (action in ['enroll','correct_course'] and field.name != 'cancel_obligation') or (action == 'withdraw' and field.name == 'cancel_obligation') %}<div class="field">{{ field.label(class_='field__label') }}{{ field(class_='field__input') }}{% for error in field.errors %}<span class="field__error">{{ error }}</span>{% endfor %}</div>{% endif %}{% endfor %}
+{{ form.submit(class_='btn btn--primary') }}</form>{% endif %}
+<a href="{{ url_for('admin.group_members', group_public_id=source.public_id) }}">Back to members</a></div>{% endblock %}

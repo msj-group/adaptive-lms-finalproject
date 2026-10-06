@@ -52,6 +52,12 @@
       Display order is managed from the Courses list using the up/down actions.
     </p>
     {% endif %}
+    <div class="field" style="margin-top: var(--space-4)">
+      {{ form.price.label(class_="field__label") }}
+      {{ form.price(class_="field__input", inputmode="decimal") }}
+      {% for error in form.price.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+      <p>New enrollments use this price. Previously issued invoices retain their recorded price.</p>
+    </div>
     <div class="ds-row" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
       <a class="btn btn--secondary" href="{{ url_for('admin.courses_list') }}">Cancel</a>

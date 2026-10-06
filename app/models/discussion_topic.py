@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import re
 import uuid
 from datetime import datetime, timezone
@@ -107,24 +108,24 @@ class DiscussionTopic(db.Model):
         db.Index("ix_discussion_topics_author_created_id", "author_id", "created_at", "id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     group_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("groups.id"),
         nullable=False,
     )
     author_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
     )
     title = db.Column(db.String(DISCUSSION_TITLE_MAX_LENGTH), nullable=False)
     body = db.Column(db.String(DISCUSSION_BODY_MAX_LENGTH), nullable=False)
     status = db.Column(
-        db.String(16), nullable=False, default=DiscussionTopicStatus.OPEN.value
+        db.String(16, collation=CODE_COLLATION), nullable=False, default=DiscussionTopicStatus.OPEN.value
     )
     version = db.Column(db.Integer, nullable=False, default=1)
     creation_nonce = db.Column(db.String(DISCUSSION_NONCE_LENGTH), nullable=False, unique=True)

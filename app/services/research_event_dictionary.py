@@ -81,6 +81,9 @@ class EventSpec:
 #: absent: they are not pages, and their requests are never observed.
 PAGE_IDS = (
     "student.dashboard",
+    "student.activities",
+    "student.records",
+    "student.episode_records",
     "student.group_units",
     "student.lesson_detail",
     "student.search",
@@ -194,6 +197,9 @@ REPORTING_AREAS = (
 
 PAGE_AREAS = {
     "student.dashboard": CORE_AREA,
+    "student.activities": CORE_AREA,
+    "student.records": "records",
+    "student.episode_records": "records",
     "student.group_units": "learning",
     "student.lesson_detail": "learning",
     "student.search": "search",
@@ -233,6 +239,8 @@ PAGE_AREAS = {
 
 NAVIGATION_ELEMENTS = (
     "nav_dashboard", "nav_assignments", "nav_quizzes", "nav_listening", "nav_speaking",
+    "nav_activities",
+    "nav_records",
     "nav_attendance", "nav_grades", "nav_announcements", "nav_calendar", "nav_search",
     "nav_messages", "nav_discussions", "nav_notifications", "nav_logout",
 )
@@ -244,6 +252,7 @@ ACTION_ELEMENTS = (
     # Search
     "search_submit", "search_result", "search_filter",
     # Assignments
+    "activity_open", "activity_filter",
     "assignment_open", "assignment_submit",
     # Quizzes
     "quiz_open", "quiz_start", "quiz_option", "quiz_save", "quiz_save_next",
@@ -269,7 +278,7 @@ ACTION_ELEMENTS = (
 #: never the value, the option chosen or the file selected.
 INPUT_ELEMENTS = (
     "quiz_option", "listening_option", "quiz_submit_confirm", "listening_submit_confirm",
-    "speaking_file_select", "search_filter",
+    "speaking_file_select", "search_filter", "activity_filter",
 )
 
 #: Forms whose submission attempts and client-side validation failures are
@@ -478,7 +487,7 @@ CLIENT_REQUIRED_KEYS = frozenset({"id", "type", "t", "page", "view", "tab", "seq
 #: re-sending from its outbox because no answer reached it (for example, the
 #: page navigated away first); its already stored events are expected
 #: re-deliveries, not duplicates.
-BATCH_KEYS = frozenset({"schema", "sent_at", "events", "dropped", "replay"})
+BATCH_KEYS = frozenset({"schema", "sent_at", "events", "dropped", "replay", "delivery_scope"})
 
 #: Bounds on one batch and on the per-page sequence counter.
 MAX_BATCH_EVENTS = 50

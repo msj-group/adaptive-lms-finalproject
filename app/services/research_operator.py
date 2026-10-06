@@ -80,12 +80,17 @@ SubjectState = namedtuple("SubjectState", "subject_code collection_status status
 ExcludedAccount = namedtuple("ExcludedAccount", "email subject_code status_basis status_changed_at")
 
 
-def _lock_student(email):
-    lock_academic_hierarchy()
+def _lock_student(email, actor_id):
     user_id = db.session.query(User.id).filter(User.email == (email or "").strip().lower()).scalar()
-    if user_id is None:
-        return None
-    return db.session.query(User).filter(User.id == user_id).with_for_update().first()
+    lock_academic_hierarchy()
+    ids = sorted({value for value in [user_id, actor_id] if value is not None})
+    rows = {row.id: row for row in User.query.filter(User.id.in_(ids)).order_by(User.id).populate_existing().with_for_update().all()}
+    actor = rows.get(actor_id)
+    if actor is None or actor.role != "researcher" or actor.status != "active":
+        raise ValueError("An authenticated active Researcher is required for operator actions.")
+    from app.services.actor_authorization import require_operator_authentication
+    require_operator_authentication(actor)
+    return rows.get(user_id)
 
 
 def _lock_subject(user_id):
@@ -109,9 +114,9 @@ def _new_subject(user_id, status, basis, provenance):
     return subject
 
 
-def _audit(action, subject_id, detail, count=None):
+def _audit(action, subject_id, detail, count=None, *, actor_id):
     db.session.add(ResearchAuditEvent(
-        action=action, channel=ResearchAuditChannel.OPERATOR.value,
+        action=action, channel=ResearchAuditChannel.OPERATOR.value, actor_id=actor_id,
         subject_id=subject_id, detail_code=detail, count_value=count,
     ))
 
@@ -127,8 +132,8 @@ def _commit(result, code):
     return result, code
 
 
-def _student_or_refusal(email):
-    user = _lock_student(email)
+def _student_or_refusal(email, actor_id):
+    user = _lock_student(email, actor_id)
     if user is None:
         db.session.rollback()
         return None, NO_ACCOUNT
@@ -138,13 +143,13 @@ def _student_or_refusal(email):
     return user, None
 
 
-def exclude(email):
+def exclude(email, *, actor_id):
     """Record an exclusion through the external process. ``(status, code)``.
 
     A Student with no subject yet gets an excluded one, so the population
     rule can never collect them later; open sessions close at once.
     """
-    user, refusal = _student_or_refusal(email)
+    user, refusal = _student_or_refusal(email, actor_id)
     if refusal:
         return refusal, None
     basis = ResearchStatusBasis.EXTERNAL_EXCLUSION.value
@@ -163,13 +168,13 @@ def exclude(email):
         subject.status_changed_at = now
         subject.updated_at = now
         closed = _close_subject_sessions(subject.id)
-    _audit(ResearchAuditAction.SUBJECT_EXCLUDED.value, subject.id, basis, closed)
+    _audit(ResearchAuditAction.SUBJECT_EXCLUDED.value, subject.id, basis, closed, actor_id=actor_id)
     return _commit(EXCLUDED, subject.subject_code)
 
 
-def reinstate(email, allow_legacy_override=False):
+def reinstate(email, allow_legacy_override=False, *, actor_id):
     """Lift an exclusion. ``(status, code)``."""
-    user, refusal = _student_or_refusal(email)
+    user, refusal = _student_or_refusal(email, actor_id)
     if refusal:
         return refusal, None
     subject = _lock_subject(user.id)
@@ -188,15 +193,15 @@ def reinstate(email, allow_legacy_override=False):
     subject.status_basis = ResearchStatusBasis.OPERATOR_REINSTATEMENT.value
     subject.status_changed_at = now
     subject.updated_at = now
-    _audit(ResearchAuditAction.SUBJECT_REINSTATED.value, subject.id, f"lifted:{lifted}")
+    _audit(ResearchAuditAction.SUBJECT_REINSTATED.value, subject.id, f"lifted:{lifted}", actor_id=actor_id)
     return _commit(REINSTATED, subject.subject_code)
 
 
-def mark_demo(email):
+def mark_demo(email, *, actor_id):
     """Mark a demonstration account. ``(status, code)``. Its sessions are
     collected as ``demo`` from now on, and nothing of the subject -- earlier
     sessions included -- is ever exported."""
-    user, refusal = _student_or_refusal(email)
+    user, refusal = _student_or_refusal(email, actor_id)
     if refusal:
         return refusal, None
     subject = _lock_subject(user.id)
@@ -210,7 +215,7 @@ def mark_demo(email):
     else:
         subject.provenance = _DEMO
         subject.updated_at = whole_second_utc()
-    _audit(ResearchAuditAction.SUBJECT_MARKED_DEMO.value, subject.id, _DEMO)
+    _audit(ResearchAuditAction.SUBJECT_MARKED_DEMO.value, subject.id, _DEMO, actor_id=actor_id)
     return _commit(MARKED_DEMO, subject.subject_code)
 
 
@@ -232,9 +237,10 @@ def _close_subject_sessions(subject_id):
     return len(sessions)
 
 
-def status(email):
+def status(email, *, actor_id):
     """``(status, SubjectState | None)`` -- identity recovery for the
     operator only. Read-only."""
+    _authorize_operator_read(actor_id, "status")
     user_id = db.session.query(User.id).filter(User.email == (email or "").strip().lower()).scalar()
     if user_id is None:
         return NO_ACCOUNT, None
@@ -250,9 +256,10 @@ def status(email):
     return "found", SubjectState(*row)
 
 
-def excluded_accounts():
+def excluded_accounts(*, actor_id, page=1):
     """Every excluded Student with its account email, newest decision first.
     Identity recovery for the operator only. Read-only."""
+    _authorize_operator_read(actor_id, "list_excluded")
     rows = (
         db.session.query(User.email, ResearchSubject.subject_code, ResearchSubject.status_basis,
                          ResearchSubject.status_changed_at)
@@ -260,9 +267,20 @@ def excluded_accounts():
         .join(ResearchSubject, ResearchSubject.id == ResearchSubjectLink.subject_id)
         .filter(ResearchSubject.collection_status == _EXCLUDED)
         .order_by(ResearchSubject.status_changed_at.desc(), ResearchSubject.id.desc())
+        .offset((max(1, int(page)) - 1) * 100).limit(100)
         .all()
     )
     return [ExcludedAccount(*row) for row in rows]
+
+
+def _authorize_operator_read(actor_id, detail):
+    actor = User.query.filter_by(id=actor_id, role="researcher", status="active").populate_existing().with_for_update().first()
+    if actor is None:
+        raise ValueError("An authenticated active Researcher is required for operator actions.")
+    from app.services.actor_authorization import require_operator_authentication
+    require_operator_authentication(actor)
+    _audit("operator_read", None, detail, actor_id=actor_id)
+    db.session.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -274,61 +292,6 @@ RetentionReport = namedtuple(
 )
 
 
-def retention_report(retention_days, moment_ms=None, execute=False):
-    """Sessions whose last activity is older than `retention_days`, with
-    their events and prompts, and every export archive that holds any data
-    that old. Counts only unless `execute` is true.
-
-    Deleting is irreversible and is the only hard deletion research data
-    ever sees; it runs only on an explicit operator request, removes child
-    rows first, and writes operator audit events. Subjects, their links,
-    configurations, export descriptions and audit events are kept: exclusions
-    must stay enforceable, and an export's description records what existed.
-    An export archive never outlives the oldest data it contains.
-    """
-    if retention_days is None:
-        raise ValueError("RESEARCH_RETENTION_DAYS is not configured")
-    moment_ms = now_ms() if moment_ms is None else moment_ms
-    cutoff = moment_ms - int(timedelta(days=retention_days).total_seconds() * 1000)
-    expired = db.session.query(ResearchSession.id).filter(
-        ResearchSession.last_seen_at_ms < cutoff)
-    sessions = int(expired.count())
-    events = int(db.session.query(func.count(ResearchEvent.id)).filter(
-        ResearchEvent.session_id.in_(expired.scalar_subquery())).scalar() or 0)
-    prompts = int(db.session.query(func.count(ResearchFeedbackPrompt.id)).filter(
-        ResearchFeedbackPrompt.session_id.in_(expired.scalar_subquery())).scalar() or 0)
-    expired_archives = (
-        db.session.query(ResearchExportArchive.id)
-        .join(ResearchExport, ResearchExport.id == ResearchExportArchive.export_id)
-        .filter(ResearchExport.oldest_last_seen_ms < cutoff)
-    )
-    archives = int(expired_archives.count())
-    if not execute or (sessions == 0 and archives == 0):
-        db.session.rollback()
-        return RetentionReport(cutoff, sessions, events, prompts, archives, False)
-    archive_ids = [row[0] for row in expired_archives.all()]
-    if archive_ids:
-        db.session.query(ResearchExportArchive).filter(
-            ResearchExportArchive.id.in_(archive_ids)).delete(synchronize_session=False)
-        db.session.add(ResearchAuditEvent(
-            action=ResearchAuditAction.RETENTION_PURGED.value,
-            channel=ResearchAuditChannel.OPERATOR.value,
-            detail_code=f"export_archives;days={retention_days}", count_value=archives,
-        ))
-    ids = [row[0] for row in expired.order_by(ResearchSession.id.asc()).all()]
-    for start in range(0, len(ids), 500):
-        chunk = ids[start:start + 500]
-        db.session.query(ResearchEvent).filter(
-            ResearchEvent.session_id.in_(chunk)).delete(synchronize_session=False)
-        db.session.query(ResearchFeedbackPrompt).filter(
-            ResearchFeedbackPrompt.session_id.in_(chunk)).delete(synchronize_session=False)
-        db.session.query(ResearchSession).filter(
-            ResearchSession.id.in_(chunk)).delete(synchronize_session=False)
-    if ids:
-        db.session.add(ResearchAuditEvent(
-            action=ResearchAuditAction.RETENTION_PURGED.value,
-            channel=ResearchAuditChannel.OPERATOR.value,
-            detail_code=f"days={retention_days}", count_value=sessions,
-        ))
-    db.session.commit()
-    return RetentionReport(cutoff, sessions, events, prompts, archives, True)
+def retention_report(retention_days, moment_ms=None, execute=False, *, actor_id=None, service_principal=None):
+    from app.services.research_retention import purge_expired
+    return purge_expired(retention_days, moment_ms, execute, actor_id=actor_id, service_principal=service_principal)

@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import uuid
 from decimal import Decimal
 
@@ -219,17 +220,17 @@ class GradeItem(db.Model):
         db.Index("ix_grade_items_speaking_activity_id", "speaking_activity_id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     category_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("grade_categories.id"),
         nullable=False,
     )
     title = db.Column(db.String(GRADE_ITEM_TITLE_MAX_LENGTH), nullable=False)
-    source_kind = db.Column(db.String(32), nullable=False)
+    source_kind = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False)
     #: Exact fixed-point points, never a float -- see
     #: :data:`POINTS_PRECISION`.
     max_points = db.Column(
@@ -238,17 +239,17 @@ class GradeItem(db.Model):
     #: At most one of these three is ever set, decided by ``source_kind``
     #: and enforced by ``ck_grade_items_source_link``.
     assignment_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("assignments.id"),
         nullable=True,
     )
     quiz_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("quizzes.id"),
         nullable=True,
     )
     speaking_activity_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("speaking_activities.id"),
         nullable=True,
     )

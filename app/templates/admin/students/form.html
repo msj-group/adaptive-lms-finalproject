@@ -9,6 +9,7 @@
 
   <form method="post" novalidate>
     {{ form.hidden_tag() }}
+    {% if student %}<input type="hidden" name="account_snapshot" value="{{ snapshot_token }}">{% endif %}
     <div class="field">
       {{ form.full_name.label(class_="field__label") }}
       {{ form.full_name(class_="field__input") }}

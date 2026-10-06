@@ -149,12 +149,12 @@ class GradeCategory(db.Model):
         db.CheckConstraint("version > 0", name="ck_grade_categories_version_positive"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     group_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("groups.id"),
         nullable=False,
     )

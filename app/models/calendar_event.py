@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import uuid
 
 from sqlalchemy.orm import validates
@@ -195,14 +196,14 @@ class CalendarEvent(db.Model):
         ),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     #: Which account created it. Set once, at creation, and never written
     #: again by any code path -- see the class docstring.
     created_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
     )
@@ -218,7 +219,7 @@ class CalendarEvent(db.Model):
     end_time = db.Column(db.Time, nullable=True)
     location = db.Column(db.String(CALENDAR_EVENT_LOCATION_MAX_LENGTH), nullable=True)
     status = db.Column(
-        db.String(32), nullable=False, default=CalendarEventStatus.SCHEDULED.value
+        db.String(32, collation=CODE_COLLATION), nullable=False, default=CalendarEventStatus.SCHEDULED.value
     )
     #: NULL exactly while ``status`` is ``scheduled``; one authoritative
     #: whole-second naive-UTC moment once cancelled, and never changed

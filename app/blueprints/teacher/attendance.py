@@ -238,8 +238,7 @@ _STALE_MESSAGE = (
 )
 _FINALIZED_MESSAGE = (
     "This attendance session has been finalized, so its marks and notes can no longer be "
-    "changed. Finalized attendance is permanent — there is no way to reopen, edit or "
-    "delete it."
+    "changed here. Ask an administrator to correct a finalized mark with preserved history."
 )
 _ALREADY_FINALIZED_MESSAGE = (
     "This attendance session was already finalized. Nothing was changed."

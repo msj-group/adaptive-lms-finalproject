@@ -1,0 +1,4 @@
+{% extends "layouts/admin_base.html" %}{% import "admin/_macros.html" as macros %}
+{% block admin_content %}<div class="ds-page" style="max-width:650px"><h1>{{ title }}</h1><p>{{ student.full_name }}</p><p>{{ description }}</p>{{ macros.flash_messages() }}
+<form method="post" novalidate>{{ form.hidden_tag() }}{% for field in form if field.type not in ['HiddenField','CSRFTokenField','SubmitField'] and not (kind == 'payment' and field.name in ['discount_kind','discount_value']) %}<div class="field">{{ field.label(class_='field__label') }}{{ field(class_='field__input') }}{% for error in field.errors %}<span class="field__error">{{ error }}</span>{% endfor %}</div>{% endfor %}{{ form.submit(class_='btn btn--primary') }}</form>
+<a href="{{ url_for('admin.student_financial_record', student_public_id=student.public_id) }}">Back to account</a></div>{% endblock %}

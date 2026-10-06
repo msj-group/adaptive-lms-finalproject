@@ -457,7 +457,7 @@ def student_attempt_rows(quiz_id, student_id):
     from app.models import MAX_ATTEMPT_LIMIT
 
     return (
-        QuizAttempt.query.filter_by(quiz_id=quiz_id, student_id=student_id)
+        QuizAttempt.query.filter_by(quiz_id=quiz_id, student_id=student_id).filter(active_episode_record(QuizAttempt))
         .order_by(QuizAttempt.attempt_number.desc())
         .limit(MAX_ATTEMPT_LIMIT + 1)
         .all()
@@ -477,3 +477,5 @@ def in_progress_attempt(attempts):
         if attempt.status == _IN_PROGRESS:
             return attempt
     return None
+
+from app.services.episode_queries import active_episode_record

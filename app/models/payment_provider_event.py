@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import re
 import uuid
 from datetime import datetime
@@ -137,19 +138,19 @@ class PaymentProviderEvent(db.Model):
         db.Index("ix_payment_provider_events_outcome_id", "outcome", "id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
-    provider = db.Column(db.String(16), nullable=False)
+    provider = db.Column(db.String(16, collation=CODE_COLLATION), nullable=False)
     provider_event_id = db.Column(db.String(PROVIDER_EVENT_ID_MAX_LENGTH), nullable=False)
     payment_intent_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("payment_intents.id"),
         nullable=False,
     )
-    event_type = db.Column(db.String(32), nullable=False)
-    currency_code = db.Column(db.String(3), nullable=False, default=CURRENCY_CODE)
+    event_type = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False)
+    currency_code = db.Column(db.String(3, collation=CODE_COLLATION), nullable=False, default=CURRENCY_CODE)
     #: Exact fixed point, never a float -- see :mod:`app.services.money`.
     amount = db.Column(
         db.DECIMAL(precision=AMOUNT_PRECISION, scale=AMOUNT_SCALE, asdecimal=True),
@@ -161,9 +162,9 @@ class PaymentProviderEvent(db.Model):
     received_at = db.Column(db.DateTime, nullable=False)
     processed_at = db.Column(db.DateTime, nullable=False)
     payload_digest = db.Column(db.String(PAYLOAD_DIGEST_LENGTH), nullable=False)
-    outcome = db.Column(db.String(32), nullable=False)
+    outcome = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False)
     payment_transaction_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("payment_transactions.id"),
         nullable=True,
     )

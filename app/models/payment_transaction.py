@@ -1,8 +1,9 @@
+from app.models.code_types import CODE_COLLATION
 import re
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import event
+from sqlalchemy import event, text
 from sqlalchemy.orm import validates
 
 from app.extensions import db
@@ -298,6 +299,9 @@ class PaymentTransaction(db.Model):
 
     __tablename__ = "payment_transactions"
     __table_args__ = (
+        db.CheckConstraint("movement_direction IN ('in', 'out')", name="ck_payment_transactions_direction"),
+        db.CheckConstraint("MOD(amount, 0.001) = 0", name="ck_payment_transactions_quantum"),
+        db.ForeignKeyConstraint(["invoice_id", "student_id"], ["invoices.id", "invoices.student_id"], name="fk_payment_transactions_invoice_student"),
         db.UniqueConstraint(
             "reversal_of_payment_transaction_id", name="uq_payment_transactions_reversal_of"
         ),
@@ -348,19 +352,22 @@ class PaymentTransaction(db.Model):
         db.Index("ix_payment_transactions_deleted_by_id", "deleted_by_id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     invoice_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("invoices.id"),
-        nullable=False,
+        nullable=True,
     )
-    kind = db.Column(db.String(32), nullable=False)
-    method = db.Column(db.String(32), nullable=False)
-    status = db.Column(db.String(32), nullable=False)
-    currency_code = db.Column(db.String(3), nullable=False, default=CURRENCY_CODE)
+    student_id = db.Column(db.BigInteger, db.ForeignKey("users.id", name="fk_payment_transactions_student_id"), nullable=False, index=True)
+    movement_direction = db.Column(db.String(16, collation=CODE_COLLATION), nullable=False, default="in")
+    operation_key = db.Column(db.String(36), nullable=True, unique=True)
+    kind = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False)
+    method = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False)
+    status = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False)
+    currency_code = db.Column(db.String(3, collation=CODE_COLLATION), nullable=False, default=CURRENCY_CODE)
     #: Exact fixed point, never a float -- see :mod:`app.services.money`.
     amount = db.Column(
         db.DECIMAL(precision=AMOUNT_PRECISION, scale=AMOUNT_SCALE, asdecimal=True),
@@ -373,25 +380,25 @@ class PaymentTransaction(db.Model):
     recorded_at = db.Column(db.DateTime, nullable=False)
     #: NULL exactly for an online collection (Phase 5 / M07).
     recorded_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )
     confirmed_at = db.Column(db.DateTime, nullable=True)
     confirmed_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )
     rejected_at = db.Column(db.DateTime, nullable=True)
     rejected_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )
     rejection_reason = db.Column(db.String(PAYMENT_REASON_MAX_LENGTH), nullable=True)
     reversal_of_payment_transaction_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("payment_transactions.id"),
         nullable=True,
     )
@@ -399,7 +406,7 @@ class PaymentTransaction(db.Model):
     #: A named foreign key, because the revision that added it to an existing
     #: table must be able to name it again.
     payment_intent_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("payment_intents.id", name="fk_payment_transactions_payment_intent_id"),
         nullable=True,
     )
@@ -411,7 +418,7 @@ class PaymentTransaction(db.Model):
     #: Phase 5 / M10: the visible deletion.
     deleted_at = db.Column(db.DateTime, nullable=True)
     deleted_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id", name="fk_payment_transactions_deleted_by_id"),
         nullable=True,
     )
@@ -537,9 +544,18 @@ _RECORDED_COLUMNS = (
 _DECISIONS = frozenset({_CONFIRMED, _REJECTED})
 
 
+@event.listens_for(PaymentTransaction, "before_insert")
+def _resolve_legacy_payment_account(_mapper, connection, target):
+    if target.student_id is None and target.invoice_id:
+        target.student_id = connection.execute(text("SELECT student_id FROM invoices WHERE id = :id"), {"id": target.invoice_id}).scalar()
+
+
 @event.listens_for(PaymentTransaction, "before_update")
 def _refuse_rewriting_a_payment(_mapper, connection, target):
     if not is_changing(target):
+        return
+    from app.services.financial_history import revision_authorizes_update
+    if revision_authorizes_update(connection, target):
         return
     stored = stored_row(
         connection, target, ("status", "version", "deleted_at") + _RECORDED_COLUMNS

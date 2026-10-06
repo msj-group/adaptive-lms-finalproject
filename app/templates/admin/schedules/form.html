@@ -60,6 +60,11 @@
       and must include at least one occurrence of the chosen weekday.
     </p>
     <div class="field" style="margin-top: var(--space-4)">
+      {{ form.room_id.label(class_="field__label") }}
+      {{ form.room_id(class_="field__input") }}
+      {% for error in form.room_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field" style="margin-top: var(--space-4)">
       {{ form.location.label(class_="field__label") }}
       {{ form.location(class_="field__input") }}
       {% for error in form.location.errors %}<span class="field__error">{{ error }}</span>{% endfor %}

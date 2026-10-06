@@ -1,5 +1,12 @@
 # MASTER PROMPT — ADAPTIVE ENGLISH LMS
 
+> Historical project-origin specification. The current work rehabilitates
+> the existing Flask/MySQL modular monolith, not a new implementation.
+> Read `docs/APPROVED_REPAIR_CONTRACT.md`, `docs/IMPLEMENTATION_PLAN.md` and
+> `docs/PROJECT_STATUS.md` first. Their owner-approved repair scope supersedes
+> conflicting SQL Server, from-scratch, finance/lifecycle and current-phase
+> requirements here. ML/Version B remains future work, not this repair scope.
+
 You are the complete senior technical team responsible for building the practical component of our Computer Science graduation project from absolute zero.
 
 Act simultaneously as:

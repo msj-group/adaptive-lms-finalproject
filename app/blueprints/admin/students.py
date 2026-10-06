@@ -1,3 +1,4 @@
+from app.blueprints.admin.account_actions import edit_account, toggle_account, reset_account_password
 from flask import flash, redirect, render_template, request, url_for
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
@@ -118,52 +119,16 @@ def student_detail(public_id):
 @admin_bp.route("/students/<public_id>/edit", methods=["GET", "POST"])
 @roles_required(UserRole.ADMINISTRATOR.value)
 def student_edit(public_id):
-    student = _get_student_or_404(public_id)
-    form = StudentEditForm(obj=student, student_id=student.id)
-
-    if form.validate_on_submit():
-        new_email = form.email.data.strip().lower()
-        email_changed = new_email != student.email
-        student.full_name = form.full_name.data.strip()
-        student.email = new_email
-        if email_changed:
-            student.bump_auth_version()
-        try:
-            db.session.commit()
-        except IntegrityError:
-            db.session.rollback()
-            form.email.errors.append("A user with this email already exists.")
-            return render_template("admin/students/form.html", form=form, student=student)
-        flash(f"Student '{student.full_name}' updated.", "success")
-        return redirect(url_for("admin.student_detail", public_id=student.public_id))
-
-    return render_template("admin/students/form.html", form=form, student=student)
+    return edit_account(public_id, "student", StudentEditForm)
 
 
 @admin_bp.post("/students/<public_id>/toggle-status")
 @roles_required(UserRole.ADMINISTRATOR.value)
 def student_toggle_status(public_id):
-    student = _get_student_or_404(public_id)
-    student.status = (
-        UserStatus.SUSPENDED.value
-        if student.status == UserStatus.ACTIVE.value
-        else UserStatus.ACTIVE.value
-    )
-    student.bump_auth_version()
-    db.session.commit()
-    flash(f"Student '{student.full_name}' is now {student.status}.", "success")
-    return _redirect_after_toggle_status(student)
+    return toggle_account(public_id, "student", _redirect_after_toggle_status)
 
 
 @admin_bp.route("/students/<public_id>/reset-password", methods=["GET", "POST"])
 @roles_required(UserRole.ADMINISTRATOR.value)
 def student_reset_password(public_id):
-    student = _get_student_or_404(public_id)
-    form = StudentPasswordResetForm()
-    if form.validate_on_submit():
-        student.password_hash = hash_password(form.password.data)
-        student.bump_auth_version()
-        db.session.commit()
-        flash(f"Password reset for '{student.full_name}'.", "success")
-        return redirect(url_for("admin.student_detail", public_id=student.public_id))
-    return render_template("admin/students/reset_password.html", form=form, student=student)
+    return reset_account_password(public_id, "student", StudentPasswordResetForm)

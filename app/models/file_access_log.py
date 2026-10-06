@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import validates
@@ -31,20 +32,20 @@ class FileAccessLog(db.Model):
         db.Index("ix_file_access_logs_file_time", "uploaded_file_id", "occurred_at"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     uploaded_file_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("uploaded_files.id"),
         nullable=False,
         index=True,
     )
     actor_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
         index=True,
     )
-    action = db.Column(db.String(16), nullable=False)
+    action = db.Column(db.String(16, collation=CODE_COLLATION), nullable=False)
     occurred_at = db.Column(
         db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True
     )

@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import uuid
 
 from sqlalchemy.orm import validates
@@ -221,35 +222,35 @@ class Announcement(db.Model):
         ),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     #: Who wrote it. Set once, at creation, and never written again by any
     #: code path -- see the class docstring.
     author_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
     )
-    scope = db.Column(db.String(32), nullable=False)
+    scope = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False)
     #: NULL unless ``scope`` is ``course``. Never duplicated onto a
     #: group-scoped row.
     course_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("courses.id"),
         nullable=True,
     )
     #: NULL unless ``scope`` is ``group``.
     group_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("groups.id"),
         nullable=True,
     )
     title = db.Column(db.String(ANNOUNCEMENT_TITLE_MAX_LENGTH), nullable=False)
     body = db.Column(db.String(ANNOUNCEMENT_BODY_MAX_LENGTH), nullable=False)
     status = db.Column(
-        db.String(32), nullable=False, default=AnnouncementStatus.DRAFT.value
+        db.String(32, collation=CODE_COLLATION), nullable=False, default=AnnouncementStatus.DRAFT.value
     )
     published_at = db.Column(db.DateTime, nullable=True)
     withdrawn_at = db.Column(db.DateTime, nullable=True)

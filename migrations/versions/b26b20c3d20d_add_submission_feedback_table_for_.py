@@ -103,7 +103,9 @@ def upgrade():
 
 def downgrade():
     # Dropped in the reverse of the creation order above.
-    with op.batch_alter_table('submission_feedback', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_submission_feedback_reviewer_id'))
+    # MySQL DROP TABLE releases its own FK-supporting indexes together.
+    if op.get_context().dialect.name != 'mysql':
+        with op.batch_alter_table('submission_feedback', schema=None) as batch_op:
+            batch_op.drop_index(batch_op.f('ix_submission_feedback_reviewer_id'))
 
     op.drop_table('submission_feedback')

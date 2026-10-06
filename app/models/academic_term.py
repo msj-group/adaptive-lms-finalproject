@@ -13,7 +13,7 @@ class AcademicTerm(db.Model):
         db.CheckConstraint("start_date < end_date", name="ck_academic_terms_valid_date_range"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4()))
     name = db.Column(db.String(100), nullable=False, unique=True)
     start_date = db.Column(db.Date, nullable=False)

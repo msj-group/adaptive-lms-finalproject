@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import json
 import re
 from decimal import Decimal, Inexact, localcontext
@@ -613,19 +614,19 @@ class PaymentAuditEvent(db.Model):
         db.Index("ix_payment_audit_events_receipt_id", "receipt_id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     invoice_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("invoices.id"),
         nullable=False,
     )
     #: NULL exactly for a system-origin kind (Phase 5 / M07).
     actor_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )
-    kind = db.Column(db.String(40), nullable=False)
+    kind = db.Column(db.String(40, collation=CODE_COLLATION), nullable=False)
     occurred_at = db.Column(db.DateTime, nullable=False)
     invoice_version_before = db.Column(db.Integer, nullable=True)
     invoice_version_after = db.Column(db.Integer, nullable=False)
@@ -637,14 +638,14 @@ class PaymentAuditEvent(db.Model):
     #: Phase 5 / M05. Named foreign keys, because the revision that added
     #: them to an existing table must be able to name them again.
     payment_transaction_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey(
             "payment_transactions.id", name="fk_payment_audit_events_payment_transaction_id"
         ),
         nullable=True,
     )
     receipt_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("receipts.id", name="fk_payment_audit_events_receipt_id"),
         nullable=True,
     )

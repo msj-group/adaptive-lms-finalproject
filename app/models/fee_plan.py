@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import unicodedata
 import uuid
 
@@ -232,17 +233,17 @@ class FeePlan(db.Model):
         db.Index("ix_fee_plans_status_changed_by_id", "status_changed_by_id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     name = db.Column(db.String(FEE_PLAN_NAME_MAX_LENGTH), nullable=False)
     #: Optional plain text. NULL means "nothing written"; never ``""``.
     description = db.Column(db.String(FEE_PLAN_DESCRIPTION_MAX_LENGTH), nullable=True)
-    currency_code = db.Column(db.String(3), nullable=False, default=CURRENCY_CODE)
-    status = db.Column(db.String(32), nullable=False, default=FeePlanStatus.DRAFT.value)
+    currency_code = db.Column(db.String(3, collation=CODE_COLLATION), nullable=False, default=CURRENCY_CODE)
+    status = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False, default=FeePlanStatus.DRAFT.value)
     created_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
     )
@@ -250,14 +251,14 @@ class FeePlan(db.Model):
     #: presence is what freezes the plan.
     first_activated_at = db.Column(db.DateTime, nullable=True)
     first_activated_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )
     #: The most recent lifecycle transition. NULL exactly while a draft.
     status_changed_at = db.Column(db.DateTime, nullable=True)
     status_changed_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )

@@ -1,0 +1,5 @@
+{% extends "layouts/portal_base.html" %}{% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}<h1>My records</h1><p>Your enrollment periods keep their own learning history, including released results after withdrawal or archival.</p>
+{% for episode in episodes.items %}<article class="card"><h2>{{ episode.group.course.title }} · {{ episode.group.name }}</h2><p>Enrollment started {{ episode.created_at }} · {{ episode.status }}</p>
+{% for kind,label in kinds.items() %}<a class="btn" href="{{ url_for('student.episode_records', episode_public_id=episode.public_id, kind=kind) }}">{{ label }}</a>{% endfor %}</article>{% else %}<p>No enrollment records.</p>{% endfor %}
+{% if episodes.has_prev %}<a href="{{ url_for('student.records', page=episodes.prev_num) }}">Previous</a>{% endif %}{% if episodes.has_next %}<a href="{{ url_for('student.records', page=episodes.next_num) }}">Next</a>{% endif %}{% endblock %}

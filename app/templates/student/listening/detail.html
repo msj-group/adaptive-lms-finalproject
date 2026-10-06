@@ -35,7 +35,7 @@
 {% endwith %}
 
 <div class="ds-row" style="margin-bottom: var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('student.listening_list') }}">Back to My Listening</a>
+  <a class="btn btn--secondary" href="{{ url_for('student.listening_list') }}">Back to Activities</a>
   {% if can_start %}
   <form method="post" action="{{ url_for('student.listening_start', group_public_id=group_public_id, listening_public_id=activity.public_id) }}" data-research-form="listening_start">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

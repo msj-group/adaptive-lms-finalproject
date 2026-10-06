@@ -1,0 +1,36 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}Correct finalized attendance{% endblock %}
+{% block admin_content %}
+<div class="ds-page" style="max-width:800px">
+  <h1>Correct finalized attendance</h1>
+  <p>{{ group.name }} · {{ session.session_date }} · {{ student.full_name }}</p>
+  <p>The roster and class stay fixed. The current mark is updated and its previous values,
+     operator and time are preserved. Private staff notes remain hidden from students.</p>
+  {{ macros.flash_messages() }}
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {% for field in [form.status, form.note] %}
+    <div class="field">
+      {{ field.label(class_='field__label') }}{{ field(class_='field__input') }}
+      {% for error in field.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
+    {% endfor %}
+    {{ form.submit(class_='btn btn--primary') }}
+  </form>
+  <p><a href="{{ back }}">Back to attendance</a></p>
+  <h2>Preserved corrections</h2>
+  {% for revision, actor in history.items %}
+  <article class="card">
+    <p>{{ local(revision.created_at) }} · {{ actor }}</p>
+    <p>{{ revision.before_snapshot.status|title }} → {{ revision.after_snapshot.status|title }}</p>
+    {% if revision.before_snapshot.note != revision.after_snapshot.note %}
+    <p style="white-space:pre-wrap">Previous private note: {{ revision.before_snapshot.note or 'Empty' }}</p>
+    <p style="white-space:pre-wrap">Updated private note: {{ revision.after_snapshot.note or 'Empty' }}</p>
+    {% endif %}
+  </article>
+  {% else %}<p>No corrections have been recorded.</p>{% endfor %}
+  {% if history.has_prev %}<a href="{{ url_for('admin.attendance_record_correct', group_public_id=group.public_id, session_public_id=session.public_id, record_public_id=request.view_args.record_public_id, page=history.prev_num) }}">Previous</a>{% endif %}
+  {% if history.has_next %}<a href="{{ url_for('admin.attendance_record_correct', group_public_id=group.public_id, session_public_id=session.public_id, record_public_id=request.view_args.record_public_id, page=history.next_num) }}">Next</a>{% endif %}
+</div>
+{% endblock %}

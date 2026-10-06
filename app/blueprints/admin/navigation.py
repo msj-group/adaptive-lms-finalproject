@@ -14,6 +14,7 @@ ADMIN_NAV_SECTIONS = [
             {"label": "Teachers", "endpoint": "admin.teachers_list"},
             {"label": "Groups", "endpoint": "admin.groups_list"},
             {"label": "Schedules", "endpoint": "admin.schedules_overview"},
+            {"label": "Rooms", "endpoint": "admin.rooms_list"},
             {"label": "Attendance", "endpoint": "admin.attendance_overview"},
             {"label": "Grades", "endpoint": "admin.gradebook_overview"},
             {"label": "Announcements", "endpoint": "admin.announcements_overview"},
@@ -26,7 +27,6 @@ ADMIN_NAV_SECTIONS = [
             {"label": "Student Accounts", "endpoint": "admin.student_accounts"},
             {"label": "Invoices", "endpoint": "admin.invoice_register"},
             {"label": "Payments", "endpoint": "admin.payments_overview"},
-            {"label": "Fee Plans", "endpoint": "admin.fee_plans_list"},
             {"label": "Financial reports", "endpoint": "admin.financial_reports_index"},
             {"label": "Deleted Records", "endpoint": "admin.deleted_financial_records"},
             # No research entry: research management lives only in the

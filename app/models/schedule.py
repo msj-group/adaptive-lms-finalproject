@@ -59,10 +59,10 @@ class Schedule(db.Model):
         ),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4()))
     group_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("groups.id"),
         nullable=False,
         index=True,
@@ -73,6 +73,7 @@ class Schedule(db.Model):
     effective_start_date = db.Column(db.Date, nullable=False)
     effective_end_date = db.Column(db.Date, nullable=False)
     location = db.Column(db.String(255), nullable=True)
+    room_id = db.Column(db.BigInteger, db.ForeignKey("rooms.id", name="fk_schedules_room_id"), nullable=True, index=True)
     status = db.Column(db.String(32), nullable=False, default=AcademicStatus.ACTIVE.value, index=True)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
@@ -83,6 +84,7 @@ class Schedule(db.Model):
     )
 
     group = db.relationship("Group", back_populates="schedules")
+    room = db.relationship("Room")
 
     @validates("status")
     def validate_status(self, _key, value):

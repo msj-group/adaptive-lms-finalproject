@@ -65,6 +65,7 @@ from app.models import (
 from app.models.submission_feedback import whole_second_utc
 from app.services import research_sampling as sampling
 from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
+from app.services.research_delivery_scope import DeliveryProof
 from app.services.research_event_dictionary import SOURCE_CLIENT, SOURCE_SERVER, activity_end
 from app.services.research_event_validation import is_uuid, validate_event
 from app.services.research_scope import (
@@ -96,6 +97,7 @@ _SUCCESSOR_NAMESPACE = uuid.UUID("7c9e6679-7425-40de-944b-e07fc1f90ae7")
 NOT_COLLECTING = "not_collecting"
 RECORDED = "recorded"
 RETRY = "retry"
+STALE_DELIVERY_SCOPE = "stale_delivery_scope"
 
 IngestResult = namedtuple(
     "IngestResult", "status session_ref accepted duplicates invalid late prompt_public_id"
@@ -112,9 +114,21 @@ def _lock_user(user_id):
 
 
 def _lock_active_configuration(shared=True):
+    # Writers lock configuration primary records before changing the unique
+    # current-marker index. Locking that index first can create an InnoDB
+    # cycle with activation. Resolve the marker without locks, then lock its
+    # primary record in the same order as writers; eligibility/scope are
+    # re-proved on that locked row, including if it retired while waiting.
+    configuration_id = (
+        db.session.query(ResearchConfiguration.id)
+        .filter(ResearchConfiguration.current_marker == 1)
+        .scalar()
+    )
+    if configuration_id is None:
+        return None
     return (
         db.session.query(ResearchConfiguration)
-        .filter(ResearchConfiguration.current_marker == 1)
+        .filter(ResearchConfiguration.id == configuration_id)
         .with_for_update(read=shared)
         .first()
     )
@@ -168,7 +182,8 @@ def _provision_subject(user_id):
     return subject
 
 
-def lock_collection_chain(user_id, moment, provision=True):
+def lock_collection_chain(user_id, moment, provision=True, *,
+                          delivery_proof=None, delivery_scope=None):
     """Take the documented chain through the subject and re-prove
     eligibility. ``(chain, None)`` or ``(None, NOT_COLLECTING)``; on refusal
     the transaction is rolled back and nothing is written.
@@ -187,6 +202,13 @@ def lock_collection_chain(user_id, moment, provision=True):
         ):
             db.session.rollback()
             return None, NOT_COLLECTING
+        if delivery_proof is not None or delivery_scope is not None:
+            if not isinstance(delivery_proof, DeliveryProof) or not delivery_proof.matches(
+                delivery_scope, user.public_id, user.auth_version,
+                configuration.public_id, configuration.version_number,
+            ):
+                db.session.rollback()
+                return None, STALE_DELIVERY_SCOPE
         subject = _lock_subject_for_user(user_id)
         if subject is None:
             if not provision:
@@ -350,7 +372,7 @@ def _advance_observation(session, accepted):
 
 
 def ingest_batch(user_id, session_ref, batch, deployment_provenance, tz_name,
-                 received_ms=None):
+                 received_ms=None, *, delivery_proof):
     """Validate, deduplicate and store one parsed client batch.
 
     Returns an :class:`IngestResult`. ``status`` is :data:`NOT_COLLECTING`
@@ -358,9 +380,15 @@ def ingest_batch(user_id, session_ref, batch, deployment_provenance, tz_name,
     :data:`RETRY` (a concurrent duplicate raced this batch; nothing written).
     """
     received_ms = now_ms() if received_ms is None else received_ms
-    chain, refused = lock_collection_chain(user_id, received_ms)
+    if not isinstance(delivery_proof, DeliveryProof):
+        db.session.rollback()
+        return IngestResult(STALE_DELIVERY_SCOPE, None, 0, 0, 0, 0, None)
+    chain, refused = lock_collection_chain(
+        user_id, received_ms, delivery_proof=delivery_proof,
+        delivery_scope=batch.delivery_scope,
+    )
     if refused:
-        return IngestResult(NOT_COLLECTING, None, 0, 0, 0, 0, None)
+        return IngestResult(refused, None, 0, 0, 0, 0, None)
 
     # Classify against the session the reference names, when it is usable,
     # so events buffered before a rotation are recognised as late.

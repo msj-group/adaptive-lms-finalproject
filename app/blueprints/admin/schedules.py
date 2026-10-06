@@ -1,3 +1,6 @@
+from flask_login import current_user
+from app.services.schedule_resources import lock_schedule_resources, resource_schedule_conflict
+from app.services.scheduling_history import schedule_snapshot, record_scheduling_change
 """Administrator management of recurring weekly Group schedules (M08).
 
 A Schedule is a child of Group. Every mutation here follows the approved
@@ -265,6 +268,7 @@ def group_schedule_create(group_public_id):
         effective_start_date = form.effective_start_date.data
         effective_end_date = form.effective_end_date.data
         location = normalize_optional_text(form.location.data)
+        room_id = form.room_id.data or None
 
         term_id = preview_group.academic_term_id
         level_id = preview_group.course.level_id
@@ -301,6 +305,7 @@ def group_schedule_create(group_public_id):
             end_time,
             effective_start_date,
             effective_end_date,
+            room_id=room_id,
         )
         if rule_error is not None:
             db.session.rollback()
@@ -315,10 +320,12 @@ def group_schedule_create(group_public_id):
             effective_start_date=effective_start_date,
             effective_end_date=effective_end_date,
             location=location,
+            room_id=room_id,
             status=AcademicStatus.ACTIVE.value,
         )
         db.session.add(schedule)
         try:
+            record_scheduling_change(schedule, current_user.id, "create", None)
             db.session.commit()
         except IntegrityError:
             db.session.rollback()
@@ -370,6 +377,8 @@ _SCHEDULE_EDIT_SNAPSHOT_FIELDS = (
     "effective_start_date",
     "effective_end_date",
     "location",
+    "room_id",
+    "status",
 )
 
 
@@ -391,6 +400,8 @@ def _schedule_snapshot_payload(schedule):
         "effective_start_date": schedule.effective_start_date.isoformat(),
         "effective_end_date": schedule.effective_end_date.isoformat(),
         "location": schedule.location,
+        "room_id": schedule.room_id,
+        "status": schedule.status,
     }
 
 
@@ -494,6 +505,7 @@ def group_schedule_edit(group_public_id, schedule_public_id):
         effective_start_date = form.effective_start_date.data
         effective_end_date = form.effective_end_date.data
         location = normalize_optional_text(form.location.data)
+        room_id = form.room_id.data or None
 
         term_id = preview_group.academic_term_id
         level_id = preview_group.course.level_id
@@ -543,6 +555,7 @@ def group_schedule_edit(group_public_id, schedule_public_id):
             effective_start_date,
             effective_end_date,
             exclude_schedule_id=schedule.id,
+            room_id=room_id,
         )
         if rule_error is not None:
             db.session.rollback()
@@ -554,13 +567,16 @@ def group_schedule_edit(group_public_id, schedule_public_id):
         # No field is assigned until every check passed -- a rejection
         # never leaves a partial update. ``schedule.status`` is never
         # among the assigned fields.
+        before = schedule_snapshot(schedule)
         schedule.day_of_week = day_of_week
         schedule.start_time = start_time
         schedule.end_time = end_time
         schedule.effective_start_date = effective_start_date
         schedule.effective_end_date = effective_end_date
         schedule.location = location
+        schedule.room_id = room_id
         try:
+            record_scheduling_change(schedule, current_user.id, "edit", before)
             db.session.commit()
         except IntegrityError:
             db.session.rollback()
@@ -633,7 +649,9 @@ def group_schedule_toggle_status(group_public_id, schedule_public_id):
         # Archiving is always allowed -- even when the Group or an
         # ancestor is archived. The row stays as historical record but is
         # not operational.
+        before = schedule_snapshot(schedule)
         schedule.status = AcademicStatus.ARCHIVED.value
+        record_scheduling_change(schedule, current_user.id, "archive", before)
         db.session.commit()
         # M14 post-commit delivery -- see group_schedule_create.
         notify_group_id, notify_group_name = group.id, group.name
@@ -664,13 +682,16 @@ def group_schedule_toggle_status(group_public_id, schedule_public_id):
         schedule.effective_start_date,
         schedule.effective_end_date,
         exclude_schedule_id=schedule.id,
+        room_id=schedule.room_id,
     )
     if rule_error is not None:
         db.session.rollback()
         flash(f"This schedule cannot be reactivated. {rule_error}", "danger")
         return _redirect_to_group_schedules(group_public_id)
 
+    before = schedule_snapshot(schedule)
     schedule.status = AcademicStatus.ACTIVE.value
+    record_scheduling_change(schedule, current_user.id, "reactivate", before)
     db.session.commit()
     # M14 post-commit delivery -- see group_schedule_create.
     notify_group_id, notify_group_name = group.id, group.name
@@ -746,6 +767,7 @@ def _schedule_rule_error(
     effective_start_date,
     effective_end_date,
     exclude_schedule_id=None,
+    room_id=None,
 ):
     """The authoritative slot rules, re-checked against locked rows:
     weekday in range, time order, effective-date order, at least one
@@ -772,18 +794,28 @@ def _schedule_rule_error(
             "The effective date range must fall within this group's academic term "
             f"({term.start_date.isoformat()} to {term.end_date.isoformat()})."
         )
-    conflict = conflicting_active_schedule(
+    from app.services.study_start import first_slot_start
+    first = first_slot_start(day_of_week,start_time,effective_start_date,effective_end_date)
+    if group.study_starts_at is None or (first is not None and first < group.study_starts_at):
+        return "Set a group study start at or before its first scheduled class."
+    _teachers, room = lock_schedule_resources(group.id, room_id)
+    if room_id and (room is None or room.status != "active"):
+        return "Select an active room."
+    if room is not None and room.capacity < group.capacity:
+        return "The room cannot accommodate this group's capacity."
+    conflict = resource_schedule_conflict(
         group.id,
         day_of_week,
         start_time,
         end_time,
         effective_start_date,
         effective_end_date,
-        exclude_schedule_id=exclude_schedule_id,
+        exclude_id=exclude_schedule_id,
+        room_id=room_id,
     )
     if conflict is not None:
         return (
-            f"This slot overlaps an existing active {_weekday_label(day_of_week)} schedule "
+            f"This slot conflicts with a group, teacher or room in an active {_weekday_label(day_of_week)} schedule "
             f"({conflict.start_time.strftime('%H:%M')}-{conflict.end_time.strftime('%H:%M')}, "
             f"effective {conflict.effective_start_date.isoformat()} to "
             f"{conflict.effective_end_date.isoformat()})."

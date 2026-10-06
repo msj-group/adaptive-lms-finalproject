@@ -593,7 +593,7 @@ def student_speaking_submission(activity_id, student_id):
     """
     return SpeakingSubmission.query.filter(
         SpeakingSubmission.speaking_activity_id == activity_id,
-        SpeakingSubmission.student_id == student_id,
+        SpeakingSubmission.student_id == student_id, active_episode_record(SpeakingSubmission),
     ).first()
 
 
@@ -643,7 +643,7 @@ def student_submitted_activity_ids(activity_ids, student_id):
         db.session.query(SpeakingSubmission.speaking_activity_id)
         .filter(
             SpeakingSubmission.speaking_activity_id.in_(ids),
-            SpeakingSubmission.student_id == student_id,
+            SpeakingSubmission.student_id == student_id, active_episode_record(SpeakingSubmission),
         )
         .all()
     )
@@ -811,3 +811,5 @@ def student_speaking_feedback(speaking_submission_id):
         .filter(SpeakingFeedback.speaking_submission_id == speaking_submission_id)
         .first()
     )
+
+from app.services.episode_queries import active_episode_record

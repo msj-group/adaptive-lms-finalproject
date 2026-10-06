@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import uuid
 from datetime import datetime, timezone
 
@@ -77,29 +78,29 @@ class Material(db.Model):
         ),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     lesson_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("lessons.id"),
         nullable=False,
         index=True,
     )
     title = db.Column(db.String(150), nullable=False)
-    kind = db.Column(db.String(32), nullable=False)
+    kind = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False)
     search_keywords = db.Column(db.String(500), nullable=True)
     content_html = db.Column(db.Text, nullable=True)
     external_url = db.Column(db.String(2048), nullable=True)
     uploaded_file_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("uploaded_files.id"),
         nullable=True,
         unique=True,
     )
     status = db.Column(
-        db.String(32), nullable=False, default=AcademicStatus.ACTIVE.value, index=True
+        db.String(32, collation=CODE_COLLATION), nullable=False, default=AcademicStatus.ACTIVE.value, index=True
     )
     display_order = db.Column(db.Integer, nullable=False, index=True)
     creation_nonce = db.Column(db.String(64), nullable=False, unique=True)

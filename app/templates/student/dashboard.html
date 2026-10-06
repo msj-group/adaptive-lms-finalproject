@@ -99,13 +99,13 @@
     not-yet-opened, already-past-due, withdrawn and archived-chain rows are all
     excluded by that query, not by this template. -#}
 <div class="dash-section">
-  <h2>Upcoming assignment deadlines</h2>
+  <h2>Upcoming activity deadlines</h2>
   {% if upcoming_deadlines %}
   <div class="dash-scroll">
   <table class="dash-table">
     <thead>
       <tr>
-        <th>Assignment</th>
+        <th>Activity</th>
         <th>Group</th>
         <th>Course</th>
         <th>Due ({{ tz_name }})</th>
@@ -114,7 +114,7 @@
     <tbody>
       {% for item in upcoming_deadlines %}
       <tr>
-        <td><a href="{{ url_for('student.assignment_detail', group_public_id=item.group_public_id, assignment_public_id=item.public_id) }}">{{ item.title }}</a></td>
+        <td><a href="{{ item.url }}">{{ item.title }}</a> <span class="badge">{{ item.type_label }}</span></td>
         <td>{{ item.group_name }}</td>
         <td>{{ item.course_title }} ({{ item.level_name }})</td>
         <td>{{ item.due_local.strftime("%Y-%m-%d %H:%M") }}</td>
@@ -124,12 +124,12 @@
   </table>
   </div>
   <p class="ds-section__desc" style="margin-top: var(--space-2)">
-    The next {{ deadline_cap }} deadlines at most. <a href="{{ url_for('student.assignments_list') }}">See all assignments</a>.
+    The next {{ deadline_cap }} deadlines at most. <a href="{{ url_for('student.activities') }}">See all activities</a>.
   </p>
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No upcoming deadlines</div>
-    <div>Assignments your teachers have published, once their opening time has passed, appear here until their deadline.</div>
+    <div>Activities your teachers have published, once their opening time has passed, appear here until their deadline.</div>
   </div>
   {% endif %}
 </div>

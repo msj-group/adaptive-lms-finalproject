@@ -28,6 +28,7 @@
         <th style="padding: var(--space-3)">Title</th>
         <th style="padding: var(--space-3)">Level</th>
         <th style="padding: var(--space-3)">Code</th>
+        <th style="padding: var(--space-3)">Price (LYD)</th>
         <th style="padding: var(--space-3)">Status</th>
         <th style="padding: var(--space-3)">Order</th>
         <th style="padding: var(--space-3)">Actions</th>
@@ -44,6 +45,7 @@
         </td>
         <td style="padding: var(--space-3)">{{ course.level.name }}{% if course.level.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</td>
         <td style="padding: var(--space-3)">{{ course.code or "--" }}</td>
+        <td style="padding: var(--space-3)">{{ money(course.price) if course.price is not none else 'Set before enrollment' }}</td>
         <td style="padding: var(--space-3)">{{ macros.status_badge(course.status) }}</td>
         <td style="padding: var(--space-3)">{{ course.display_order }}</td>
         <td style="padding: var(--space-3)">

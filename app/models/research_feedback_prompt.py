@@ -29,6 +29,7 @@ else.
 The questionnaire happens after ``window_end_ms``, so its own interaction is
 outside the window it labels.
 """
+from app.models.code_types import CODE_COLLATION
 
 import uuid
 
@@ -134,11 +135,11 @@ class ResearchFeedbackPrompt(db.Model):
     configuration_id = db.Column(
         ID_TYPE, db.ForeignKey("research_configurations.id"), nullable=False
     )
-    status = db.Column(db.String(16), nullable=False, default=ResearchPromptStatus.OFFERED.value)
-    sampling_reason = db.Column(db.String(16), nullable=False)
+    status = db.Column(db.String(16, collation=CODE_COLLATION), nullable=False, default=ResearchPromptStatus.OFFERED.value)
+    sampling_reason = db.Column(db.String(16, collation=CODE_COLLATION), nullable=False)
     offered_at_ms = db.Column(db.BigInteger, nullable=False)
     deferral_count = db.Column(db.Integer, nullable=False, default=0)
-    last_deferral_reason = db.Column(db.String(24), nullable=True)
+    last_deferral_reason = db.Column(db.String(24, collation=CODE_COLLATION), nullable=True)
     displayed_at_ms = db.Column(db.BigInteger, nullable=True)
     display_slot = db.Column(db.SmallInteger, nullable=True)
     prompt_day = db.Column(db.Date, nullable=True)

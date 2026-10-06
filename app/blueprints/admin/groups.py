@@ -37,6 +37,7 @@ from app.services.group_transactions import lock_group_in_open_transaction
 from app.services.quiz_queries import group_has_quiz_history
 from app.services.schedule_queries import group_has_schedule_history
 from app.services.unit_queries import group_has_unit_history
+from app.services.schedule_occurrences import to_app_local, utc_reference_now
 
 
 def _group_identity_frozen(group_id):
@@ -256,12 +257,19 @@ def group_create():
                 group=None,
             )
 
+        from app.services.study_start import study_start_error
+        start_error = study_start_error(hierarchy.term(academic_term_id), form.study_starts_at_utc)
+        if start_error:
+            db.session.rollback()
+            form.study_starts_at.errors.append(start_error)
+            return render_template("admin/groups/form.html",form=form,courses=_group_form_course_choices(),group=None)
         group = Group(
             academic_term_id=academic_term_id,
             course_id=course_id,
             name=name,
             code=code,
             capacity=capacity,
+            study_starts_at=form.study_starts_at_utc,
             status=AcademicStatus.ACTIVE.value,
         )
         db.session.add(group)
@@ -401,8 +409,8 @@ def _group_reactivation_roster_error(group):
     Group's closure roster exactly as it stands. The caller already holds
     the AcademicTerm/Level/Course/Group locks.
     """
-    enrollment_rows = active_student_enrollment_rows(group.id)  # [(enrollment_id, student_id)] asc
-    assignment_rows = teacher_assignment_rows(group.id)  # [(assignment_id, teacher_id)] asc
+    enrollment_rows = db.session.query(Enrollment.id, Enrollment.student_id).filter_by(group_id=group.id, status="active").order_by(Enrollment.id).with_for_update().all()
+    assignment_rows = db.session.query(GroupTeacherAssignment.id, GroupTeacherAssignment.teacher_id).filter_by(group_id=group.id).order_by(GroupTeacherAssignment.id).with_for_update().all()
 
     for user_id in sorted(
         {student_id for _, student_id in enrollment_rows}
@@ -413,6 +421,13 @@ def _group_reactivation_roster_error(group):
         Enrollment.query.filter_by(id=enrollment_id).with_for_update().first()
     for assignment_id, _ in assignment_rows:
         GroupTeacherAssignment.query.filter_by(id=assignment_id).with_for_update().first()
+
+    from app.services.schedule_resources import group_reactivation_schedule_error
+    resource_error = group_reactivation_schedule_error(group)
+    if resource_error is not None:
+        return resource_error
+    enrollment_rows = [(episode_id, student_id) for episode_id, student_id in enrollment_rows
+                       if db.session.get(User, student_id).role == UserRole.STUDENT.value]
 
     active_count = active_student_enrollment_count(group.id)
     if active_count == 0:
@@ -475,7 +490,13 @@ _GROUP_EDIT_SNAPSHOT_FIELDS = (
     "name",
     "code",
     "capacity",
+    "study_starts_at",
 )
+
+
+def _group_snapshot_value(group, field):
+    value = getattr(group, field)
+    return value.isoformat() if field == "study_starts_at" and value is not None else value
 
 
 def _group_edit_snapshot_serializer():
@@ -493,7 +514,7 @@ def _make_group_edit_snapshot_token(group):
     token never produces "new" data, only the original state to compare
     against.
     """
-    payload = {field: getattr(group, field) for field in _GROUP_EDIT_SNAPSHOT_FIELDS}
+    payload = {field: _group_snapshot_value(group, field) for field in _GROUP_EDIT_SNAPSHOT_FIELDS}
     return _group_edit_snapshot_serializer().dumps(payload)
 
 
@@ -532,7 +553,7 @@ def _group_edit_is_stale(snapshot, group_public_id, locked_group):
         return True
     if snapshot["public_id"] != group_public_id:
         return True
-    return any(snapshot[field] != getattr(locked_group, field) for field in _GROUP_EDIT_SNAPSHOT_FIELDS)
+    return any(snapshot[field] != _group_snapshot_value(locked_group, field) for field in _GROUP_EDIT_SNAPSHOT_FIELDS)
 
 
 def _load_group_for_display(public_id):
@@ -668,6 +689,8 @@ def group_edit(public_id):
         current_academic_term_id=preview_group.academic_term_id,
         current_course_id=preview_group.course_id,
     )
+    if request.method == "GET" and preview_group.study_starts_at is not None:
+        form.study_starts_at.data = to_app_local(current_app.config["APP_TIMEZONE"], preview_group.study_starts_at)
 
     if form.validate_on_submit():
         error = _group_identity_change_error(
@@ -781,11 +804,27 @@ def group_edit(public_id):
         # field below is written and committed together, or none are.
         # `group.status` is never assigned here (Part M07C2): a status
         # toggle that committed while this form was open is left intact.
+        from app.services.schedule_resources import lock_group_rooms
+        room_error = lock_group_rooms(group.id, capacity)
+        if room_error:
+            form.capacity.errors.append(room_error)
+            return _render_group_edit_validation_failure(form, public_id, submitted_snapshot_token)
+        if (group.study_starts_at is not None and group.study_starts_at <= utc_reference_now()
+                and form.study_starts_at_utc > group.study_starts_at):
+            form.study_starts_at.errors.append("Study has started. Its start cannot be moved later to reopen admission.")
+            return _render_group_edit_validation_failure(form, public_id, submitted_snapshot_token)
         group.academic_term_id = academic_term_id
         group.course_id = course_id
         group.name = name
         group.code = code
         group.capacity = capacity
+        from app.services.study_start import study_start_error
+        start_error = study_start_error(hierarchy.term(academic_term_id),form.study_starts_at_utc,group.id)
+        if start_error:
+            db.session.rollback()
+            form.study_starts_at.errors.append(start_error)
+            return render_template("admin/groups/form.html",form=form,courses=_group_form_course_choices(),group=group)
+        group.study_starts_at = form.study_starts_at_utc
         try:
             db.session.commit()
         except IntegrityError:

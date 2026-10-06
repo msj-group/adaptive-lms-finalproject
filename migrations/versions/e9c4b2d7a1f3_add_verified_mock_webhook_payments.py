@@ -701,6 +701,25 @@ def upgrade():
     _create_inbox()
 
 
+def _require_account_column(table, column):
+    """MySQL needs the referencing FK released before NULL -> NOT NULL."""
+    if op.get_context().as_sql:
+        # Names assigned by MySQL on the unchanged historical parent chain.
+        name = f'{table}_ibfk_2'
+        options = {}
+    else:
+        keys = [key for key in sa.inspect(op.get_bind()).get_foreign_keys(table)
+                if key['constrained_columns'] == [column]]
+        if (len(keys) != 1 or keys[0]['referred_table'] != 'users'
+                or keys[0]['referred_columns'] != ['id'] or not keys[0]['name']):
+            raise RuntimeError('The historical account foreign key is unexpected.')
+        name = keys[0]['name']
+        options = keys[0].get('options', {})
+    op.drop_constraint(name, table, type_='foreignkey')
+    op.alter_column(table, column, existing_type=_ID, nullable=False)
+    op.create_foreign_key(name, table, 'users', [column], ['id'], **options)
+
+
 def downgrade():
     bind = op.get_bind()
     if not op.get_context().as_sql:
@@ -738,11 +757,11 @@ def downgrade():
     op.drop_constraint(_ACTOR_ORIGIN, _EVENTS, type_='check')
     for name, _old, _new in _AUDIT_CHECKS:
         op.drop_constraint(name, _EVENTS, type_='check')
-    op.alter_column(_EVENTS, 'actor_id', existing_type=_ID, nullable=False)
+    _require_account_column(_EVENTS, 'actor_id')
     for name, old, _new in _AUDIT_CHECKS:
         op.create_check_constraint(name, _EVENTS, old)
 
-    op.alter_column(_RECEIPTS, 'issued_by_id', existing_type=_ID, nullable=False)
+    _require_account_column(_RECEIPTS, 'issued_by_id')
 
     op.drop_constraint(_ONLINE_ORIGIN, _PAYMENTS, type_='check')
     for name, _old, _new in _PAYMENT_CHECKS:
@@ -750,7 +769,7 @@ def downgrade():
     op.drop_constraint(_INTENT_FK, _PAYMENTS, type_='foreignkey')
     op.drop_constraint(_INTENT_UNIQUE, _PAYMENTS, type_='unique')
     op.drop_column(_PAYMENTS, 'payment_intent_id')
-    op.alter_column(_PAYMENTS, 'recorded_by_id', existing_type=_ID, nullable=False)
+    _require_account_column(_PAYMENTS, 'recorded_by_id')
     for name, old, _new in _PAYMENT_CHECKS:
         op.create_check_constraint(name, _PAYMENTS, old)
 

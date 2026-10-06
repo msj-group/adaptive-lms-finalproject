@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import uuid
 from datetime import datetime, timezone
 
@@ -36,19 +37,19 @@ class UploadedFile(db.Model):
         ),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     storage_key = db.Column(db.String(120), nullable=False, unique=True)
     original_filename = db.Column(db.String(255), nullable=False)
     extension = db.Column(db.String(16), nullable=False)
-    category = db.Column(db.String(32), nullable=False)
+    category = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False)
     content_type = db.Column(db.String(128), nullable=False)
-    byte_size = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), nullable=False)
+    byte_size = db.Column(db.BigInteger(), nullable=False)
     sha256 = db.Column(db.String(64), nullable=False)
     uploaded_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
         index=True,

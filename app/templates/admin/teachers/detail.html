@@ -2,6 +2,7 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ teacher.full_name }}{% endblock %}
 {% block admin_content %}
+<a href="{{ url_for('admin.operational_history',kind='teacher',public_id=teacher.public_id) }}">Account change history</a>
 <div class="ds-page" style="max-width: 640px">
   <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
     <h1 style="margin:0">{{ teacher.full_name }}</h1>
@@ -33,6 +34,7 @@
       {% if teacher.status == "active" %}data-confirm="Suspend {{ teacher.full_name }}? They will be signed out of any active session and unable to log in until reactivated."{% endif %}
     >
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="account_snapshot" value="{{ account_token(teacher) }}">
       {% if teacher.status == "active" %}
         <button type="submit" class="btn btn--danger-outline">Suspend</button>
       {% else %}

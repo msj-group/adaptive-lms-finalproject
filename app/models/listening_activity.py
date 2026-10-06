@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import uuid
 
 from sqlalchemy.orm import validates
@@ -173,14 +174,14 @@ class ListeningActivity(db.Model):
         ),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     #: The one Quiz this extension turns into a Listening activity.
     #: UNIQUE, so a Quiz can never carry two.
     quiz_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("quizzes.id"),
         nullable=False,
         unique=True,
@@ -189,7 +190,7 @@ class ListeningActivity(db.Model):
     #: one activity. The `audio` category is an application invariant --
     #: see the class docstring.
     audio_file_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("uploaded_files.id"),
         nullable=False,
         unique=True,
@@ -199,7 +200,7 @@ class ListeningActivity(db.Model):
     transcript = db.Column(db.Text, nullable=False, default="")
     #: Who may read the transcript, and when. Never a Teacher restriction.
     transcript_visibility = db.Column(
-        db.String(32), nullable=False, default=TranscriptVisibility.HIDDEN.value
+        db.String(32, collation=CODE_COLLATION), nullable=False, default=TranscriptVisibility.HIDDEN.value
     )
     #: Optional plain authored vocabulary support, shown to eligible
     #: Students before and during an attempt. Empty string means none.

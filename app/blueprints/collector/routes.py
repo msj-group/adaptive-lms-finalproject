@@ -27,7 +27,7 @@ and the collector stops. Responses are ``private, no-store``.
 import json
 from functools import wraps
 
-from flask import jsonify, request, session
+from flask import current_app, jsonify, request, session
 from flask_limiter.util import get_remote_address
 from flask_login import current_user
 
@@ -41,6 +41,7 @@ from app.extensions import limiter
 from app.models import UserRole
 from app.services import research_collection as collection
 from app.services import research_sampling as sampling
+from app.services.research_delivery_scope import DeliveryProof
 from app.services.research_event_dictionary import MAX_BATCH_BYTES
 from app.services.research_event_validation import parse_batch
 
@@ -107,8 +108,11 @@ def events():
     if error is not None:
         return _json({"error": error}, 413 if error == "too_large" else 400)
     result = collection.ingest_batch(
-        _user_id(), session.get(SESSION_REF_KEY), batch, deployment_provenance(), tz_name()
+        _user_id(), session.get(SESSION_REF_KEY), batch, deployment_provenance(), tz_name(),
+        delivery_proof=DeliveryProof(batch.delivery_scope, current_app.config["SECRET_KEY"]),
     )
+    if result.status == collection.STALE_DELIVERY_SCOPE:
+        return _json({"error": collection.STALE_DELIVERY_SCOPE}, 403)
     if result.status == collection.NOT_COLLECTING:
         return _json({"collecting": False})
     if result.status == collection.RETRY:

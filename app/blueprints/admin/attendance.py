@@ -6,14 +6,11 @@ Three routes, and every one of them is a ``GET``::
     GET  /admin/groups/<group_public_id>/attendance
     GET  /admin/groups/<group_public_id>/attendance/<session_public_id>
 
-**There is no Administrator mutation route in M07, at all.** No create,
-edit, mark, finalize, reopen, unlock, delete, archive, restore,
-duplicate, export, bulk action or grade action exists here -- not hidden
-behind a permission check, not disabled in a template: the endpoints do
-not exist, so a POST to any attendance URL under ``/admin`` returns 405
-or 404 rather than being refused by a check somebody could later relax.
-Attendance is recorded by the Teacher who taught the class; an
-Administrator reviews what was recorded.
+These three routes remain read-only. Teachers record and finalize attendance.
+The approved repair adds a separately scoped Administrator correction route in
+``attendance_corrections.py`` for finalized marks and private notes; its full
+old/new revision is preserved. It never replaces the roster, reopens a session
+or changes the captured class.
 
 **What an Administrator may read.** Everything, including historical
 sessions under archived Schedules, Groups and academic ancestors,
@@ -218,8 +215,8 @@ def attendance_session_detail(group_public_id, session_public_id):
     Nested and SQL-scoped: the session is looked up **by its own public
     id constrained to this Group**, so a session public id valid only for
     another Group 404s here exactly as it does on every other nested
-    route in this project. Read-only: the page renders no form, no token
-    and no control of any kind, because no endpoint exists to aim one at.
+    route in this project. The read-only detail links finalized records to the
+    separately authorized correction/history screen.
     """
     group = _group_or_404(group_public_id)
     session = session_for_group(group.id, session_public_id)

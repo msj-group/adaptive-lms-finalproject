@@ -7,7 +7,9 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 @admin_bp.context_processor
 def inject_admin_nav():
-    return {"admin_nav_sections": ADMIN_NAV_SECTIONS}
+    from app.services.account_tokens import account_token
+    from app.services.money import format_amount
+    return {"admin_nav_sections": ADMIN_NAV_SECTIONS, "account_token": account_token, "money": format_amount}
 
 
 from app.blueprints.admin import routes  # noqa: E402,F401
@@ -19,8 +21,11 @@ from app.blueprints.admin import students  # noqa: E402,F401
 from app.blueprints.admin import teachers  # noqa: E402,F401
 from app.blueprints.admin import group_members  # noqa: E402,F401
 from app.blueprints.admin import enrollments  # noqa: E402,F401
+from app.blueprints.admin import enrollment_operations  # noqa: E402,F401
 from app.blueprints.admin import schedules  # noqa: E402,F401
+from app.blueprints.admin import rooms  # noqa: E402,F401
 from app.blueprints.admin import attendance  # noqa: E402,F401
+from app.blueprints.admin import attendance_corrections  # noqa: E402,F401
 from app.blueprints.admin import grades  # noqa: E402,F401
 from app.blueprints.admin import announcements  # noqa: E402,F401
 from app.blueprints.admin import calendar  # noqa: E402,F401
@@ -32,6 +37,9 @@ from app.blueprints.admin import payment_intents  # noqa: E402,F401
 from app.blueprints.admin import financial_reports  # noqa: E402,F401
 from app.blueprints.admin import invoice_register  # noqa: E402,F401
 from app.blueprints.admin import student_accounts  # noqa: E402,F401
+from app.blueprints.admin import general_finance  # noqa: E402,F401
+from app.blueprints.admin import general_payment_intents  # noqa: E402,F401
+from app.blueprints.admin import operational_history  # noqa: E402,F401
 from app.blueprints.admin import invoice_workspace  # noqa: E402,F401
 from app.blueprints.admin import payment_workspace  # noqa: E402,F401
 from app.blueprints.admin import deleted_records  # noqa: E402,F401

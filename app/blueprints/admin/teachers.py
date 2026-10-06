@@ -1,3 +1,4 @@
+from app.blueprints.admin.account_actions import edit_account, toggle_account, reset_account_password
 from flask import flash, redirect, render_template, request, url_for
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
@@ -117,52 +118,16 @@ def teacher_detail(public_id):
 @admin_bp.route("/teachers/<public_id>/edit", methods=["GET", "POST"])
 @roles_required(UserRole.ADMINISTRATOR.value)
 def teacher_edit(public_id):
-    teacher = _get_teacher_or_404(public_id)
-    form = TeacherEditForm(obj=teacher, teacher_id=teacher.id)
-
-    if form.validate_on_submit():
-        new_email = form.email.data.strip().lower()
-        email_changed = new_email != teacher.email
-        teacher.full_name = form.full_name.data.strip()
-        teacher.email = new_email
-        if email_changed:
-            teacher.bump_auth_version()
-        try:
-            db.session.commit()
-        except IntegrityError:
-            db.session.rollback()
-            form.email.errors.append("A user with this email already exists.")
-            return render_template("admin/teachers/form.html", form=form, teacher=teacher)
-        flash(f"Teacher '{teacher.full_name}' updated.", "success")
-        return redirect(url_for("admin.teacher_detail", public_id=teacher.public_id))
-
-    return render_template("admin/teachers/form.html", form=form, teacher=teacher)
+    return edit_account(public_id, "teacher", TeacherEditForm)
 
 
 @admin_bp.post("/teachers/<public_id>/toggle-status")
 @roles_required(UserRole.ADMINISTRATOR.value)
 def teacher_toggle_status(public_id):
-    teacher = _get_teacher_or_404(public_id)
-    teacher.status = (
-        UserStatus.SUSPENDED.value
-        if teacher.status == UserStatus.ACTIVE.value
-        else UserStatus.ACTIVE.value
-    )
-    teacher.bump_auth_version()
-    db.session.commit()
-    flash(f"Teacher '{teacher.full_name}' is now {teacher.status}.", "success")
-    return _redirect_after_toggle_status(teacher)
+    return toggle_account(public_id, "teacher", _redirect_after_toggle_status)
 
 
 @admin_bp.route("/teachers/<public_id>/reset-password", methods=["GET", "POST"])
 @roles_required(UserRole.ADMINISTRATOR.value)
 def teacher_reset_password(public_id):
-    teacher = _get_teacher_or_404(public_id)
-    form = TeacherPasswordResetForm()
-    if form.validate_on_submit():
-        teacher.password_hash = hash_password(form.password.data)
-        teacher.bump_auth_version()
-        db.session.commit()
-        flash(f"Password reset for '{teacher.full_name}'.", "success")
-        return redirect(url_for("admin.teacher_detail", public_id=teacher.public_id))
-    return render_template("admin/teachers/reset_password.html", form=form, teacher=teacher)
+    return reset_account_password(public_id, "teacher", TeacherPasswordResetForm)

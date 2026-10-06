@@ -162,17 +162,20 @@ def upgrade():
 
 
 def downgrade():
-    with op.batch_alter_table('quiz_answer_selections', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_quiz_answer_selections_option_id'))
+    if op.get_context().dialect.name != 'mysql':
+        with op.batch_alter_table('quiz_answer_selections', schema=None) as batch_op:
+            batch_op.drop_index(batch_op.f('ix_quiz_answer_selections_option_id'))
     op.drop_table('quiz_answer_selections')
 
-    with op.batch_alter_table('quiz_answers', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_quiz_answers_question_id'))
+    if op.get_context().dialect.name != 'mysql':
+        with op.batch_alter_table('quiz_answers', schema=None) as batch_op:
+            batch_op.drop_index(batch_op.f('ix_quiz_answers_question_id'))
     op.drop_table('quiz_answers')
 
-    with op.batch_alter_table('quiz_attempts', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_quiz_attempts_student_id'))
-        batch_op.drop_index('ix_quiz_attempts_quiz_started_id')
+    if op.get_context().dialect.name != 'mysql':
+        with op.batch_alter_table('quiz_attempts', schema=None) as batch_op:
+            batch_op.drop_index(batch_op.f('ix_quiz_attempts_student_id'))
+            batch_op.drop_index('ix_quiz_attempts_quiz_started_id')
     op.drop_table('quiz_attempts')
 
     with op.batch_alter_table('quizzes', schema=None) as batch_op:

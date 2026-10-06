@@ -31,6 +31,7 @@ A subject is never deleted, and its code, public id and creation moment never
 change (ORM guards below). ``provenance`` changes only through the audited
 operator action that marks a demonstration account.
 """
+from app.models.code_types import CODE_COLLATION
 
 import uuid
 
@@ -105,10 +106,10 @@ class ResearchSubject(db.Model):
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     subject_code = db.Column(db.String(SUBJECT_CODE_LENGTH), nullable=False)
-    collection_status = db.Column(db.String(16), nullable=False)
-    status_basis = db.Column(db.String(32), nullable=False)
+    collection_status = db.Column(db.String(16, collation=CODE_COLLATION), nullable=False)
+    status_basis = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False)
     provenance = db.Column(
-        db.String(16), nullable=False, default=ResearchProvenance.STUDY.value
+        db.String(16, collation=CODE_COLLATION), nullable=False, default=ResearchProvenance.STUDY.value
     )
     status_changed_at = db.Column(db.DateTime, nullable=False, default=whole_second_utc)
     created_at = db.Column(db.DateTime, nullable=False, default=whole_second_utc)

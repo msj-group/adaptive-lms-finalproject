@@ -24,10 +24,11 @@ provisioning guard: the role comes from the account row this script creates,
 and no login ever grants a role because of an email address or its domain.
 
 **A Researcher works inside the separate research workspace and nowhere
-else.** The account signs in only at ``/research/login`` (the LMS login
-refuses it), manages collection configurations, reads pseudonymous sessions
-and creates exports. It cannot open any Administrator, Teacher or Student
-page, and it never sees a Student's name, email address or account.
+else.** The account signs in at the shared ``/auth/login`` page. Its database
+role sends it to the research workspace without a Researcher choice or link
+in the shared form. It manages collection configurations, reads pseudonymous
+sessions and creates exports. It cannot open any Administrator, Teacher or
+Student page, and it never sees a Student's name, email address or account.
 
 ``scripts/create_admin.py`` is deliberately untouched: the two scripts create
 different roles and share nothing but the password service, and editing a

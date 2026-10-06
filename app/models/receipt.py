@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import json
 import re
 import uuid
@@ -102,7 +103,7 @@ def parse_receipt_moment(text):
 
 def receipt_is_online(snapshot):
     """Whether `snapshot` is an online collection's receipt document."""
-    return isinstance(snapshot, dict) and snapshot.get("schema") == ONLINE_RECEIPT_SNAPSHOT_SCHEMA
+    return isinstance(snapshot, dict) and snapshot.get("schema") in {ONLINE_RECEIPT_SNAPSHOT_SCHEMA, "repair.student-receipt.online.v1"}
 
 
 def validate_receipt_snapshot(snapshot):
@@ -122,6 +123,18 @@ def validate_receipt_snapshot(snapshot):
     internal id, card or bank data, transfer reference, provider reference,
     token, secret, CSRF value, session value or client JSON.
     """
+    if isinstance(snapshot, dict) and snapshot.get("schema") == "repair.student-receipt.online.v1":
+        if snapshot.get("method") != "online" or snapshot.get("movement_direction") != "in":
+            raise ValueError("A provider receipt requires an online collection")
+        for key in ("payment_intent_public_id", "provider_event_public_id"):
+            if not isinstance(snapshot.get(key), str) or len(snapshot[key]) != 36:
+                raise ValueError("A provider receipt requires its evidence identities")
+        manual = {key: value for key, value in snapshot.items() if key not in {"payment_intent_public_id", "provider_event_public_id"}}
+        manual.update(schema="repair.student-receipt.v1", method="cash")
+        validate_general_receipt_snapshot(manual)
+        return json.loads(canonical_snapshot_json(snapshot))
+    if isinstance(snapshot, dict) and snapshot.get("schema") == "repair.student-receipt.v1":
+        return validate_general_receipt_snapshot(snapshot)
     online = receipt_is_online(snapshot)
     expected_keys = _ONLINE_SNAPSHOT_KEYS if online else _SNAPSHOT_KEYS
     if not isinstance(snapshot, dict) or set(snapshot) != expected_keys:
@@ -144,7 +157,8 @@ def validate_receipt_snapshot(snapshot):
     if not isinstance(amount, str) or _AMOUNT_TEXT.fullmatch(amount) is None:
         raise ValueError("A receipt document amount is not exact four-place text")
     try:
-        if snapshot_amount_text(validate_amount(amount)) != amount:
+        from decimal import Decimal
+        if snapshot_amount_text(validate_amount(Decimal(amount))) != amount:
             raise ValueError("A receipt document amount is not canonical")
     except ValueError:
         raise ValueError("A receipt document amount is invalid") from None
@@ -159,6 +173,34 @@ def validate_receipt_snapshot(snapshot):
         value = snapshot[key]
         if not isinstance(value, str) or not 0 < len(value) <= RECEIPT_NAME_MAX_LENGTH:
             raise ValueError("A receipt document name is invalid")
+    return json.loads(canonical_snapshot_json(snapshot))
+
+
+def validate_general_receipt_snapshot(snapshot):
+    from decimal import Decimal
+    required = {"schema", "receipt_public_id", "receipt_number", "payment_public_id", "student_name",
+                "invoice_public_id", "invoice_number", "method", "amount", "currency_code",
+                "confirmed_at", "confirmed_by_name", "movement_direction"}
+    if set(snapshot) != required or snapshot["currency_code"] != CURRENCY_CODE:
+        raise ValueError("A general receipt has invalid keys or currency")
+    if not receipt_number_is_valid(snapshot["receipt_number"]) or snapshot["movement_direction"] not in {"in", "out"}:
+        raise ValueError("A general receipt has an invalid number or direction")
+    for key in ("receipt_public_id", "payment_public_id"):
+        if not isinstance(snapshot[key], str) or not 0 < len(snapshot[key]) <= 36:
+            raise ValueError("A general receipt identity is invalid")
+    if (snapshot["invoice_public_id"] is None) != (snapshot["invoice_number"] is None):
+        raise ValueError("Invoice context is recorded as one optional pair")
+    if snapshot["invoice_number"] is not None and not invoice_number_is_valid(snapshot["invoice_number"]):
+        raise ValueError("Invoice context is invalid")
+    for key in ("student_name", "confirmed_by_name"):
+        if not isinstance(snapshot[key], str) or not 0 < len(snapshot[key]) <= RECEIPT_NAME_MAX_LENGTH:
+            raise ValueError("Receipt names are invalid")
+    if snapshot["method"] not in {"cash", "bank_transfer"} or not isinstance(snapshot["amount"], str) or _AMOUNT_TEXT.fullmatch(snapshot["amount"]) is None:
+        raise ValueError("A manual general receipt requires an exact amount and method")
+    validate_amount(Decimal(snapshot["amount"]))
+    if not isinstance(snapshot["confirmed_at"], str) or _MOMENT_TEXT.fullmatch(snapshot["confirmed_at"]) is None:
+        raise ValueError("A general receipt requires a trusted confirmation time")
+    parse_receipt_moment(snapshot["confirmed_at"])
     return json.loads(canonical_snapshot_json(snapshot))
 
 
@@ -257,27 +299,27 @@ class Receipt(db.Model):
         db.Index("ix_receipts_deleted_by_id", "deleted_by_id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     payment_transaction_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("payment_transactions.id"),
         nullable=False,
     )
     receipt_number = db.Column(db.String(RECEIPT_NUMBER_LENGTH), nullable=False)
-    status = db.Column(db.String(32), nullable=False, default=_ISSUED)
+    status = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False, default=_ISSUED)
     issued_at = db.Column(db.DateTime, nullable=False)
     #: NULL exactly for an online collection's receipt (Phase 5 / M07).
     issued_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )
     voided_at = db.Column(db.DateTime, nullable=True)
     voided_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )
@@ -289,7 +331,7 @@ class Receipt(db.Model):
     #: Phase 5 / M10: the visible deletion.
     deleted_at = db.Column(db.DateTime, nullable=True)
     deleted_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id", name="fk_receipts_deleted_by_id"),
         nullable=True,
     )
@@ -369,6 +411,9 @@ def _refuse_a_receipt_without_its_issuer(_mapper, _connection, target):
 @event.listens_for(Receipt, "before_update")
 def _refuse_rewriting_a_receipt(_mapper, connection, target):
     if not is_changing(target):
+        return
+    from app.services.financial_history import revision_authorizes_update
+    if revision_authorizes_update(connection, target):
         return
     stored = stored_row(
         connection, target, ("status", "version", "deleted_at") + _ISSUED_COLUMNS

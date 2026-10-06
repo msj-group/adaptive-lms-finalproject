@@ -75,7 +75,11 @@ class TestingConfig(Config):
     TESTING = True
     DEBUG = True
     WTF_CSRF_ENABLED = False
-    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    # Factory-only tests can build an engine, but cannot connect without an
+    # owned lease guard. DB fixtures override this sentinel with a harness-
+    # issued loopback MySQL URL; never inherit development credentials.
+    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://unused:unused@127.0.0.1:9/aelms_test_unallocated"
+    TEST_MYSQL_LEASE_GUARD = None
     RATELIMIT_ENABLED = False
     # Pinned, like the database URI, so a developer's own environment can
     # never switch the suite into a provider mode or lend it a secret; a test

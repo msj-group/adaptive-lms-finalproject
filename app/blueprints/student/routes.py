@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from flask import current_app, make_response, render_template
+from flask import current_app, make_response, redirect, render_template
 from flask_login import current_user
 
 from app.blueprints.student import student_bp
@@ -31,6 +31,14 @@ from app.services.message_queries import (
     recent_conversations,
 )
 from app.services.schedule_occurrences import app_now, utc_reference_now
+
+
+def private_redirect(target):
+    """Keep personalized compatibility redirects out of browser/shared caches."""
+    response = redirect(target, code=303)
+    response.headers["Cache-Control"] = "private, no-store"
+    response.vary.add("Cookie")
+    return response
 
 
 def private_no_store(template, **context):
@@ -71,9 +79,10 @@ def dashboard():
     # exist. It re-proves the full Student visibility formula in SQL, so
     # a deadline can never appear here for something the Student could
     # not open.
-    upcoming_deadlines = build_student_view(
-        student_upcoming_deadlines(current_user.id, reference_utc), tz_name, reference_utc
-    )
+    from flask import url_for
+    from app.services.activity_queries import activities_page, activity_view
+    activity_rows, _ = activities_page(current_user.id, reference_utc, upcoming=True, cap=DASHBOARD_DEADLINE_CAP)
+    upcoming_deadlines = activity_view(activity_rows, tz_name, url_for)
     # Phase 4 / M09: one more bounded query, independent of how many
     # announcements exist. It applies the SAME visibility clause the
     # announcement feed applies, so nothing can be previewed here that the

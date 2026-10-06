@@ -88,7 +88,9 @@ from app.blueprints.student.quizzes import (
     _student_authz_broken,
     _validate_selection,
 )
-from app.blueprints.student.routes import private_no_store
+from app.blueprints.student.routes import private_no_store, private_redirect
+from app.services.request_arrival import submission_received_at
+from app.services.timely_submission import accept_timely_submission, is_timely
 from app.extensions import db
 from app.models import (
     ListeningActivity,
@@ -334,7 +336,7 @@ def _own_attempt_or_404(quiz_id, attempt_public_id):
     identically."""
     attempt = QuizAttempt.query.filter_by(
         public_id=attempt_public_id, quiz_id=quiz_id, student_id=current_user.id
-    ).first()
+    ).filter(active_episode_record(QuizAttempt)).first()
     if attempt is None:
         abort(404)
     return attempt
@@ -377,34 +379,8 @@ def _player(group_public_id, listening_public_id, title):
 @student_bp.get("/listening")
 @roles_required(UserRole.STUDENT.value)
 def listening_list():
-    """One bounded page of the Listening activities this Student may
-    currently see.
-
-    ``LIMIT PAGE_SIZE + 1`` supplies the next-page flag with no ``COUNT``,
-    and one grouped query resolves every row's attempt count -- so the
-    page costs a fixed number of statements however many activities it
-    shows. No transcript and no vocabulary text is selected for it.
-    """
-    reference_utc = _now()
-    tz_name = _tz_name()
-    page = normalize_page(request.args.get("page"))
-
-    rows, has_next = student_listening_page(current_user.id, reference_utc, page)
-    if not rows and page > 1:
-        page = 1
-        rows, has_next = student_listening_page(current_user.id, reference_utc, page)
-
-    counts = attempt_counts_by_quiz(current_user.id, [row[0].id for row in rows])
-    return private_no_store(
-        "student/listening/list.html",
-        activities=build_student_listening_view(rows, tz_name, reference_utc, counts),
-        tz_name=tz_name,
-        page=page,
-        has_next=has_next,
-        has_prev=page > 1,
-        page_size=PAGE_SIZE,
-        active_nav="listening",
-    )
+    """Preserve old bookmarks through the unified Activities hub."""
+    return private_redirect(url_for("student.activities", type="listening"))
 
 
 # ======================================================================
@@ -822,6 +798,7 @@ def listening_answer(
         attempt is None
         or attempt.quiz_id != quiz.id
         or attempt.student_id != student_id
+        or attempt.enrollment_id != enrollment.id
         or attempt.public_id != attempt_public_id
     ):
         db.session.rollback()
@@ -936,6 +913,10 @@ def listening_answer(
 def listening_submit(group_public_id, listening_public_id, attempt_public_id):
     """Finalize and grade this attempt.
 
+    The trusted complete-body receipt time controls deadline acceptance.
+    A competing expiry observer cannot discard a timely signed submission;
+    its frozen score is preserved and acceptance evidence is appended.
+
     **Idempotent.** A replayed submission returns the existing result and
     changes no timestamp, counter, answer, selection or grade -- the
     attempt is already finalized, and ``finalize_attempt`` refuses rather
@@ -945,6 +926,7 @@ def listening_submit(group_public_id, listening_public_id, attempt_public_id):
     after an explicit confirmation, so nobody submits a half-finished
     attempt by reflex.
     """
+    received_at = submission_received_at()
     reference_utc = _now()
     preview = _visible_activity_or_404(
         group_public_id, listening_public_id, reference_utc
@@ -952,6 +934,7 @@ def listening_submit(group_public_id, listening_public_id, attempt_public_id):
     preview_quiz, preview_group = preview[0], preview[1]
     preview_attempt = _own_attempt_or_404(preview_quiz.id, attempt_public_id)
 
+    student_auth_version = current_user.auth_version
     student_id = current_user.id
     student_public_id = current_user.public_id
     quiz_id = preview_quiz.id
@@ -970,7 +953,8 @@ def listening_submit(group_public_id, listening_public_id, attempt_public_id):
     hierarchy, group, student, enrollment = _lock_student_chain(
         group_public_id, term_id, level_id, course_id, student_id
     )
-    if _student_authz_broken(group, student, enrollment):
+    if (_student_authz_broken(group, student, enrollment)
+            or student.auth_version != student_auth_version):
         db.session.rollback()
         abort(404)
     if _hierarchy_broken(hierarchy, group, term_id, level_id, course_id):
@@ -990,19 +974,21 @@ def listening_submit(group_public_id, listening_public_id, attempt_public_id):
         attempt is None
         or attempt.quiz_id != quiz.id
         or attempt.student_id != student_id
+        or attempt.enrollment_id != enrollment.id
         or attempt.public_id != attempt_public_id
     ):
         db.session.rollback()
         abort(404)
 
-    if attempt.is_finalized:
+    timely = is_timely(attempt, received_at)
+    if attempt.is_finalized and not (attempt.status == 'expired' and timely):
         # A replay. Return the existing result untouched.
         db.session.rollback()
         return redirect(
             _result_url(group_public_id, listening_public_id, attempt_public_id)
         )
 
-    if expire_if_due(attempt, reference_utc):
+    if expire_if_due(attempt, received_at):
         db.session.commit()
         note_outcome("listening_submission", "expired")
         flash("Your time ran out, so this attempt was submitted as it was.", "danger")
@@ -1014,11 +1000,16 @@ def listening_submit(group_public_id, listening_public_id, attempt_public_id):
         submitted_token, "listening-submit",
         student_public_id=student_public_id, group_public_id=group_public_id,
         listening_public_id=listening_public_id, attempt_public_id=attempt_public_id,
-        quiz_version=quiz.version, attempt_status=attempt.status,
+        quiz_version=quiz.version, attempt_status='in_progress',
     ):
         db.session.rollback()
         note_outcome("listening_submission", "rejected")
         flash(_STALE_MESSAGE, "danger")
+        return redirect(_activity_url(group_public_id, listening_public_id))
+
+    if not timely:
+        db.session.rollback()
+        flash(_STALE_MESSAGE, 'danger')
         return redirect(_activity_url(group_public_id, listening_public_id))
 
     question_ids = quiz_question_ids(quiz.id)
@@ -1042,7 +1033,7 @@ def listening_submit(group_public_id, listening_public_id, attempt_public_id):
             )
         return redirect(_activity_url(group_public_id, listening_public_id))
 
-    finalize_attempt(attempt, _SUBMITTED, reference_utc)
+    accept_timely_submission(attempt, received_at, submitted_token, student_id)
     try:
         db.session.commit()
     except IntegrityError:
@@ -1186,3 +1177,5 @@ def listening_audio(group_public_id, listening_public_id):
     if uploaded_file is None:
         abort(404)
     return serve_uploaded_file(uploaded_file, current_user.id, force_attachment=False)
+
+from app.services.episode_queries import active_episode_record

@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import uuid
 
 from sqlalchemy.orm import validates
@@ -116,11 +117,12 @@ class QuizAttempt(db.Model):
 
     __tablename__ = "quiz_attempts"
     __table_args__ = (
+        db.ForeignKeyConstraint(['enrollment_id', 'student_id'], ['enrollments.id', 'enrollments.student_id'], name='fk_quiz_attempt_episode_student'),
         db.UniqueConstraint(
             "quiz_id",
-            "student_id",
+            "enrollment_id",
             "attempt_number",
-            name="uq_quiz_attempts_quiz_student_number",
+            name="uq_quiz_attempts_quiz_episode_number",
         ),
         db.CheckConstraint(
             _ATTEMPT_STATUS_CHECK_SQL, name="ck_quiz_attempts_status_valid"
@@ -149,17 +151,18 @@ class QuizAttempt(db.Model):
         db.Index("ix_quiz_attempts_quiz_started_id", "quiz_id", "started_at", "id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    enrollment_id = db.Column(db.BigInteger, db.ForeignKey('enrollments.id', name='fk_quiz_attempt_episode'), nullable=False, index=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     quiz_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("quizzes.id"),
         nullable=False,
     )
     student_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
         index=True,
@@ -167,7 +170,7 @@ class QuizAttempt(db.Model):
     #: 1-based and dense per (Quiz, Student). Server-owned.
     attempt_number = db.Column(db.Integer, nullable=False)
     status = db.Column(
-        db.String(32), nullable=False, default=QuizAttemptStatus.IN_PROGRESS.value
+        db.String(32, collation=CODE_COLLATION), nullable=False, default=QuizAttemptStatus.IN_PROGRESS.value
     )
     #: The authored ``Quiz.version`` this attempt was started against.
     #: Copied once and never updated.

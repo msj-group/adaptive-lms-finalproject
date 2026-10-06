@@ -148,8 +148,10 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_index(op.f('ix_attendance_records_student_id'), table_name='attendance_records')
+    if op.get_context().dialect.name != 'mysql':
+        op.drop_index(op.f('ix_attendance_records_student_id'), table_name='attendance_records')
     op.drop_table('attendance_records')
-    op.drop_index('ix_attendance_sessions_group_date_id', table_name='attendance_sessions')
-    op.drop_index('ix_attendance_sessions_date_id', table_name='attendance_sessions')
+    if op.get_context().dialect.name != 'mysql':
+        op.drop_index('ix_attendance_sessions_group_date_id', table_name='attendance_sessions')
+        op.drop_index('ix_attendance_sessions_date_id', table_name='attendance_sessions')
     op.drop_table('attendance_sessions')

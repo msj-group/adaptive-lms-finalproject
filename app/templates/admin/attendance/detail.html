@@ -4,9 +4,6 @@
 {% block title %}Attendance {{ session.session_date.isoformat() }} — {{ group.name }}{% endblock %}
 {% block admin_content %}
 <div class="ds-page">
-  {#- Phase 4 / M07. READ ONLY: no form, no token and no control of any kind,
-      because no administrator mutation endpoint exists to aim one at. Student
-      names and teacher notes are autoescaped and never rendered with `|safe`. -#}
   <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
     <h1 style="margin:0">Attendance — {{ session.session_date.isoformat() }}</h1>
     {{ att.state_badge(is_finalized) }}
@@ -29,8 +26,8 @@
 
   {% if is_finalized %}
   <div class="alert alert--success" style="margin-bottom: var(--space-5)">
-    This attendance was finalized by the group's teaching staff and is permanent. It cannot be
-    reopened, edited or deleted by anyone, including administrators.
+    This attendance was finalized by the group's teaching staff. Its roster and class stay
+    fixed. Administrators can correct a mark while preserving its previous values and operator.
   </div>
   {% else %}
   <div class="alert alert--warning" style="margin-bottom: var(--space-5)">
@@ -59,6 +56,7 @@
           <th>Student</th>
           <th style="width:9rem">Mark</th>
           <th>Private note</th>
+          {% if is_finalized %}<th>Correction</th>{% endif %}
         </tr>
       </thead>
       <tbody>
@@ -67,6 +65,7 @@
           <td>{{ record.student_name }}</td>
           <td>{{ att.status_badge(record.status, record.status_label) }}</td>
           <td style="white-space: pre-wrap">{{ record.note or "—" }}</td>
+          {% if is_finalized %}<td><a href="{{ url_for('admin.attendance_record_correct', group_public_id=group.public_id, session_public_id=session.public_id, record_public_id=record.public_id) }}">Correct / history</a></td>{% endif %}
         </tr>
         {% endfor %}
       </tbody>

@@ -35,9 +35,8 @@ removed by the retention rule is answered as gone, never rebuilt. Rows are
 ordered by id, and the ZIP uses fixed timestamps and sorted JSON.
 
 **Time contract.** Every file is read inside **one read transaction** whose
-snapshot is established by its first read (REPEATABLE READ on MySQL/InnoDB;
-an explicit ``BEGIN`` on SQLite, where a WAL database keeps concurrent
-writers out of the snapshot). ``cutoff_ms`` is read from the server clock
+snapshot is established by its first read (REPEATABLE READ on MySQL/InnoDB).
+``cutoff_ms`` is read from the server clock
 only **after** the snapshot exists. Hence:
 
 - every row and every value in the archive -- including the mutable ones:
@@ -341,6 +340,7 @@ def build_export(configuration_id, period_from, period_to, cutoff_ms, tz_name):
         "prompts": len(prompt_rows),
         "labelled_prompts": sum(1 for row in prompt_rows if row[6] == "answered"),
         "oldest_last_seen_ms": min((row[6] for row in sessions), default=None),
+        "_session_refs": [row[1] for row in sessions],
     }
     manifest = {
         "format": EXPORT_FORMAT,
@@ -457,20 +457,12 @@ def open_read_snapshot():
 
     MySQL/InnoDB creates a REPEATABLE READ read view at the first consistent
     (non-locking) read, and every later plain read of the transaction uses
-    it; the isolation level is set explicitly for this transaction. pysqlite
-    begins a transaction only before a write, so on SQLite the read
-    transaction is opened with an explicit ``BEGIN`` (in WAL mode a writer
-    then commits without entering this snapshot). The export reads use no
+    it; the isolation level is set explicitly for this transaction. The export reads use no
     locking read, which would bypass the snapshot.
     """
     db.session.rollback()
-    if db.engine.dialect.name == "mysql":
-        connection = db.session.connection(
-            execution_options={"isolation_level": "REPEATABLE READ"})
-    else:
-        connection = db.session.connection()
-        if connection.dialect.name == "sqlite":
-            connection.exec_driver_sql("BEGIN")
+    connection = db.session.connection(
+        execution_options={"isolation_level": "REPEATABLE READ"})
     connection.exec_driver_sql("SELECT COUNT(*) FROM research_sessions").scalar()
     return now_ms()
 
@@ -488,6 +480,8 @@ def _lock_researcher(actor_id):
             or actor.status != UserStatus.ACTIVE.value:
         db.session.rollback()
         return None
+    from app.services.actor_authorization import require_current_actor
+    actor = require_current_actor(actor_id, "researcher")
     return actor
 
 
@@ -524,6 +518,18 @@ def create_export(actor_id, configuration_public_id, period_from, period_to, tz_
     actor = _lock_researcher(actor_id)
     if actor is None:
         return UNAUTHORIZED, None
+    from app.services.research_control_gate import lock_research_control
+    from app.models.research_storage import ResearchExportSession
+    lock_research_control()
+    # A snapshot may be older than a concurrently completed cleanup. Never
+    # republish the removed rows in a new archive after that cleanup commits.
+    refs = counts["_session_refs"]
+    retained = 0
+    for start in range(0, len(refs), 500):
+        retained += len(db.session.query(ResearchSession.id).filter(ResearchSession.public_id.in_(refs[start:start+500])).with_for_update().all())
+    if retained != len(refs):
+        db.session.rollback()
+        return CONFLICT, None
     export = ResearchExport(
         export_format=EXPORT_FORMAT,
         event_schema_version=EVENT_SCHEMA_VERSION,
@@ -542,6 +548,7 @@ def create_export(actor_id, configuration_public_id, period_from, period_to, tz_
     )
     db.session.add(export)
     db.session.flush()
+    db.session.add_all(ResearchExportSession(export_id=export.id, session_public_id=public_id) for public_id in refs)
     db.session.add(ResearchExportArchive(
         export_id=export.id,
         archive_sha256=hashlib.sha256(data).hexdigest(),

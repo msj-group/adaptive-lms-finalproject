@@ -23,6 +23,7 @@ coordinate or payload column.
 Recorded observations are never edited (``before_update`` refuses). Rows are
 removed only by the deliberate retention purge.
 """
+from app.models.code_types import CODE_COLLATION
 
 from sqlalchemy import event
 
@@ -76,8 +77,8 @@ class ResearchEvent(db.Model):
     id = db.Column(ID_TYPE, primary_key=True)
     event_uid = db.Column(db.String(36), nullable=False)
     session_id = db.Column(ID_TYPE, db.ForeignKey("research_sessions.id"), nullable=False)
-    source = db.Column(db.String(8), nullable=False)
-    event_type = db.Column(db.String(EVENT_TYPE_MAX_LENGTH), nullable=False)
+    source = db.Column(db.String(8, collation=CODE_COLLATION), nullable=False)
+    event_type = db.Column(db.String(EVENT_TYPE_MAX_LENGTH, collation=CODE_COLLATION), nullable=False)
     page_id = db.Column(db.String(PAGE_ID_MAX_LENGTH), nullable=True)
     element_id = db.Column(db.String(ELEMENT_ID_MAX_LENGTH), nullable=True)
     detail_code = db.Column(db.String(DETAIL_CODE_MAX_LENGTH), nullable=True)

@@ -42,6 +42,9 @@
 .portal-nav {
   display: flex;
   gap: var(--space-1);
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .portal-nav__link {
@@ -68,6 +71,8 @@
   align-items: center;
   gap: var(--space-3);
   margin-left: auto;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .portal-header__name {
@@ -90,4 +95,25 @@
   .portal-header__user {
     margin-left: 0;
   }
+
+  .portal-nav {
+    width: 100%;
+  }
+}
+
+.activity-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-4);
+  align-items: end;
+  margin-bottom: var(--space-5);
+}
+
+.activity-filters .field {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.activity-filters select {
+  width: 100%;
 }

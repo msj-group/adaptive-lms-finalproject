@@ -105,14 +105,14 @@ class SpeakingActivity(db.Model):
 
     __tablename__ = "speaking_activities"
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     #: The one Assignment this extension turns into a Speaking activity.
     #: UNIQUE, so an Assignment can never carry two.
     assignment_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("assignments.id"),
         nullable=False,
         unique=True,

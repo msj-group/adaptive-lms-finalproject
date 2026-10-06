@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import re
 import uuid
 
@@ -197,27 +198,27 @@ class PaymentIntent(db.Model):
         db.Index("ix_payment_intents_cancelled_by_id", "cancelled_by_id"),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     invoice_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("invoices.id"),
         nullable=False,
     )
-    provider = db.Column(db.String(16), nullable=False)
+    provider = db.Column(db.String(16, collation=CODE_COLLATION), nullable=False)
     provider_reference = db.Column(db.String(PROVIDER_REFERENCE_MAX_LENGTH), nullable=False)
     idempotency_key = db.Column(db.String(IDEMPOTENCY_KEY_LENGTH), nullable=False)
-    status = db.Column(db.String(32), nullable=False)
-    currency_code = db.Column(db.String(3), nullable=False, default=CURRENCY_CODE)
+    status = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False)
+    currency_code = db.Column(db.String(3, collation=CODE_COLLATION), nullable=False, default=CURRENCY_CODE)
     #: Exact fixed point, never a float -- see :mod:`app.services.money`.
     amount = db.Column(
         db.DECIMAL(precision=AMOUNT_PRECISION, scale=AMOUNT_SCALE, asdecimal=True),
         nullable=False,
     )
     created_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
     )
@@ -225,14 +226,14 @@ class PaymentIntent(db.Model):
     #: was read and recorded.
     provider_result_at = db.Column(db.DateTime, nullable=True)
     provider_result_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )
     #: When a failed or cancelled intent became terminal.
     terminal_at = db.Column(db.DateTime, nullable=True)
     cancelled_by_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=True,
     )

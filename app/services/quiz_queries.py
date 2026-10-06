@@ -832,7 +832,7 @@ def attempt_counts_by_quiz(student_id, quiz_ids):
         return {}
     rows = (
         db.session.query(QuizAttempt.quiz_id, func.count(QuizAttempt.id))
-        .filter(QuizAttempt.quiz_id.in_(ids), QuizAttempt.student_id == student_id)
+        .filter(QuizAttempt.quiz_id.in_(ids), QuizAttempt.student_id == student_id, active_episode_record(QuizAttempt))
         .group_by(QuizAttempt.quiz_id)
         .all()
     )
@@ -1182,3 +1182,5 @@ def student_result_rows(quiz_id, attempt_id):
             }
         )
     return rows
+
+from app.services.episode_queries import active_episode_record

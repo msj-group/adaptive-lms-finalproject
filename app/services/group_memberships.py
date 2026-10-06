@@ -16,6 +16,7 @@ from app.extensions import db
 from app.models import (
     AcademicStatus,
     Enrollment,
+    EnrollmentMembership,
     EnrollmentStatus,
     Group,
     GroupTeacherAssignment,
@@ -102,7 +103,8 @@ def group_has_membership_history(group_id):
     has_assignment = (
         db.session.query(GroupTeacherAssignment.id).filter_by(group_id=group_id).first() is not None
     )
-    return has_enrollment or has_assignment
+    has_membership = db.session.query(EnrollmentMembership.id).filter_by(group_id=group_id).first() is not None
+    return has_enrollment or has_assignment or has_membership
 
 
 def conflicting_active_enrollment(student_id, target_group_id):

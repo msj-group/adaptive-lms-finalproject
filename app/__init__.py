@@ -1,6 +1,7 @@
 import os
 
-from flask import Flask
+from flask import Flask, redirect, url_for
+from flask_login import current_user
 
 from app.config import config_by_name
 from app.extensions import csrf, db, limiter, login_manager, migrate
@@ -20,11 +21,25 @@ def create_app(config_name=None, **config_overrides):
     isolated temporary storage, not the real development material
     directory").
     """
+    if config_name is None:
+        config_name = os.environ.get("FLASK_ENV", "development")
+    if not isinstance(config_name, str) or config_name not in config_by_name:
+        raise ValueError(
+            "Unknown application environment. Use development, testing, or production."
+        )
+
     app = Flask(__name__)
-    config_name = config_name or os.environ.get("FLASK_ENV", "development")
-    app.config.from_object(config_by_name.get(config_name, config_by_name["development"]))
+    app.config.from_object(config_by_name[config_name])
     if config_overrides:
         app.config.update(config_overrides)
+
+    # The dedicated test runner supplies no deployment dotenv/credentials.
+    # Even a pure factory check selecting production/development must not
+    # accidentally connect there: without an owned explicit target it gets
+    # the same unallocated, non-connectable testing sentinel.
+    isolated_test_run = os.environ.get("AELMS_ISOLATED_TEST_RUN") == "1"
+    if isolated_test_run and "SQLALCHEMY_DATABASE_URI" not in config_overrides:
+        app.config["SQLALCHEMY_DATABASE_URI"] = config_by_name["testing"].SQLALCHEMY_DATABASE_URI
 
     # M12: resolve + validate the Material storage configuration once at
     # start-up. Fail closed -- MaterialConfigError propagates and the
@@ -47,16 +62,38 @@ def create_app(config_name=None, **config_overrides):
     # Researcher provisioning allowlist). Fail closed on an invalid value.
     resolve_research_settings(app.config)
 
+    is_owned_test_app = (
+        config_name == "testing" or isolated_test_run
+        or app.config.get("TEST_MYSQL_LEASE_GUARD") is not None
+    )
+    if is_owned_test_app:
+        from app.testing import validate_test_database
+
+        test_database_guard = validate_test_database(app.config)
+    else:
+        from app.database import require_mysql_databases
+
+        require_mysql_databases(app.config)
+
     db.init_app(app)
+    from app.database import install_mysql_integrity_errors
+
+    with app.app_context():
+        for engine in db.engines.values():
+            install_mysql_integrity_errors(engine)
+    if is_owned_test_app:
+        from app.testing import protect_test_connections
+
+        with app.app_context():
+            protect_test_connections(db.engine, test_database_guard)
     migrate.init_app(app, db)
     login_manager.init_app(app)
     csrf.init_app(app)
     limiter.init_app(app)
 
     login_manager.login_view = "auth.login"
-    # Phase 6: an anonymous visitor to the Researcher workspace is sent to its
-    # own login entry, never to the LMS login.
-    login_manager.blueprint_login_views = {"research": "research.login"}
+    # All roles use the shared login; workspace authorization stays separate.
+    login_manager.blueprint_login_views = {}
 
     from app.models import User
 
@@ -73,7 +110,7 @@ def create_app(config_name=None, **config_overrides):
         return user
 
     from app.blueprints.design_system.routes import design_system_bp
-    from app.blueprints.auth.routes import auth_bp
+    from app.blueprints.auth.routes import auth_bp, home_endpoint_for
     from app.blueprints.admin.routes import admin_bp
     from app.blueprints.teacher import teacher_bp
     from app.blueprints.student import student_bp
@@ -88,8 +125,8 @@ def create_app(config_name=None, **config_overrides):
     app.register_blueprint(admin_bp)
     app.register_blueprint(teacher_bp)
     app.register_blueprint(student_bp)
-    # Phase 6: the separate Researcher workspace, with its own login entry,
-    # gated to an active Researcher account on every rule.
+    # Phase 6: the separate Researcher workspace, gated to an active
+    # Researcher account on every workspace rule.
     app.register_blueprint(research_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(messages_bp)
@@ -136,8 +173,17 @@ def create_app(config_name=None, **config_overrides):
 
     register_error_handlers(app)
 
+    @app.get("/")
+    def index():
+        if not current_user.is_authenticated:
+            return redirect(url_for("auth.login"))
+        return redirect(url_for(home_endpoint_for(current_user)))
+
     @app.get("/health")
     def health():
         return {"status": "ok"}, 200
 
+    from app.services.request_arrival import RequestArrivalMiddleware
+
+    app.wsgi_app = RequestArrivalMiddleware(app.wsgi_app, app.config["MAX_CONTENT_LENGTH"])
     return app

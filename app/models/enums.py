@@ -917,6 +917,10 @@ class ResearchAuditAction(str, enum.Enum):
     EXPORT_CREATED = "export_created"
     EXPORT_DOWNLOADED = "export_downloaded"
     RETENTION_PURGED = "retention_purged"
+    DATA_CLEANUP_PREVIEWED = "data_cleanup_previewed"
+    DATA_CLEANED = "data_cleaned"
+    ARCHIVE_REMOVED = "archive_removed"
+    OPERATOR_READ = "operator_read"
 
 
 class ResearchAuditChannel(str, enum.Enum):
@@ -924,4 +928,5 @@ class ResearchAuditChannel(str, enum.Enum):
 
     WORKSPACE = "workspace"
     OPERATOR = "operator"
+    SERVICE = "service"
     MIGRATION = "migration"

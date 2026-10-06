@@ -10,7 +10,7 @@ from app.models.enums import AcademicStatus
 class Level(db.Model):
     __tablename__ = "levels"
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4()))
     name = db.Column(db.String(100), nullable=False, unique=True)
     code = db.Column(db.String(20), nullable=True, unique=True)

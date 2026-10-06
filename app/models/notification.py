@@ -1,3 +1,4 @@
+from app.models.code_types import CODE_COLLATION
 import uuid
 from datetime import datetime, timezone
 
@@ -105,16 +106,16 @@ class Notification(db.Model):
         ),
     )
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
     recipient_id = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        db.BigInteger(),
         db.ForeignKey("users.id"),
         nullable=False,
     )
-    kind = db.Column(db.String(48), nullable=False)
+    kind = db.Column(db.String(48, collation=CODE_COLLATION), nullable=False)
     title = db.Column(db.String(150), nullable=False)
     message = db.Column(db.String(500), nullable=False)
     target_path = db.Column(db.String(512), nullable=False)

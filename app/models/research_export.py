@@ -18,6 +18,7 @@ copy never outlives its source. The description row is kept.
 The row never stores Student content, identity or any row values. Every
 creation and every download is also an audit event.
 """
+from app.models.code_types import CODE_COLLATION
 
 import uuid
 
@@ -73,7 +74,7 @@ class ResearchExport(db.Model):
     public_id = db.Column(
         db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4())
     )
-    export_format = db.Column(db.String(32), nullable=False, default=EXPORT_FORMAT)
+    export_format = db.Column(db.String(32, collation=CODE_COLLATION), nullable=False, default=EXPORT_FORMAT)
     event_schema_version = db.Column(db.String(40), nullable=False)
     #: NULL means every configuration version.
     configuration_id = db.Column(

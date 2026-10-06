@@ -14,6 +14,8 @@ that event only (it is counted as invalid, never stored).
 
 import json
 import uuid
+
+from app.services.research_delivery_scope import is_delivery_scope
 from collections import namedtuple
 
 from app.services.research_event_dictionary import (
@@ -45,7 +47,7 @@ BAD_EVENT_COUNT = "bad_event_count"
 #: The largest epoch-millisecond value accepted (JavaScript's safe integer).
 _MAX_EPOCH_MS = 2**53 - 1
 
-Batch = namedtuple("Batch", "schema sent_at events dropped replay")
+Batch = namedtuple("Batch", "schema sent_at events dropped replay delivery_scope")
 ParsedEvent = namedtuple(
     "ParsedEvent",
     "event_uid event_type page_id page_view_ref tab_ref sequence_number client_ts_ms "
@@ -78,10 +80,12 @@ def parse_batch(raw):
         return None, MALFORMED
     if set(body) - BATCH_KEYS:
         return None, UNKNOWN_FIELD
-    if not {"schema", "sent_at", "events"} <= set(body):
+    if not {"schema", "sent_at", "events", "delivery_scope"} <= set(body):
         return None, MALFORMED
     if body["schema"] not in SUPPORTED_EVENT_SCHEMA_VERSIONS:
         return None, UNSUPPORTED_SCHEMA
+    if not is_delivery_scope(body["delivery_scope"]):
+        return None, MALFORMED
     sent_at = body["sent_at"]
     if not _is_int(sent_at) or not 0 < sent_at <= _MAX_EPOCH_MS:
         return None, MALFORMED
@@ -94,7 +98,7 @@ def parse_batch(raw):
     replay = body.get("replay", False)
     if not isinstance(replay, bool):
         return None, MALFORMED
-    return Batch(body["schema"], sent_at, events, dropped, replay), None
+    return Batch(body["schema"], sent_at, events, dropped, replay, body["delivery_scope"]), None
 
 
 def _int_field(spec_field, raw, key):

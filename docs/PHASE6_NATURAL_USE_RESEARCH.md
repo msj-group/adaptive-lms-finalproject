@@ -1,5 +1,12 @@
 # Phase 6 — Natural-use research collection
 
+> Repair scope (2026-10-05): see `APPROVED_REPAIR_CONTRACT.md` and
+> `PROJECT_STATUS.md`. Shared login, password-only Researcher authentication
+> and 15-day daily retention are preserved. F15 delivery-scope binding,
+> operator attribution, usage/gap reporting and manual cleanup are planned
+> changes, not completed here. Sampling/windows/session/provenance/labels
+> remain unchanged; historical verification stays in `PHASE6_COMPLETION.md`.
+
 This document is the current Phase 6 contract. It replaces the Phase 6 Parts
 M01 (in-app consent workflow), M01R/M01R2/M01R3/M01S (their corrections) and
 M02A (experiment protocol catalogue), whose records in `docs/DECISIONS.md`
@@ -7,7 +14,8 @@ remain as history and are marked superseded. The accepted decisions are
 "Natural-use research collection (Phase 6 replacement)", its correction
 "Phase 6 follow-up — population rule, platform-wide collection, immutable
 exports" and "Phase 6 final data-integrity corrections" in
-`docs/DECISIONS.md`, followed by "Phase 6 local close-out — 2026-10-04".
+`docs/DECISIONS.md`, followed by "Phase 6 local close-out — 2026-10-04"
+and "Phase 6 shared login — 2026-10-05".
 
 Operational steps for a real deployment are in
 `docs/RESEARCH_DEPLOYMENT_RUNBOOK.md`.
@@ -322,11 +330,22 @@ scientific constants):
 
 ## 7. Researcher workspace
 
-- Dedicated entry: `GET|POST /research/login`, `POST /research/logout`.
-  Only active Researcher accounts authenticate there; the LMS login refuses
-  Researcher accounts with the same generic error. An LMS user already signed
-  in who opens the research login is sent back to their own portal without
-  being signed out; a Researcher already signed in is sent to the dashboard.
+- Shared entry: `GET|POST /auth/login` authenticates all active account
+  roles with the same email/password form. The role stored in the database
+  determines the workspace and permissions; there is no Researcher choice,
+  link or label in the shared form or ordinary portals. A Researcher's safe
+  `next` target must remain within the research workspace. Ordinary roles
+  retain their existing safe same-origin return targets; each destination
+  separately enforces its role authorization.
+- Compatibility entry: an anonymous `GET /research/login` redirects to
+  `/auth/login` while preserving a safe `next` target. An authenticated
+  request invokes the shared handler and redirects to the account's own
+  workspace, retaining its signed-in session. `POST /research/login`
+  delegates to the shared handler and its `account-login` rate-limit scope;
+  it has no separate form, authentication implementation or login budget.
+- `POST /research/logout` remains restricted to active Researchers and
+  redirects to `/auth/login` after signing out. The research workspace
+  remains separate and refuses access by every other role.
 - Every research page: active Researcher role, CSRF on writes, safe
   same-workspace redirects, rate-limited login, generic authentication errors,
   `Cache-Control: private, no-store` and `Vary: Cookie`.
@@ -337,9 +356,10 @@ scientific constants):
   code, basis and date), exports (create, list, download), audit log.
 - No identity: research pages and exports never read `users` names, emails,
   ids or the subject mapping.
-- **Authentication.** Approved email/password accounts use the dedicated
-  Researcher login. The owners removed the second-factor requirement on
-  2026-10-04; existing rate limits, CSRF and role checks continue to apply.
+- **Authentication.** Approved Researcher email/password accounts use the
+  shared login. The owners removed the second-factor requirement on
+  2026-10-04 and unified the login page on 2026-10-05; existing rate limits,
+  CSRF and server-side role checks continue to apply.
 
 ## 8. Exports
 
@@ -434,7 +454,7 @@ original LMS rows were preserved. See `docs/PHASE6_COMPLETION.md`.
 | # | Milestone | Acceptance |
 |---|---|---|
 | 1 | Contract and plan | This document, the overrides section and the superseding decision exist before code changes. |
-| 2 | Removal, foundation, Researcher access, migrations | Old routes/imports/models absent from the running app; new models and both revisions tested (fresh install, upgrade from `b86838ce23db`, empty and populated legacy, refusal, reviewed disposition, changed exclusion state, offline refusal); dedicated login separation tested. |
+| 2 | Removal, foundation, Researcher access, migrations | Old routes/imports/models absent from the running app; new models and both revisions tested (fresh install, upgrade from `b86838ce23db`, empty and populated legacy, refusal, reviewed disposition, changed exclusion state, offline refusal); shared login, compatibility entry and workspace role separation tested. |
 | 3 | Sessions and population-rule ingestion | Automatic provisioning for existing and new Students, concurrency, exclusions on every path, and every rejection (roles, suspended, excluded, paused, ended, forged, replay, duplicate, oversized, invalid, late) tested. |
 | 4 | Instrumentation and outcomes | Route classification and template coverage; collector on every Student page and absent for other roles; no research UI in ordinary portals; outcomes after commit; telemetry failure never breaks an LMS workflow; privacy tests. |
 | 5 | Hybrid feedback | Budgets across tabs and day boundaries, deferral, dismissal, nonresponse, repeated, different and late answers, window linkage, frozen retries and honest acknowledgement tested. |
@@ -451,11 +471,12 @@ original LMS rows were preserved. See `docs/PHASE6_COMPLETION.md`.
 | 4 | Done in source | `tests/test_research_outcomes.py`, `tests/test_research_collector_browser.py` (headless Chrome against a local server) |
 | 5 | Done in source | `tests/test_research_feedback.py`, `tests/test_research_collector_browser.py` |
 | 6 | Done in source | `tests/test_research_workspace.py`, `tests/test_research_export_snapshot.py` |
-| 7 | Complete; local development deployed | Strict-warning suite and corrected-shard rerun, fresh/restored MySQL migrations, MySQL concurrency and retention checks, six Chrome scenarios backed by MySQL, verified researcher login and daily retention task. Exact evidence: `docs/PHASE6_COMPLETION.md` |
+| 7 | Complete; local development deployed | Full strict-warning suite after shared-login correction (7,240 passed, 4 skipped), shared-login Chrome check and existing Researcher login on MySQL; earlier fresh/restored MySQL migrations, concurrency, retention and six collector Chrome scenarios. Exact evidence: `docs/PHASE6_COMPLETION.md` |
 
 The deployment state and close-out verification are maintained in
 `docs/PHASE6_COMPLETION.md`. The owners selected 15-day retention and
-email/password Researcher authentication on 2026-10-04. Completing the
+email/password Researcher authentication on 2026-10-04, then approved the
+shared login with separate role destinations on 2026-10-05. Completing the
 implementation and its synthetic checks does not claim real study data.
 
 ## 12. Inputs for later phases

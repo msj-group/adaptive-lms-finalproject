@@ -22,8 +22,9 @@ class UserStatus(str, enum.Enum):
 
 class User(UserMixin, db.Model):
     __tablename__ = "users"
+    __table_args__ = (db.CheckConstraint("version > 0", name="ck_users_version_positive"),)
 
-    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True)
+    id = db.Column(db.BigInteger(), primary_key=True)
     public_id = db.Column(db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4()))
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
@@ -31,6 +32,7 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(32), nullable=False)
     status = db.Column(db.String(32), nullable=False, default=UserStatus.ACTIVE.value)
     auth_version = db.Column(db.Integer, nullable=False, default=1)
+    version = db.Column(db.Integer, nullable=False, default=1)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,

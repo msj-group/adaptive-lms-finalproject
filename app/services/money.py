@@ -49,7 +49,7 @@ which the parser accepts back unchanged.
 """
 
 import re
-from decimal import Decimal, Inexact, localcontext
+from decimal import Decimal, Inexact, ROUND_HALF_UP, localcontext
 
 #: The only currency the system supports.
 CURRENCY_CODE = "LYD"
@@ -104,7 +104,7 @@ def _amount_error(value):
     if value > MAX_AMOUNT:
         return TOO_LARGE
     try:
-        _exact_quantize(value, _STORAGE_QUANTUM)
+        _exact_quantize(value, _DINAR_QUANTUM)
     except Inexact:
         return PRECISION
     return None
@@ -197,12 +197,55 @@ def _display_shape(value):
 
 def format_amount(value):
     """``'1,250.500'`` -- grouped for reading, never rounded. Display only."""
+    if type(value) is int:
+        value = Decimal(value)
     shown, places = _display_shape(value)
-    return format(shown, f",.{places}f")
+    return format(shown, f",.{places}f").rstrip("0").rstrip(".")
 
 
 def amount_input_text(value):
     """``'1250.500'`` -- the ungrouped text a form is pre-filled with, which
     :func:`parse_amount` accepts back as the same value."""
     shown, places = _display_shape(value)
-    return format(shown, f".{places}f")
+    return format(shown, f".{places}f").rstrip("0").rstrip(".")
+
+
+def validate_course_price(value):
+    """Nonnegative exact LYD charge; zero requires an explicit input."""
+    if isinstance(value, str):
+        text = value.strip(_OUTER_WHITESPACE)
+        if len(text) > MAX_AMOUNT_TEXT_LENGTH or _SHAPE.fullmatch(text) is None:
+            raise ValueError("Enter an exact nonnegative LYD amount.")
+        value = Decimal(text)
+    if not isinstance(value, Decimal) or not value.is_finite() or value < 0 or value > MAX_AMOUNT:
+        raise ValueError("Enter an exact nonnegative LYD amount within the supported range.")
+    try:
+        return _exact_quantize(value, _DINAR_QUANTUM)
+    except Inexact:
+        raise ValueError("LYD amounts support three decimal places.") from None
+
+
+def calculate_discount(price, kind="none", value="0"):
+    """Return snapshotted discount and net charge, rounding a percentage once."""
+    price = validate_course_price(price)
+    if kind == "none":
+        return Decimal("0.000"), price
+    if kind == "amount":
+        discount = validate_course_price(value)
+    elif kind == "percentage":
+        if not isinstance(value, (str, Decimal)):
+            raise ValueError("Enter an exact percentage.")
+        text = str(value).strip()
+        if len(text) > MAX_AMOUNT_TEXT_LENGTH or _SHAPE.fullmatch(text) is None:
+            raise ValueError("Enter a percentage from 0 to 100.")
+        percentage = Decimal(text)
+        if not percentage.is_finite() or not 0 <= percentage <= 100:
+            raise ValueError("Enter a percentage from 0 to 100.")
+        with localcontext() as context:
+            context.prec = 64
+            discount = (price * percentage / Decimal(100)).quantize(_DINAR_QUANTUM, rounding=ROUND_HALF_UP)
+    else:
+        raise ValueError("Select an amount or percentage discount.")
+    if discount > price:
+        raise ValueError("The discount cannot exceed the course charge.")
+    return discount, price - discount

@@ -8,7 +8,7 @@
     GET  /research/activity-log[?page=]
 
 Every rule requires an active Researcher (``roles_required``): an anonymous
-visitor is sent to the research login, any other role gets 403. The pages
+visitor is sent to the shared login, any other role gets 403. The pages
 read only pseudonymous research rows (``research_workspace_queries``):
 subject codes, never a name, email address, account id or mapping. Numbers
 are real counts with explicit empty states; nothing is predicted, and no

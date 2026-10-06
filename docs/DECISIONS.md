@@ -1,5 +1,33 @@
 # Project Decisions
 
+## 2026-10-06 — Latest owner close-out scope
+
+- The owner separately authorized the completed development-data reset,
+  deletion of old tests and fictional content for four active demo roles.
+  The schema remains `085b7a4e9012`; all current demo Courses are priced.
+- The owner explicitly declined a new automated test package. Do not recreate
+  or execute tests. Final source cleanup, bounded manual browser review and
+  static checks replace the historical test gates for this close-out only.
+  This is not a claim of comprehensive regression acceptance.
+- Remove retired finance algorithms/forms/templates after moving their real
+  consumers. Preserve old scoped URLs, required compatibility models and the
+  complete historical Alembic chain. No new schema cleanup/drop is approved.
+- Finalized attendance keeps its roster, class and finalization fixed;
+  Administrators can correct current marks/private notes with old/new values,
+  actual actor and server time preserved. Students see public marks and public
+  correction fields, never private attendance notes, including in episode history.
+- The four old Student activity lists lead to the single Activities hub with
+  their type selected. Individual submission/attempt/recording pages retain
+  their own authorization, deadlines and evidence.
+
+Earlier decisions below remain historical where superseded by this entry and
+the approved repair contract.
+
+> Current rehabilitation authority: [Approved repair contract](APPROVED_REPAIR_CONTRACT.md),
+> [Implementation plan](IMPLEMENTATION_PLAN.md), and [Status](PROJECT_STATUS.md).
+> Historical entries retain the behavior and verification of their own build.
+> Do not infer that a newly approved target is already implemented.
+
 ## Group model (Phase 3, Step 7)
 
 **Purpose.** A `Group` represents one actual offering of a `Course` during a
@@ -11473,3 +11501,241 @@ recovery location. Those executed results supersede historical read-only
 deployment statements above. Multi-server clock skew, real device and
 assistive-technology coverage, questionnaire validity and model performance
 are not established by this close-out.
+
+## Phase 6 shared login — 2026-10-05
+
+After the local close-out, the owners authorized unifying the login page.
+This supersedes the earlier contract in which Researchers authenticated only
+at `/research/login` and the LMS login rejected their accounts. Historical
+verification and decisions above describe the build checked at that time.
+
+### Current entry and role contract
+
+- `GET|POST /auth/login` is the shared email/password entry for all four
+  active account roles. The account's database role determines its workspace
+  and permissions; the email allowlist remains a provisioning restriction,
+  not a source of role assignment.
+- The shared form has no Researcher role choice, label or link. Researcher
+  accounts still enter a separate, server-protected workspace. No research
+  management, notice or indicator is added to the ordinary portals; the
+  approved optional frustration question remains unchanged.
+- Anonymous `GET /research/login` requests redirect to the shared entry,
+  retaining only safe `next` targets. Authenticated requests invoke the
+  shared handler and return to the account's own workspace. Legacy
+  `POST /research/login` delegates to the identical shared handler and
+  `account-login` limiter scope rather than maintaining separate validation,
+  forms or authentication logic. Both paths consume the same login budget.
+- Already authenticated accounts retain their session. A Researcher's
+  `next` target is restricted to the research workspace, with its own home
+  as fallback. Ordinary roles retain their existing safe same-origin return
+  targets; authorization is enforced separately at each destination. No
+  role accepts a redirect to another origin.
+- `POST /research/logout` keeps its active-Researcher guard and CSRF
+  protection and redirects to `/auth/login` after signing out.
+- The owners' accepted password authentication without MFA, 15-day
+  retention, data collection contract and workspace privacy remain intact.
+  No migration, database mutation or credential change is required by this
+  login correction.
+
+Follow-up verification is recorded separately in
+`docs/PHASE6_COMPLETION.md`; prior test counts must not be presented as new
+checks of the unified login.
+
+## Approved rehabilitation contract and Part P0 - 2026-10-05
+
+The owners approved repairing the existing modular monolith and authorized
+implementation in this conversation. The accepted target is recorded in
+[APPROVED_REPAIR_CONTRACT.md](APPROVED_REPAIR_CONTRACT.md), with bounded
+phases in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and actual
+completion evidence in [PROJECT_STATUS.md](PROJECT_STATUS.md). These
+documents supersede conflicting original from-scratch requirements; they
+do not erase earlier implementation or verification records.
+
+### Decisions carried into the repair
+
+- Retain shared `/auth/login` and the separately authorized Researcher
+  workspace. The owners explicitly reconfirmed password-only Researcher
+  authentication and 15-day retention with daily expiry on 2026-10-05.
+  The repair discussion's earlier MFA and pressure-only cleanup proposals
+  are superseded. Research collection/sampling/window/label/session
+  semantics remain as established by Phase 6.
+- Require MySQL for all DB-backed tests and keep pure tests DB-free.
+  SQLite remains in the current test implementation until P1 replaces it.
+  A new clean development database is a later, explicitly scoped operation.
+- Price belongs to Course. Use LYD Decimal amounts at `0.001` precision,
+  remove insignificant fractional zeroes in display, and snapshot discounts
+  and the enrollment price. Derive the general signed Student account from
+  obligations, confirmed collections and actual payouts; preserve document
+  changes and historical cash evidence rather than hard-deleting them.
+- Enrollment, its invoice/discount and optional initial collection are one
+  atomic operation. Stop new/re-enrollment at Group study start. Same-course
+  transfer may occur after start without a new charge; destination content
+  determines current progress and source history survives. Re-enrollment
+  creates a new episode. Wrong-course correction changes real membership
+  and finance while preserving the original learning evidence.
+- Retain account and academic history, protect competing edits, record
+  corrections and use trusted request-arrival time for timed submissions.
+  Include Room management and Group/Teacher/Room schedule conflicts now.
+- Present Assignments, Quizzes, Listening and Speaking in one Student
+  Activities hub, with appropriate filters, actions and historical context.
+  Keep each type's execution page, Course content, grades and attendance.
+- Bind pending research delivery to the original account/configuration,
+  enforce application role isolation and real operator attribution, show
+  storage usage/gaps and provide session-start-based range export/cleanup.
+  An archive ID retains its original bytes while available, or reports
+  unavailability; cleanup must never regenerate different bytes under it.
+
+### P0 implementation boundary
+
+P0 establishes the approved contract, roadmap/status, README/Quick Start,
+authority pointers and a verified source-recovery archive. It preserves
+pre-existing shared-login source and test changes. It performs no app/test,
+schema, environment, credential, scheduler or database change, and no Git
+staging/commit/push. Runtime acceptance gates remain pending in the tracker.
+Static P0 checks are recorded separately from historical Phase 6 results.
+
+## Repair Part P1A - canonical root and fail-closed environment - 2026-10-05
+
+`GET /` redirects anonymous visitors to the shared login and active loaded
+accounts to their existing role home via the same `home_endpoint_for`
+mapping used by login. It does not consume an arbitrary `next` target or
+change authentication/workspace authorization.
+
+The factory accepts only `development`, `testing` and `production`.
+Unknown/empty explicit or environment names fail before Flask creation with
+a generic error. An explicit valid name takes precedence over `FLASK_ENV`;
+an absent environment still selects development. Config overrides cannot
+make an unknown name valid.
+
+`tests/test_runtime_entry.py` passed 20 strict-warning checks using the real
+factory and Flask-Login loader, transient accounts and a global engine hook
+that refuses every database connection. The suite bypasses the old SQLite
+fixtures. No browser/server, MySQL migration, live database, environment,
+scheduler or Git operation was performed. P1's MySQL-only conversion is
+still pending and is not established by these entry checks.
+
+## Repair Part P1B - prepared owned MySQL resources - 2026-10-05
+
+Added disposable-resource infrastructure, ownership guards and a concrete
+synthetic verification command; see
+[MYSQL_TEST_TRANSITION.md](MYSQL_TEST_TRANSITION.md). It starts nothing on
+import and cannot consume a development server URL. It verifies the launched
+process, data directory and port before DDL; forged/foreign leases are rejected.
+Directories are retained and only the owned child process can be stopped.
+
+The combined runtime/resource file checks passed 42 strict-warning tests
+(20 P1A, 22 ownership guards). No actual MySQL resource was initialized yet.
+The isolated operation's approval is pending; legacy test fixtures/config
+remain unchanged and MySQL-only conversion is not complete.
+
+## Repair P1B execution and P1C verification - 2026-10-05
+
+The owners approved the one-schema smoke check, then explicitly authorized
+owned isolated MySQL resources throughout repair tests, migrations and browser
+checks. This supersedes the immediately preceding pending-operation record.
+The real smoke passed on MySQL 8.0.46/InnoDB with enabled foreign keys,
+released synthetic schema and stopped owned process. Development DB access,
+installations and machine/service/task changes remain outside the scope.
+
+P1C now uses guarded MySQL targets for TestingConfig/central fixtures and
+converts local factory APIs without changing domain assertions. Secondary
+binds, custom connection providers/pools/plugins and destination overrides
+are rejected before engine setup; guards recheck exact lease/endpoint.
+The literal owned directory boundary rejects redirection inside the workspace
+as well as escape. Cleanup attempts every app/lease even if an earlier one
+fails. `scripts/run_isolated_tests.py` disables dotenv and deployment DB
+credentials before pytest imports, and guards even named production/development
+factory checks with an unallocated target unless an explicit owned lease exists.
+
+Evidence: 108 hardened DB-free checks, 68 provider/foundation checks and
+28 real MySQL role/authentication/redirect/rate-limit checks passed. A ten-case
+local fixture gate has nine passed and one disabled-provider payment-intent
+detail failure under diagnosis. P1C is not complete; browser/migration/full
+gates are pending. See [PROJECT_STATUS.md](PROJECT_STATUS.md).
+
+## Repair P1C close-out and P1D boundary - 2026-10-05
+
+The apparent local failures were retained fixture read snapshots, not changes
+to payment behavior. Each HTTP request now has its own app scope. Before it,
+the test harness ends only a proven read-only AUTOBEGIN transaction; it
+refuses uncommitted writes, explicit/nested transactions and locking reads
+without cancelling them. Attached helper objects are expired rather than
+detached; MySQL isolation is unchanged. Eight real boundary checks plus both
+affected cases passed (10), seven DB-free client/stream checks passed, and
+the complete role/session/local-fixture gate passed 38 tests (319.81 seconds).
+P1C is complete; its assertion/source preservation evidence is in Project Status.
+
+P1D converts real Chrome, export concurrency and CLI resources to owned MySQL.
+All workers must stop before schema cleanup; a failed worker guard prevents
+both engine disposal and schema drop. This does not authorize a development
+migration or changes to research sampling, answer or session semantics.
+
+## Repair P1D close-out and P1E exact parents - 2026-10-05
+
+P1D passed real Chrome (7), export snapshot/concurrency (6), first-revision
+CLI (1), affected browser/concurrency/cleanup (13) and final DB-free cleanup
+checks (16). See Project Status for timing and scope. P1E now builds every
+historical parent through the actual Alembic chain on a blank owned schema.
+No fabricated parent DDL, stamped revision or disabled MySQL foreign keys is
+accepted. Direct target Operations callbacks remain unit probes; their
+startup version remains the literal parent, not a full-chain CLI claim.
+
+Financial revision gates passed 114 tests. Actual MySQL revealed downgrade
+dependency defects: three academic revisions tried to drop FK-supporting
+indexes before their tables, and M07 tried to restore NOT NULL while the
+account FK was attached. P1E corrects those MySQL downgrade paths, preserving
+original upgrades, revision IDs, compatibility paths and protected-history
+refusal. First academic reverification passed 15 checks. Remaining academic,
+research, model/collation/runtime removal and full gates are not complete.
+No development DB, scheduler, environment, installation or Git mutation.
+
+## Repair P1E exact machine-code integrity - 2026-10-05
+
+Owned MySQL gates proved that PyMySQL exposes CHECK rejection 3819 as
+OperationalError. Per-application engine handling now translates only that
+exact MySQL/PyMySQL rejection to IntegrityError, preserving driver evidence
+and parameter redaction. Deadlocks, timeouts and syntax failures retain their
+classification. A subsequent gate passed 44 cases and exposed three real
+uppercase-code acceptance defects under the server's default CI collation.
+
+The source corrective revision `c1a7e4d9b203`, after `d574ab56594f`, applies
+`utf8mb4_0900_bin` only to 54 closed-code columns (state/type/currency and
+research machine codes). It preserves the original CHECK names/expressions,
+widths, nullability, indexes and relationships, and never normalizes or
+deletes rows. All noncanonical-row and shape preflights precede DDL. Name,
+title and email matching keep their existing collations. MySQL's
+[binary-collation documentation](https://dev.mysql.com/doc/mysql/8.0/en/charset-binary-collations.html)
+describes this binary NO PAD choice, including significant trailing spaces.
+The installed server must expose that exact NO PAD collation.
+
+Historical revision DDL probes compare their pre-correction column rendering;
+only this new explicit code collation is normalized in those textual tests.
+Actual current-head CLI verification independently inspects every effective
+code collation and checks ordinary text remains outside the correction.
+
+Migration source preparation and synthetic execution are in P1E. No
+development execution or Git mutation is authorized by this gate. MySQL
+commits DDL per table; an eventual reviewed live execution requires quiescent
+writers and recovery verification, covered by P9 rather than this synthetic run.
+
+## Repair sequencing instruction - 2026-10-06
+
+The owner stopped all tests and instructed implementation of every approved
+repair source change before further tests. The bounded domain/security scope is
+unchanged, while per-Part test-before-next-Part sequencing is superseded for
+this continuation. P1F remains unaccepted; later source work may proceed and
+must distinguish implementation from deferred verification. Do not run pytest,
+browser checks or collection-only tests until all source work is implemented.
+Existing live database, scheduler, installation and Git boundaries remain.
+# Repair integration authority — 2026-10-06
+
+The owners authorized completion of all six repair areas, remaining legacy HTTP
+entry points, documentation and new database migrations. The source uses atomic
+Enrollment episodes, a derived general Student Account with actual payouts,
+preserved corrections and destination Group progress, effective Teacher/Room
+locks, own historical academic records and unified Activities. Research remains
+password-only with environment-configured 15-day daily expiry and unchanged
+sampling/session/provenance semantics. Operational details and migration/recovery
+evidence are in `REPAIR_INTEGRATION.md`; implementation is distinct from acceptance.
+No reset, scheduler change, real collection period or Git mutation is authorized
+by this integration instruction.

@@ -44,6 +44,7 @@ environment chooses the configuration (``FLASK_ENV``); no credential is read
 from the command line.
 """
 import argparse
+import getpass
 import os
 import sys
 from pathlib import Path
@@ -52,6 +53,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app import create_app  # noqa: E402
 from app.services import research_operator as operator  # noqa: E402
+from app.models import User
+from app.security.passwords import verify_password
 
 _MESSAGES = {
     operator.NO_ACCOUNT: "No account has that email address.",
@@ -70,6 +73,7 @@ _MESSAGES = {
 
 def _parser():
     parser = argparse.ArgumentParser(description="Natural-use research operator tool.")
+    parser.add_argument("--researcher", required=True, help="Email of the actual Researcher operator; password is prompted privately.")
     commands = parser.add_subparsers(dest="command", required=True)
     exclude = commands.add_parser("exclude")
     exclude.add_argument("email")
@@ -80,7 +84,8 @@ def _parser():
     demo.add_argument("email")
     status = commands.add_parser("status")
     status.add_argument("email")
-    commands.add_parser("list-excluded")
+    listing = commands.add_parser("list-excluded")
+    listing.add_argument("--page", type=int, default=1)
     purge = commands.add_parser("purge-expired")
     purge.add_argument("--execute", action="store_true")
     return parser
@@ -97,29 +102,38 @@ def main(argv=None, app=None, out=None, err=None):
     args = _parser().parse_args(argv)
     app = app or create_app(os.environ.get("FLASK_ENV", "development"))
     with app.app_context():
+        actor = User.query.filter_by(email=args.researcher.strip().lower(), role="researcher", status="active").first()
+        password = getpass.getpass("Researcher password: ")
+        if actor is None or not verify_password(actor.password_hash, password):
+            print("Researcher authentication failed. Nothing was changed.", file=err)
+            return 1
+        actor_id = actor.id
+        from app.extensions import db
+        db.session.info["research_operator_auth"] = (actor.id, actor.auth_version)
+        del password
         if args.command == "exclude":
-            result, code = operator.exclude(args.email)
+            result, code = operator.exclude(args.email, actor_id=actor_id)
             if result != operator.EXCLUDED:
                 return _refused(result, err)
             print(f"Excluded: {code}. Open sessions were closed.", file=out)
             return 0
         if args.command == "reinstate":
             result, code = operator.reinstate(
-                args.email, allow_legacy_override=args.lift_legacy_exclusion)
+                args.email, allow_legacy_override=args.lift_legacy_exclusion, actor_id=actor_id)
             if result != operator.REINSTATED:
                 return _refused(result, err)
             print(f"Reinstated: {code}. The Student is collected again from the next page.",
                   file=out)
             return 0
         if args.command == "mark-demo":
-            result, code = operator.mark_demo(args.email)
+            result, code = operator.mark_demo(args.email, actor_id=actor_id)
             if result != operator.MARKED_DEMO:
                 return _refused(result, err)
             print(f"Marked as demonstration data: {code}. Nothing of it is ever exported.",
                   file=out)
             return 0
         if args.command == "status":
-            result, state = operator.status(args.email)
+            result, state = operator.status(args.email, actor_id=actor_id)
             if state is None:
                 print(_MESSAGES.get(result, "Not found."), file=err)
                 return 1
@@ -127,7 +141,7 @@ def main(argv=None, app=None, out=None, err=None):
                   f"{state.provenance})", file=out)
             return 0
         if args.command == "list-excluded":
-            accounts = operator.excluded_accounts()
+            accounts = operator.excluded_accounts(actor_id=actor_id, page=args.page)
             for account in accounts:
                 print(f"{account.subject_code}\t{account.email}\t{account.status_basis}\t"
                       f"{account.status_changed_at:%Y-%m-%d %H:%M} UTC", file=out)
@@ -137,7 +151,7 @@ def main(argv=None, app=None, out=None, err=None):
         if days is None:
             print("RESEARCH_RETENTION_DAYS is not configured; nothing can be purged.", file=err)
             return 1
-        report = operator.retention_report(days, execute=args.execute)
+        report = operator.retention_report(days, execute=args.execute, actor_id=actor_id)
         verb = "Deleted" if report.executed else "Would delete"
         print(f"{verb} {report.sessions} session(s), {report.events} event(s), "
               f"{report.prompts} prompt(s) and {report.archives} export archive(s) older "

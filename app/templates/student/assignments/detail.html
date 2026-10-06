@@ -28,7 +28,7 @@
 {% endwith %}
 
 <div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('student.assignments_list') }}">Back to Assignments</a>
+  <a class="btn btn--secondary" href="{{ url_for('student.activities', type='assignment') }}">Back to Activities</a>
   <a class="btn btn--secondary" href="{{ url_for('student.group_units', group_public_id=assignment.group_public_id) }}">Open Lessons</a>
 </div>
 
