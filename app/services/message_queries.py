@@ -38,7 +38,7 @@ this module declares a relationship, so no page can lazy-load.
 import re
 from collections import namedtuple
 
-from sqlalchemy import and_, func
+from sqlalchemy import and_, func, literal, or_
 from sqlalchemy.orm import aliased
 
 from app.extensions import db
@@ -319,6 +319,26 @@ def member_thread(user_id, thread_public_id):
     return {"id": row[0], "public_id": row[1], "subject": row[2]}
 
 
+def latest_thread_for_pair(user_id, other_id):
+    """Contact selection continues the latest existing conversation.
+
+    This returns only a member-owned thread UUID, including a cleared thread
+    whose old messages will stay excluded by the effective-message query.
+    """
+    me = aliased(MessageThreadMember)
+    other = aliased(MessageThreadMember)
+    return (
+        db.session.query(MessageThread.public_id)
+        .join(me, me.thread_id == MessageThread.id)
+        .join(other, other.thread_id == MessageThread.id)
+        .outerjoin(Message, Message.thread_id == MessageThread.id)
+        .filter(me.user_id == user_id, other.user_id == other_id, other.user_id != user_id)
+        .group_by(MessageThread.id, MessageThread.public_id)
+        .order_by(func.max(Message.id).desc(), MessageThread.id.desc())
+        .limit(1).scalar()
+    )
+
+
 def thread_members(thread_id):
     """The members of one thread with their current account facts,
     ascending by user id. Bounded at three rows: a well-formed thread has
@@ -361,7 +381,63 @@ def reply_state(thread_id, viewer_id):
     return ReplyState(other, student_id, teacher_id, shared_relationship(student_id, teacher_id))
 
 
-def conversation_page(thread_id, page):
+def _display_query(user_id, thread_id=None):
+    """Membership scoped effective messages; hidden/cleared rows never render.
+
+    Both aggregation paths use indexed foreign keys and the viewer's threads.
+    Existing schema remains usable while the additive upgrade awaits approval.
+    """
+    from app.services.message_management import available
+    from app.models.message_change import MessageChange, MessageThreadClear
+
+    member = aliased(MessageThreadMember)
+    query = (
+        db.session.query(Message)
+        .join(member, member.thread_id == Message.thread_id)
+        .join(User, User.id == Message.sender_id)
+        .filter(member.user_id == user_id)
+    )
+    body, revision_id, edited = Message.body, literal("original"), literal(False)
+    if available():
+        latest = (
+            db.session.query(MessageChange.message_id.label("message_id"),
+                             func.max(MessageChange.id).label("revision_id"))
+            .join(Message, Message.id == MessageChange.message_id)
+            .join(MessageThreadMember, MessageThreadMember.thread_id == Message.thread_id)
+            .filter(MessageThreadMember.user_id == user_id)
+        )
+        if thread_id is not None:
+            latest = latest.filter(Message.thread_id == thread_id)
+        latest = latest.group_by(MessageChange.message_id).subquery()
+        change = aliased(MessageChange)
+        clears = (
+            db.session.query(MessageThreadClear.member_id.label("member_id"),
+                             func.max(MessageThreadClear.through_message_id).label("through_id"))
+            .join(MessageThreadMember, MessageThreadMember.id == MessageThreadClear.member_id)
+            .filter(MessageThreadMember.user_id == user_id)
+            .group_by(MessageThreadClear.member_id).subquery()
+        )
+        query = (
+            query.outerjoin(latest, latest.c.message_id == Message.id)
+            .outerjoin(change, change.id == latest.c.revision_id)
+            .outerjoin(clears, clears.c.member_id == member.id)
+            .filter(or_(change.id.is_(None), change.kind != "hide"),
+                    Message.id > func.coalesce(clears.c.through_id, 0))
+        )
+        body = func.coalesce(change.body, Message.body)
+        revision_id = func.coalesce(change.public_id, "original")
+        edited = func.coalesce(change.kind == "edit", False)
+    if thread_id is not None:
+        query = query.filter(Message.thread_id == thread_id)
+    return query.with_entities(
+        Message.public_id.label("public_id"), body.label("body"),
+        Message.created_at.label("created_at"), Message.sender_id.label("sender_id"),
+        User.full_name.label("sender_name"), revision_id.label("revision"),
+        edited.label("edited"), Message.id.label("id"), Message.thread_id.label("thread_id"),
+    )
+
+
+def conversation_page(thread_id, page, viewer_id):
     """One page of a thread's messages: ``(rows, has_older)``.
 
     Page 1 is the newest :data:`CONVERSATION_PAGE_SIZE`; page 2 the ones
@@ -370,15 +446,7 @@ def conversation_page(thread_id, page):
     then reversed so the visible page reads chronologically.
     """
     rows = (
-        db.session.query(
-            Message.public_id,
-            Message.body,
-            Message.created_at,
-            Message.sender_id,
-            User.full_name,
-        )
-        .join(User, User.id == Message.sender_id)
-        .filter(Message.thread_id == thread_id)
+        _display_query(viewer_id, thread_id)
         .order_by(Message.created_at.desc(), Message.id.desc())
         .offset((page - 1) * CONVERSATION_PAGE_SIZE)
         .limit(CONVERSATION_PAGE_SIZE + 1)
@@ -398,6 +466,8 @@ def build_conversation_view(rows, viewer_id, tz_name):
             "created_local": to_app_local(tz_name, row[2]),
             "from_viewer": row[3] == viewer_id,
             "sender_name": row[4],
+            "revision": row[5],
+            "edited": bool(row[6]),
         }
         for row in rows
     ]
@@ -408,54 +478,44 @@ def build_conversation_view(rows, viewer_id, tz_name):
 # ---------------------------------------------------------------------------
 
 
-def _inbox_query(user_id):
+def _inbox_query(user_id, search_text=""):
     """Every thread `user_id` belongs to, newest message first.
 
     One statement: the viewer's membership rows, the thread, the newest
     message per thread (``MAX(messages.id)`` grouped over the viewer's own
     threads only), that message's time, sender and a bounded ``SUBSTR`` of
     its body, and the other member's display name and role.
+    Optional normalized search matches names/subjects with escaped LIKE;
+    effective hidden/cleared messages are excluded before the inbox filter.
     """
-    me = aliased(MessageThreadMember)
-    mine = aliased(MessageThreadMember)
     other = aliased(MessageThreadMember)
     other_user = aliased(User)
-    last = aliased(Message)
-    latest = (
-        db.session.query(
-            Message.thread_id.label("thread_id"), func.max(Message.id).label("last_id")
-        )
-        .join(mine, mine.thread_id == Message.thread_id)
-        .filter(mine.user_id == user_id)
-        .group_by(Message.thread_id)
-        .subquery()
-    )
-    return (
-        db.session.query(
-            MessageThread.public_id,
-            MessageThread.subject,
-            last.created_at,
-            last.sender_id,
-            func.substr(last.body, 1, _PREVIEW_FETCH),
-            other_user.full_name,
-            other_user.role,
-        )
-        .select_from(me)
-        .join(MessageThread, MessageThread.id == me.thread_id)
+    visible = _display_query(user_id).subquery()
+    latest = db.session.query(visible.c.thread_id, func.max(visible.c.id).label("last_id")).group_by(visible.c.thread_id).subquery()
+    query = (
+        db.session.query(MessageThread.public_id, MessageThread.subject,
+                         visible.c.created_at, visible.c.sender_id,
+                         func.substr(visible.c.body, 1, _PREVIEW_FETCH),
+                         other_user.full_name, other_user.role)
+        .select_from(MessageThread)
         .join(latest, latest.c.thread_id == MessageThread.id)
-        .join(last, last.id == latest.c.last_id)
+        .join(visible, visible.c.id == latest.c.last_id)
         .join(other, and_(other.thread_id == MessageThread.id, other.user_id != user_id))
         .join(other_user, other_user.id == other.user_id)
-        .filter(me.user_id == user_id)
-        .order_by(last.created_at.desc(), last.id.desc())
+        .order_by(visible.c.created_at.desc(), visible.c.id.desc())
     )
+    if search_text:
+        pattern = f"%{escape_like(search_text)}%"
+        query = query.filter(or_(MessageThread.subject.ilike(pattern, escape="\\"),
+                                 other_user.full_name.ilike(pattern, escape="\\")))
+    return query
 
 
-def inbox_page(user_id, page):
+def inbox_page(user_id, page, search_text=""):
     """``(rows, has_next)`` -- one page of the inbox, reading
     ``PAGE_SIZE + 1`` rows so "is there another page" costs no COUNT."""
     rows = (
-        _inbox_query(user_id)
+        _inbox_query(user_id, search_text)
         .offset((page - 1) * PAGE_SIZE)
         .limit(PAGE_SIZE + 1)
         .all()

@@ -3,7 +3,7 @@
 {% block title %}{{ 'Edit Academic Term' if term else 'New Academic Term' }}{% endblock %}
 {% block admin_content %}
 <div class="ds-page" style="max-width: 480px">
-  <h1>{{ 'Edit Academic Term' if term else 'New Academic Term' }}</h1>
+  <h1 data-workspace-page-heading>{{ 'Edit Academic Term' if term else 'New Academic Term' }}</h1>
 
   {{ macros.flash_messages() }}
 

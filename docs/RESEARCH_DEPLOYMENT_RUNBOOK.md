@@ -1,6 +1,24 @@
 # Research deployment runbook (Phase 6 replacement)
 
-## Current local demonstration workspace — 2026-10-06
+## Latest hosting/evaluation authority — 2026-10-06
+
+The later local-rehearsal decision enables operational-review exports through
+the same Researcher workflow. Server settings select the scope; manifests,
+session rows and creation audits record it. Development and retained historical
+non-study sessions stay excluded from study exports. See
+[Local Research Walkthrough](LOCAL_RESEARCH_WALKTHROUGH.md). No migration or
+reclassification is needed for this source correction.
+
+A new hosting installation has no seeded business data or accounts. The
+owner kept the existing local database. Payment simulation, demonstration
+selectors and the per-account demonstration operator command are removed.
+Research dashboards/lists use the deployment setting automatically. Operational
+evaluation uses `RESEARCH_DATA_PROVENANCE=development`, including when the web
+server runs in production; its data never enters study exports. A genuine study
+must explicitly set `study` after its own operational decision. See
+[Hosting Preparation](HOSTING_PREPARATION.md) for current installation guidance.
+
+## Historical local review — 2026-10-06
 
 The owner-requested reset preserves development schema `085b7a4e9012` and
 fictional four-role data. Research authentication is password-only. Retention
@@ -8,9 +26,9 @@ is explicitly configured as 15 days. The existing daily local retention task
 was previously read as enabled/Ready with last result 0; this close-out does
 not register, alter or manually run it.
 
-Use the Researcher Demo data filter to inspect demonstration sessions. The
-Student is classified as demo; development/demo events never enter study
-exports. The manual close-out observed a paused active configuration with a
+The older Student classification and all historical audit records are retained;
+their events never become study exports. The earlier manual close-out observed
+a paused active configuration with a
 period beginning `2026-10-07`. Launching Flask alone does not start collection.
 Select an appropriate configuration/period and deliberately start collection
 in the Researcher workspace before expecting new sessions. A real study and
@@ -44,8 +62,8 @@ schema has been verified.
 **Population rule.** Once a Researcher starts collecting, every eligible
 Student (an active Student account that is not excluded) is collected
 automatically, including Students created later. There is no inclusion step.
-Every exclusion and every demonstration account must therefore be recorded
-**before** collection starts (section 6).
+Every required exclusion must therefore be recorded **before** collection
+starts (section 6). Evaluation deployments remain outside study exports.
 
 ## 1. Before the maintenance window
 
@@ -156,9 +174,8 @@ act.
    the operator tool, in a private terminal on the server:
    - every exclusion the centre's external process requires:
      `python scripts/research_operator.py --researcher RESEARCHER_EMAIL exclude EMAIL`;
-   - every demonstration or development Student account:
-     `python scripts/research_operator.py --researcher RESEARCHER_EMAIL mark-demo EMAIL` (its data is
-     stored as `demo` and never exported);
+   - for operational evaluation, keep the deployment's provenance set to
+     `development`; it does not create study data and needs no account mode;
    - review: `python scripts/research_operator.py --researcher RESEARCHER_EMAIL list-excluded` (prints
      emails: keep the output private). Researchers see the same list by
      pseudonymous code under **Exclusions**.

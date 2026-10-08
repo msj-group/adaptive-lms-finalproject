@@ -130,6 +130,9 @@ def outline_units(group_id, student_id):
                 LessonProgress.lesson_id == Lesson.id,
                 LessonProgress.group_id == group_id,
                 LessonProgress.student_id == student_id,
+                LessonProgress.enrollment_id == db.session.query(Enrollment.id).filter(
+                    Enrollment.student_id == student_id, Enrollment.group_id == group_id,
+                    Enrollment.status == _ENROLLMENT_ACTIVE).scalar_subquery(),
             ),
         )
         .filter(Lesson.unit_id.in_(unit_ids), Lesson.status == _PUBLISHED)

@@ -1,0 +1,13 @@
+/* Shared, non-chat communication. Does not own routes, visibility or writes. */
+.discussion-group-list,.discussion-topic-list,.announcement-reading-list { gap:0; border-block-start:1px solid var(--ui-line); }
+.figma-workspace :is(.discussion-group-list,.discussion-topic-list,.announcement-reading-list) > .card { border:0; border-block-end:1px solid var(--ui-line); border-radius:0; box-shadow:none; padding:22px 12px; background:transparent; }
+.discussion-topic-list .card__title,.announcement-reading-list .card__title { font-size:1.12rem; letter-spacing:-.02em; }
+.discussion-reply-list { border-inline-start:2px solid var(--ui-line); margin-inline-start:6px; padding-inline-start:20px; }
+.discussion-reply-list > .card { border-radius:8px; box-shadow:none; line-height:1.8; }
+.figma-workspace :is([data-topic-body],[data-reply-body]) { max-width:80ch; line-height:1.85; }
+.notif-list { gap:0; }
+.notif-list .notif-item { border:0; border-block-end:1px solid var(--ui-line); border-radius:0; box-shadow:none; padding:20px; background:var(--ui-raised); }
+.figma-workspace .notif-list .notif-item--unread { border-inline-start:3px solid var(--ui-brand-accent); background:var(--ui-soft); }
+.notif-filter { display:inline-flex; min-height:44px; align-items:center; border-radius:8px; }
+.notif-filter--active { border-block-end:3px solid var(--ui-brand-accent); }
+@media(max-width:620px) { .discussion-reply-list { padding-inline-start:12px; } .notif-list .notif-item { padding:16px 12px; } .announcement-reading-list .ds-row { flex-wrap:wrap; gap:12px; } }

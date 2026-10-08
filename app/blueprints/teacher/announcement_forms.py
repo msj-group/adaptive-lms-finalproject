@@ -27,7 +27,7 @@ title or a body *is*. This module owns only the Teacher's wording for
 each rule.
 """
 
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from wtforms import StringField, SubmitField, TextAreaField
 from wtforms.validators import ValidationError
 

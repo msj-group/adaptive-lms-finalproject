@@ -3,7 +3,7 @@
 {% block title %}{{ 'Edit Group' if group else 'New Group' }}{% endblock %}
 {% block admin_content %}
 <div class="ds-page" style="max-width: 560px">
-  <h1>{{ 'Edit Group' if group else 'New Group' }}</h1>
+  <h1 data-workspace-page-heading>{{ 'Edit Group' if group else 'New Group' }}</h1>
 
   {{ macros.flash_messages() }}
 
@@ -13,7 +13,7 @@
       {{ form.study_starts_at.label(class_="field__label") }}
       {{ form.study_starts_at(class_="field__input") }}
       {% for error in form.study_starts_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
-      <p>New enrollment closes when study starts. Transfers within the same course use a separate action.</p>
+      <p>Study start marks the beginning of teaching. Enrollment remains available after this time, with a notice before saving. Transfers within the same course use a separate action.</p>
     </div>
     {% if group %}
     <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
@@ -97,7 +97,7 @@
     if (form && submitButton) {
       form.addEventListener("submit", function () {
         submitButton.disabled = true;
-        submitButton.textContent = "Saving...";
+        submitButton.textContent = {{ _("Saving...") | tojson }};
       });
     }
   })();

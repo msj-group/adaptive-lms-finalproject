@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Youth Centre research retention
+
+[Timer]
+OnCalendar=*-*-* 02:15:00
+Persistent=true
+Unit=research-retention.service
+
+[Install]
+WantedBy=timers.target

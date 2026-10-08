@@ -112,7 +112,12 @@ def teacher_create():
 @roles_required(UserRole.ADMINISTRATOR.value)
 def teacher_detail(public_id):
     teacher = _get_teacher_or_404(public_id)
-    return render_template("admin/teachers/detail.html", teacher=teacher)
+    from app.services.dashboard_queries import teacher_dashboard
+    from app.services.schedule_occurrences import app_now
+    from flask import current_app
+    tz_name = current_app.config.get("APP_TIMEZONE", "UTC")
+    data = teacher_dashboard(teacher.id, app_now(tz_name))
+    return render_template("admin/teachers/detail.html", teacher=teacher, assigned_groups=data["cards"], tz_name=tz_name)
 
 
 @admin_bp.route("/teachers/<public_id>/edit", methods=["GET", "POST"])

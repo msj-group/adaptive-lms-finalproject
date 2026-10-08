@@ -64,6 +64,25 @@ _STUDY = ResearchProvenance.STUDY.value
 #: The provenances a deployment may declare for what it collects.
 DEPLOYMENT_PROVENANCES = (ResearchProvenance.STUDY.value, ResearchProvenance.DEVELOPMENT.value)
 
+# Export creation records its server-selected scope in the existing,
+# append-only audit. This survives archive expiry without a schema change.
+EXPORT_SCOPE_DETAIL_CODES = {
+    "study": "export_study",
+    "development": "export_development",
+}
+
+
+def export_session_provenances(provenance):
+    """The deployment's export population, never a browser-selectable mode."""
+    scopes = {
+        "study": ("study",),
+        "development": ("development", "demo"),
+    }
+    if provenance not in scopes:
+        raise ValueError("Exports require the deployment's configured provenance.")
+    return scopes[provenance]
+
+
 CollectionContext = namedtuple(
     "CollectionContext",
     "user_id subject_id subject_provenance configuration_id configuration_version "

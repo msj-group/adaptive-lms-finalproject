@@ -1,9 +1,13 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'listening' %}
+{% set activity_phase = 'question' %}
 {% block title %}Question {{ position }} — {{ activity.title }}{% endblock %}
 {% block portal_nav %}
   {% include "student/_portal_nav.html" %}
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+
 {#- Phase 4 / M05. One question at a time, beside the recording. The page
     carries only this question, its active options, this attempt's saved
     selections for it and the two neighbour identifiers -- never the whole
@@ -22,7 +26,7 @@
     every authorization, attempt state, completion and grade; nothing on this
     page can make an attempt live longer, end sooner, or count as finished. -#}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
-  <h1 style="margin:0">{{ activity.title }}</h1>
+
   <span class="ds-row" style="gap: var(--space-3); align-items: center">
     <span class="ds-section__desc" style="margin:0">Question {{ position }} of {{ total }}</span>
     <span class="badge badge--neutral" data-quiz-timer data-deadline="{{ attempt.deadline_iso }}">
@@ -41,12 +45,14 @@
   {% endfor %}
 {% endwith %}
 
-{% include "_audio_player.html" %}
+<div class="activity-listening-layout">
+<aside class="activity-listening-desk">
+<h2>Listen and explore</h2>{% include "_audio_player.html" %}
 
 {% if vocabulary %}
 <section class="card" style="margin-bottom: var(--space-4)">
   <div class="card__title" style="margin-bottom: var(--space-2)">Vocabulary</div>
-  <div style="white-space: pre-wrap; word-break: break-word;">{{ vocabulary }}</div>
+  <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ vocabulary }}</div>
 </section>
 {% endif %}
 
@@ -54,11 +60,12 @@
 <section class="card" style="margin-bottom: var(--space-4)">
   <div class="card__title" style="margin-bottom: var(--space-2)">Transcript</div>
   {% if transcript_note %}<p class="ds-section__desc" style="margin-top:0">{{ transcript_note }}</p>{% endif %}
-  <div style="white-space: pre-wrap; word-break: break-word;">{{ transcript }}</div>
+  <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ transcript }}</div>
 </section>
 {% endif %}
 
-<div class="alert alert--info" style="margin-bottom: var(--space-4)">
+</aside>
+<div class="activity-question-main">{{ activity_ui.progress(answered_count,total) }}<div class="alert alert--info" style="margin-bottom: var(--space-4)">
   {% if question.is_multiple %}
   <strong>This question has more than one correct answer.</strong> Select every option you think is
   correct — you only get the point if your selection matches the correct set exactly. There is no
@@ -74,18 +81,20 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="answer_state" value="{{ answer_token }}">
 
-  <div class="card" style="margin-bottom: var(--space-4)">
+  <div class="activity-question-paper" style="margin-bottom: var(--space-4)">
     {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe. #}
-    <div style="white-space: pre-wrap; word-break: break-word; margin-bottom: var(--space-4)">{{ question.prompt }}</div>
+    <div class="activity-question-prompt" id="activity-question-prompt" dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ question.prompt }}</div>
 
+    <div class="activity-choice-grid" role="group" aria-labelledby="activity-question-prompt">
     {% for option in question.options %}
-    <label style="display:block; margin-bottom: var(--space-2)">
+    <label class="activity-choice">
       <input type="{{ 'checkbox' if question.is_multiple else 'radio' }}"
              name="option" value="{{ option.public_id }}" data-research-id="listening_option"
              {% if option.selected %}checked{% endif %}>
-      {{ option.text }}
+      <span dir="auto">{{ option.text }}</span>
     </label>
     {% endfor %}
+    </div>
   </div>
 
   <div class="ds-row" style="gap: var(--space-2); margin-bottom: var(--space-6)">
@@ -96,7 +105,7 @@
   </div>
 </form>
 
-<nav class="ds-row" style="gap: var(--space-2); margin-bottom: var(--space-6)" aria-label="Question navigation">
+<nav class="ds-row workspace-pager" style="gap: var(--space-2); margin-bottom: var(--space-6)" aria-label="Question navigation">
   {% if previous_public_id %}
   <a class="btn btn--secondary" href="{{ url_for('student.listening_question', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=attempt.public_id, question_public_id=previous_public_id) }}">Previous</a>
   {% endif %}
@@ -109,7 +118,7 @@
   <div class="card__title" style="margin-bottom: var(--space-2)">Finish this attempt</div>
   {% if unanswered_count %}
   <p class="ds-section__desc">
-    You have not answered {{ unanswered_count }} question{{ "" if unanswered_count == 1 else "s" }}.
+    {{ _n('You have not answered %(count)d question.', 'You have not answered %(count)d questions.', unanswered_count) }}
     Unanswered questions are marked incorrect. Tick the box below to submit anyway.
   </p>
   {% else %}
@@ -123,11 +132,16 @@
     {% if unanswered_count %}
     <label style="display:block; margin-bottom: var(--space-2)">
       <input type="checkbox" name="confirm_unanswered" value="yes" data-research-id="listening_submit_confirm">
-      Submit with {{ unanswered_count }} unanswered question{{ "" if unanswered_count == 1 else "s" }}
+      {{ _n('Submit with %(count)d unanswered question', 'Submit with %(count)d unanswered questions', unanswered_count) }}
     </label>
     {% endif %}
     <button type="submit" class="btn btn--primary" data-research-id="listening_submit">Submit attempt</button>
   </form>
 </section>
-<script src="{{ url_for('static', filename='js/quiz_timer.js') }}" defer></script>
+</div>
+</div>
+<script src="{{ url_for('static', filename='js/quiz_timer.js') }}" defer>
+</script>
+
+</div>
 {% endblock %}

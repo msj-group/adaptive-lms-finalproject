@@ -1,44 +1,48 @@
 {% extends "layouts/base.html" %}
+{% import "_figma_ui.html" as ui %}
+{% block body_class %}figma-workspace figma-admin{% endblock %}
 {% block extra_head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/figma.css') }}">
+{% endblock %}
+{% block product_styles %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/navigation.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/operations.css') }}">
+  {% block feature_styles %}{% endblock %}
 {% endblock %}
 {% block content %}
+{{ ui.ambient() }}
+<a class="figma-skip-link" href="#workspace-content">Skip to content</a>
 <div class="admin-shell">
-  <aside class="admin-sidebar">
-    <div class="admin-sidebar__brand">
-      <img class="admin-sidebar__logo" src="{{ url_for('static', filename='images/center_logo.svg') }}" alt="Center logo">
-      <span class="admin-sidebar__brand-name">Youth Center</span>
-    </div>
-    <nav>
-      <a class="admin-nav__link {{ 'admin-nav__link--active' if request.endpoint == 'admin.dashboard' else '' }}" href="{{ url_for('admin.dashboard') }}">Dashboard</a>
-      {% for section in admin_nav_sections %}
-      <div class="admin-nav__section">
-        <div class="admin-nav__section-title">{{ section.label }}</div>
+  <button class="figma-nav-backdrop" type="button" aria-label="Close navigation" data-nav-close hidden></button>
+  <aside class="admin-sidebar figma-sidebar" id="workspace-navigation" aria-label="Administrator navigation" data-nav-scope="administrator">
+    {{ ui.brand('admin.dashboard', 'administrator') }}
+    <button class="figma-sidebar-close figma-icon-button" type="button" aria-label="Close navigation" data-nav-close hidden>{{ ui.icon('close') }}</button>
+    <nav class="figma-sidebar-nav" aria-label="Primary">
+      <div class="figma-nav-section-title">Overview</div>
+      {{ ui.nav_link('Dashboard', 'admin.dashboard', 'dashboard', request.endpoint == 'admin.dashboard', link_class='admin-nav__link') }}
+      {% set icons = {'Academic Terms':'calendar','Levels':'layers','Courses':'book','Students':'users','Teachers':'graduation','Groups':'users','Schedules':'calendar','Rooms':'room','Attendance':'check','Grades':'chart','Announcements':'megaphone','Calendar':'calendar','Student Accounts':'wallet','Invoices':'file','Collections & payouts':'card','Financial reports':'chart','Historical deleted records':'trash'} %}
+      {% set sections = admin_nav_sections if admin_nav_sections is defined else workspace_admin_navigation() %}
+      {% for section in sections %}
+      <div class="admin-nav__section"><div class="admin-nav__section-title">{{ section.label }}</div>
         {% for item in section.links %}
-          {% if item.endpoint %}
-            <a class="admin-nav__link {{ 'admin-nav__link--active' if request.endpoint == item.endpoint else '' }}" href="{{ url_for(item.endpoint) }}">{{ item.label }}</a>
-          {% else %}
-            <span class="admin-nav__link admin-nav__link--disabled">{{ item.label }} <span class="badge badge--neutral">Soon</span></span>
-          {% endif %}
+        {% if item.endpoint %}{{ ui.nav_link(item.label, item.endpoint, icons.get(item.label, 'file'), workspace_nav_active(item.endpoint), link_class='admin-nav__link') }}
+        {% else %}<span class="admin-nav__link admin-nav__link--disabled">{{ item.label }} <span class="badge badge--neutral">Soon</span></span>{% endif %}
         {% endfor %}
       </div>
       {% endfor %}
     </nav>
+    {{ ui.navigation_tools() }}
   </aside>
-  <div class="admin-main">
-    <header class="admin-header">
-      <div class="admin-header__profile">
-        <span class="admin-header__name">{{ current_user.full_name }}</span>
-        <span class="badge badge--primary">{{ current_user.role|capitalize }}</span>
-        <form method="post" action="{{ url_for('auth.logout') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn btn--secondary">Logout</button>
-        </form>
-      </div>
+  <div class="admin-main figma-body" data-workspace-body>
+    <header class="admin-header figma-topbar">
+      <div class="figma-topbar-heading"><button class="figma-menu-toggle figma-icon-button" type="button" aria-label="Open navigation" aria-controls="workspace-navigation" aria-expanded="false" data-nav-toggle hidden>{{ ui.icon('menu') }}</button><div><span class="figma-eyebrow">YOUR CENTRE, CONNECTED</span>{% block workspace_page_label %}{{ ui.page_heading(self.title()) }}{% endblock %}</div></div>
+      <div class="figma-topbar-user">{{ ui.account(current_user, url_for('auth.logout'), csrf_token(), photo_url=account_photo_url()) }}</div>
     </header>
-    <div class="admin-content">
-      {% block admin_content %}{% endblock %}
-    </div>
+    <div class="admin-content figma-page" id="workspace-content" tabindex="-1">{% include "_workspace_context.html" %}{% block admin_content %}{% endblock %}</div>
+    <footer class="figma-footer">Youth Centre · A space to inspire.</footer>
   </div>
 </div>
 {% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/workspace.js') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}

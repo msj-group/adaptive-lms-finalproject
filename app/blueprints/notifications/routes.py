@@ -45,13 +45,16 @@ from app.models import UserRole
 from app.security.decorators import roles_required
 from app.services.notification_queries import (
     PAGE_SIZE,
+    KIND_FILTERS,
     build_inbox_view,
     inbox_page,
     mark_all_read,
     mark_read,
     normalize_filter,
+    normalize_kind,
     normalize_page,
     own_notification,
+    preview_rows,
     unread_count,
 )
 from app.services.notification_targets import validate_notification_target
@@ -69,6 +72,7 @@ def _redirect_to_inbox():
             "notifications.inbox",
             filter=normalize_filter(request.form.get("filter")),
             page=normalize_page(request.form.get("page")),
+            kind=normalize_kind(request.form.get("kind")),
         )
     )
 
@@ -85,27 +89,29 @@ def _own_notification_or_404(public_id):
 def inbox():
     """Newest-first, bounded, read-only inbox for the current recipient.
 
-    Issues exactly three bounded queries: the page of rows, the unread
-    count for the filter chips and empty states, and (via the shared
-    header) the badge. Nothing here writes.
+    Reads a bounded filtered page and unread counts for the inbox/header.
+    A stale empty page retries page 1 with the same filters. Nothing here writes.
     """
     filter_name = normalize_filter(request.args.get("filter"))
+    kind = normalize_kind(request.args.get("kind"))
     page = normalize_page(request.args.get("page"))
     tz_name = current_app.config.get("APP_TIMEZONE", "UTC")
 
-    rows, has_next = inbox_page(current_user.id, filter_name, page)
+    rows, has_next = inbox_page(current_user.id, filter_name, page, kind)
     if not rows and page > 1:
         # A page past the end (a stale bookmark, or everything on the
         # last unread page was just read) shows page 1 rather than a
         # confusing empty page with a "Previous" button.
         page = 1
-        rows, has_next = inbox_page(current_user.id, filter_name, page)
+        rows, has_next = inbox_page(current_user.id, filter_name, page, kind)
 
     response = make_response(
         render_template(
             "notifications/inbox.html",
             notifications=build_inbox_view(rows, tz_name),
             filter_name=filter_name,
+            selected_kind=kind,
+            kind_choices=KIND_FILTERS,
             page=page,
             has_next=has_next,
             has_prev=page > 1,
@@ -114,6 +120,19 @@ def inbox():
             tz_name=tz_name,
         )
     )
+    response.headers["Cache-Control"] = "private, no-store"
+    response.vary.add("Cookie")
+    return response
+
+
+@notifications_bp.get("/preview")
+@roles_required(*_RECIPIENT_ROLES)
+def preview():
+    """Read-only, escaped HTML for the desktop bell; no private message body."""
+    tz_name = current_app.config.get("APP_TIMEZONE", "UTC")
+    response = make_response(render_template("notifications/_preview.html",
+        notifications=build_inbox_view(preview_rows(current_user.id), tz_name),
+        unread_total=unread_count(current_user.id), tz_name=tz_name))
     response.headers["Cache-Control"] = "private, no-store"
     response.vary.add("Cookie")
     return response

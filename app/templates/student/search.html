@@ -21,7 +21,7 @@
   {%- endif -%}
 {%- endmacro -%}
 
-<h1>Search learning content</h1>
+<h1 data-workspace-page-heading>Search learning content</h1>
 <p class="ds-section__desc">
   Search the courses, units, lessons, and materials you are enrolled in, and the
   announcements addressed to you. Try a course code, a title, or a keyword your teacher
@@ -44,7 +44,7 @@
   <div class="search-form__filters">
     <div class="field">
       <label class="field__label" for="search-type">Type</label>
-      <select class="field__input" id="search-type" name="type">
+      <select class="field__input" id="search-type" name="type" data-research-id="search_filter">
         {% for value, label in content_type_choices %}
         <option value="{{ value }}" {{ 'selected' if content_type == value else '' }}>{{ label }}</option>
         {% endfor %}
@@ -53,7 +53,7 @@
 
     <div class="field">
       <label class="field__label" for="search-group">Group</label>
-      <select class="field__input" id="search-group" name="group">
+      <select class="field__input" id="search-group" name="group" data-research-id="search_filter">
         <option value="">All my groups</option>
         {% for g in groups %}
         <option value="{{ g.public_id }}"
@@ -66,7 +66,7 @@
 
     <div class="field">
       <label class="field__label" for="search-kind">Material kind</label>
-      <select class="field__input" id="search-kind" name="kind">
+      <select class="field__input" id="search-kind" name="kind" data-research-id="search_filter">
         {% for value, label in material_kind_choices %}
         <option value="{{ value }}" {{ 'selected' if material_kind == value else '' }}>{{ label }}</option>
         {% endfor %}
@@ -113,6 +113,7 @@
   </div>
   {% else %}
     {% set type_headings = {'course': 'Courses', 'unit': 'Units', 'lesson': 'Lessons', 'material': 'Materials', 'announcement': 'Announcements'} %}
+    {% set ordinal = namespace(value=0) %}
     {% for type_name in ['course', 'unit', 'lesson', 'material', 'announcement'] %}
       {% set section = results.get(type_name) %}
       {% if section and section['items'] %}
@@ -123,7 +124,7 @@
           <li class="search-result card">
             <div class="search-result__head">
               <span class="badge badge--primary">{{ item.badge }}</span>
-              <a class="search-result__title" href="{{ destination(item) | trim }}" data-research-id="search_result" data-research-position="{{ loop.index }}">{{ item.title }}</a>
+              {% set ordinal.value = ordinal.value + 1 %}<a class="search-result__title" href="{{ destination(item) | trim }}" data-research-id="search_result"{% if ordinal.value <= 500 %} data-research-position="{{ ordinal.value }}"{% endif %}>{{ item.title }}</a>
             </div>
             {% if item.breadcrumb %}
             <div class="search-result__crumb">{{ item.breadcrumb | join(' › ') }}</div>

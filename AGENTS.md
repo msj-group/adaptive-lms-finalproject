@@ -5,6 +5,18 @@ checkpoint, scope, and any explicit exceptions.
 
 ## 1. Authority and truth
 
+- Latest owner scope, 2026-10-06: enable an end-to-end local Student usage,
+  Researcher review and export rehearsal using the same ordinary workflows
+  as hosting. Source corrections are authorized. Operational-review exports
+  are now allowed, separately labelled and server-scoped; they never become
+  study exports. Preserve local data, classifications, sampling and retention.
+  No reset, migration, automated tests, scheduler or Git change is included.
+- Latest owner scope, 2026-10-06: remove runtime demonstration options and
+  simulated payment workflows. Prepare future hosting with an empty business
+  database; preserve the existing local database. Ordinary manual evaluation
+  uses normal workflows and fictional input, never real study provenance.
+  Source/documentation changes and bounded static review are authorized;
+  no deployment, database reset, new automated tests or Git mutation is included.
 - The current user request and approved Part define authorization and intended changes.
 - The repository, Git state, migrations, and checks actually executed define current state.
 - `docs/APPROVED_REPAIR_CONTRACT.md` records the owner-approved rehabilitation target;

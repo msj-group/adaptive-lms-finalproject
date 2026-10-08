@@ -1,7 +1,11 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'speaking' %}
+{% set activity_phase = 'overview' %}
 {% block title %}{{ activity.title }} — {{ activity.group_name }}{% endblock %}
 {% block portal_nav %}{% set active_nav = 'speaking' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+
 {#- Phase 4 / M06. `activity` and `submission` are plain presentation dicts;
     the row behind them already satisfied the whole visibility formula in SQL,
     and `submission` was looked up by this activity AND this authenticated
@@ -12,7 +16,7 @@
   {{ activity.group_name }} &middot; {{ activity.course_title }} &middot; {{ activity.level_name }} &middot; {{ activity.term_name }}
 </p>
 <div class="ds-row" style="justify-content: space-between; align-items: flex-start; gap: var(--space-4)">
-  <h1 style="margin-top: 0">{{ activity.title }}</h1>
+
   {% if activity.state == "open" %}
   <span class="badge badge--success">Open</span>
   {% else %}
@@ -27,20 +31,26 @@
 {% endwith %}
 
 <div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('student.activities', type='speaking') }}">Back to Activities</a>
+  <a class="btn btn--secondary" href="{{ url_for('student.activities', type='speaking', group=activity.group_public_id) }}">Back to Activities</a>
 </div>
 
 <div class="card" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
     <dd style="margin:0">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
     <dd style="margin:0">{{ activity.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Your answer</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Your answer</dt>
     <dd style="margin:0">
       {% if submission %}<span class="badge badge--success">Submitted</span>
       {% else %}<span class="badge badge--neutral">Not submitted</span>{% endif %}
     </dd>
+</div>
   </dl>
 </div>
 
@@ -56,16 +66,19 @@
 </div>
 {% endif %}
 
+<div class="activity-speaking-layout">
+<aside class="activity-speaking-brief">
 <section>
   <h2>What to say</h2>
   <div class="card">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
        these are Teacher-typed instructions, never stored HTML. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
   </div>
 </section>
 
-{% if submission %}
+</aside>
+<div class="activity-speaking-studio">{% if submission %}
 <section style="margin-top: var(--space-6)">
   <h2>Your Recording</h2>
   <div class="alert alert--success" style="margin-bottom: var(--space-4)">
@@ -87,5 +100,10 @@
   </div>
   <a class="btn btn--primary" href="{{ record_url }}">Open the recorder</a>
 </section>
+{% else %}<div class="empty-state"><div class="empty-state__title">Recording unavailable</div><p>Recording is not available right now. You can still read the task instructions.</p></div>
 {% endif %}
+
+</div>
+</div>
+</div>
 {% endblock %}

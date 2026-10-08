@@ -1,5 +1,5 @@
 from flask import current_app
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from wtforms.fields import DateTimeLocalField
 from app.services.schedule_occurrences import from_app_local, LocalTimeError
 from wtforms import (
@@ -23,6 +23,7 @@ from wtforms.validators import (
 )
 
 from app.extensions import db
+from app.security.passwords import ACCOUNT_PASSWORD_MAX_LENGTH, ACCOUNT_PASSWORD_MIN_LENGTH
 from app.models import (
     AcademicStatus,
     AcademicTerm,
@@ -76,8 +77,7 @@ WEEKDAY_CHOICES = list(enumerate(WEEKDAY_NAMES))
 # documented here as a deliberate scope decision, not an oversight. The
 # maximum bounds the input size reaching Argon2id, since hashing cost
 # scales with input length.
-ACCOUNT_PASSWORD_MIN_LENGTH = 15
-ACCOUNT_PASSWORD_MAX_LENGTH = 128
+# The shared constants above keep administrator and self-service policy aligned.
 
 
 class AcademicTermForm(FlaskForm):

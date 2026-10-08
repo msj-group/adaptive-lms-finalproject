@@ -1,9 +1,13 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'speaking' %}
+{% set activity_phase = 'review' %}
 {% block title %}{{ activity.title }} — Recordings{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface activity-review-list">
+
 {#- Phase 4 / M06, read only. `activity` and every entry of `submissions` are
     plain presentation dicts, so no ORM row reaches this template and rendering
     a row cannot lazy-load anything. `feedback_state` was derived by the route
@@ -12,7 +16,7 @@
     key, a filesystem path, a digest, a byte size or any internal id. There is
     deliberately no delete, replace, score, grade, publish or approval control
     anywhere on this page -- none exists server-side either. -#}
-<h1 style="margin:0">{{ activity.title }} — Recordings</h1>
+
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
 </p>
@@ -25,15 +29,21 @@
 
 <div class="card" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens ({{ tz_name }})</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens ({{ tz_name }})</dt>
     <dd style="margin:0">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due ({{ tz_name }})</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due ({{ tz_name }})</dt>
     <dd style="margin:0">{{ activity.due_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Status</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Status</dt>
     <dd style="margin:0">
       {% if activity.is_published %}<span class="badge badge--success">Published</span>
       {% else %}<span class="badge badge--neutral">Draft</span>{% endif %}
     </dd>
+</div>
   </dl>
 </div>
 
@@ -54,36 +64,40 @@
   <h2>Recordings</h2>
   {% if submissions %}
   <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th>Student</th>
-        <th style="width:14rem">Submitted ({{ tz_name }})</th>
-        <th style="width:12rem">Feedback</th>
-        <th style="width:11rem"></th>
-      </tr>
-    </thead>
-    <tbody>
+  <div class="activity-library-grid">
       {% for item in submissions %}
-      <tr>
-        <td><strong>{{ item.student_name }}</strong></td>
-        <td>{{ item.submitted_local.strftime("%Y-%m-%d %H:%M") }}</td>
-        <td>
+      <article class="activity-library-card">
+<header>
+<span class="activity-card-symbol">{{ activity_ui.symbol(activity_kind,22) }}</span>
+<h3>
+<strong>{{ item.student_name }}</strong>
+</h3>
+</header>
+<dl class="activity-library-meta">
+<div class="activity-fact">
+<dt>Submitted ({{ tz_name }})</dt>
+<dd>{{ item.submitted_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+</div>
+<div class="activity-fact">
+<dt>Feedback</dt>
+<dd>
           {#- Derived from whether a feedback row exists, never from a stored
               status. A row whose reviewer is no longer a teacher is reported
               as its own state, never as "awaiting". -#}
           {% if item.feedback_state == "present" %}<span class="badge badge--success">Feedback provided</span>
           {% elif item.feedback_state == "invalid" %}<span class="badge badge--danger">Needs admin review</span>
           {% else %}<span class="badge badge--neutral">Awaiting feedback</span>{% endif %}
-        </td>
-        <td>
+        </dd>
+</div>
+</dl>
+<footer>
+          {% if item.feedback_state != "invalid" %}<a class="btn btn--primary" href="{{ url_for('teacher.speaking_submission_feedback', group_public_id=group.public_id, speaking_public_id=activity.public_id, submission_public_id=item.public_id) }}">Review feedback</a>{% endif %}
           <a class="btn btn--secondary"
              href="{{ url_for('teacher.speaking_submission_detail', group_public_id=group.public_id, speaking_public_id=activity.public_id, submission_public_id=item.public_id) }}">Listen</a>
-        </td>
-      </tr>
+        </footer>
+</article>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
   </div>
 
   {% if has_prev or has_next %}
@@ -105,4 +119,6 @@
   </div>
   {% endif %}
 </section>
+
+</div>
 {% endblock %}

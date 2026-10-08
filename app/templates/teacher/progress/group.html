@@ -9,7 +9,7 @@
     in this group. There is no control here that changes a student's progress,
     and no such route exists. -#}
 <p style="margin-top: 0"><a href="{{ url_for('teacher.dashboard') }}">&larr; Dashboard</a></p>
-<h1 style="margin-top: 0">{{ group.name }} — Lesson progress</h1>
+<h1 data-workspace-page-heading style="margin-top: 0">{{ group.name }} — Lesson progress</h1>
 <p class="ds-section__desc">
   {{ group.course_title }} &middot; {{ group.level_name }} &middot; {{ group.term_name }}
 </p>
@@ -23,7 +23,7 @@
 
 <p class="ds-section__desc">
   Students mark lessons complete themselves. Progress is counted against the
-  {{ lesson_total }} published lesson{{ "" if lesson_total == 1 else "s" }} in this group's
+  {{ _n('%(count)d published lesson', '%(count)d published lessons', lesson_total) }} in this group's
   active units. It is not a grade or a score.
 </p>
 
@@ -42,7 +42,7 @@
     {% for student in students %}
     <tr>
       <td>{{ student.name }}</td>
-      <td>{{ student.completed }} of {{ lesson_total }}</td>
+      <td><div class="operations-progress"><strong>{{ student.completed }} of {{ lesson_total }}</strong>{% if lesson_total %}<progress value="{{ student.completed }}" max="{{ lesson_total }}" aria-label="{{ student.name }}: {{ student.completed }} of {{ lesson_total }} published lessons marked complete">{{ student.completed }} of {{ lesson_total }}</progress>{% else %}<span class="ds-section__desc">No published lessons; progress ratio unavailable.</span>{% endif %}</div></td>
       <td>{{ student.last_completed_local.strftime("%Y-%m-%d %H:%M") if student.last_completed_local else "—" }}</td>
       <td>{{ student.last_opened_local.strftime("%Y-%m-%d %H:%M") if student.last_opened_local else "—" }}</td>
     </tr>
@@ -50,6 +50,7 @@
   </tbody>
 </table>
 </div>
+<p class="operations-source">Source: saved lesson-completion records for this group's active enrollment episodes. Scope: the active students on this roster page. Range: retained completion history for those episodes, as of this page load. Denominator per student: {{ lesson_total }} currently published lessons in active units. Completion is self-marked work, not a proficiency measure.</p>
 {% if has_prev or has_next %}
 <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Student pages">
   {% if has_prev %}

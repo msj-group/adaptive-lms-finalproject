@@ -118,3 +118,39 @@ def load_token(purpose, token, actor_public_id, target_public_id):
     if payload[_TARGET_FIELD[purpose]] != target_public_id:
         return None
     return payload
+
+
+PURPOSE_EDIT = "message-edit"
+PURPOSE_HIDE = "message-hide"
+PURPOSE_CLEAR = "message-clear"
+_ACTION_PURPOSES = (PURPOSE_EDIT, PURPOSE_HIDE, PURPOSE_CLEAR)
+
+
+def make_action_token(purpose, actor_public_id, thread_public_id, target_public_id, revision, nonce=None):
+    """Bind action, actor, nested target and the displayed revision/watermark.
+
+    Public UUIDs only; no message content or internal database identifiers.
+    """
+    if purpose not in _ACTION_PURPOSES:
+        raise ValueError("Unknown message action.")
+    serializer = URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt=purpose + ".display.v1")
+    return serializer.dumps(dict(purpose=purpose, actor=actor_public_id, thread=thread_public_id,
+                                 target=target_public_id, revision=revision, nonce=nonce or new_nonce()))
+
+
+def load_action_token(purpose, token, actor_public_id, thread_public_id, target_public_id):
+    if purpose not in _ACTION_PURPOSES or not isinstance(token, str) or not token or len(token) > _MAX_TOKEN_LENGTH:
+        return None
+    serializer = URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt=purpose + ".display.v1")
+    try:
+        payload = serializer.loads(token, max_age=TOKEN_MAX_AGE_SECONDS)
+    except BadData:
+        return None
+    fields = {"purpose", "actor", "thread", "target", "revision", "nonce"}
+    if not isinstance(payload, dict) or set(payload) != fields or any(not isinstance(v, str) for v in payload.values()):
+        return None
+    if (payload["purpose"], payload["actor"], payload["thread"], payload["target"]) != (purpose, actor_public_id, thread_public_id, target_public_id):
+        return None
+    if not valid_creation_nonce(payload["nonce"]):
+        return None
+    return payload

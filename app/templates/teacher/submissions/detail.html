@@ -1,9 +1,13 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'assignment' %}
+{% set activity_phase = 'review' %}
 {% block title %}{{ submission.student_name }} — {{ assignment.title }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+
 {#- Phase 4 / M02 + M03. `assignment`, `submission` and `feedback` are
     plain presentation dicts; the route already proved this Teacher's active
     assignment to the Group, the Assignment's ownership by that Group, and
@@ -13,7 +17,7 @@
     so this template never decides authorization. There is deliberately no
     score, grade, rubric, pass/fail, publish, delete or resubmit control
     here -- none exists server-side either. -#}
-<h1 style="margin-top: 0">{{ submission.student_name }}</h1>
+
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   {{ assignment.title }} &middot; {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
 </p>
@@ -25,10 +29,14 @@
 
 <div class="card" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submitted</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submitted</dt>
     <dd style="margin:0">{{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
     <dd style="margin:0">{{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+</div>
   </dl>
 </div>
 
@@ -38,15 +46,19 @@
   {% endfor %}
 {% endwith %}
 
+<div class="workspace-split-review">
+<div>
 <section>
   <h2>Answer</h2>
   <div class="card">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
        a student answer is untrusted text and is never interpreted as HTML
        or Markdown. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ submission.answer_text }}</div>
+    {% include 'activities/_assignment_payload.html' %}
   </div>
 </section>
+</div>
+<div>
 
 <section style="margin-top: var(--space-6)">
   <h2>Feedback</h2>
@@ -58,7 +70,7 @@
       The student sees this text whenever they can open this assignment.
     </p>
     {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
   </div>
 
   {% elif feedback.state == "invalid" %}
@@ -83,4 +95,8 @@
   </a>
   {% endif %}
 </section>
+
+</div>
+</div>
+</div>
 {% endblock %}

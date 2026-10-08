@@ -249,7 +249,7 @@ _FINALIZE_CONFIRM_MESSAGE = (
     "Please tick the confirmation box before finalizing. Finalizing cannot be undone."
 )
 _FINALIZED_OK_MESSAGE = (
-    "Attendance finalized. It is now permanent and can no longer be changed."
+    "Attendance finalized and visible to students. Teacher editing has ended; authorized administrative corrections retain history."
 )
 _ROSTER_BROKEN_MESSAGE = (
     "This attendance session's student list could not be read completely, so nothing was "

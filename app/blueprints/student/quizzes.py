@@ -8,12 +8,14 @@ Routes, all Group- and Quiz-scoped by public identifier:
     POST  /student/groups/<g>/quizzes/<q>/start
     GET   /student/groups/<g>/quizzes/<q>/attempts/<a>/questions/<x>
     POST  /student/groups/<g>/quizzes/<q>/attempts/<a>/questions/<x>/answer
+    POST  /student/groups/<g>/quizzes/<q>/attempts/<a>/questions/<x>/bookmark
     POST  /student/groups/<g>/quizzes/<q>/attempts/<a>/submit
     GET   /student/groups/<g>/quizzes/<q>/attempts/<a>/result
 
 There is deliberately no delete route, no draft-attempt route, no
 "reopen", no answer-key route and no way for a Student to write anything
-except their own selections on their own in-progress attempt.
+except their own selections and session review flags on their own in-progress
+attempt. Review flags never affect grading, limits or deadlines.
 
 **Authorization is SQL-scoped**, exactly as it is for M01 Assignments: a
 Quiz reaches a Student only through
@@ -50,7 +52,7 @@ or reused cache entry could show one Student another's attempt, or show a
 question after the attempt that could answer it ended.
 """
 
-from flask import abort, current_app, flash, redirect, request, url_for
+from flask import abort, current_app, flash, jsonify, redirect, request, url_for
 from flask_login import current_user
 from itsdangerous import BadSignature, URLSafeSerializer
 from sqlalchemy.exc import IntegrityError
@@ -62,6 +64,7 @@ from app.services.request_arrival import submission_received_at
 from app.services.timely_submission import accept_timely_submission, is_timely
 from app.extensions import db
 from app.models import (
+    MAX_QUIZ_QUESTIONS,
     AcademicStatus,
     Enrollment,
     EnrollmentStatus,
@@ -99,6 +102,7 @@ from app.services.quiz_queries import (
     normalize_page,
     question_navigation,
     student_quiz,
+    student_question_index,
     student_quizzes_page,
     student_result_rows,
     teacher_question,
@@ -113,6 +117,7 @@ from app.services.quiz_transactions import (
     settle_due_attempts,
 )
 from app.services.schedule_occurrences import to_app_local, utc_reference_now
+from app.services.quiz_bookmarks import is_bookmarked, read_bookmarks, write_bookmark
 
 _ACTIVE = AcademicStatus.ACTIVE.value
 _ENROLLMENT_ACTIVE = EnrollmentStatus.ACTIVE.value
@@ -175,6 +180,19 @@ def _result_url(group_public_id, quiz_public_id, attempt_public_id):
         quiz_public_id=quiz_public_id,
         attempt_public_id=attempt_public_id,
     )
+
+
+def _autosave_request():
+    """Response negotiation only; never an authorization or CSRF bypass."""
+    return request.headers.get("X-Quiz-Autosave") == "1"
+
+
+def _quiz_json(status=200, **payload):
+    response = jsonify(payload)
+    response.status_code = status
+    response.headers["Cache-Control"] = "private, no-store"
+    response.vary.add("Cookie")
+    return response
 
 
 # ======================================================================
@@ -684,10 +702,9 @@ def quiz_question(
     """One question of one in-progress attempt.
 
     Fetches only what this page needs: the current question, its bounded
-    active options, this attempt's saved selections for it, the two
-    neighbour identifiers, and a bounded progress count. Never the whole
-    Quiz, never another question's options, and never a per-question
-    query loop.
+    active options, this attempt's saved selections for it, and bounded
+    question identifiers/progress. No other question's prompt or
+    options, and never a per-question query loop.
     """
     reference_utc = _now()
     preview = _visible_quiz_or_404(group_public_id, quiz_public_id, reference_utc)
@@ -707,15 +724,29 @@ def quiz_question(
     question = teacher_question(quiz.id, question_public_id)
     if question is None:
         abort(404)
-    navigation = question_navigation(quiz.id, question_public_id)
-    if navigation is None:
+    index_rows = student_question_index(quiz.id)
+    public_ids = [row.public_id for row in index_rows]
+    if len(index_rows) > MAX_QUIZ_QUESTIONS or question_public_id not in public_ids:
         abort(404)
-    position, total, previous_id, next_id = navigation
+    index = public_ids.index(question_public_id)
+    position, total = index + 1, len(public_ids)
+    previous_id = public_ids[index - 1] if index else None
+    next_id = public_ids[index + 1] if index + 1 < total else None
 
     options = active_options_ordered(question.id)
     selected = attempt_selected_option_ids(attempt.id, question.id)
-    question_ids = quiz_question_ids(quiz.id)
+    question_ids = [row.id for row in index_rows]
     answered = answered_question_ids(attempt.id, question_ids)
+    bookmarks = read_bookmarks(current_user.public_id, current_user.auth_version)
+    question_links = [
+        {
+            "public_id": item.public_id,
+            "position": number,
+            "answered": item.id in answered,
+            "bookmarked": is_bookmarked(bookmarks, attempt_public_id, number),
+        }
+        for number, item in enumerate(index_rows, 1)
+    ]
     tz_name = _tz_name()
 
     return private_no_store(
@@ -748,6 +779,8 @@ def quiz_question(
         next_public_id=next_id,
         answered_count=len(answered),
         unanswered_count=max(total - len(answered), 0),
+        question_links=question_links,
+        bookmarked=question_links[index]["bookmarked"],
         answer_token=_make_answer_token(
             current_user.public_id, group_public_id, quiz_public_id,
             attempt_public_id, question_public_id, quiz.version, attempt.status,
@@ -777,7 +810,9 @@ def quiz_answer(
     refused identically, and nothing is written.
 
     Cardinality while saving: a single-answer question needs exactly one
-    selection; a multiple-answer question needs at least one. Final
+    selection; a multiple-answer question needs at least one. Autosave also
+    accepts an empty set to clear selections without deleting answer history.
+    Such a question is unanswered, including for final submission. Final
     correctness still requires the complete exact set, which is a grading
     rule rather than a saving one -- a Student is allowed to save a
     partial answer and come back to it.
@@ -835,10 +870,20 @@ def quiz_answer(
     if expire_if_due(attempt, reference_utc):
         db.session.commit()
         note_outcome("quiz_answer", "expired")
+        if _autosave_request():
+            return _quiz_json(
+                409, error="Your time ran out, so this attempt was submitted as it was.",
+                redirect_url=_result_url(group_public_id, quiz_public_id, attempt_public_id),
+            )
         flash("Your time ran out, so this attempt was submitted as it was.", "danger")
         return redirect(_result_url(group_public_id, quiz_public_id, attempt_public_id))
     if attempt.is_finalized:
         db.session.rollback()
+        if _autosave_request():
+            return _quiz_json(
+                409, error="This attempt has ended.",
+                redirect_url=_result_url(group_public_id, quiz_public_id, attempt_public_id),
+            )
         return redirect(_result_url(group_public_id, quiz_public_id, attempt_public_id))
 
     question = teacher_question(quiz.id, question_public_id)
@@ -856,6 +901,8 @@ def quiz_answer(
     ):
         db.session.rollback()
         note_outcome("quiz_answer", "rejected")
+        if _autosave_request():
+            return _quiz_json(409, error=_STALE_MESSAGE)
         flash(_STALE_MESSAGE, "danger")
         return redirect(
             _question_url(
@@ -871,10 +918,14 @@ def quiz_answer(
     # cannot drift in what they accept.
     locked_options = lock_active_option_rows(locked_question.id)
 
-    error = _validate_selection(submitted_options, locked_options, locked_question)
+    error = _validate_selection(
+        submitted_options, locked_options, locked_question, allow_empty=_autosave_request()
+    )
     if error is not None:
         db.session.rollback()
         note_outcome("quiz_answer", "rejected")
+        if _autosave_request():
+            return _quiz_json(422, error=error)
         flash(error, "danger")
         return redirect(
             _question_url(
@@ -887,9 +938,8 @@ def quiz_answer(
     # Replacement, not accumulation, inside this one transaction -- see
     # `quiz_transactions.replace_answer_selections`, which owns that rule
     # for both the ordinary Quiz and the Listening surfaces.
-    replace_answer_selections(attempt, locked_question, chosen, reference_utc)
-
     try:
+        replace_answer_selections(attempt, locked_question, chosen, reference_utc)
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
@@ -898,6 +948,10 @@ def quiz_answer(
         ) is None:
             abort(404)
         note_outcome("quiz_answer", "rejected")
+        if _autosave_request():
+            return _quiz_json(
+                409, error="This answer could not be saved. Please reload the page and try again."
+            )
         flash(
             "This answer could not be saved. Please reload the page and try again.",
             "danger",
@@ -908,9 +962,11 @@ def quiz_answer(
             )
         )
 
+    note_outcome("quiz_answer", "saved")
+    if _autosave_request():
+        return _quiz_json(question_public_id=question_public_id, answered=bool(submitted_options))
     navigation = question_navigation(quiz_id, question_public_id)
     next_id = navigation[3] if navigation else None
-    note_outcome("quiz_answer", "saved")
     flash("Answer saved.", "success")
     if request.form.get("go") == "next" and next_id:
         return redirect(
@@ -923,7 +979,7 @@ def quiz_answer(
     )
 
 
-def _validate_selection(submitted, locked_options, question):
+def _validate_selection(submitted, locked_options, question, *, allow_empty=False):
     """``None`` when the submitted option identifiers are acceptable, else
     a Student-facing sentence.
 
@@ -935,6 +991,8 @@ def _validate_selection(submitted, locked_options, question):
         return "That answer could not be read. Please reload the page and try again."
     if any(public_id not in locked_options for public_id in submitted):
         return "That answer could not be read. Please reload the page and try again."
+    if allow_empty and not submitted:
+        return None
     if question.answer_mode == QuestionAnswerMode.SINGLE.value:
         if len(submitted) != 1:
             return "Choose exactly one answer for this question."
@@ -942,6 +1000,57 @@ def _validate_selection(submitted, locked_options, question):
     if len(submitted) < 1:
         return "Choose at least one answer for this question."
     return None
+
+
+@student_bp.post(
+    "/groups/<group_public_id>/quizzes/<quiz_public_id>"
+    "/attempts/<attempt_public_id>/questions/<question_public_id>/bookmark"
+)
+@roles_required(UserRole.STUDENT.value)
+def quiz_bookmark(group_public_id, quiz_public_id, attempt_public_id, question_public_id):
+    """Toggle an own ongoing question's session review flag, never its answer."""
+    reference_utc = _now()
+    preview = _visible_quiz_or_404(group_public_id, quiz_public_id, reference_utc)
+    quiz_id = preview[0].id
+    preview_attempt = _own_attempt_or_404(quiz_id, attempt_public_id)
+    settle_due_attempts(
+        group_public_id, quiz_id, reference_utc, attempt_ids=[preview_attempt.id]
+    )
+    quiz = _visible_quiz_or_404(group_public_id, quiz_public_id, reference_utc)[0]
+    attempt = _own_attempt_or_404(quiz.id, attempt_public_id)
+    if attempt.is_finalized:
+        target = _result_url(group_public_id, quiz_public_id, attempt_public_id)
+        if _autosave_request():
+            return _quiz_json(409, error="This attempt has ended.", redirect_url=target)
+        return private_redirect(target)
+    if _answer_token_is_stale(
+        request.form.get("answer_state", ""), current_user.public_id,
+        group_public_id, quiz_public_id, attempt_public_id, question_public_id, quiz, attempt,
+    ):
+        if _autosave_request():
+            return _quiz_json(409, error=_STALE_MESSAGE)
+        flash(_STALE_MESSAGE, "danger")
+        return private_redirect(
+            _question_url(group_public_id, quiz_public_id, attempt_public_id, question_public_id)
+        )
+    rows = student_question_index(quiz.id)
+    ids = [row.public_id for row in rows]
+    if len(rows) > MAX_QUIZ_QUESTIONS or question_public_id not in ids:
+        abort(404)
+    marking = request.form.get("bookmark")
+    if marking not in ("yes", "no"):
+        abort(400)
+    state = read_bookmarks(current_user.public_id, current_user.auth_version)
+    marked = marking == "yes"
+    response = (
+        _quiz_json(question_public_id=question_public_id, bookmarked=marked)
+        if _autosave_request() else private_redirect(
+            _question_url(group_public_id, quiz_public_id, attempt_public_id, question_public_id)
+        )
+    )
+    return write_bookmark(
+        response, state, attempt_public_id, ids.index(question_public_id) + 1, marked
+    )
 
 
 # ======================================================================

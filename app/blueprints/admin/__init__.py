@@ -38,7 +38,6 @@ from app.blueprints.admin import financial_reports  # noqa: E402,F401
 from app.blueprints.admin import invoice_register  # noqa: E402,F401
 from app.blueprints.admin import student_accounts  # noqa: E402,F401
 from app.blueprints.admin import general_finance  # noqa: E402,F401
-from app.blueprints.admin import general_payment_intents  # noqa: E402,F401
 from app.blueprints.admin import operational_history  # noqa: E402,F401
 from app.blueprints.admin import invoice_workspace  # noqa: E402,F401
 from app.blueprints.admin import payment_workspace  # noqa: E402,F401

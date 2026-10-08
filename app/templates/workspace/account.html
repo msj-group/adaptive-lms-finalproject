@@ -1,0 +1,50 @@
+{% extends "layouts/research_base.html" if current_user.role == 'researcher' else "layouts/admin_base.html" if current_user.role == 'administrator' else "layouts/portal_base.html" %}
+{% import "_figma_ui.html" as account_ui %}
+{% block title %}Account settings{% endblock %}
+{% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block feature_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">{% endblock %}
+
+{% macro errors(field) -%}
+{% if field.errors %}<ul class="account-errors" id="{{ field.id }}-errors" role="alert">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+{%- endmacro %}
+
+{% macro account_content() %}
+{% if current_user.role != 'researcher' %}
+{% for category, message in get_flashed_messages(with_categories=true) %}<div class="alert alert--{{ category }}" role="status">{{ message }}</div>{% endfor %}
+{% endif %}
+<p class="account-intro">Make this space yours and keep your account secure.</p>
+<div class="account-settings-grid">
+  <section class="card account-section" aria-labelledby="photo-heading">
+    <h2 id="photo-heading">Profile photo</h2>
+    <div class="account-profile">{{ account_ui.avatar(current_user.full_name, account_photo_url()) }}<div><strong dir="auto">{{ current_user.full_name }}</strong><span>{{ current_user.role|capitalize }}</span></div></div>
+    <form method="post" action="{{ url_for('account.upload_photo') }}" enctype="multipart/form-data" data-research-form="account_photo_submit">
+      {{ photo_form.hidden_tag() }}{{ errors(photo_form.state) }}{{ errors(photo_form.csrf_token) }}
+      <div class="field">
+        {{ photo_form.photo.label(class_="field__label") }}
+        {{ photo_form.photo(class_="field__input account-file", accept="image/jpeg,image/png,image/webp", required=true, aria_describedby=photo_form.photo.id ~ '-hint' ~ (' ' ~ photo_form.photo.id ~ '-errors' if photo_form.photo.errors else ''), aria_invalid='true' if photo_form.photo.errors else 'false') }}
+        <p class="account-hint" id="{{ photo_form.photo.id }}-hint">JPG, PNG or WebP · up to 5 MB and 16 million pixels. Still images only. Your photo will be cropped to a square.</p>
+        {{ errors(photo_form.photo) }}
+      </div>
+      {{ photo_form.submit(class_="btn btn--primary", data_research_id="account_photo_submit") }}
+    </form>
+  </section>
+  <section class="card account-section" aria-labelledby="password-heading">
+    <h2 id="password-heading">Change password</h2>
+    <p class="account-hint" id="password-help">Use 15–128 characters. A long passphrase works well. After saving, sign in again; your other sessions will also end.</p>
+    <form method="post" action="{{ url_for('account.password') }}" data-research-form="account_password_submit">
+      {{ password_form.hidden_tag() }}{{ errors(password_form.state) }}{{ errors(password_form.csrf_token) }}
+      {% for field in [password_form.current_password, password_form.new_password, password_form.confirm_password] %}
+      <div class="field">
+        {{ field.label(class_="field__label") }}
+        {{ field(class_="field__input", autocomplete='current-password' if field.name.endswith('current_password') else 'new-password', required=true, minlength=15 if field.name.endswith('new_password') else false, maxlength=1024 if field.name.endswith('current_password') else 128, aria_describedby='password-help' ~ (' ' ~ field.id ~ '-errors' if field.errors else ''), aria_invalid='true' if field.errors else 'false') }}
+        {{ errors(field) }}
+      </div>
+      {% endfor %}
+      {{ password_form.submit(class_="btn btn--primary", data_research_id="account_password_submit") }}
+    </form>
+  </section>
+</div>
+{% endmacro %}
+{% block portal_content %}{{ account_content() }}{% endblock %}
+{% block admin_content %}{{ account_content() }}{% endblock %}
+{% block research_content %}{{ account_content() }}{% endblock %}

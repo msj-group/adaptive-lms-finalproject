@@ -1,10 +1,14 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'assignment' %}
+{% set activity_phase = 'library' %}
 {% import "_dashboard_macros.html" as dash %}
 {% block title %}{{ group.name }} — Assignments{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+
 {#- Phase 4 / M01. `assignments` is a list of plain presentation dicts built by
     app.services.assignment_queries.build_teacher_view, so no Assignment ORM
     row reaches this template and rendering one cannot lazy-load or make an
@@ -14,7 +18,7 @@
     the Teacher's access to it was already proven by the active
     GroupTeacherAssignment check. Every destination uses public ids only. -#}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 style="margin:0">{{ group.name }} — Assignments</h1>
+
   {{ dash.operational_badge(operational) }}
 </div>
 
@@ -26,14 +30,22 @@
 
 <div class="card" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
     <dd style="margin:0">{{ group.name }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
     <dd style="margin:0">{{ group.course.title }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
     <dd style="margin:0">{{ group.course.level.name }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
     <dd style="margin:0">{{ group.academic_term.name }} ({{ group.academic_term.start_date.isoformat() }} – {{ group.academic_term.end_date.isoformat() }})</dd>
+</div>
   </dl>
 </div>
 
@@ -54,8 +66,8 @@
 {% endif %}
 
 <div class="alert alert--info" style="margin-bottom: var(--space-6)">
-  <strong>Submissions are final.</strong> A student submits one plain-text answer once, before the deadline, and can never edit or
-  replace it. As soon as an assignment has <em>any</em> submission its title, instructions, opening time and deadline are locked,
+  <strong>Submissions are final.</strong> A student submits one text answer or one file, as selected by you, before the deadline, and can never edit or
+  replace it. As soon as an assignment has <em>any</em> submission its title, instructions, type, opening time and deadline are locked,
   because students answered exactly that wording within exactly that window. Publishing and unpublishing stay available and never
   remove a submission.
 </div>
@@ -72,29 +84,30 @@
   <h2>Assignments</h2>
   {% if assignments %}
   <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th>Title</th>
-        <th style="width:8rem">Status</th>
-        <th style="width:11rem">Student visibility</th>
-        <th style="width:12rem">Opens ({{ tz_name }})</th>
-        <th style="width:12rem">Due ({{ tz_name }})</th>
-        <th style="width:22rem">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
+  <div class="activity-library-grid">
       {% for item in assignments %}
-      <tr>
-        <td><strong>{{ item.title }}</strong></td>
-        <td>
+      <article class="activity-library-card">
+<header>
+<span class="activity-card-symbol">{{ activity_ui.symbol(activity_kind,22) }}</span>
+<h3>
+<a href="{{ url_for('teacher.assignment_detail', group_public_id=group.public_id, assignment_public_id=item.public_id) }}" dir="auto">{{ item.title }}</a>
+</h3>
+</header>
+<dl class="activity-library-meta">
+<div class="activity-fact"><dt>Submission type</dt><dd>{{ 'Single file' if item.submission_type == 'file' else 'Text answer' }}</dd></div>
+<div class="activity-fact">
+<dt>Status</dt>
+<dd>
           {% if item.is_published %}
           <span class="badge badge--success">Published</span>
           {% else %}
           <span class="badge badge--neutral">Draft</span>
           {% endif %}
-        </td>
-        <td>
+        </dd>
+</div>
+<div class="activity-fact">
+<dt>Student visibility</dt>
+<dd>
           {% if not item.is_published %}
           <span class="badge badge--neutral">Not visible (draft)</span>
           {% elif not operational %}
@@ -106,10 +119,18 @@
           {% else %}
           <span class="badge badge--neutral">Past due</span>
           {% endif %}
-        </td>
-        <td>{{ item.opens_local.strftime("%Y-%m-%d %H:%M") }}</td>
-        <td>{{ item.due_local.strftime("%Y-%m-%d %H:%M") }}</td>
-        <td>
+        </dd>
+</div>
+<div class="activity-fact">
+<dt>Opens ({{ tz_name }})</dt>
+<dd>{{ item.opens_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+</div>
+<div class="activity-fact">
+<dt>Due ({{ tz_name }})</dt>
+<dd>{{ item.due_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+</div>
+</dl>
+<footer>
           <div class="ds-row" style="gap: var(--space-2)">
             {#- Phase 4 / M02: `has_submissions` comes from ONE bounded query for
                 the whole page, never a per-row lookup. Hiding Edit is a
@@ -136,11 +157,10 @@
             </form>
             {% endif %}
           </div>
-        </td>
-      </tr>
+        </footer>
+</article>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
   </div>
 
   {% if has_prev or has_next %}
@@ -169,8 +189,10 @@
 <script>
   document.querySelectorAll("form[data-confirm]").forEach(function (form) {
     form.addEventListener("submit", function (event) {
-      if (!confirm(form.dataset.confirm)) { event.preventDefault(); }
+      if (!window.aelmsConfirm && !confirm(form.dataset.confirm)) { event.preventDefault(); }
     });
   });
 </script>
+
+</div>
 {% endblock %}

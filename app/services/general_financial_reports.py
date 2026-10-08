@@ -76,7 +76,7 @@ def build_general_report(key, args, *, export=False):
         manual = select(User.full_name.label("student"),literal("Bank transfer").label("kind"),PaymentTransaction.amount.label("amount"),
             PaymentTransaction.status.label("state"),PaymentTransaction.recorded_at.label("moment"),literal(1).label("source"),PaymentTransaction.id.label("row_id")).join(User,User.id==PaymentTransaction.student_id).where(
                 User.role=="student",PaymentTransaction.deleted_at.is_(None),PaymentTransaction.status.in_(["pending","rejected"]))
-        intents = select(User.full_name,literal("Sandbox intent"),PaymentIntent.amount,PaymentIntent.status,PaymentIntent.created_at,literal(2),PaymentIntent.id).join(
+        intents = select(User.full_name,literal("Historical payment request"),PaymentIntent.amount,PaymentIntent.status,PaymentIntent.created_at,literal(2),PaymentIntent.id).join(
             Invoice,Invoice.id==PaymentIntent.invoice_id).join(User,User.id==Invoice.student_id).where(User.role=="student",PaymentIntent.status.in_(["pending","provider_succeeded"]))
         events = select(User.full_name,literal("Provider reconciliation"),PaymentProviderEvent.amount,PaymentProviderEvent.outcome,PaymentProviderEvent.received_at,literal(3),PaymentProviderEvent.id).join(
             PaymentIntent,PaymentIntent.id==PaymentProviderEvent.payment_intent_id).join(Invoice,Invoice.id==PaymentIntent.invoice_id).join(User,User.id==Invoice.student_id).where(

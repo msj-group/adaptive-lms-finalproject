@@ -9,7 +9,7 @@
 {% endblock %}
 {% block portal_content %}
 <div class="ds-page" style="max-width: 720px; padding: 0">
-  <h1>{{ 'Edit Rich Text Material' if material else 'New Rich Text Material' }}</h1>
+  <h1 data-workspace-page-heading>{{ 'Edit Rich Text Material' if material else 'New Rich Text Material' }}</h1>
   <p class="ds-section__desc">
     {{ group.name }} — {{ unit.title }} — {{ lesson.title }}
   </p>
@@ -41,23 +41,23 @@
     </div>
 
     <div class="field" style="max-width:none; margin-top: var(--space-4)">
-      {{ form.content_html.label(class_="field__label") }}
+      {{ form.content_html.label(class_="field__label", for_="material-content-editor") }}
       <div data-rte-root>
         <div class="rte-toolbar" role="toolbar" aria-label="Formatting">
-          <button type="button" class="rte-toolbar__btn" data-command="bold"><strong>B</strong></button>
-          <button type="button" class="rte-toolbar__btn" data-command="italic"><em>I</em></button>
-          <button type="button" class="rte-toolbar__btn" data-command="underline"><u>U</u></button>
-          <button type="button" class="rte-toolbar__btn" data-command="formatBlock" data-value="h2">H2</button>
-          <button type="button" class="rte-toolbar__btn" data-command="formatBlock" data-value="h3">H3</button>
-          <button type="button" class="rte-toolbar__btn" data-command="formatBlock" data-value="p">¶</button>
-          <button type="button" class="rte-toolbar__btn" data-command="insertUnorderedList">• List</button>
-          <button type="button" class="rte-toolbar__btn" data-command="insertOrderedList">1. List</button>
+          <button type="button" class="rte-toolbar__btn" data-command="bold" aria-label="Bold" title="Bold"><strong>B</strong></button>
+          <button type="button" class="rte-toolbar__btn" data-command="italic" aria-label="Italic" title="Italic"><em>I</em></button>
+          <button type="button" class="rte-toolbar__btn" data-command="underline" aria-label="Underline" title="Underline"><u>U</u></button>
+          <button type="button" class="rte-toolbar__btn" data-command="formatBlock" data-value="h2" aria-label="Heading level 2" title="Heading level 2">H2</button>
+          <button type="button" class="rte-toolbar__btn" data-command="formatBlock" data-value="h3" aria-label="Heading level 3" title="Heading level 3">H3</button>
+          <button type="button" class="rte-toolbar__btn" data-command="formatBlock" data-value="p" aria-label="Paragraph" title="Paragraph">¶</button>
+          <button type="button" class="rte-toolbar__btn" data-command="insertUnorderedList" aria-label="Bullet list" title="Bullet list">• List</button>
+          <button type="button" class="rte-toolbar__btn" data-command="insertOrderedList" aria-label="Numbered list" title="Numbered list">1. List</button>
           <button type="button" class="rte-toolbar__btn" data-command="formatBlock" data-value="blockquote">Quote</button>
           <button type="button" class="rte-toolbar__btn" data-command="formatBlock" data-value="pre">Code</button>
-          <button type="button" class="rte-toolbar__btn" data-command="insertHorizontalRule">―</button>
-          <button type="button" class="rte-toolbar__btn" data-command="createLink">Link</button>
+          <button type="button" class="rte-toolbar__btn" data-command="insertHorizontalRule" aria-label="Horizontal rule" title="Horizontal rule">―</button>
+          <button type="button" class="rte-toolbar__btn" data-command="createLink" aria-label="Insert HTTPS link" title="Insert HTTPS link">Link</button>
         </div>
-        <div class="rte-editor" contenteditable="true" aria-label="Material content"></div>
+        <div class="rte-editor" id="material-content-editor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Material content"></div>
         {{ form.content_html() }}
       </div>
       <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
@@ -77,11 +77,11 @@
       {% for error in form.search_keywords.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    <div class="ds-row" style="margin-top: var(--space-6)">
+    <p><button type="button" class="btn btn--secondary" data-material-preview data-preview-url="{{ url_for('workspace.material_preview') }}">Preview formatted content</button></p><section class="card" data-material-preview-output hidden aria-label="Sanitized content preview"></section><div class="ds-row" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
       <a class="btn btn--secondary" href="{{ url_for('teacher.lesson_materials', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">Cancel</a>
     </div>
   </form>
 </div>
-<script src="{{ url_for('static', filename='js/material_editor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/material_editor.js') }}" defer></script>
 {% endblock %}

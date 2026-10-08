@@ -95,6 +95,8 @@ from app.services.assignment_queries import (
     teacher_assignments_page,
 )
 from app.services.group_transactions import lock_group_in_open_transaction
+from app.services.assignment_files import submission_uploaded_file
+from app.services.material_serving import serve_uploaded_file
 from app.services.schedule_occurrences import to_app_local, utc_reference_now
 from app.services.submission_feedback_queries import (
     FEEDBACK_INVALID,
@@ -125,7 +127,7 @@ def _tz_name():
 #: by every rejection path so the early check and the authoritative
 #: post-lock check can never explain the same rule differently.
 _FROZEN_MESSAGE = (
-    "This assignment has student submissions, so its title, instructions, and time window "
+    "This assignment has student submissions, so its title, instructions, submission type, and time window "
     "can no longer be changed. Students answered exactly this wording within exactly this "
     "window, and rewriting it afterwards would change what their work was for. You can still "
     "publish or unpublish it, and you can read every submission."
@@ -306,6 +308,20 @@ def group_assignments(group_public_id):
 # ----------------------------------------------------------------------
 
 
+@teacher_bp.get("/groups/<group_public_id>/assignments/<assignment_public_id>")
+@roles_required(UserRole.TEACHER.value)
+def assignment_detail(group_public_id, assignment_public_id):
+    """Read-only brief with the same nested authorization as all assignment tools."""
+    group = _teacher_group_or_404(group_public_id)
+    assignment = _assignment_for_group_or_404(group, assignment_public_id)
+    frozen = assignment_has_submissions(assignment.id)
+    item = build_teacher_view([assignment], _tz_name(), utc_reference_now(),
+        {assignment.id} if frozen else set())[0]
+    item["instructions"] = assignment.instructions
+    return _private_no_store("teacher/assignments/detail.html", group=group,
+        assignment=item, operational=_group_is_operational(group), tz_name=_tz_name())
+
+
 @teacher_bp.route("/groups/<group_public_id>/assignments/new", methods=["GET", "POST"])
 @roles_required(UserRole.TEACHER.value)
 def assignment_create(group_public_id):
@@ -323,6 +339,7 @@ def assignment_create(group_public_id):
     if form.validate_on_submit():
         title = form.title.data.strip()
         instructions = form.instructions.data.strip()
+        submission_type = form.submission_type.data
         opens_at = form.opens_at_utc
         due_at = form.due_at_utc
         term_id = preview_group.academic_term_id
@@ -350,6 +367,7 @@ def assignment_create(group_public_id):
             group_id=group.id,
             title=title,
             instructions=instructions,
+            submission_type=submission_type,
             opens_at=opens_at,
             due_at=due_at,
             status=_DRAFT,
@@ -399,7 +417,7 @@ def _render_assignment_form(form, group_public_id, assignment, snapshot_token):
 # ----------------------------------------------------------------------
 
 _ASSIGNMENT_EDIT_SNAPSHOT_SALT = "teacher.assignment-edit-snapshot.phase4-m01.v1"
-_ASSIGNMENT_EDIT_SNAPSHOT_FIELDS = ("public_id", "title", "instructions", "opens_at", "due_at")
+_ASSIGNMENT_EDIT_SNAPSHOT_FIELDS = ("public_id", "title", "instructions", "submission_type", "opens_at", "due_at")
 
 #: Canonical, deterministic serialization for the two datetime snapshot
 #: fields. A fixed second-precision ISO string, so a value that survives
@@ -428,6 +446,7 @@ def _assignment_snapshot_payload(assignment):
         "public_id": assignment.public_id,
         "title": assignment.title,
         "instructions": assignment.instructions,
+        "submission_type": assignment.submission_type,
         "opens_at": assignment.opens_at.strftime(_SNAPSHOT_DATETIME_FORMAT),
         "due_at": assignment.due_at.strftime(_SNAPSHOT_DATETIME_FORMAT),
     }
@@ -489,6 +508,7 @@ def _form_defaults_from(assignment, tz_name):
     return {
         "title": assignment.title,
         "instructions": assignment.instructions,
+        "submission_type": assignment.submission_type,
         "opens_at": to_app_local(tz_name, assignment.opens_at),
         "due_at": to_app_local(tz_name, assignment.due_at),
     }
@@ -549,6 +569,7 @@ def assignment_edit(group_public_id, assignment_public_id):
     if form.validate_on_submit():
         title = form.title.data.strip()
         instructions = form.instructions.data.strip()
+        submission_type = form.submission_type.data
         opens_at = form.opens_at_utc
         due_at = form.due_at_utc
         term_id = preview_group.academic_term_id
@@ -604,6 +625,7 @@ def assignment_edit(group_public_id, assignment_public_id):
         # was open is left intact.
         assignment.title = title
         assignment.instructions = instructions
+        assignment.submission_type = submission_type
         assignment.opens_at = opens_at
         assignment.due_at = due_at
         try:
@@ -842,3 +864,12 @@ def submission_detail(group_public_id, assignment_public_id, submission_public_i
         tz_name=tz_name,
         submissions_url=_submissions_url(group_public_id, assignment_public_id),
     )
+
+
+@teacher_bp.get("/groups/<group_public_id>/assignments/<assignment_public_id>/submissions/<submission_public_id>/file")
+@roles_required(UserRole.TEACHER.value)
+def submission_file_download(group_public_id, assignment_public_id, submission_public_id):
+    group = _teacher_group_or_404(group_public_id)
+    assignment = _assignment_for_group_or_404(group, assignment_public_id)
+    uploaded = submission_uploaded_file(assignment.id, submission_public_id)
+    return serve_uploaded_file(uploaded, current_user.id, force_attachment=True)

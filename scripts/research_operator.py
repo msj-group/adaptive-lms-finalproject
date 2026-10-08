@@ -8,7 +8,6 @@ research data.
 
     python scripts/research_operator.py exclude EMAIL
     python scripts/research_operator.py reinstate EMAIL [--lift-legacy-exclusion]
-    python scripts/research_operator.py mark-demo EMAIL
     python scripts/research_operator.py status EMAIL
     python scripts/research_operator.py list-excluded
     python scripts/research_operator.py purge-expired [--execute]
@@ -26,10 +25,6 @@ excluded Student.
 refusal or withdrawal in the removed consent workflow) is lifted only with
 ``--lift-legacy-exclusion``, which states that the external process changed
 it.
-
-``mark-demo`` marks a demonstration or development account. Its sessions are
-stored as ``demo`` and nothing of it is ever exported. Mark every such
-Student account before collection starts.
 
 ``status`` and ``list-excluded`` print research codes next to account
 emails. That is identity recovery: keep the output private.
@@ -80,8 +75,6 @@ def _parser():
     reinstate = commands.add_parser("reinstate")
     reinstate.add_argument("email")
     reinstate.add_argument("--lift-legacy-exclusion", action="store_true")
-    demo = commands.add_parser("mark-demo")
-    demo.add_argument("email")
     status = commands.add_parser("status")
     status.add_argument("email")
     listing = commands.add_parser("list-excluded")
@@ -123,13 +116,6 @@ def main(argv=None, app=None, out=None, err=None):
             if result != operator.REINSTATED:
                 return _refused(result, err)
             print(f"Reinstated: {code}. The Student is collected again from the next page.",
-                  file=out)
-            return 0
-        if args.command == "mark-demo":
-            result, code = operator.mark_demo(args.email, actor_id=actor_id)
-            if result != operator.MARKED_DEMO:
-                return _refused(result, err)
-            print(f"Marked as demonstration data: {code}. Nothing of it is ever exported.",
                   file=out)
             return 0
         if args.command == "status":

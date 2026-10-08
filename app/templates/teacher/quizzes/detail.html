@@ -1,9 +1,13 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'quiz' %}
+{% set activity_phase = 'overview' %}
 {% block title %}{{ quiz.title }} — {{ group.name }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+
 {#- Phase 4 / M04A + M04B. `quiz` and every entry of `questions` are plain
     presentation dicts built by app.services.quiz_queries; no ORM row and no
     internal id reaches this template, so rendering can never lazy-load or
@@ -19,7 +23,7 @@
     locked rows by each write route, so this template never decides
     authorization -- hiding a control here is a courtesy, not the rule. -#}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
-  <h1 style="margin:0">{{ quiz.title }}</h1>
+
   <span class="ds-row" style="gap: var(--space-2)">
     {% if published %}
     <span class="badge badge--success">Published</span>
@@ -44,7 +48,7 @@
   {#- Every control below is hidden purely as a courtesy: the same rules are
       re-checked against the locked rows in each write route, so a bookmarked
       or forged request is refused whatever this template shows. -#}
-  {% if operational and not frozen_message %}
+  {% if operational and not published and not frozen_message %}
   <a class="btn btn--primary" href="{{ url_for('teacher.quiz_edit', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">Edit Quiz</a>
   <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_settings', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">Settings</a>
   {% endif %}
@@ -71,7 +75,7 @@
   {{ availability.opens_local.strftime("%Y-%m-%d %H:%M") }} and can start an attempt until
   {{ availability.closes_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}); after that they can still read
   the attempts they already made. Each student may start
-  {{ availability.attempt_limit }} attempt{{ "" if availability.attempt_limit == 1 else "s" }}{% if availability.time_limit_minutes %},
+  {{ _n('%(count)d attempt', '%(count)d attempts', availability.attempt_limit) }}{% if availability.time_limit_minutes %},
   each limited to {{ availability.time_limit_minutes }} minutes or the closing time, whichever comes first{% endif %}.
   Attempts are graded automatically, one point per question, with no partial credit and no pass or fail.
   Students never see which options are correct.
@@ -92,14 +96,22 @@
 <div class="card" style="margin-bottom: var(--space-6)">
   <div class="card__title" style="margin-bottom: var(--space-2)">Availability</div>
   <dl style="display:grid; grid-template-columns: 160px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
     <dd style="margin:0">{% if availability.opens_local %}{{ availability.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}){% else %}Not set{% endif %}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Closes</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Closes</dt>
     <dd style="margin:0">{% if availability.closes_local %}{{ availability.closes_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}){% else %}Not set{% endif %}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time limit</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time limit</dt>
     <dd style="margin:0">{% if availability.time_limit_minutes %}{{ availability.time_limit_minutes }} minutes{% else %}None{% endif %}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Attempts allowed</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Attempts allowed</dt>
     <dd style="margin:0">{{ availability.attempt_limit }}</dd>
+</div>
   </dl>
   {% if readiness %}
   <div class="alert alert--warning" style="margin-top: var(--space-3); margin-bottom: 0">
@@ -125,55 +137,67 @@
 
 <div class="card" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>
     <dd style="margin:0">{{ quiz.created_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Last changed</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Last changed</dt>
     <dd style="margin:0">{{ quiz.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+</div>
   </dl>
 </div>
 
+<div class="activity-author-layout">
+<div>
 <section>
   <h2>Instructions</h2>
   <div class="card">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
        authored text is never interpreted as HTML or Markdown. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ quiz.instructions }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ quiz.instructions }}</div>
   </div>
 </section>
 
-<section style="margin-top: var(--space-6)">
+<section id="activity-questions" style="margin-top: var(--space-6)">
   <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-3)">
     <h2 style="margin:0">Questions</h2>
-    {% if operational %}
+    {% if operational and not published and not frozen_message %}
     <a class="btn btn--primary" href="{{ url_for('teacher.quiz_question_create', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">Add Question</a>
     {% endif %}
   </div>
 
   {% if questions %}
   <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th style="width:3rem">#</th>
-        <th>Question</th>
-        <th style="width:11rem">Answer mode</th>
-        <th style="width:6rem">Options</th>
-        <th style="width:6rem">Correct</th>
-        <th style="width:18rem">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
+  <div class="activity-library-grid">
       {% for item in questions %}
-      <tr>
-        <td>{{ item.number }}</td>
-        {# Autoescaped, never |safe. The preview is already bounded in SQL,
-           so a long prompt never reaches this page in full. #}
-        <td>{{ item.prompt_preview }}{% if item.prompt_truncated %}&hellip;{% endif %}</td>
-        <td><span class="badge badge--neutral">{{ item.answer_mode_label }}</span></td>
-        <td>{{ item.active_option_count }}</td>
-        <td>{{ item.correct_option_count }}</td>
-        <td>
-          {% if operational %}
+      <article class="activity-library-card">
+<header>
+<span class="activity-card-symbol">{{ activity_ui.symbol(activity_kind,22) }}</span>
+<h3><span>Question</span> {{ item.number }}</h3>
+</header>
+<dl class="activity-library-meta">
+<div class="activity-fact">
+<dt>Question</dt>
+<dd>{{ item.prompt_preview }}{% if item.prompt_truncated %}&hellip;{% endif %}</dd>
+</div>
+<div class="activity-fact">
+<dt>Answer mode</dt>
+<dd>
+<span class="badge badge--neutral">{{ item.answer_mode_label }}</span>
+</dd>
+</div>
+<div class="activity-fact">
+<dt>Options</dt>
+<dd>{{ item.active_option_count }}</dd>
+</div>
+<div class="activity-fact">
+<dt>Correct</dt>
+<dd>{{ item.correct_option_count }}</dd>
+</div>
+</dl>
+<footer>
+          {% if operational and not published and not frozen_message %}
           <div class="ds-row" style="gap: var(--space-2)">
             <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_question_edit', group_public_id=group.public_id, quiz_public_id=quiz.public_id, question_public_id=item.public_id) }}">Edit</a>
             <form method="post" action="{{ url_for('teacher.quiz_question_move_up', group_public_id=group.public_id, quiz_public_id=quiz.public_id, question_public_id=item.public_id) }}">
@@ -190,11 +214,10 @@
           {% else %}
           <span class="ds-section__desc" style="margin:0">Read only</span>
           {% endif %}
-        </td>
-      </tr>
+        </footer>
+</article>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
   </div>
 
   {% if has_prev or has_next %}
@@ -220,4 +243,7 @@
   </div>
   {% endif %}
 </section>
+
+</div>{{ activity_ui.guide('quiz','overview') }}</div>
+</div>
 {% endblock %}

@@ -11,6 +11,7 @@
  */
 (function () {
   "use strict";
+  var t = window.aelmsUI ? window.aelmsUI.t : function (text) { return text; };
 
   function initEditor(root) {
     var editor = root.querySelector(".rte-editor");
@@ -29,6 +30,9 @@
 
     function sync() {
       hidden.value = editor.innerHTML;
+      root.querySelectorAll("[data-command='bold'],[data-command='italic'],[data-command='underline']").forEach(function (button) {
+        button.setAttribute("aria-pressed", String(document.queryCommandState(button.dataset.command)));
+      });
     }
 
     editor.addEventListener("input", sync);
@@ -46,12 +50,12 @@
         var command = button.dataset.command;
         var value = button.dataset.value || null;
         if (command === "createLink") {
-          var url = window.prompt("Link URL (https:// only):", "https://");
+          var url = window.prompt(t("Link URL (https:// only):"), "https://");
           if (!url) {
             return;
           }
           if (url.indexOf("https://") !== 0) {
-            window.alert("Only https:// links are allowed.");
+            window.alert(t("Only https:// links are allowed."));
             return;
           }
           document.execCommand("createLink", false, url);
@@ -59,6 +63,7 @@
           document.execCommand(command, false, value);
         }
         sync();
+        editor.dispatchEvent(new Event("input", {bubbles:true}));
       });
     });
   }

@@ -1,9 +1,15 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'quiz' %}
+{% set activity_phase = 'author' %}
 {% block title %}{{ 'Edit Quiz' if quiz else 'New Quiz' }} — {{ group.name }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+<div class="activity-author-layout">
+<div class="activity-author-main">
+
 {#- Phase 4 / M04A. `quiz` is None for create and a plain presentation dict
     for edit. The form carries ONLY title and instructions: there is no
     status, publication, timing, question, option, answer-key, score or
@@ -14,7 +20,7 @@
     feedback state token. -#}
 <div class="ds-page" style="max-width: 680px; padding: 0">
   <div class="ds-row" style="justify-content: space-between; align-items: center;">
-    <h1 style="margin:0">{{ 'Edit Quiz' if quiz else 'New Quiz' }}</h1>
+
     <span class="badge badge--neutral">Draft</span>
   </div>
   <p class="ds-section__desc">
@@ -75,5 +81,8 @@
       {% endif %}
     </div>
   </form>
+</div>
+
+</div>{{ activity_ui.guide('quiz','author') }}</div>
 </div>
 {% endblock %}

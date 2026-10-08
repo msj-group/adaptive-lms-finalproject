@@ -305,6 +305,8 @@ __all__ = [
     "MessageThreadMember",
     "MESSAGE_SUBJECT_MAX_LENGTH",
     "Message",
+    "MessageChange",
+    "MessageThreadClear",
     "MESSAGE_BODY_MAX_LENGTH",
     "DiscussionTopicStatus",
     "DiscussionTopic",
@@ -397,6 +399,7 @@ from app.models.academic_revision import AcademicRevision
 from app.models.attempt_submission_receipt import AttemptSubmissionReceipt
 from app.models.research_storage import ResearchConfigurationSequence, ResearchDataGap, ResearchExportSession
 from app.services import history_write_guards
+from app.models.message_change import MessageChange, MessageThreadClear
 from app.services import attempt_finalization_guards
 from app.services.academic_episode_binding import register_episode_events
 register_episode_events(

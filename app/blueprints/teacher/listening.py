@@ -1768,6 +1768,8 @@ def listening_question_create(group_public_id, listening_public_id):
         )
 
     flash("Question added. The listening activity is still a draft.", "success")
+    if request.form.get("after_save") == "add_another":
+        return redirect(_question_create_url(group_public_id, listening_public_id))
     return redirect(_detail_url(group_public_id, listening_public_id))
 
 

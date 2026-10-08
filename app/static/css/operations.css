@@ -1,0 +1,49 @@
+/* Role-specific operational density. No financial/academic arithmetic here. */
+.figma-teacher .figma-page,.figma-admin .figma-page { max-width:1480px; }
+.figma-teacher .workspace-review-list { gap:0; border-block-start:1px solid var(--ui-line); }
+.figma-teacher .workspace-review-list > .card { border:0; border-block-end:1px solid var(--ui-line); border-radius:0; background:transparent; padding:20px 10px; box-shadow:none; }
+.figma-teacher .workspace-review-list h2 { font-size:1.1rem; }
+.operations-progress { display:grid; gap:8px; min-width:150px; max-width:280px; }
+.operations-progress strong { font-size:13px; font-weight:650; }
+.operations-progress progress { width:100%; height:7px; accent-color:var(--ui-link); }
+.operations-source { font-size:12px; color:var(--ui-muted); line-height:1.7; margin-block:18px; max-width:100ch; }
+.figma-teacher .dash-scroll:has(input,textarea,select),.figma-admin .dash-scroll:has(input,textarea,select) { max-width:100%; overflow:auto; overscroll-behavior-inline:contain; }
+.figma-teacher table :is(input,select,textarea),.figma-admin table :is(input,select,textarea) { min-height:44px; }
+.figma-teacher .workspace-heading,.figma-admin .workspace-heading { margin-block-end:20px; }
+.figma-teacher .workspace-course-card { border-block-start:3px solid var(--ui-link); }
+.figma-admin .figma-finance-shortcuts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+.figma-admin .figma-finance-shortcuts .card { background:var(--ui-raised); border:0; border-block-start:2px solid var(--ui-line); border-radius:8px; box-shadow:none; padding:20px; }
+.figma-admin .figma-finance-shortcuts .card:hover { border-block-start-color:var(--ui-link); }
+.figma-admin .figma-finance-shortcuts .card__title { font-size:15px; margin-block:12px 8px; }
+.figma-admin .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
+.figma-admin .stat-card { border:0; border-inline-start:3px solid var(--ui-link); background:var(--ui-raised); border-radius:8px; box-shadow:none; padding:20px; }
+.figma-admin :is(.ds-page,.ds-section) { max-width:none; }
+.figma-teacher .workspace-card-grid { gap:0; background:var(--ui-raised); border-block:1px solid var(--ui-line); }
+.figma-teacher .workspace-card-grid > .card { border:0; border-inline-end:1px solid var(--ui-line); border-radius:0; box-shadow:none; background:transparent; padding:22px; }
+.figma-teacher .workspace-outline { border:0; background:transparent; box-shadow:none; padding:20px 0; }
+.figma-teacher .workspace-outline details { border-inline-start:3px solid var(--ui-brand-accent); padding-inline-start:20px; }
+.figma-teacher .workspace-outline ol { list-style:none; padding-inline-start:0; }
+.figma-teacher .workspace-outline li { border-block-start:1px solid var(--ui-line); padding:16px 0; }
+.operations-readiness { margin:18px 0 24px; background:var(--ui-raised); padding:24px; border-inline-start:3px solid var(--ui-brand-accent); }
+.operations-readiness figcaption { font-weight:700; font-size:17px; margin-block-end:18px; }
+.operations-readiness__row { display:grid; grid-template-columns:190px minmax(100px,1fr) 160px; align-items:center; gap:18px; margin-block:18px; }
+.operations-readiness__row progress { width:100%; height:10px; accent-color:var(--ui-link); }
+.operations-readiness__row strong { font-size:13px; font-variant-numeric:tabular-nums; }
+@media(max-width:1000px) { .figma-admin .figma-finance-shortcuts { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:620px) {
+ .figma-admin .figma-finance-shortcuts { grid-template-columns:1fr; }
+ .figma-admin .figma-finance-shortcuts .card { display:grid !important; grid-template-columns:30px minmax(0,1fr); gap:6px 14px; padding:18px; }
+ .figma-admin .figma-finance-shortcuts .card > svg { grid-column:1; grid-row:1 / 3; }
+ .figma-admin .figma-finance-shortcuts .card__title { margin:0; }
+ .figma-admin .figma-finance-shortcuts .card__body { grid-column:2; }
+ .figma-admin .stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .figma-admin .stat-card { padding:16px 12px; }
+ .operations-readiness { padding:18px; }
+ .operations-readiness__row { grid-template-columns:minmax(0,1fr) auto; gap:10px; }
+ .operations-readiness__row progress { grid-column:1 / -1; grid-row:auto; }
+ .operations-readiness__row strong { grid-column:2; grid-row:1; }
+ .operations-readiness__row span { grid-column:1; grid-row:1; }
+ .figma-teacher .workspace-card-grid > .card { border-inline-end:0; border-block-end:1px solid var(--ui-line); }
+ .operations-progress { min-width:0; max-width:100%; }
+ .figma-teacher table :is(input,select,textarea),.figma-admin table :is(input,select,textarea) { font-size:16px; }
+}

@@ -1,11 +1,3 @@
-{% extends "layouts/portal_base.html" %}{% block title %}Activities{% endblock %}
-{% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
-{% block portal_content %}<h1>Activities</h1><p>Assignments, quizzes, listening and speaking in one place.</p>
-<form method="get" class="activity-filters">
-<div class="field"><label class="field__label" for="type">Type</label><select class="field__input" id="type" name="type" data-research-id="activity_filter"><option value="">All types</option>{% for key,label in types.items() %}<option value="{{ key }}" {{ 'selected' if selected_type == key else '' }}>{{ label }}</option>{% endfor %}</select></div>
-<div class="field"><label class="field__label" for="state">State</label><select class="field__input" id="state" name="state" data-research-id="activity_filter"><option value="">All states</option>{% for key,label in states.items() %}<option value="{{ key }}" {{ 'selected' if selected_state == key else '' }}>{{ label }}</option>{% endfor %}</select></div>
-<div class="field"><label class="field__label" for="course">Course</label><select class="field__input" id="course" name="course" data-research-id="activity_filter"><option value="">All courses</option>{% for row in courses %}<option value="{{ row.course_public_id }}" {{ 'selected' if selected_course == row.course_public_id else '' }}>{{ row.course_title }}</option>{% endfor %}</select></div><button class="btn btn--primary">Apply filters</button></form>
-{% for item in items %}<article class="card"><span class="badge">{{ item.type_label }}</span><h2><a href="{{ item.url }}" data-research-id="activity_open">{{ item.title }}</a></h2>
-<p><a href="{{ url_for('student.activities', course=item.course_public_id, type=selected_type, state=selected_state) }}">{{ item.course_title }}</a> · {{ item.group_name }}</p><p>{{ item.state_label }} · Due {{ item.due_local.strftime('%Y-%m-%d %H:%M') }} ({{ tz_name }})</p><a class="btn btn--primary" href="{{ item.url }}" data-research-id="activity_open">{{ item.action_label }}</a></article>
-{% else %}<p>No activities match these filters.</p>{% endfor %}
-{% if page > 1 %}<a href="{{ url_for('student.activities', page=page-1, type=selected_type, state=selected_state, course=selected_course) }}">Previous</a>{% endif %}{% if has_next %}<a href="{{ url_for('student.activities', page=page+1, type=selected_type, state=selected_state, course=selected_course) }}">Next</a>{% endif %}{% endblock %}
+{% extends 'layouts/activity_base.html' %}
+{% block title %}Activities{% endblock %}
+{% block portal_content %}{% include 'activities/_hub.html' %}{% endblock %}

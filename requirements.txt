@@ -34,6 +34,7 @@ nh3==0.3.7
 # joins Arabic letters and python-bidi orders mixed-direction text. ReportLab
 # also installs pillow and charset-normalizer (resolved to 12.3.0 and 3.5.1).
 reportlab==5.0.1
+Pillow==12.3.0  # Direct use for bounded profile-photo decoding and normalization.
 arabic-reshaper==3.0.1
 python-bidi==0.6.11
 

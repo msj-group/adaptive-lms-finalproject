@@ -1,0 +1,76 @@
+/* Direction D learning/teaching home. Real task data; no adaptive priority. */
+.today-greeting { display:flex; align-items:center; justify-content:space-between; gap:20px; margin:0 0 24px; color:var(--ui-ink); }
+.today-greeting h2 { margin:7px 0; font-size:clamp(25px,2.4vw,35px); font-weight:700; line-height:1.2; letter-spacing:-.04em; overflow-wrap:anywhere; }
+.today-greeting p { margin:4px 0; color:var(--ui-muted); font-size:13px; }
+.today-greeting .figma-eyebrow { font-size:10px; letter-spacing:.07em; }
+.today-greeting>svg { color:var(--ui-brand-accent); }
+.figma-workspace .today-dashboard { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(250px,1fr); gap:24px; align-items:start; }
+.figma-workspace .today-dashboard>.dash-section { margin:0; padding:0; border:0; border-radius:0; background:transparent; backdrop-filter:none; box-shadow:none; min-width:0; }
+.figma-workspace .today-dashboard>.today-continue { position:relative; display:grid; grid-template-columns:minmax(0,1fr) 170px; align-items:center; gap:12px; padding:26px; min-height:232px; overflow:hidden; border-radius:14px; background:linear-gradient(115deg,var(--ui-hero-start),var(--ui-hero-end)); color:var(--ui-hero-text); }
+.today-continue-copy { position:relative; z-index:1; min-width:0; }
+.figma-workspace .today-continue :is(h2,p,.figma-eyebrow) { color:var(--ui-hero-text); }
+.figma-workspace .today-continue h2 { font-size:27px; font-weight:650; letter-spacing:-.035em; margin:12px 0 9px; }
+.figma-workspace .today-continue .today-meta { color:var(--ui-hero-muted); font-size:12px; }
+.today-continue .figma-eyebrow { font-size:10px; letter-spacing:.1em; }
+.today-continue .btn { margin-top:14px; background:#fffefa; border-color:#fffefa; color:#1354b6; }
+.today-continue a:not(.btn) { color:var(--ui-hero-text); }
+.today-continue .figma-hero-art { min-height:180px; height:180px; padding:0; }
+.today-continue .figma-hero-art * { animation:none; }
+.today-continue .figma-orbit { width:165px; height:165px; border-color:#ffffff26; }
+.today-continue .figma-orbit--outer { width:205px; height:205px; border-style:solid; }
+.today-continue .figma-art-book { width:114px; height:145px; gap:12px; background:#fffefa; color:#102848; border:0; border-radius:5px 11px 11px 5px; box-shadow:8px 9px 0 #08225133; transform:rotate(-9deg); }
+.today-continue .figma-art-book::before { content:''; position:absolute; inset-block:0; inset-inline-start:7px; border-inline-start:1px solid #c1cfe3; }
+.today-continue .figma-art-book>span { font-size:22px; font-weight:650; }
+.today-continue .figma-art-book em { color:#bb293b; }
+.today-continue .figma-art-book svg { width:28px; height:28px; }
+.today-continue .figma-art-note { right:0; bottom:0; padding:7px 9px; background:#fffefa; color:#344d6b; border:0; border-radius:4px; font-size:8px; transform:rotate(4deg); box-shadow:none; }
+.today-continue .figma-art-spark { top:0; right:3px; color:#ffbeb8; }
+.figma-workspace .today-dashboard>.today-class { padding:22px; background:var(--ui-soft); border-radius:12px; border-top:3px solid var(--ui-brand-accent); }
+.today-section-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin:0 0 12px; }
+.today-section-heading h2,.today-dashboard .today-section-heading h2 { margin:0; font-size:20px; letter-spacing:-.025em; }
+.today-section-heading>a,.today-calendar-link,.today-actions>a:not(.btn) { display:inline-flex; align-items:center; min-height:44px; font-size:12px; font-weight:600; }
+.today-dashboard h3 { margin:8px 0; font-size:16px; line-height:1.45; overflow-wrap:anywhere; }
+.figma-workspace .today-dashboard p { font-size:13px; line-height:1.65; overflow-wrap:anywhere; }
+.figma-workspace .today-dashboard .today-meta { margin:5px 0; color:var(--ui-muted); font-size:12px; }
+.figma-workspace .today-dashboard .today-continue .today-meta { color:var(--ui-hero-muted); }
+.today-note,.figma-workspace .today-dashboard .today-note { color:var(--ui-muted); font-size:11px; margin:14px 0 0; }
+.today-list { list-style:none; padding:0; margin:0; }
+.today-list>li { padding:14px 0; border-bottom:1px solid var(--ui-line); }
+.today-list>li:first-child { padding-top:0; }
+.today-list>li:last-child { border-bottom:0; padding-bottom:0; }
+.today-list-title { display:inline-flex; align-items:center; min-height:44px; font-size:14px; font-weight:650; overflow-wrap:anywhere; }
+.today-action-row { display:flex; align-items:center; justify-content:space-between; gap:20px; }
+.today-action-row>div { min-width:0; }
+.today-action-row>a { flex-shrink:0; min-height:44px; display:inline-flex; align-items:center; }
+.today-action-row .badge { margin-bottom:4px; }
+.today-actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-top:16px; }
+.today-calendar-link { margin-top:8px; }
+.today-course-grid { margin:12px 0 0; }
+.figma-workspace .today-course-grid .workspace-course-card { position:relative; gap:6px; padding:20px; background:var(--ui-surface); border:0; border-top:3px solid var(--ui-link); border-radius:8px; box-shadow:none; }
+.today-course-grid .workspace-course-card .btn { margin-top:14px; }
+.today-course-grid progress { width:100%; }
+.today-dashboard>.figma-wide { grid-column:1/-1; }
+.figma-workspace .today-dashboard>.today-details { padding-block:14px; border-block-start:1px solid var(--ui-line); }
+.today-details>summary { min-height:44px; display:list-item; font-size:14px; }
+.today-details[open]>summary { margin-bottom:16px; }
+.figma-progress { accent-color:var(--ui-link); height:6px; width:100%; border-radius:3px; }
+.figma-progress::-webkit-progress-bar { background:var(--ui-line); border-radius:3px; }
+.figma-progress::-webkit-progress-value { background:var(--ui-link); border-radius:3px; }
+.figma-progress::-moz-progress-bar { background:var(--ui-link); border-radius:3px; }
+@media (max-width:1100px) { .today-continue .figma-hero-art { display:none; } .figma-workspace .today-dashboard>.today-continue { grid-template-columns:1fr; } }
+@media (max-width:767px) {
+  .figma-workspace .today-dashboard { grid-template-columns:minmax(0,1fr); gap:22px; }
+  .today-greeting { margin-bottom:18px; }
+  .today-greeting h2 { font-size:27px; }
+  .today-greeting>svg { display:none; }
+  .figma-workspace .today-dashboard>.today-continue { padding:23px; min-height:205px; }
+  .figma-workspace .today-continue h2 { font-size:25px; }
+  .figma-workspace .today-dashboard>.today-class { padding:18px; }
+  .today-action-row { align-items:flex-start; flex-direction:column; gap:8px; }
+  .today-action-row>.btn { align-self:flex-end; }
+  .today-section-heading { align-items:center; }
+  .figma-workspace .today-course-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; }
+  .figma-workspace .today-course-grid .workspace-course-card { padding:18px; }
+  .today-class .today-actions { justify-content:space-between; }
+}
+@media print { .today-dashboard { display:block!important; } .today-dashboard>.dash-section { break-inside:avoid; margin:16px 0!important; } }

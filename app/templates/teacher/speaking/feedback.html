@@ -1,9 +1,14 @@
-{% extends "layouts/portal_base.html" %}
-{% block title %}Feedback — {{ submission.student_name }}{% endblock %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'speaking' %}
+{% set activity_phase = 'feedback' %}
+{% block title %}Feedback — {{ submission.student_name }}
+{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+
 {#- Phase 4 / M06. `activity`, `submission` and `feedback` are plain
     presentation dicts; the route already proved this Teacher's active
     assignment to the Group, the activity's ownership by that Group, the
@@ -14,7 +19,7 @@
     discloses a storage key, a path, a digest or any internal id. There is
     deliberately no score, grade, rubric, pass/fail, publish, delete or
     resubmit control here: none exists server-side either. -#}
-<h1 style="margin-top: 0">Feedback</h1>
+
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   {{ submission.student_name }} &middot; {{ activity.title }} &middot; {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
 </p>
@@ -27,8 +32,10 @@
 
 <div class="ds-row" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ submission_url }}">Back to Recording</a>
+  <a class="btn btn--secondary" href="{{ url_for('workspace.review_queue', group=group.public_id) }}">Group review queue</a>
 </div>
 
+<div class="workspace-split-review">
 <section style="margin-bottom: var(--space-6)">
   <h2>Student recording</h2>
   <p class="ds-section__desc">
@@ -49,7 +56,7 @@
       Last changed by {{ feedback.reviewer_name }} on {{ feedback.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
     </p>
     {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
   </div>
 
   {% elif feedback.state == "invalid" %}
@@ -71,8 +78,7 @@
   {% if can_write %}
   <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
     <strong>Saving replaces the current feedback.</strong> There is one feedback record per
-    recording and only the latest text is kept — earlier versions are not stored anywhere and
-    cannot be recovered. Every teacher actively assigned to this group can change it, and the
+    recording and the current comment is shown to the student. Changes are preserved in the academic revision history. Every teacher actively assigned to this group can change it, and the
     page shows who changed it last. Once saved, it is visible immediately to the student whenever
     they can open this speaking activity. Feedback is a written comment: it is <strong>not</strong>
     a grade, a pass mark, a pronunciation score, or an official approval, and it does not mark the
@@ -113,4 +119,7 @@
   </div>
   {% endif %}
 </section>
+</div>
+
+</div>
 {% endblock %}

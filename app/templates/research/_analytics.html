@@ -1,0 +1,39 @@
+{% macro count_chart(title, series, source, scope, note='') %}
+<figure class="research-chart">
+  <figcaption><h3>{{ title }}</h3><span>Count axis · 0–{{ series.maximum }}</span></figcaption>
+  {% if series.total %}
+  <table class="research-bar-table"><caption class="sr-only">{{ title }}: exact counts and visual bars</caption>
+    <thead class="sr-only"><tr><th scope="col">Category</th><th scope="col">Count bar</th><th scope="col">Count</th></tr></thead>
+    <tbody>{% for row in series.rows %}<tr><th scope="row">{{ row.label|replace('_',' ') }}</th><td class="research-bar-cell"><svg aria-hidden="true" focusable="false" viewBox="0 0 100 8" preserveAspectRatio="none"><rect class="research-bar-track" width="100" height="8" rx="1"/><rect class="research-bar-fill" width="{{ row.width }}" height="8" rx="1"/></svg></td><td>{{ row.count }}</td></tr>{% endfor %}</tbody>
+  </table>
+  {% else %}<div class="empty-state"><strong>No stored observations in this scope</strong><p>A zero count of retained rows does not prove that an interaction did not occur.</p></div>{% endif %}
+  <p class="research-chart__source">Source: {{ source }}. Scope: {{ scope }}. Range: {{ analytics_filters.from }}–{{ analytics_filters.to }} UTC{% if analytics_filters.version %}; configuration v{{ analytics_filters.version }}{% else %}; all configurations{% endif %}. {{ note }} Counts use a linear shared axis within this chart; they are not rates.</p>
+</figure>
+{% endmacro %}
+
+<section class="research-analytics" aria-labelledby="analytics-title">
+  <div class="research-section-heading"><div><span class="figma-eyebrow">OBSERVED DATA. CLEAR CONTEXT.</span><h2 id="analytics-title">Collection evidence</h2><p>Stored observations, delivery counters and optional self-reports. No predictions or causal conclusions.</p></div><a class="btn btn--secondary" href="{{ url_for('research.sessions') }}">Inspect sessions</a></div>
+  <form class="research-filter-band" method="get" action="{{ url_for('research.dashboard') }}">
+    <div class="field"><label for="analytics-from">From (UTC)</label><input class="field__input" type="date" id="analytics-from" name="from" value="{{ analytics_filters.from }}" required></div>
+    <div class="field"><label for="analytics-to">Through (UTC)</label><input class="field__input" type="date" id="analytics-to" name="to" value="{{ analytics_filters.to }}" required></div>
+    <div class="field"><label for="analytics-version">Configuration</label><select class="field__input" id="analytics-version" name="version"><option value="">All configurations</option>{% for config in configurations %}<option value="{{ config.version_number }}"{% if analytics_filters.version == config.version_number|string %} selected{% endif %}>v{{ config.version_number }} — {{ config.label }}</option>{% endfor %}</select></div>
+    <button class="btn btn--primary" type="submit">Apply range</button><a href="{{ url_for('research.dashboard') }}">Reset</a>
+    <p>Up to 90 days. Scope is fixed by this deployment: {{ provenance_labels[provenance] }}. Dates filter event occurrence, prompt offer, or session start as specified below. Retention may remove earlier rows.</p>
+  </form>
+  <div class="research-kpis">
+    <div><span>Retained events</span><strong>{{ analytics.types.total }}</strong><small>Occurrence within selected range</small></div>
+    <div><span>Shown prompts</span><strong>{{ analytics.shown }}</strong><small>Offered within selected range</small></div>
+    <div><span>Answered / shown</span><strong>{% if analytics.label_rate is not none %}{{ analytics.label_rate }}%{% else %}Unavailable{% endif %}</strong><small>{{ analytics.answered }} / {{ analytics.shown }} shown prompts</small></div>
+    <div><span>Shown without a rating</span><strong>{{ analytics.missing }}</strong><small>Skipped, pending or unanswered; never rating 0</small></div>
+  </div>
+  <div class="research-chart-grid">
+    {{ count_chart('Stored events by UTC day', analytics.daily, 'research_events.occurred_at_ms', 'retained events in the deployment population', 'Empty days count zero retained rows; delivery loss or retention can also create gaps.') }}
+    {{ count_chart('Raw ratings · unchanged 1–5 scale', analytics.ratings, 'answered research_feedback_prompts.rating', 'answered prompts offered in the selected range', 'Denominator for this distribution: ' ~ analytics.ratings.total ~ ' recorded answers. It is a self-report distribution, not a diagnosis or model result.') }}
+    {{ count_chart('Workflow coverage', analytics.coverage, 'page_view events and the approved page-area dictionary', 'retained page views', 'A zero observed area is not proof of complete instrumentation or absence of use.') }}
+    {{ count_chart('Delivery observations', analytics.delivery, 'research_sessions delivery counters', analytics.delivery_sessions|string ~ ' sessions started in the range', 'Counters cover each selected session\'s recorded lifetime. Browser-dropped counts are self-reported; events never received cannot be fully counted. Explicit replay duplicates are excluded from duplicate counters; replay-only redeliveries do not increment counters. Recorded duplicate refusals are transport observations, not repeated-click behavior.') }}
+    {{ count_chart('Event distribution', analytics.types, 'research_events.event_type', 'retained events by approved type', 'Client attempts and server outcomes have distinct meanings; they must not be summed as completed tasks.') }}
+    {{ count_chart('Client / server sources', analytics.sources, 'research_events.source', 'retained events', 'Source counts indicate where observations originate, not user or label coverage.') }}
+    {{ count_chart('Dataset provenance', analytics.composition, 'research_sessions.provenance joined to retained events', 'deployment-approved population only', 'Study and operational-review populations cannot be combined or switched by a filter. No session is reclassified.') }}
+    <figure class="research-chart"><figcaption><h3>Feedback lifecycle / missing labels</h3></figcaption><table class="dash-table"><thead><tr><th scope="col">Derived state</th><th scope="col">Prompts</th></tr></thead><tbody>{% for state, label in prompt_state_labels.items() %}<tr><th scope="row">{{ label }}</th><td>{{ analytics.states.get(state,0) }}</td></tr>{% endfor %}</tbody></table><p class="research-chart__source">Source: stored prompt moments and each configuration's unchanged offer/response lifetimes. Scope: prompts offered {{ analytics_filters.from }}–{{ analytics_filters.to }} UTC; {% if analytics_filters.version %}v{{ analytics_filters.version }}{% else %}all configurations{% endif %}; {{ provenance_labels[provenance] }}. States are derived at page load. Shown-label denominator: {{ analytics.shown }}; answered: {{ analytics.answered }}. Offered but never shown is separate from shown without a rating.</p></figure>
+  </div>
+</section>

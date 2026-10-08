@@ -1,9 +1,13 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'speaking' %}
+{% set activity_phase = 'review' %}
 {% block title %}{{ submission.student_name }} — {{ activity.title }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+
 {#- Phase 4 / M06. `activity`, `submission` and `feedback` are plain
     presentation dicts; the route already proved this Teacher's active
     assignment to the Group, the activity's ownership by that Group, the
@@ -17,7 +21,7 @@
     authorization. There is deliberately no score, grade, rubric, pass/fail,
     delete, replace or resubmit control here -- none exists server-side
     either. -#}
-<h1 style="margin-top: 0">{{ submission.student_name }}</h1>
+
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   {{ activity.title }} &middot; {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
 </p>
@@ -29,10 +33,14 @@
 
 <div class="card" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submitted</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submitted</dt>
     <dd style="margin:0">{{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
     <dd style="margin:0">{{ activity.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+</div>
   </dl>
 </div>
 
@@ -42,6 +50,8 @@
   {% endfor %}
 {% endwith %}
 
+<div class="workspace-split-review">
+<div>
 <section>
   <h2>Recording</h2>
   {% include "_audio_player.html" %}
@@ -49,6 +59,8 @@
     <a class="btn btn--secondary" href="{{ download_url }}">Download recording</a>
   </div>
 </section>
+</div>
+<div>
 
 <section style="margin-top: var(--space-6)">
   <h2>Feedback</h2>
@@ -60,7 +72,7 @@
       The student sees this text whenever they can open this speaking activity.
     </p>
     {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
   </div>
 
   {% elif feedback.state == "invalid" %}
@@ -85,4 +97,8 @@
   </a>
   {% endif %}
 </section>
+
+</div>
+</div>
+</div>
 {% endblock %}

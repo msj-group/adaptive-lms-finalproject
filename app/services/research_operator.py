@@ -13,8 +13,6 @@ which need an identity that no product view may show:
   exclusion (carried over from a refusal or withdrawal in the superseded
   consent workflow) is lifted only with ``allow_legacy_override``: a
   deliberate statement that the external process changed it.
-- ``mark_demo`` -- a demonstration account. Its data is collected as
-  ``demo`` and never exported. Audited.
 - ``status`` / ``excluded_accounts`` -- a Student's research code and
   state, or every excluded account: identity recovery, for the operator
   only. The Researcher workspace lists exclusions by subject code alone.
@@ -62,7 +60,6 @@ from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
 
 EXCLUDED = "excluded"
 REINSTATED = "reinstated"
-MARKED_DEMO = "marked_demo"
 UNCHANGED = "unchanged"
 NO_ACCOUNT = "no_account"
 NOT_A_STUDENT = "not_a_student"
@@ -74,7 +71,6 @@ CONFLICT = "conflict"
 _INCLUDED = ResearchCollectionStatus.INCLUDED.value
 _EXCLUDED = ResearchCollectionStatus.EXCLUDED.value
 _LEGACY = ResearchStatusBasis.LEGACY_COLLECTION_EXCLUSION.value
-_DEMO = ResearchProvenance.DEMO.value
 
 SubjectState = namedtuple("SubjectState", "subject_code collection_status status_basis provenance")
 ExcludedAccount = namedtuple("ExcludedAccount", "email subject_code status_basis status_changed_at")
@@ -195,28 +191,6 @@ def reinstate(email, allow_legacy_override=False, *, actor_id):
     subject.updated_at = now
     _audit(ResearchAuditAction.SUBJECT_REINSTATED.value, subject.id, f"lifted:{lifted}", actor_id=actor_id)
     return _commit(REINSTATED, subject.subject_code)
-
-
-def mark_demo(email, *, actor_id):
-    """Mark a demonstration account. ``(status, code)``. Its sessions are
-    collected as ``demo`` from now on, and nothing of the subject -- earlier
-    sessions included -- is ever exported."""
-    user, refusal = _student_or_refusal(email, actor_id)
-    if refusal:
-        return refusal, None
-    subject = _lock_subject(user.id)
-    if subject is None:
-        subject = _new_subject(user.id, _INCLUDED, ResearchStatusBasis.POPULATION_RULE.value,
-                               _DEMO)
-        db.session.flush()
-    elif subject.provenance == _DEMO:
-        db.session.rollback()
-        return UNCHANGED, subject.subject_code
-    else:
-        subject.provenance = _DEMO
-        subject.updated_at = whole_second_utc()
-    _audit(ResearchAuditAction.SUBJECT_MARKED_DEMO.value, subject.id, _DEMO, actor_id=actor_id)
-    return _commit(MARKED_DEMO, subject.subject_code)
 
 
 def _close_subject_sessions(subject_id):

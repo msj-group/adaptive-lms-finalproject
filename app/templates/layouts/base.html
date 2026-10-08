@@ -1,16 +1,24 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ ui_language() }}" dir="{{ 'rtl' if ui_language() == 'ar' else 'ltr' }}" data-theme="{{ ui_theme() }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Adaptive English LMS{% endblock %}</title>
+  <script src="{{ url_for('static', filename='js/ui_boot.js') }}"></script>
+  {% if ui_language() == 'ar' %}<script src="{{ url_for('appearance.arabic_script', v=ui_catalog_version()) }}" defer></script>{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
   {% block extra_head %}{% endblock %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/appearance.css') }}">
+  {% block product_styles %}{% endblock %}
+  {% block protected_styles %}{% endblock %}
+  <script src="{{ url_for('static', filename='js/appearance.js') }}" defer></script>
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
   <main>
     {% block content %}{% endblock %}
   </main>
+  {% include 'appearance/_panels.html' %}
+  {% block body_scripts %}{% endblock %}
 </body>
 </html>

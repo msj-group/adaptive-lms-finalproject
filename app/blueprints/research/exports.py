@@ -9,8 +9,9 @@ Active Researcher only. Creating an export builds its ZIP once and stores it
 with its description and an audit event. Every download serves exactly
 those stored bytes -- never regenerated -- after re-checking their SHA-256,
 and is audited too. An archive the retention rule removed is answered as
-gone (410); a corrupted one is refused. Only study provenance is ever
-exported, and no file carries a name, email address, account id, mapping or
+gone (410); a corrupted one is refused. The server selects the deployment's
+export scope, with operational review kept separate from study data.
+No file carries a name, email address, account id, mapping or
 content (``research_exports``).
 """
 
@@ -33,6 +34,10 @@ def _tz_name():
     return current_app.config.get("APP_TIMEZONE", "UTC")
 
 
+def _provenance():
+    return current_app.config["RESEARCH_DATA_PROVENANCE"]
+
+
 def _form():
     form = ExportForm()
     form.configuration.choices = [("", "Every configuration version")] + [
@@ -43,18 +48,27 @@ def _form():
 
 
 @research_bp.route("/exports", methods=["GET", "POST"])
+@research_bp.route("/exports/new", methods=["GET", "POST"], endpoint="export_create")
 @roles_required(_RESEARCHER)
 def exports():
     form = _form()
+    selection = None
     if request.method == "POST":
         if form.validate_on_submit():
-            status, public_id = exporter.create_export(
+            if request.form.get("preview"):
+                try:
+                    selection = exporter.selection_summary(form.configuration.data or None,
+                        form.period_from.data, form.period_to.data, _tz_name())
+                except (ValueError, OverflowError):
+                    flash("Check the date range and configuration.", "warning")
+            else:
+                status, public_id = exporter.create_export(
                 current_user.id, form.configuration.data or None, form.period_from.data,
                 form.period_to.data, _tz_name())
-            if status == exporter.CREATED:
-                flash("Export created.", "success")
-                return redirect(url_for("research.export_detail", export_public_id=public_id))
-            flash({
+                if status == exporter.CREATED:
+                    flash("Export created.", "success")
+                    return redirect(url_for("research.export_detail", export_public_id=public_id))
+                flash({
                 exporter.BAD_PERIOD: "Check the period: the end date is before the start date.",
                 exporter.TOO_LARGE: "This export is larger than the supported bound. Narrow "
                                     "the period or the configuration version.",
@@ -63,18 +77,24 @@ def exports():
                                       "this server's clock, so nothing was exported. Try "
                                       "again in a minute, and check the server clocks if "
                                       "this repeats.",
-            }.get(status, "The export could not be created. Nothing was written."), "danger")
+                }.get(status, "The export could not be created. Nothing was written."), "danger")
         else:
             flash("Check the export filters.", "warning")
-    rows, total, page = queries.exports_page(queries.normalize_page(request.args.get("page")))
+    provenance = _provenance()
+    rows, total, page = queries.exports_page(
+        queries.normalize_page(request.args.get("page")), provenance)
     first = (page - 1) * queries.PAGE_SIZE + 1 if rows else 0
     last = (page - 1) * queries.PAGE_SIZE + len(rows)
     return render_template(
-        "research/exports/list.html",
+        "research/exports/create.html" if request.endpoint == "research.export_create" or request.method == "POST" else "research/exports/list.html",
         active_nav="exports",
         form=form,
+        selection=selection,
         rows=rows,
         tz_name=_tz_name(),
+        provenance=provenance,
+        provenance_labels=queries.PROVENANCE_LABELS,
+        to_local=lambda ms: queries.ms_to_local(_tz_name(), ms),
         pagination={
             "first": first, "last": last, "total": total,
             "prev_url": url_for("research.exports", page=page - 1) if page > 1 else None,
@@ -86,7 +106,7 @@ def exports():
 @research_bp.get("/exports/<export_public_id>")
 @roles_required(_RESEARCHER)
 def export_detail(export_public_id):
-    export = queries.export_by_public_id(export_public_id)
+    export = queries.export_by_public_id(export_public_id, _provenance())
     if export is None:
         abort(404)
     return render_template(
@@ -95,13 +115,17 @@ def export_detail(export_public_id):
         export=export,
         version=queries.configuration_version_number(export.configuration_id),
         available=exporter.archive_available(export.id),
+        tz_name=_tz_name(),
+        to_local=lambda ms: queries.ms_to_local(_tz_name(), ms),
+        provenance=_provenance(),
+        provenance_labels=queries.PROVENANCE_LABELS,
     )
 
 
 @research_bp.get("/exports/<export_public_id>/download")
 @roles_required(_RESEARCHER)
 def export_download(export_public_id):
-    export = queries.export_by_public_id(export_public_id)
+    export = queries.export_by_public_id(export_public_id, _provenance())
     if export is None:
         abort(404)
     status, data = exporter.download_export(current_user.id, export_public_id)
@@ -116,6 +140,6 @@ def export_download(export_public_id):
     response = make_response(data)
     response.headers["Content-Type"] = "application/zip"
     response.headers["Content-Disposition"] = (
-        f'attachment; filename="research-export-{export_public_id}.zip"'
+        f'attachment; filename="research-export-{_provenance()}-{export_public_id}.zip"'
     )
     return response

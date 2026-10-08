@@ -1,11 +1,17 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'assignment' %}
+{% set activity_phase = 'author' %}
 {% block title %}{{ 'Edit Assignment' if assignment else 'New Assignment' }} — {{ group.name }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+<div class="activity-author-layout">
+<div class="activity-author-main">
+
 <div class="ds-page" style="max-width: 680px; padding: 0">
-  <h1>{{ 'Edit Assignment' if assignment else 'New Assignment' }}</h1>
+
   <p class="ds-section__desc">
     {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
   </p>
@@ -52,6 +58,12 @@
       {% for error in form.instructions.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
+    <div class="field">
+      {{ form.submission_type.label(class_="field__label") }}
+      {{ form.submission_type(class_="field__input", aria_describedby="assignment-type-help") }}
+      <p id="assignment-type-help" class="ds-section__desc">Choose a text answer or one private file. Students cannot switch the type. Once any student submits, the task and its type are locked.</p>
+      {% for error in form.submission_type.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </div>
     {#- step="1" on both datetime-local controls: the stored columns keep
         seconds, and the form renders them, so the control must accept a
         second-bearing value rather than round it away. -#}
@@ -80,5 +92,8 @@
       <a class="btn btn--secondary" href="{{ url_for('teacher.group_assignments', group_public_id=group.public_id) }}">Cancel</a>
     </div>
   </form>
+</div>
+
+</div>{{ activity_ui.guide('assignment','author') }}</div>
 </div>
 {% endblock %}

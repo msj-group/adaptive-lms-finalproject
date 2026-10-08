@@ -1,30 +1,43 @@
 {% extends "layouts/base.html" %}
-{% block title %}Login{% endblock %}
+{% import "_figma_ui.html" as ui %}
+{% block title %}Sign in · Youth Centre{% endblock %}
+{% block body_class %}figma-login{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/figma.css') }}">{% endblock %}
 {% block content %}
-<div class="ds-page" style="max-width:400px">
-  <h1>Login</h1>
-
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for category, message in messages %}
-      <div class="alert alert--{{ category }}">{{ message }}</div>
-    {% endfor %}
-  {% endwith %}
-
-  <form method="post" novalidate>
-    {{ form.hidden_tag() }}
-    <div class="field">
-      {{ form.email.label(class_="field__label") }}
-      {{ form.email(class_="field__input", autocomplete="username") }}
-      {% for error in form.email.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
-    </div>
-    <div class="field" style="margin-top: var(--space-4)">
-      {{ form.password.label(class_="field__label") }}
-      {{ form.password(class_="field__input", autocomplete="current-password") }}
-      {% for error in form.password.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
-    </div>
-    <div style="margin-top: var(--space-6)">
-      {{ form.submit(class_="btn btn--primary") }}
-    </div>
-  </form>
+<div class="appearance-public">{{ ui.navigation_tools() }}</div>
+<div class="figma-login-scene" aria-hidden="true">
+  <div class="figma-login-glow figma-login-glow--one"></div><div class="figma-login-glow figma-login-glow--two"></div><div class="figma-login-glow figma-login-glow--three"></div>
+  {% for letter in ['A','g','R','e','B','w','Y','t','Q','m','L','f'] %}<span class="figma-letter figma-letter--{{ loop.index }}">{{ letter }}</span>{% endfor %}
+  <span class="figma-login-word figma-login-word--one" data-learning-word>Hello</span><span class="figma-login-word figma-login-word--two" data-learning-word>Discover</span>
+  <span class="figma-login-word figma-login-word--three" data-learning-word>Confidence</span><span class="figma-login-word figma-login-word--four" data-learning-word>Grow</span>
+</div>
+<div class="figma-login-container">
+  <section class="figma-login-card" aria-labelledby="login-title">
+    <img class="figma-login-logo" src="{{ url_for('static', filename='images/figma_logo.png') }}" alt="Youth Centre">
+    <header class="figma-login-heading"><h1 id="login-title">Welcome back<span>.</span></h1><p>Your learning space awaits.</p></header>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}<div class="alert alert--{{ category }}" role="alert">{{ message }}</div>{% endfor %}
+    {% endwith %}
+    <form method="post" novalidate data-login-form>
+      {{ form.hidden_tag() }}
+      {% for error in form.csrf_token.errors %}<p class="field__error" role="alert">{{ error }}</p>{% endfor %}
+      <div class="figma-login-field">
+        <label class="field__label" for="{{ form.email.id }}">Email address</label>
+        <div class="figma-login-input{{ ' figma-login-input--error' if form.email.errors else '' }}">{{ ui.icon('mail', 21) }}{{ form.email(class_="field__input", type="email", autocomplete="username", placeholder="Your email address", aria_describedby="email-errors", aria_invalid='true' if form.email.errors else 'false') }}</div>
+        <div id="email-errors">{% for error in form.email.errors %}<span class="field__error">{{ error }}</span>{% endfor %}</div>
+      </div>
+      <div class="figma-login-field">
+        {{ form.password.label(class_="field__label") }}
+        <div class="figma-login-input{{ ' figma-login-input--error' if form.password.errors else '' }}">{{ ui.icon('lock', 21) }}{{ form.password(class_="field__input", autocomplete="current-password", placeholder="Your password", aria_describedby="password-errors", aria_invalid='true' if form.password.errors else 'false') }}<button class="figma-password-toggle" type="button" aria-label="Show password" aria-pressed="false" aria-controls="{{ form.password.id }}" data-password-toggle hidden>{{ ui.icon('eye') }}</button></div>
+        <div id="password-errors">{% for error in form.password.errors %}<span class="field__error">{{ error }}</span>{% endfor %}</div>
+      </div>
+      <button class="figma-sign-in" type="submit" name="{{ form.submit.name }}" data-login-submit><span data-login-label>Sign in</span>{{ ui.icon('arrow', 18) }}<span class="figma-spinner" data-login-spinner hidden></span></button>
+    </form>
+    <p class="figma-login-help">Need an account or password help?<br>Contact your centre administrator.</p>
+  </section>
+  <p class="figma-login-footer">Youth Centre · A space to learn and grow.</p>
 </div>
 {% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}
+
+{% block protected_styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">{% endblock %}

@@ -2,7 +2,7 @@
 {% from "research/_macros.html" import ms_time %}
 {% block title %}Session {{ session.subject_code }}{% endblock %}
 {% block research_content %}
-<h1>Session of {{ session.subject_code }}</h1>
+<h1 data-workspace-page-heading>Session of {{ session.subject_code }}</h1>
 <p class="ds-section__desc">{{ provenance_labels[session.provenance] }} &middot; configuration version {{ session.version_number }}
   &middot; times in {{ tz_name }}</p>
 
@@ -47,7 +47,8 @@
 <div class="dash-section">
   <h2>Event timeline</h2>
   <p class="ds-section__desc">Up to {{ timeline_cap }} events, in order of occurrence (server timescale). No content is stored for any event.</p>
-  {% if timeline %}
+  {% if timeline|length == timeline_cap %}<div class="alert alert--warning" role="status">The display limit of {{ timeline_cap }} events has been reached. Later events may be omitted from this view; use an available export to inspect the selected data.</div>{% endif %}<div class="field"><label for="timeline-type">Filter displayed events</label><select class="field__input" id="timeline-type" data-timeline-filter><option value="">All displayed event types</option>{% for row in timeline|unique(attribute=1) %}<option value="{{ row[1] }}">{{ row[1]|replace('_',' ') }}</option>{% endfor %}</select></div><p class="workspace-meta" data-timeline-count>{{ timeline|length }} events displayed</p>
+{% if timeline %}
   <div style="overflow-x: auto">
   <table class="dash-table" style="width:100%">
     <thead><tr><th scope="col">Time</th><th scope="col">Source</th><th scope="col">Event</th><th scope="col">Page</th>
@@ -71,5 +72,5 @@
   <div class="empty-state"><div class="empty-state__title">No events</div><div>No event was stored for this session.</div></div>
   {% endif %}
 </div>
-<p><a class="btn btn--secondary" href="{{ url_for('research.sessions', provenance=session.provenance) }}">Back to sessions</a></p>
+<p><a class="btn btn--secondary" href="{{ url_for('research.sessions') }}">Back to sessions</a></p>
 {% endblock %}

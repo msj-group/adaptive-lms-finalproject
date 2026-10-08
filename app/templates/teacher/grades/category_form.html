@@ -18,7 +18,7 @@
 
     There is deliberately no delete control: a category's weight is part of how
     already-released grades were calculated, and no delete endpoint exists. -#}
-<h1 style="margin-top: 0">{{ "Edit grade category" if category else "New grade category" }}</h1>
+<h1 data-workspace-page-heading style="margin-top: 0">{{ "Edit grade category" if category else "New grade category" }}</h1>
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }}
 </p>

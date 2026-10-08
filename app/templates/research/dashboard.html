@@ -1,10 +1,10 @@
 {% extends "layouts/research_base.html" %}
-{% from "research/_macros.html" import provenance_filter %}
+{% from "research/_macros.html" import provenance_notice %}
 {% block title %}Research dashboard{% endblock %}
 {% block research_content %}
 {#- Real counts of stored rows only, with explicit empty states. No
     prediction, no accuracy figure, no chart of measured emotion. -#}
-<h1>Research dashboard</h1>
+<h1 data-workspace-page-heading>Research dashboard</h1>
 <p class="ds-section__desc">
   Version A natural-use collection. Students appear only as pseudonymous subject codes: no
   names, email addresses or account identifiers appear in this workspace. Nothing here detects,
@@ -37,8 +37,10 @@
   {% endif %}
 </div>
 
+{% include "research/_analytics.html" %}
+
 <div class="dash-section">
-  <h2>Production readiness</h2>
+  <details><summary><strong>Operational checks</strong></summary><h2>Operational checks</h2><p class="workspace-meta">These checks describe deployment and collection settings. They do not establish methodological validity, data quality or scientific accuracy.</p>
   <table class="dash-table" style="width:100%">
     <tbody>
     {% for item in readiness %}
@@ -53,7 +55,7 @@
       </tr>
     {% endfor %}
     </tbody>
-  </table>
+  </table></details>
 </div>
 
 <div class="dash-section">
@@ -68,14 +70,14 @@
     <div class="stat-card" data-subjects="reinstated"><div class="stat-card__value">{{ subjects.reinstated }}</div><div class="stat-card__label">Of which reinstated</div></div>
     <div class="stat-card" data-subjects="excluded"><div class="stat-card__value">{{ subjects.excluded }}</div><div class="stat-card__label">Excluded</div></div>
     <div class="stat-card" data-subjects="legacy"><div class="stat-card__value">{{ subjects.legacy_excluded }}</div><div class="stat-card__label">Of which legacy exclusions</div></div>
-    <div class="stat-card" data-subjects="demo"><div class="stat-card__value">{{ subjects.demo }}</div><div class="stat-card__label">Demonstration subjects</div></div>
   </div>
 </div>
 
-{{ provenance_filter('research.dashboard', provenance, provenance_labels) }}
+{{ provenance_notice(provenance, provenance_labels) }}
 
 <div class="dash-section">
-  <h2>Sessions and delivery quality</h2>
+  <h2>All retained sessions and delivery counters</h2>
+  <p class="ds-section__desc">Whole retained deployment population, independent of the chart range above. These are recorded counters, not a complete estimate of unreceived traffic.</p>
   {% if sessions.sessions %}
   <div class="stat-grid">
     {% for key, label in [('sessions', 'Sessions'), ('ended', 'Ended sessions'), ('subjects', 'Subjects with sessions'),
@@ -87,12 +89,13 @@
   </div>
   {% else %}
   <div class="empty-state"><div class="empty-state__title">No sessions</div>
-    <div>No natural-use session with this provenance has been recorded.</div></div>
+    <div>No natural-use session has been recorded for this deployment.</div></div>
   {% endif %}
 </div>
 
 <div class="dash-section">
-  <h2>Feedback prompts and label coverage</h2>
+  <h2>All retained feedback prompts</h2>
+  <p class="ds-section__desc">Whole retained deployment population, independent of the chart filters. A missing rating remains unlabeled.</p>
   {% if prompts.offered %}
   <p class="ds-section__desc">
     Sampling checks: {{ sessions.sampling_eligible_checks }} eligible, {{ sessions.sampling_ineligible_checks }} ineligible.
@@ -117,7 +120,7 @@
   </p>
   {% else %}
   <div class="empty-state"><div class="empty-state__title">No prompts</div>
-    <div>No feedback prompt has been offered with this provenance. Data without a rating stays unlabeled.</div></div>
+    <div>No feedback prompt has been offered for this deployment. Data without a rating stays unlabeled.</div></div>
   {% endif %}
 </div>
 
@@ -148,7 +151,7 @@
     </tbody>
   </table>
   {% else %}
-  <div class="empty-state"><div class="empty-state__title">No events</div><div>Nothing has been stored with this provenance.</div></div>
+  <div class="empty-state"><div class="empty-state__title">No events</div><div>No events have been stored for this deployment.</div></div>
   {% endif %}
 </div>
 {% endblock %}

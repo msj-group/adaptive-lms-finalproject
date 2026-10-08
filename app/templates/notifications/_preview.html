@@ -1,0 +1,5 @@
+{% import "_notification_macros.html" as notice %}
+<div data-notification-fragment>
+<p class="notif-preview-note">{{ unread_total }} unread overall · Latest five updates at most · {{ tz_name }}</p>
+{% if notifications %}<ul class="notif-list">{% for item in notifications %}{{ notice.row(item, tz_name, compact=true) }}{% endfor %}</ul>{% else %}<p class="notif-preview-empty">No notifications yet. Your updates will appear here.</p>{% endif %}
+</div>

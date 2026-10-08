@@ -1,0 +1,11 @@
+{# Presentation shortcuts to existing routes; More opens the same complete
+   navigation in the same order. Existing identities remain shared. #}
+{% import '_figma_ui.html' as ui %}
+{% set endpoint = request.endpoint or '' %}
+<nav class="workspace-mobile-nav" aria-label="Mobile workspace">
+  <a href="{{ url_for('student.dashboard') }}" data-research-id="nav_dashboard"{% if endpoint == 'student.dashboard' %} aria-current="page"{% endif %}>{{ ui.icon('dashboard') }}<span>Home</span></a>
+  <a href="{{ url_for('workspace.student_courses') }}" data-research-id="nav_courses"{% if endpoint.startswith('workspace.student_course') or 'lesson' in endpoint or endpoint == 'student.group_units' %} aria-current="page"{% endif %}>{{ ui.icon('book') }}<span>Courses</span></a>
+  <a href="{{ url_for('student.activities') }}" data-research-id="nav_activities"{% if endpoint == 'student.activities' or endpoint.startswith('student.quiz_') or endpoint.startswith('student.assignment_') or endpoint.startswith('student.listening_') or endpoint.startswith('student.speaking_') %} aria-current="page"{% endif %}>{{ ui.icon('activity') }}<span>Activities</span></a>
+  <a href="{{ url_for('student.search') }}" data-research-id="nav_search"{% if endpoint == 'student.search' %} aria-current="page"{% endif %}>{{ ui.icon('search') }}<span>Search</span></a>
+  <button type="button" aria-label="More navigation" aria-controls="workspace-navigation" aria-expanded="false" data-nav-toggle data-research-id="nav_more" hidden>{{ ui.icon('menu') }}<span>More</span></button>
+</nav>

@@ -20,7 +20,7 @@
     There is equally no "publish now" checkbox. Publishing is a separate,
     deliberate POST with its own token and its own notification, so a slip of
     the mouse here cannot tell a whole group something. -#}
-<h1 style="margin-top: 0">{{ "Edit announcement" if announcement else "New announcement" }}</h1>
+<h1 data-workspace-page-heading style="margin-top: 0">{{ "Edit announcement" if announcement else "New announcement" }}</h1>
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }}
 </p>

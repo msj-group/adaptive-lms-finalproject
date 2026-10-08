@@ -2,7 +2,7 @@
 {% block title %}{{ group_name }} — Lessons{% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-<h1>{{ group_name }} — Lessons</h1>
+<h1 data-workspace-page-heading>{{ group_name }} — Lessons</h1>
 <p class="ds-section__desc">
   {{ course_title }} &middot; {{ level_name }} &middot; {{ term_name }}
 </p>
@@ -18,13 +18,13 @@
 </div>
 {% else %}
 {% for unit in units %}
-<section id="unit-{{ unit.public_id }}" class="dash-section" style="{% if loop.first %}margin-top: 0{% endif %}">
+<section id="unit-{{ unit.public_id }}" class="learning-unit">
   <h2>{{ unit.title }}</h2>
   {% if unit.lessons %}
-  <ul style="list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2);">
+  <ul class="workspace-lesson-list">
     {% for lesson in unit.lessons %}
     <li>
-      <a class="card" style="display:flex; justify-content: space-between; align-items: center; gap: var(--space-3); text-decoration:none;"
+      <a class="learning-lesson-row"
          href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}" data-research-id="lesson_open">
         <span class="card__title">{{ lesson.title }}</span>
         {#- Phase 4 / M13: this student's own completion mark in this group. -#}

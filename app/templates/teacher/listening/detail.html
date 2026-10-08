@@ -1,9 +1,13 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'listening' %}
+{% set activity_phase = 'overview' %}
 {% block title %}{{ activity.title }} — {{ group.name }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+
 {#- Phase 4 / M05. `activity` and every entry of `questions` are plain
     presentation dicts; no ORM row and no internal id reaches this template.
     `audio` carries only the original filename, the format and the size --
@@ -19,7 +23,7 @@
     governs student access, not authoring. Every authored string is autoescaped
     -- never |safe. -#}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
-  <h1 style="margin:0">{{ activity.title }}</h1>
+
   <span class="ds-row" style="gap: var(--space-2)">
     {% if published %}
     <span class="badge badge--success">Published</span>
@@ -68,7 +72,7 @@
   {{ availability.opens_local.strftime("%Y-%m-%d %H:%M") }} and can start an attempt until
   {{ availability.closes_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}); after that they can still read
   the attempts they already made. Each student may start
-  {{ availability.attempt_limit }} attempt{{ "" if availability.attempt_limit == 1 else "s" }}{% if availability.time_limit_minutes %},
+  {{ _n('%(count)d attempt', '%(count)d attempts', availability.attempt_limit) }}{% if availability.time_limit_minutes %},
   each limited to {{ availability.time_limit_minutes }} minutes or the closing time, whichever comes first{% endif %}.
   Attempts are graded automatically, one point per question, with no partial credit and no pass or
   fail. Students never see which options are correct.
@@ -95,17 +99,25 @@
 </div>
 {% endif %}
 
+<div class="activity-listening-layout">
+<aside class="activity-listening-desk">
 <section style="margin-bottom: var(--space-6)">
   <h2>Recording</h2>
   {% if audio %}
   <div class="card">
     <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">File</dt>
+      <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">File</dt>
       <dd style="margin:0">{{ audio.filename }}</dd>
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Format</dt>
+</div>
+      <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Format</dt>
       <dd style="margin:0">{{ audio.format }}</dd>
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Size</dt>
+</div>
+      <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Size</dt>
       <dd style="margin:0">{{ (audio.byte_size / 1024) | round(1) }} KB</dd>
+</div>
     </dl>
     <div class="ds-row" style="margin-top: var(--space-3)">
       <a class="btn btn--secondary" href="{{ url_for('teacher.listening_audio', group_public_id=group.public_id, listening_public_id=activity.public_id) }}">Open recording</a>
@@ -125,14 +137,22 @@
 <div class="card" style="margin-bottom: var(--space-6)">
   <div class="card__title" style="margin-bottom: var(--space-2)">Availability</div>
   <dl style="display:grid; grid-template-columns: 160px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
     <dd style="margin:0">{% if availability.opens_local %}{{ availability.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}){% else %}Not set{% endif %}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Closes</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Closes</dt>
     <dd style="margin:0">{% if availability.closes_local %}{{ availability.closes_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}){% else %}Not set{% endif %}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time limit</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time limit</dt>
     <dd style="margin:0">{% if availability.time_limit_minutes %}{{ availability.time_limit_minutes }} minutes{% else %}None{% endif %}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Attempts allowed</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Attempts allowed</dt>
     <dd style="margin:0">{{ availability.attempt_limit }}</dd>
+</div>
   </dl>
   {% if readiness %}
   <div class="alert alert--warning" style="margin-top: var(--space-3); margin-bottom: 0">
@@ -151,12 +171,18 @@
 
 <div class="card" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 160px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Transcript setting</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Transcript setting</dt>
     <dd style="margin:0">{{ activity.transcript_visibility_label }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>
     <dd style="margin:0">{{ activity.created_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Last changed</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Last changed</dt>
     <dd style="margin:0">{{ activity.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+</div>
   </dl>
 </div>
 
@@ -164,7 +190,7 @@
   <h2>Instructions</h2>
   <div class="card">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
   </div>
 </section>
 
@@ -174,7 +200,7 @@
     {% if activity.transcript %}
     {# Autoescaped, never |safe. You always see this; whether a student does
        is decided by the transcript setting above. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ activity.transcript }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.transcript }}</div>
     {% else %}
     <p class="ds-section__desc" style="margin:0">No transcript written. That is allowed with any transcript setting.</p>
     {% endif %}
@@ -185,16 +211,18 @@
   <h2>Vocabulary support</h2>
   <div class="card">
     {% if activity.vocabulary_notes %}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ activity.vocabulary_notes }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.vocabulary_notes }}</div>
     {% else %}
     <p class="ds-section__desc" style="margin:0">No vocabulary notes written. Students see this section only when you write something here.</p>
     {% endif %}
   </div>
 </section>
 
+</aside>
+<div>
 <section style="margin-top: var(--space-6)">
   <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-3)">
-    <h2 style="margin:0">Questions</h2>
+    <h2 id="activity-questions" style="margin:0">Questions</h2>
     {% if operational and not frozen_message %}
     <a class="btn btn--primary" href="{{ url_for('teacher.listening_question_create', group_public_id=group.public_id, listening_public_id=activity.public_id) }}">Add Question</a>
     {% endif %}
@@ -202,27 +230,34 @@
 
   {% if questions %}
   <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th style="width:3rem">#</th>
-        <th>Question</th>
-        <th style="width:11rem">Answer mode</th>
-        <th style="width:6rem">Options</th>
-        <th style="width:6rem">Correct</th>
-        <th style="width:18rem">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
+  <div class="activity-library-grid">
       {% for item in questions %}
-      <tr>
-        <td>{{ item.number }}</td>
-        {# Autoescaped, never |safe. The preview is already bounded in SQL. #}
-        <td>{{ item.prompt_preview }}{% if item.prompt_truncated %}&hellip;{% endif %}</td>
-        <td><span class="badge badge--neutral">{{ item.answer_mode_label }}</span></td>
-        <td>{{ item.active_option_count }}</td>
-        <td>{{ item.correct_option_count }}</td>
-        <td>
+      <article class="activity-library-card">
+<header>
+<span class="activity-card-symbol">{{ activity_ui.symbol(activity_kind,22) }}</span>
+<h3><span>Question</span> {{ item.number }}</h3>
+</header>
+<dl class="activity-library-meta">
+<div class="activity-fact">
+<dt>Question</dt>
+<dd>{{ item.prompt_preview }}{% if item.prompt_truncated %}&hellip;{% endif %}</dd>
+</div>
+<div class="activity-fact">
+<dt>Answer mode</dt>
+<dd>
+<span class="badge badge--neutral">{{ item.answer_mode_label }}</span>
+</dd>
+</div>
+<div class="activity-fact">
+<dt>Options</dt>
+<dd>{{ item.active_option_count }}</dd>
+</div>
+<div class="activity-fact">
+<dt>Correct</dt>
+<dd>{{ item.correct_option_count }}</dd>
+</div>
+</dl>
+<footer>
           {% if item.move_up_token %}
           <div class="ds-row" style="gap: var(--space-2)">
             <a class="btn btn--secondary" href="{{ url_for('teacher.listening_question_edit', group_public_id=group.public_id, listening_public_id=activity.public_id, question_public_id=item.public_id) }}">Edit</a>
@@ -240,11 +275,10 @@
           {% else %}
           <span class="ds-section__desc" style="margin:0">Read only</span>
           {% endif %}
-        </td>
-      </tr>
+        </footer>
+</article>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
   </div>
 
   {% if has_prev or has_next %}
@@ -271,4 +305,8 @@
   </div>
   {% endif %}
 </section>
+
+</div>
+</div>
+</div>
 {% endblock %}

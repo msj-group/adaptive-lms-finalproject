@@ -1,10 +1,18 @@
-from flask import render_template
+import uuid
+from flask import current_app, render_template
+from flask_login import current_user
 
 
 def register_error_handlers(app):
+    def error_page(code):
+        reference = uuid.uuid4().hex[:12] if code == 500 else None
+        if reference:
+            current_app.logger.error("Error page reference: %s", reference)
+        return render_template("errors/workspace.html", code=code, reference=reference), code
+
     @app.errorhandler(404)
     def not_found(_error):
-        return render_template("errors/404.html"), 404
+        return error_page(404)
 
     @app.errorhandler(413)
     def request_entity_too_large(_error):
@@ -12,8 +20,11 @@ def register_error_handlers(app):
         # MAX_CONTENT_LENGTH (the largest enabled Material category limit
         # plus a small multipart overhead) -- a friendly page, never a
         # stack trace or driver/framework text.
-        return render_template("errors/413.html"), 413
+        return error_page(413)
 
     @app.errorhandler(500)
     def server_error(_error):
-        return render_template("errors/500.html"), 500
+        return error_page(500)
+
+    for code in (400, 403, 410, 429):
+        app.register_error_handler(code, lambda _error, status=code: error_page(status))

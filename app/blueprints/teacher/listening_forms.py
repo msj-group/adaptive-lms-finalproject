@@ -17,7 +17,7 @@ unchanged rather than declaring a second, drifting copy of the same four
 fields and the same timezone conversion.
 """
 
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from flask_wtf.file import FileField, FileRequired
 from wtforms import RadioField, StringField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError

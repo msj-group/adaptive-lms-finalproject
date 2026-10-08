@@ -26,6 +26,7 @@
  */
 (function () {
   "use strict";
+  var t = window.aelmsUI ? window.aelmsUI.t : function (text) { return text; };
 
   var form = document.querySelector("[data-question-editor]");
   if (!form) {
@@ -89,7 +90,7 @@
     addButton.disabled = current.length >= maxOptions;
     if (counter) {
       counter.textContent =
-        current.length + " of " + minOptions + "–" + maxOptions + " options";
+        t("%(count)s of %(min)s–%(max)s options", {count:current.length,min:minOptions,max:maxOptions});
     }
   }
 

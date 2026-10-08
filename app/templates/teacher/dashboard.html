@@ -1,167 +1,19 @@
 {% extends "layouts/portal_base.html" %}
 {% import "_dashboard_macros.html" as dash %}
-{% import "_announcement_macros.html" as ann %}
-{% import "_message_macros.html" as msg %}
+{% import "_figma_ui.html" as ui %}
 {% block title %}Teacher Dashboard{% endblock %}
-{% block portal_nav %}
-  <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
-  <a class="portal-nav__link" href="{{ url_for('teacher.calendar') }}">Calendar</a>
-  <a class="portal-nav__link" href="{{ url_for('teacher.announcements_feed') }}">Announcements</a>
-  <a class="portal-nav__link" href="{{ url_for('teacher.discussions_overview') }}">Discussions</a>
-{% endblock %}
 {% block portal_content %}
-<h1>Welcome, {{ current_user.full_name }}</h1>
-<p class="ds-section__desc">
-  Your active teaching assignments. Class times are shown in the center timezone
-  (<strong>{{ tz_name }}</strong>).
-</p>
-
-{#- Phase 4 / M09. One bounded query, applying exactly the same visibility
-    clause the teacher announcement feed applies. Rendered OUTSIDE the "no
-    active teaching assignments" branch on purpose: a teacher with no current
-    assignment still belongs to the centre and still receives the centre's
-    announcements. -#}
-<div class="dash-section">
-  <h2>Latest announcements</h2>
-  {% if announcements %}
-  <div class="dash-card-list">
-    {% for item in announcements %}
-    <div class="card">
-      <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
-        <div>
-          <div class="card__title" style="margin-bottom: var(--space-1)">
-            <a href="{{ url_for('teacher.announcement_detail', announcement_public_id=item.public_id) }}">{{ item.title }}</a>
-          </div>
-          {{ ann.context_line(item) }}
-        </div>
-        {{ ann.scope_badge(item) }}
-      </div>
-      {{ ann.body_preview(item, 140) }}
-      <div class="card__body" style="margin-top: var(--space-2); color: var(--color-text-secondary)">
-        {{ ann.published_line(item, tz_name) }}
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  <p class="ds-section__desc" style="margin-top: var(--space-2)">
-    The {{ announcement_cap }} most recent at most. <a href="{{ url_for('teacher.announcements_feed') }}">See all announcements</a>.
-  </p>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">No announcements</div>
-    <div>Notices from the centre, your courses and your groups appear here.</div>
-  </div>
-  {% endif %}
+<header class="today-greeting"><div><p class="figma-eyebrow">{{ now.strftime('%A · %d %B %Y') }}</p><h2>Welcome, {{ current_user.full_name }}.</h2><p>Your teaching today</p></div>{{ ui.icon('spark', 28) }}</header>
+<div class="figma-dashboard-grid today-dashboard">
+{{ dash.class_card(next_class, now, tz_name, 'teacher') }}
+<section class="dash-section"><div class="today-section-heading"><h2>Work to review</h2><a href="{{ url_for('workspace.review_queue') }}">View review queue</a></div>
+{% if pending_reviews %}<ul class="today-list">{% for item in pending_reviews %}<li class="today-action-row"><div><span class="badge badge--neutral">{{ item.kind|capitalize }}</span><h3>{{ item.title }}</h3><p class="today-meta">{{ item.student_name }} · {{ item.group_name }}</p><time class="today-meta" datetime="{{ item.local_time.isoformat() }}">{{ item.local_time.strftime('%d %b · %H:%M') }} · {{ tz_name }}</time></div><a class="btn btn--secondary" href="{{ item.feedback_url }}">Review feedback</a></li>{% endfor %}</ul><p class="today-note">{{ 'Five oldest shown; more are waiting.' if review_has_more else 'Oldest submissions first.' }} Awaiting a saved comment, not a grade.</p>{% else %}<p>No submissions awaiting comments in your active groups.</p>{% endif %}
+</section>
+<section class="dash-section figma-wide" id="my-groups"><div class="today-section-heading"><h2>Teaching groups</h2><a href="{{ url_for('workspace.teacher_groups') }}">View all groups</a></div>
+{% if cards %}<p class="today-note">{{ cards|length }} current teaching assignments · {{ cards|sum(attribute='student_count') }} active enrollments across groups. A student in two groups counts twice.</p><div class="workspace-card-grid today-course-grid">{% for card in cards[:4] %}<article class="card workspace-course-card"><h3>{{ card.course_title }}</h3><p class="today-meta">{{ card.group_name }} · {{ card.term_name }}</p>{{ dash.operational_badge(card.operational) }}<p class="today-meta">{{ card.student_count }} active enrollments</p><a class="btn btn--secondary" href="{{ url_for('workspace.teacher_group', group_public_id=card.group_public_id) }}">Open group</a></article>{% endfor %}</div>{% else %}<p>No active teaching assignments. Your groups appear when an administrator assigns you.</p>{% endif %}
+</section>
+<section class="dash-section figma-wide"><div class="today-section-heading"><h2>Upcoming classes</h2><a href="{{ url_for('teacher.calendar') }}">View calendar</a></div>{% if upcoming %}<ul class="today-list">{% for occ in upcoming[:3] %}<li class="today-action-row"><div><h3>{{ occ.ref.course_title }}</h3><p class="today-meta">{{ occ.ref.group_name }} · {{ occ.ref.location or 'Location not specified' }}</p><time datetime="{{ occ.start.isoformat() }}">{{ occ.start.strftime('%a %d %b') }} · {{ dash.time_range(occ.start, occ.end) }} · {{ tz_name }}</time></div><a href="{{ url_for('workspace.teacher_group', group_public_id=occ.ref.group_public_id) }}">Open group</a></li>{% endfor %}</ul>{% else %}<p>No classes scheduled in the next seven days.</p>{% endif %}</section>
+{{ dash.compact_announcements(announcements, 'teacher') }}
+{{ dash.compact_messages(conversations) }}
 </div>
-
-{#- Phase 4 / M11. Outside the assignment branch on purpose: a conversation
-    stays listed after the shared group has ended. -#}
-{{ msg.recent_conversations(conversations, conversation_cap, "students") }}
-
-{% if not cards %}
-<div class="empty-state">
-  <div class="empty-state__title">No active teaching assignments</div>
-  <div>When an administrator assigns you to a group, it will appear here.</div>
-</div>
-{% else %}
-
-<div class="dash-section">
-  <h2>Next class</h2>
-  <p>{{ dash.next_class_line(next_class, now, tz_name) }}</p>
-</div>
-
-<div class="dash-section">
-  <h2>Upcoming classes (next 7 days)</h2>
-  {{ dash.upcoming_table(upcoming, now, tz_name, show_group=True) }}
-</div>
-
-<div class="dash-section">
-  <h2>Your groups</h2>
-  <div class="dash-card-list">
-    {% for card in cards %}
-    <div class="card">
-      <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
-        <div>
-          <div class="card__title" style="margin-bottom: var(--space-1)">{{ card.group_name }}</div>
-          <div class="card__body">{{ card.course_title }} &middot; {{ card.level_name }}</div>
-          <div class="card__body">{{ card.term_name }} ({{ card.term_start.isoformat() }} &ndash; {{ card.term_end.isoformat() }})</div>
-        </div>
-        {{ dash.operational_badge(card.operational) }}
-      </div>
-
-      {% if not card.operational %}
-      <div class="alert alert--warning" style="margin-top: var(--space-3)">
-        Not operational: {{ card.archived_labels | join(", ") }} archived. This assignment is kept
-        as historical context and produces no upcoming class.
-      </div>
-      {% endif %}
-
-      <dl style="display:grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: var(--space-3) 0 0;">
-        <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Active students</dt>
-        <dd style="margin:0">{{ card.student_count }}</dd>
-        <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Next class</dt>
-        <dd style="margin:0">{{ dash.next_class_line(card.next_class, now, tz_name) }}</dd>
-      </dl>
-
-      {% if card.schedules %}
-      <table class="dash-table" style="margin-top: var(--space-3)">
-        <thead><tr><th>Day</th><th>Time ({{ tz_name }})</th><th>Location</th></tr></thead>
-        <tbody>
-          {% for s in card.schedules %}
-          <tr>
-            <td>{{ dash.weekday_name(s.day_of_week) }}</td>
-            <td>{{ dash.time_range(s.start_time, s.end_time) }}</td>
-            <td>{{ s.location or "—" }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <p class="card__body" style="margin-top: var(--space-3)">No active schedule for this group yet.</p>
-      {% endif %}
-
-      <div class="ds-row" style="margin-top: var(--space-4)">
-        <a class="btn btn--secondary" href="{{ url_for('teacher.group_units', group_public_id=card.group_public_id) }}">Manage Units</a>
-        {#- Phase 4 / M01: the assignments list stays reachable for an actively
-            assigned Teacher even under an archived group/ancestor, so history
-            can always be read and published work can always be withdrawn. -#}
-        <a class="btn btn--secondary" href="{{ url_for('teacher.group_assignments', group_public_id=card.group_public_id) }}">Manage Assignments</a>
-        {#- Phase 4 / M04A: the quiz list stays reachable for an actively
-            assigned Teacher even under an archived group/ancestor, so existing
-            drafts can always be read back. Every quiz there is a draft that no
-            student can see. -#}
-        <a class="btn btn--secondary" href="{{ url_for('teacher.group_quizzes', group_public_id=card.group_public_id) }}">Manage Quizzes</a>
-        <a class="btn btn--secondary" href="{{ url_for('teacher.group_listening', group_public_id=card.group_public_id) }}">Manage Listening</a>
-        <a class="btn btn--secondary" href="{{ url_for('teacher.group_speaking', group_public_id=card.group_public_id) }}">Manage Speaking</a>
-        {#- Phase 4 / M07: attendance stays reachable for an actively assigned
-            Teacher even under an archived group/ancestor, so a recorded class
-            can always be read back. Only creating, saving a draft and
-            finalizing require an operational chain. -#}
-        <a class="btn btn--secondary" href="{{ url_for('teacher.group_attendance', group_public_id=card.group_public_id) }}">Attendance</a>
-        {#- Phase 4 / M08: the gradebook stays reachable for an actively assigned
-            Teacher even under an archived group/ancestor, so a term's grades can
-            always be read back. Only adding a category or item, entering a score
-            and releasing require an operational chain. -#}
-        <a class="btn btn--secondary" href="{{ url_for('teacher.group_gradebook', group_public_id=card.group_public_id) }}">Gradebook</a>
-        {#- Phase 4 / M09: the announcement page stays reachable for an actively
-            assigned Teacher even under an archived group/ancestor, so what was
-            posted can always be read back and a published notice can always be
-            withdrawn. Only writing and publishing require an operational chain. -#}
-        <a class="btn btn--secondary" href="{{ url_for('teacher.group_announcements', group_public_id=card.group_public_id) }}">Announcements</a>
-        {#- Phase 4 / M13: lesson progress is a read-only record, so like the
-            gradebook it stays reachable for an actively assigned Teacher even
-            under an archived group/ancestor. -#}
-        <a class="btn btn--secondary" href="{{ url_for('teacher.group_progress', group_public_id=card.group_public_id) }}">Lesson progress</a>
-        {#- Phase 4 / M12: discussions require the current operational chain,
-            so the link is offered only where the page can open. -#}
-        {% if card.operational %}
-        <a class="btn btn--secondary" href="{{ url_for('teacher.discussions_group', group_public_id=card.group_public_id) }}">Discussions</a>
-        {% endif %}
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</div>
-
-{% endif %}
 {% endblock %}

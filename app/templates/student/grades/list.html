@@ -9,7 +9,7 @@
     What is not here is not hidden -- it was never fetched: no other student,
     no draft item, no teacher comment, no roster, no teacher identity and no
     internal id. -#}
-<h1 style="margin-top: 0">Grades</h1>
+<h1 data-workspace-page-heading style="margin-top: 0">Grades</h1>
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   Your own results for the work your teachers have finished grading and released. A grade item
   only appears once it has been released; until then your teacher is still working on it.
@@ -29,7 +29,7 @@
     <div class="card__body">{{ item.course_title }}</div>
     <div class="card__body">{{ item.term_name }}</div>
     <div class="card__body" style="margin-top: var(--space-2)">
-      {{ item.released_count }} released result{{ "" if item.released_count == 1 else "s" }}
+      {{ _n('%(count)d released result', '%(count)d released results', item.released_count) }}
     </div>
     <div class="ds-row" style="margin-top: var(--space-4)">
       <a class="btn btn--primary" href="{{ url_for('student.group_grades', group_public_id=item.group_public_id) }}">See my grades</a>

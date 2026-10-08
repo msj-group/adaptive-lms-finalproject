@@ -1,4 +1,5 @@
 {% extends "layouts/portal_base.html" %}
+{% import "_notification_macros.html" as notice %}
 {% block title %}Notifications{% endblock %}
 {#- The inbox is shared by both portal roles, so it is the one page whose
     `portal_nav` has to branch: a Student keeps the established Dashboard +
@@ -22,7 +23,7 @@
     a POST to a notification-owned route that re-validates and re-authorizes
     the destination. -#}
 
-<h1>Notifications</h1>
+<h1 data-workspace-page-heading>Notifications</h1>
 <p class="ds-section__desc">
   Updates about your groups, classes, and learning content. Times are shown in the
   center timezone (<strong>{{ tz_name }}</strong>).
@@ -40,30 +41,35 @@
         string expression: autoescaping would turn the latter's quotes into
         &#34; and produce a broken attribute. -#}
     <a class="notif-filter{{ ' notif-filter--active' if filter_name == 'all' else '' }}"
-       href="{{ url_for('notifications.inbox') }}"
+       href="{{ url_for('notifications.inbox', kind=selected_kind) }}"
        {%- if filter_name == 'all' %} aria-current="page"{% endif %}>All</a>
     <a class="notif-filter{{ ' notif-filter--active' if filter_name == 'unread' else '' }}"
-       href="{{ url_for('notifications.inbox', filter='unread') }}"
+       href="{{ url_for('notifications.inbox', filter='unread', kind=selected_kind) }}"
        {%- if filter_name == 'unread' %} aria-current="page"{% endif %}>
-      Unread{% if unread_total %} ({{ unread_total }}){% endif %}
+      Unread{% if unread_total %} ({{ unread_total }} overall){% endif %}
     </a>
   </nav>
-
+  <form class="notif-kind-filter" method="get" action="{{ url_for('notifications.inbox') }}"><input type="hidden" name="filter" value="{{ filter_name }}"><label for="notification-kind">Update type</label><select id="notification-kind" name="kind" class="field__input"><option value="">All types</option>{% for value, choice in kind_choices.items() %}<option value="{{ value }}"{% if value == selected_kind %} selected{% endif %}>{{ choice[0] }}</option>{% endfor %}</select><button class="btn btn--secondary" type="submit">Apply</button></form>
   {% if unread_total %}
   <form method="post" action="{{ url_for('notifications.read_all') }}" data-research-form="notification_read_all">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="filter" value="{{ filter_name }}">
     <input type="hidden" name="page" value="{{ page }}">
-    <button type="submit" class="btn btn--secondary" data-research-id="notification_read_all">Mark all read</button>
+    <input type="hidden" name="kind" value="{{ selected_kind }}">
+    <button type="submit" class="btn btn--secondary" data-research-id="notification_read_all">Mark all unread as read</button>
   </form>
   {% endif %}
 </div>
 
+{% if unread_total %}<p class="ds-section__desc">The unread count and “Mark all” include every type and page.</p>{% endif %}
+
 {% if not notifications %}
-  {% if filter_name == 'unread' %}
+  {% if selected_kind %}
+  <div class="empty-state"><div class="empty-state__title">No matching updates</div><p>There are no {{ 'unread ' if filter_name == 'unread' else '' }}updates of this type. <a href="{{ url_for('notifications.inbox', filter=filter_name) }}">Clear the type filter</a>.</p></div>
+  {% elif filter_name == 'unread' %}
   <div class="empty-state">
     <div class="empty-state__title">No unread notifications</div>
-    <div>You are all caught up. Switch to <a href="{{ url_for('notifications.inbox') }}">All</a> to see earlier updates.</div>
+    <div>You are all caught up. Switch to <a href="{{ url_for('notifications.inbox', kind=selected_kind) }}">All</a> to see earlier updates.</div>
   </div>
   {% else %}
   <div class="empty-state">
@@ -73,45 +79,17 @@
   {% endif %}
 {% else %}
 <ul class="notif-list">
-  {% for item in notifications %}
-  <li class="notif-item card{{ ' notif-item--unread' if item.is_unread else '' }}">
-    <div class="notif-item__head">
-      <span class="badge {{ 'badge--primary' if item.is_unread else 'badge--neutral' }}">{{ item.kind_label }}</span>
-      <span class="notif-item__title">{{ item.title }}</span>
-      {% if item.is_unread %}<span class="badge badge--success">Unread</span>{% endif %}
-    </div>
-    <p class="notif-item__message">{{ item.message }}</p>
-    <div class="notif-item__foot">
-      <span class="notif-item__time">{{ item.created_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</span>
-      <div class="notif-item__actions">
-        <form method="post" action="{{ url_for('notifications.open_notification', public_id=item.public_id) }}" data-research-form="notification_open">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <input type="hidden" name="filter" value="{{ filter_name }}">
-          <input type="hidden" name="page" value="{{ page }}">
-          <button type="submit" class="btn btn--primary" data-research-id="notification_open">Open</button>
-        </form>
-        {% if item.is_unread %}
-        <form method="post" action="{{ url_for('notifications.read_notification', public_id=item.public_id) }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <input type="hidden" name="filter" value="{{ filter_name }}">
-          <input type="hidden" name="page" value="{{ page }}">
-          <button type="submit" class="btn btn--secondary">Mark read</button>
-        </form>
-        {% endif %}
-      </div>
-    </div>
-  </li>
-  {% endfor %}
+  {% for item in notifications %}{{ notice.row(item, tz_name, filter_name, page, selected_kind) }}{% endfor %}
 </ul>
 
 {% if has_prev or has_next %}
 <nav class="notif-pagination" aria-label="Notification pages">
   {% if has_prev %}
-  <a class="btn btn--secondary" href="{{ url_for('notifications.inbox', filter=filter_name, page=page - 1) }}">Previous</a>
+  <a class="btn btn--secondary" href="{{ url_for('notifications.inbox', filter=filter_name, kind=selected_kind, page=page - 1) }}">Previous</a>
   {% endif %}
   <span class="notif-pagination__page">Page {{ page }}</span>
   {% if has_next %}
-  <a class="btn btn--secondary" href="{{ url_for('notifications.inbox', filter=filter_name, page=page + 1) }}">Next</a>
+  <a class="btn btn--secondary" href="{{ url_for('notifications.inbox', filter=filter_name, kind=selected_kind, page=page + 1) }}">Next</a>
   {% endif %}
 </nav>
 {% endif %}

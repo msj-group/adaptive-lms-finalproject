@@ -1,5 +1,315 @@
 # Project Decisions
 
+## 2026-10-07 — Approved Version A redesign and wave authorization
+
+- P01: Modern Academic Workspace, tangible partial redesign with unified
+  tokens/components, responsive, accessible, light/dark and RTL presentation.
+- P02/P03: Teacher-configured Text or Single-File Assignment; retain existing
+  text behavior and protected grading/ownership/enrollment workflows. Inspect
+  central formats/size policy in W2-D02; otherwise request its minimum rule.
+  Private validated uploads only. Review any limited migration before execution.
+  No multi-file/draft/resubmission/new late policy or expanded lifecycle.
+- P04: Use existing research event types only; minimal privacy-safe Account
+  coverage. No passwords, form values, raw text, filenames or image/file content.
+  Missing essential confirmed outcomes require a separate schema decision.
+- P05: Approve global ordinal position across the rendered search result list,
+  preserving grouping/ranking/algorithm. Document and implement in W7 before freeze.
+- P06: Keep the Flask modular monolith and demonstrated local refinements only.
+  Shared Core + shared Research; future isolated Adaptive layer. No Version B
+  implementation, duplicated apps or scattered version conditions.
+- Begin W0 then W1; follow the approved wave dependencies. Preserve all domain,
+  security and research meanings; no real collection, invented analytics, silent
+  sampling/rating/retention changes or unrelated backend rewrite.
+- [VERSION_A_DESIGN_CONTRACT.md](VERSION_A_DESIGN_CONTRACT.md) is the canonical
+  approved target. Actual evidence is recorded separately. Existing prohibitions
+  on new automated tests, DB/Git mutation and installation remain in force.
+
+## 2026-10-07 — Quiet Quiz controls and stable question position
+
+- The owner removes the automatic-save/success, bookmark-success, session-note
+  and question-list explanatory text. Keep actionable failure/retry feedback
+  and server-confirmed sidebar states, with successful interactions silent.
+- Move the icon-only Bookmark control inside the upper physical right corner
+  of the question card. Keep independent native CSRF/state forms, accessible
+  action/pressed labels, keyboard focus and reduced-motion-aware effects.
+- Place the final-submission card below the sidebar question list with a compact
+  brand-token layout. Its signed state, unanswered acknowledgement and final
+  server write are unchanged. Narrow layouts place the sidebar after the question.
+- Previous/next/list navigation restores current document and local list/sidebar
+  offsets after the latest answer/bookmark write. A one-use five-minute tab-scoped
+  UI entry stores only coordinates and public destination/scope paths, never
+  academic content, selections, flags, scores or secrets. Validate scope/path and
+  finite bounds; user interaction cancels later layout restoration. Native
+  navigation still works when storage is unavailable. No backend/schema change.
+- Current source-only evidence and runtime boundaries are in QUIZ_INTERACTION.md.
+
+## 2026-10-07 — Quiz autosave, question navigation and review flags
+
+- The owner explicitly replaces ordinary Student Quiz manual answer saves with
+  saving on option change, an all-question status/sidebar and Bookmark toggles.
+  Listening retains its current interaction; final submission remains explicit.
+- Use the existing protected answer POST and lock/recheck sequence. JSON is only
+  response negotiation. Serial complete-set saves coalesce rapid changes without
+  aborting writes; navigation/submission wait for the latest acknowledgement.
+  Failures keep pending choices visible and offer retry/reload recovery.
+- Empty autosave clears selections while retaining the answer row. Progress and
+  final unanswered confirmation require a selection, not mere row existence.
+  Grading/deadlines/results, authored answer-key privacy and research semantics
+  are unchanged. Catch IntegrityError from insertion/flush as well as commit.
+- Sidebar metadata is a bounded batched identifier/status read, without other
+  prompts/options/keys. Bookmark is a separate scoped CSRF/signed-state POST;
+  review flags use an account/auth-version-bound signed HttpOnly session cookie,
+  capped at 16 marked attempts and 100 questions. Persistence is browser-session;
+  no permanent/cross-device record or schema change is implied.
+- Details and source-only evidence are in QUIZ_INTERACTION.md. Continue without
+  application/browser/DB operation, automated suites, migrations or Git mutation.
+
+## 2026-10-07 — Fewer clicks across ordinary workflows
+
+- The owner requests a platform-wide workflow review and removal/combination of
+  unnecessary steps. Prefer direct existing tools from lists and an explicit
+  save-and-continue action when the next context is known. Estimated link/button
+  counts and decisions are recorded in WORKFLOW_SIMPLIFICATION.md.
+- Teacher feedback actions may open the existing combined answer/recording and
+  feedback editor directly. Gradebook and draft-attendance lists may open the
+  protected score/marking pages. Administrator Group lists link directly to
+  members/schedules. All destination authorization remains authoritative.
+- Question save-and-add and Lesson save-and-materials select fixed destinations
+  only after successful commits. New question GETs reauthorize and mint fresh
+  parent-version tokens. Student complete-and-next resolves a published Lesson
+  from the same own-Group outline and continues only for successful/no-op
+  completion; rejected/stale/conflicting outcomes stay on the current Lesson.
+- Bulk present marking is an explicit current-form convenience with undo. It
+  changes no roster or note, makes no request, uses no storage and cannot save or
+  finalize. Later manual marks take precedence over undo. Preserve separate
+  signed draft saves, roster creation review and finalization acknowledgement.
+- Research export lists project archive existence through one correlated EXISTS
+  in the existing bounded provenance-scoped query. Download shortcuts still use
+  the existing role/provenance/retention/digest checks and download audit. No
+  archive data/account mapping is selected, and no per-row query is added.
+- Keep useful financial, publication/release, final-submission, collection and
+  membership decisions. Retain batch filter application instead of reloading
+  after each filter. Remove the duplicate activity-type dropdown; native type
+  navigation and the preserved hidden GET value provide the same filter.
+- Source-only verification continues. No server/browser, application database,
+  schema/migration, dependency install, automated suite, staging or commit.
+
+## 2026-10-07 — Unified workspace menus and lists
+
+- The owner authorizes redesigning all platform menus, retaining the original
+  Youth Centre logo palette. Replace the earlier mixed floating/flush and
+  frosted treatments with consistent light rails, grouped links, coherent
+  icons, blue selection, limited red accents and white account/action cards.
+- Centralize each portal role's primary inventory in its shared layout;
+  retain established endpoints, research identifiers and role authorization.
+  Use native section links, disclosures, selects and protected POST forms.
+  Researcher keeps its own menu and logout. Shared Administrator Help/Display
+  pages receive a guarded static menu helper without database queries.
+- Carry the same visual rules into context tabs, filters, lists, records,
+  pagination, conversation/emoji/action menus and course outlines. Preserve
+  one header title, full-page messages, existing mobile drawer behavior and
+  role-scoped sidebar pixel offsets. Do not add private browser persistence.
+- Continue source-only verification: no platform/browser operation, automated
+  suites, database/schema changes, dependency installation or Git mutation.
+  See [NAVIGATION_DESIGN.md](NAVIGATION_DESIGN.md) for scope and evidence.
+
+## 2026-10-07 — Own password and profile-photo settings
+
+- The owner requested authenticated password changes and a profile photo for
+  every role. Add shared `/account` settings through the existing account card;
+  retain each role's navigation and one workspace title. This supersedes the
+  historical deferral of voluntary self-service password changes. Forced
+  temporary-password changes/recovery remain separate deferred workflows.
+- Native POST forms use CSRF plus one-hour purpose-specific signed account
+  version/auth-version snapshots. Recheck the same active actor and snapshot
+  under the canonical Group-before-User account locks. Administrator mutation
+  authorization remains unchanged. Password verification uses the locked
+  current hash; new hashing happens before the locks. Reuse Argon2 and the
+  existing 15–128 character length policy. Never audit or echo passwords/hashes.
+- On successful password commit, bump auth_version, record the account revision,
+  close this browser's collector reference and sign out. Older sessions fail
+  authentication on their next request. Do not change research sampling,
+  provenance, password-only Researcher authentication or daily retention.
+- Decode still JPEG/PNG/WebP photos with existing Pillow, cap source bytes at
+  5 MiB and pixels at 16 million, apply EXIF orientation, centre-crop to 512×512
+  and encode a new metadata-free PNG. Ignore browser filename/MIME as authority.
+  Register endpoint body/form caps before global CSRF parses multipart data.
+- Reuse private randomized file storage and existing UploadedFile/AccountRevision
+  metadata without schema changes. A `profile_photo` revision records the file
+  public ID in its snapshot; increment account version and commit both rows
+  together. This is an event projection, not a new database foreign key. Every
+  read rechecks file existence, uploader ownership and canonical PNG metadata;
+  photo delivery accepts no target-user/file identity from the URL and serves
+  only the requesting account's latest photo, with no-store/nosniff headers.
+- Show the photo in the account toggle, card and settings page for all roles;
+  retain initials when no stored photo is available. Do not expose photos
+  through public storage or broaden cross-user access. Replacements retain old
+  row/bytes as private history. Failed writes clean only their newly staged
+  file; the existing storage publish/commit crash window remains documented.
+- Source-only verification: no browser/server, automated test suite, migrations,
+  application database operations, installations or Git mutations are included.
+
+## 2026-10-07 — Remaining current-platform UX review
+
+- Implement the remaining focused-study dashboard/navigation/notifications/
+  owned-thread search recommendations using existing functions. Preserve later
+  one-title/full-page messaging/account/scroll instructions over historical
+  design suggestions. AI, new assessment/Rubrics, push and offline are separate.
+- Prioritize scoped lesson continuation and unfinished activity details for the
+  Student; next class and submissions awaiting comments for the Teacher.
+  Comments do not imply grades, enrollments do not imply unique students, and
+  a dashboard detail link never creates an attempt or attendance session.
+- Group Teacher navigation into five families while preserving authorized
+  endpoints and owning-page state-changing actions. Share the existing comment
+  query between the paginated queue and bounded summary without policy changes.
+- Desktop notification preview is optional GET, recipient-scoped and never
+  marks read. Keep native POST/CSRF target resolution/current authorization.
+  Existing-kind filters persist; unread count/Mark all cover all types/pages.
+- Search the own effective conversation inbox by name/subject with normalized,
+  escaped parameters. Preserve display-history hiding/personal clears and
+  separately authorized recipient search. No message body browser persistence.
+- Continue source-only checks. No browser/server, automated suites, migration,
+  application database mutation, deployment/scheduler or Git mutation is included.
+
+## 2026-10-07 — One workspace title per tab
+
+- The latest owner request puts each page title once below the shared workspace
+  eyebrow (YOUR LEARNING SPACE for Students, retaining the other role labels).
+  This supersedes hiding the messaging topbar title entirely: Messages appears
+  once in the header, with no second page heading in its content.
+- Shared layouts render a semantic h1 through the same page-heading macro.
+  Explicit duplicate-title markers suppress only the existing page headings
+  on screen, leaving section headings, lesson content, dashboard greetings and
+  financial document identifiers visible. Marked headings remain for printing
+  when the topbar is hidden. The rule does not depend on JavaScript.
+- Supply explicit title blocks on previously untitled workspace pages; retain
+  Enter scores/Correct scores mode in the grade-sheet title. Native forms,
+  actions, research identifiers and contextual navigation are unchanged.
+- Continue source-only verification; no platform/browser/database/Git mutation.
+
+## 2026-10-07 — Full-page messaging surface
+
+- Messaging fills the available workspace width and height below the account
+  bar, with conversation lists and message history scrolling inside the surface.
+- Remove messaging timezone copy, the visible keyboard shortcut hint, the shell
+  slogan/footer and the conversation-sidebar slogan/View all footer. Existing
+  sidebar/back links and pagination remain available; timestamp conversion,
+  Enter sending, Shift+Enter newlines and the character counter are retained.
+- This is source-only presentation work. Do not launch the platform/browser,
+  connect to the database, change schema or perform Git mutations.
+
+## 2026-10-07 — Login transition and workspace account navigation
+
+- The owner requested removal of the visible duplicate Messages heading,
+  a branded transition after successful sign-in, an account card opened from
+  the upper-right avatar, and retention of sidebar scroll position on navigation.
+- Apply the account card and navigation presentation consistently to all four
+  workspaces, retaining each role's logout endpoint and CSRF protection.
+- The brief post-authentication transition uses the validated login return
+  target, consumed once from the signed session, with role-specific copy and
+  a native continuation link. Reduced motion skips the presentation interval.
+- Navigation stores only a role-scoped pixel offset in this tab's session
+  storage. No identity, message, answer, credential or URL is stored. Logout
+  removes those offsets; native navigation remains available without storage.
+- This follow-up requires no migration, account change, reset or Git mutation.
+- The owner repeated the request with a source-only constraint: do not launch
+  the platform or use the browser. Messaging now suppresses the shared topbar
+  page label as well as the duplicate content heading; the document title,
+  off-screen h1 and sidebar Messages link remain. Other page labels are retained.
+
+## 2026-10-07 — Messaging display and ownership
+
+- The owner requests the supplied messaging design in the platform palette,
+  Enter to send / Shift+Enter for a newline, and a complete emoji section.
+- The owner explicitly chose sender deletion for both participants. Only the
+  sender can edit or hide a message. A hidden message is absent from timelines,
+  inbox previews and dashboard previews, without a deleted-message placeholder.
+- Deleting a conversation clears the acting member's history only. The other
+  member keeps their history. Replies created after the clear watermark appear
+  again; a stale clear form must not hide a reply received after it was opened.
+- Original messages and memberships are retained. Display edits/hides and
+  member clears are append-only additions, with no hard deletion or cascade.
+  This supersedes historical restrictions on editing/deleting the rendered
+  conversation; sending authorization and research send outcomes are unchanged.
+- Source preparation is authorized. The owner separately approved creation
+  and application of revision `6b3a8c2d9041` and ordinary manual review using
+  existing fictional accounts. The applied revision and retained original
+  rows are recorded in MESSAGE_MANAGEMENT_SCHEMA_PLAN.md.
+
+
+## 2026-10-06 — Enrollment after study start
+
+- The owner explicitly removed the study-start admission cutoff. New
+  enrollment, re-enrollment and wrong-course correction permit a started
+  destination while retaining all other authoritative eligibility checks.
+- Show a non-blocking notice before selecting/saving a started destination,
+  and a success notice based on the new episode's actual creation time.
+  Replaying an earlier enrollment does not become late solely because the
+  Group started later. No extra acknowledgement checkbox is required.
+- Preserve the configured study-start timestamp and its scheduling/history
+  guards, atomic invoice/collection operation, signed previews, lock order,
+  capacity, duplicate protection and enrollment episode semantics. No schema
+  change or backdated membership is introduced.
+- This supersedes the P0 admission cutoff recorded below. Historical
+  verification records retain their original behavior and scope.
+
+## 2026-10-06 — Current-platform UX/UI scope
+
+- The owner approved the audit's current-platform improvements and the Figma
+  visual identity, preserving current Flask functions, real data and LYD.
+- AI/automated assessment, new Rubrics, external notifications and offline
+  operation remain separate studies; research and financial contracts stay
+  authoritative. Administrator individual-grade/private-comment access is
+  not introduced by the unified Student profile.
+- Current implementation and bounded verification are recorded in
+  [UX/UI Implementation](UX_UI_IMPLEMENTATION.md). The latest follow-up asks
+  for a further design study of notifications, messages, the Teacher workspace
+  and Student dashboard; additional proposals are not silently activated.
+
+
+## 2026-10-06 — Local Student-to-Researcher export rehearsal
+
+- The owner wants the ordinary Student tasks, Researcher review and ZIP
+  export workflow to work locally as it will on hosting, and authorized
+  necessary source corrections before the interface redesign.
+- Export scope comes only from `RESEARCH_DATA_PROVENANCE`. Study exports
+  retain the study-session/study-subject filter. Development exports contain
+  only development and retained historical non-study sessions. No selector,
+  automatic seed or reclassification is introduced.
+- Each new manifest records its dataset kind, source and CSV schema version;
+  each session row records its original provenance. Creation audit detail
+  codes persist the export scope after archive expiry. Pre-existing exports
+  remain study-only, with their original immutable bytes.
+- The ZIP container format remains `natural-use-export.v1`; its additive
+  session-source column is declared as `natural-use-csv.v2`. Retention,
+  pseudonymity, feedback labels and snapshot semantics are unchanged.
+- The existing schema supports this correction. No migration, local reset,
+  automated tests, scheduler changes or Git publication are included.
+- See [Local Research Walkthrough](LOCAL_RESEARCH_WALKTHROUGH.md).
+
+## 2026-10-06 — Empty deployment and ordinary evaluation workflows
+
+- The owner will evaluate the platform with fictional input through its
+  ordinary operational workflows. There is no demonstration account action,
+  workspace selector or simulated online payment flow.
+- The future hosting database has no seeded accounts, Courses, Groups,
+  financial documents or research sessions. Its schema and technical control
+  rows are created by the migration chain. The first Administrator is
+  provisioned deliberately, then creates normal content through the platform.
+- The owner explicitly retained the current local database; no reset,
+  deletion, data reclassification or schema mutation is authorized here.
+- Research provenance is selected by deployment configuration, never a
+  browser query. Operational evaluation defaults to `development`, including
+  a production web server used for evaluation. Only an explicitly approved
+  actual study may set `study`. Historical classifications and audit rows
+  remain readable and keep their original meaning.
+- Remove the payment simulation adapter, routes and templates; reject every
+  enabled provider configuration until a real adapter is separately approved.
+  Cash and verified bank-transfer workflows continue normally.
+- LibyanSpider JPaaS and Linux VPS are potential hosting targets. No plan has
+  been selected or purchased, and no remote deployment or Git publication is
+  authorized by this source cleanup.
+
 ## 2026-10-06 — Latest owner close-out scope
 
 - The owner separately authorized the completed development-data reset,
@@ -11568,7 +11878,8 @@ do not erase earlier implementation or verification records.
   obligations, confirmed collections and actual payouts; preserve document
   changes and historical cash evidence rather than hard-deleting them.
 - Enrollment, its invoice/discount and optional initial collection are one
-  atomic operation. Stop new/re-enrollment at Group study start. Same-course
+  atomic operation. P0 stopped new/re-enrollment at Group study start; this
+  cutoff is superseded by the owner's 2026-10-06 late-entry decision. Same-course
   transfer may occur after start without a new charge; destination content
   determines current progress and source history survives. Re-enrollment
   creates a new episode. Wrong-course correction changes real membership

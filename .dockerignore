@@ -1,0 +1,17 @@
+**
+!requirements-production.txt
+!wsgi.py
+!app/
+!app/**
+!migrations/
+!migrations/**
+!scripts/
+!scripts/create_admin.py
+!scripts/create_researcher.py
+!scripts/research_operator.py
+!scripts/run_research_retention.py
+!scripts/deployment_diagnostics.py
+!deploy/
+!deploy/**
+**/__pycache__/
+**/*.pyc

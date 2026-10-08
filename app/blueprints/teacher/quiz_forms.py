@@ -16,7 +16,7 @@ other's rows.
 
 import re
 
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from wtforms import (
     IntegerField,
     RadioField,

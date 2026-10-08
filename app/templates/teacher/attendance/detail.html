@@ -13,7 +13,7 @@
     session whose schedule, group or academic ancestor has since been archived.
     Student names and notes are autoescaped and never rendered with `|safe`. -#}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 style="margin:0">Attendance — {{ session.session_date.isoformat() }}</h1>
+  <h1 data-workspace-page-heading style="margin:0">Attendance — {{ session.session_date.isoformat() }}</h1>
   {{ att.state_badge(is_finalized) }}
 </div>
 
@@ -38,8 +38,7 @@
 
 {% if is_finalized %}
 <div class="alert alert--success" style="margin-bottom: var(--space-5)">
-  This attendance was finalized and is permanent. It can no longer be changed, reopened or
-  deleted, and there is no control on this page to do any of those — no such action exists.
+  This attendance was finalized. Teacher editing has ended. The roster, class and finalization remain fixed; authorized administrators can correct marks with preserved history.
   Students can now see their own mark for this class.
 </div>
 {% elif mark_url %}

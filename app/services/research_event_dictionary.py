@@ -29,6 +29,8 @@ from dataclasses import dataclass, field
 
 #: The schema a configuration version and every client batch must name.
 EVENT_SCHEMA_VERSION = "natural-use-events.v1"
+EVENT_DICTIONARY_REVISION = "va-w7-r1"
+TRACKING_SCOPE_REVISION = "va-scope-r1"
 SUPPORTED_EVENT_SCHEMA_VERSIONS = (EVENT_SCHEMA_VERSION,)
 
 SOURCE_CLIENT = "client"
@@ -81,6 +83,9 @@ class EventSpec:
 #: absent: they are not pages, and their requests are never observed.
 PAGE_IDS = (
     "student.dashboard",
+    "workspace.student_courses",
+    "workspace.student_course",
+    "account.settings",
     "student.activities",
     "student.records",
     "student.episode_records",
@@ -119,6 +124,8 @@ PAGE_IDS = (
 #: POST endpoints that re-render a page on a validation failure, mapped to
 #: the page they show. The collector names the page, not the action.
 PAGE_ID_ALIASES = {
+    "account.password": "account.settings",
+    "account.upload_photo": "account.settings",
     "student.assignment_submit": "student.assignment_detail",
     "student.speaking_submit": "student.speaking_record",
     "student.discussions_reply": "student.discussions_topic",
@@ -146,12 +153,25 @@ def page_id_for_endpoint(endpoint):
 #: and notifications are shared with Teachers, but their pages are
 #: Student-facing too; the collector runs on them only for a Student.
 STUDENT_PLATFORM_BLUEPRINTS = ("student", "messages", "notifications")
+# Shared blueprints contain other-role routes: classify only these surfaces.
+SHARED_STUDENT_ENDPOINTS = (
+    "workspace.student_courses", "workspace.student_course", "account.settings",
+    "account.password", "account.upload_photo", "account.photo", "appearance.update",
+    "workspace.help_page", "workspace.preferences",
+)
 
 #: Student routes that are **not pages** and are never observed: they serve
 #: file or audio bytes, including every Range request a player makes.
 #: Observing them would add nothing but the download itself; the click that
 #: opened them is already a ``control_click``.
 TECHNICAL_EXCLUSIONS = {
+    "student.episode_speaking_audio": "Authorized historical recording bytes, including Range requests.",
+    "notifications.preview": "Bell-preview fragment/JSON on the host page, not a separate page view.",
+    "student.assignment_file_download": "Private final assignment bytes, not a page.",
+    "account.photo": "Private account photo bytes; contents are never observed.",
+    "workspace.help_page": "Utility redirect; collection stays on the host page.",
+    "workspace.preferences": "Utility redirect; collection stays on the host page.",
+    "appearance.update": "Preference POST redirect; only the browser form attempt is observed.",
     "student.material_open": "Serves lesson material bytes, not a page.",
     "student.material_download": "Serves lesson material bytes, not a page.",
     "student.listening_audio": "Serves listening audio bytes, including Range requests.",
@@ -180,6 +200,12 @@ OUTCOME_ENDPOINTS = {
 #: Student POST routes observed only by the browser (``form_submit`` and the
 #: next ``page_view``), with no server outcome declared for them.
 CLIENT_OBSERVED_POSTS = {
+    "student.quiz_bookmark": "Manual bookmark control/form attempt only; no bookmark state or outcome event.",
+    "messages.edit_message": "Native edit attempt and next page only; message/subject content excluded.",
+    "messages.hide_message": "Native hide attempt and next page only; no new server event.",
+    "messages.clear_conversation": "Native own-history clear attempt and next page only; no new server event.",
+    "account.password": "Attempt and validation only; no password, value or inferred outcome.",
+    "account.upload_photo": "Attempt and validation only; no file change, filename or photo metadata.",
     "notifications.open_notification": "Opening a notification is a navigation; "
                                        "the next page view records it.",
     "notifications.read_notification": "Marking one notification read changes no "
@@ -192,10 +218,13 @@ CLIENT_OBSERVED_POSTS = {
 CORE_AREA = "core"
 REPORTING_AREAS = (
     "learning", "search", "assignments", "quizzes", "listening", "speaking",
-    "communication", "records",
+    "communication", "records", "account",
 )
 
 PAGE_AREAS = {
+    "workspace.student_courses": "learning",
+    "workspace.student_course": "learning",
+    "account.settings": "account",
     "student.dashboard": CORE_AREA,
     "student.activities": CORE_AREA,
     "student.records": "records",
@@ -238,6 +267,7 @@ PAGE_AREAS = {
 # ---------------------------------------------------------------------------
 
 NAVIGATION_ELEMENTS = (
+    "nav_courses", "nav_account", "nav_help", "nav_display", "nav_more",
     "nav_dashboard", "nav_assignments", "nav_quizzes", "nav_listening", "nav_speaking",
     "nav_activities",
     "nav_records",
@@ -246,6 +276,8 @@ NAVIGATION_ELEMENTS = (
 )
 
 ACTION_ELEMENTS = (
+    "course_open", "course_outline", "quiz_question_jump", "quiz_bookmark",
+    "account_password_submit", "account_photo_submit", "display_preferences_submit",
     # Learning
     "lesson_open", "lesson_back", "lesson_complete", "lesson_undo_complete",
     "material_open", "material_download", "material_external_link",
@@ -277,6 +309,7 @@ ACTION_ELEMENTS = (
 #: Inputs whose *change* is observable. Only the fact of a change is sent,
 #: never the value, the option chosen or the file selected.
 INPUT_ELEMENTS = (
+    "assignment_file_select",
     "quiz_option", "listening_option", "quiz_submit_confirm", "listening_submit_confirm",
     "speaking_file_select", "search_filter", "activity_filter",
 )
@@ -284,6 +317,7 @@ INPUT_ELEMENTS = (
 #: Forms whose submission attempts and client-side validation failures are
 #: counted. Never a field value.
 FORM_ELEMENTS = (
+    "account_password_submit", "account_photo_submit", "display_preferences_submit",
     "lesson_complete", "lesson_undo_complete", "search_submit", "assignment_submit",
     "quiz_start", "quiz_save", "quiz_submit", "listening_start", "listening_save",
     "listening_submit", "speaking_submit", "discussion_reply", "message_send",
@@ -344,7 +378,7 @@ CLIENT_EVENTS = (
         "A meaningful control was used, identified by its declared identifier or by "
         "its structural kind.",
         element=REQUIRED, elements=NAVIGATION_ELEMENTS + ACTION_ELEMENTS,
-        position=IntField(OPTIONAL, 1, 500, "1-based rank, search results only"),
+        position=IntField(OPTIONAL, 1, 500, "1-based ordinal across the rendered search result list only"),
     ),
     EventSpec(
         "repeated_click", SOURCE_CLIENT, "interaction",

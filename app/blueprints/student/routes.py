@@ -6,11 +6,7 @@ from flask_login import current_user
 from app.blueprints.student import student_bp
 from app.models import UserRole
 from app.security.decorators import roles_required
-from app.services.assignment_queries import (
-    DASHBOARD_DEADLINE_CAP,
-    build_student_view,
-    student_upcoming_deadlines,
-)
+from app.services.assignment_queries import DASHBOARD_DEADLINE_CAP
 from app.services.announcement_queries import (
     DASHBOARD_PREVIEW_CAP,
     build_reader_view,
@@ -75,10 +71,8 @@ def dashboard():
     reference_utc = utc_reference_now(utc_now)
 
     data = student_dashboard(current_user.id, now)
-    # One additional bounded query, independent of how many Assignments
-    # exist. It re-proves the full Student visibility formula in SQL, so
-    # a deadline can never appear here for something the Student could
-    # not open.
+    # The Activities hub's bounded four-type union uses the same reference
+    # moment and SQL visibility rules. Submitted/final work is excluded here.
     from flask import url_for
     from app.services.activity_queries import activities_page, activity_view
     activity_rows, _ = activities_page(current_user.id, reference_utc, upcoming=True, cap=DASHBOARD_DEADLINE_CAP)

@@ -23,7 +23,7 @@ applied to a recording: one plain-text field, no score, no grade, no
 rubric, no pass/fail, no publish control.
 """
 
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from wtforms import SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Length, ValidationError
 

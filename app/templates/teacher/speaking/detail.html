@@ -1,10 +1,14 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'speaking' %}
+{% set activity_phase = 'overview' %}
 {% import "_dashboard_macros.html" as dash %}
 {% block title %}{{ activity.title }} — Speaking{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+
 {#- Phase 4 / M06, read only. `activity` is a plain presentation dict; the
     route already proved this Teacher's active assignment to the Group and the
     activity's ownership by it. Every control below is a POST to its own route
@@ -12,7 +16,7 @@
     rows. There is deliberately no delete, archive, duplicate, score, grade or
     manual-marking control -- none exists server-side either. -#}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
-  <h1 style="margin:0">{{ activity.title }}</h1>
+
   {{ dash.operational_badge(operational) }}
 </div>
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
@@ -47,7 +51,8 @@
 
 <div class="card" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 160px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Status</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Status</dt>
     <dd style="margin:0">
       {% if published %}<span class="badge badge--success">Published</span>
       {% else %}<span class="badge badge--neutral">Draft</span>{% endif %}
@@ -55,31 +60,43 @@
       <span class="badge badge--primary">{{ activity.state_label }}</span>
       {% endif %}
     </dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens ({{ tz_name }})</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens ({{ tz_name }})</dt>
     <dd style="margin:0">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due ({{ tz_name }})</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due ({{ tz_name }})</dt>
     <dd style="margin:0">{{ activity.due_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Published ({{ tz_name }})</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Published ({{ tz_name }})</dt>
     <dd style="margin:0">
       {% if activity.published_local %}{{ activity.published_local.strftime("%Y-%m-%d %H:%M") }}
       {% else %}&mdash;{% endif %}
     </dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Recordings</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Recordings</dt>
     <dd style="margin:0">
       {% if has_submissions %}<span class="badge badge--primary">Recordings received</span>
       {% else %}<span class="badge badge--neutral">None yet</span>{% endif %}
     </dd>
+</div>
   </dl>
 </div>
 
+<div class="activity-speaking-layout">
+<div class="activity-speaking-studio">
 <section>
   <h2>Instructions</h2>
   <div class="card">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
        these are Teacher-typed instructions, never stored HTML. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
   </div>
 </section>
+</div>{{ activity_ui.guide('speaking','overview') }}</div>
 
 <section style="margin-top: var(--space-6)">
   <h2>Publication</h2>
@@ -127,8 +144,10 @@
 <script>
   document.querySelectorAll("form[data-confirm]").forEach(function (form) {
     form.addEventListener("submit", function (event) {
-      if (!confirm(form.dataset.confirm)) { event.preventDefault(); }
+      if (!window.aelmsConfirm && !confirm(form.dataset.confirm)) { event.preventDefault(); }
     });
   });
 </script>
+
+</div>
 {% endblock %}

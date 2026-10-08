@@ -1,6 +1,6 @@
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from flask_wtf.file import FileField, FileRequired
-from wtforms import StringField, SubmitField, TextAreaField
+from wtforms import SelectField, StringField, SubmitField, TextAreaField
 from wtforms.fields import DateTimeLocalField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
 
@@ -143,6 +143,7 @@ class AssignmentForm(FlaskForm):
     #: column -- long enough for real task instructions, short enough that
     #: a single request can never carry an unbounded body.
     INSTRUCTIONS_MAX = 10000
+    submission_type = SelectField("Submission type", choices=[("text", "Text answer"), ("file", "Single file")], validators=[DataRequired()], default="text")
 
     title = StringField("Title", validators=[DataRequired(), Length(max=150)])
     instructions = TextAreaField(

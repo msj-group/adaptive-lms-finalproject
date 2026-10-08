@@ -1,0 +1,11 @@
+{% extends 'layouts/portal_base.html' %}
+{% import 'activities/_ui.html' as activity_ui %}
+{% set activity_kind = activity_kind|default('hub') %}
+{% set activity_phase = activity_phase|default('overview') %}
+{% block body_class %}{{ super() }} activity-workspace activity-kind-{{ activity_kind }} activity-phase-{{ activity_phase }}{% endblock %}
+{% block workspace_content_class %}activity-workspace-page{% endblock %}
+{% block feature_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/activities.css') }}">{% endblock %}
+{% block workspace_context %}
+  {% include 'activities/_context.html' %}
+  {% if activity_kind != 'hub' %}{{ activity_ui.intro(activity_kind, activity_phase, current_user.role) }}{% endif %}
+{% endblock %}

@@ -2,6 +2,33 @@
    Presentation only -- no database access. #}
 
 {% set _WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] %}
+{% import "_figma_ui.html" as ui %}
+{% import "_announcement_macros.html" as ann %}
+
+{% macro class_card(occ, now, tz_name, role) -%}
+<section class="dash-section today-class">
+  <div class="today-section-heading"><h2>{{ 'Class in progress' if occ and occ.start <= now and now < occ.end else 'Next class' }}</h2>{{ ui.icon('calendar') }}</div>
+  {% if occ %}
+  <h3>{{ occ.ref.course_title }}</h3><p class="today-meta">{{ occ.ref.group_name }} · {{ occ.ref.term_name }}</p>
+  <p>{{ weekday_name(occ.ref.day_of_week) }} · <time datetime="{{ occ.start.isoformat() }}">{{ occ.start.strftime('%d %b %Y') }}, {{ time_range(occ.start, occ.end) }}</time></p>
+  <p class="today-meta">{{ occ.ref.location or 'Location not specified' }} · {{ tz_name }}</p>
+  <div class="today-actions">{% if role == 'teacher' %}<a class="btn btn--primary" href="{{ url_for('teacher.group_attendance', group_public_id=occ.ref.group_public_id) }}">Open attendance</a><a href="{{ url_for('workspace.teacher_group', group_public_id=occ.ref.group_public_id) }}">Open group</a>{% else %}<a class="btn btn--secondary" href="{{ url_for('workspace.student_course', group_public_id=occ.ref.group_public_id) }}">Open course</a>{% endif %}</div>
+  {% else %}<p>No upcoming class is scheduled for your current groups.</p>{% endif %}
+  <a class="today-calendar-link" href="{{ url_for(role ~ '.calendar') }}">View calendar</a>
+</section>
+{%- endmacro %}
+
+{% macro compact_announcements(items, role) -%}
+<section class="dash-section"><div class="today-section-heading"><h2>Latest announcements</h2><a href="{{ url_for('student.announcements_list' if role == 'student' else 'teacher.announcements_feed') }}">View all</a></div>
+  <ul class="today-list">{% for item in items[:2] %}<li><a class="today-list-title" href="{{ url_for(role ~ '.announcement_detail', announcement_public_id=item.public_id) }}">{{ item.title }}</a><p class="today-meta">{{ item.context }} {{ ann.scope_badge(item) }}</p>{% if item.published_local %}<time class="today-meta" datetime="{{ item.published_local.isoformat() }}">{{ item.published_local.strftime('%d %b · %H:%M') }}</time>{% endif %}</li>{% else %}<li>No announcements yet.</li>{% endfor %}</ul>
+</section>
+{%- endmacro %}
+
+{% macro compact_messages(items) -%}
+<section class="dash-section"><div class="today-section-heading"><h2>Recent conversations</h2><a href="{{ url_for('messages.inbox') }}">Open messages</a></div>
+  <ul class="today-list">{% for item in items[:3] %}<li><a class="today-list-title" href="{{ url_for('messages.thread', thread_public_id=item.thread_public_id) }}" dir="auto">{{ item.other_name }}</a><p class="today-meta" dir="auto">{{ item.subject }}</p><time class="today-meta" datetime="{{ item.last_local.isoformat() }}">{{ item.last_local.strftime('%d %b · %H:%M') }}</time></li>{% else %}<li>No conversations yet. <a href="{{ url_for('messages.inbox') }}">Choose someone to message</a>.</li>{% endfor %}</ul>
+</section>
+{%- endmacro %}
 
 {% macro weekday_name(n) -%}
   {{- _WEEKDAYS[n] if n is not none and 0 <= n <= 6 else "?" -}}

@@ -122,6 +122,11 @@ def lesson_detail(group_public_id, unit_public_id, lesson_public_id):
     progress = page.progress
     action = ACTION_UNDO if progress.completed_at is not None else ACTION_COMPLETE
     tz_name = current_app.config.get("APP_TIMEZONE", "UTC")
+    outline = outline_units(progress.group_id, student_id)
+    lesson_links = [dict(title=lesson["title"], public_id=lesson["public_id"],
+        unit_public_id=unit["public_id"], is_completed=lesson["is_completed"])
+        for unit in outline for lesson in unit["lessons"]]
+    index = next((i for i, lesson in enumerate(lesson_links) if lesson["public_id"] == lesson_public_id), None)
     response = private_no_store(
         "student/learning/lesson.html",
         progress=build_lesson_progress_view(progress, tz_name),
@@ -135,6 +140,9 @@ def lesson_detail(group_public_id, unit_public_id, lesson_public_id):
             progress.version,
         ),
         tz_name=tz_name,
+        lesson_links=lesson_links,
+        previous_lesson=lesson_links[index - 1] if index is not None and index > 0 else None,
+        next_lesson=lesson_links[index + 1] if index is not None and index + 1 < len(lesson_links) else None,
         **page.view,
     )
     # Recorded only after the page above was authorized and fully rendered,
@@ -149,7 +157,7 @@ def _record_open(student_id, progress):
     and never turns an authorized page into an error."""
     try:
         progress_tx.record_open(student_id, progress)
-    except SQLAlchemyError:
+    except (SQLAlchemyError, ValueError):
         db.session.rollback()
         current_app.logger.exception(
             "Recording a lesson opening failed; the lesson page itself was served normally"
@@ -172,6 +180,24 @@ def lesson_mark_complete(group_public_id, unit_public_id, lesson_public_id):
 def lesson_undo_complete(group_public_id, unit_public_id, lesson_public_id):
     """Clear the acting Student's completion mark on the Lesson."""
     return _change_completion(group_public_id, unit_public_id, lesson_public_id, ACTION_UNDO)
+
+
+def _completion_destination(student_id, progress):
+    """Resolve only the next currently visible lesson in this own Group.
+
+    No destination identity/URL comes from the form. The destination GET
+    rechecks enrollment/publication if either changes during completion.
+    """
+    lessons = [dict(unit_public_id=unit["public_id"], public_id=lesson["public_id"])
+               for unit in outline_units(progress.group_id, student_id)
+               for lesson in unit["lessons"]]
+    index = next((i for i, lesson in enumerate(lessons)
+                  if lesson["public_id"] == progress.lesson_public_id), None)
+    if index is None or index + 1 >= len(lessons):
+        return None
+    lesson = lessons[index + 1]
+    return url_for("student.lesson_detail", group_public_id=progress.group_public_id,
+                   unit_public_id=lesson["unit_public_id"], lesson_public_id=lesson["public_id"])
 
 
 def _change_completion(group_public_id, unit_public_id, lesson_public_id, action):
@@ -206,6 +232,10 @@ def _change_completion(group_public_id, unit_public_id, lesson_public_id, action
         flash(_FORM_UNVERIFIED, "warning")
         return redirect(lesson_url)
 
+    continue_url = None
+    if action == ACTION_COMPLETE and request.form.get("after_save") == "next_lesson":
+        continue_url = _completion_destination(student_id, progress)
+
     outcome = progress_tx.set_completion(
         student_id,
         progress.group_public_id,
@@ -228,4 +258,6 @@ def _change_completion(group_public_id, unit_public_id, lesson_public_id, action
     else:
         note_outcome("lesson_completion", "rejected")
         flash(_CONFLICT, "danger")
+    if continue_url and outcome in (progress_tx.CHANGED, progress_tx.ALREADY):
+        return redirect(continue_url)
     return redirect(lesson_url)

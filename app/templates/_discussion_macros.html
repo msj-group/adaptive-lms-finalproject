@@ -30,7 +30,7 @@
 
 {% macro group_cards(groups, list_endpoint, truncated, group_limit, empty_text) -%}
 {% if groups %}
-<div class="dash-card-list">
+<div class="dash-card-list discussion-group-list">
   {% for group in groups %}
   <div class="card">
     <div class="ds-row" style="justify-content: space-between; align-items: flex-start; gap: var(--space-3); flex-wrap: wrap;">
@@ -41,7 +41,7 @@
         <div class="card__body">{{ group.course_title }} &middot; {{ group.level_name }} &middot; {{ group.term_name }}</div>
       </div>
       <div class="card__body" style="white-space: nowrap">
-        {{ group.topic_count }} topic{{ "" if group.topic_count == 1 else "s" }} &middot; {{ group.open_count }} open
+        {{ _n('%(count)d topic', '%(count)d topics', group.topic_count) }} &middot; {{ group.open_count }} open
       </div>
     </div>
   </div>
@@ -60,7 +60,7 @@
 
 {% macro topic_list(topics, group, topic_endpoint, list_endpoint, page, has_prev, has_next, page_size, tz_name, empty_text) -%}
 {% if topics %}
-<div class="dash-card-list">
+<div class="dash-card-list discussion-topic-list">
   {% for topic in topics %}
   <div class="card">
     <div class="ds-row" style="justify-content: space-between; align-items: flex-start; gap: var(--space-3); flex-wrap: wrap;">
@@ -73,7 +73,7 @@
       {{ status_badge(topic.is_locked) }}
     </div>
     <div class="card__body" style="margin-top: var(--space-2); word-break: break-word">{{ topic.preview }}</div>
-    <div class="card__body" style="margin-top: var(--space-2); color: var(--color-text-secondary)">{{ topic.reply_count }} repl{{ "y" if topic.reply_count == 1 else "ies" }}</div>
+    <div class="card__body" style="margin-top: var(--space-2); color: var(--color-text-secondary)">{{ _n('%(count)d reply', '%(count)d replies', topic.reply_count) }}</div>
   </div>
   {% endfor %}
 </div>
@@ -98,7 +98,7 @@
 
 {% macro topic_header(topic, tz_name) -%}
 <div class="ds-row" style="align-items: center; gap: var(--space-3); flex-wrap: wrap;">
-  <h1 style="margin: 0; word-break: break-word">{{ topic.title }}</h1>
+  <h1 data-workspace-page-heading style="margin: 0; word-break: break-word">{{ topic.title }}</h1>
   {{ status_badge(topic.is_locked) }}
 </div>
 <p class="ds-section__desc">
@@ -121,12 +121,12 @@
 <div class="dash-section" id="replies">
   <h2>Replies</h2>
   {% if has_prev %}
-  <nav class="ds-row" style="margin-bottom: var(--space-4)" aria-label="Earlier replies">
+  <nav class="ds-row workspace-pager" style="margin-bottom: var(--space-4)" aria-label="Earlier replies">
     <a class="btn btn--secondary" href="{{ url_for(topic_endpoint, group_public_id=group.public_id, topic_public_id=topic.public_id, page=page - 1) }}">Earlier replies</a>
   </nav>
   {% endif %}
   {% if replies %}
-  <div class="dash-card-list">
+  <div class="dash-card-list discussion-reply-list">
     {% for reply in replies %}
     <div class="card" id="reply-{{ reply.public_id }}">
       <div class="ds-row" style="justify-content: space-between; gap: var(--space-3); flex-wrap: wrap;">
@@ -144,7 +144,7 @@
   </div>
   {% endif %}
   {% if has_next %}
-  <nav class="ds-row" style="margin-top: var(--space-4)" aria-label="Later replies">
+  <nav class="ds-row workspace-pager" style="margin-top: var(--space-4)" aria-label="Later replies">
     <a class="btn btn--secondary" href="{{ url_for(topic_endpoint, group_public_id=group.public_id, topic_public_id=topic.public_id, page=page + 1) }}">Later replies</a>
   </nav>
   {% endif %}

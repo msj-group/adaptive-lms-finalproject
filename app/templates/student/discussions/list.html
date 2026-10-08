@@ -7,7 +7,7 @@
     page. Reaching this page required an active enrollment in this exact
     operational group. Students read and reply; only teachers start topics. -#}
 <p style="margin-top: 0"><a href="{{ url_for('student.discussions_overview') }}">&larr; All discussion groups</a></p>
-<h1 style="margin-top: 0; word-break: break-word">Discussions — {{ group.name }}</h1>
+<h1 data-workspace-page-heading style="margin-top: 0; word-break: break-word">Discussions — {{ group.name }}</h1>
 {{ disc.group_context(group) }}
 
 {{ disc.flash_messages() }}

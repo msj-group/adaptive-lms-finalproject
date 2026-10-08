@@ -1,0 +1,5 @@
+{% extends "layouts/portal_base.html" %}
+{% block body_class %}{{ super() }} figma-messages{% endblock %}
+{% block workspace_footer %}{% endblock %}
+{% block portal_nav %}{% include "messages/_portal_nav.html" %}{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/messages.js') }}" defer></script>{% endblock %}

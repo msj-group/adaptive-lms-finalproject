@@ -32,7 +32,7 @@ duplicated either: both text fields go through
 calls. This module owns only the Administrator's wording for each rule.
 """
 
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from wtforms import SelectField, StringField, SubmitField, TextAreaField
 from wtforms.validators import ValidationError
 

@@ -1,10 +1,9 @@
 {% extends "layouts/research_base.html" %}
 {% block title %}Export unavailable{% endblock %}
 {% block research_content %}
-<h1>Export unavailable</h1>
+<h1 data-workspace-page-heading>Export unavailable</h1>
 {% if reason == "expired" %}
-<p data-archive-state="expired">This export's archive was removed because the oldest data in it
-  reached the deployment's retention. It is never rebuilt. Create a new export for the data that
+<p data-archive-state="expired">This export's ZIP bytes are no longer retained. Automatic retention or an authorized cleanup may remove an archive while preserving its description and digest. These exact bytes are never rebuilt. Create a new export for the data that
   is still retained.</p>
 {% else %}
 <p data-archive-state="corrupt">This export's stored archive failed its integrity check, so it was

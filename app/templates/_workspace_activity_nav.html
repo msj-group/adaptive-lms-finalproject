@@ -1,0 +1,15 @@
+{# Read-only links within an already authorized activity. Write controls stay in their owning pages. #}
+{% set args = request.view_args or {} %}
+{% set listening_id = args.get('listening_public_id') %}
+{% set quiz_id = args.get('quiz_public_id') %}
+{% if listening_id or quiz_id %}
+{% set activity_url = url_for('teacher.listening_detail', group_public_id=args.group_public_id, listening_public_id=listening_id) if listening_id else url_for('teacher.quiz_detail', group_public_id=args.group_public_id, quiz_public_id=quiz_id) %}
+<nav class="workspace-tabs" aria-label="Activity sections">
+  <a href="{{ activity_url }}"{% if request.endpoint in ['teacher.quiz_detail','teacher.listening_detail'] %} aria-current="page"{% endif %}>Overview</a>
+  <a href="{{ activity_url }}#activity-questions">Questions</a>
+  {% if (operational|default(false) and not published|default(true) and not frozen_message|default(true)) or request.endpoint in ['teacher.quiz_settings','teacher.listening_settings'] %}
+  <a href="{{ url_for('teacher.listening_settings', group_public_id=args.group_public_id, listening_public_id=listening_id) if listening_id else url_for('teacher.quiz_settings', group_public_id=args.group_public_id, quiz_public_id=quiz_id) }}"{% if request.endpoint in ['teacher.quiz_settings','teacher.listening_settings'] %} aria-current="page"{% endif %}>Settings</a>
+  {% endif %}
+  <a href="{{ url_for('teacher.listening_attempts', group_public_id=args.group_public_id, listening_public_id=listening_id) if listening_id else url_for('teacher.quiz_attempts', group_public_id=args.group_public_id, quiz_public_id=quiz_id) }}"{% if 'attempt' in request.endpoint %} aria-current="page"{% endif %}>Attempts</a>
+</nav>
+{% endif %}

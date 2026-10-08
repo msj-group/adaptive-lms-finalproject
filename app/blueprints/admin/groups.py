@@ -811,7 +811,7 @@ def group_edit(public_id):
             return _render_group_edit_validation_failure(form, public_id, submitted_snapshot_token)
         if (group.study_starts_at is not None and group.study_starts_at <= utc_reference_now()
                 and form.study_starts_at_utc > group.study_starts_at):
-            form.study_starts_at.errors.append("Study has started. Its start cannot be moved later to reopen admission.")
+            form.study_starts_at.errors.append("Study has started. Its recorded start cannot be moved later.")
             return _render_group_edit_validation_failure(form, public_id, submitted_snapshot_token)
         group.academic_term_id = academic_term_id
         group.course_id = course_id

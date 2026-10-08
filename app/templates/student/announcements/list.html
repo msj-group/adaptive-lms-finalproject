@@ -11,7 +11,7 @@
     internal id. There is no control of any kind on this page: no
     acknowledgement, no dismiss, no comment and no reply, and no such
     endpoint exists to aim one at. -#}
-<h1 style="margin-top: 0">Announcements</h1>
+<h1 data-workspace-page-heading style="margin-top: 0">Announcements</h1>
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   Notices from the centre and from the courses and groups you are currently in. An
   announcement stays here for as long as it is standing; if it is taken down, it
@@ -21,7 +21,7 @@
 {{ ann.flash_messages() }}
 
 {% if announcements %}
-<div class="dash-card-list">
+<div class="dash-card-list announcement-reading-list">
   {% for item in announcements %}
   <div class="card">
     <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">

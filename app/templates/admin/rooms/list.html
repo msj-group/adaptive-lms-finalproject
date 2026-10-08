@@ -3,7 +3,7 @@
 {% block title %}Rooms{% endblock %}
 {% block admin_content %}
 <div class="ds-page">
-  <div class="ds-row"><h1>Rooms</h1><a class="btn btn--primary" href="{{ url_for('admin.room_edit') }}">New room</a></div>
+  <div class="ds-row"><h1 data-workspace-page-heading>Rooms</h1><a class="btn btn--primary" href="{{ url_for('admin.room_edit') }}">New room</a></div>
   {{ macros.flash_messages() }}
   <div style="overflow-x:auto"><table class="table"><thead><tr><th>Name</th><th>Capacity</th><th>Status</th><th>Actions</th></tr></thead><tbody>
   {% for room in page.items %}<tr><td>{{ room.name }} <a href="{{ url_for('admin.operational_history',kind='room',public_id=room.public_id) }}">History</a></td><td>{{ room.capacity }}</td><td>{{ room.status|title }}</td><td>

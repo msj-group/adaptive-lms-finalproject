@@ -4,8 +4,9 @@ application rather than run with a guessed setting.
 
 - ``RESEARCH_DATA_PROVENANCE`` -- ``study`` or ``development``. What a
   session collected by this deployment is labelled; only ``study`` data is
-  ever exported. Production defaults to ``study``; every other environment to
-  ``development``, so a laptop can never produce "study" data by accident.
+  ever exported. Every environment defaults to ``development``. Running an
+  operational review on a production server cannot create study data unless
+  an actual study is explicitly configured.
 - ``RESEARCH_RETENTION_DAYS`` -- the retention the deployment supplies, as a
   whole number of days (1-3650), or unset. **There is no default**: while it
   is unset no configuration can be activated, so collection cannot start with

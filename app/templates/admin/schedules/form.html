@@ -3,7 +3,7 @@
 {% block title %}{{ 'Edit Schedule' if schedule else 'New Schedule' }} — {{ group.name }}{% endblock %}
 {% block admin_content %}
 <div class="ds-page" style="max-width: 560px">
-  <h1>{{ 'Edit Schedule Slot' if schedule else 'New Schedule Slot' }}</h1>
+  <h1 data-workspace-page-heading>{{ 'Edit Schedule Slot' if schedule else 'New Schedule Slot' }}</h1>
   <p class="ds-section__desc">
     {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
   </p>

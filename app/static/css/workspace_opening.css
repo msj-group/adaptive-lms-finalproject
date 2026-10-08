@@ -1,0 +1,15 @@
+/* Brief authenticated transition, using the owner's platform reference. */
+.workspace-opening { background:linear-gradient(120deg,#193777 0%,#3b528e 46%,#756580 100%); min-width:0; }
+.workspace-opening-container { display:grid; place-items:center; min-height:100svh; padding:34px 20px; }
+.workspace-opening-card { width:min(100%,560px); padding:48px 44px 38px; border:1px solid #ffffffe6; border-radius:48px; background:linear-gradient(135deg,#e9ecfff2,#f0e4f1f2); text-align:center; box-shadow:0 22px 90px #e7ecff38; }
+.workspace-opening-logo { position:relative; display:grid; place-items:center; width:190px; height:190px; margin:0 auto 34px; border:1px solid #bbc8eb66; border-radius:50%; }
+.workspace-opening-logo img { width:112px; height:144px; object-fit:contain; }
+.workspace-opening-eyebrow { margin:0 0 22px; color:#667fb3; font-size:12px; font-weight:650; letter-spacing:.18em; }
+.workspace-opening-card h1 { margin:0; color:#1d397b; font-size:clamp(30px,3.2vw,42px); font-weight:600; line-height:1.35; }
+.workspace-opening-card h1 span { color:#ed352b; }
+.workspace-opening-description { margin:18px 0 32px; color:#5d74a2; font-size:17px; }
+.workspace-opening-continue { display:inline-block; margin-bottom:16px; color:#395894; font-size:13px; text-underline-offset:4px; }
+.workspace-opening-card form { margin:0; }
+.workspace-opening-card button { min-height:48px; padding:10px 22px; border:2px solid #284b9d; border-radius:24px; color:#5d74a2; background:transparent; font:500 16px var(--font-family-base); cursor:pointer; }
+.workspace-opening-card button:hover { background:#ffffff80; color:#1d397b; }
+@media (max-width:520px) { .workspace-opening-container { padding:24px 16px; } .workspace-opening-card { padding:32px 24px; border-radius:32px; } .workspace-opening-logo { width:150px; height:150px; margin-bottom:26px; } .workspace-opening-logo img { width:88px; height:112px; } .workspace-opening-description { font-size:15px; } }

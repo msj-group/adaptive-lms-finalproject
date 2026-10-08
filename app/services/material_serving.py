@@ -62,5 +62,6 @@ def serve_uploaded_file(uploaded_file, actor_id, force_attachment):
     )
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Cache-Control"] = "private, no-store, max-age=0"
+    response.vary.add("Cookie")
     response.headers.pop("Expires", None)
     return response

@@ -1,0 +1,8 @@
+<div class="notif-bell" data-notification-bell data-preview-url="{{ url_for('notifications.preview') }}">
+  <a class="figma-icon-button figma-notification" href="{{ url_for('notifications.inbox') }}" aria-label="{{ 'Notifications, ' ~ notif.unread_count ~ ' unread' if notif.unread_count else 'Notifications' }}" data-notification-toggle data-research-id="nav_notifications">{{ ui.icon('bell') }}{% if notif.unread_count %}<i aria-hidden="true"></i>{% endif %}</a>
+  <section class="notif-preview" id="notification-preview" aria-labelledby="notification-preview-title" data-notification-preview hidden>
+    <div class="notif-preview-heading"><h2 id="notification-preview-title" tabindex="-1">Recent updates</h2><button class="figma-icon-button" type="button" aria-label="Close notifications" data-notification-close>{{ ui.icon('close') }}</button></div>
+    <div data-notification-preview-body></div>
+    <a class="notif-preview-all" href="{{ url_for('notifications.inbox') }}">View all notifications {{ ui.icon('arrow', 17) }}</a>
+  </section>
+</div>

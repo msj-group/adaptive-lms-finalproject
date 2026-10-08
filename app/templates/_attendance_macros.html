@@ -42,7 +42,7 @@
 {% macro count_summary(counts) -%}
   <span class="ds-row" style="gap: var(--space-2); flex-wrap: wrap">
     {%- for item in counts -%}
-      {{ status_badge(item.status, item.label ~ " " ~ item.count) }}
+      {{ status_badge(item.status, _(item.label) ~ " " ~ item.count) }}
     {%- endfor -%}
   </span>
 {%- endmacro %}

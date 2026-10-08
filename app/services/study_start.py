@@ -1,4 +1,4 @@
-"""One admission cutoff, consistent with the term and first scheduled class."""
+"""Authoritative study start, consistent with the term and first scheduled class."""
 from datetime import datetime, timedelta
 from flask import current_app
 from app.models import Schedule
@@ -20,7 +20,7 @@ def study_start_error(term, moment, group_id=None):
         return "Study start must fall inside the group's academic term."
     if group_id:
         # Group mutex prevents concurrent schedule changes. Stream its history;
-        # an archived earlier class does not reopen admission.
+        # an archived earlier class still bounds the recorded study start.
         for slot in Schedule.query.filter_by(group_id=group_id).order_by(Schedule.id).yield_per(100):
             first = first_slot_start(slot.day_of_week,slot.start_time,slot.effective_start_date,slot.effective_end_date)
             if first is not None and first < moment:

@@ -6,10 +6,14 @@
 {% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-<p class="ds-section__desc" style="margin-bottom: var(--space-2)">
+<header class="learning-reading-heading"><p class="ds-section__desc">
   {{ group_name }} &middot; {{ course_title }} &middot; {{ level_name }} &middot; {{ term_name }} &middot; {{ unit_title }}
 </p>
-<h1 style="margin-top: 0">{{ lesson_title }}</h1>
+<h1 data-workspace-page-heading>{{ lesson_title }}</h1></header>
+<div class="learning-reading-layout"><aside class="learning-reading-outline">
+<details class="workspace-reading-nav"><summary>Course outline · {{ lesson_links|length }} published lessons</summary><ol>{% for item in lesson_links %}<li><a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.public_id) }}"{% if item.public_id == lesson_public_id %} aria-current="page"{% endif %}>{{ item.title }}</a> {{ '· Completed' if item.is_completed else '' }}</li>{% endfor %}</ol></details>
+{% if materials %}<nav class="workspace-inline-links" aria-label="In this lesson">{% for item in materials %}<a href="#material-{{ item.public_id }}">{{ item.title }}</a>{% endfor %}</nav>{% endif %}
+</aside><div class="learning-reading-main">
 
 <div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('student.group_units', group_public_id=group_public_id) }}">Back to Lessons</a>
@@ -26,7 +30,7 @@
     action that state allows. The form is bound by a signed token to this
     student, lesson, action and progress version; the route proves access and
     the version again under locks, whatever this page showed. -#}
-<div class="card" id="progress" style="margin-bottom: var(--space-6)">
+<div class="learning-completion" id="progress">
   <div class="ds-row" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3)">
     <div>
       {% if progress.is_completed %}
@@ -45,12 +49,15 @@
       <button type="submit" class="btn btn--secondary" data-research-id="lesson_undo_complete">Undo completion</button>
       {% else %}
       <button type="submit" class="btn btn--primary" data-research-id="lesson_complete">Mark as complete</button>
+      {% if next_lesson %}
+      <button type="submit" name="after_save" value="next_lesson" class="btn btn--secondary" data-research-id="lesson_complete">Complete and next lesson</button>
+      {% endif %}
       {% endif %}
     </form>
   </div>
 </div>
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="learning-description">
   {% if lesson_description %}
   {# Plain text: line breaks preserved via CSS, never via |safe or stored HTML. #}
   <div style="white-space: pre-wrap; word-break: break-word;">{{ lesson_description }}</div>
@@ -68,7 +75,7 @@
   </div>
   {% else %}
   {% for material in materials %}
-  <div id="material-{{ material.public_id }}" class="material-block card">
+  <div id="material-{{ material.public_id }}" class="material-block learning-material">
     <div class="material-block__title">{{ material.title }}</div>
 
     {% if material.kind == "rich_text" %}
@@ -98,6 +105,8 @@
       Your browser does not support inline video playback.
     </video>
 
+    {% elif material.kind == "file" and material.extension == "pdf" %}
+    <p class="ds-section__desc">{{ material.original_filename }} · {{ material.byte_size }} bytes. Documents open as downloads for security.</p><a class="btn btn--secondary" href="{{ url_for('student.material_download', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" data-research-id="material_download">Download PDF</a>
     {% elif material.kind == "file" %}
     <p class="ds-section__desc" style="margin: 0 0 var(--space-2)">{{ material.original_filename }} &middot; {{ material.extension|upper }}</p>
     <a class="btn btn--secondary" href="{{ url_for('student.material_download', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" data-research-id="material_download">Download</a>
@@ -109,4 +118,6 @@
   {% endfor %}
   {% endif %}
 </section>
+<nav class="workspace-tabs" aria-label="Lesson navigation">{% if previous_lesson %}<a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=previous_lesson.unit_public_id, lesson_public_id=previous_lesson.public_id) }}">Previous: {{ previous_lesson.title }}</a>{% endif %}{% if next_lesson %}<a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=next_lesson.unit_public_id, lesson_public_id=next_lesson.public_id) }}">Next: {{ next_lesson.title }}</a>{% endif %}</nav>
+</div></div>
 {% endblock %}

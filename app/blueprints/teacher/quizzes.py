@@ -1981,6 +1981,9 @@ def quiz_question_create(group_public_id, quiz_public_id):
         )
 
     flash("Question added. The quiz is still a draft.", "success")
+    if request.form.get("after_save") == "add_another":
+        # Fresh GET: reauthorize and mint a token for the new parent version.
+        return redirect(_question_create_url(group_public_id, quiz_public_id))
     return redirect(_quiz_detail_url(group_public_id, quiz_public_id))
 
 

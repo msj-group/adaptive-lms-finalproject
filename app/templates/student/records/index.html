@@ -1,5 +1,24 @@
-{% extends "layouts/portal_base.html" %}{% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
-{% block portal_content %}<h1>My records</h1><p>Your enrollment periods keep their own learning history, including released results after withdrawal or archival.</p>
-{% for episode in episodes.items %}<article class="card"><h2>{{ episode.group.course.title }} · {{ episode.group.name }}</h2><p>Enrollment started {{ episode.created_at }} · {{ episode.status }}</p>
-{% for kind,label in kinds.items() %}<a class="btn" href="{{ url_for('student.episode_records', episode_public_id=episode.public_id, kind=kind) }}">{{ label }}</a>{% endfor %}</article>{% else %}<p>No enrollment records.</p>{% endfor %}
-{% if episodes.has_prev %}<a href="{{ url_for('student.records', page=episodes.prev_num) }}">Previous</a>{% endif %}{% if episodes.has_next %}<a href="{{ url_for('student.records', page=episodes.next_num) }}">Next</a>{% endif %}{% endblock %}
+{% extends "layouts/portal_base.html" %}
+{% import "_figma_ui.html" as ui %}
+{% block title %}My records{% endblock %}
+{% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block portal_content %}<nav class="workspace-tabs" aria-label="My records sections"><a href="{{ url_for('student.records') }}" aria-current="page">Enrollment history</a><a href="{{ url_for('student.grades_list') }}">Released grades</a><a href="{{ url_for('student.attendance_list') }}">Finalized attendance</a></nav>
+<h1 data-workspace-page-heading>My records<span class="figma-brand-dot">.</span></h1>
+<p class="ds-section__desc">Every chapter of your learning journey. Your enrollment periods keep their own history, including released results after withdrawal or archival.</p>
+<div class="figma-record-grid">
+{% for episode in episodes.items %}
+  <article class="card">
+    <span class="badge badge--primary">{{ episode.status|capitalize }}</span>
+    <h2 style="margin-top: 16px">{{ episode.group.course.title }}</h2>
+    <p class="card__body">{{ episode.group.name }} · {{ episode.group.academic_term.name }} · Enrollment started {{ workspace_local(episode.created_at).strftime('%d %b %Y, %H:%M') }} ({{ config.APP_TIMEZONE }})</p>
+    <div class="ds-row">{% for kind,label in kinds.items() %}<a class="btn btn--secondary" href="{{ url_for('student.episode_records', episode_public_id=episode.public_id, kind=kind) }}">{{ label }} {{ ui.icon('arrow-up', 15) }}</a>{% endfor %}</div>
+  </article>
+{% else %}
+  <div class="empty-state"><div class="empty-state__title">Your journey starts here.</div><div>No enrollment records yet.</div></div>
+{% endfor %}
+</div>
+<nav class="figma-pagination" aria-label="Enrollment pages">
+{% if episodes.has_prev %}<a class="btn btn--secondary" href="{{ url_for('student.records', page=episodes.prev_num) }}">Previous</a>{% endif %}
+{% if episodes.has_next %}<a class="btn btn--secondary" href="{{ url_for('student.records', page=episodes.next_num) }}">Next</a>{% endif %}
+</nav>
+{% endblock %}

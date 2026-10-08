@@ -15,6 +15,8 @@ English. Reports to the project owners are Arabic.
 
 - [Quick Start](docs/QUICK_START.md): running an already configured workspace
   and preparing a new one deliberately.
+- [Hosting Preparation](docs/HOSTING_PREPARATION.md): LibyanSpider options,
+  empty installation and ordinary operational evaluation.
 - [Approved Repair Contract](docs/APPROVED_REPAIR_CONTRACT.md): the accepted
   target behavior and decisions that supersede older contracts.
 - [Implementation Plan](docs/IMPLEMENTATION_PLAN.md): repair phases, scope
@@ -77,12 +79,15 @@ mean their implementation is complete. See the contract and status documents.
 
 ## Current development data and verification
 
-MySQL/InnoDB is the application database. The current local development schema
-is `085b7a4e9012`. After the verified in-place upgrade, the owner separately
-requested a complete data reset and fictional data for exactly four active
-accounts: `admin@example.com`, `teacher@example.com`, `student@example.com` and
-`researcher@example.com`. Use the password supplied privately by the owner;
-passwords are not stored in this guide. All three demo Courses have prices.
+MySQL/InnoDB is the application database. The current schema head is
+`085b7a4e9012`. A new installation starts with an empty business database;
+no accounts, Courses, Groups, payments, sessions or example files are created
+automatically. Provision the first Administrator privately, then enter
+ordinary content through the appropriate role workflows.
+
+The existing local database is retained by the owner's explicit instruction.
+Its older fictional content is not a deployment source. Do not transfer a
+local SQL backup, private uploads or old research archives to a new installation.
 
 The owner also requested deletion of the old tests and explicitly declined a
 new automated test package. There is no current `tests/` directory or isolated
@@ -92,7 +97,7 @@ Any future automated database checks require separate authorization and owned
 isolated MySQL resources. Never run them against development or production.
 
 [Repair Integration](docs/REPAIR_INTEGRATION.md) records the migration, private
-recovery archive, demo reset and actual close-out evidence. The completed reset
+recovery archive, earlier local reset and actual close-out evidence. The completed reset
 is not permission to repeat it or perform a production migration.
 
 ## Research contract and operations
@@ -130,13 +135,20 @@ research archives or operational logs. Do not overwrite an existing `.env`
 while following setup instructions.
 
 The local server is for development, not a production hosting setup. The
-current payment-provider integration supports disabled or mock/sandbox mode;
-it does not process real online payments. The health endpoint does not verify
+online-payment integration is disabled; payment simulation and its routes have
+been removed. Ordinary cash and verified bank-transfer collection remain
+available. The health endpoint does not verify
 schema compatibility, scheduler execution or collection readiness.
 
-The current demo Courses are priced; newly imported unpriced Courses still
-refuse enrollment until an Administrator supplies a price. Research collection
-is initially paused. The Student is classified as demo and development-provenance
-data does not enter study exports. Use the Researcher workspace's Demo filter
-to review demonstration sessions. Starting a real study is a separate operation.
+New Courses refuse enrollment until an Administrator supplies a price.
+There are no demonstration selectors or automatically populated dashboards.
+Research pages use the deployment's provenance automatically, with explicit
+empty states. Operational evaluation uses ordinary forms with fictional input
+and `RESEARCH_DATA_PROVENANCE=development`, even on a production server;
+these sessions never enter study exports. The same export workflow can download
+them as a separately identified operational-review archive. Its manifest and
+session rows record the source; a browser cannot choose another export scope.
+See [Local Research Walkthrough](docs/LOCAL_RESEARCH_WALKTHROUGH.md).
+Starting a real study and setting
+`study` provenance require a separate explicit operational decision.
 Restart the application after deploying changed source/schema.

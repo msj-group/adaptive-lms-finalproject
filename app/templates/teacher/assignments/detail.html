@@ -1,0 +1,32 @@
+{% extends 'layouts/activity_base.html' %}
+{% set activity_kind = 'assignment' %}
+{% block title %}{{ assignment.title }} — Assignment{% endblock %}
+{% block portal_content %}
+{% with messages = get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="alert alert--{{ category }}">{{ message }}</div>{% endfor %}{% endwith %}
+<div class="activity-brief-layout">
+<section class="activity-brief-paper">
+<span class="activity-eyebrow">THE BRIEF</span>
+<h2>Instructions</h2>
+<div class="activity-authored-text" dir="auto">{{ assignment.instructions }}</div>
+</section>
+<aside class="activity-launch-panel">
+<div class="activity-status-line">
+<span class="badge badge--{{ 'success' if assignment.is_published else 'neutral' }}">{{ assignment.status|capitalize }}</span>{% if assignment.state_label %}<span class="badge badge--neutral">{{ assignment.state_label }}</span>{% endif %}</div>
+<dl class="activity-fact-list">
+<div><dt>Submission</dt><dd>{{ 'Single file' if assignment.submission_type == 'file' else 'Text' }} · one final submission</dd></div>
+<div>
+<dt>Opens</dt>
+<dd>{{ assignment.opens_local.strftime('%d %b %Y · %H:%M') }}</dd>
+</div>
+<div>
+<dt>Due</dt>
+<dd>{{ assignment.due_local.strftime('%d %b %Y · %H:%M') }}</dd>
+</div>
+</dl>
+<p class="activity-timezone">{{ tz_name }}</p>
+{% if assignment.has_submissions %}<p class="activity-note">This assignment has student submissions and can no longer be edited.</p>{% elif operational %}<a class="btn btn--primary" href="{{ url_for('teacher.assignment_edit',group_public_id=group.public_id,assignment_public_id=assignment.public_id) }}">Edit Assignment</a>{% endif %}<a class="btn btn--secondary" href="{{ url_for('teacher.assignment_submissions',group_public_id=group.public_id,assignment_public_id=assignment.public_id) }}">Submissions</a>
+<a href="{{ url_for('teacher.group_assignments',group_public_id=group.public_id) }}">Publication & all assignments</a>
+</aside>
+</div>
+{% if not operational %}<div class="alert alert--warning">This group is not operational. Existing work remains readable.</div>{% endif %}
+{% endblock %}

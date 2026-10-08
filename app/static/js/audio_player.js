@@ -34,6 +34,7 @@
  */
 (function () {
   "use strict";
+  var t = window.aelmsUI ? window.aelmsUI.t : function (text) { return text; };
 
   var SPEEDS = [0.75, 1, 1.25, 1.5];
 
@@ -66,7 +67,7 @@
         return;
       }
       var playing = !audio.paused && !audio.ended;
-      toggle.textContent = playing ? "Pause" : "Play";
+      toggle.textContent = playing ? t("Pause") : t("Play");
       toggle.setAttribute("aria-pressed", playing ? "true" : "false");
     }
 

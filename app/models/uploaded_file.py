@@ -9,23 +9,24 @@ from app.models.enums import FileCategory
 
 
 class UploadedFile(db.Model):
-    """Server-validated metadata for one physical file backing a ``file``
-    Material (M12).
+    """Server-validated metadata for a private physical file: Assignment, Material,
+    recording, or an account profile photo.
 
     The physical bytes live in private, non-executable storage outside
     ``app/static`` under a **random unguessable** ``storage_key`` -- the
     original filename is kept only for display and the download
     ``Content-Disposition`` and **never** contributes to a filesystem
     path. ``content_type`` / ``extension`` / ``category`` / ``byte_size``
-    / ``sha256`` are all determined by the validation pipeline
-    (extension + declared-MIME alias + binary signature/container), not
-    by anything the browser sent.
+    / ``sha256`` are determined by the owning pipeline's file validation or
+    bounded image decoding/normalization, never by unverified browser data.
 
     Lifecycle: there is no hard delete. Archiving the owning Material
     keeps this row and its physical file (see ``Material``). One
-    ``UploadedFile`` backs exactly one Material
+    ``UploadedFile`` backs at most one Material
     (``materials.uploaded_file_id`` is ``UNIQUE``); replacing a wrong
-    file means archiving the Material and creating a new one.
+    file means archiving the Material and creating a new one. Profile photos
+    use an append-only AccountRevision reference; replacements preserve the
+    old row/bytes and own-account reads select only the latest photo revision.
     """
 
     __tablename__ = "uploaded_files"

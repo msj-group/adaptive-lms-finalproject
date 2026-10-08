@@ -1,0 +1,14 @@
+[Unit]
+Description=Youth Centre approved 15-day research retention
+After=network.target
+
+[Service]
+Type=oneshot
+User=centre
+Group=centre
+WorkingDirectory=/opt/youth-centre/current
+EnvironmentFile=/etc/youth-centre/production.env
+ExecStart=/opt/youth-centre/venv/bin/python scripts/run_research_retention.py
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true

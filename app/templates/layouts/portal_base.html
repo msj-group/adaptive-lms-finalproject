@@ -1,78 +1,68 @@
 {% extends "layouts/base.html" %}
+{% import "_figma_ui.html" as ui %}
+{% set research = research_collector(position if position is defined else none, total if total is defined else none) %}
+{% block body_class %}figma-workspace {{ 'figma-student' if current_user.role == 'student' else 'figma-teacher' }}{% endblock %}
 {% block extra_head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/portal.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/figma.css') }}">
+  {# Capture intentions before Quiz's async navigation guards; never block them. #}
+  {% if research %}<script type="application/json" id="research-collector-config">{{ research.config|tojson }}</script><script src="{{ url_for('static', filename='js/usage_collector.js') }}" defer></script>{% endif %}
+{% endblock %}
+{% block product_styles %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/navigation.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/today.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/learning.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/messages.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/communication.css') }}">
+  {% if current_user.role == 'teacher' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/operations.css') }}">{% endif %}
+  {% block feature_styles %}{% endblock %}
 {% endblock %}
 {% block content %}
-{#- Phase 6: the background collector for this request. None for every
-    Teacher, Administrator, Researcher and anonymous visitor, for an excluded
-    or suspended Student, and while no configuration is collecting -- in
-    which case nothing below renders and nothing is collected. It renders no
-    visible notice or indicator; the only visible element is the optional
-    feedback question, and only when one is sampled. -#}
-{% set research = research_collector(position if position is defined else none,
-                                     total if total is defined else none) %}
+{% set notif = notification_header() %}
+{{ ui.ambient() }}
+<a class="figma-skip-link" href="#workspace-content">Skip to content</a>
 <div class="portal-shell">
-  <header class="portal-header">
-    <div class="portal-header__brand">
-      <img class="portal-header__logo" src="{{ url_for('static', filename='images/center_logo.svg') }}" alt="Center logo">
-      <span class="portal-header__brand-name">Youth Center</span>
-    </div>
-    <nav class="portal-nav" aria-label="Primary">
-      {% block portal_nav %}{% endblock %}
-      {#- Phase 4 / M11: Messages is a shared Student / Teacher surface, so --
-          exactly like Notifications below -- it is rendered once here rather
-          than in each page's own `portal_nav` block. It costs no query (the
-          role is already on the loaded user) and is never rendered for an
-          Administrator, a Researcher or an anonymous visitor. -#}
+  <button class="figma-nav-backdrop" type="button" aria-label="Close navigation" data-nav-close hidden></button>
+  <aside class="portal-sidebar figma-sidebar" id="workspace-navigation" aria-label="{{ current_user.role|capitalize }} navigation" data-nav-scope="{{ current_user.role }}">
+    {{ ui.brand('student.dashboard' if current_user.role == 'student' else 'teacher.dashboard', current_user.role) }}
+    <button class="figma-sidebar-close figma-icon-button" type="button" aria-label="Close navigation" data-nav-close hidden>{{ ui.icon('close') }}</button>
+    <nav class="portal-nav figma-sidebar-nav" aria-label="Primary">
+      {% if current_user.role == 'teacher' %}{% include "teacher/_workspace_nav.html" %}{% else %}{% include "student/_portal_nav.html" %}{% endif %}
+      <div class="figma-nav-section-title">Communication</div>
+      {% if current_user.role == 'teacher' %}
+      {{ ui.nav_link('Announcements', 'teacher.announcements_feed', 'megaphone', 'announcement' in (request.endpoint or '')) }}
+      {{ ui.nav_link('Discussions', 'teacher.discussions_overview', 'users', 'discussion' in (request.endpoint or '')) }}
+      {% else %}
+      {{ ui.nav_link('Announcements', 'student.announcements_list', 'megaphone', active_nav|default('') == 'announcements' or 'announcement' in (request.endpoint or ''), 'nav_announcements') }}
+      {{ ui.nav_link('Discussions', 'student.discussions_overview', 'users', (request.endpoint or '').startswith('student.discussions_'), 'nav_discussions') }}
+      {% endif %}
       {% if current_user.is_authenticated and current_user.role in ('student', 'teacher') %}
-      <a class="portal-nav__link{{ ' portal-nav__link--active' if request.blueprint == 'messages' else '' }}"
-         href="{{ url_for('messages.inbox') }}" data-research-id="nav_messages">Messages</a>
+      {{ ui.nav_link('Messages', 'messages.inbox', 'message', request.blueprint == 'messages', 'nav_messages') }}
       {% endif %}
-      {#- Phase 4 / M12: the Student Discussions link follows Messages. Like
-          Messages it is rendered once here and costs no query. It is never
-          rendered for a Teacher (whose dashboard navigation names it), an
-          Administrator, a Researcher or an anonymous visitor, and it is
-          marked active on the Student discussion pages only. -#}
-      {% if current_user.is_authenticated and current_user.role == 'student' %}
-      <a class="portal-nav__link{{ ' portal-nav__link--active' if (request.endpoint or '').startswith('student.discussions_') else '' }}"
-         href="{{ url_for('student.discussions_overview') }}" data-research-id="nav_discussions">Discussions</a>
-      {% endif %}
-      {#- M14: the Notifications link and unread badge are part of the shared
-          portal header, so every Student / Teacher page carries them without
-          each page's own `portal_nav` block having to remember. The helper
-          returns nothing at all for Administrator / Researcher / anonymous
-          (they have no inbox), and it fails open to a zero count so a
-          notification-table problem can never break this page. -#}
-      {% set notif = notification_header() %}
       {% if notif %}
-      <a class="portal-nav__link{{ ' portal-nav__link--active' if request.blueprint == 'notifications' else '' }}"
-         href="{{ url_for('notifications.inbox') }}" data-research-id="nav_notifications"
-         {%- if notif.unread_count %} aria-label="Notifications, {{ notif.unread_count }} unread"{% endif %}>
-        Notifications
-        {%- if notif.unread_count %}<span class="notif-badge" aria-hidden="true">{{ notif.unread_label }}</span>{% endif %}
-      </a>
+      {{ ui.nav_link('Notifications', 'notifications.inbox', 'bell', request.blueprint == 'notifications', 'nav_notifications', notif.unread_label if notif.unread_count else none, notif.unread_count ~ ' unread' if notif.unread_count else none) }}
       {% endif %}
     </nav>
-    <div class="portal-header__user">
-      <span class="portal-header__name">{{ current_user.full_name }}</span>
-      <span class="badge badge--primary">{{ current_user.role|capitalize }}</span>
-      <form method="post" action="{{ url_for('auth.logout') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn--secondary" data-research-id="nav_logout">Logout</button>
-      </form>
-    </div>
-  </header>
-  <div class="portal-main">
-    <div class="ds-page">
-      {% block portal_content %}{% endblock %}
-    </div>
+    {{ ui.navigation_tools() }}
+  </aside>
+  <div class="figma-body" data-workspace-body>
+    <header class="figma-topbar">
+      <div class="figma-topbar-heading"><button class="figma-menu-toggle figma-icon-button" type="button" aria-label="Open navigation" aria-controls="workspace-navigation" aria-expanded="false" data-nav-toggle hidden>{{ ui.icon('menu') }}</button><div><span class="figma-eyebrow">{{ 'YOUR LEARNING SPACE' if current_user.role == 'student' else 'YOUR TEACHING SPACE' }}</span>{% block workspace_page_label %}{{ ui.page_heading(self.title()) }}{% endblock %}</div></div>
+      <div class="figma-topbar-user">
+        {% if notif %}{% include "notifications/_bell.html" %}{% endif %}
+        {{ ui.account(current_user, url_for('auth.logout'), csrf_token(), photo_url=account_photo_url()) }}
+      </div>
+    </header>
+    <div class="portal-main"><div class="ds-page figma-page {% block workspace_content_class %}{% endblock %}" id="workspace-content" tabindex="-1">{% block workspace_context %}{% include "_workspace_context.html" %}{% endblock %}{% block portal_content %}{% endblock %}</div></div>
+    {% block workspace_footer %}<footer class="figma-footer">Youth Centre · {{ 'A space to learn and grow.' if current_user.role == 'student' else 'A space to inspire.' }}</footer>{% endblock %}
   </div>
 </div>
+{% if current_user.role == 'student' %}{% include 'student/_mobile_nav.html' %}{% endif %}
 {% if research %}
 {% include "_research_feedback.html" %}
-<script type="application/json" id="research-collector-config">{{ research.config|tojson }}</script>
-<script src="{{ url_for('static', filename='js/usage_collector.js') }}" defer></script>
 {% endif %}
 {% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}

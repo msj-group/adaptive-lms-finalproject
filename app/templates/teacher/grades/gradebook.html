@@ -17,7 +17,7 @@
     no delete, unrelease, reopen, duplicate, import or export control anywhere
     on this page, and no such endpoint exists server-side either. -#}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 style="margin:0">{{ group.name }} — Gradebook</h1>
+  <h1 data-workspace-page-heading style="margin:0">{{ group.name }} — Gradebook</h1>
   {{ gr.weight_total(weight_total_display, weights_complete) }}
 </div>
 
@@ -70,6 +70,7 @@
   {% endif %}
 </div>
 
+<nav class="workspace-tabs" aria-label="Gradebook sections"><a href="#gradebook-items">Categories and items</a><a href="#gradebook-results">Released results</a></nav><div id="gradebook-items"></div>
 {% if categories %}
 {% for category in categories %}
 <section class="dash-section" style="margin-top: 0">
@@ -96,7 +97,7 @@
         <th style="width:7rem">Out of</th>
         <th style="width:9rem">State</th>
         <th style="width:12rem">Scores</th>
-        <th style="width:7rem">Actions</th>
+        <th style="width:17rem">Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -108,7 +109,10 @@
         <td>{{ gr.release_badge(item.is_released) }}</td>
         <td>{{ gr.score_progress(item) }}</td>
         <td>
-          <a class="btn btn--secondary" href="{{ url_for('teacher.grade_item_detail', group_public_id=group.public_id, item_public_id=item.public_id) }}">Open</a>
+          <div class="ds-row">
+          {% if operational %}<a class="btn btn--primary" href="{{ url_for('teacher.grade_item_scores', group_public_id=group.public_id, item_public_id=item.public_id) }}">{{ _('Correct scores' if item.is_released else 'Enter scores') }}</a>{% endif %}
+          <a class="btn btn--secondary" href="{{ url_for('teacher.grade_item_detail', group_public_id=group.public_id, item_public_id=item.public_id) }}">Details</a>
+          </div>
         </td>
       </tr>
       {% endfor %}
@@ -127,8 +131,8 @@
 </section>
 {% endfor %}
 
-<section class="dash-section">
-  <h2>Student totals</h2>
+<section class="dash-section" id="gradebook-results">
+  <h2>Released student totals</h2>
   <p class="ds-section__desc">
     Calculated from released items only, with exact decimal arithmetic, and rounded once for
     display. A student whose overall grade is not available is shown their category progress

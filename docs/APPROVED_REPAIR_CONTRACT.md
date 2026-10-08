@@ -7,6 +7,33 @@ has already been implemented or verified.
 
 ## Authority and current checkpoint
 
+- Latest redesign authorization, 2026-10-07: P01-P06 and the Design Proposal /
+  Architecture Review are approved. Begin W0, then W1, and follow dependency
+  gates. The canonical visual/wave target is
+  [VERSION_A_DESIGN_CONTRACT.md](VERSION_A_DESIGN_CONTRACT.md). Keep the shared
+  Flask monolith, domain/security/research semantics and stable identities.
+  No Version B or real study collection. Assignment file policy/migration and
+  instrumentation are later, separately gated wave work. Source completion is
+  not responsive/accessibility/runtime acceptance or Baseline Freeze.
+- Latest enrollment decision, 2026-10-06: the owner removed the study-start
+  admission cutoff. New enrollment, re-enrollment and wrong-course correction
+  may use a started Group, with an informational notice before saving and after
+  success. Keep the configured study start, eligibility, capacity, teacher,
+  duplicate-enrollment, signed-preview, history and atomic-finance protections.
+- Latest local-rehearsal decision, 2026-10-06: the owner authorized source
+  corrections so ordinary Student usage can be reviewed and exported locally
+  before redesign. Operational-review exports are allowed as a separate,
+  server-selected dataset, explicitly identified in the manifest, session
+  rows and creation audit. Study exports still exclude all non-study data.
+  Preserve classifications, 15-day retention and sampling; no schema change,
+  reset, automated tests, scheduler changes or Git mutation is included.
+- Latest hosting/evaluation decision, 2026-10-06: a future deployment starts
+  with schema and technical control rows only, no seeded users or business
+  content. Preserve the current local database. Remove payment simulation and
+  demonstration selectors/operator actions. Evaluation uses ordinary forms
+  with manually entered fictional data. Its research sessions remain excluded
+  from study exports; genuine study provenance requires a separate explicit
+  deployment decision. This supersedes earlier demonstration-mode provisions.
 - Latest owner decision, 2026-10-06: old tests were deleted and a new automated
   test package was explicitly declined. Complete the remaining source/interface
   integration, static review and documentation without recreating or running tests.
@@ -107,16 +134,16 @@ has already been implemented or verified.
 ### New enrollment
 
 - One operation validates Student eligibility, Group eligibility, capacity,
-  teacher availability, group study-start cutoff and authoritative price.
+  teacher availability, configured group study start and authoritative price.
 - Create Enrollment, invoice, discount history and optional confirmed
   initial collection/receipt in one database transaction. Failure rolls
   back every part. Notifications are secondary to that transaction.
 - With no received amount, the invoice remains due for its net amount;
   a zero net charge is balanced rather than artificially outstanding.
-- New enrollment and re-enrollment into a Group are prohibited at or after
-  its study start. This is not a first-assessment or late-roster exemption
-  policy. The implementation must define one authoritative study-start
-  timestamp from the existing Group/scheduling domain and use it consistently.
+- New enrollment and re-enrollment into a Group remain allowed at or after
+  its study start, with a clear informational notice. Use the authoritative
+  Group study-start timestamp to describe late entry, not to refuse it.
+  Do not backdate membership or automatically grant earlier learning records.
 - Repeated requests and competing requests for the last seat cannot create
   duplicate enrollment, charges or collections.
 
@@ -134,8 +161,8 @@ has already been implemented or verified.
 
 - Transfer is to another Group of the same Course, subject to capacity and
   other authoritative target eligibility checks. It is allowed even when
-  the destination has started studying: this is the explicit exception for
-  an already enrolled student, not a new admission or re-enrollment.
+  the destination has started studying. New admission and re-enrollment now
+  also allow a started destination, with their own notice and new episode.
 - Preserve source membership and transfer events, release/reserve the
   respective seats atomically, and create no new invoice or obligation.
 - Current Course Progress uses the destination Group's learning content.
@@ -151,7 +178,8 @@ has already been implemented or verified.
   Group relationship as well as the financial effect. It is not a free-form
   invoice-description change and is not a same-course transfer.
 - Show affected academic/financial facts and recheck target eligibility,
-  capacity and admission cutoff. Keep old/new membership and financial
+  capacity and configured study start. Show the late-entry notice when the
+  destination has started. Keep old/new membership and financial
   snapshots. Preserve source learning records under their original context;
   do not relabel prior answers/grades as work for the replacement course.
 

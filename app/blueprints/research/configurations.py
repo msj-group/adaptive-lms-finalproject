@@ -124,7 +124,7 @@ def configuration_new():
         flash(message, category)
     return render_template(
         "research/configurations/form.html", active_nav="configurations", form=form,
-        configuration=None, policy_labels=POLICY_LABELS,
+        configuration=None, baseline=queries.active_configuration(), policy_labels=POLICY_LABELS,
         policy_bounds=POLICY_BOUNDS, tz_name=_tz_name(),
     )
 
@@ -184,7 +184,7 @@ def configuration_edit(configuration_public_id):
         return redirect(detail_url)
     return render_template(
         "research/configurations/form.html", active_nav="configurations", form=form,
-        configuration=configuration, policy_labels=POLICY_LABELS,
+        configuration=configuration, baseline=queries.active_configuration(), policy_labels=POLICY_LABELS,
         policy_bounds=POLICY_BOUNDS, tz_name=_tz_name(),
     )
 

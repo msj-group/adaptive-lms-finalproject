@@ -1,145 +1,42 @@
 {% extends "layouts/portal_base.html" %}
 {% import "_dashboard_macros.html" as dash %}
-{% import "_announcement_macros.html" as ann %}
-{% import "_message_macros.html" as msg %}
+{% import "_figma_ui.html" as ui %}
 {% block title %}Student Dashboard{% endblock %}
 {% block portal_nav %}{% set active_nav = 'dashboard' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-<h1>Welcome, {{ current_user.full_name }}</h1>
-<p class="ds-section__desc">
-  Your active enrollments. Class times are shown in the center timezone
-  (<strong>{{ tz_name }}</strong>).
-</p>
-
-{#- Phase 4 / M09. One bounded query, applying exactly the same visibility
-    clause the announcement feed applies -- so nothing can be previewed here
-    that the feed would hide. Rendered OUTSIDE the "no active enrollments"
-    branch on purpose: a student with no enrollment at all still belongs to the
-    centre, and still receives the centre's announcements. -#}
-<div class="dash-section">
-  <h2>Latest announcements</h2>
-  {% if announcements %}
-  <div class="dash-card-list">
-    {% for item in announcements %}
-    <div class="card">
-      <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
-        <div>
-          <div class="card__title" style="margin-bottom: var(--space-1)">
-            <a href="{{ url_for('student.announcement_detail', announcement_public_id=item.public_id) }}">{{ item.title }}</a>
-          </div>
-          {{ ann.context_line(item) }}
-        </div>
-        {{ ann.scope_badge(item) }}
-      </div>
-      {{ ann.body_preview(item, 140) }}
-      <div class="card__body" style="margin-top: var(--space-2); color: var(--color-text-secondary)">
-        {{ ann.published_line(item, tz_name) }}
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  <p class="ds-section__desc" style="margin-top: var(--space-2)">
-    The {{ announcement_cap }} most recent at most. <a href="{{ url_for('student.announcements_list') }}">See all announcements</a>.
-  </p>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">No announcements</div>
-    <div>Notices from the centre, your courses and your groups appear here.</div>
-  </div>
-  {% endif %}
-</div>
-
-{#- Phase 4 / M11. Outside the enrollment branch on purpose: a conversation
-    stays listed after the shared group has ended. -#}
-{{ msg.recent_conversations(conversations, conversation_cap, "teachers") }}
-
-{% if not cards %}
-<div class="empty-state">
-  <div class="empty-state__title">No active enrollments</div>
-  <div>When an administrator enrolls you in a group, it will appear here.</div>
-</div>
-{% else %}
-
-{#- Phase 4 / M13. `continue_lesson` comes from ONE query that re-proves the
-    whole Student visibility formula: the most recently opened incomplete
-    lesson, otherwise the earliest incomplete lesson in teaching order. When
-    there is none, the page says so rather than guessing a destination. -#}
-<div class="dash-section" id="continue-learning">
-  <h2>Continue learning</h2>
+{% set lesson_stats = namespace(total=0, completed=0) %}
+{% for group in progress_groups %}{% set lesson_stats.total = lesson_stats.total + group.lesson_total %}{% set lesson_stats.completed = lesson_stats.completed + group.completed %}{% endfor %}
+<header class="today-greeting"><div><p class="figma-eyebrow">{{ now.strftime('%A · %d %B %Y') }}</p><h2>Welcome, {{ current_user.full_name }}.</h2><p>Your learning today</p></div>{{ ui.icon('spark', 28) }}</header>
+<div class="figma-dashboard-grid today-dashboard">
+<section class="dash-section today-continue">
+  <div class="today-continue-copy">
+  <span class="figma-eyebrow">YOUR NEXT STEP</span>
   {% if continue_lesson %}
-  <div class="card">
-    <div class="card__title" style="margin-bottom: var(--space-1)">{{ continue_lesson.lesson_title }}</div>
-    <div class="card__body">{{ continue_lesson.group_name }} &middot; {{ continue_lesson.course_title }} &middot; {{ continue_lesson.unit_title }}</div>
-    <div class="ds-row" style="margin-top: var(--space-3)">
-      <a class="btn btn--primary" href="{{ url_for('student.lesson_detail', group_public_id=continue_lesson.group_public_id, unit_public_id=continue_lesson.unit_public_id, lesson_public_id=continue_lesson.lesson_public_id) }}">{{ "Continue lesson" if continue_lesson.resume else "Start lesson" }}</a>
-    </div>
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">Nothing to continue right now</div>
-    <div>You have no incomplete lessons available. New lessons your teachers publish will appear here.</div>
-  </div>
-  {% endif %}
-</div>
-
-<div class="dash-section">
-  <h2>Next class</h2>
-  <p>{{ dash.next_class_line(next_class, now, tz_name) }}</p>
-</div>
-
-<div class="dash-section">
-  <h2>Upcoming classes (next 7 days)</h2>
-  {{ dash.upcoming_table(upcoming, now, tz_name, show_group=True) }}
-</div>
-
-{#- Phase 4 / M01. `upcoming_deadlines` is a list of plain presentation dicts
-    built by app.services.assignment_queries.build_student_view from ONE
-    bounded query that re-proves the whole Student visibility formula in SQL --
-    so nothing can appear here that this Student could not open. Drafts,
-    not-yet-opened, already-past-due, withdrawn and archived-chain rows are all
-    excluded by that query, not by this template. -#}
-<div class="dash-section">
-  <h2>Upcoming activity deadlines</h2>
-  {% if upcoming_deadlines %}
-  <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th>Activity</th>
-        <th>Group</th>
-        <th>Course</th>
-        <th>Due ({{ tz_name }})</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in upcoming_deadlines %}
-      <tr>
-        <td><a href="{{ item.url }}">{{ item.title }}</a> <span class="badge">{{ item.type_label }}</span></td>
-        <td>{{ item.group_name }}</td>
-        <td>{{ item.course_title }} ({{ item.level_name }})</td>
-        <td>{{ item.due_local.strftime("%Y-%m-%d %H:%M") }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  </div>
-  <p class="ds-section__desc" style="margin-top: var(--space-2)">
-    The next {{ deadline_cap }} deadlines at most. <a href="{{ url_for('student.activities') }}">See all activities</a>.
-  </p>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">No upcoming deadlines</div>
-    <div>Activities your teachers have published, once their opening time has passed, appear here until their deadline.</div>
-  </div>
-  {% endif %}
-</div>
-
-{#- Phase 4 / M13. Both sections come from bounded queries that re-prove the
-    whole Student visibility formula: only groups whose lessons this student
-    can open right now are summarised, and a recently opened lesson that has
-    since become unavailable is simply not listed. -#}
-<div class="dash-section" id="lesson-progress">
-  <h2>Lesson progress</h2>
+  <h2>{{ continue_lesson.lesson_title }}</h2><p class="today-meta">{{ continue_lesson.course_title }} · {{ continue_lesson.group_name }}</p><p>{{ continue_lesson.unit_title }}</p>
+  <a class="btn btn--primary" href="{{ url_for('student.lesson_detail', group_public_id=continue_lesson.group_public_id, unit_public_id=continue_lesson.unit_public_id, lesson_public_id=continue_lesson.lesson_public_id) }}">{{ 'Resume lesson' if continue_lesson.resume else 'Start lesson' }} {{ ui.icon('arrow', 17) }}</a>
+  {% elif not cards %}<h2>No active enrollments</h2><p>Your courses will appear when an administrator enrolls you in a group.</p><a href="{{ url_for('student.records') }}">View your records</a>
+  {% elif lesson_stats.total and lesson_stats.completed == lesson_stats.total and not progress_truncated %}<h2>Available lessons completed</h2><p>You have marked all currently available lessons complete. You can revisit them in your courses.</p><a class="btn btn--secondary" href="{{ url_for('workspace.student_courses') }}">Open my courses</a>
+  {% else %}<h2>No lesson ready to continue</h2><p>Published lessons appear when your group and its content are available to you.</p><a class="btn btn--secondary" href="{{ url_for('workspace.student_courses') }}">View my courses</a>{% endif %}
+  </div>{{ ui.hero_art('learn') }}
+</section>
+{{ dash.class_card(next_class, now, tz_name, 'student') }}
+{% if cards %}
+<section class="dash-section figma-wide"><div class="today-section-heading"><h2>Next activities</h2><a href="{{ url_for('student.activities') }}">View all activities</a></div>
+{% if upcoming_deadlines %}<ul class="today-list">
+{% for item in upcoming_deadlines[:5] %}<li class="today-action-row"><div><span class="badge badge--neutral">{{ item.type_label }}</span> <span class="badge badge--primary">{{ item.window_label }}</span> <span class="badge">{{ item.progress_label }}</span><h3>{{ item.title }}</h3><p class="today-meta">{{ item.course_title }} · {{ item.group_name }} · {{ item.level_name }}</p><p class="today-meta">Due <time datetime="{{ item.due_local.isoformat() }}">{{ item.due_local.strftime('%d %b %Y · %H:%M') }}</time> · {{ tz_name }}</p></div><a class="btn btn--secondary" href="{{ item.url }}">{{ 'Continue activity' if item.state == 'in_progress' else 'View activity' }}</a></li>{% endfor %}</ul><p class="today-note">The next five available, unfinished activities at most. Opening details does not start an attempt.</p>
+{% else %}<p>No upcoming unfinished activities available. Visit Activities for submitted work and results.</p>{% endif %}</section>
+<section class="dash-section figma-wide" id="my-groups"><div class="today-section-heading"><h2>My courses</h2><a href="{{ url_for('workspace.student_courses') }}">View all courses</a></div><div class="workspace-card-grid today-course-grid">
+{% for card in cards[:4] %}<article class="card workspace-course-card"><h3>{{ card.course_title }}</h3><p class="today-meta">{{ card.group_name }} · {{ card.term_name }}</p>{{ dash.operational_badge(card.operational) }}
+{% set progress = namespace(item=none) %}{% for item in progress_groups %}{% if item.group_public_id == card.group_public_id %}{% set progress.item = item %}{% endif %}{% endfor %}
+{% if progress.item and progress.item.lesson_total %}<p class="today-meta">{{ progress.item.completed }} of {{ progress.item.lesson_total }} lessons marked complete</p><progress class="figma-progress" value="{{ progress.item.completed }}" max="{{ progress.item.lesson_total }}" aria-label="Completed lessons in {{ card.group_name }}">{{ progress.item.completed }} of {{ progress.item.lesson_total }}</progress>{% else %}<p class="today-meta">No lesson progress available</p>{% endif %}
+{% if card.operational %}<a class="btn btn--secondary" href="{{ url_for('workspace.student_course',group_public_id=card.group_public_id) }}">Open course</a>{% else %}<a href="{{ url_for('student.records') }}">Previous records</a>{% endif %}</article>{% endfor %}</div><p class="today-note">Lesson completion is your own mark, not a grade.</p></section>
+{% endif %}
+{{ dash.compact_announcements(announcements, 'student') }}
+{{ dash.compact_messages(conversations) }}
+{% if cards %}
+<details class="dash-section figma-wide today-details"><summary>Upcoming classes · next 7 days</summary>{{ dash.upcoming_table(upcoming, now, tz_name, show_group=True) }}</details>
+<details class="dash-section figma-wide today-details" id="lesson-progress">
+  <summary>Lesson progress details</summary>
   {% if progress_groups %}
   <div class="dash-scroll">
   <table class="dash-table">
@@ -156,7 +53,7 @@
       <tr>
         <td>{{ item.group_name }}</td>
         <td>{{ item.course_title }} ({{ item.level_name }})</td>
-        <td>{{ item.completed }} of {{ item.lesson_total }}</td>
+        <td>{{ item.completed }} of {{ item.lesson_total }}{% if item.lesson_total %}<progress class="figma-progress" value="{{ item.completed }}" max="{{ item.lesson_total }}" aria-label="Completed lessons in {{ item.group_name }}">{{ item.completed }} of {{ item.lesson_total }}</progress>{% endif %}</td>
         <td><a href="{{ url_for('student.group_units', group_public_id=item.group_public_id) }}">Open lessons</a></td>
       </tr>
       {% endfor %}
@@ -173,10 +70,10 @@
     <div>Progress appears here for the groups whose lessons you can currently open.</div>
   </div>
   {% endif %}
-</div>
+</details>
 
-<div class="dash-section" id="recently-opened">
-  <h2>Recently opened lessons</h2>
+<details class="dash-section figma-wide today-details" id="recently-opened">
+  <summary>Recently opened lessons</summary>
   {% if recent_lessons %}
   <div class="dash-scroll">
   <table class="dash-table">
@@ -215,61 +112,8 @@
     <div>Lessons you open appear here, most recent first.</div>
   </div>
   {% endif %}
-</div>
-
-<div class="dash-section">
-  <h2>Your groups</h2>
-  <div class="dash-card-list">
-    {% for card in cards %}
-    <div class="card">
-      <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
-        <div>
-          <div class="card__title" style="margin-bottom: var(--space-1)">{{ card.group_name }}</div>
-          <div class="card__body">{{ card.course_title }} &middot; {{ card.level_name }}</div>
-          <div class="card__body">{{ card.term_name }} ({{ card.term_start.isoformat() }} &ndash; {{ card.term_end.isoformat() }})</div>
-        </div>
-        {{ dash.operational_badge(card.operational) }}
-      </div>
-
-      {% if not card.operational %}
-      <div class="alert alert--warning" style="margin-top: var(--space-3)">
-        Not operational: {{ card.archived_labels | join(", ") }} archived. This enrollment is kept
-        as historical context and produces no upcoming class.
-      </div>
-      {% endif %}
-
-      <dl style="display:grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: var(--space-3) 0 0;">
-        <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Next class</dt>
-        <dd style="margin:0">{{ dash.next_class_line(card.next_class, now, tz_name) }}</dd>
-      </dl>
-
-      {% if card.schedules %}
-      <table class="dash-table" style="margin-top: var(--space-3)">
-        <thead><tr><th>Day</th><th>Time ({{ tz_name }})</th><th>Location</th></tr></thead>
-        <tbody>
-          {% for s in card.schedules %}
-          <tr>
-            <td>{{ dash.weekday_name(s.day_of_week) }}</td>
-            <td>{{ dash.time_range(s.start_time, s.end_time) }}</td>
-            <td>{{ s.location or "—" }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <p class="card__body" style="margin-top: var(--space-3)">No active schedule for this group yet.</p>
-      {% endif %}
-
-      {% if card.operational %}
-      <div class="ds-row" style="margin-top: var(--space-4)">
-        <a class="btn btn--secondary" href="{{ url_for('student.group_units', group_public_id=card.group_public_id) }}">Open Lessons</a>
-        <a class="btn btn--secondary" href="{{ url_for('student.discussions_group', group_public_id=card.group_public_id) }}">Discussions</a>
-      </div>
-      {% endif %}
-    </div>
-    {% endfor %}
-  </div>
-</div>
+</details>
 
 {% endif %}
+</div>
 {% endblock %}

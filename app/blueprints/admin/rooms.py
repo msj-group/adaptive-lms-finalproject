@@ -1,7 +1,7 @@
 """Room management with signed snapshots and locked scheduling guards."""
 from flask import current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from itsdangerous import BadSignature, URLSafeSerializer
 from sqlalchemy.exc import IntegrityError
 from wtforms import IntegerField, StringField, SubmitField

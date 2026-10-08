@@ -12,7 +12,7 @@ from app.blueprints.admin.financial_http import _financial_response
 
 from app.blueprints.admin.invoices import _BASE
 
-from app.models import PaymentIntent, UserRole
+from app.models import Invoice, PaymentIntent, UserRole
 
 from app.security.decorators import roles_required
 
@@ -31,7 +31,7 @@ def invoice_payment_intents(group_public_id, enrollment_public_id, assignment_pu
     from app.services.finance_compatibility import enrollment_account
     episode = enrollment_account(group_public_id, enrollment_public_id, assignment_public_id)
     invoice = Invoice.query.filter_by(public_id=invoice_public_id, enrollment_id=episode.id, student_id=episode.student_id).first_or_404()
-    return redirect(url_for('admin.student_invoice_intents', student_public_id=episode.student.public_id, invoice_public_id=invoice.public_id), code=303)
+    return redirect(url_for('admin.student_financial_record', student_public_id=episode.student.public_id), code=303)
 
 @admin_bp.route(_INTENTS + '/new', methods=['GET', 'POST'])
 @roles_required(_ADMINISTRATOR)
@@ -40,7 +40,7 @@ def invoice_payment_intent_create(group_public_id, enrollment_public_id, assignm
     from app.services.finance_compatibility import enrollment_account
     episode = enrollment_account(group_public_id, enrollment_public_id, assignment_public_id)
     invoice = Invoice.query.filter_by(public_id=invoice_public_id, enrollment_id=episode.id, student_id=episode.student_id).first_or_404()
-    return redirect(url_for('admin.student_invoice_intents', student_public_id=episode.student.public_id, invoice_public_id=invoice.public_id), code=303)
+    return redirect(url_for('admin.student_financial_record', student_public_id=episode.student.public_id), code=303)
 
 @admin_bp.get(_ONE)
 @roles_required(_ADMINISTRATOR)
@@ -50,7 +50,7 @@ def invoice_payment_intent_detail(group_public_id, enrollment_public_id, assignm
     episode = enrollment_account(group_public_id, enrollment_public_id, assignment_public_id)
     invoice = Invoice.query.filter_by(public_id=invoice_public_id, enrollment_id=episode.id, student_id=episode.student_id).first_or_404()
     intent = PaymentIntent.query.filter_by(public_id=intent_public_id, invoice_id=invoice.id).first_or_404()
-    return redirect(url_for('admin.student_invoice_intent', student_public_id=episode.student.public_id, invoice_public_id=invoice.public_id, intent_public_id=intent.public_id), code=303)
+    return redirect(url_for('admin.student_financial_record', student_public_id=episode.student.public_id), code=303)
 
 @admin_bp.route(_ONE + '/checkout', methods=['GET', 'POST'])
 @roles_required(_ADMINISTRATOR)
@@ -60,7 +60,7 @@ def invoice_payment_intent_checkout(group_public_id, enrollment_public_id, assig
     episode = enrollment_account(group_public_id, enrollment_public_id, assignment_public_id)
     invoice = Invoice.query.filter_by(public_id=invoice_public_id, enrollment_id=episode.id, student_id=episode.student_id).first_or_404()
     intent = PaymentIntent.query.filter_by(public_id=intent_public_id, invoice_id=invoice.id).first_or_404()
-    return redirect(url_for('admin.student_invoice_intent', student_public_id=episode.student.public_id, invoice_public_id=invoice.public_id, intent_public_id=intent.public_id), code=303)
+    return redirect(url_for('admin.student_financial_record', student_public_id=episode.student.public_id), code=303)
 
 @admin_bp.post(_ONE + '/checkout/webhook')
 @roles_required(_ADMINISTRATOR)
@@ -70,7 +70,7 @@ def invoice_payment_intent_deliver(group_public_id, enrollment_public_id, assign
     episode = enrollment_account(group_public_id, enrollment_public_id, assignment_public_id)
     invoice = Invoice.query.filter_by(public_id=invoice_public_id, enrollment_id=episode.id, student_id=episode.student_id).first_or_404()
     intent = PaymentIntent.query.filter_by(public_id=intent_public_id, invoice_id=invoice.id).first_or_404()
-    return redirect(url_for('admin.student_invoice_intent', student_public_id=episode.student.public_id, invoice_public_id=invoice.public_id, intent_public_id=intent.public_id), code=303)
+    return redirect(url_for('admin.student_financial_record', student_public_id=episode.student.public_id), code=303)
 
 @admin_bp.post(_ONE + '/return')
 @roles_required(_ADMINISTRATOR)
@@ -80,7 +80,7 @@ def invoice_payment_intent_return(group_public_id, enrollment_public_id, assignm
     episode = enrollment_account(group_public_id, enrollment_public_id, assignment_public_id)
     invoice = Invoice.query.filter_by(public_id=invoice_public_id, enrollment_id=episode.id, student_id=episode.student_id).first_or_404()
     intent = PaymentIntent.query.filter_by(public_id=intent_public_id, invoice_id=invoice.id).first_or_404()
-    return redirect(url_for('admin.student_invoice_intent', student_public_id=episode.student.public_id, invoice_public_id=invoice.public_id, intent_public_id=intent.public_id), code=303)
+    return redirect(url_for('admin.student_financial_record', student_public_id=episode.student.public_id), code=303)
 
 @admin_bp.get(_ONE + '/result')
 @roles_required(_ADMINISTRATOR)
@@ -90,7 +90,7 @@ def invoice_payment_intent_result(group_public_id, enrollment_public_id, assignm
     episode = enrollment_account(group_public_id, enrollment_public_id, assignment_public_id)
     invoice = Invoice.query.filter_by(public_id=invoice_public_id, enrollment_id=episode.id, student_id=episode.student_id).first_or_404()
     intent = PaymentIntent.query.filter_by(public_id=intent_public_id, invoice_id=invoice.id).first_or_404()
-    return redirect(url_for('admin.student_invoice_intent', student_public_id=episode.student.public_id, invoice_public_id=invoice.public_id, intent_public_id=intent.public_id), code=303)
+    return redirect(url_for('admin.student_financial_record', student_public_id=episode.student.public_id), code=303)
 
 @admin_bp.route(_ONE + '/cancel', methods=['GET', 'POST'])
 @roles_required(_ADMINISTRATOR)
@@ -100,7 +100,7 @@ def invoice_payment_intent_cancel(group_public_id, enrollment_public_id, assignm
     episode = enrollment_account(group_public_id, enrollment_public_id, assignment_public_id)
     invoice = Invoice.query.filter_by(public_id=invoice_public_id, enrollment_id=episode.id, student_id=episode.student_id).first_or_404()
     intent = PaymentIntent.query.filter_by(public_id=intent_public_id, invoice_id=invoice.id).first_or_404()
-    return redirect(url_for('admin.student_invoice_intent', student_public_id=episode.student.public_id, invoice_public_id=invoice.public_id, intent_public_id=intent.public_id), code=303)
+    return redirect(url_for('admin.student_financial_record', student_public_id=episode.student.public_id), code=303)
 
 @admin_bp.get('/payment-intents')
 @roles_required(_ADMINISTRATOR)

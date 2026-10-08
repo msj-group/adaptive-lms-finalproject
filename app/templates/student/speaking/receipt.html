@@ -1,7 +1,11 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'speaking' %}
+{% set activity_phase = 'receipt' %}
 {% block title %}Your recording — {{ activity.title }}{% endblock %}
 {% block portal_nav %}{% set active_nav = 'speaking' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+
 {#- Phase 4 / M06, the immutable receipt. `activity`, `submission` and
     `feedback` are plain presentation dicts. The recording was looked up by this
     activity AND this authenticated student together, and `feedback` is read
@@ -14,7 +18,7 @@
 <p class="ds-section__desc" style="margin-bottom: var(--space-2)">
   {{ activity.group_name }} &middot; {{ activity.course_title }} &middot; {{ activity.level_name }} &middot; {{ activity.term_name }}
 </p>
-<h1 style="margin-top: 0">{{ activity.title }}</h1>
+
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}
@@ -24,7 +28,7 @@
 
 <div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
   <a class="btn btn--secondary" href="{{ detail_url }}">Back to the activity</a>
-  <a class="btn btn--secondary" href="{{ url_for('student.activities', type='speaking') }}">Back to Activities</a>
+  <a class="btn btn--secondary" href="{{ url_for('student.activities', type='speaking', group=activity.group_public_id) }}">Back to Activities</a>
 </div>
 
 <div class="alert alert--success" style="margin-bottom: var(--space-6)">
@@ -32,6 +36,8 @@
   This recording is final: it cannot be edited, replaced, or submitted again.
 </div>
 
+<div class="activity-speaking-layout">
+<div class="activity-speaking-studio">
 <section>
   <h2>Your Recording</h2>
   {% include "_audio_player.html" %}
@@ -40,6 +46,8 @@
   </div>
 </section>
 
+</div>
+<div>
 <section style="margin-top: var(--space-6)">
   <h2>Teacher Feedback</h2>
   {% if feedback and feedback.state == "present" %}
@@ -50,7 +58,7 @@
   <div class="card">
     {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe --
        feedback is Teacher-typed text, never stored HTML or Markdown. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
   </div>
 
   {% elif feedback and feedback.state == "invalid" %}
@@ -72,7 +80,11 @@
   <h2>What to say</h2>
   <div class="card">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
   </div>
 </section>
+
+</div>
+</div>
+</div>
 {% endblock %}

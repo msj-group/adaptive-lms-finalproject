@@ -1,11 +1,27 @@
 # Repair implementation plan
 
+> Current authority: final owner approval, 2026-10-08. Execute W0 → W1 → W2 →
+> W2-D02 → W3 → W4 → W5 → W6 → W7 → W8 → W9 under
+> [VERSION_A_DELIVERY.md](VERSION_A_DELIVERY.md). The earlier W1 appearance and
+> per-wave preview stops below are superseded. Preserve domain/research policy,
+> the protected Login and the no-new-test-package verification boundary.
+
 Owner-approved contract: [APPROVED_REPAIR_CONTRACT.md](APPROVED_REPAIR_CONTRACT.md).
 Current checkpoint and evidence: [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 This plan rehabilitates the existing Flask modular monolith in bounded Parts.
 It does not authorize one bulk rewrite. Complete each Part's acceptance gate,
 report the actual evidence and preserve unrelated work before proceeding.
+
+## Current redesign waves - 2026-10-07
+
+The owner approved the Design Proposal and Architecture Review, including
+P01-P06, and authorized W0 followed by W1. Follow the dependency sequence and
+exit gates in [VERSION_A_DESIGN_CONTRACT.md](VERSION_A_DESIGN_CONTRACT.md).
+Do not treat the historical repair Parts below as permission to repeat database
+or Git operations. W1 evidence and outstanding acceptance are recorded in
+[VERSION_A_W1.md](VERSION_A_W1.md). Later waves remain dependent on foundation
+stability; file-policy/migration and new-schema decisions gate only affected work.
 
 ## Latest owner close-out decision - 2026-10-06
 
@@ -140,8 +156,9 @@ new episode on re-enrollment; actual wrong-Course/Group correction.
 
 Exit criteria:
 
-- New/re-enrollment is refused at/after Group study start, using one trusted
-  authoritative cutoff. Same-course transfer after start is permitted.
+- Owner override, 2026-10-06: new/re-enrollment is permitted at/after Group
+  study start with an informational notice. Wrong-course correction also
+  allows a started destination; same-course transfer remains permitted.
 - A repeated or failed operation creates no extra episode, liability or cash.
 - Last-seat competition and transfer source/target locks are verified.
 - Withdrawal releases a seat once; optional net-obligation reversal is audited;

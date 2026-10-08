@@ -32,6 +32,7 @@
  */
 (function () {
   "use strict";
+  var t = window.aelmsUI ? window.aelmsUI.t : function (text) { return text; };
 
   var STATES = {
     UNSUPPORTED: "unsupported",
@@ -146,7 +147,7 @@
 
     function say(message) {
       if (status) {
-        status.textContent = message;
+        status.textContent = t(message);
       }
     }
 
@@ -155,7 +156,7 @@
         return;
       }
       if (message) {
-        errorBox.textContent = message;
+        errorBox.textContent = t(message);
         errorBox.hidden = false;
       } else {
         errorBox.textContent = "";
@@ -221,7 +222,8 @@
         againButton.hidden = !hasTake;
       }
       if (submitButton) {
-        submitButton.disabled = !hasTake;
+        var selectedFile = fileField && fileField.files && fileField.files.length === 1;
+        submitButton.disabled = busy || recording || !(hasTake || selectedFile || state === STATES.UNSUPPORTED);
       }
       if (root) {
         root.setAttribute("data-recorder-state", state);
@@ -247,7 +249,8 @@
       // Start enabled in it, so the Student can simply try again.
       applyState(STATES.ERROR);
       showError(message);
-      say("Recording stopped because of a problem. You can press Start recording to try again.");
+      say(t("Recording stopped because of a problem. You can press Start recording to try again."));
+      if (fallbackBlock) fallbackBlock.hidden = false;
     }
 
     function onStop() {
@@ -258,7 +261,7 @@
 
       if (!chunks.length) {
         fail(
-          "Nothing was recorded. Please check that your microphone is working and try again."
+          t("Nothing was recorded. Please check that your microphone is working and try again.")
         );
         return;
       }
@@ -288,13 +291,14 @@
         previewBlock.hidden = false;
       }
       applyState(STATES.PREVIEW);
-      say("Recording ready. Play it back, record again, or submit it as your final answer.");
+      say(t("Recording ready. Play it back, record again, or submit it as your final answer."));
     }
 
     function startRecording() {
       showError("");
+      if (fallbackBlock) fallbackBlock.hidden = true;
       applyState(STATES.REQUESTING);
-      say("Asking your browser for permission to use the microphone…");
+      say(t("Asking your browser for permission to use the microphone…"));
 
       window.navigator.mediaDevices
         .getUserMedia({ audio: true })
@@ -323,11 +327,11 @@
           });
           recorder.addEventListener("stop", onStop);
           recorder.addEventListener("error", function () {
-            fail("Recording stopped unexpectedly. Please try again.");
+            fail(t("Recording stopped unexpectedly. Please try again."));
           });
           recorder.start();
           applyState(STATES.RECORDING);
-          say("Recording… press Stop when you have finished speaking.");
+          say(t("Recording… press Stop when you have finished speaking."));
         })
         .catch(function (permissionError) {
           stopTracks();
@@ -340,23 +344,23 @@
           var message;
           if (name === "NotAllowedError" || name === "SecurityError") {
             message =
-              "Your browser blocked access to the microphone. Allow microphone access for " +
-              "this site in your browser settings, then press Start recording again.";
+              t("Your browser blocked access to the microphone. Allow microphone access for this site in your browser settings, then press Start recording again.");
           } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
             message =
-              "No microphone was found. Connect a microphone and press Start recording again.";
+              t("No microphone was found. Connect a microphone and press Start recording again.");
           } else if (name === "NotReadableError") {
             message =
-              "Your microphone is already in use by another program. Close it and press " +
-              "Start recording again.";
+              t("Your microphone is already in use by another program. Close it and press Start recording again.");
           } else {
             message =
-              "The microphone could not be started. Please check your browser's microphone " +
-              "settings and try again.";
+              t("The microphone could not be started. Please check your browser's microphone settings and try again.");
           }
           applyState(STATES.READY);
+          // A missing/blocked microphone must not hide the existing file path.
+          // Keep Start available for a later permission/device retry as well.
+          if (fallbackBlock) fallbackBlock.hidden = false;
           showError(message);
-          say("Microphone not available.");
+          say(t("Microphone not available."));
         });
     }
 
@@ -375,7 +379,7 @@
       discardRecording();
       showError("");
       applyState(STATES.READY);
-      say("Previous recording discarded. Press Start recording when you are ready.");
+      say(t("Previous recording discarded. Press Start recording when you are ready."));
     }
 
     function revealFallback(message) {
@@ -402,7 +406,7 @@
         showError(message);
       }
       applyState(STATES.UNSUPPORTED);
-      say("Choose an audio file to upload as your final answer.");
+      say(t("Choose an audio file to upload as your final answer."));
     }
 
     function attachBlobToField() {
@@ -422,14 +426,14 @@
       return true;
     }
 
-    form.addEventListener("submit", function (event) {
+    form.addEventListener("submit", async function (event) {
       if (state === STATES.UPLOADING) {
         event.preventDefault();
         return;
       }
       if (state === STATES.RECORDING || state === STATES.REQUESTING) {
         event.preventDefault();
-        showError("Please stop the recording before submitting it.");
+        showError(t("Please stop the recording before submitting it."));
         return;
       }
       if (blob) {
@@ -443,18 +447,58 @@
           return;
         }
       }
-      if (confirmMessage && !window.confirm(confirmMessage)) {
-        event.preventDefault();
-        return;
-      }
-      // The form is an ordinary multipart POST: the CSRF token and the
-      // signed submission token are hidden inputs the server rendered, and
-      // they travel with the audio part unchanged.
+      event.preventDefault();
+      if (confirmMessage && !(window.aelmsConfirm ? await window.aelmsConfirm(confirmMessage) : window.confirm(confirmMessage))) return;
+      // Explicit final submission only. The same multipart payload and
+      // one-time token are retained, including on a retry after a lost response.
+      event.preventDefault();
       applyState(STATES.UPLOADING);
       if (submitButton) {
         submitButton.disabled = true;
       }
-      say("Uploading your final recording… please do not close this page.");
+      say(t("Uploading your final recording… please do not close this page."));
+      var progress = form.querySelector("[data-upload-progress]");
+      if (!progress) {
+        progress = document.createElement("progress"); progress.dataset.uploadProgress = "true";
+        progress.max = 100; progress.setAttribute("aria-label", t("Recording upload progress"));
+        progress.style.width = "100%"; form.appendChild(progress);
+      }
+      progress.hidden = false; progress.removeAttribute("value");
+      var upload = new XMLHttpRequest();
+      upload.open("POST", form.action);
+      upload.upload.addEventListener("progress", function (update) {
+        if (update.lengthComputable) {
+          progress.value = Math.round(update.loaded * 100 / update.total);
+          say(t("Uploading recording: %(percent)s%%", {percent:progress.value}) + (progress.value === 100 ? t(" · Waiting for server confirmation…") : ""));
+        }
+      });
+      function retry(message) {
+        progress.hidden = true;
+        applyState(blob ? STATES.PREVIEW : STATES.UNSUPPORTED);
+        if (submitButton) submitButton.disabled = false;
+        showError(message);
+        say(t("Review the recording, then retry with the same submission. A previously accepted upload will open its receipt."));
+      }
+      upload.addEventListener("load", function () {
+        var destination = new URL(upload.responseURL || form.action, location.href);
+        if (upload.status >= 200 && upload.status < 400 && destination.origin === location.origin && destination.pathname.startsWith("/student/") && destination.href !== new URL(form.action, location.href).href) {
+          form.dispatchEvent(new Event("workspace:saved"));
+          root.dataset.recorderState = "submitted";
+          window.location.assign(destination.href);
+          return;
+        }
+        var result = new DOMParser().parseFromString(upload.responseText, "text/html");
+        var messages = Array.from(result.querySelectorAll(".field__error,.alert")).map(function (item) { return item.textContent.trim(); }).filter(Boolean);
+        retry(messages.join(" ") || t("The server could not confirm this recording. Check your session and file limits, then retry."));
+      });
+      upload.addEventListener("error", function () { retry(t("The connection was interrupted. The server may have received the recording; retrying uses the same one-time submission token.")); });
+      upload.send(new FormData(form));
+    });
+
+    if (fileField) fileField.addEventListener("change", function () {
+      if (state !== STATES.RECORDING && state !== STATES.REQUESTING && state !== STATES.UPLOADING) {
+        applyState(state);
+      }
     });
 
     window.addEventListener("pagehide", function () {
@@ -483,7 +527,7 @@
       guidance.hidden = false;
     }
     applyState(STATES.READY);
-    say("Press Start recording when you are ready. Your browser will ask for permission to use the microphone.");
+    say(t("Press Start recording when you are ready. Your browser will ask for permission to use the microphone."));
 
     if (startButton) {
       startButton.addEventListener("click", startRecording);

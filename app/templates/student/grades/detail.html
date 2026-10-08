@@ -16,7 +16,7 @@
 
     Every number is a string produced by app.services.grade_calculations and
     rounded there exactly once. This template performs no arithmetic. -#}
-<h1 style="margin-top: 0">{{ group.name }} — My grades</h1>
+<h1 data-workspace-page-heading style="margin-top: 0">{{ group.name }} — My grades</h1>
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   {{ group.course_title }} &middot; {{ group.level_name }} &middot; {{ group.term_name }}
 </p>
@@ -53,7 +53,7 @@
 
   {% if not category.complete %}
   <p class="ds-section__desc">
-    {{ category.scored_item_count }} of {{ category.released_item_count }} released item{{ "" if category.released_item_count == 1 else "s" }}
+    {{ _n('%(scored)d of %(count)d released item', '%(scored)d of %(count)d released items', category.released_item_count, scored=category.scored_item_count) }}
     in this part has a result for you so far.
   </p>
   {% endif %}

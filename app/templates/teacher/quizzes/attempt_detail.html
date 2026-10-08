@@ -1,9 +1,13 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'quiz' %}
+{% set activity_phase = 'review' %}
 {% block title %}{{ attempt.student_name }} — {{ quiz.title }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+
 {#- Phase 4 / M04D. One attempt in full: what the student selected AND the
     answer key you authored, side by side. A teacher is authorized to see the
     key; a student never is, which is why the student result page uses its own
@@ -12,7 +16,7 @@
     Read only. There is no edit, override, manual-grade or delete control
     anywhere, and none exists server-side. Every authored string below is
     autoescaped -- never |safe. -#}
-<h1 style="margin-top: 0">{{ attempt.student_name }}</h1>
+
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   {{ quiz.title }} &middot; Attempt {{ attempt.attempt_number }} &middot; {{ group.name }}
 </p>
@@ -29,27 +33,39 @@
 
 <div class="card" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 160px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Status</dt>
-    <dd style="margin:0"><span class="badge badge--neutral">{{ attempt.status_label }}</span></dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Started</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Status</dt>
+    <dd style="margin:0">
+<span class="badge badge--neutral">{{ attempt.status_label }}</span>
+</dd>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Started</dt>
     <dd style="margin:0">{{ attempt.started_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Deadline</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Deadline</dt>
     <dd style="margin:0">{{ attempt.deadline_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submitted</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submitted</dt>
     <dd style="margin:0">{% if attempt.submitted_local %}{{ attempt.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}){% else %}&mdash;{% endif %}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Score</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Score</dt>
     <dd style="margin:0">
       {% if attempt.total_questions is not none %}
       {{ attempt.correct_count }} / {{ attempt.total_questions }}{% if attempt.percentage is not none %} ({{ attempt.percentage }}%){% endif %}
       {% else %}&mdash; (still in progress){% endif %}
     </dd>
+</div>
   </dl>
 </div>
 
 <section>
   <h2>Answers</h2>
   {% for item in review %}
-  <div class="card" style="margin-bottom: var(--space-3)">
+  <div class="card activity-review-question" style="margin-bottom: var(--space-3)">
     <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
       <strong>Question {{ item.number }}</strong>
       <span class="ds-row" style="gap: var(--space-2)">
@@ -63,7 +79,7 @@
         {% endif %}
       </span>
     </div>
-    <div style="white-space: pre-wrap; word-break: break-word; margin-bottom: var(--space-3)">{{ item.prompt }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word; margin-bottom: var(--space-3)">{{ item.prompt }}</div>
     <ul style="margin:0; padding-left: var(--space-4)">
       {% for option in item.options %}
       <li style="margin-bottom: var(--space-1)">
@@ -81,4 +97,6 @@
   </div>
   {% endfor %}
 </section>
+
+</div>
 {% endblock %}

@@ -11,7 +11,7 @@
     student name, no roster, no internal id. The student count below is a
     PREVIEW: the authoritative roster is whatever the locked rows say at the
     instant of capture, which the confirm route re-reads under locks. -#}
-<h1 style="margin-top: 0">Confirm attendance session</h1>
+<h1 data-workspace-page-heading style="margin-top: 0">Confirm attendance session</h1>
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }}
 </p>
@@ -36,8 +36,7 @@
 </div>
 
 <div class="alert alert--info" style="margin-bottom: var(--space-5)">
-  Opening attendance takes a snapshot of the {{ roster_size }} student{{ "" if roster_size == 1 else "s" }}
-  actively enrolled in this group right now, all marked <strong>absent</strong> to begin with.
+  {{ _n('Opening attendance takes a snapshot of the %(count)d student actively enrolled in this group right now, all marked', 'Opening attendance takes a snapshot of the %(count)d students actively enrolled in this group right now, all marked', roster_size) }} <strong>absent</strong> to begin with.
   That list is fixed: a student who enrols later is not added to this class, and a student who
   withdraws later is not removed from it. The date, time and location above are stored with the
   session and are never rewritten if the schedule changes.

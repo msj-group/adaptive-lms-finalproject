@@ -1,0 +1,11 @@
+{% set context = workspace_context() %}
+{% set back = workspace_back() %}{% if back %}<a class="workspace-back" href="{{ back }}">&larr; Back to filtered list</a>{% endif %}
+{% if context %}
+<section class="workspace-context" aria-label="Current workspace">
+  <nav class="workspace-breadcrumb" aria-label="Breadcrumb"><a href="{{ context.parent }}">{{ context.parent_label }}</a><span aria-hidden="true">/</span><span>{{ context.title }}</span></nav>
+  <p>{{ context.subtitle }}</p>
+  {% if context.sections is defined %}<nav class="workspace-tabs" aria-label="Group sections">{% for section in context.sections %}<a href="{{ section.url }}"{% if section.active %} aria-current="page"{% endif %}>{{ section.label }}</a>{% endfor %}</nav>{% endif %}
+  {% if context.tabs %}<nav class="workspace-tabs{{ ' workspace-tabs--secondary' if context.sections is defined else '' }}" aria-label="{{ context.title }} {{ 'tools' if context.sections is defined else 'sections' }}">{% for tab in context.tabs %}<a href="{{ tab.url }}"{% if tab.active %} aria-current="page"{% endif %}>{{ tab.label }}</a>{% endfor %}</nav>{% endif %}
+  {% if current_user.role == 'teacher' %}{% include '_workspace_activity_nav.html' %}{% endif %}
+</section>
+{% endif %}

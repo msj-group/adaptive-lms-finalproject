@@ -4,7 +4,7 @@
 {% block admin_content %}
 <div class="ds-page">
   <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
-    <h1 style="margin:0">{{ group.name }} — Manage Members</h1>
+    <h1 data-workspace-page-heading style="margin:0">{{ group.name }} — Manage Members</h1>
     {{ macros.status_badge(group.status) }}
   </div>
 
@@ -39,7 +39,7 @@
       <dd style="margin:0">{{ group.academic_term.name }}{% if group.academic_term.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
 
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Active Students</dt>
-      <dd style="margin:0">{{ active_student_count }}/{{ group.capacity }} ({{ remaining_seats }} seat{{ "" if remaining_seats == 1 else "s" }} remaining)</dd>
+      <dd style="margin:0">{{ active_student_count }}/{{ group.capacity }} ({{ _n('%(count)d seat remaining', '%(count)d seats remaining', remaining_seats) }})</dd>
     </dl>
   </div>
 
@@ -181,7 +181,7 @@
 <script>
   document.querySelectorAll("form[data-confirm]").forEach(function (form) {
     form.addEventListener("submit", function (event) {
-      if (!confirm(form.dataset.confirm)) {
+      if (!window.aelmsConfirm && !confirm(form.dataset.confirm)) {
         event.preventDefault();
       }
     });

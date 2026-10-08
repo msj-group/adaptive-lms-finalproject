@@ -1,9 +1,15 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'speaking' %}
+{% set activity_phase = 'author' %}
 {% block title %}{{ 'Edit Speaking Activity' if activity else 'New Speaking Activity' }} — {{ group.name }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+<div class="activity-author-layout">
+<div class="activity-author-main">
+
 {#- Phase 4 / M06. `activity` is a plain presentation dict (or None on create),
     so no ORM row and no internal id reaches this template. `group` IS the
     eagerly loaded Group ORM object, used only for the header; the Teacher's
@@ -13,7 +19,7 @@
     published-at, version or public-id control -- publication is changed only
     by its own POST routes. -#}
 <div class="ds-page" style="max-width: 680px; padding: 0">
-  <h1>{{ 'Edit Speaking Activity' if activity else 'New Speaking Activity' }}</h1>
+
   <p class="ds-section__desc">
     {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
   </p>
@@ -93,5 +99,8 @@
       <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
     </div>
   </form>
+</div>
+
+</div>{{ activity_ui.guide('speaking','author') }}</div>
 </div>
 {% endblock %}

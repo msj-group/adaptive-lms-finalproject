@@ -1,0 +1,88 @@
+/* Protected Login: frozen pre-D visual roles. Its composition/artwork remain
+   in figma.css. These roles are owned here, independent of product tokens. */
+.figma-login {
+  --font-family-base: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  --font-size-base: 1rem; --line-height-normal: 1.65;
+  --figma-display: var(--font-family-base); --figma-ink: var(--ui-ink);
+  --figma-muted: var(--ui-muted); --figma-red: #F51A17;
+  --color-bg-page: var(--ui-page); --color-bg-surface: var(--ui-surface);
+  --color-bg-subtle: var(--ui-soft); --color-text-primary: var(--ui-text);
+  --color-text-secondary: var(--ui-muted); --color-text-link: var(--ui-link);
+  --color-border: var(--ui-line); --color-danger: var(--ui-danger);
+  --color-success: var(--ui-success); --color-warning: var(--ui-warning);
+  --shadow-sm: var(--ui-shadow-sm); --shadow-md: var(--ui-shadow-md);
+  --shadow-lg: var(--ui-shadow); --shadow-focus: 0 0 0 3px var(--ui-focus);
+
+  color-scheme: light;
+  --ui-page: #f5f7fb;
+  --ui-surface: #fff;
+  --ui-raised: #f8faff;
+  --ui-soft: #edf2fa;
+  --ui-line: #e2e8f2;
+  --ui-control-line: #8292aa;
+  --ui-focus: #144baa;
+  --ui-shadow-sm: 0 2px 8px -4px #09296920;
+  --ui-shadow-md: 0 8px 24px -12px #09296930;
+  --ui-ink: #092969;
+  --ui-text: #31445f;
+  --ui-muted: #596b85;
+  --ui-link: #144baa;
+  --ui-danger: #970b13;
+  --ui-danger-bg: #fff1f1;
+  --ui-success: #146b3a;
+  --ui-success-bg: #e7f7ed;
+  --ui-warning: #805600;
+  --ui-warning-bg: #fff8e6;
+  --ui-shadow: 0 16px 48px -12px #09296930;
+  --ui-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23596b85' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] .figma-login {
+  color-scheme: dark;
+  --ui-page: #0c1422;
+  --ui-surface: #162238;
+  --ui-raised: #1c2c46;
+  --ui-soft: #223451;
+  --ui-line: #34445f;
+  --ui-control-line: #7184a1;
+  --ui-focus: #91b6ff;
+  --ui-shadow-sm: 0 2px 8px -4px #0006;
+  --ui-shadow-md: 0 8px 24px -12px #0009;
+  --ui-ink: #e9f0ff;
+  --ui-text: #d3deef;
+  --ui-muted: #a8b8ce;
+  --ui-link: #91b6ff;
+  --ui-danger: #ff9c9c;
+  --ui-danger-bg: #3b202d;
+  --ui-success: #85d8ac;
+  --ui-success-bg: #17362d;
+  --ui-warning: #f1ca7f;
+  --ui-warning-bg: #3d3321;
+  --ui-shadow: 0 16px 48px -12px #0008;
+  --ui-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23a8b8ce' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark) { :root[data-theme="system"] .figma-login {
+  color-scheme: dark;
+  --ui-page: #0c1422;
+  --ui-surface: #162238;
+  --ui-raised: #1c2c46;
+  --ui-soft: #223451;
+  --ui-line: #34445f;
+  --ui-control-line: #7184a1;
+  --ui-focus: #91b6ff;
+  --ui-shadow-sm: 0 2px 8px -4px #0006;
+  --ui-shadow-md: 0 8px 24px -12px #0009;
+  --ui-ink: #e9f0ff;
+  --ui-text: #d3deef;
+  --ui-muted: #a8b8ce;
+  --ui-link: #91b6ff;
+  --ui-danger: #ff9c9c;
+  --ui-danger-bg: #3b202d;
+  --ui-success: #85d8ac;
+  --ui-success-bg: #17362d;
+  --ui-warning: #f1ca7f;
+  --ui-warning-bg: #3d3321;
+  --ui-shadow: 0 16px 48px -12px #0008;
+  --ui-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23a8b8ce' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+} }
+.figma-login[data-page-hidden='true'] :is(.figma-login-glow,.figma-letter,.figma-login-word)::after,
+.figma-login[data-page-hidden='true'] :is(.figma-login-glow,.figma-letter,.figma-login-word) { animation-play-state: paused; }

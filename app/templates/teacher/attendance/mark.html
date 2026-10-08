@@ -21,7 +21,7 @@
     one adds, removes, replaces and reorders nothing. Student names and notes
     are autoescaped and never rendered with `|safe`. -#}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 style="margin:0">Mark attendance — {{ session.session_date.isoformat() }}</h1>
+  <h1 data-workspace-page-heading style="margin:0">Mark attendance — {{ session.session_date.isoformat() }}</h1>
   {{ att.state_badge(false) }}
 </div>
 
@@ -50,12 +50,18 @@
   with preserved history.
 </div>
 
-<form method="post">
+<ol class="workspace-steps"><li>Save draft marks</li><li>Review saved marks</li><li>Finalize for students</li></ol>
+<form method="post" data-attendance-draft>
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="attendance_state" value="{{ draft_token }}">
 
   <section class="dash-section" style="margin-top: 0">
     <h2>Students ({{ records | length }})</h2>
+    {% if records %}<div class="ds-row" style="margin-bottom:var(--space-3)" data-attendance-bulk-controls hidden>
+      <button type="button" class="btn btn--secondary" data-attendance-all-present>Mark all present</button>
+      <button type="button" class="btn btn--secondary" data-attendance-undo hidden>Undo bulk selection</button>
+      <p class="ds-section__desc" role="status" data-attendance-bulk-status></p>
+    </div>{% endif %}
     <div class="dash-scroll">
     <table class="dash-table">
       <thead>
@@ -112,12 +118,12 @@
 <section class="card" style="margin-top: var(--space-6); border-color: var(--color-danger)">
   <h2 style="margin-top:0">Finalize this attendance</h2>
   <p class="card__body">
-    Finalizing freezes this session and every mark and note on it <strong>permanently</strong>.
-    There is no way to reopen, edit or delete finalized attendance, and no such control exists
-    anywhere in the system. Students will then see their own mark for this class. Save your
+    Finalizing makes the saved marks visible to students and ends teacher editing.
+    An authorized administrator can correct a finalized mark; its original value and correction remain recorded.
+    Review and save your
     marks first — finalizing does not save what is on the form above.
   </p>
-  <form method="post" action="{{ finalize_url }}">
+  <form method="post" action="{{ finalize_url }}" data-finalize-attendance>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="attendance_state" value="{{ finalize_token }}">
     <label class="ds-row" style="gap: var(--space-2); align-items:center; margin: var(--space-3) 0">
@@ -127,4 +133,5 @@
     <button type="submit" class="btn btn--danger-outline">Finalize attendance</button>
   </form>
 </section>
+<script src="{{ url_for('static', filename='js/attendance_shortcuts.js') }}" defer></script>
 {% endblock %}

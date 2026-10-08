@@ -1,8 +1,8 @@
 """The Researcher workspace read pages (Phase 6 replacement)::
 
     GET  /research/                      -> redirect to the dashboard
-    GET  /research/dashboard[?provenance=]
-    GET  /research/sessions[?provenance=][&page=]
+    GET  /research/dashboard
+    GET  /research/sessions[?page=]
     GET  /research/sessions/<session_public_id>
     GET  /research/exclusions[?page=]
     GET  /research/activity-log[?page=]
@@ -14,8 +14,8 @@ subject codes, never a name, email address, account id or mapping. Numbers
 are real counts with explicit empty states; nothing is predicted, and no
 page presents a rating distribution or a chart as measured emotion.
 
-Development and demonstration data are shown only when explicitly selected,
-under a label that says they are not research data.
+The deployment controls the displayed provenance. A browser parameter cannot
+switch it, and operational review sessions remain outside study exports.
 """
 
 from flask import abort, current_app, redirect, render_template, request, url_for
@@ -23,6 +23,7 @@ from flask_login import current_user
 
 from app.blueprints.research import research_bp
 from app.models import UserRole, now_ms
+from app.models.enums import ResearchAuditAction
 from app.security.decorators import roles_required
 from app.services import research_workspace_queries as queries
 from app.services.research_event_dictionary import REPORTING_AREAS
@@ -33,6 +34,11 @@ _RESEARCHER = UserRole.RESEARCHER.value
 
 def tz_name():
     return current_app.config.get("APP_TIMEZONE", "UTC")
+
+
+def deployment_provenance():
+    """Use the validated server setting, never a browser selection."""
+    return current_app.config["RESEARCH_DATA_PROVENANCE"]
 
 
 def readiness(active):
@@ -49,8 +55,10 @@ def readiness(active):
         {
             "label": "Deployment provenance is study data",
             "ok": config.get("RESEARCH_DATA_PROVENANCE") == "study",
-            "detail": ("study" if config.get("RESEARCH_DATA_PROVENANCE") == "study"
-                       else "development: nothing collected here can be exported."),
+            "detail": ("Study exports are enabled for eligible study sessions."
+                       if config.get("RESEARCH_DATA_PROVENANCE") == "study"
+                       else "Operational review exports are available separately; "
+                            "their data is excluded from study exports."),
         },
         {
             "label": "An active configuration is collecting within its period",
@@ -75,9 +83,14 @@ def index():
 @research_bp.get("/dashboard")
 @roles_required(_RESEARCHER)
 def dashboard():
-    provenance = queries.normalize_provenance(request.args.get("provenance"))
+    from app.services.research_analytics import dashboard_analytics, dashboard_filters
+    provenance = deployment_provenance()
     active = queries.active_configuration()
     moment = now_ms()
+    try:
+        analytics_filters = dashboard_filters(request.args, moment)
+    except (ValueError, OverflowError):
+        abort(400)
     period_state = None
     if active is not None:
         now = utcnow_naive()
@@ -95,6 +108,9 @@ def dashboard():
         active=active,
         period_state=period_state,
         readiness=readiness(active),
+        analytics=dashboard_analytics(provenance, analytics_filters, moment),
+        analytics_filters=analytics_filters,
+        configurations=queries.configuration_choices(),
         subjects=queries.subject_totals(),
         sessions=queries.session_totals(provenance),
         prompts=queries.prompt_summary(provenance, moment),
@@ -110,9 +126,14 @@ def dashboard():
 @research_bp.get("/sessions")
 @roles_required(_RESEARCHER)
 def sessions():
-    provenance = queries.normalize_provenance(request.args.get("provenance"))
+    provenance = deployment_provenance()
+    from app.services.workspace_filters import research_filters
+    try:
+        filters, filter_values = research_filters(request.args, tz_name())
+    except (ValueError, OverflowError):
+        abort(400)
     rows, total, page = queries.sessions_page(
-        provenance, queries.normalize_page(request.args.get("page")))
+        provenance, queries.normalize_page(request.args.get("page")), filters)
     first = (page - 1) * queries.PAGE_SIZE + 1 if rows else 0
     last = (page - 1) * queries.PAGE_SIZE + len(rows)
     return render_template(
@@ -121,14 +142,16 @@ def sessions():
         provenance=provenance,
         provenance_labels=queries.PROVENANCE_LABELS,
         rows=rows,
+        filters=filter_values,
+        configurations=queries.configuration_choices(),
         end_reason_labels=queries.END_REASON_LABELS,
         to_local=lambda ms: queries.ms_to_local(tz_name(), ms),
         tz_name=tz_name(),
         pagination={
             "first": first, "last": last, "total": total,
-            "prev_url": url_for("research.sessions", provenance=provenance, page=page - 1)
+            "prev_url": url_for("research.sessions", page=page - 1, **filter_values)
             if page > 1 else None,
-            "next_url": url_for("research.sessions", provenance=provenance, page=page + 1)
+            "next_url": url_for("research.sessions", page=page + 1, **filter_values)
             if last < total else None,
         },
     )
@@ -187,18 +210,25 @@ def exclusions():
 @research_bp.get("/activity-log")
 @roles_required(_RESEARCHER)
 def activity_log():
-    rows, total, page = queries.audit_page(queries.normalize_page(request.args.get("page")))
+    from app.services.workspace_filters import research_filters
+    try:
+        filters, filter_values = research_filters(request.args, tz_name())
+    except (ValueError, OverflowError):
+        abort(400)
+    rows, total, page = queries.audit_page(queries.normalize_page(request.args.get("page")), filters)
     first = (page - 1) * queries.PAGE_SIZE + 1 if rows else 0
     last = (page - 1) * queries.PAGE_SIZE + len(rows)
     return render_template(
         "research/audit.html",
         active_nav="audit",
         rows=rows,
+        filters=filter_values,
         me=current_user.id,
+        actions=tuple(action.value for action in ResearchAuditAction),
         tz_name=tz_name(),
         pagination={
             "first": first, "last": last, "total": total,
-            "prev_url": url_for("research.activity_log", page=page - 1) if page > 1 else None,
-            "next_url": url_for("research.activity_log", page=page + 1) if last < total else None,
+            "prev_url": url_for("research.activity_log", page=page - 1, **filter_values) if page > 1 else None,
+            "next_url": url_for("research.activity_log", page=page + 1, **filter_values) if last < total else None,
         },
     )

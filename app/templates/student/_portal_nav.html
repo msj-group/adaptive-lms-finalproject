@@ -1,23 +1,14 @@
-{# Shared Student portal navigation (M13, extended Phase 4 / M01, M04D, M05,
-   M06, M07, M08, M09 and M10). A caller sets `active_nav` to 'dashboard',
-   'assignments', 'quizzes', 'listening', 'speaking', 'attendance', 'grades',
-   'announcements', 'calendar' or 'search' before including this; other Student
-   pages leave it unset.
-   Teacher / Administrator pages are unaffected -- they define their own
-   `portal_nav` block and never include this file. #}
-<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'dashboard' else '' }}"
-   href="{{ url_for('student.dashboard') }}" data-research-id="nav_dashboard">Dashboard</a>
-<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav in ['activities','assignments','quizzes','listening','speaking'] else '' }}"
-   href="{{ url_for('student.activities') }}" data-research-id="nav_activities">Activities</a>
-<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'records' else '' }}"
-   href="{{ url_for('student.records') }}" data-research-id="nav_records">My records</a>
-<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'attendance' else '' }}"
-   href="{{ url_for('student.attendance_list') }}" data-research-id="nav_attendance">Attendance</a>
-<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'grades' else '' }}"
-   href="{{ url_for('student.grades_list') }}" data-research-id="nav_grades">Grades</a>
-<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'announcements' else '' }}"
-   href="{{ url_for('student.announcements_list') }}" data-research-id="nav_announcements">Announcements</a>
-<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'calendar' else '' }}"
-   href="{{ url_for('student.calendar') }}" data-research-id="nav_calendar">Calendar</a>
-<a class="portal-nav__link{{ ' portal-nav__link--active' if active_nav == 'search' else '' }}"
-   href="{{ url_for('student.search') }}" data-research-id="nav_search">Search</a>
+{% import "_figma_ui.html" as ui %}
+{% set endpoint = request.endpoint or '' %}
+{% set section = active_nav|default('') %}
+<div class="figma-nav-section-title">Overview</div>
+{{ ui.nav_link('Dashboard', 'student.dashboard', 'dashboard', section == 'dashboard' or endpoint == 'student.dashboard', 'nav_dashboard') }}
+{{ ui.nav_link('Search materials', 'student.search', 'search', section == 'search' or endpoint == 'student.search', 'nav_search') }}
+<div class="figma-nav-section-title">Learning</div>
+{{ ui.nav_link('My courses', 'workspace.student_courses', 'book', section == 'courses' or endpoint.startswith('workspace.student_course') or 'lesson' in endpoint or endpoint == 'student.group_units', 'nav_courses') }}
+{{ ui.nav_link('Activities', 'student.activities', 'activity', section in ['activities','assignments','quizzes','listening','speaking'] or endpoint == 'student.activities' or endpoint.startswith('student.quiz_') or endpoint.startswith('student.listening_') or endpoint.startswith('student.speaking_') or endpoint.startswith('student.assignment_'), 'nav_activities') }}
+<div class="figma-nav-section-title">My record</div>
+{{ ui.nav_link('My records', 'student.records', 'file', section == 'records' or endpoint in ['student.records', 'student.episode_records'], 'nav_records') }}
+{{ ui.nav_link('Attendance', 'student.attendance_list', 'check', section == 'attendance' or 'attendance' in endpoint, 'nav_attendance') }}
+{{ ui.nav_link('Grades', 'student.grades_list', 'chart', section == 'grades' or 'grade' in endpoint, 'nav_grades') }}
+{{ ui.nav_link('Calendar', 'student.calendar', 'calendar', section == 'calendar' or endpoint == 'student.calendar', 'nav_calendar') }}

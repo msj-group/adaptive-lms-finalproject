@@ -1,0 +1,19 @@
+{% extends "layouts/base.html" %}
+{% block title %}Opening your workspace · Youth Centre{% endblock %}
+{% block body_class %}figma-login workspace-opening{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/figma.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/workspace_opening.css') }}">{% endblock %}
+{% block content %}
+<div class="workspace-opening-container">
+  <section class="workspace-opening-card" aria-labelledby="opening-title">
+    <div class="workspace-opening-logo"><img src="{{ url_for('static', filename='images/figma_logo.png') }}" alt="Youth Centre"></div>
+    <p class="workspace-opening-eyebrow">{{ eyebrow }}</p>
+    <h1 id="opening-title">{{ heading }}<span>.</span></h1>
+    <p class="workspace-opening-description">Continue to your workspace.</p>
+    <a class="workspace-opening-continue" href="{{ target }}" data-opening-continue>Open my workspace</a>
+    <form method="post" action="{{ url_for(logout_endpoint) }}" data-opening-cancel><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit">Back to sign in</button></form>
+  </section>
+</div>
+{% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/workspace_opening.js') }}" defer></script>{% endblock %}
+
+{% block protected_styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">{% endblock %}

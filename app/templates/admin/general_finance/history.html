@@ -1,4 +1,4 @@
-{% extends "layouts/admin_base.html" %}{% block admin_content %}<div class="ds-page"><h1>{{ student.full_name }} — Financial history</h1>
+{% extends "layouts/admin_base.html" %}{% block title %}{{ student.full_name }} — Financial history{% endblock %}{% block admin_content %}<div class="ds-page"><h1 data-workspace-page-heading>{{ student.full_name }} — Financial history</h1>
 <p>Records appear at the time each change was recorded. Deleted and corrected documents retain their previous values.</p>
 <a href="{{ url_for('admin.student_financial_record',student_public_id=student.public_id) }}">Current account</a>
 {% for entry in entries %}<article class="card"><h2>{{ entry.kind }} · {{ entry.document }} · {{ entry.action }}</h2><p>{{ entry.moment }} · {{ entry.actor }}</p>

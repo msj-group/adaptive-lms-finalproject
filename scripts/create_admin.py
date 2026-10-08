@@ -1,5 +1,8 @@
 """
-One-time local development helper to create the first Administrator account.
+Deliberate provisioning helper for the first Administrator account.
+
+The application environment is selected by FLASK_ENV, including production.
+It creates only the account entered privately by the operator, no other data.
 
 Run this yourself in your own terminal (it must be run interactively so the
 password prompts can read your keystrokes):
@@ -23,7 +26,10 @@ from app.security.passwords import hash_password
 
 
 def main() -> int:
-    app = create_app("development")
+    if not sys.stdin.isatty():
+        print("Run interactively so the password can be entered privately.", file=sys.stderr)
+        return 1
+    app = create_app()
     with app.app_context():
         email = input("Administrator email: ").strip().lower()
         if not email:

@@ -13,7 +13,7 @@
     this template. There is deliberately no delete, reopen, duplicate, export
     or grade control anywhere on this page. -#}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 style="margin:0">{{ group.name }} — Attendance</h1>
+  <h1 data-workspace-page-heading style="margin:0">{{ group.name }} — Attendance</h1>
   {% if operational %}<span class="badge badge--success">Operational</span>
   {% else %}<span class="badge badge--neutral">Not operational</span>{% endif %}
 </div>
@@ -76,7 +76,7 @@
         <th>Location</th>
         <th style="width:8rem">State</th>
         <th>Marks</th>
-        <th style="width:8rem">Actions</th>
+        <th style="width:17rem">Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -88,7 +88,10 @@
         <td>{{ att.state_badge(item.is_finalized) }}</td>
         <td>{{ att.count_summary(item.counts) }}</td>
         <td>
-          <a class="btn btn--secondary" href="{{ url_for('teacher.attendance_detail', group_public_id=group.public_id, session_public_id=item.public_id) }}">Open</a>
+          <div class="ds-row">
+          {% if operational and not item.is_finalized %}<a class="btn btn--primary" href="{{ url_for('teacher.attendance_mark', group_public_id=group.public_id, session_public_id=item.public_id) }}">Mark attendance</a>{% endif %}
+          <a class="btn btn--secondary" href="{{ url_for('teacher.attendance_detail', group_public_id=group.public_id, session_public_id=item.public_id) }}">Details</a>
+          </div>
         </td>
       </tr>
       {% endfor %}

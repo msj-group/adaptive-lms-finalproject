@@ -1,34 +1,35 @@
 {% extends "layouts/admin_base.html" %}
 {% import "_dashboard_macros.html" as dash %}
+{% import "_figma_ui.html" as ui %}
 {% block title %}Admin Dashboard{% endblock %}
 {% block extra_head %}
   {{ super() }}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 {% endblock %}
 {% block admin_content %}
-<h1>Welcome, {{ current_user.full_name }}</h1>
-<p class="ds-section__desc">
-  A live snapshot of the center's people, academic structure, and operational classes.
-  Times are shown in the center timezone (<strong>{{ tz_name }}</strong>).
-</p>
+<section class="figma-hero"><div class="figma-hero-copy"><span class="figma-eyebrow">A LITTLE ORGANIZATION. A LOT OF POSSIBILITY.</span>
+  <h1>A thriving centre<br>starts with <em>you, {{ current_user.full_name }}.</em></h1>
+  <p>Your people, your courses, your next chapter. A live view of your centre, with class times in {{ tz_name }}.</p>
+  <div class="ds-row"><a class="btn btn--primary" href="{{ url_for('admin.students_list') }}">Manage students {{ ui.icon('arrow-up', 17) }}</a><a class="btn btn--secondary" href="{{ url_for('admin.courses_list') }}">Explore courses</a></div>
+</div>{{ ui.hero_art() }}</section>
 
 {#- Phase 5 / M10. Shortcuts only: they open the financial workspaces and show
     no financial figure. -#}
-<div style="display:grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: var(--space-6)">
+<div class="figma-finance-shortcuts">
 <a class="card" href="{{ url_for('admin.student_accounts') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="student-accounts">
-  <div class="card__title">Student Accounts</div>
+  {{ ui.icon('wallet', 24) }}<div class="card__title">Student Accounts</div>
   <div class="card__body">Each student's computed financial status and complete financial record.</div>
 </a>
 <a class="card" href="{{ url_for('admin.invoice_register') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="invoices">
-  <div class="card__title">Invoices</div>
-  <div class="card__body">Create, find, open, edit and delete invoices across all students.</div>
+  {{ ui.icon('file', 24) }}<div class="card__title">Invoices</div>
+  <div class="card__body">Find invoices created by enrollment operations, review their accounts and correct current records.</div>
 </a>
 <a class="card" href="{{ url_for('admin.payments_overview') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="payments">
-  <div class="card__title">Payments</div>
-  <div class="card__body">Record, correct and delete payments; receipts are issued automatically.</div>
+  {{ ui.icon('card', 24) }}<div class="card__title">Collections and payouts</div>
+  <div class="card__body">Review incoming collections and actual returns of credit. Confirmed movements have receipts.</div>
 </a>
 <a class="card" href="{{ url_for('admin.deleted_financial_records') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="deleted-records">
-  <div class="card__title">Deleted Records</div>
+  {{ ui.icon('trash', 24) }}<div class="card__title">Historical deleted records</div>
   <div class="card__body">Deleted invoices, payments and receipts, kept read-only.</div>
 </a>
 </div>
@@ -81,6 +82,14 @@
 
 <div class="dash-section">
   <h2>Setup needs attention</h2>
+  {% if setup.operational_group_count %}
+  <figure class="operations-readiness" aria-labelledby="setup-coverage-title">
+    <figcaption id="setup-coverage-title">Operational group readiness</figcaption>
+    <div class="operations-readiness__row"><span>Eligible active teacher</span><progress aria-label="Operational groups with an eligible active teacher" value="{{ setup.operational_group_count - setup.missing_teacher|length }}" max="{{ setup.operational_group_count }}">{{ setup.operational_group_count - setup.missing_teacher|length }} of {{ setup.operational_group_count }}</progress><strong>{{ setup.operational_group_count - setup.missing_teacher|length }} / {{ setup.operational_group_count }} groups</strong></div>
+    <div class="operations-readiness__row"><span>Active schedule</span><progress aria-label="Operational groups with an active schedule" value="{{ setup.operational_group_count - setup.missing_schedule|length }}" max="{{ setup.operational_group_count }}">{{ setup.operational_group_count - setup.missing_schedule|length }} of {{ setup.operational_group_count }}</progress><strong>{{ setup.operational_group_count - setup.missing_schedule|length }} / {{ setup.operational_group_count }} groups</strong></div>
+    <p class="operations-source">Source: current group, hierarchy, teacher-assignment, account and schedule records. Scope and denominator: {{ setup.operational_group_count }} groups whose term, level, course and group are active. Range: current state at page load. Each row is a separate readiness condition; rows may overlap. This is not attendance or room utilization.</p>
+  </figure>
+  {% endif %}
   {% if setup.operational_group_count == 0 %}
   <div class="alert alert--info">No operational active groups yet. Create a group under an active academic term, level, and course to get started.</div>
   {% elif not setup.missing_teacher and not setup.missing_schedule %}

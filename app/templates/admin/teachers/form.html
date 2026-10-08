@@ -3,7 +3,7 @@
 {% block title %}{{ 'Edit Teacher' if teacher else 'New Teacher' }}{% endblock %}
 {% block admin_content %}
 <div class="ds-page" style="max-width: 480px">
-  <h1>{{ 'Edit Teacher' if teacher else 'New Teacher' }}</h1>
+  <h1 data-workspace-page-heading>{{ 'Edit Teacher' if teacher else 'New Teacher' }}</h1>
 
   {{ macros.flash_messages() }}
 
@@ -48,7 +48,7 @@
     if (form && submitButton) {
       form.addEventListener("submit", function () {
         submitButton.disabled = true;
-        submitButton.textContent = "Saving...";
+        submitButton.textContent = {{ _("Saving...") | tojson }};
       });
     }
   })();

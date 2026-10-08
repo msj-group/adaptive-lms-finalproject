@@ -365,6 +365,7 @@
 
   function onVisibility() {
     if (document.visibilityState === "hidden") {
+      endBurst();
       if (visibleSince !== null) {
         visibleMs += Date.now() - visibleSince;
         visibleSince = null;
@@ -379,6 +380,7 @@
   }
 
   function onPageHide() {
+    endBurst();
     if (pendingHidden !== null) {
       /* The page is unloading, not being hidden: a navigation must not end
          the observation run. Drop the hidden event that unloading caused. */
@@ -412,6 +414,7 @@
   var lastClick = { node: null, at: 0, count: 0, element: null, timer: null };
 
   function endBurst() {
+    window.clearTimeout(lastClick.timer);
     if (lastClick.count >= 2) {
       record("repeated_click", { element: lastClick.element, count: Math.min(lastClick.count, 50) });
     }
@@ -463,7 +466,8 @@
   }
 
   var INPUT_IDS = { quiz_option: 1, listening_option: 1, quiz_submit_confirm: 1,
-                    listening_submit_confirm: 1, speaking_file_select: 1, search_filter: 1 };
+                    listening_submit_confirm: 1, speaking_file_select: 1, search_filter: 1,
+                    activity_filter: 1, assignment_file_select: 1 };
 
   function onChange(event) {
     var target = event.target;
@@ -500,9 +504,10 @@
 
   function onSubmit(event) {
     var form = event.target;
-    if (!form || insideDialog(form)) {
+    if (!form || insideDialog(form) || form.hasAttribute("data-research-resuming-submit")) {
       return;
     }
+    endBurst();
     record("form_submit", { element: formId(form) });
     /* The form is about to navigate: hand the batch to the browser now, with
        keepalive, so the navigation cannot cancel it. The submission itself
@@ -627,6 +632,7 @@
   }
 
   function showDialog(id) {
+    var focusOrigin = document.activeElement;
     var form = dialog.querySelector("[data-feedback-form]");
     var submit = dialog.querySelector("[data-feedback-submit]");
     var skip = dialog.querySelector("[data-feedback-skip]");
@@ -659,6 +665,17 @@
       Array.prototype.forEach.call(inputs, function (input) { input.disabled = !enabled; });
     }
 
+    function hideAndRestore() {
+      var returnFocus = dialog.contains(document.activeElement) || document.activeElement === document.body;
+      dialog.hidden = true;
+      // This remains a non-modal optional card. Never reclaim focus after
+      // the Student intentionally continued using the background page.
+      if (returnFocus) {
+        var target = focusOrigin && focusOrigin !== document.body && focusOrigin !== document.documentElement && focusOrigin.isConnected && !focusOrigin.disabled && focusOrigin.getClientRects().length ? focusOrigin : document.getElementById("workspace-content");
+        if (target && typeof target.focus === "function") target.focus({preventScroll:true});
+      }
+    }
+
     function finish(kind, delay) {
       done = true;
       status.textContent = message(kind);
@@ -669,7 +686,7 @@
       form.removeEventListener("submit", onAnswer);
       skip.removeEventListener("click", onSkip);
       dialog.removeEventListener("keydown", onKey);
-      window.setTimeout(function () { dialog.hidden = true; }, delay);
+      window.setTimeout(hideAndRestore, delay);
     }
 
     /* The response may or may not have been saved: the request failed, or
@@ -741,7 +758,7 @@
       form.removeEventListener("submit", onAnswer);
       skip.removeEventListener("click", onSkip);
       dialog.removeEventListener("keydown", onKey);
-      dialog.hidden = true;
+      hideAndRestore();
     }
 
     function onRating() {

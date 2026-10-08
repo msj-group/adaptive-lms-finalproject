@@ -1,9 +1,15 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'listening' %}
+{% set activity_phase = 'editor' %}
 {% block title %}{{ 'Edit Question' if question else 'New Question' }} — {{ activity.title }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+<div class="activity-author-layout">
+<div class="activity-author-main">
+
 {#- Phase 4 / M05. The M04B question editor, reused for a Listening
     activity: the same QuizQuestionForm, the same three parallel repeated
     fields, the same client-side editor script and the same server rules. Only
@@ -27,7 +33,7 @@
     Every authored string below is autoescaped. Never |safe. -#}
 <div class="ds-page" style="max-width: 780px; padding: 0">
   <div class="ds-row" style="justify-content: space-between; align-items: center;">
-    <h1 style="margin:0">{{ 'Edit Question' if question else 'New Question' }}</h1>
+
     <span class="badge badge--neutral">Draft</span>
   </div>
   <p class="ds-section__desc">
@@ -141,7 +147,8 @@
 
       <div class="ds-row" style="align-items: center; gap: var(--space-3); margin-top: var(--space-2)">
         <button type="button" class="btn btn--secondary" data-option-add>Add option</button>
-        <span class="ds-section__desc" style="margin:0" data-option-count aria-live="polite"></span>
+        <span class="ds-section__desc" style="margin:0" data-option-count aria-live="polite">
+</span>
       </div>
     </div>
 
@@ -149,9 +156,14 @@
        server-side either. #}
     <div class="ds-row" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
+      {% if not question %}<button type="submit" name="after_save" value="add_another" class="btn btn--secondary">Save and add another question</button>{% endif %}
       <a class="btn btn--secondary" href="{{ url_for('teacher.listening_detail', group_public_id=group.public_id, listening_public_id=activity.public_id) }}">Cancel</a>
     </div>
   </form>
 </div>
-<script src="{{ url_for('static', filename='js/quiz_question_editor.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/quiz_question_editor.js') }}" defer>
+</script>
+
+</div>{{ activity_ui.guide('listening','editor') }}</div>
+</div>
 {% endblock %}

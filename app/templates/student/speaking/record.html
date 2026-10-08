@@ -1,7 +1,16 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'speaking' %}
+{% set activity_phase = 'record' %}
 {% block title %}Record — {{ activity.title }}{% endblock %}
 {% block portal_nav %}{% set active_nav = 'speaking' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+<ol class="workspace-steps" aria-label="Speaking submission steps">
+<li>Record or choose audio</li>
+<li>Listen and review</li>
+<li>Submit final recording</li>
+<li>Open receipt</li>
+</ol>
 {#- Phase 4 / M06, the browser recording page.
 
     `activity` is a plain presentation dict; the row behind it already
@@ -23,7 +32,7 @@
 <p class="ds-section__desc" style="margin-bottom: var(--space-2)">
   {{ activity.group_name }} &middot; {{ activity.course_title }} &middot; {{ activity.level_name }} &middot; {{ activity.term_name }}
 </p>
-<h1 style="margin-top: 0">{{ activity.title }}</h1>
+
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}
@@ -42,18 +51,23 @@
   Recording closes at {{ activity.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
 </div>
 
+<div class="activity-speaking-layout">
+<aside class="activity-speaking-brief">
 <section style="margin-bottom: var(--space-6)">
   <h2>What to say</h2>
   <div class="card">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
   </div>
 </section>
 
+</aside>
+<div class="activity-speaking-studio">
 <section>
   <h2>Your recording</h2>
 
   <div class="card" style="margin-bottom: var(--space-4)" data-speaking-recorder data-recorder-state="ready">
+    <div class="activity-record-mark" aria-hidden="true">{{ activity_ui.symbol('speaking',40) }}</div>
     {#- Microphone guidance, shown BEFORE any permission is requested. It
         starts hidden and is revealed by the recorder module, so a browser
         that cannot record never shows instructions it cannot follow. -#}
@@ -88,14 +102,16 @@
     <div data-recorder-preview-block hidden style="margin-top: var(--space-4)">
       <div class="card__title" style="margin-bottom: var(--space-2)">Listen to your recording</div>
       <audio data-recorder-preview data-research-media="speaking_playback" controls preload="metadata" style="width:100%"
-             aria-label="Your recording, before you submit it"></audio>
+             aria-label="Your recording, before you submit it">
+</audio>
       <p class="ds-section__desc" style="margin: var(--space-2) 0 0">
         This is only on your device. Press <strong>Record again</strong> to throw it away and
         start over — nothing is sent until you submit.
       </p>
     </div>
 
-    <div class="alert alert--danger" style="margin-top: var(--space-4)" data-recorder-error hidden></div>
+    <div class="alert alert--danger" style="margin-top: var(--space-4)" data-recorder-error hidden>
+</div>
 
     {#- Shown when the browser cannot record. The file input below is then the
         only way in, and it is an ordinary one. -#}
@@ -132,5 +148,10 @@
     </div>
   </form>
 </section>
-<script src="{{ url_for('static', filename='js/speaking_recorder.js') }}" defer></script>
+</div>
+</div>
+<script src="{{ url_for('static', filename='js/speaking_recorder.js') }}" defer>
+</script>
+
+</div>
 {% endblock %}

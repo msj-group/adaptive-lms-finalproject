@@ -10,7 +10,7 @@
     this group, with the nonce that stops a double submission creating a second
     topic. The server authorizes and validates everything again on submit. -#}
 <p style="margin-top: 0"><a href="{{ url_for('teacher.discussions_group', group_public_id=group.public_id) }}">&larr; {{ group.name }} discussions</a></p>
-<h1 style="margin-top: 0; word-break: break-word">New topic — {{ group.name }}</h1>
+<h1 data-workspace-page-heading style="margin-top: 0; word-break: break-word">New topic — {{ group.name }}</h1>
 {{ disc.group_context(group) }}
 <p class="ds-section__desc">
   Everyone currently in this group — its students and its teachers — can read the topic and reply

@@ -2,6 +2,21 @@
 
 This file contains the latest project decisions.
 
+> Latest local-rehearsal authority, 2026-10-06: support ordinary Student usage,
+> Researcher review and export locally before the interface redesign. Necessary
+> source corrections are authorized. The server-selected development scope may
+> export operational-review data, explicitly labelled and separated from study
+> exports. Keep classifications, local data, sampling and 15-day daily retention;
+> no automatic seed, selector, schema migration, test suite or Git change.
+
+> Latest hosting/evaluation authority, 2026-10-06: new hosting starts with
+> schema only and no seeded business data or accounts. Keep the existing local
+> database. Remove runtime demonstration selectors, payment simulation and its
+> operator actions. Evaluation uses ordinary forms and fictional input, with
+> server-controlled `development` provenance excluded from study exports, even
+> on a production web server. The older Demo Mode/Mock Provider proposals below
+> are historical and superseded. A genuine study requires explicit configuration.
+
 > Repair authority (2026-10-05): read
 > `docs/APPROVED_REPAIR_CONTRACT.md`, `docs/IMPLEMENTATION_PLAN.md` and
 > `docs/PROJECT_STATUS.md` before the historical sections below.

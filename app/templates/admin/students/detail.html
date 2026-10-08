@@ -5,7 +5,7 @@
 <a href="{{ url_for('admin.operational_history',kind='student',public_id=student.public_id) }}">Account change history</a>
 <div class="ds-page" style="max-width: 640px">
   <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
-    <h1 style="margin:0">{{ student.full_name }}</h1>
+    <h1 data-workspace-page-heading style="margin:0">{{ student.full_name }}</h1>
     {{ macros.user_status_badge(student.status) }}
   </div>
 
@@ -25,6 +25,7 @@
   </div>
 
   <div class="ds-row" style="margin-top: var(--space-6); flex-wrap: wrap;">
+    <p class="workspace-meta">Changing the login email, suspending this account or resetting its password ends existing sessions.</p>
     <a class="btn btn--primary" href="{{ url_for('admin.student_edit', public_id=student.public_id) }}">Edit Student</a>
     <a class="btn btn--secondary" href="{{ url_for('admin.student_reset_password', public_id=student.public_id) }}">Reset Password</a>
     <form
@@ -47,7 +48,7 @@
 <script>
   document.querySelectorAll(".student-status-form[data-confirm]").forEach(function (form) {
     form.addEventListener("submit", function (event) {
-      if (!confirm(form.dataset.confirm)) {
+      if (!window.aelmsConfirm && !confirm(form.dataset.confirm)) {
         event.preventDefault();
       }
     });

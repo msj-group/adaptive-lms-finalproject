@@ -80,17 +80,22 @@
 {# The Previous / This month / Next controls plus the range form. Every link is
    a URL the route built from the NORMALISED range, so the application never
    emits a range it would have to normalise again. The two date inputs are the
-   only client-supplied part, and both are re-validated server-side by
+   range values are re-validated server-side by
    calendar_queries.normalize_range on the next request. #}
 {% macro range_controls(previous_url, next_url, today_url, range_start, range_end, max_range_days, action) -%}
 <div class="card" style="margin-bottom: var(--space-4)">
   <div class="ds-row" style="gap: var(--space-2); align-items: center; flex-wrap: wrap">
-    <a class="btn btn--secondary" href="{{ previous_url }}">&larr; Previous</a>
-    <a class="btn btn--secondary" href="{{ today_url }}">This month</a>
-    <a class="btn btn--secondary" href="{{ next_url }}">Next &rarr;</a>
+    {% set layout = request.args.get('view','list') if request.args.get('view','list') in ['list','week','day'] else 'list' %}
+    <a class="btn btn--secondary" href="{{ previous_url }}{{ '&' if '?' in previous_url else '?' }}view={{ layout }}">&larr; Previous</a>
+    <a class="btn btn--secondary" href="{{ today_url }}{{ '&' if '?' in today_url else '?' }}view={{ layout }}">This month</a>
+    <a class="btn btn--secondary" href="{{ next_url }}{{ '&' if '?' in next_url else '?' }}view={{ layout }}">Next &rarr;</a>
   </div>
   <form method="get" action="{{ action }}" class="ds-row"
         style="gap: var(--space-2); align-items: flex-end; flex-wrap: wrap; margin-top: var(--space-3)">
+    <div class="field" style="margin: 0">
+      <label class="field__label" for="calendar-view">Layout</label>
+      <select class="field__input" id="calendar-view" name="view" data-calendar-view>{% for value,label in [('list','List'),('week','Week grid'),('day','One day')] %}<option value="{{ value }}"{% if request.args.get('view','list') == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    </div>
     <div class="field" style="margin: 0">
       <label class="field__label" for="calendar-from">From</label>
       <input class="field__input" id="calendar-from" type="date" name="from" value="{{ range_start.isoformat() }}">
@@ -104,6 +109,15 @@
   <div class="ds-section__desc" style="margin: var(--space-2) 0 0">
     A calendar view covers at most {{ max_range_days }} days.
   </div>
+</div>
+{%- endmacro %}
+
+{% macro days_view(days, range_start, range_end) -%}
+<div class="workspace-calendar" data-calendar data-calendar-layout="{{ request.args.get('view','list') if request.args.get('view','list') in ['list','week','day'] else 'list' }}">
+{% if request.args.get('view') == 'day' %}<label for="calendar-day-picker">Day in this range</label><select id="calendar-day-picker" class="field__input" data-calendar-day>{% for day in days %}<option value="{{ day.date.isoformat() }}">{{ day.date.strftime('%A %d %B %Y') }}</option>{% endfor %}</select>{% endif %}
+{% if request.args.get('view') == 'week' %}
+<div class="workspace-week-scroll">{% for week in workspace_calendar_weeks(days,range_start,range_end) %}<div class="workspace-calendar-week">{% for day in week %}<section class="workspace-calendar-day{{ ' workspace-calendar-day--outside' if not day.in_range else '' }}">{{ day_heading(day) }}{% for row in day.rows %}{{ entry(row) }}{% else %}<p class="workspace-meta">{{ 'No entries' if day.in_range else 'Outside selected range' }}</p>{% endfor %}</section>{% endfor %}</div>{% endfor %}</div>
+{% else %}<div class="workspace-calendar-days">{% for day in days %}<section class="workspace-calendar-day" data-calendar-date="{{ day.date.isoformat() }}">{{ day_heading(day) }}{% for row in day.rows %}{{ entry(row) }}{% endfor %}</section>{% endfor %}</div>{% endif %}
 </div>
 {%- endmacro %}
 

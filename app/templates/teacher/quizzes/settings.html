@@ -1,9 +1,15 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'quiz' %}
+{% set activity_phase = 'settings' %}
 {% block title %}Quiz Settings — {{ quiz.title }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+<div class="activity-author-layout">
+<div class="activity-author-main">
+
 {#- Phase 4 / M04D. Availability, timing and attempt settings only. There is
     deliberately no status, published-at, question, option or score control
     here: publication is owned solely by its own POST route, so a forged
@@ -12,7 +18,7 @@
     and not merely by hiding this page. -#}
 <div class="ds-page" style="max-width: 680px; padding: 0">
   <div class="ds-row" style="justify-content: space-between; align-items: center;">
-    <h1 style="margin:0">Quiz Settings</h1>
+
     <span class="badge badge--neutral">Draft</span>
   </div>
   <p class="ds-section__desc">
@@ -82,5 +88,8 @@
       <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_detail', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">Cancel</a>
     </div>
   </form>
+</div>
+
+</div>{{ activity_ui.guide('quiz','settings') }}</div>
 </div>
 {% endblock %}

@@ -18,9 +18,9 @@ class Message(db.Model):
     """One immutable plain-text message in a
     :class:`~app.models.message_thread.MessageThread` (Phase 4 / M11).
 
-    **Messages are append-only.** A row is inserted once and never edited,
-    unsent, deleted, forwarded or marked read -- there is no domain route
-    for any of those, and no column that one could change. ``body`` is
+    **Original messages are append-only.** Sender-authorized display edits
+    and hides are recorded separately in MessageChange; clearing history
+    is scoped to a MessageThreadMember. This original row is retained. ``body`` is
     plain text: it is stored exactly as normalised and always rendered
     escaped, never through ``| safe``.
 

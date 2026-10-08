@@ -1,0 +1,10 @@
+{% if submission.file %}
+<div class="assignment-file-receipt">
+  <span class="badge badge--neutral">{{ submission.file.extension|upper }} · {{ submission.file.byte_size }} bytes</span>
+  <p class="assignment-file-name" dir="auto">{{ submission.file.name }}</p>
+  <a class="btn btn--secondary" href="{{ url_for('student.assignment_file_download' if current_user.role == 'student' else 'teacher.submission_file_download', group_public_id=assignment.group_public_id if current_user.role == 'student' else group.public_id, assignment_public_id=assignment.public_id, submission_public_id=submission.public_id) }}">Download submitted file</a>
+  <p class="ds-section__desc">Private, final submission.</p>
+</div>
+{% else %}
+<div dir="auto" class="assignment-text-answer">{{ submission.answer_text }}</div>
+{% endif %}

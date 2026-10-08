@@ -13,7 +13,7 @@
     roster and no internal id. The totals are plain counts of this student's
     own finalized records; there is deliberately no percentage, rate or
     attendance score anywhere. -#}
-<h1 style="margin-top: 0">Attendance</h1>
+<h1 data-workspace-page-heading style="margin-top: 0">Attendance</h1>
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   Your own attendance for classes your teacher has finished recording, most recent first. A
   class only appears here once its attendance has been finalized. Dates and times are in the
@@ -31,11 +31,11 @@
   <div class="card__title" style="margin-bottom: var(--space-2)">Your recorded classes</div>
   <div class="ds-row" style="gap: var(--space-2); flex-wrap: wrap">
     {% for item in totals %}
-      {{ att.status_badge(item.status, item.label ~ " " ~ item.count) }}
+      {{ att.status_badge(item.status, _(item.label) ~ " " ~ item.count) }}
     {% endfor %}
   </div>
   <p class="card__body" style="margin-top: var(--space-3)">
-    {{ total_count }} finalized class{{ "" if total_count == 1 else "es" }} in total. These are
+    {{ _n('%(count)d finalized class in total.', '%(count)d finalized classes in total.', total_count) }} These are
     counts of what has been recorded so far — they are not a score, a grade or a percentage.
   </p>
 </div>

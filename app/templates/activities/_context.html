@@ -1,0 +1,16 @@
+{% set context = workspace_context() %}
+{% set args = request.view_args or {} %}
+{% set group_id = args.get('group_public_id') or (hub_group.public_id if hub_group is defined and hub_group else none) %}
+{% set back = workspace_back() %}{% if back %}<a class="workspace-back activity-filter-back" href="{{ back }}">&larr; Back to filtered list</a>{% endif %}
+{% if group_id %}
+<nav class="activity-course-path" aria-label="Course and activity navigation">
+  <a href="{{ url_for('workspace.student_courses' if current_user.role == 'student' else 'workspace.teacher_groups') }}">{{ _('My courses' if current_user.role == 'student' else 'My groups') }}</a>
+<span aria-hidden="true">/</span>
+  <a href="{{ url_for('workspace.student_course' if current_user.role == 'student' else 'workspace.teacher_group', group_public_id=group_id) }}" dir="auto">{{ hub_group.course.title if hub_group is defined and hub_group else context.course_title if context and context.course_title is defined else context.title if context else _('Course overview') }}</a>
+  <span aria-hidden="true">/</span>
+<a href="{{ url_for('student.activities', group=group_id) if current_user.role == 'student' else url_for('teacher.group_activities',group_public_id=group_id) }}">Activities</a>
+  <a class="activity-outline-link" href="{{ url_for('student.group_units' if current_user.role == 'student' else 'teacher.group_units',group_public_id=group_id) }}">{{ activity_ui.symbol('assignment',16) }} Units & lessons</a>
+</nav>
+{% if context %}<p class="activity-course-caption" dir="auto">{{ context.title }} <span aria-hidden="true">·</span> {{ context.subtitle }}</p>{% elif hub_group is defined and hub_group %}<p class="activity-course-caption" dir="auto">{{ hub_group.name }} <span aria-hidden="true">·</span> {{ hub_group.academic_term.name }}</p>{% endif %}
+{% if current_user.role == 'teacher' and (args.get('listening_public_id') or args.get('quiz_public_id')) %}{% include '_workspace_activity_nav.html' %}{% endif %}
+{% endif %}

@@ -6,7 +6,7 @@
 {% endblock %}
 {% block portal_content %}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 style="margin:0">{{ group.name }} — Units</h1>
+  <h1 data-workspace-page-heading style="margin:0">{{ group.name }} — Units</h1>
   {{ dash.operational_badge(operational) }}
 </div>
 
@@ -128,7 +128,7 @@
 <script>
   document.querySelectorAll("form[data-confirm]").forEach(function (form) {
     form.addEventListener("submit", function (event) {
-      if (!confirm(form.dataset.confirm)) { event.preventDefault(); }
+      if (!window.aelmsConfirm && !confirm(form.dataset.confirm)) { event.preventDefault(); }
     });
   });
 </script>

@@ -15,7 +15,7 @@
       page, let alone rendered. A comment is a message between one teacher and
       one student, and it is not a reporting field. -#}
   <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-    <h1 style="margin:0">Grades</h1>
+    <h1 data-workspace-page-heading style="margin:0">Grades</h1>
   </div>
   <p class="ds-section__desc">
     Center-wide review of how each group's gradebook is configured and how far along it is,
@@ -27,9 +27,7 @@
   {{ macros.flash_messages() }}
 
   <form method="get" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
-    <label class="field__label" for="group" style="margin:0">Group ID:</label>
-    <input type="search" name="group" id="group" class="field__input" style="width:auto"
-           placeholder="Group public ID" value="{{ filter_group }}">
+    <label class="field__label" for="group">Group:</label><select name="group" id="group" class="field__input"><option value="">All groups</option>{% set choices = workspace_group_choices() %}{% set found = namespace(value=false) %}{% for row in choices %}{% if filter_group == row.public_id %}{% set found.value=true %}{% endif %}<option value="{{ row.public_id }}" {{ 'selected' if filter_group == row.public_id else '' }}>{{ row.name }} · {{ row.title }} · {{ row.term_name }}</option>{% endfor %}{% if filter_group and not found.value %}<option value="{{ filter_group }}" selected>Selected group (outside the first 500 choices)</option>{% endif %}</select>
 
     <label class="field__label" for="term" style="margin:0">Academic term:</label>
     <select name="term" id="term" class="field__input" style="width:auto">

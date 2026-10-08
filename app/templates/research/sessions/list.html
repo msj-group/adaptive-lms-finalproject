@@ -1,11 +1,12 @@
 {% extends "layouts/research_base.html" %}
-{% from "research/_macros.html" import pager, provenance_filter, ms_time %}
+{% from "research/_macros.html" import pager, provenance_notice, ms_time %}
 {% block title %}Natural-use sessions{% endblock %}
 {% block research_content %}
-<h1>Natural-use sessions</h1>
+<h1 data-workspace-page-heading>Natural-use sessions</h1>
 <p class="ds-section__desc">Pseudonymous sessions: subject codes only. Refused events are
   counted, never stored.</p>
-{{ provenance_filter('research.sessions', provenance, provenance_labels) }}
+{{ provenance_notice(provenance, provenance_labels) }}
+<details class="workspace-filters" open><summary>Session filters</summary><form method="get" class="workspace-filter-grid"><div class="field"><label for="subject">Subject code (exact)</label><input class="field__input" id="subject" name="subject" value="{{ filters.subject }}" maxlength="80"></div><div class="field"><label for="version">Configuration</label><select class="field__input" id="version" name="version"><option value="">All versions</option>{% for row in configurations %}<option value="{{ row.version_number }}" {{ 'selected' if filters.version == row.version_number|string else '' }}>Version {{ row.version_number }} · {{ row.label }}</option>{% endfor %}</select></div><div class="field"><label for="state">Session state</label><select class="field__input" name="state" id="state"><option value="">Open and ended</option><option value="open" {{ 'selected' if filters.state == 'open' else '' }}>Open</option><option value="ended" {{ 'selected' if filters.state == 'ended' else '' }}>Ended</option></select></div>{% for key,label in [('from','Started from'),('to','Started through')] %}<div class="field"><label for="{{ key }}">{{ label }} ({{ tz_name }})</label><input class="field__input" type="date" name="{{ key }}" id="{{ key }}" value="{{ filters[key] }}"></div>{% endfor %}<div class="ds-row"><button class="btn btn--primary">Apply filters</button><a href="{{ url_for('research.sessions') }}">Reset</a></div></form></details><p class="workspace-meta">Last seen is the server's last accepted session activity. Refused events are counter totals, not stored event rows.</p>
 {% if rows %}
 <div style="overflow-x: auto">
 <table class="dash-table" style="width:100%">
@@ -35,6 +36,6 @@
 {{ pager(pagination, "Sessions") }}
 {% else %}
 <div class="empty-state"><div class="empty-state__title">No sessions</div>
-  <div>No natural-use session with this provenance has been recorded.</div></div>
+  <div>No sessions match the current filters in this deployment scope.</div></div>
 {% endif %}
 {% endblock %}

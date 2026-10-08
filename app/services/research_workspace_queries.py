@@ -22,15 +22,17 @@ capped at :data:`TIMELINE_CAP` events; aggregate queries are grouped counts.
 from collections import Counter
 from datetime import datetime, timezone
 
-from sqlalchemy import func
+from sqlalchemy import exists, func, or_, select
 
 from app.extensions import db
 from app.models import (
     ResearchAuditEvent,
+    ResearchAuditAction,
     ResearchCollectionStatus,
     ResearchConfiguration,
     ResearchEvent,
     ResearchExport,
+    ResearchExportArchive,
     ResearchFeedbackPrompt,
     ResearchPromptStatus,
     ResearchProvenance,
@@ -40,17 +42,17 @@ from app.models import (
 )
 from app.services.research_event_dictionary import PAGE_AREAS, REPORTING_AREAS
 from app.services.research_event_validation import is_uuid
+from app.services.research_scope import EXPORT_SCOPE_DETAIL_CODES, export_session_provenances
 from app.services.schedule_occurrences import to_app_local
 
 PAGE_SIZE = 25
 TIMELINE_CAP = 500
 _MAX_PAGE = 100_000
 
-PROVENANCES = tuple(p.value for p in ResearchProvenance)
 PROVENANCE_LABELS = {
     "study": "Study data",
-    "development": "Development data — not research data",
-    "demo": "Demonstration data — not research data",
+    "development": "Operational review data — excluded from study exports",
+    "demo": "Historical data — excluded from study exports",
 }
 
 PROMPT_STATES = ("awaiting_display", "offer_expired", "awaiting_response", "no_response",
@@ -81,8 +83,9 @@ def normalize_page(value):
     return page if 1 <= page <= _MAX_PAGE else 1
 
 
-def normalize_provenance(value):
-    return value if value in PROVENANCES else ResearchProvenance.STUDY.value
+def _session_scope(provenance):
+    """Server-selected study scope, or retained non-study review history."""
+    return ResearchSession.provenance.in_(export_session_provenances(provenance))
 
 
 def ms_to_local(tz_name, moment_ms):
@@ -204,9 +207,8 @@ def subject_totals():
     legacy = sum(v for (s, b, _p), v in counts.items()
                  if s == ResearchCollectionStatus.EXCLUDED.value
                  and b == ResearchStatusBasis.LEGACY_COLLECTION_EXCLUSION.value)
-    demo = sum(v for (_s, _b, p), v in counts.items() if p == ResearchProvenance.DEMO.value)
     return {"included": included, "reinstated": reinstated, "excluded": excluded,
-            "legacy_excluded": legacy, "demo": demo}
+            "legacy_excluded": legacy}
 
 
 EXCLUSION_BASIS_LABELS = {
@@ -251,7 +253,7 @@ def session_totals(provenance):
             func.count(func.distinct(ResearchSession.subject_id)),
             *(func.coalesce(func.sum(getattr(ResearchSession, c)), 0) for c in _COUNTERS),
         )
-        .filter(ResearchSession.provenance == provenance)
+        .filter(_session_scope(provenance))
         .one()
     )
     totals = {"sessions": int(row[0]), "ended": int(row[1]), "subjects": int(row[2])}
@@ -259,41 +261,25 @@ def session_totals(provenance):
     return totals
 
 
-def _prompt_rows(provenance, session_id=None):
-    query = (
-        db.session.query(
-            ResearchFeedbackPrompt.status,
-            ResearchFeedbackPrompt.sampling_reason,
-            ResearchFeedbackPrompt.offered_at_ms,
-            ResearchFeedbackPrompt.displayed_at_ms,
-            ResearchFeedbackPrompt.deferral_count,
-            ResearchFeedbackPrompt.last_deferral_reason,
-            ResearchFeedbackPrompt.late_response,
-            ResearchConfiguration.offer_ttl_seconds,
-            ResearchConfiguration.response_window_seconds,
-            ResearchFeedbackPrompt.responded_at_ms,
-        )
-        .join(ResearchSession, ResearchSession.id == ResearchFeedbackPrompt.session_id)
-        .join(ResearchConfiguration,
-              ResearchConfiguration.id == ResearchFeedbackPrompt.configuration_id)
-        .filter(ResearchSession.provenance == provenance)
-    )
-    if session_id is not None:
-        query = query.filter(ResearchFeedbackPrompt.session_id == session_id)
-    return query.all()
-
-
 def prompt_summary(provenance, as_of_ms):
-    """Delivery, response, dismissal, deferral and label coverage."""
+    """Delivery/response counts; grouped in SQL, not an unbounded row load."""
+    from app.services.research_analytics import prompt_state_expression
     states, reasons, deferrals = Counter(), Counter(), Counter()
+    p = ResearchFeedbackPrompt
+    state = prompt_state_expression(as_of_ms)
+    rows = (db.session.query(state, p.sampling_reason, p.last_deferral_reason,
+                             func.count(p.id), func.sum(p.deferral_count), func.sum(p.late_response))
+            .join(ResearchSession, ResearchSession.id == p.session_id)
+            .join(ResearchConfiguration, ResearchConfiguration.id == p.configuration_id)
+            .filter(_session_scope(provenance))
+            .group_by(state, p.sampling_reason, p.last_deferral_reason).all())
     late = 0
-    for row in _prompt_rows(provenance):
-        states[derived_prompt_state(row[0], row[2], row[3], row[7], row[8], as_of_ms,
-                                    row[9])] += 1
-        reasons[row[1]] += 1
-        if row[4]:
-            deferrals[row[5]] += row[4]
-        late += 1 if row[6] else 0
+    for state_name, reason, deferral_reason, count, deferred, late_count in rows:
+        states[state_name] += int(count)
+        reasons[reason] += int(count)
+        if deferred:
+            deferrals[deferral_reason] += int(deferred)
+        late += int(late_count or 0)
     displayed = sum(states[s] for s in ("awaiting_response", "no_response", "answered",
                                         "dismissed"))
     return {
@@ -313,7 +299,7 @@ def event_type_counts(provenance):
         db.session.query(ResearchEvent.source, ResearchEvent.event_type,
                          func.count(ResearchEvent.id))
         .join(ResearchSession, ResearchSession.id == ResearchEvent.session_id)
-        .filter(ResearchSession.provenance == provenance)
+        .filter(_session_scope(provenance))
         .group_by(ResearchEvent.source, ResearchEvent.event_type)
         .all()
     )
@@ -324,7 +310,7 @@ def device_coverage(provenance):
     rows = (
         db.session.query(ResearchEvent.detail_code, func.count(ResearchEvent.id))
         .join(ResearchSession, ResearchSession.id == ResearchEvent.session_id)
-        .filter(ResearchSession.provenance == provenance,
+        .filter(_session_scope(provenance),
                 ResearchEvent.event_type == "page_view")
         .group_by(ResearchEvent.detail_code)
         .all()
@@ -337,7 +323,7 @@ def area_coverage(provenance):
     rows = (
         db.session.query(ResearchEvent.page_id, func.count(ResearchEvent.id))
         .join(ResearchSession, ResearchSession.id == ResearchEvent.session_id)
-        .filter(ResearchSession.provenance == provenance,
+        .filter(_session_scope(provenance),
                 ResearchEvent.event_type == "page_view")
         .group_by(ResearchEvent.page_id)
         .all()
@@ -353,10 +339,24 @@ def area_coverage(provenance):
 # ---------------------------------------------------------------------------
 
 
-def sessions_page(provenance, page):
-    base = db.session.query(func.count(ResearchSession.id)).filter(
-        ResearchSession.provenance == provenance
-    )
+def sessions_page(provenance, page, filters=None):
+    filters = filters or {}
+    conditions = [_session_scope(provenance)]
+    if filters.get("subject"):
+        conditions.append(ResearchSubject.subject_code == filters["subject"])
+    if filters.get("version"):
+        conditions.append(ResearchConfiguration.version_number == filters["version"])
+    if filters.get("state") == "open":
+        conditions.append(ResearchSession.ended_at_ms.is_(None))
+    elif filters.get("state") == "ended":
+        conditions.append(ResearchSession.ended_at_ms.is_not(None))
+    if filters.get("lower") is not None:
+        conditions.append(ResearchSession.started_at_ms >= filters["lower"])
+    if filters.get("upper") is not None:
+        conditions.append(ResearchSession.started_at_ms < filters["upper"])
+    base = db.session.query(func.count(ResearchSession.id)).join(
+        ResearchSubject, ResearchSubject.id == ResearchSession.subject_id).join(
+        ResearchConfiguration, ResearchConfiguration.id == ResearchSession.configuration_id).filter(*conditions)
     total = int(base.scalar() or 0)
     if page > 1 and (page - 1) * PAGE_SIZE >= total:
         page = 1
@@ -383,7 +383,7 @@ def sessions_page(provenance, page):
         .join(ResearchSubject, ResearchSubject.id == ResearchSession.subject_id)
         .join(ResearchConfiguration, ResearchConfiguration.id == ResearchSession.configuration_id)
         .outerjoin(prompt_counts, prompt_counts.c.session_id == ResearchSession.id)
-        .filter(ResearchSession.provenance == provenance)
+        .filter(*conditions)
         .order_by(ResearchSession.id.desc())
         .limit(PAGE_SIZE)
         .offset((page - 1) * PAGE_SIZE)
@@ -468,8 +468,31 @@ def session_prompts(session_id):
 # ---------------------------------------------------------------------------
 
 
-def exports_page(page):
-    total = int(db.session.query(func.count(ResearchExport.id)).scalar() or 0)
+def export_scope_filter(provenance):
+    """Persistent scope from creation audit; older exports were study-only.
+
+    Never infer a historical archive's source from today's deployment setting
+    or from source sessions that retention may already have removed.
+    """
+    export_session_provenances(provenance)
+    detail = (
+        select(ResearchAuditEvent.detail_code)
+        .where(ResearchAuditEvent.export_id == ResearchExport.id,
+               ResearchAuditEvent.action == ResearchAuditAction.EXPORT_CREATED.value)
+        .order_by(ResearchAuditEvent.id.asc())
+        .limit(1)
+        .correlate(ResearchExport)
+        .scalar_subquery()
+    )
+    code = EXPORT_SCOPE_DETAIL_CODES[provenance]
+    if provenance == "study":
+        return or_(detail.is_(None), detail == code)
+    return detail == code
+
+
+def exports_page(page, provenance):
+    scope = export_scope_filter(provenance)
+    total = int(db.session.query(func.count(ResearchExport.id)).filter(scope).scalar() or 0)
     if page > 1 and (page - 1) * PAGE_SIZE >= total:
         page = 1
     rows = (
@@ -484,9 +507,11 @@ def exports_page(page):
             ResearchExport.events_count,
             ResearchExport.prompts_count,
             ResearchExport.manifest_digest,
+            exists().where(ResearchExportArchive.export_id == ResearchExport.id).label("archive_available"),
         )
         .outerjoin(ResearchConfiguration,
                    ResearchConfiguration.id == ResearchExport.configuration_id)
+        .filter(scope)
         .order_by(ResearchExport.id.desc())
         .limit(PAGE_SIZE)
         .offset((page - 1) * PAGE_SIZE)
@@ -495,14 +520,23 @@ def exports_page(page):
     return rows, total, page
 
 
-def export_by_public_id(public_id):
+def export_by_public_id(public_id, provenance):
     if not is_uuid(public_id):
         return None
-    return ResearchExport.query.filter_by(public_id=public_id).first()
+    return ResearchExport.query.filter(
+        ResearchExport.public_id == public_id, export_scope_filter(provenance)).first()
 
 
-def audit_page(page):
-    total = int(db.session.query(func.count(ResearchAuditEvent.id)).scalar() or 0)
+def audit_page(page, filters=None):
+    filters = filters or {}
+    conditions = []
+    if filters.get("action"):
+        conditions.append(ResearchAuditEvent.action == filters["action"])
+    if filters.get("lower_date") is not None:
+        conditions.append(ResearchAuditEvent.occurred_at >= filters["lower_date"])
+    if filters.get("upper_date") is not None:
+        conditions.append(ResearchAuditEvent.occurred_at < filters["upper_date"])
+    total = int(db.session.query(func.count(ResearchAuditEvent.id)).filter(*conditions).scalar() or 0)
     if page > 1 and (page - 1) * PAGE_SIZE >= total:
         page = 1
     rows = (
@@ -521,6 +555,7 @@ def audit_page(page):
                    ResearchConfiguration.id == ResearchAuditEvent.configuration_id)
         .outerjoin(ResearchExport, ResearchExport.id == ResearchAuditEvent.export_id)
         .outerjoin(ResearchSubject, ResearchSubject.id == ResearchAuditEvent.subject_id)
+        .filter(*conditions)
         .order_by(ResearchAuditEvent.id.desc())
         .limit(PAGE_SIZE)
         .offset((page - 1) * PAGE_SIZE)

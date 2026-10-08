@@ -1,0 +1,21 @@
+/* Account forms share the workspace colours and remain usable without scripts. */
+.account-intro { margin:0 0 24px; color:var(--ui-muted); }
+.account-settings-grid { display:grid; grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr); gap:24px; align-items:start; max-width:1120px; }
+.account-section { padding:26px; border-radius:12px; border-block-start:3px solid var(--ui-link); }
+.account-section:first-child { background:var(--ui-raised); border-block-start-color:var(--ui-brand-accent); }
+.account-section h2 { margin:0 0 16px; color:var(--ui-ink); font:650 21px/1.35 var(--font-family-base); }
+.account-section .field { margin:0 0 20px; }
+.account-section .field__label { display:block; margin-bottom:7px; }
+.account-section .field__input { width:100%; box-sizing:border-box; }
+.account-profile { display:flex; gap:18px; align-items:center; margin:20px 0 28px; }
+.account-profile .figma-avatar { width:88px; height:88px; border-radius:22px; border:2px solid var(--ui-line); font-size:28px; }
+.account-profile > div { min-width:0; }
+.account-profile strong { display:block; color:var(--figma-ink); overflow-wrap:anywhere; }
+.account-profile > div > span { display:block; margin-top:3px; color:var(--ui-muted); font-size:13px; }
+.account-hint { margin:8px 0 18px; font-size:13px; color:var(--ui-muted); line-height:1.7; }
+.account-file { padding:10px; background:var(--ui-raised); }
+.account-file::file-selector-button { min-height:44px; padding:8px 12px; margin-inline-end:10px; border:1px solid var(--ui-control-line); border-radius:6px; background:var(--ui-soft); color:var(--ui-ink); font:inherit; cursor:pointer; }
+.account-errors { padding-inline-start:20px; margin:8px 0 16px; color:var(--ui-danger); font-size:13px; }
+.account-section [aria-invalid="true"] { border-color:var(--ui-danger); }
+@media (max-width:960px) { .account-settings-grid { grid-template-columns:minmax(0,1fr); max-width:680px; } }
+@media (max-width:480px) { .account-section { padding:20px; } .account-section .btn { width:100%; } .account-section input { font-size:16px; } }

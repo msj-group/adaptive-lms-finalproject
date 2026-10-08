@@ -265,7 +265,8 @@ def teacher_quizzes_page(group_id, page):
     calling, and passes its internal id.
     """
     rows = (
-        db.session.query(Quiz.public_id, Quiz.title, Quiz.created_at, Quiz.updated_at)
+        db.session.query(Quiz.public_id, Quiz.title, Quiz.status, Quiz.opens_at,
+                         Quiz.closes_at, Quiz.created_at, Quiz.updated_at)
         .filter(Quiz.group_id == group_id, ~has_listening_extension())
         .order_by(Quiz.created_at.desc(), Quiz.id.desc())
         .offset((page - 1) * PAGE_SIZE)
@@ -289,6 +290,9 @@ def build_teacher_list_view(rows, tz_name):
         {
             "public_id": row.public_id,
             "title": row.title,
+            "status": row.status,
+            "opens_local": to_app_local(tz_name, row.opens_at) if row.opens_at else None,
+            "closes_local": to_app_local(tz_name, row.closes_at) if row.closes_at else None,
             "created_local": to_app_local(tz_name, row.created_at),
             "updated_local": to_app_local(tz_name, row.updated_at),
         }
@@ -931,6 +935,22 @@ def first_question_public_id(quiz_id):
     return row.public_id if row is not None else None
 
 
+def student_question_index(quiz_id):
+    """Bounded authored order for the own-attempt question shortcuts.
+
+    The caller authorizes the Quiz/attempt. Only identifiers are selected;
+    internal ids stay in the route's progress lookup, never the rendered DTO.
+    No other prompt, option text or answer key is loaded for navigation.
+    """
+    return (
+        db.session.query(QuizQuestion.id, QuizQuestion.public_id)
+        .filter(QuizQuestion.quiz_id == quiz_id)
+        .order_by(QuizQuestion.display_order.asc(), QuizQuestion.id.asc())
+        .limit(MAX_QUIZ_QUESTIONS + 1)
+        .all()
+    )
+
+
 def attempt_selected_option_ids(attempt_id, question_id):
     """The option ids this attempt currently has saved for one question.
 
@@ -973,7 +993,10 @@ def answered_question_ids(attempt_id, question_ids):
     """Which of these questions the attempt has a saved answer for.
 
     One bounded statement over at most one Quiz's worth of ids, used for
-    the progress indicator and the unanswered-question confirmation.
+    the progress indicator and the unanswered-question confirmation. An
+    answer whose selections were cleared is unanswered; retain its history
+    row, but require at least one selection. Listening's nonempty saves keep
+    their existing meaning.
     """
     if not question_ids:
         return set()
@@ -982,6 +1005,9 @@ def answered_question_ids(attempt_id, question_ids):
         .filter(
             QuizAnswer.attempt_id == attempt_id,
             QuizAnswer.question_id.in_(question_ids),
+            db.session.query(QuizAnswerSelection.id)
+            .filter(QuizAnswerSelection.answer_id == QuizAnswer.id)
+            .exists(),
         )
         .all()
     )

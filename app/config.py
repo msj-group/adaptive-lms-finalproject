@@ -1,4 +1,5 @@
 import os
+from sqlalchemy.engine import URL
 
 from dotenv import load_dotenv
 
@@ -15,12 +16,14 @@ class Config:
     DATABASE_USER = os.environ.get("DATABASE_USER", "")
     DATABASE_PASSWORD = os.environ.get("DATABASE_PASSWORD", "")
 
-    SQLALCHEMY_DATABASE_URI = (
-        f"mysql+pymysql://{DATABASE_USER}:{DATABASE_PASSWORD}"
-        f"@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}?charset=utf8mb4"
+    # Structured URL safely handles @, :, / and % inside deployment credentials.
+    SQLALCHEMY_DATABASE_URI = URL.create(
+        "mysql+pymysql", username=DATABASE_USER, password=DATABASE_PASSWORD,
+        host=DATABASE_HOST, port=int(DATABASE_PORT), database=DATABASE_NAME,
+        query={"charset": "utf8mb4"},
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True, "hide_parameters": True}
 
     WTF_CSRF_ENABLED = True
 
@@ -28,7 +31,10 @@ class Config:
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False
 
-    RATELIMIT_STORAGE_URI = "memory://"
+    RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
+    TRUSTED_HOSTS = [host.strip() for host in os.environ.get("TRUSTED_HOSTS", "").split(",") if host.strip()] or None
+    PROXY_TRUSTED_HOPS = os.environ.get("PROXY_TRUSTED_HOPS", "0")
+    DATABASE_SSL_CA = os.environ.get("DATABASE_SSL_CA", "")
 
     # ---- M12: Lesson Materials -- secure file storage ----
     # Resolved and validated once at start-up by
@@ -44,18 +50,9 @@ class Config:
     MATERIAL_MAX_AUDIO_BYTES = os.environ.get("MATERIAL_MAX_AUDIO_BYTES", "52428800")
     MATERIAL_MAX_VIDEO_BYTES = os.environ.get("MATERIAL_MAX_VIDEO_BYTES", "104857600")
 
-    # ---- Phase 5 / M06: online payment provider boundary ----
-    # ``disabled`` (the default) or ``mock``. Resolved and validated once at
-    # start-up by app.services.payment_providers.resolve_payment_provider
-    # (fail-closed: ``mock`` outside development/testing, or any unknown
-    # value, refuses to start the application). Not a secret; no provider
-    # credential exists. See docs/DECISIONS.md, Part M06.
+    # Online payment remains disabled until a real provider is integrated.
+    # Startup rejects other values; collection uses ordinary cash/bank forms.
     PAYMENT_PROVIDER_MODE = os.environ.get("PAYMENT_PROVIDER_MODE", "disabled")
-    # ---- Phase 5 / M07: the Mock/Sandbox webhook signing key ----
-    # A SECRET, read only from the environment and never given a default:
-    # required (and validated, fail-closed) only when PAYMENT_PROVIDER_MODE is
-    # ``mock``; ignored otherwise. Held by the mock adapter alone.
-    MOCK_PAYMENT_WEBHOOK_SECRET = os.environ.get("MOCK_PAYMENT_WEBHOOK_SECRET")
 
     # ---- Phase 6: natural-use research collection ----
     # Resolved and validated once at start-up by
@@ -81,11 +78,8 @@ class TestingConfig(Config):
     SQLALCHEMY_DATABASE_URI = "mysql+pymysql://unused:unused@127.0.0.1:9/aelms_test_unallocated"
     TEST_MYSQL_LEASE_GUARD = None
     RATELIMIT_ENABLED = False
-    # Pinned, like the database URI, so a developer's own environment can
-    # never switch the suite into a provider mode or lend it a secret; a test
-    # opts in explicitly and injects its own test-only webhook secret.
+    # Keep the factory-only environment outside online payment integrations.
     PAYMENT_PROVIDER_MODE = "disabled"
-    MOCK_PAYMENT_WEBHOOK_SECRET = None
     # Pinned for the same reason: a test opts in to "study" data or a
     # retention value explicitly.
     RESEARCH_DATA_PROVENANCE = "development"
@@ -96,7 +90,8 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     DEBUG = False
     SESSION_COOKIE_SECURE = True
-    RESEARCH_DATA_PROVENANCE = os.environ.get("RESEARCH_DATA_PROVENANCE", "study")
+    # Hosting evaluation must never become study data just because it uses
+    # production HTTP settings. A genuine study supplies "study" explicitly.
 
 
 config_by_name = {

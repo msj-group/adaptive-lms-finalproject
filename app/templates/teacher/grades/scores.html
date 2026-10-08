@@ -1,6 +1,6 @@
 {% extends "layouts/portal_base.html" %}
 {% import "_grade_macros.html" as gr %}
-{% block title %}{{ group.name }} — Scores for {{ item.title }}{% endblock %}
+{% block title %}{{ "Correct scores" if is_released else "Enter scores" }} — {{ item.title }} — {{ group.name }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
   <a class="portal-nav__link" href="{{ url_for('teacher.gradebook_overview') }}">Gradebook</a>
@@ -22,7 +22,7 @@
     a failed save never leaves a partial grade change behind. Student names and
     comments are autoescaped and never rendered with `|safe`. -#}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 style="margin:0">{{ "Correct scores" if is_released else "Enter scores" }} — {{ item.title }}</h1>
+  <h1 data-workspace-page-heading style="margin:0">{{ "Correct scores" if is_released else "Enter scores" }} — {{ item.title }}</h1>
   {{ gr.release_badge(is_released) }}
 </div>
 

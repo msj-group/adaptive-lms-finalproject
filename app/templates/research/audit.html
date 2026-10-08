@@ -2,19 +2,20 @@
 {% from "research/_macros.html" import pager %}
 {% block title %}Research audit log{% endblock %}
 {% block research_content %}
-<h1>Audit log</h1>
+<h1 data-workspace-page-heading>Audit log</h1>
 <p class="ds-section__desc">Configuration changes, collection pauses and resumptions, exclusions
   and reinstatements recorded by an operator, exports, downloads and retention purges. No student
   content is recorded.</p>
+<details class="workspace-filters" open><summary>Audit filters</summary><form method="get" class="workspace-filter-grid"><div class="field"><label for="action">Action</label><select class="field__input" id="action" name="action"><option value="">All actions</option>{% for action in actions %}<option value="{{ action }}"{% if filters.action == action %} selected{% endif %}>{{ action.replace('_',' ').title() }}</option>{% endfor %}</select></div>{% for key,label in [('from','From'),('to','Through')] %}<div class="field"><label for="{{ key }}">{{ label }} ({{ tz_name }})</label><input class="field__input" type="date" name="{{ key }}" id="{{ key }}" value="{{ filters[key] }}"></div>{% endfor %}<div class="ds-row"><button class="btn btn--primary">Apply filters</button><a href="{{ url_for('research.activity_log') }}">Reset</a></div></form></details>
 {% if rows %}
 <div style="overflow-x: auto">
 <table class="dash-table" style="width:100%">
-  <thead><tr><th scope="col">When (UTC)</th><th scope="col">Action</th><th scope="col">By</th>
+  <thead><tr><th scope="col">When ({{ tz_name }})</th><th scope="col">Action</th><th scope="col">By</th>
     <th scope="col">Configuration</th><th scope="col">Subject</th><th scope="col">Detail</th></tr></thead>
   <tbody>
   {% for row in rows %}
     <tr data-audit="{{ row[0] }}">
-      <td style="white-space: nowrap">{{ row[3].strftime("%Y-%m-%d %H:%M:%S") }}</td>
+      <td style="white-space: nowrap">{{ workspace_local(row[3]).strftime("%Y-%m-%d %H:%M:%S") }}</td>
       <td>{{ row[0]|replace('_', ' ') }}</td>
       <td>{% if row[1] in ['workspace','operator'] %}{{ ("You" if row[2] == me else "Another researcher") if row[2] is not none else "Historical operator (identity unavailable)" }}{% if row[1] == 'operator' %} · Operator tool{% endif %}{% elif row[1] == 'service' %}Daily retention service{% else %}Migration{% endif %}</td>
       <td>{{ row[6] if row[6] is not none else "—" }}</td>

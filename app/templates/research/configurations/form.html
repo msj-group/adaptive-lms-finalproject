@@ -1,7 +1,7 @@
 {% extends "layouts/research_base.html" %}
 {% block title %}{{ "Edit draft" if configuration else "New draft" }}{% endblock %}
 {% block research_content %}
-<h1>{% if configuration %}Edit draft version {{ configuration.version_number }}{% else %}New configuration draft{% endif %}</h1>
+<h1 data-workspace-page-heading>{% if configuration %}Edit draft version {{ configuration.version_number }}{% else %}New configuration draft{% endif %}</h1>
 <p class="ds-section__desc">
   Times are in {{ tz_name }}. The sampling values are pilot settings to be versioned and
   revisited, not validated scientific constants. Saving a draft collects nothing.
@@ -29,17 +29,20 @@
     every eligible Student account. There is no setting that narrows it.
   </p>
 
+  {% for section, columns in [('Sessions and limits',['session_inactivity_minutes','max_prompts_per_session','max_prompts_per_day']),('Observation window',['lookback_seconds','min_observed_seconds']),('Sampling probabilities',['random_prompt_permille','activity_end_prompt_permille']),('Offer and response timing',['offer_ttl_seconds','response_window_seconds'])] %}
   <fieldset style="margin-top: var(--space-6)">
-    <legend><strong>Sessions and feedback sampling</strong></legend>
-    {% for column, label in policy_labels.items() %}
+    <legend><strong>{{ section }}</strong></legend>
+    {% for column in columns %}{% set label = policy_labels[column] %}
     <div class="field" style="margin-top: var(--space-3)">
       <label class="field__label" for="{{ column }}">{{ label }}
         <span class="ds-section__desc">({{ policy_bounds[column][0] }}&ndash;{{ policy_bounds[column][1] }})</span></label>
-      {{ form[column](class_="field__input", min=policy_bounds[column][0], max=policy_bounds[column][1], style="width: 12rem") }}
+      {% if 'permille' in column %}<p class="workspace-meta">Parts per thousand: 1000 = 100%, 100 = 10%. This is a sampling parameter, not a measured outcome.</p>{% elif 'seconds' in column %}<p class="workspace-meta">Unit: seconds.</p>{% elif 'minutes' in column %}<p class="workspace-meta">Unit: minutes.</p>{% endif %}{{ form[column](class_="field__input", min=policy_bounds[column][0], max=policy_bounds[column][1], style="width: 12rem") }}
+      {% if baseline %}<p class="workspace-meta">Current active version {{ baseline.version_number }}: {{ baseline[column] }}. This draft keeps a separate version.</p>{% endif %}
       {% for error in form[column].errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
     {% endfor %}
   </fieldset>
+  {% endfor %}
 
   <div class="ds-row" style="gap: var(--space-3); margin-top: var(--space-6)">
     {{ form.submit(class_="btn btn--primary") }}

@@ -21,6 +21,7 @@
  */
 (function () {
   "use strict";
+  var t = window.aelmsUI ? window.aelmsUI.t : function (text) { return text; };
 
   var root = document.querySelector("[data-quiz-timer]");
   if (!root) {
@@ -58,10 +59,15 @@
   function tick() {
     var remaining = Math.floor((deadline - Date.now()) / 1000);
     if (remaining <= 0) {
-      output.textContent = "Time is up";
+      output.textContent = t("Time is up");
       /* The server has the last word: the next request finalizes and
          grades this attempt on whatever was already saved. */
       disableControls();
+      if (!root.querySelector("[data-expiry-help]")) {
+        var help = document.createElement("p"); help.dataset.expiryHelp = "true"; help.className = "alert alert--warning"; help.setAttribute("role", "status");
+        help.textContent = t("Only answers already saved will be used. The server confirms the final attempt status on your next request. ");
+        var link = document.createElement("a"); link.href = location.href; link.textContent = t("View saved attempt status"); help.appendChild(link); root.appendChild(help);
+      }
       if (timer) {
         window.clearInterval(timer);
       }

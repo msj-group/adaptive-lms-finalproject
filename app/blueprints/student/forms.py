@@ -1,11 +1,14 @@
-"""Student-facing forms (Phase 4 / M02).
+"""Native final Assignment forms: teacher-configured text or one private file.
 
-Currently one form: the single, final, plain-text Assignment answer.
+The Student cannot switch the Assignment's type or expand its lifecycle.
 """
 
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from wtforms import SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Length
+from flask import request
+from flask_wtf.file import FileField, FileRequired
+from wtforms.validators import ValidationError
 
 from app.models import ANSWER_MAX_LENGTH
 
@@ -58,3 +61,13 @@ class SubmissionForm(FlaskForm):
         """The exact string that will be persisted -- see the class
         docstring's normalization contract."""
         return (self.answer_text.data or "").strip()
+
+
+class FileSubmissionForm(FlaskForm):
+    """One final private file; no comment, drafts or replacement lifecycle."""
+    file = FileField("Your file", validators=[FileRequired()])
+    submit = SubmitField("Submit Final File")
+
+    def validate_file(self, field):
+        if len(request.files.getlist("file")) != 1:
+            raise ValidationError("Select exactly one file.")

@@ -1,9 +1,13 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'listening' %}
+{% set activity_phase = 'result' %}
 {% block title %}Result — {{ activity.title }}{% endblock %}
 {% block portal_nav %}
   {% include "student/_portal_nav.html" %}
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+
 {#- Phase 4 / M05. This page reports the score and, per question, only whether
     it was right or wrong.
 
@@ -18,7 +22,7 @@
     rendered here has already been proved finalized. Under "hidden" the
     `transcript` value is None and nothing below renders. -#}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
-  <h1 style="margin:0">{{ activity.title }} — Result</h1>
+
   <span class="badge badge--neutral">{{ attempt.status_label }}</span>
 </div>
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">Listening &middot; Attempt {{ attempt.attempt_number }}</p>
@@ -31,17 +35,26 @@
 
 <div class="ds-row" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('student.listening_detail', group_public_id=group_public_id, listening_public_id=activity.public_id) }}">Back to Listening Activity</a>
-  <a class="btn btn--secondary" href="{{ url_for('student.listening_list') }}">Back to Activities</a>
+  <a class="btn btn--secondary" href="{{ url_for('student.activities', type='listening', group=group_public_id) }}">Back to Activities</a>
 </div>
 
+<div class="activity-result-layout">
+<aside>
+<div class="activity-result-score">
+<span>Final score</span>
+<strong>{{ attempt.correct_count }} / {{ attempt.total_questions }}</strong>{% if attempt.percentage is not none %}<p>{{ attempt.percentage }}%</p>{% endif %}</div>
 <div class="card" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 170px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Score</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Score</dt>
     <dd style="margin:0">
       <strong>{{ attempt.correct_count }} / {{ attempt.total_questions }}</strong>{% if attempt.percentage is not none %} ({{ attempt.percentage }}%){% endif %}
     </dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submitted</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submitted</dt>
     <dd style="margin:0">{% if attempt.submitted_local %}{{ attempt.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}){% else %}Not submitted — the time ran out{% endif %}</dd>
+</div>
   </dl>
 </div>
 
@@ -57,7 +70,7 @@
   <h2>Transcript</h2>
   <div class="card">
     {% if transcript_note %}<p class="ds-section__desc" style="margin-top:0">{{ transcript_note }}</p>{% endif %}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ transcript }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ transcript }}</div>
   </div>
 </section>
 {% endif %}
@@ -66,39 +79,43 @@
 <section style="margin-bottom: var(--space-6)">
   <h2>Vocabulary</h2>
   <div class="card">
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ vocabulary }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ vocabulary }}</div>
   </div>
 </section>
 {% endif %}
 
+</aside>
+<div>
 <section>
   <h2>Questions</h2>
   {% if results %}
   <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th style="width:6rem">Question</th>
-        <th style="width:10rem">Answered</th>
-        <th style="width:10rem">Result</th>
-      </tr>
-    </thead>
-    <tbody>
+  <div class="activity-library-grid">
       {% for item in results %}
-      <tr>
-        <td>{{ item.number }}</td>
-        <td>{% if item.answered %}Yes{% else %}No{% endif %}</td>
-        <td>
+      <article class="activity-library-card">
+<header>
+<span class="activity-card-symbol">{{ activity_ui.symbol(activity_kind,22) }}</span>
+<h3><span>Question</span> {{ item.number }}</h3>
+</header>
+<dl class="activity-library-meta">
+<div class="activity-fact">
+<dt>Answered</dt>
+<dd>{% if item.answered %}Yes{% else %}No{% endif %}</dd>
+</div>
+<div class="activity-fact">
+<dt>Result</dt>
+<dd>
           {% if item.is_correct %}
           <span class="badge badge--success">Correct</span>
           {% else %}
           <span class="badge badge--neutral">Incorrect</span>
           {% endif %}
-        </td>
-      </tr>
+        </dd>
+</div>
+</dl>
+</article>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
   </div>
   {% else %}
   <div class="empty-state">
@@ -107,4 +124,8 @@
   </div>
   {% endif %}
 </section>
+
+</div>
+</div>
+</div>
 {% endblock %}

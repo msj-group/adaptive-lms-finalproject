@@ -1,7 +1,11 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'assignment' %}
+{% set activity_phase = 'overview' %}
 {% block title %}{{ assignment.title }} — {{ assignment.group_name }}{% endblock %}
 {% block portal_nav %}{% set active_nav = 'assignments' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+
 {#- Phase 4 / M01 + M02 + M03. `assignment`, `submission` and `feedback` are
     plain presentation dicts; the rows behind them already satisfied the whole
     visibility formula in SQL, and `submission` was looked up by this
@@ -13,7 +17,7 @@
   {{ assignment.group_name }} &middot; {{ assignment.course_title }} &middot; {{ assignment.level_name }} &middot; {{ assignment.term_name }}
 </p>
 <div class="ds-row" style="justify-content: space-between; align-items: flex-start; gap: var(--space-4)">
-  <h1 style="margin-top: 0">{{ assignment.title }}</h1>
+
   {% if assignment.state == "open" %}
   <span class="badge badge--success">Open</span>
   {% else %}
@@ -28,17 +32,22 @@
 {% endwith %}
 
 <div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('student.activities', type='assignment') }}">Back to Activities</a>
+  <a class="btn btn--secondary" href="{{ url_for('student.activities', type='assignment', group=assignment.group_public_id) }}">Back to Activities</a>
   <a class="btn btn--secondary" href="{{ url_for('student.group_units', group_public_id=assignment.group_public_id) }}">Open Lessons</a>
 </div>
 
 <div class="card" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
     <dd style="margin:0">{{ assignment.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
     <dd style="margin:0">{{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submission</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submission</dt>
     <dd style="margin:0">
       {% if submission %}
       <span class="badge badge--success">Submitted</span>
@@ -46,6 +55,7 @@
       <span class="badge badge--neutral">Not submitted</span>
       {% endif %}
     </dd>
+</div>
   </dl>
 </div>
 
@@ -60,16 +70,19 @@
 </div>
 {% endif %}
 
+<div class="activity-writing-layout">
+<aside class="activity-writing-brief">
 <section>
   <h2>Instructions</h2>
   <div class="card">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
        assignment instructions are Teacher-typed text, never stored HTML. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ assignment.instructions }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ assignment.instructions }}</div>
   </div>
 </section>
 
-{% if submission %}
+</aside>
+<div class="activity-writing-paper">{% if submission %}
 {#- The immutable receipt. Only THIS Student's own answer is ever rendered
     here, and there is deliberately no edit control, no delete control and no
     resubmit control anywhere on the page -- none exists server-side either. -#}
@@ -81,7 +94,7 @@
   </div>
   <div class="card">
     {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ submission.answer_text }}</div>
+    {% include 'activities/_assignment_payload.html' %}
   </div>
 </section>
 
@@ -95,7 +108,7 @@
   <div class="card">
     {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe --
        feedback is Teacher-typed text, never stored HTML or Markdown. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
   </div>
 
   {% elif feedback and feedback.state == "invalid" %}
@@ -122,6 +135,7 @@
     Submissions close at {{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
   </div>
   <form method="post"
+        {% if assignment.submission_type == 'file' %}enctype="multipart/form-data"{% endif %}
         action="{{ url_for('student.assignment_submit', group_public_id=assignment.group_public_id, assignment_public_id=assignment.public_id) }}"
         novalidate data-research-form="assignment_submit"
         data-confirm="Submit this answer? It is final and cannot be edited or resubmitted.">
@@ -132,6 +146,14 @@
         different task. It carries public identifiers only. -#}
     <input type="hidden" name="submission_context" value="{{ submission_context_token }}">
 
+    {% if assignment.submission_type == 'file' %}
+    <div class="field assignment-upload">
+      {{ form.file.label(class_="field__label") }}
+      {{ form.file(class_="field__input", data_research_id="assignment_file_select", accept=upload_policy.accept, required=true, aria_describedby="assignment-file-policy assignment-file-error", aria_invalid='true' if form.file.errors else 'false') }}
+      <div id="assignment-file-policy" class="ds-section__desc"><p>One file: {{ upload_policy.extensions }}.</p><p>{% for category, limit in upload_policy.limits %}{{ category|title }}: up to {{ limit }} MiB{{ ' · ' if not loop.last else '' }}{% endfor %}.</p><p>After a validation error, select the file again. Your submission becomes final only after the server confirms it.</p></div>
+      <div id="assignment-file-error">{% for error in form.file.errors %}<span class="field__error">{{ error }}</span>{% endfor %}</div>
+    </div>
+    {% else %}
     <div class="field" style="max-width:none">
       {{ form.answer_text.label(class_="field__label") }}
       {{ form.answer_text(class_="field__input", rows="14") }}
@@ -140,19 +162,25 @@
       </span>
       {% for error in form.answer_text.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
+    {% endif %}
 
     <div class="ds-row" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary", **{"data-research-id": "assignment_submit"}) }}
-      <a class="btn btn--secondary" href="{{ url_for('student.assignments_list') }}">Cancel</a>
+      <a class="btn btn--secondary" href="{{ url_for('student.activities', type='assignment', group=assignment.group_public_id) }}">Cancel</a>
     </div>
   </form>
 </section>
 <script>
   document.querySelectorAll("form[data-confirm]").forEach(function (form) {
     form.addEventListener("submit", function (event) {
-      if (!confirm(form.dataset.confirm)) { event.preventDefault(); }
+      if (!window.aelmsConfirm && !confirm(form.dataset.confirm)) { event.preventDefault(); }
     });
   });
 </script>
+{% else %}<div class="empty-state"><div class="empty-state__title">Submission unavailable</div><p>Submission is not available right now. You can still read the task instructions.</p></div>
 {% endif %}
+
+</div>
+</div>
+</div>
 {% endblock %}

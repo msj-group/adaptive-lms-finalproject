@@ -286,6 +286,11 @@ def lesson_create(group_public_id, unit_public_id):
             return _render_lesson_form(form, group_public_id, unit_public_id, lesson=None, snapshot_token=None)
 
         flash(f"Lesson '{lesson.title}' created as a draft.", "success")
+        if request.form.get("after_save") == "materials":
+            return redirect(url_for(
+                "teacher.lesson_materials", group_public_id=group_public_id,
+                unit_public_id=unit_public_id, lesson_public_id=lesson.public_id,
+            ))
         return _redirect_lessons(group_public_id, unit_public_id)
 
     return _render_lesson_form(form, group_public_id, unit_public_id, lesson=None, snapshot_token=None)

@@ -1,0 +1,76 @@
+{% import '_figma_ui.html' as ui %}
+{% macro symbol(kind, size=24) -%}{{ ui.icon({'quiz':'quiz','listening':'headphones','speaking':'microphone','assignment':'pen'}.get(kind,'layers'),size) }}{%- endmacro %}
+{% macro intro(kind, phase, role) -%}
+{% set profiles = {
+ 'quiz': ('QUIZ LAB','A clear mind. One question at a time.','Focus on the question, choose your answers, and review them before submitting.'),
+ 'listening': ('LISTENING DESK','Listen closely. Make every detail count.','Keep the recording close while you work through each question.'),
+ 'speaking': ('VOICE STUDIO','Find your voice. Make it yours.','Read the brief, record at your own pace, and listen back before submitting.'),
+ 'assignment': ('WRITING ROOM','Make space for your ideas.','Keep the brief in view, shape your answer, and review it before submitting.') } %}
+{% set teacher_copy = {
+ 'quiz': ('Build a thoughtful challenge.','Shape the brief and questions, set availability, then review real attempts.'),
+ 'listening': ('Turn listening into discovery.','Pair a recording with clear questions and the appropriate transcript policy.'),
+ 'speaking': ('Give every voice a purpose.','Write a clear speaking prompt and review each submitted recording.'),
+ 'assignment': ('Start with a purposeful brief.','Set the task and its window, then read submitted work and leave useful feedback.') } %}
+{% set phase_copy = {'result':'Review your saved result, then return to the activity or course.','receipt':'Your submitted work and teacher feedback stay together here.','feedback':'Keep the submitted work beside your feedback. Review your comment before saving.','review':'Review each saved attempt or submission in its original activity context.','settings':'Set a clear opening window and enough time for the task.'} %}
+<header class="activity-intro activity-intro--{{ kind }}">
+  <div class="activity-intro-copy">
+<p class="activity-eyebrow">{{ _(profiles[kind][0]) }} <span aria-hidden="true">/</span> {{ _({'overview':'Overview','library':'Library','author':'Authoring','question':'In progress','result':'Result','review':'Review','feedback':'Feedback','record':'Record','receipt':'Receipt','settings':'Availability','editor':'Question editor'}.get(phase,'Overview')) }}</p>
+  <h2>{{ _({'result':'A moment to reflect.','receipt':'Your work, safely submitted.','feedback':'Make feedback useful.','review':'See the work. Understand the progress.','settings':'Make time for meaningful practice.'}.get(phase,teacher_copy[kind][0] if role == 'teacher' else profiles[kind][1])) }}</h2>
+<p>{{ _(phase_copy.get(phase,teacher_copy[kind][1] if role == 'teacher' else profiles[kind][2])) }}</p>
+</div>
+  <div class="activity-motif activity-motif--{{ kind }}" aria-hidden="true">
+<span>{{ symbol(kind,42) }}</span>{% if kind in ['listening','speaking'] %}<i>
+</i>
+<i>
+</i>
+<i>
+</i>
+<i>
+</i>
+<i>
+</i>{% elif kind == 'quiz' %}<b>{{ ui.icon('check',18) }}</b>
+<i>
+</i>
+<i>
+</i>{% else %}<i>
+</i>
+<i>
+</i>
+<i>
+</i>{% endif %}</div>
+</header>
+{%- endmacro %}
+{% macro guide(kind, phase) -%}
+<aside class="activity-workflow-guide">
+<span class="activity-guide-icon">{{ symbol(kind,26) }}</span>
+<h2>{{ _('Review with care' if phase == 'feedback' else 'A clear path forward') }}</h2>
+{% if phase == 'feedback' %}<ol>
+<li>Read the submitted work</li>
+<li>Write a helpful comment</li>
+<li>Save feedback</li>
+</ol>
+<p>Feedback is a written comment. Grades are managed separately.</p>
+{% elif kind in ['quiz','listening'] %}<ol>
+<li>{{ _('Prepare the recording and brief' if kind == 'listening' else 'Write the activity brief') }}</li>
+<li>Add and review questions</li>
+<li>Set the availability window</li>
+<li>Publish when ready</li>
+</ol>
+<p>Students see published activities according to their current access and the opening window.</p>
+{% else %}<ol>
+<li>Write a clear task</li>
+<li>Set the opening and deadline</li>
+<li>Publish when ready</li>
+<li>{{ _('Review recordings' if kind == 'speaking' else 'Review submitted answers') }}</li>
+</ol>
+<p>Check the instructions and dates before publishing. Submitted work keeps its original context.</p>{% endif %}
+</aside>
+{%- endmacro %}
+{% macro progress(answered, total) -%}<div class="activity-progress">
+<div>
+<span>Saved answers</span>
+<strong>{{ answered }} / {{ total }}</strong>
+</div>
+<progress value="{{ answered }}" max="{{ total if total else 1 }}" aria-label="Saved answers">{{ answered }} / {{ total }}</progress>
+<p>Use Save answer or Save and next to save a selection.</p>
+</div>{%- endmacro %}

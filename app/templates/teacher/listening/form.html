@@ -1,9 +1,15 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'listening' %}
+{% set activity_phase = 'author' %}
 {% block title %}{{ 'Edit Listening Activity' if activity else 'New Listening Activity' }} — {{ group.name }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+<div class="activity-author-layout">
+<div class="activity-author-main">
+
 {#- Phase 4 / M05. `activity` is None on create and a plain presentation dict
     on edit. The form carries ONLY the title, the instructions, the transcript,
     the transcript setting, the vocabulary notes and -- on create only -- the
@@ -22,7 +28,7 @@
     pressing Create twice resolves to the one activity that was made. -#}
 <div class="ds-page" style="max-width: 780px; padding: 0">
   <div class="ds-row" style="justify-content: space-between; align-items: center;">
-    <h1 style="margin:0">{{ 'Edit Listening Activity' if activity else 'New Listening Activity' }}</h1>
+
     <span class="badge badge--neutral">Draft</span>
   </div>
   <p class="ds-section__desc">
@@ -136,5 +142,8 @@
       {% endif %}
     </div>
   </form>
+</div>
+
+</div>{{ activity_ui.guide('listening','author') }}</div>
 </div>
 {% endblock %}

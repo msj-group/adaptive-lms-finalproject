@@ -31,7 +31,7 @@ create one.
 import re
 from decimal import Decimal, InvalidOperation
 
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from wtforms import SelectField, StringField, SubmitField
 from wtforms.validators import DataRequired, Length, ValidationError
 

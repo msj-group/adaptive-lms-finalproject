@@ -67,7 +67,15 @@ def _lock_context(source_public_id, target_public_id, student_public_id, episode
     return hierarchy, groups, student, episode
 
 
-def _target_error(hierarchy, group, student, *, transfer=False, excluding=None):
+def study_has_started(group, *, at=None):
+    """Informational only: study start does not close enrollment."""
+    if group is None or group.study_starts_at is None:
+        return False
+    moment = whole_second_utc() if at is None else at
+    return moment >= group.study_starts_at
+
+
+def _target_error(hierarchy, group, student, *, excluding=None):
     course = hierarchy.course(group.course_id)
     term = hierarchy.term(group.academic_term_id)
     level = hierarchy.level(course.level_id)
@@ -75,8 +83,6 @@ def _target_error(hierarchy, group, student, *, transfer=False, excluding=None):
         return "The Student and destination academic context must all be active."
     if group.study_starts_at is None:
         return "Set this group's study start before changing enrollment."
-    if not transfer and whole_second_utc() >= group.study_starts_at:
-        return "Study has started. New enrollment and re-enrollment are closed."
     if eligible_active_teacher_count(group.id) == 0:
         return "Assign an active Teacher before enrolling or transferring students."
     if active_student_enrollment_count(group.id) >= group.capacity:
@@ -148,7 +154,7 @@ def change_enrollment(*, action, actor_id, student_public_id, source_public_id=N
     if action == "correct_course" and source.course_id == target.course_id:
         raise EnrollmentConflict("Use Transfer for another group of the same course.")
     if target is not None:
-        error = _target_error(hierarchy, target, student, transfer=action == "transfer", excluding=episode.id if episode else None)
+        error = _target_error(hierarchy, target, student, excluding=episode.id if episode else None)
         if error:
             raise EnrollmentConflict(error)
     moment = whole_second_utc()

@@ -64,7 +64,6 @@ nothing about real InnoDB blocking.
 
 from datetime import timedelta
 
-from sqlalchemy import or_, update
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
@@ -305,9 +304,9 @@ def record_open(student_id, progress, now=None):
     - An opening within :data:`OPEN_REFRESH_SECONDS` of the recorded one is
       :data:`SKIPPED` without issuing any statement.
     - A first opening inserts the row at version 1 with no completion.
-    - A later opening moves ``last_opened_at`` forward, with a guard in the
-      ``WHERE`` clause so a concurrent opening can neither move it twice
-      within the window nor move it backwards.
+    - A later opening locks only its progress row, then rechecks the refresh
+      window. The normal mapper update preserves the immutable episode and
+      identity guards; no bulk-history exception is needed.
 
     ``completed_at`` and ``version`` are never touched. A concurrent first
     opening that wins the UNIQUE constraint makes this one
@@ -332,19 +331,15 @@ def record_open(student_id, progress, now=None):
             )
             db.session.flush()
         else:
-            table = LessonProgress.__table__
-            db.session.execute(
-                update(table)
-                .where(
-                    table.c.id == progress.progress_id,
-                    table.c.student_id == student_id,
-                    or_(
-                        table.c.last_opened_at.is_(None),
-                        table.c.last_opened_at <= now - _OPEN_REFRESH,
-                    ),
-                )
-                .values(last_opened_at=now)
-            )
+            row = LessonProgress.query.filter_by(
+                id=progress.progress_id, student_id=student_id,
+                group_id=progress.group_id, lesson_id=progress.lesson_id,
+            ).populate_existing().with_for_update().first()
+            if row is None or (row.last_opened_at is not None
+                               and now - row.last_opened_at < _OPEN_REFRESH):
+                db.session.rollback()
+                return SKIPPED
+            row.last_opened_at = now
         db.session.commit()
     except IntegrityError:
         db.session.rollback()

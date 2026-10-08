@@ -31,6 +31,7 @@
  */
 (function () {
   "use strict";
+  var t = window.aelmsUI ? window.aelmsUI.t : function (text) { return text; };
 
   function installStatusConfirmation(root) {
     var resultsContainer = root.querySelector("[data-live-search-results]");
@@ -42,7 +43,7 @@
     // every live update, without needing to re-attach listeners each time.
     resultsContainer.addEventListener("submit", function (event) {
       var statusForm = event.target.closest(statusFormSelector);
-      if (statusForm && statusForm.hasAttribute("data-confirm") && !window.confirm(statusForm.getAttribute("data-confirm"))) {
+      if (statusForm && statusForm.hasAttribute("data-confirm") && !window.aelmsConfirm && !window.confirm(statusForm.getAttribute("data-confirm"))) {
         event.preventDefault();
       }
     });
@@ -94,9 +95,9 @@
     function describeResults() {
       var count = resultsContainer.querySelectorAll("tbody tr").length;
       if (count === 0) {
-        return "No " + plural + " found.";
+        return t("No %(noun)s found.", {noun:t(plural)});
       }
-      return "Showing " + count + " " + (count === 1 ? singular : plural) + ".";
+      return t("Showing %(count)s %(noun)s.", {count:count,noun:t(count === 1 ? singular : plural)});
     }
 
     function buildUrl() {
@@ -121,7 +122,7 @@
       var controller = new AbortController();
       activeController = controller;
 
-      statusRegion.textContent = "Searching...";
+      statusRegion.textContent = t("Searching...");
 
       fetch(url, {
         headers: { "X-Requested-With": "XMLHttpRequest" },
@@ -157,7 +158,7 @@
           if (thisRequest !== requestSequence) {
             return; // an obsolete request's error must not touch the UI
           }
-          statusRegion.textContent = "Something went wrong loading results. Please try again.";
+          statusRegion.textContent = t("Something went wrong loading results. Please try again.");
         })
         .finally(function () {
           if (activeController === controller) {

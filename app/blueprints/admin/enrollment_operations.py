@@ -1,9 +1,9 @@
 """Reviewable enrollment operations with signed academic/financial previews."""
 import uuid
 from decimal import Decimal
-from flask import abort, current_app, flash, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from itsdangerous import BadSignature, URLSafeSerializer
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
@@ -13,9 +13,9 @@ from app.blueprints.admin import admin_bp
 from app.extensions import db
 from app.models import Course, Enrollment, EnrollmentEvent, EnrollmentMembership, Group, Invoice, User
 from app.security.decorators import roles_required
-from app.services.enrollment_operations import change_enrollment, enrollment_preview
+from app.services.enrollment_operations import change_enrollment, enrollment_preview, study_has_started
 from app.services.general_finance import account_totals
-from app.services.money import format_amount
+from app.services.money import calculate_discount, format_amount, validate_amount, validate_course_price
 from app.blueprints.admin.finance_registers import local_moment
 from app.blueprints.admin.financial_http import _financial_response
 
@@ -40,6 +40,48 @@ class EnrollmentOperationForm(FlaskForm):
 
 def _serializer():
     return URLSafeSerializer(current_app.config["SECRET_KEY"], salt="repair.enrollment.preview.v1")
+
+
+@admin_bp.post("/groups/<group_public_id>/enrollment-operations/<action>/preview")
+@_financial_response
+@roles_required("administrator")
+def enrollment_impact_preview(group_public_id, action):
+    """Read-only estimate. The signed snapshot and transaction remain authoritative."""
+    if action not in {"enroll", "withdraw", "transfer", "correct_course"}:
+        abort(404)
+    source = Group.query.filter_by(public_id=group_public_id).first_or_404()
+    student = User.query.filter_by(public_id=request.form.get("student_public_id", "")[:36], role="student").first_or_404()
+    episode, invoice = None, None
+    if action != "enroll":
+        episode = Enrollment.query.filter_by(public_id=request.form.get("episode_public_id", "")[:36],
+            student_id=student.id, group_id=source.id, status="active").first_or_404()
+        invoice = Invoice.query.filter_by(enrollment_id=episode.id, status="issued", deleted_at=None).order_by(Invoice.id).first()
+    balance = account_totals(student.id)["balance"]
+    try:
+        delta, charge, discount, collection = Decimal(0), Decimal(0), Decimal(0), Decimal(0)
+        cancelled = invoice.charge_amount - invoice.discount_amount if invoice and (
+            action == "correct_course" or action == "withdraw" and request.form.get("cancel_obligation") in {"y", "on", "true"}) else Decimal(0)
+        delta -= cancelled
+        if action in {"enroll", "correct_course"}:
+            target = source if action == "enroll" else Group.query.filter_by(public_id=request.form.get("target_public_id", "")[:36]).first_or_404()
+            if action == "correct_course" and target.course_id == source.course_id:
+                raise ValueError("Use Transfer for another group of the same course.")
+            charge = validate_course_price(target.course.price)
+            discount, net = calculate_discount(charge, request.form.get("discount_kind", "none"), request.form.get("discount_value", "0"))
+            delta += net
+            raw = request.form.get("initial_amount", "").strip()
+            if raw:
+                collection = validate_amount(raw)
+                method = request.form.get("initial_method", "")
+                if method not in {"cash", "bank_transfer"}:
+                    raise ValueError("Choose a supported initial collection method.")
+                confirmed = method == "cash" or request.form.get("initial_confirmed") in {"y", "on", "true"}
+                if confirmed:
+                    delta -= collection
+        return jsonify(before=format_amount(balance), after=format_amount(balance + delta),
+            note=f"Charge {format_amount(charge)} · Discount {format_amount(discount)} · Cancelled obligation {format_amount(cancelled)} · Initial collection {format_amount(collection)} LYD. Pending bank collections do not reduce the balance. No money is returned by this operation. Saving rechecks eligibility, capacity, dates, price and the signed snapshot.")
+    except (ValueError, TypeError) as exc:
+        return jsonify(error=str(exc) if isinstance(exc, ValueError) else "Configure the course price before continuing."), 400
 
 
 @admin_bp.route("/groups/<group_public_id>/enrollment-operations/<action>", methods=["GET", "POST"])
@@ -103,6 +145,12 @@ def enrollment_operation(group_public_id, action):
             return redirect(url_for("admin.enrollment_operation", group_public_id=group_public_id, action=action,
                 episode=episode_public_id, student=student_public_id, target=target_public_id))
         flash("Enrollment operation saved with its academic and financial history.", "success")
+        if action in {"enroll", "correct_course"} and study_has_started(episode.group, at=episode.created_at):
+            flash(
+                f"Study for {episode.group.name} started on {local_moment(episode.group.study_starts_at)} "
+                f"({current_app.config['APP_TIMEZONE']}). The student was enrolled after study started.",
+                "warning",
+            )
         return redirect(url_for("admin.group_members", group_public_id=episode.group.public_id))
     search = request.args.get("q", "").strip()[:100]
     student_query = User.query.filter_by(role="student", status="active")
@@ -119,7 +167,8 @@ def enrollment_operation(group_public_id, action):
         student=student, target=target, episode=episode, invoice=invoice, ready=ready, search=search,
         students=student_query.order_by(User.full_name, User.id).limit(50).all() if action == "enroll" and not ready else [],
         targets=targets.order_by(Group.name, Group.id).limit(50).all() if action in {"transfer", "correct_course"} and not ready else [],
-        facts=account_totals(student.id) if student else None, money=format_amount)
+        facts=account_totals(student.id) if student else None, money=format_amount, local=local_moment,
+        target_study_started=action in {"enroll", "correct_course"} and study_has_started(target))
 
 
 @admin_bp.get("/student-accounts/<student_public_id>/enrollment-history")

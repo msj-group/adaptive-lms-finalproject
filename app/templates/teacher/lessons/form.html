@@ -5,7 +5,7 @@
 {% endblock %}
 {% block portal_content %}
 <div class="ds-page" style="max-width: 640px; padding: 0">
-  <h1>{{ 'Edit Lesson' if lesson else 'New Lesson' }}</h1>
+  <h1 data-workspace-page-heading>{{ 'Edit Lesson' if lesson else 'New Lesson' }}</h1>
   <p class="ds-section__desc">
     {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }} — Unit: {{ unit.title }}
   </p>
@@ -59,6 +59,7 @@
        Publish / Unpublish, and lesson order only via move-up / move-down. #}
     <div class="ds-row" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
+      {% if not lesson %}<button type="submit" name="after_save" value="materials" class="btn btn--secondary">Save and add materials</button>{% endif %}
       <a class="btn btn--secondary" href="{{ url_for('teacher.group_lessons', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Cancel</a>
     </div>
   </form>

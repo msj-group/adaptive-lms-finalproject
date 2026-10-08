@@ -1,4 +1,4 @@
-from flask import current_app, make_response, render_template
+from flask import current_app, make_response, render_template, url_for
 from flask_login import current_user
 
 from app.blueprints.teacher import teacher_bp
@@ -33,6 +33,9 @@ def dashboard():
     conversations = build_inbox_view(
         recent_conversations(current_user.id), current_user.id, tz_name
     )
+    from app.services.teacher_review_queries import review_page, review_view
+    review_rows, review_has_more = review_page(current_user.id, tz_name, cap=5)
+    pending_reviews = review_view(review_rows, tz_name, url_for)
     # The recent conversations are private correspondence, so this page
     # now carries the same private-page headers as every messaging page.
     response = make_response(
@@ -44,6 +47,8 @@ def dashboard():
             announcement_cap=DASHBOARD_PREVIEW_CAP,
             conversations=conversations,
             conversation_cap=DASHBOARD_RECENT_CAP,
+            pending_reviews=pending_reviews,
+            review_has_more=review_has_more,
             **data,
         )
     )

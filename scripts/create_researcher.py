@@ -58,7 +58,7 @@ def main() -> int:
         )
         return 1
 
-    app = create_app("development")
+    app = create_app()
     with app.app_context():
         allowlist = app.config.get("RESEARCHER_EMAIL_ALLOWLIST") or frozenset()
         if not allowlist:

@@ -1,42 +1,26 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "messages/base.html" %}
 {% import "_message_macros.html" as msg %}
 {% block title %}Messages{% endblock %}
-{% block portal_nav %}{% include "messages/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-{#- Phase 4 / M11 inbox. Only threads the viewer is a member of, newest message
-    first, at most `page_size` per page. A thread whose shared group has ended
-    is still listed: reading depends on membership, not on the current group. -#}
-<div class="ds-row" style="justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap;">
-  <h1 style="margin: 0">Messages</h1>
-  <a class="btn btn--primary" href="{{ url_for('messages.new_thread') }}">New message</a>
-</div>
-<p class="ds-section__desc">
-  Private conversations between you and your {{ audience }}. Times are shown in the
-  center timezone (<strong>{{ tz_name }}</strong>).
-</p>
-
 {{ msg.flash_messages() }}
-
-{% if conversations %}
-{{ msg.conversation_list(conversations) }}
-{% if has_prev or has_next %}
-<nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Conversation pages">
-  {% if has_prev %}
-  <a class="btn btn--secondary" href="{{ url_for('messages.inbox', page=page - 1) }}">Newer conversations</a>
-  {% endif %}
-  <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
-  {% if has_next %}
-  <a class="btn btn--secondary" href="{{ url_for('messages.inbox', page=page + 1) }}">Older conversations</a>
-  {% endif %}
-</nav>
-{% endif %}
-{% else %}
-<div class="empty-state">
-  <div class="empty-state__title">No conversations yet</div>
-  <div>
-    You can start a private conversation with any of your {{ audience }} while you share an
-    active group. <a href="{{ url_for('messages.new_thread') }}">Start a conversation</a>.
+<div class="messenger messenger--inbox">
+  <div class="messenger-inbox-list">
+    {{ msg.sidebar(conversations, recipients=recipients, audience=audience, inbox_query=query_text|default('')) }}
+    {% if has_prev or has_next %}
+    <nav class="messenger-pagination" aria-label="Conversation pages">
+      {% if has_prev %}<a href="{{ url_for('messages.inbox', q=query_text|default(''), page=page - 1) }}">{{ msg.icon('back', 16) }} Newer</a>{% endif %}
+      <span>Page {{ page }}</span>
+      {% if has_next %}<a href="{{ url_for('messages.inbox', q=query_text|default(''), page=page + 1) }}">Older {{ msg.icon('arrow', 16) }}</a>{% endif %}
+    </nav>
+    {% endif %}
   </div>
+  <section class="messenger-welcome" aria-labelledby="message-welcome-title">
+    <div class="messenger-welcome__art" aria-hidden="true"><span>{{ msg.icon('message', 54) }}</span><i>{{ msg.icon('send', 26) }}</i></div>
+    <span class="messenger-eyebrow">A LITTLE CONVERSATION GOES A LONG WAY</span>
+    <h2 id="message-welcome-title">Your conversations,<br>all in one place.</h2>
+    <p>Ask a question, share an update, or keep learning together with your {{ audience }}.</p>
+    <a class="messenger-primary" href="{{ url_for('messages.new_thread') }}">{{ msg.icon('message', 18) }} Start a conversation</a>
+    <div class="messenger-welcome__note">{{ msg.icon('lock', 16) }} Only the two participants can access a conversation.</div>
+  </section>
 </div>
-{% endif %}
 {% endblock %}

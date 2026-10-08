@@ -34,7 +34,7 @@ is not duplicated either: all three text fields go through
 Administrator's wording for each rule.
 """
 
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from wtforms import DateField, StringField, SubmitField, TextAreaField, TimeField
 from wtforms.validators import DataRequired, Optional, ValidationError
 

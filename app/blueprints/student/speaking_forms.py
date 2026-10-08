@@ -4,7 +4,7 @@ Kept beside ``app/blueprints/student/forms.py`` rather than inside it so
 the M02 text-answer form's accepted contract is untouched.
 """
 
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from flask_wtf.file import FileField, FileRequired
 from wtforms import SubmitField
 

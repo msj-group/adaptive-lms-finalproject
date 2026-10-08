@@ -10,7 +10,7 @@ retention, actors, moments) is absent from every form: a forged field has
 nowhere to land.
 """
 
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from wtforms import BooleanField, HiddenField, IntegerField, SelectField, StringField, SubmitField
 from wtforms.fields import DateField, DateTimeLocalField
 from wtforms.validators import DataRequired, Length, NumberRange, Optional

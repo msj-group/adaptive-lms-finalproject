@@ -1,8 +1,466 @@
 # Repair status
 
-Local date: 2026-10-06 (Africa/Tripoli).
+## Active Version A delivery — 2026-10-08
+
+Final owner approval authorizes W0–W9 under Direction D + D-MOTION, protected
+current Login, evolved Messages and teacher-configured text/single-file
+assignments. Development schema/migrations and justified disposable-data work
+are authorized. The active ledger and boundaries are in
+[VERSION_A_DELIVERY.md](VERSION_A_DELIVERY.md). Version A implementation and
+bounded local acceptance/Pilot are complete; source/UI baseline
+YC-VA-D1-20261008 is frozen. A hosting-neutral data-free production artifact and
+runbooks are delivered. [VERSION_A_ACCEPTANCE.md](VERSION_A_ACCEPTANCE.md),
+[VERSION_A_BASELINE_FREEZE.md](VERSION_A_BASELINE_FREEZE.md) and
+[VERSION_A_READINESS.md](VERSION_A_READINESS.md) record evidence, limits and
+remaining actual-host/Study gates. No real production deployment or collection
+is claimed; the Development Pilot is paused. No new test package or Git commit.
+The entries below are historical evidence of preceding work.
+
+Local date: 2026-10-07 (Africa/Tripoli).
 Contract: [APPROVED_REPAIR_CONTRACT.md](APPROVED_REPAIR_CONTRACT.md).
 Roadmap: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+
+## Version A redesign — W0 / W1 — 2026-10-07
+
+The owner approved P01-P06 and authorized the Design Proposal / Architecture
+Review for sequential implementation. W0 contracts are recorded in
+[VERSION_A_DESIGN_CONTRACT.md](VERSION_A_DESIGN_CONTRACT.md). W1 shared tokens,
+base components and four-role shell are implemented in source. Superseded shared
+CSS declarations were removed in bounded sections; feature compatibility remains.
+
+Current evidence: 197 template syntax parses, 297 Python AST parses, valid Arabic
+catalog, shared-client JavaScript syntax, isolated four-role desktop rendering,
+Student mobile/light/dark/RTL, native drawer/menu focus and no-JS fallback. Final
+isolated browser review reported no JavaScript errors or document horizontal
+overflow in the inspected previews. No application/database or collector was
+started. Actual role/workflow, full responsive and accessibility acceptance is
+still pending; W1's exit gate is not declared complete and W2 has not started.
+
+[VERSION_A_W1.md](VERSION_A_W1.md) records scope, evidence and remaining gates.
+No research repair, file feature/migration, automated tests, install, DB/Git
+mutation, Version B, real collection or Baseline Freeze was performed.
+
+## Quiz presentation refinement and stable position — 2026-10-07
+
+The owner requested removal of save/bookmark success and explanatory text,
+an icon-only upper-right Bookmark control inside the question card, stable
+position between questions and a modern final-submission card beneath the
+question list. These changes are implemented in source. Success interactions
+are quiet; failure/retry feedback remains actionable. The bookmark retains
+accessible labels, pressed state and reduced-motion-aware hover/press/mark
+effects. The sidebar follows the question on narrow layouts.
+
+Question links preserve document/list/sidebar positions after pending writes.
+The one-use tab UI entry carries only public scope/destination paths, bounded
+pixel coordinates and a five-minute timestamp; no academic content, selections,
+flags, scores or secrets. It is consumed on the matching question page; later
+layout restoration stops on user interaction. Native protected navigation
+continues if browser storage is unavailable. Back/forward reauthorization is
+retained with position preservation. Server saves, ownership, CSRF, tokens,
+expiry, grading, bookmark persistence and research semantics are unchanged.
+
+Verification: 197 Jinja sources compiled, 344 application/migration Python
+sources parsed, 160 guarded offline Quiz renders passed full before/after native
+POST protocol comparisons, including 320 answer/final-submit input comparisons.
+Markup/placement confirms no nested forms and the intended card hierarchy;
+source review confirms quiet success handling and bounded position restoration.
+Protected server/query/transaction/grading/expiry/Listening sources and shared
+workspace guards are unchanged. All 3,228 earlier Arabic entries are preserved;
+one accessible icon label brings the catalog to 3,229. Node syntax and diff
+whitespace checks passed; the index is empty.
+
+No app factory/view dispatch, application database access, browser/server,
+automated suite, migration, installation or Git mutation. Actual scrolling,
+animation, asynchronous navigation and device usability remain unverified under
+the owner's source-only constraint. See [QUIZ_INTERACTION.md](QUIZ_INTERACTION.md).
+
+## Quiz autosave and question review — 2026-10-07
+
+The latest owner request is implemented in source for ordinary Student Quizzes:
+option-change saving replaces Save answer/Save and next, with a question sidebar
+showing confirmed answered/unanswered state, current question and Bookmark flags.
+Every shortcut targets its own nested question directly. The sidebar adapts to
+small layouts; Arabic and shared light/dark tokens are supported. Initial and
+pre-start instructions now match the interaction. Final submission remains
+explicit, with server-authoritative unanswered confirmation and expiry.
+
+Serialized complete-set saves keep the latest choice pending until acknowledged;
+same-tab navigation/submission wait for it and for pending bookmark updates.
+Failure offers retry or explicit discard/reload recovery. Clearing all checkbox
+choices keeps the answer history row but returns the question to unanswered.
+Review flags survive navigation/reload in the browser session only, in a bounded
+signed HttpOnly account/auth-version-bound cookie. No migration is needed.
+
+Verification: 197 Jinja sources compiled, 344 application/migration Python sources
+parsed, 160 guarded offline Quiz markup states rendered and 320 protected native
+input comparisons passed. Two MySQL query statements compiled without execution.
+Pure selection/cookie helper review covered clearing, duplicate/foreign choices,
+single/multiple cardinality, tampering, refresh/unmark, account/auth-version
+isolation and the cookie bounds. Source comparison preserves other Quiz functions,
+Listening route/template and shared transactions/grading/expiry. All 3,207 earlier
+Arabic entries remain unchanged, with 21 additions (3,228 total). Node syntax and
+Git diff whitespace checks passed, with an empty index.
+
+No app factory/view dispatch, browser/server, application DB operation, automated
+suite, schema/migration, installation or Git mutation. Actual asynchronous network,
+concurrency and device usability acceptance remains unverified under the owner's
+source-only constraint. See [QUIZ_INTERACTION.md](QUIZ_INTERACTION.md).
+
+## Fewer clicks across ordinary workflows — 2026-10-07
+
+The owner requested a platform-wide review of unnecessary steps and practical
+removal/combination of them. Teacher dashboard/review/submission lists now open
+the existing combined feedback editor directly, with a Group-filtered return
+link. Gradebooks and draft attendance lists open their existing score/marking
+tools directly. Administrator Group lists link to members/schedules; Researcher
+export lists offer download for retained archives. Course content trees provide
+an eligible nested Add lesson action. New question forms offer save-and-add;
+new Lesson forms offer save-and-materials; Students may complete-and-next.
+Attendance drafts offer form-only bulk present selection with undo. Duplicate
+activity-type selection is removed while the chosen GET filter is preserved.
+The nine new owned phrases extend the Arabic dictionary to 3,207 entries.
+
+All shortcuts use the existing protected write paths or existing GET tools.
+Navigation intents use fixed server destinations after successful saves.
+Completion failures stay on the current Lesson; the next Lesson comes from the
+same own-Group published outline. Bulk attendance never saves/finalizes or
+changes notes/roster/state tokens. A correlated EXISTS adds archive availability
+to the existing paginated provenance-scoped export query without per-row reads.
+Finance, release/publication, final submission, collection, roster and membership
+decisions remain explicit. See [WORKFLOW_SIMPLIFICATION.md](WORKFLOW_SIMPLIFICATION.md)
+for the cross-role brainstorm and estimated before/after activation counts.
+
+Verification: 197 Jinja sources compiled and 348 Python sources parsed. Guarded
+offline fixtures rendered 430 states (340 activity/library and 90 additional
+workflow states); 405 before/after protected native POST comparisons passed,
+excluding only the intended new navigation submitters and inert bulk controls.
+AST comparison found changes only to seven intended functions in six modules;
+five existing functions retained their original logic after navigation additions
+were removed for comparison. Four Research export count/list SQL statements
+compiled with MySQL syntax for study/development provenance without execution;
+the Teacher/Student activity unions also compiled. Four synthetic next-Lesson
+outline boundaries were reviewed. The 3,198 earlier Arabic entries are unchanged,
+the scoped filter CSS change was reviewed, JavaScript syntax passed Node check,
+and final Git diff whitespace check passed with the index empty.
+
+No app factory/view dispatch, browser/server, application database operation,
+schema/migration, dependency installation, automated test suite or Git mutation.
+Actual responsive/device usability and transaction/concurrency acceptance remain
+unverified under the owner's source-only instruction. Counts in the workflow
+document are source-derived estimates, not observed user-study measurements.
+
+## Four activity workspaces and course integration — 2026-10-07
+
+The owner requested redesign of all Student/Teacher activity pages and their
+library. All 36 activity templates now use Quiz lab, Listening desk, Voice
+studio or Writing room layouts, with dedicated authoring, participation,
+receipt/results and review presentation. Library cards provide native filters,
+actual states/deadlines and correct course/group destinations. Teacher Activities
+is a new primary destination with a bounded own-assignment SQL library; a
+read-only exact assignment overview joins the existing nested tools. Course
+studio/Student overview/context links carry the actual Group. No Unit/Lesson
+association or completion/grade policy is fabricated. Arabic/RTL and themes
+extend to the new layouts; the owned UI dictionary now contains 3,198 entries.
+See [ACTIVITY_DESIGN.md](ACTIVITY_DESIGN.md).
+
+Verification: 197 Jinja sources compiled; 340 offline activity/library markup
+states and 315 before/after rendered POST protocol pairs reviewed; MySQL SQL
+compiled without execution; 198 own-role navigation states reviewed. Existing
+CSRF/state fields, selectors, research attributes, answer-key separation,
+submission/publication guards and audio/recorder scripts are preserved. No app
+factory/view dispatch, browser/server, application database, schema/migration,
+dependency installation, automated suite or Git mutation. Actual visual,
+responsive, device and workflow acceptance remains pending under the earlier
+source-only instruction.
+
+## Arabic, themes and utility panels — 2026-10-07
+
+The owner authorized Arabic and dark mode across the platform, with language and
+theme selected in Display. Display/Help now open shared native popover panels
+from the navigation rail/account card instead of separate pages. Earlier direct
+URLs redirect to the appropriate role home with the requested panel. Public
+login/opening/error surfaces expose the same controls. Strict native POST/CSRF
+preferences save only device presentation cookies; motion/spacing retain their
+existing local settings. All four workspaces share themed surfaces and Arabic
+RTL presentation. Owned UI/form/client messages use a 3,101-entry dictionary;
+authored learning/messages/research content and machine values remain intact.
+All 3,953 emoji receive local Arabic names/search terms with English aliases.
+See [APPEARANCE_AND_ARABIC.md](APPEARANCE_AND_ARABIC.md).
+
+Verification: 346 Python ASTs across app/scripts/migrations, all 191 Jinja sources,
+195 role/menu/shared/section render states plus 48 public login/error states,
+14 JavaScript syntax checks, dictionary substitutions, emoji glyph/order equality
+and source-only preference response checks. No app factory/request dispatch,
+application database, migration, browser/server, automated suite or Git mutation.
+Actual visual/keyboard/device-persistence acceptance remains pending under the
+source-only instruction. This follow-up supersedes the earlier Help/Display
+page presentation described below; navigation/account/history contracts remain.
+
+## Shared menu and list redesign — 2026-10-07
+
+All four workspaces now share a light navigation rail with the original logo,
+role badge, consistent icons, grouped links, blue current-page selection and
+limited red accents. Account cards, context tabs, native selects, filters,
+record/report sections, pagination, conversation/action/emoji menus, outlines
+and data lists receive consistent presentation. All primary URLs and protected
+forms remain; shared Administrator Help/Display pages retain the complete menu.
+Single titles, full-page messaging and sidebar offset restoration are preserved.
+
+Verification: 292 Python ASTs and 190 Jinja sources parse. Offline rendering
+covers 65 role/destination/shared-page/section states, including all 47 primary
+destinations and own-role menus on Help/Display/Account pages. URL inventory,
+selected state, header title, unique IDs, account links and POST logout/CSRF
+were checked. CSS received source/specificity/delimiter review; no parser was
+available or installed. See [NAVIGATION_DESIGN.md](NAVIGATION_DESIGN.md).
+No application database, migration, server/browser, automated suite or Git
+mutation. Actual visual/responsive/keyboard acceptance remains pending under
+the owner's source-only instruction.
+
+## Own password and profile photo — 2026-10-07
+
+All four roles have Account settings in the top-right account card. The page
+offers current-password verification and confirmation of a new 15–128 character
+password, then signs out after an auth-version bump. Own still JPG/PNG/WebP
+photos are bounded, decoded, stripped of metadata and stored as private square
+PNGs; they appear in the account toggle/card/page. CSRF, signed stale-form
+checks, actor reauthorization, canonical lock order and append-only revisions
+apply. Existing upload/account-history tables support this without a migration.
+Pillow 12.3.0 was already installed transitively and is now a direct requirement;
+no installation was performed. See [ACCOUNT_SETTINGS.md](ACCOUNT_SETTINGS.md).
+
+Verification: 292 Python ASTs and 190 Jinja sources parse; account modules load
+with the project's Python 3.14.6/Pillow 12.3.0. Offline rendering covers 16
+four-role/photo/error states with single titles, unique IDs, blank password
+values and native POST/CSRF forms. Four account URL rules resolve in blueprint
+metadata. No request dispatch, application factory, application database,
+browser/server, automated suite, schema changes or Git mutations. Actual
+credential/photo persistence and concurrency remain unverified under the
+owner's source-only instruction.
+
+## Remaining UX/UI review recommendations — 2026-10-07
+
+The owner requested implementation of the review folder's remaining findings.
+Student/Teacher dashboards now prioritize real daily work, with a shared bounded
+comment queue summary, exact lesson continuation context and compact secondary
+sections. Teacher group tools use five main families with all existing URLs.
+Desktop bell preview is read-only; mobile falls back to the inbox. Notifications
+have normalized kind filters and descriptive native POST actions. Owned-thread
+inbox search spans names/subjects with escaped LIKE and preserved pagination.
+Later full-page messaging, account/scroll/title decisions remain intact.
+
+Source evidence: 288 Python ASTs, 189 Jinja sources, two Node syntax checks;
+offline rendering of 34 messaging, 10 dashboard, 16 notification and six search
+states plus one grouped-navigation fragment. Changed URLs resolve in blueprint
+metadata; 11 MySQL-dialect read statements compile without SQL execution and
+the workspace time helper works. See [UX_UI_IMPLEMENTATION.md](UX_UI_IMPLEMENTATION.md)
+for the failed fictional compiler probe and corrected pre-connection guard.
+No application database, migration, server/browser, automated suite, installation,
+scheduler/deployment or Git mutation. Visual/runtime acceptance remains pending
+under the owner's source-only constraint; future AI/push/offline/Rubrics remain
+independent features. An Arabic resolution record accompanies the review folder.
+
+## One workspace title per tab — 2026-10-07
+
+All shared workspace layouts now render one semantic page-title h1 below their
+role eyebrow. Messages follows the same rule, replacing its prior suppressed
+header/off-screen content heading. Explicit markers hide 148 duplicate page
+headings on screen; section headings, learning content, dashboard greetings
+and independent financial document identifiers remain. Marked headings remain
+available when printing. Nine previously untitled pages now have source title
+blocks; the grade-sheet title preserves Enter scores/Correct scores mode.
+
+Bounded source review parsed all 186 Jinja sources: no missing page-title blocks
+or unmarked duplicate page headings. Offline StrictUndefined rendering covered
+34 messaging/dashboard states, four inherited role layouts and 15 actual
+page/role combinations; headers appeared once and account cards remained.
+Both grade-action title branches rendered correctly. Focused Git/untracked
+whitespace review passed; CSS was reviewed from source. No automated tests,
+platform/server/browser operation, database access, installation or Git mutation.
+No fresh visual or comprehensive workflow acceptance is claimed.
+
+## Full-page messaging surface — 2026-10-07
+
+Messaging now uses the full available workspace below the account bar, without
+the earlier 1580px page limit, capped panel height, outer page padding or shell
+footer. Conversation lists/history scroll inside the surface, including the
+mobile inbox. Print behavior and the no-JavaScript mobile navigation fallback
+remain. Removed messaging timezone copy, the visible Enter/Shift+Enter hint,
+and the sidebar slogan/View all footer. Character counts, keyboard sending,
+native forms, timestamps and pagination are retained.
+
+Six Jinja sources parsed; offline StrictUndefined rendering covered 32 fictional
+messaging states and two dashboard previews. Requested phrases and messaging
+shell footers were absent; textarea descriptions resolved and other-page
+labels/footers remained. JavaScript syntax and focused whitespace checks passed.
+CSS was reviewed from source; a CSS parser was unavailable. No platform/browser
+operation, database access, automated tests, installation or Git mutation was
+performed. Updated viewport geometry has not been visually reviewed in a browser.
+
+## Login transition and workspace navigation — 2026-10-07
+
+Latest source-only follow-up: the owner requested the same four changes without
+launching the platform or using the browser. Removed the remaining topbar
+Messages label through the shared messaging base template, retaining other
+portal page labels and the accessible off-screen messaging h1. The existing
+login transition, upper-right account card and sidebar offset restoration were
+reviewed and retained. Offline checks passed: nine Jinja sources parsed, eight
+fictional Student/Teacher states rendered, auth Python parsed and two JavaScript
+syntax checks. No browser/server operation, database access, automated tests
+or Git mutation was performed in this follow-up. Earlier live evidence below
+describes the preceding checkpoint, not a fresh browser run.
+
+The owner requested removal of the duplicate messaging title, the supplied
+branded post-login transition, an avatar account card instead of sidebar
+identity/logout blocks, and stable sidebar scroll position during navigation.
+These refinements are implemented across all four shared workspace layouts.
+Successful login retains its validated role-safe return path; the brief screen
+also has native continuation and POST logout actions. No schema change is needed.
+
+Live Student/Teacher review confirmed automatic login continuation, return
+path/Back action, card keyboard/Escape/outside closure, ordinary sign-out and
+stable actual-click sidebar offsets on desktop and mobile. The 320px card fits
+without document overflow. Bounded syntax and StrictUndefined rendering cover
+34 messaging states plus four role cards/four transition states. Temporary
+viewport overrides were reset. No automated tests, credentials changed,
+installation or Git mutation; broader live Administrator/Researcher follow-up
+and concurrency acceptance are not claimed. See
+[UX/UI Implementation](UX_UI_IMPLEMENTATION.md) for exact evidence.
+
+## Messaging reference design and activation — 2026-10-07
+
+Shared Student/Teacher messaging uses the supplied glass layout and platform
+palette, Enter sending, a complete Unicode 17 emoji catalog, sender edits,
+sender hiding for both participants and participant-only conversation clears.
+Inbox, contact composer, thread and dashboard previews share the display rules.
+Original correspondence remains stored unchanged; management appends history.
+
+The owner separately approved the exact additive migration `6b3a8c2d9041` from
+`085b7a4e9012` and manual review with existing fictional accounts. Local MySQL
+is now at the new revision. Original messaging-row fingerprints match before
+and after (3 threads, 6 memberships, 7 messages), and a read-only comparison
+of the two new tables found zero model/schema differences.
+
+Bounded Python/JavaScript/Jinja/SQL review and manual fictional-template
+browser checks passed. Administrator access to messaging was correctly refused
+by the live app. Using an owner-supplied existing fictional credential, ordinary
+Student/Teacher UI review confirmed delivery, editing, hide for both members,
+member-only clear and a new reply reappearing without cleared older history.
+The original edited/hidden body remains stored. Two normal manual-review sends,
+one edit, one hide and one clear are retained; no automated tests, data reset/
+seed, credential changes or Git mutation occurred. Concurrency acceptance is
+not claimed.
+See [UX/UI Implementation](UX_UI_IMPLEMENTATION.md) and
+[Message Schema and Activation](MESSAGE_MANAGEMENT_SCHEMA_PLAN.md) for evidence
+and the verification boundary. Historical checkpoints below retain their scope.
+
+## Enrollment after study start — 2026-10-06
+
+The owner removed the admission cutoff. New enrollment, re-enrollment and
+wrong-course correction now allow a started destination. A non-blocking notice
+shows its actual study start in the center timezone before selection/review;
+successful new-episode operations also explain late entry. The success notice
+uses the episode creation time, including idempotent replays, rather than the
+current viewing time. Eligibility, configured start, teachers, capacity,
+duplicates, signed snapshots, lock order and atomic financial history remain.
+
+Manual Administrator review confirmed the notice for Foundation A (start
+2026-09-16 09:33:54 Africa/Tripoli), an enabled review-form save button, and
+no notice for Upcoming Foundation. No enrollment operation was submitted;
+the post-save flash and persisted transaction were not exercised in this
+check. Static review passed: 285 Python files, 184 Jinja templates, 334 routes,
+no unknown literal template endpoints; scoped CRLF-aware Git whitespace review
+passed. No automated tests, schema/data change, installation, deployment or
+Git publication occurred. The local source-preview server was restarted to
+load the changed Python code. Evidence:
+`../UX_UI_Review_2026-10-06/implementation/late-enrollment-notice.png`.
+
+## Current-platform UX/UI delivery — 2026-10-06
+
+Role-scoped workspaces, shared interface behavior, lesson-opening correction,
+Teacher authoring/review context, Administrator account/financial previews,
+Research presentation and calendar layouts are implemented. See
+[UX/UI Implementation](UX_UI_IMPLEMENTATION.md) for the exact changes, manual
+evidence and retained contracts. Current source checks: 285 application Python
+files, 184 Jinja templates, 334 routes, no unknown literal template endpoints;
+six JavaScript syntax checks and CRLF-aware Git whitespace review passed.
+
+Four fictional roles were reviewed manually in localhost. Current narrow-screen
+browser acceptance, physical microphone/network/timer scenarios and exhaustive
+regression/security/performance checks are not claimed. No automated tests,
+migration/reset, deployment or Git publication were performed. The owner kept
+future AI/assessment/external notification/offline ideas outside this delivery.
+The follow-up focused redesign study is documented separately from implemented
+behavior. Historical verification records below retain their original scope.
+
+
+## Local Student-to-Researcher rehearsal — 2026-10-06
+
+The owner requested local ordinary usage, review and export before redesign,
+and authorized necessary source corrections.
+
+- Added server-selected operational-review exports. New manifests record
+  `dataset_kind`, source and `natural-use-csv.v2`; session rows preserve their
+  provenance. An append-only creation-audit code persists export scope without
+  a migration. Lists, detail and download enforce that scope. Study exports
+  still require study sessions and study subjects; historical bytes are intact.
+- Started the existing local app on loopback port 5000 with the existing
+  configuration: development source, disabled online payments, 15-day retention
+  and Africa/Tripoli timezone. No secrets or environment values were changed.
+- Through the Researcher UI, created and activated version 3, **Local
+  operational collection**, then started collecting. Its period is
+  2026-10-06 00:00 to 2026-11-06 00:00 Africa/Tripoli. Existing policy defaults
+  are unchanged; version 2 is retained as retired history.
+- Manually created and downloaded an operational-review ZIP of existing local
+  data: 1 subject, 3 sessions, 12 events, 3 prompts. Inspected its source,
+  session column and all four content checksums; the manifest digest matches
+  the UI. This archive precedes the new Student navigation and is not its data.
+- Signed in as the existing Student and opened Dashboard/Activities without
+  starting or submitting an attempt. A new version-3 session recorded accepted
+  events. Open assignments, quizzes, speaking and listening remain available
+  for the owner to perform; the local page is left at Activities.
+- Bounded syntax review compiled 334 Python sources and parsed 169 templates.
+  ORM mapping, both scope queries and read-only MySQL readiness reads succeeded;
+  Git whitespace review passed. No automated tests were created or run.
+
+Schema stays `085b7a4e9012`. The normal UI actions wrote the new configuration,
+audit, export and navigation session; there was no reset, seed, reclassification,
+migration, dependency installation, scheduler change, commit or push. This is
+local manual verification, not production acceptance or complete task execution.
+See [Local Research Walkthrough](LOCAL_RESEARCH_WALKTHROUGH.md).
+
+## Latest hosting/evaluation cleanup — 2026-10-06
+
+The owner chose an empty future hosting database and retained the existing
+local database. No LibyanSpider plan is selected or purchased. Normal role
+workflows use manually entered fictional input during operational evaluation.
+
+- Removed the payment simulation adapter, checkout/actions, webhook route,
+  account link and templates. Startup accepts only disabled online payments.
+  Historical provider tables/evidence remain; cash/bank workflows are retained.
+- Removed Researcher data-mode selectors, the demonstration counter and the
+  per-account demonstration operator command. Server settings select workspace
+  scope automatically; review includes retained non-study history. Production
+  HTTP settings now default to non-study provenance. Existing sessions and
+  audit classifications are never rewritten or included in study exports.
+- Removed the public component showcase and its sample-only form/page.
+- Account provisioning helpers now use the explicitly selected deployment
+  environment, with private interactive password input and no seeded content.
+- Added [Hosting Preparation](HOSTING_PREPARATION.md), updated startup and
+  research guides, and supplied the approved 15-day template retention value.
+
+This is source preparation, not hosting acceptance. The target-specific WSGI,
+HTTPS/proxy, shared rate-limit backend, persistent storage, backups and daily
+job still need deployment configuration and manual review. No database,
+scheduler, dependency installation, new automated test or Git mutation was
+performed in this follow-up. The previous source/interface review below is
+historical evidence of the earlier build.
+
+Current static review compiled 334 Python sources in memory, parsed 169 Jinja
+templates and resolved their static imports and literal URL endpoints. All 64
+compatibility handlers retain their route/security decorators. Application
+startup registered 320 rules and configured ORM mappers without a database
+query or automated test. The Git whitespace check passed. This is bounded
+source review, not a browser/deployment or comprehensive regression result.
 
 ## Latest owner scope and close-out — 2026-10-06
 

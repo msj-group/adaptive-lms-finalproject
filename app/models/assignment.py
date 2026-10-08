@@ -142,6 +142,7 @@ class Assignment(db.Model):
     __table_args__ = (
         db.UniqueConstraint("group_id", "title", name="uq_assignments_group_title"),
         db.CheckConstraint("opens_at < due_at", name="ck_assignments_opens_before_due"),
+        db.CheckConstraint("submission_type IN ('text', 'file')", name="ck_assignments_submission_type"),
         db.CheckConstraint(_STATUS_CHECK_SQL, name="ck_assignments_status_valid"),
         db.CheckConstraint(
             "(status = 'draft' AND published_at IS NULL) "
@@ -169,6 +170,7 @@ class Assignment(db.Model):
     )
     title = db.Column(db.String(150), nullable=False)
     instructions = db.Column(db.Text, nullable=False)
+    submission_type = db.Column(db.String(16, collation=CODE_COLLATION), nullable=False, default="text", server_default="text")
     opens_at = db.Column(db.DateTime, nullable=False)
     due_at = db.Column(db.DateTime, nullable=False)
     status = db.Column(
@@ -201,4 +203,10 @@ class Assignment(db.Model):
     def validate_status(self, _key, value):
         if value not in set(_STATUS_VALUES):
             raise ValueError(f"Invalid status: {value}")
+        return value
+
+    @validates("submission_type")
+    def validate_submission_type(self, _key, value):
+        if value not in {"text", "file"}:
+            raise ValueError("Invalid assignment submission type")
         return value

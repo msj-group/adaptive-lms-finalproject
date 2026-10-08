@@ -23,7 +23,7 @@
     There is deliberately no release control here: release is a separate
     POST-only route with its own confirmation and its own signed token, so a
     forged released_at field in this body has nowhere to land. -#}
-<h1 style="margin-top: 0">{{ "Edit grade item" if item else "New grade item" }}</h1>
+<h1 data-workspace-page-heading style="margin-top: 0">{{ "Edit grade item" if item else "New grade item" }}</h1>
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }}
 </p>

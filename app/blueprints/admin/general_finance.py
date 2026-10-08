@@ -1,9 +1,9 @@
 """General Student account forms, corrections and immutable revision views."""
 import uuid
 from functools import wraps
-from flask import abort, current_app, flash, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from itsdangerous import BadSignature, URLSafeSerializer
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
@@ -17,7 +17,7 @@ from app.security.decorators import roles_required
 from app.services.financial_history import document_snapshot
 from app.services.general_finance import account_totals, correct_invoice, correct_payment, lock_financial_student, record_money
 from app.services.general_finance_queries import balances_for_students
-from app.services.money import format_amount
+from app.services.money import calculate_discount, format_amount, validate_amount, validate_course_price
 
 
 class MoneyForm(FlaskForm):
@@ -25,7 +25,7 @@ class MoneyForm(FlaskForm):
     amount = StringField("Amount (LYD)", validators=[InputRequired(), Length(max=32)])
     direction = SelectField("Movement", choices=[("in", "Collection"), ("out", "Return credit to student")])
     method = SelectField("Method", choices=[("cash", "Cash"), ("bank_transfer", "Bank transfer")])
-    invoice_public_id = StringField("Invoice context (optional)", validators=[Optional(), Length(max=36)])
+    invoice_public_id = SelectField("Invoice context (optional)", choices=[], validators=[Optional()])
     bank_reference = StringField("Bank reference", validators=[Optional(), Length(max=64)])
     bank_date = DateField("Bank transfer date", validators=[Optional()])
     confirmed = BooleanField("Bank transfer has been verified")
@@ -89,7 +89,7 @@ def record_page(student_public_id):
     from app.blueprints.admin.finance_registers import local_moment
     return render_template("admin/general_finance/record.html", student=student, facts=account_totals(student.id),
         invoices=invoices, payments=payments, money=format_amount, receipts=receipts, episodes=episodes,
-        local=local_moment, sandbox=current_app.extensions["payment_provider"].mock_enabled)
+        local=local_moment)
 
 
 @admin_bp.route("/student-accounts/<student_public_id>/money/new", methods=["GET", "POST"])
@@ -98,6 +98,14 @@ def record_page(student_public_id):
 def student_money_new(student_public_id):
     student = _student(student_public_id)
     form = MoneyForm()
+    invoices = Invoice.query.filter_by(student_id=student.id, deleted_at=None).order_by(Invoice.id.desc()).limit(500).all()
+    selected_invoice = request.args.get("invoice", "")[:36] if request.method == "GET" else form.invoice_public_id.data
+    if selected_invoice and all(row.public_id != selected_invoice for row in invoices):
+        selected = Invoice.query.filter_by(student_id=student.id, deleted_at=None, public_id=selected_invoice).first()
+        if selected is not None:
+            invoices.append(selected)
+    form.invoice_public_id.choices = [("", "General student account")] + [(row.public_id,
+        f"{row.invoice_number} · {(row.course_snapshot or {}).get('title', 'Course')} · {row.status}") for row in invoices]
     if request.method == "GET":
         form.operation_key.data = str(uuid.uuid4())
         form.invoice_public_id.data = request.args.get("invoice", "")[:36]
@@ -119,7 +127,7 @@ def student_money_new(student_public_id):
         else:
             flash("Money movement recorded.", "success")
             return redirect(_record_url(student))
-    return render_template("admin/general_finance/form.html", form=form, student=student, title="Record money movement",
+    return render_template("admin/general_finance/form.html", form=form, student=student, title="Record money movement", facts=account_totals(student.id),
         description="Invoice context is optional. A payout records money actually returned to the student and cannot exceed current credit.")
 
 
@@ -140,6 +148,14 @@ def student_document_correct(student_public_id, kind, document_public_id):
             form.discount_kind.data = "none"
     form.action.choices = [(key, label) for key, label in form.action.choices if key in (
         {"edit", "delete", "reverse"} if kind == "invoice" else {"edit", "delete", "confirmed", "rejected"})]
+    if document.deleted_at is not None or kind == "payment" and document.kind != "collection":
+        return redirect(url_for("admin.student_document_detail", student_public_id=student.public_id, kind=kind, document_public_id=document.public_id))
+    if kind == "invoice" and document.status != "issued":
+        form.action.choices = [("delete", "Delete record")]
+    if kind == "payment":
+        reversal = PaymentTransaction.query.filter_by(reversal_of_payment_transaction_id=document.id).first()
+        allowed = {"delete"} if reversal else {"edit", "delete"} | ({"confirmed", "rejected"} if document.status == "pending" else set())
+        form.action.choices = [(key, label) for key, label in form.action.choices if key in allowed]
     if request.method == "GET":
         form.snapshot.data = _token(document)
         form.amount.data = format(document.charge_amount if kind == "invoice" else document.amount, "f")
@@ -166,8 +182,93 @@ def student_document_correct(student_public_id, kind, document_public_id):
             return redirect(url_for("admin.student_document_correct", student_public_id=student_public_id, kind=kind, document_public_id=document_public_id))
         flash("Correction saved with its previous values and operator.", "success")
         return redirect(_record_url(student))
-    return render_template("admin/general_finance/form.html", form=form, student=student, title="Correct financial record", kind=kind,
+    return render_template("admin/general_finance/form.html", form=form, student=student, title="Correct financial record", kind=kind, document=document, facts=account_totals(student.id),
         description="Corrections preserve the previous record. Deleting a recorded collection does not record a real payout; use Return credit to student when money actually changes hands.")
+
+
+@admin_bp.post("/student-accounts/<student_public_id>/money/preview")
+@_financial_response
+@roles_required("administrator")
+def student_money_preview(student_public_id):
+    """Read-only exact-decimal impact; no locks, writes or signed tokens consumed."""
+    from decimal import Decimal
+    student = _student(student_public_id)
+    balance = account_totals(student.id)["balance"]
+    try:
+        kind = request.form.get("document_kind", "")
+        action = request.form.get("action", "edit")
+        if kind:
+            model = {"invoice": Invoice, "payment": PaymentTransaction}.get(kind)
+            if model is None:
+                abort(404)
+            document = model.query.filter_by(student_id=student.id,
+                public_id=request.form.get("document_public_id", "")[:36], deleted_at=None).first_or_404()
+            if kind == "invoice":
+                before = document.charge_amount - document.discount_amount if document.status == "issued" else Decimal(0)
+                if action != "delete" and document.status != "issued":
+                    raise ValueError("Only a current issued invoice can be corrected or cancelled.")
+                if action in {"delete", "reverse"}:
+                    after = Decimal(0)
+                elif action == "edit":
+                    price = validate_course_price(request.form.get("amount", ""))
+                    _discount, after = calculate_discount(price, request.form.get("discount_kind", "none"), request.form.get("discount_value", "0"))
+                    if document.status != "issued":
+                        after = Decimal(0)
+                else:
+                    raise ValueError("Choose an available invoice action.")
+                delta = after - before
+            else:
+                if document.kind != "collection":
+                    raise ValueError("Review the original movement and its reversal together.")
+                reversal = PaymentTransaction.query.filter_by(reversal_of_payment_transaction_id=document.id).first()
+                if reversal is not None and action != "delete":
+                    raise ValueError("Review this reversed movement in its history before correcting it.")
+                before = document.amount if document.status == "confirmed" else Decimal(0)
+                if action == "delete":
+                    if reversal is not None and reversal.deleted_at is None and reversal.status == "confirmed":
+                        before -= reversal.amount
+                    after = Decimal(0)
+                elif action in {"confirmed", "rejected"}:
+                    if document.status != "pending":
+                        raise ValueError("Only pending bank transfers can be confirmed or rejected.")
+                    after = document.amount if action == "confirmed" else Decimal(0)
+                elif action == "edit":
+                    amount = validate_amount(request.form.get("amount", ""))
+                    if document.movement_direction == "out" and amount - document.amount > max(-balance, Decimal(0)):
+                        raise ValueError("The corrected payout would exceed this student's credit.")
+                    after = amount if document.status == "confirmed" else Decimal(0)
+                else:
+                    raise ValueError("Choose an available movement action.")
+                delta = (after - before) * (1 if document.movement_direction == "out" else -1)
+        else:
+            amount = validate_amount(request.form.get("amount", ""))
+            direction = request.form.get("direction", "")
+            method = request.form.get("method", "")
+            if direction not in {"in", "out"} or method not in {"cash", "bank_transfer"}:
+                raise ValueError("Choose the movement direction and method.")
+            confirmed = method == "cash" or direction == "out" or request.form.get("confirmed") in {"y", "true", "on"}
+            delta = amount * (1 if direction == "out" else -1) if confirmed else Decimal(0)
+            if direction == "out" and amount > max(-balance, Decimal(0)):
+                raise ValueError("This payout exceeds the student's current credit.")
+        return jsonify(before=format_amount(balance), change=format_amount(delta), after=format_amount(balance + delta),
+            note="Preview only. Current records, permissions, credit and document versions are checked again when saving.")
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+
+
+@admin_bp.get("/student-accounts/<student_public_id>/documents/<kind>/<document_public_id>")
+@_financial_response
+@roles_required("administrator")
+def student_document_detail(student_public_id, kind, document_public_id):
+    model = {"invoice": Invoice, "payment": PaymentTransaction}.get(kind)
+    if model is None:
+        abort(404)
+    student = _student(student_public_id)
+    document = model.query.filter_by(public_id=document_public_id, student_id=student.id).first_or_404()
+    receipt = Receipt.query.filter_by(payment_transaction_id=document.id).first() if kind == "payment" else None
+    from app.blueprints.admin.finance_registers import local_moment
+    return render_template("admin/general_finance/document.html", student=student, document=document,
+        kind=kind, receipt=receipt, money=format_amount, local=local_moment)
 
 
 @admin_bp.get("/student-accounts/<student_public_id>/history")

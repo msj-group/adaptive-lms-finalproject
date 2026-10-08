@@ -32,6 +32,29 @@ BADGE_DISPLAY_CAP = 99
 #: The two filters the inbox understands. Anything else normalises to
 #: "all" rather than erroring or leaking that a value was rejected.
 FILTERS = ("all", "unread")
+PREVIEW_SIZE = 5
+KIND_FILTERS = {
+    "enrollment": ("Enrollment", ("enrollment_activated", "enrollment_withdrawn")),
+    "assignment": ("Teaching assignment", ("teacher_assignment_activated", "teacher_assignment_removed")),
+    "schedule": ("Schedule", ("schedule_changed",)),
+    "lesson": ("Lesson", ("lesson_published",)),
+    "material": ("Material", ("material_available",)),
+    "announcement": ("Announcement", ("announcement_published",)),
+    "message": ("Message", ("message_received",)),
+    "discussion": ("Discussion", ("discussion_topic_created",)),
+}
+KIND_ACTIONS = {
+    "enrollment_activated": ("users", "View enrollment"),
+    "enrollment_withdrawn": ("users", "View enrollment"),
+    "teacher_assignment_activated": ("users", "View groups"),
+    "teacher_assignment_removed": ("users", "View groups"),
+    "schedule_changed": ("calendar", "View schedule"),
+    "lesson_published": ("book", "View lesson"),
+    "material_available": ("file", "View material"),
+    "announcement_published": ("megaphone", "Read announcement"),
+    "message_received": ("message", "Open conversation"),
+    "discussion_topic_created": ("users", "View discussion"),
+}
 
 #: Short, recipient-facing label per kind. Kept here (not in the
 #: database) so wording can change without a migration and without
@@ -63,6 +86,10 @@ def normalize_filter(value):
     return value if value in FILTERS else "all"
 
 
+def normalize_kind(value):
+    return value if value in KIND_FILTERS else ""
+
+
 def normalize_page(value):
     """Normalise the ``page`` query argument to a positive integer.
 
@@ -78,7 +105,7 @@ def normalize_page(value):
     return page
 
 
-def inbox_page(recipient_id, filter_name, page):
+def inbox_page(recipient_id, filter_name, page, kind=""):
     """One bounded page of `recipient_id`'s own notifications.
 
     Returns ``(rows, has_next)``. Ordering is newest-first and fully
@@ -91,6 +118,8 @@ def inbox_page(recipient_id, filter_name, page):
     query = Notification.query.filter(Notification.recipient_id == recipient_id)
     if filter_name == "unread":
         query = query.filter(Notification.read_at.is_(None))
+    if kind in KIND_FILTERS:
+        query = query.filter(Notification.kind.in_(KIND_FILTERS[kind][1]))
     rows = (
         query.order_by(Notification.created_at.desc(), Notification.id.desc())
         .offset((page - 1) * PAGE_SIZE)
@@ -99,6 +128,12 @@ def inbox_page(recipient_id, filter_name, page):
     )
     has_next = len(rows) > PAGE_SIZE
     return rows[:PAGE_SIZE], has_next
+
+
+def preview_rows(recipient_id):
+    """The five newest owned rows. Viewing this list never stamps read_at."""
+    return Notification.query.filter(Notification.recipient_id == recipient_id).order_by(
+        Notification.created_at.desc(), Notification.id.desc()).limit(PREVIEW_SIZE).all()
 
 
 def own_notification(recipient_id, public_id):
@@ -160,6 +195,8 @@ def build_inbox_view(rows, tz_name):
             "public_id": row.public_id,
             "kind": row.kind,
             "kind_label": KIND_LABELS.get(row.kind, "Notice"),
+            "icon": KIND_ACTIONS.get(row.kind, ("bell", "View update"))[0],
+            "action_label": KIND_ACTIONS.get(row.kind, ("bell", "View update"))[1],
             "title": row.title,
             "message": row.message,
             "created_local": to_app_local(tz_name, row.created_at),

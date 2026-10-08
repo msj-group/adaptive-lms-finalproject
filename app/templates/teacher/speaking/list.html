@@ -1,10 +1,14 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'speaking' %}
+{% set activity_phase = 'library' %}
 {% import "_dashboard_macros.html" as dash %}
 {% block title %}{{ group.name }} — Speaking{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+
 {#- Phase 4 / M06. `activities` is a list of plain presentation dicts built by
     app.services.speaking_queries.build_teacher_speaking_list_view, so no ORM
     row and no internal id reaches this template and rendering one cannot
@@ -15,7 +19,7 @@
     There is deliberately no delete, archive, duplicate, score or grade
     control anywhere on this page -- none exists server-side either. -#}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 style="margin:0">{{ group.name }} — Speaking</h1>
+
   {{ dash.operational_badge(operational) }}
 </div>
 
@@ -27,14 +31,22 @@
 
 <div class="card" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
     <dd style="margin:0">{{ group.name }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
     <dd style="margin:0">{{ group.course.title }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
     <dd style="margin:0">{{ group.course.level.name }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
     <dd style="margin:0">{{ group.academic_term.name }}</dd>
+</div>
   </dl>
 </div>
 
@@ -67,29 +79,29 @@
   <h2>Speaking activities</h2>
   {% if activities %}
   <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th>Title</th>
-        <th style="width:8rem">Status</th>
-        <th style="width:11rem">Student visibility</th>
-        <th style="width:12rem">Due ({{ tz_name }})</th>
-        <th style="width:11rem">Recordings</th>
-        <th style="width:9rem">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
+  <div class="activity-library-grid">
       {% for item in activities %}
-      <tr>
-        <td><strong>{{ item.title }}</strong></td>
-        <td>
+      <article class="activity-library-card">
+<header>
+<span class="activity-card-symbol">{{ activity_ui.symbol(activity_kind,22) }}</span>
+<h3>
+<strong>{{ item.title }}</strong>
+</h3>
+</header>
+<dl class="activity-library-meta">
+<div class="activity-fact">
+<dt>Status</dt>
+<dd>
           {% if item.is_published %}
           <span class="badge badge--success">Published</span>
           {% else %}
           <span class="badge badge--neutral">Draft</span>
           {% endif %}
-        </td>
-        <td>
+        </dd>
+</div>
+<div class="activity-fact">
+<dt>Student visibility</dt>
+<dd>
           {% if not item.is_published %}
           <span class="badge badge--neutral">Not visible (draft)</span>
           {% elif item.state_label %}
@@ -97,9 +109,15 @@
           {% else %}
           <span class="badge badge--neutral">Not scheduled</span>
           {% endif %}
-        </td>
-        <td>{{ item.due_local.strftime("%Y-%m-%d %H:%M") }}</td>
-        <td>
+        </dd>
+</div>
+<div class="activity-fact">
+<dt>Due ({{ tz_name }})</dt>
+<dd>{{ item.due_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+</div>
+<div class="activity-fact">
+<dt>Recordings</dt>
+<dd>
           {#- Derived from ONE bounded page-level query, never a stored counter
               and never a per-row lookup. -#}
           {% if item.has_submissions %}
@@ -107,14 +125,15 @@
           {% else %}
           <span class="badge badge--neutral">None yet</span>
           {% endif %}
-        </td>
-        <td>
+        </dd>
+</div>
+</dl>
+<footer>
           <a class="btn btn--secondary" href="{{ url_for('teacher.speaking_detail', group_public_id=group.public_id, speaking_public_id=item.public_id) }}">Open</a>
-        </td>
-      </tr>
+        </footer>
+</article>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
   </div>
 
   {% if has_prev or has_next %}
@@ -140,4 +159,6 @@
   </div>
   {% endif %}
 </section>
+
+</div>
 {% endblock %}

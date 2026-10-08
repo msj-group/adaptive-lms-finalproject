@@ -1,0 +1,31 @@
+{% extends "layouts/admin_base.html" %}
+{% block title %}Financial document · {{ student.full_name }}{% endblock %}
+{% block admin_content %}
+<article class="workspace-document">
+<h1>{{ document.invoice_number or 'Invoice' if kind == 'invoice' else 'Payout' if document.movement_direction == 'out' else 'Collection' }}</h1>
+<p>{{ student.full_name }} · <span class="badge badge--neutral">{{ 'Deleted' if document.deleted_at else document.status.title() }}</span></p>
+<dl class="detail-grid">
+{% if kind == 'invoice' %}
+<dt>Course at issue</dt><dd>{{ (document.course_snapshot or {}).get('title', 'Not recorded') }}</dd>
+<dt>Charge</dt><dd>{{ money(document.charge_amount or 0) }} LYD</dd><dt>Discount</dt><dd>{{ money(document.discount_amount) }} LYD</dd>
+<dt>Net obligation</dt><dd>{{ money((document.charge_amount or 0) - document.discount_amount) }} LYD{% if document.status != 'issued' or document.deleted_at %} · Currently ineffective{% endif %}</dd>
+<dt>Issued</dt><dd>{{ local(document.issued_at) }}</dd>
+{% else %}
+<dt>Amount</dt><dd>{{ money(document.amount) }} LYD</dd><dt>Method</dt><dd>{{ document.method.replace('_',' ').title() }}</dd>
+<dt>Recorded</dt><dd>{{ local(document.recorded_at) }}</dd><dt>Movement type</dt><dd>{{ document.kind.title() }}</dd>
+{% if document.bank_transfer_reference %}<dt>Bank reference</dt><dd>{{ document.bank_transfer_reference }}</dd><dt>Transfer date</dt><dd>{{ document.bank_transfer_date }}</dd>{% endif %}
+<dt>Account effect</dt><dd>Only confirmed, current movements affect the account. A reversal offsets the original movement.</dd>
+{% endif %}
+{% if document.deleted_at %}<dt>Deleted</dt><dd>{{ local(document.deleted_at) }} · {{ document.deletion_reason or 'Reason not recorded' }}</dd>{% endif %}
+</dl>
+<p>Invoice references provide context. They do not allocate a payment or create installments.</p>
+<div class="ds-row">
+<a class="btn btn--secondary" href="{{ url_for('admin.student_financial_record', student_public_id=student.public_id) }}">Back to account</a>
+<a class="btn btn--secondary" href="{{ url_for('admin.student_financial_history', student_public_id=student.public_id) }}">Correction history</a>
+{% if not document.deleted_at and (kind == 'invoice' or document.kind == 'collection') %}<a class="btn btn--primary" href="{{ url_for('admin.student_document_correct', student_public_id=student.public_id, kind=kind, document_public_id=document.public_id) }}">Review correction</a>{% endif %}
+{% if receipt %}<a class="btn btn--secondary" href="{{ url_for('admin.student_account_receipt', student_public_id=student.public_id, receipt_public_id=receipt.public_id) }}">Receipt</a>{% endif %}
+<button type="button" class="btn btn--secondary" data-print>Print document</button>
+</div>
+<details><summary>Document reference</summary><p class="workspace-digest">{{ document.public_id }}</p></details>
+</article>
+{% endblock %}

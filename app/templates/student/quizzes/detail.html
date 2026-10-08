@@ -1,16 +1,23 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'quiz' %}
+{% set activity_phase = 'overview' %}
 {% block title %}{{ quiz.title }}{% endblock %}
 {% block portal_nav %}
   {% include "student/_portal_nav.html" %}
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface">
+<div class="alert alert--info">
+<strong>Before you start</strong>
+<p>Starting creates an attempt when none is in progress. Answers save automatically when you select an option. Check the save status before leaving. Use the question list and bookmarks to review your work. Final submission uses saved answers and the server deadline.</p>
+</div>
 {#- Phase 4 / M04D. Plain presentation dicts only. The answer key is never
     read for this page, so it cannot leak from it. Starting is a POST with a
     CSRF token; the server re-proves the window, the attempt limit and the
     at-most-one-in-progress rule against locked rows, so hiding the button
     here is only a courtesy. -#}
 <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
-  <h1 style="margin:0">{{ quiz.title }}</h1>
+
   {% if quiz.state == "open" %}
   <span class="badge badge--success">{{ quiz.state_label }}</span>
   {% elif quiz.state == "scheduled" %}
@@ -27,8 +34,21 @@
   {% endfor %}
 {% endwith %}
 
+<div class="activity-brief-layout">
+<div class="activity-brief-paper">{% if quiz.instructions %}
+<section style="margin-bottom: var(--space-6)">
+  <h2>Instructions</h2>
+  <div class="card">
+    {# Plain text: autoescaped and laid out by CSS. Never |safe. #}
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ quiz.instructions }}</div>
+  </div>
+</section>
+{% else %}<h2>Instructions</h2><p>No additional instructions. Review the availability and start when you are ready.</p>{% endif %}
+
+</div>
+<aside class="activity-launch-panel">
 <div class="ds-row" style="margin-bottom: var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('student.quiz_list') }}">Back to Activities</a>
+  <a class="btn btn--secondary" href="{{ url_for('student.activities', type='quiz', group=group_public_id) }}">Back to Activities</a>
   {% if can_start %}
   <form method="post" action="{{ url_for('student.quiz_start', group_public_id=group_public_id, quiz_public_id=quiz.public_id) }}" data-research-form="quiz_start">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -41,19 +61,31 @@
 
 <div class="card" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 170px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
     <dd style="margin:0">{{ quiz.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Closes</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Closes</dt>
     <dd style="margin:0">{{ quiz.closes_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Questions</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Questions</dt>
     <dd style="margin:0">{{ question_total }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time limit</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time limit</dt>
     <dd style="margin:0">{% if quiz.time_limit_minutes %}{{ quiz.time_limit_minutes }} minutes per attempt{% else %}None{% endif %}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Attempts</dt>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Attempts</dt>
     <dd style="margin:0">{{ attempts_used }} used of {{ quiz.attempt_limit }} allowed</dd>
+</div>
   </dl>
 </div>
 
+<details class="activity-policy-details">
+<summary>How attempts work</summary>
 <div class="alert alert--info" style="margin-bottom: var(--space-6)">
   You can start an attempt only while the quiz is open — not before it opens, and not once it
   closes. {% if quiz.time_limit_minutes %}Each attempt lasts {{ quiz.time_limit_minutes }} minutes, or until the quiz closes,
@@ -63,51 +95,49 @@
   point — there is no partial credit. Your results show which questions you got right, but
   <strong>never which options were correct</strong>.
 </div>
+</details>
 
-{% if quiz.instructions %}
-<section style="margin-bottom: var(--space-6)">
-  <h2>Instructions</h2>
-  <div class="card">
-    {# Plain text: autoescaped and laid out by CSS. Never |safe. #}
-    <div style="white-space: pre-wrap; word-break: break-word;">{{ quiz.instructions }}</div>
-  </div>
-</section>
-{% endif %}
-
+</aside>
+</div>
 <section>
   <h2>Your attempts</h2>
   {% if attempts %}
   <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th style="width:5rem">Attempt</th>
-        <th style="width:10rem">Status</th>
-        <th style="width:12rem">Started ({{ tz_name }})</th>
-        <th style="width:9rem">Score</th>
-        <th style="width:9rem"></th>
-      </tr>
-    </thead>
-    <tbody>
+  <div class="activity-library-grid">
       {% for item in attempts %}
-      <tr>
-        <td>{{ item.attempt_number }}</td>
-        <td><span class="badge badge--neutral">{{ item.status_label }}</span></td>
-        <td>{{ item.started_local.strftime("%Y-%m-%d %H:%M") }}</td>
-        <td>
+      <article class="activity-library-card">
+<header>
+<span class="activity-card-symbol">{{ activity_ui.symbol(activity_kind,22) }}</span>
+<h3><span>Attempt</span> {{ item.attempt_number }}</h3>
+</header>
+<dl class="activity-library-meta">
+<div class="activity-fact">
+<dt>Status</dt>
+<dd>
+<span class="badge badge--neutral">{{ item.status_label }}</span>
+</dd>
+</div>
+<div class="activity-fact">
+<dt>Started ({{ tz_name }})</dt>
+<dd>{{ item.started_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+</div>
+<div class="activity-fact">
+<dt>Score</dt>
+<dd>
           {% if item.total_questions is not none %}
           {{ item.correct_count }} / {{ item.total_questions }}{% if item.percentage is not none %} ({{ item.percentage }}%){% endif %}
           {% else %}&mdash;{% endif %}
-        </td>
-        <td>
+        </dd>
+</div>
+</dl>
+<footer>
           {% if item.is_finalized %}
           <a class="btn btn--secondary" href="{{ url_for('student.quiz_result', group_public_id=group_public_id, quiz_public_id=quiz.public_id, attempt_public_id=item.public_id) }}">Result</a>
           {% endif %}
-        </td>
-      </tr>
+        </footer>
+</article>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
   </div>
   {% else %}
   <div class="empty-state">
@@ -116,4 +146,6 @@
   </div>
   {% endif %}
 </section>
+
+</div>
 {% endblock %}

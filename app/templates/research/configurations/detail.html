@@ -1,7 +1,7 @@
 {% extends "layouts/research_base.html" %}
 {% block title %}Configuration version {{ configuration.version_number }}{% endblock %}
 {% block research_content %}
-<h1>Configuration version {{ configuration.version_number }}</h1>
+<h1 data-workspace-page-heading>Configuration version {{ configuration.version_number }}</h1>
 <p class="ds-section__desc">{{ configuration.label }} &middot; event schema {{ configuration.event_schema_version }}</p>
 
 <p data-configuration-status>

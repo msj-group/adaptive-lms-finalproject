@@ -1,15 +1,19 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/activity_base.html" %}
+{% set activity_kind = 'quiz' %}
+{% set activity_phase = 'review' %}
 {% block title %}Attempts — {{ quiz.title }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+<div class="activity-surface activity-review-list">
+
 {#- Phase 4 / M04D. Read only: a teacher can see what students did and can
     change none of it. There is no score override, no manual grade, no
     delete and no re-open control, because none exists server-side either.
     Every row is a plain presentation dict; no ORM row and no internal id
     reaches this template. -#}
-<h1 style="margin-top: 0">{{ quiz.title }} — Attempts</h1>
+
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
   {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
 </p>
@@ -35,38 +39,47 @@
   <h2>Attempts</h2>
   {% if attempts %}
   <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th>Student</th>
-        <th style="width:5rem">Attempt</th>
-        <th style="width:9rem">Status</th>
-        <th style="width:12rem">Started ({{ tz_name }})</th>
-        <th style="width:12rem">Submitted ({{ tz_name }})</th>
-        <th style="width:9rem">Score</th>
-        <th style="width:8rem">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
+  <div class="activity-library-grid">
       {% for item in attempts %}
-      <tr>
-        <td>{{ item.student_name }}</td>
-        <td>{{ item.attempt_number }}</td>
-        <td><span class="badge badge--neutral">{{ item.status_label }}</span></td>
-        <td>{{ item.started_local.strftime("%Y-%m-%d %H:%M") }}</td>
-        <td>{% if item.submitted_local %}{{ item.submitted_local.strftime("%Y-%m-%d %H:%M") }}{% else %}&mdash;{% endif %}</td>
-        <td>
+      <article class="activity-library-card">
+<header>
+<span class="activity-card-symbol">{{ activity_ui.symbol(activity_kind,22) }}</span>
+<h3>{{ item.student_name }}</h3>
+</header>
+<dl class="activity-library-meta">
+<div class="activity-fact">
+<dt>Attempt</dt>
+<dd>{{ item.attempt_number }}</dd>
+</div>
+<div class="activity-fact">
+<dt>Status</dt>
+<dd>
+<span class="badge badge--neutral">{{ item.status_label }}</span>
+</dd>
+</div>
+<div class="activity-fact">
+<dt>Started ({{ tz_name }})</dt>
+<dd>{{ item.started_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+</div>
+<div class="activity-fact">
+<dt>Submitted ({{ tz_name }})</dt>
+<dd>{% if item.submitted_local %}{{ item.submitted_local.strftime("%Y-%m-%d %H:%M") }}{% else %}&mdash;{% endif %}</dd>
+</div>
+<div class="activity-fact">
+<dt>Score</dt>
+<dd>
           {% if item.total_questions is not none %}
           {{ item.correct_count }} / {{ item.total_questions }}{% if item.percentage is not none %} ({{ item.percentage }}%){% endif %}
           {% else %}&mdash;{% endif %}
-        </td>
-        <td>
+        </dd>
+</div>
+</dl>
+<footer>
           <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_attempt_detail', group_public_id=group.public_id, quiz_public_id=quiz.public_id, attempt_public_id=item.public_id) }}">Open</a>
-        </td>
-      </tr>
+        </footer>
+</article>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
   </div>
 
   {% if has_prev or has_next %}
@@ -88,4 +101,6 @@
   </div>
   {% endif %}
 </section>
+
+</div>
 {% endblock %}

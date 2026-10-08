@@ -1,9 +1,10 @@
 # Quick Start
 
-This guide separates the configured demonstration workspace from a new
-installation. The local development schema was upgraded to `085b7a4e9012`
-and then reset and populated with fictional data at the owner's request on
-2026-10-06. See the integration record for current manual/static evidence.
+New installations start with an empty business database and ordinary
+operational workflows. No accounts or example content are seeded. The
+existing local database was retained by the owner's latest instruction.
+Schema head is `085b7a4e9012`; see [Hosting Preparation](HOSTING_PREPARATION.md)
+for the empty-installation procedure and hosting requirements.
 
 Read [Project Status](PROJECT_STATUS.md), the
 [Approved Repair Contract](APPROVED_REPAIR_CONTRACT.md) and
@@ -32,9 +33,9 @@ Set-Location -LiteralPath 'C:\Users\abdul\Desktop\GraduationProject\AdaptiveEngl
 .\.venv\Scripts\python.exe run.py
 ```
 
-Open [Application](http://127.0.0.1:5000/). The current fictional accounts are
-`admin@example.com`, `teacher@example.com`, `student@example.com` and
-`researcher@example.com`. Use the password supplied privately by the owner.
+Open [Application](http://127.0.0.1:5000/). All four roles use the same login.
+Use the accounts deliberately provisioned for the intended installation,
+with credentials entered privately.
 An account's stored role routes it to the appropriate workspace; there is
 no role selection on the form. A Researcher uses the same form and reaches
 the separate research workspace. The old `/research/login` remains a
@@ -83,8 +84,8 @@ finished configuration and should not replace an existing `.env`.
 | `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD` | The exact approved MySQL target and account. |
 | `APP_TIMEZONE` | `Africa/Tripoli` for the center's local operation. |
 | `MATERIAL_STORAGE_ROOT` | Private non-public storage, outside `app/static`. |
-| `PAYMENT_PROVIDER_MODE` | `disabled` for ordinary local operation; mock mode is a development simulation, not a real gateway. |
-| `RESEARCH_DATA_PROVENANCE` | `development` locally; do not select `study` merely to obtain an export. |
+| `PAYMENT_PROVIDER_MODE` | `disabled`; no online gateway or payment simulation is available. |
+| `RESEARCH_DATA_PROVENANCE` | `development` for operational evaluation on any host; only an explicitly approved actual study uses `study`. |
 | `RESEARCH_RETENTION_DAYS` | `15`, as explicitly approved. |
 | `RESEARCHER_EMAIL_ALLOWLIST` | Only approved provisioning addresses, kept in private configuration. It does not grant a role at login. |
 
@@ -132,8 +133,14 @@ and audit history survive retention; ordinary LMS records are not purged.
 
 Launching Flask does not itself approve or start a study. A Researcher must
 prepare the period/configuration and explicitly start collection according
-to the research contract. Record required exclusions and demonstration
-accounts before doing so. The optional raw 1–5 question and existing
+to the research contract. Record required exclusions before doing so.
+Operational evaluation remains `development` provenance even if hosted with
+production HTTP settings; only an explicitly approved study uses `study`.
+Operational review can now use the same Researcher export workflow, with a
+separate source label and dataset manifest. It remains excluded from study
+exports. Follow [Local Research Walkthrough](LOCAL_RESEARCH_WALKTHROUGH.md)
+for collection setup, Student tasks, review and download.
+The optional raw 1–5 question and existing
 sampling/session semantics remain unchanged by the repair plan.
 
 ## 4. Tests during the transition
@@ -158,7 +165,7 @@ owned isolated MySQL target; never substitute development or production.
 | Workspace access returns 403 | Check the account's stored role and status. Workspace separation is enforced server-side. |
 | Collection configuration cannot activate | Confirm the explicit retention setting and period; activation and starting collection are separate steps. |
 | New enrollment says Course price is unset | Set the actual Course price in the catalogue; migration does not invent a price from a historical fee plan. |
-| New enrollment is closed | The Group study start has been reached. Same-course transfer has the approved exception; new admission/re-enrollment does not. |
+| Study has already started | New enrollment and re-enrollment remain allowed. Review the start date and late-entry notice; eligibility, teacher availability and capacity checks still apply. |
 
 The owner-authorized local upgrade is recorded in
 [Repair Integration](REPAIR_INTEGRATION.md), including the exact revision and

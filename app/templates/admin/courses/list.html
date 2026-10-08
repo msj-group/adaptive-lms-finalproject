@@ -4,7 +4,7 @@
 {% block admin_content %}
 <div class="ds-page">
   <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
-    <h1 style="margin:0">Courses</h1>
+    <h1 data-workspace-page-heading style="margin:0">Courses</h1>
     <a class="btn btn--primary" href="{{ url_for('admin.course_create', level_id=selected_level_id) if selected_level_id else url_for('admin.course_create') }}">New Course</a>
   </div>
 

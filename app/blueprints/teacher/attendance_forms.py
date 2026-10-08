@@ -16,7 +16,7 @@ values back to correct. Every authoritative condition is re-checked
 against the locked rows afterwards.
 """
 
-from flask_wtf import FlaskForm
+from app.i18n import LocalizedFlaskForm as FlaskForm
 from wtforms import SelectField, SubmitField
 from wtforms.fields import DateField
 from wtforms.validators import DataRequired, InputRequired

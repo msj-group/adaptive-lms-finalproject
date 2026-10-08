@@ -1,7 +1,7 @@
 /* ==========================================================================
    Adaptive English LMS -- Design Tokens
-   Direction: Minimal Premium Academic + Layered Depth
-   (cinematic/spotlight effects are reserved for adaptive interventions only)
+   Canonical primitives and compatibility aliases: Direction D / design system D.1.
+   Theme roles below are the only palette authority; no adaptive behavior.
    Source: _project_inputs/01_branding/brand_colors.txt
    ========================================================================== */
 
@@ -44,26 +44,41 @@
   --color-neutral-900: #111827;
 
   /* ---- Semantic colors ---- */
-  --color-success: #1F9D55;
-  --color-warning: #B7791F;
-  --color-danger:  var(--color-accent-500);
-  --color-info:    var(--color-primary-500);
+  --color-success: var(--ui-success);
+  --color-warning: var(--ui-warning);
+  --color-danger:  var(--ui-danger);
+  --color-info:    var(--ui-link);
 
   /* ---- Surface / text roles (light primary interface) ---- */
-  --color-bg-page:      var(--color-neutral-50);
-  --color-bg-surface:   var(--color-neutral-0);
-  --color-bg-subtle:    var(--color-neutral-100);
-  --color-border:       var(--color-neutral-200);
-  --color-text-primary: var(--color-neutral-900);
-  --color-text-secondary: var(--color-neutral-600);
+  --color-bg-page:      var(--ui-page);
+  --color-bg-surface:   var(--ui-surface);
+  --color-bg-subtle:    var(--ui-soft);
+  --color-border:       var(--ui-line);
+  --color-text-primary: var(--ui-text);
+  --color-text-secondary: var(--ui-muted);
   --color-text-inverse: var(--color-neutral-0);
-  --color-text-link:    var(--color-primary-600);
+  --color-text-link:    var(--ui-link);
+  --figma-ink: var(--ui-ink);
+  --figma-muted: var(--ui-muted);
+  --figma-red: var(--ui-brand-accent);
+  --figma-display: var(--font-family-base);
+  --nav-blue: var(--color-brand-blue);
+  --nav-navy: var(--ui-ink);
+  --nav-red: var(--color-brand-red);
+  --nav-surface: var(--ui-surface);
+  --nav-wash: var(--ui-soft);
+  --nav-line: var(--ui-line);
+  --nav-muted: var(--ui-muted);
+  --message-ink: var(--ui-ink);
+  --message-muted: var(--ui-muted);
+  --message-line: var(--ui-line);
+  --message-wash: var(--ui-soft);
 
   /* ---- Typography ---- */
-  --font-family-base: "Segoe UI", system-ui, -apple-system, "Inter", Roboto, sans-serif;
+  --font-family-base: "Manrope", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
   --font-size-xs:   0.75rem;
   --font-size-sm:   0.875rem;
-  --font-size-base: 1rem;
+  --font-size-base: .875rem;
   --font-size-lg:   1.125rem;
   --font-size-xl:   1.25rem;
   --font-size-2xl:  1.5rem;
@@ -74,7 +89,7 @@
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
   --line-height-tight: 1.25;
-  --line-height-normal: 1.5;
+  --line-height-normal: 1.55;
   --line-height-relaxed: 1.75;
 
   /* ---- Spacing scale ---- */
@@ -90,27 +105,31 @@
   --space-16: 4rem;
 
   /* ---- Border radii ---- */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
   --radius-full: 999px;
 
   /* ---- Elevation (soft, restrained shadows -- layered depth) ---- */
-  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.06);
-  --shadow-md: 0 4px 10px rgba(17, 24, 39, 0.08);
-  --shadow-lg: 0 12px 24px rgba(17, 24, 39, 0.10);
-  --shadow-focus: 0 0 0 3px rgba(20, 75, 170, 0.25);
+  --shadow-sm: var(--ui-shadow-sm);
+  --shadow-md: var(--ui-shadow-md);
+  --shadow-lg: var(--ui-shadow);
+  --shadow-focus: 0 0 0 3px var(--ui-focus);
 
-  /* ---- Motion (150-300ms, restrained) ---- */
-  --motion-duration-fast: 150ms;
-  --motion-duration-base: 200ms;
-  --motion-duration-slow: 300ms;
-  --motion-easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Fixed presentation motion, shared by every baseline role/version. */
+  --motion-duration-fast: 120ms;
+  --motion-duration-base: 160ms;
+  --motion-duration-slow: 200ms;
+  --motion-duration-press: 80ms;
+  --motion-duration-popover: 140ms;
+  --motion-easing-standard: cubic-bezier(.2, .7, .2, 1);
 
   /* ---- Layout ---- */
   --layout-max-width: 1200px;
-  --layout-sidebar-width: 264px;
+  --layout-sidebar-width: 196px;
+  --layout-operations-width: 1440px;
+  --layout-page-gutter: 28px;
   --breakpoint-sm: 640px;
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;
@@ -122,5 +141,142 @@
     --motion-duration-fast: 0ms;
     --motion-duration-base: 0ms;
     --motion-duration-slow: 0ms;
+    --motion-duration-press: 0ms;
+    --motion-duration-popover: 0ms;
+  }
+}
+
+
+/* D roles are canonical. System selection also works without JavaScript. */
+:root {
+  --ui-page: #eaf0fa;
+  --ui-surface: #fffefa;
+  --ui-raised: #eff4fc;
+  --ui-soft: #dce7f8;
+  --ui-line: #c1cfe3;
+  --ui-control-line: #758eaf;
+  --ui-focus: #1753ae;
+  --ui-ink: #102848;
+  --ui-text: #344d6b;
+  --ui-muted: #506683;
+  --ui-link: #1354b6;
+  --ui-primary: #1354b6;
+  --ui-primary-hover: #0c4397;
+  --ui-on-primary: #fff;
+  --ui-brand-accent: #bb293b;
+  --ui-danger: #9c2838;
+  --ui-danger-bg: #ffe9ed;
+  --ui-success: #17624a;
+  --ui-success-bg: #e0f2e9;
+  --ui-warning: #755022;
+  --ui-warning-bg: #fff1d3;
+  --ui-canvas-deep: #dfe9f8;
+  --ui-nav: #12346b;
+  --ui-nav-text: #d6e4fa;
+  --ui-nav-muted: #b0c5e6;
+  --ui-nav-selected: #315ea0;
+  --ui-hero-start: #163e87;
+  --ui-hero-end: #245ebb;
+  --ui-hero-text: #f8fbff;
+  --ui-hero-muted: #d7e4fc;
+  --ui-message-incoming: #fffefa;
+  --ui-message-outgoing: #cfdef5;
+  --ui-message-meta: #49607d;
+  --ui-shadow-sm: 0 3px 12px #173a6508;
+  --ui-shadow-md: 0 8px 26px #173a6512;
+  --ui-shadow: 0 16px 48px -12px #173a6533;
+  color-scheme: light;
+  --ui-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23506683' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+:root[data-theme='dark'] {
+  --ui-page: #101e33;
+  --ui-surface: #1a2c43;
+  --ui-raised: #243c58;
+  --ui-soft: #203957;
+  --ui-line: #405675;
+  --ui-control-line: #819dbf;
+  --ui-focus: #a5ceff;
+  --ui-ink: #edf3fc;
+  --ui-text: #d3deed;
+  --ui-muted: #a9bdd7;
+  --ui-link: #9bc4ff;
+  --ui-primary: #9bc4ff;
+  --ui-primary-hover: #bad6ff;
+  --ui-on-primary: #102848;
+  --ui-brand-accent: #ff9aa4;
+  --ui-danger: #ffb0b9;
+  --ui-danger-bg: #482637;
+  --ui-success: #91dfbb;
+  --ui-success-bg: #163b31;
+  --ui-warning: #f4d38d;
+  --ui-warning-bg: #43371e;
+  --ui-canvas-deep: #132944;
+  --ui-nav: #0e2545;
+  --ui-nav-text: #d1dff5;
+  --ui-nav-muted: #a9bdd7;
+  --ui-nav-selected: #284c7b;
+  --ui-hero-start: #1b3c71;
+  --ui-hero-end: #245488;
+  --ui-hero-text: #f8fbff;
+  --ui-hero-muted: #d1e2f7;
+  --ui-message-incoming: #1a2c43;
+  --ui-message-outgoing: #304e72;
+  --ui-message-meta: #b5c7df;
+  --ui-shadow-sm: 0 3px 12px #020b2012;
+  --ui-shadow-md: 0 8px 30px #020b2026;
+  --ui-shadow: 0 16px 48px -12px #020b2080;
+  color-scheme: dark;
+  --ui-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23a9bdd7' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark) { :root[data-theme='system'] {
+  --ui-page: #101e33;
+  --ui-surface: #1a2c43;
+  --ui-raised: #243c58;
+  --ui-soft: #203957;
+  --ui-line: #405675;
+  --ui-control-line: #819dbf;
+  --ui-focus: #a5ceff;
+  --ui-ink: #edf3fc;
+  --ui-text: #d3deed;
+  --ui-muted: #a9bdd7;
+  --ui-link: #9bc4ff;
+  --ui-primary: #9bc4ff;
+  --ui-primary-hover: #bad6ff;
+  --ui-on-primary: #102848;
+  --ui-brand-accent: #ff9aa4;
+  --ui-danger: #ffb0b9;
+  --ui-danger-bg: #482637;
+  --ui-success: #91dfbb;
+  --ui-success-bg: #163b31;
+  --ui-warning: #f4d38d;
+  --ui-warning-bg: #43371e;
+  --ui-canvas-deep: #132944;
+  --ui-nav: #0e2545;
+  --ui-nav-text: #d1dff5;
+  --ui-nav-muted: #a9bdd7;
+  --ui-nav-selected: #284c7b;
+  --ui-hero-start: #1b3c71;
+  --ui-hero-end: #245488;
+  --ui-hero-text: #f8fbff;
+  --ui-hero-muted: #d1e2f7;
+  --ui-message-incoming: #1a2c43;
+  --ui-message-outgoing: #304e72;
+  --ui-message-meta: #b5c7df;
+  --ui-shadow-sm: 0 3px 12px #020b2012;
+  --ui-shadow-md: 0 8px 30px #020b2026;
+  --ui-shadow: 0 16px 48px -12px #020b2080;
+  color-scheme: dark;
+  --ui-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23a9bdd7' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+} }
+html[data-ui-motion='reduce'] {
+  --motion-duration-fast: 0ms; --motion-duration-base: 0ms;
+  --motion-duration-slow: 0ms; --motion-duration-press: 0ms;
+  --motion-duration-popover: 0ms;
+}
+@media print {
+  :root, :root[data-theme='dark'], :root[data-theme='system'] {
+    color-scheme: light; --ui-page: #fff; --ui-surface: #fff; --ui-raised: #fff;
+    --ui-soft: #eee; --ui-line: #ccc; --ui-control-line: #555; --ui-ink: #111;
+    --ui-text: #111; --ui-muted: #333; --ui-link: #111; --ui-focus: #111;
   }
 }

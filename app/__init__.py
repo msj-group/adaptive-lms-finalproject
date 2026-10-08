@@ -29,6 +29,9 @@ def create_app(config_name=None, **config_overrides):
         )
 
     app = Flask(__name__)
+    from app.i18n import init_ui
+
+    init_ui(app)
     app.config.from_object(config_by_name[config_name])
     if config_overrides:
         app.config.update(config_overrides)
@@ -52,15 +55,21 @@ def create_app(config_name=None, **config_overrides):
     app.extensions["material_config"] = material_config
     app.config["MAX_CONTENT_LENGTH"] = material_config.max_content_length
 
-    # Phase 5 / M06: resolve the online-payment provider once, for the
-    # environment this application was created for. Fail closed --
-    # PaymentProviderConfigError propagates, so production (or any unknown
-    # environment) configured for the mock provider refuses to start.
+    # No online provider is enabled until a real integration is approved.
+    # An unsupported provider configuration refuses startup.
     app.extensions["payment_provider"] = resolve_payment_provider(app.config, config_name)
 
     # Phase 6: research deployment settings (provenance, retention, the
     # Researcher provisioning allowlist). Fail closed on an invalid value.
     resolve_research_settings(app.config)
+    from app.services.deployment_settings import resolve_deployment_settings
+    resolve_deployment_settings(app.config, config_name)
+    if app.config["PROXY_TRUSTED_HOPS"]:
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        # Configure only for a private WSGI listener behind this exact proxy
+        # chain. Host headers still use Flask's explicit TRUSTED_HOSTS gate.
+        hops = app.config["PROXY_TRUSTED_HOPS"]
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=hops, x_proto=hops, x_host=0, x_port=0, x_prefix=0)
 
     is_owned_test_app = (
         config_name == "testing" or isolated_test_run
@@ -88,10 +97,15 @@ def create_app(config_name=None, **config_overrides):
             protect_test_connections(db.engine, test_database_guard)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+    from app.blueprints.account import account_bp, enforce_account_body_limits
+
+    # Bound account bodies before CSRF inspects any uploaded/form fields.
+    app.before_request(enforce_account_body_limits)
     csrf.init_app(app)
     limiter.init_app(app)
 
     login_manager.login_view = "auth.login"
+    login_manager.login_message = "Please sign in to continue. If your session ended, unsaved work was not submitted."
     # All roles use the shared login; workspace authorization stays separate.
     login_manager.blueprint_login_views = {}
 
@@ -109,7 +123,6 @@ def create_app(config_name=None, **config_overrides):
             return None
         return user
 
-    from app.blueprints.design_system.routes import design_system_bp
     from app.blueprints.auth.routes import auth_bp, home_endpoint_for
     from app.blueprints.admin.routes import admin_bp
     from app.blueprints.teacher import teacher_bp
@@ -117,10 +130,10 @@ def create_app(config_name=None, **config_overrides):
     from app.blueprints.research import research_bp
     from app.blueprints.notifications import notifications_bp
     from app.blueprints.messages import messages_bp
-    from app.blueprints.webhooks import webhooks_bp
     from app.blueprints.collector import collector_bp
+    from app.blueprints.workspace import workspace_bp
+    from app.blueprints.appearance import appearance_bp
 
-    app.register_blueprint(design_system_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(teacher_bp)
@@ -130,12 +143,12 @@ def create_app(config_name=None, **config_overrides):
     app.register_blueprint(research_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(messages_bp)
-    # Phase 5 / M07: the public, CSRF-exempt, signature-verified provider
-    # webhook endpoint (404 unless the Mock/Sandbox provider is enabled).
-    app.register_blueprint(webhooks_bp)
     # Phase 6: the Student-side research collector (authenticated, CSRF-
     # protected JSON endpoints; inert for anyone outside collection scope).
     app.register_blueprint(collector_bp)
+    app.register_blueprint(workspace_bp)
+    app.register_blueprint(account_bp)
+    app.register_blueprint(appearance_bp)
 
     # M14: the shared Student/Teacher portal header renders a
     # Notifications link and unread badge. This injects a *callable*, not
@@ -182,6 +195,20 @@ def create_app(config_name=None, **config_overrides):
     @app.get("/health")
     def health():
         return {"status": "ok"}, 200
+
+    @app.get("/health/ready")
+    def health_ready():
+        from sqlalchemy import text
+        try:
+            with db.engine.connect() as connection:
+                connection.execute(text("SELECT 1"))
+                revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
+            ready = revision == "7d4e2a9c6013"
+        except Exception:
+            ready = False
+        response = app.make_response(({"status": "ready" if ready else "unavailable"}, 200 if ready else 503))
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     from app.services.request_arrival import RequestArrivalMiddleware
 

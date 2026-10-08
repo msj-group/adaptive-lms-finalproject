@@ -52,6 +52,7 @@ from app.extensions import db
 from app.models import Submission, User, UserRole
 from app.services.assignment_queries import PAGE_SIZE
 from app.services.schedule_occurrences import to_app_local
+from app.services.assignment_files import file_metadata
 
 _STUDENT = UserRole.STUDENT.value
 
@@ -83,6 +84,7 @@ def build_student_receipt(submission, tz_name):
     return {
         "public_id": submission.public_id,
         "answer_text": submission.answer_text,
+        "file": file_metadata(submission.uploaded_file_id, submission.student_id),
         "submitted_local": to_app_local(tz_name, submission.submitted_at),
     }
 
@@ -231,7 +233,7 @@ def teacher_submission(assignment_id, submission_public_id):
     exactly one row.
     """
     return (
-        _teacher_submission_query(assignment_id, Submission.answer_text)
+        _teacher_submission_query(assignment_id, Submission.answer_text, Submission.uploaded_file_id, Submission.student_id)
         .filter(Submission.public_id == submission_public_id)
         .first()
     )
@@ -254,6 +256,7 @@ def build_teacher_submission_item(row, tz_name, include_answer=False):
     }
     if include_answer:
         item["answer_text"] = row.answer_text
+        item["file"] = file_metadata(row.uploaded_file_id, row.student_id)
     return item
 
 
