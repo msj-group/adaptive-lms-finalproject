@@ -19,16 +19,22 @@
         {
           "local": true,
           "include": [
-            "app/", "migrations/", "wsgi.py", "deploy/gunicorn.conf.py",
-            "scripts/create_admin.py", "scripts/create_researcher.py",
-            "scripts/research_operator.py", "scripts/run_research_retention.py",
-            "scripts/deployment_diagnostics.py", "scripts/railway_start.py",
-            "scripts/railway_migrate.py", "scripts/verify_python_version.py"
+            "app/", "migrations/", "wsgi.py"
           ],
           "exclude": ["**/__pycache__/**", "**/*.pyc", "**/*.pyo"]
         }
       ],
-      "commands": []
+      "commands": [
+        {"src": "deploy/gunicorn.conf.py", "dest": "deploy/gunicorn.conf.py"},
+        {"src": "scripts/create_admin.py", "dest": "scripts/create_admin.py"},
+        {"src": "scripts/create_researcher.py", "dest": "scripts/create_researcher.py"},
+        {"src": "scripts/research_operator.py", "dest": "scripts/research_operator.py"},
+        {"src": "scripts/run_research_retention.py", "dest": "scripts/run_research_retention.py"},
+        {"src": "scripts/deployment_diagnostics.py", "dest": "scripts/deployment_diagnostics.py"},
+        {"src": "scripts/railway_start.py", "dest": "scripts/railway_start.py"},
+        {"src": "scripts/railway_migrate.py", "dest": "scripts/railway_migrate.py"},
+        {"src": "scripts/verify_python_version.py", "dest": "scripts/verify_python_version.py"}
+      ]
     }
   },
   "deploy": {
