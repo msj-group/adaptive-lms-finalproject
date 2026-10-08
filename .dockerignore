@@ -33,3 +33,6 @@
 **/uploads/
 **/exports/
 **/backups/
+# Research export pages are source templates, not generated private archives.
+!app/templates/research/exports/
+!app/templates/research/exports/*.html
