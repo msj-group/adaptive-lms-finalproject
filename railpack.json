@@ -5,7 +5,8 @@
   "steps": {
     "install": {
       "commands": [
-        "python -c \"import sys; assert sys.version_info[:3] == (3, 14, 6), 'Python 3.14.6 is required'\"",
+        {"src": "scripts/verify_python_version.py", "dest": "scripts/verify_python_version.py"},
+        "python scripts/verify_python_version.py",
         "python -m venv /app/.venv",
         {"path": "/app/.venv/bin"},
         {"src": "requirements-production.lock", "dest": "requirements-production.lock"},
@@ -22,7 +23,7 @@
             "scripts/create_admin.py", "scripts/create_researcher.py",
             "scripts/research_operator.py", "scripts/run_research_retention.py",
             "scripts/deployment_diagnostics.py", "scripts/railway_start.py",
-            "scripts/railway_migrate.py"
+            "scripts/railway_migrate.py", "scripts/verify_python_version.py"
           ],
           "exclude": ["**/__pycache__/**", "**/*.pyc", "**/*.pyo"]
         }

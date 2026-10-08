@@ -17,6 +17,7 @@
 !scripts/deployment_diagnostics.py
 !scripts/railway_start.py
 !scripts/railway_migrate.py
+!scripts/verify_python_version.py
 !deploy/
 !deploy/**
 **/__pycache__/
