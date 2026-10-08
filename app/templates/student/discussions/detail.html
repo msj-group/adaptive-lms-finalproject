@@ -1,8 +1,9 @@
 {% extends "layouts/portal_base.html" %}
-{% import "_discussion_macros.html" as disc %}
+{% import "student/template/_discussion_macros.html" as disc %}
 {% block title %}{{ topic.title }} — Discussions{% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
+<div class="st-community">
 {#- Phase 4 / M12 topic page for an actively enrolled student. There is no
     moderation control here and no such route exists for a student. The reply
     form exists only while the topic is open; the reply route enforces the same
@@ -18,4 +19,5 @@
 {{ disc.reply_section(can_reply,
      url_for('student.discussions_reply', group_public_id=group.public_id, topic_public_id=topic.public_id),
      reply_state, draft, body_error, form_error, body_max) }}
+</div>
 {% endblock %}

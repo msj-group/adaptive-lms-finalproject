@@ -36,7 +36,7 @@
   <a class="btn btn--secondary" href="{{ url_for('student.group_units', group_public_id=assignment.group_public_id) }}">Open Lessons</a>
 </div>
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="st-panel" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
@@ -70,11 +70,11 @@
 </div>
 {% endif %}
 
-<div class="activity-writing-layout">
+<div class="st-writing-layout">
 <aside class="activity-writing-brief">
 <section>
   <h2>Instructions</h2>
-  <div class="card">
+  <div class="st-panel">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
        assignment instructions are Teacher-typed text, never stored HTML. #}
     <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ assignment.instructions }}</div>
@@ -82,7 +82,7 @@
 </section>
 
 </aside>
-<div class="activity-writing-paper">{% if submission %}
+<div class="activity-writing-paper st-feature-panel">{% if submission %}
 {#- The immutable receipt. Only THIS Student's own answer is ever rendered
     here, and there is deliberately no edit control, no delete control and no
     resubmit control anywhere on the page -- none exists server-side either. -#}
@@ -92,7 +92,7 @@
     <strong>Submitted</strong> on {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
     This submission is final: it cannot be edited, replaced, or submitted again.
   </div>
-  <div class="card">
+  <div class="st-panel">
     {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe. #}
     {% include 'activities/_assignment_payload.html' %}
   </div>
@@ -105,7 +105,7 @@
     Written by {{ feedback.reviewer_name }} on {{ feedback.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
     This is your teacher's written comment on your answer &mdash; it is not a grade or a pass mark.
   </div>
-  <div class="card">
+  <div class="st-panel">
     {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe --
        feedback is Teacher-typed text, never stored HTML or Markdown. #}
     <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>

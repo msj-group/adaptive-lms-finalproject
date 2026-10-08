@@ -1,8 +1,9 @@
 {% extends "layouts/portal_base.html" %}
-{% import "_announcement_macros.html" as ann %}
+{% import "student/template/_announcement_macros.html" as ann %}
 {% block title %}Announcements{% endblock %}
 {% block portal_nav %}{% set active_nav = 'announcements' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
+<div class="st-community">
 {#- Phase 4 / M09. Every row here is a PUBLISHED announcement whose scope
     currently reaches this student -- the centre's, their courses', their
     groups' -- newest first, in one query. What is not here is not hidden:
@@ -23,7 +24,7 @@
 {% if announcements %}
 <div class="dash-card-list announcement-reading-list">
   {% for item in announcements %}
-  <div class="card">
+  <div class="st-panel">
     <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
       <div>
         <div class="card__title" style="margin-bottom: var(--space-1)">
@@ -62,4 +63,5 @@
   </div>
 </div>
 {% endif %}
+</div>
 {% endblock %}

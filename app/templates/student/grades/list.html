@@ -2,6 +2,7 @@
 {% block title %}Grades{% endblock %}
 {% block portal_nav %}{% set active_nav = 'grades' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
+<div class="st-journal">
 {#- Phase 4 / M08. Every row here is a group this student holds at least one
     RELEASED grade in -- the same condition the detail page applies, so this
     list can never offer a link to a page that would then turn out to be empty.
@@ -24,7 +25,7 @@
 {% if groups %}
 <div class="dash-card-list">
   {% for item in groups %}
-  <div class="card">
+  <div class="st-panel">
     <div class="card__title" style="margin-bottom: var(--space-1)">{{ item.group_name }}</div>
     <div class="card__body">{{ item.course_title }}</div>
     <div class="card__body">{{ item.term_name }}</div>
@@ -59,4 +60,5 @@
   </div>
 </div>
 {% endif %}
+</div>
 {% endblock %}

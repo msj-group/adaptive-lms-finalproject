@@ -35,12 +35,12 @@
   <a class="btn btn--secondary" href="{{ url_for('student.activities', type='quiz', group=group_public_id) }}">Back to Activities</a>
 </div>
 
-<div class="activity-result-layout">
+<div class="st-result-layout">
 <aside>
 <div class="activity-result-score">
 <span>Final score</span>
 <strong>{{ attempt.correct_count }} / {{ attempt.total_questions }}</strong>{% if attempt.percentage is not none %}<p>{{ attempt.percentage }}%</p>{% endif %}</div>
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="st-facts" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 170px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Score</dt>

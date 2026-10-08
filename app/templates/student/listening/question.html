@@ -45,19 +45,19 @@
   {% endfor %}
 {% endwith %}
 
-<div class="activity-listening-layout">
+<div class="st-listening-layout">
 <aside class="activity-listening-desk">
-<h2>Listen and explore</h2>{% include "_audio_player.html" %}
+<h2>Listen and explore</h2>{% include "student/template/_audio_player.html" %}
 
 {% if vocabulary %}
-<section class="card" style="margin-bottom: var(--space-4)">
+<section class="st-panel" style="margin-bottom: var(--space-4)">
   <div class="card__title" style="margin-bottom: var(--space-2)">Vocabulary</div>
   <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ vocabulary }}</div>
 </section>
 {% endif %}
 
 {% if transcript %}
-<section class="card" style="margin-bottom: var(--space-4)">
+<section class="st-panel" style="margin-bottom: var(--space-4)">
   <div class="card__title" style="margin-bottom: var(--space-2)">Transcript</div>
   {% if transcript_note %}<p class="ds-section__desc" style="margin-top:0">{{ transcript_note }}</p>{% endif %}
   <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ transcript }}</div>
@@ -114,7 +114,7 @@
   {% endif %}
 </nav>
 
-<section class="card">
+<section class="st-panel">
   <div class="card__title" style="margin-bottom: var(--space-2)">Finish this attempt</div>
   {% if unanswered_count %}
   <p class="ds-section__desc">

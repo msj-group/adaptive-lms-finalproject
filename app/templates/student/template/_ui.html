@@ -1,0 +1,22 @@
+{% import '_figma_ui.html' as ui %}
+{% macro nav(label, endpoint, symbol, selected, identity, badge=none) -%}
+<a class="st-nav-link" href="{{ url_for(endpoint) }}" data-research-id="{{ identity }}"{% if selected %} aria-current="page"{% endif %}>{{ ui.icon(symbol,18) }}<span>{{ label }}</span>{% if badge %}<span class="st-unread" aria-label="{{ badge }} unread">{{ badge }}</span>{% endif %}{% if selected %}<i aria-hidden="true"></i>{% endif %}</a>
+{%- endmacro %}
+{% macro course_card(card, progress=none, research_identity=none, show_term_state=false, today=none) -%}
+<article class="st-course-card">
+  <div class="st-course-card-grid">
+    <div class="st-course-card-copy">
+      <p class="st-course-eyebrow">{{ ui.icon('headphones',16) }} {{ card.level_name }} · {{ card.term_name }}</p>
+      <h2>{{ card.course_title }}</h2>
+      <p class="st-course-description">{{ card.group_name }}</p>
+      <span class="badge badge--{{ 'success' if card.operational else 'neutral' }}">{{ 'Current enrollment' if card.operational else 'Archived context' }}</span>
+      {% if show_term_state %}{% if card.term_start > today %}<span class="badge badge--neutral">Upcoming term · {{ card.term_start }}</span>{% elif card.term_end < today %}<span class="badge badge--neutral">Term ended · {{ card.term_end }}</span>{% endif %}{% endif %}
+      {% if card.next_class is defined and card.next_class %}<p>Next class: {{ card.next_class.start.strftime('%a %d %b, %H:%M') }}</p>{% endif %}
+      {% if card.operational %}<a class="st-course-action" href="{{ url_for('workspace.student_course', group_public_id=card.group_public_id) }}"{% if research_identity %} data-research-id="{{ research_identity }}"{% endif %}>Open course {{ ui.icon('arrow',16) }}</a>{% else %}<p>Content access has ended. Your enrollment records remain available.</p><a class="st-course-action" href="{{ url_for('student.records') }}">View records {{ ui.icon('arrow',16) }}</a>{% endif %}
+    </div>
+    <div class="st-course-image"><img src="{{ url_for('static',filename='images/student_study.jpg') }}" alt="" loading="lazy" width="600" height="400"><span>Your learning, your pace</span></div>
+  </div>
+  <footer><span>{{ ui.icon('users',14) }} {{ card.group_name }} · {{ card.term_name }}</span><span>{% if progress and progress.lesson_total %}{{ ui.icon('check',15) }} {{ progress.completed }} of {{ progress.lesson_total }} lessons marked complete{% else %}No lesson progress available{% endif %}</span></footer>
+  {% if progress and progress.lesson_total %}<progress value="{{ progress.completed }}" max="{{ progress.lesson_total }}" aria-label="Completed lessons in {{ card.group_name }}">{{ progress.completed }} of {{ progress.lesson_total }}</progress>{% endif %}
+</article>
+{%- endmacro %}

@@ -4,10 +4,14 @@
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
 <div class="workspace-heading"><div><span class="figma-eyebrow">{{ 'TEACHING' if teacher else 'LEARNING' }}</span><h1 data-workspace-page-heading>{{ 'My groups' if teacher else 'My courses' }}</h1><p>Choose a {{ 'teaching group' if teacher else 'course' }} to open its workspace. Times use {{ tz_name }}.</p></div>{% if not teacher %}<a class="btn btn--secondary" href="{{ url_for('student.records') }}">Previous enrollment records</a>{% endif %}</div>
-<div class="workspace-card-grid">{% for card in cards %}
+{% if not teacher %}
+{% import 'student/template/_ui.html' as s %}
+<div class="st-courses">{% for card in cards %}{{ s.course_card(card,research_identity='course_open',show_term_state=true,today=today) }}{% else %}<div class="empty-state"><h2>No current courses</h2><p>New enrollments will appear here when the administrator adds them.</p></div>{% endfor %}</div>
+{% else %}<div class="workspace-card-grid">{% for card in cards %}
 <article class="card workspace-course-card"><span class="workspace-card-icon">{{ ui.icon('book', 25) }}</span><p class="workspace-kicker">{{ card.level_name }} · {{ card.term_name }}</p><h2>{{ card.course_title }}</h2><p>{{ card.group_name }}</p><span class="badge badge--{{ 'success' if card.operational else 'neutral' }}">{{ ('Current assignment' if teacher else 'Current enrollment') if card.operational else 'Archived context' }}</span>{% if card.term_start > today %}<span class="badge badge--neutral">Upcoming term · {{ card.term_start }}</span>{% elif card.term_end < today %}<span class="badge badge--neutral">Term ended · {{ card.term_end }}</span>{% endif %}
 {% if teacher %}<p>{{ card.student_count }} active students</p>{% endif %}
 {% if card.next_class %}<p class="workspace-meta">Next class: {{ card.next_class.start.strftime('%a %d %b, %H:%M') }}</p>{% endif %}
 {% if teacher or card.operational %}<a class="btn btn--primary" href="{{ url_for('workspace.teacher_group' if teacher else 'workspace.student_course', group_public_id=card.group_public_id) }}"{% if not teacher %} data-research-id="course_open"{% endif %}>Open workspace {{ ui.icon('arrow-up', 16) }}</a>{% else %}<p class="workspace-meta">Content access has ended. Your enrollment records remain available.</p><a class="btn btn--secondary" href="{{ url_for('student.records') }}">View records</a>{% endif %}</article>
 {% else %}<div class="empty-state"><h2>No current {{ 'teaching groups' if teacher else 'courses' }}</h2><p>{{ 'Assigned groups' if teacher else 'New enrollments' }} will appear here when the administrator adds them.</p></div>{% endfor %}</div>
+{% endif %}
 {% endblock %}

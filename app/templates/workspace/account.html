@@ -2,7 +2,7 @@
 {% import "_figma_ui.html" as account_ui %}
 {% block title %}Account settings{% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
-{% block feature_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">{% endblock %}
+{% block feature_styles %}{{ super() }}{% if current_user.role != 'student' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">{% endif %}{% endblock %}
 
 {% macro errors(field) -%}
 {% if field.errors %}<ul class="account-errors" id="{{ field.id }}-errors" role="alert">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
@@ -14,7 +14,7 @@
 {% endif %}
 <p class="account-intro">Make this space yours and keep your account secure.</p>
 <div class="account-settings-grid">
-  <section class="card account-section" aria-labelledby="photo-heading">
+  <section class="{{ 'st-panel' if current_user.role == 'student' else 'card' }} account-section" aria-labelledby="photo-heading">
     <h2 id="photo-heading">Profile photo</h2>
     <div class="account-profile">{{ account_ui.avatar(current_user.full_name, account_photo_url()) }}<div><strong dir="auto">{{ current_user.full_name }}</strong><span>{{ current_user.role|capitalize }}</span></div></div>
     <form method="post" action="{{ url_for('account.upload_photo') }}" enctype="multipart/form-data" data-research-form="account_photo_submit">
@@ -28,7 +28,7 @@
       {{ photo_form.submit(class_="btn btn--primary", data_research_id="account_photo_submit") }}
     </form>
   </section>
-  <section class="card account-section" aria-labelledby="password-heading">
+  <section class="{{ 'st-panel' if current_user.role == 'student' else 'card' }} account-section" aria-labelledby="password-heading">
     <h2 id="password-heading">Change password</h2>
     <p class="account-hint" id="password-help">Use 15–128 characters. A long passphrase works well. After saving, sign in again; your other sessions will also end.</p>
     <form method="post" action="{{ url_for('account.password') }}" data-research-form="account_password_submit">

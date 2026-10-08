@@ -1,0 +1,139 @@
+{# Shared calendar rendering helpers (Phase 4 / M10).
+   Presentation only -- no database access, no authorization decision, no date
+   arithmetic, and nothing here is ever rendered with `|safe`.
+
+   Every value arrives as a plain presentation dict built by
+   app/services/calendar_queries.py, already carrying its source label, its
+   local civil date and times, its context phrase and -- where the acting role
+   has an authorized destination -- the server-generated `url` its own
+   blueprint attached. These macros never build a link themselves and never
+   decide whether one is allowed: they render `row.url` when it is there and
+   plain text when it is not.
+
+   **No recurrence is expanded here.** A class entry is already one occurrence
+   on one civil day; the weekday arithmetic happened in
+   app/services/schedule_occurrences.py. There is deliberately no loop over
+   weeks, no date maths and no JavaScript anywhere in M10's templates. #}
+
+{% macro source_badge(row) -%}
+  {%- if row.cancelled -%}
+    <span class="badge badge--danger">{{ row.source_label }}</span>
+  {%- elif row.source == 'center_event' -%}
+    <span class="badge badge--primary">{{ row.source_label }}</span>
+  {%- elif row.source == 'class' -%}
+    <span class="badge badge--success">{{ row.source_label }}</span>
+  {%- elif row.source in ('assignment_due', 'quiz_deadline', 'listening_deadline') -%}
+    <span class="badge badge--warning">{{ row.source_label }}</span>
+  {%- else -%}
+    <span class="badge badge--neutral">{{ row.source_label }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{# The local clock face of one entry. An all-day entry says so rather than
+   pretending to happen at midnight; a single-instant entry (a deadline) shows
+   one time rather than an invented span. #}
+{% macro entry_time(row) -%}
+  {%- if row.all_day -%}
+    All day
+  {%- elif row.end_time -%}
+    {{ row.start_time.strftime("%H:%M") }}&ndash;{{ row.end_time.strftime("%H:%M") }}
+  {%- else -%}
+    {{ row.start_time.strftime("%H:%M") }}
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro day_heading(day) -%}
+  <h2 style="margin: var(--space-6) 0 var(--space-2); font-size: var(--font-size-lg)">
+    {{ day.date.strftime("%A %d %B %Y") }}
+  </h2>
+{%- endmacro %}
+
+{# One entry row. `row.title` and `row.context` are plain text and are escaped
+   by Jinja; nothing is marked safe. A cancelled entry is labelled in words as
+   well as by its badge colour, because colour alone is not a statement. #}
+{% macro entry(row) -%}
+<div class="st-panel" style="margin-bottom: var(--space-2)">
+  <div class="ds-row" style="justify-content: space-between; align-items: flex-start; gap: var(--space-3)">
+    <div>
+      <div class="card__title" style="margin-bottom: var(--space-1)">
+        {%- if row.url %}<a href="{{ row.url }}">{{ row.title }}</a>{% else %}{{ row.title }}{% endif -%}
+        {%- if row.cancelled %} <span class="badge badge--danger">Cancelled</span>{% endif -%}
+      </div>
+      {%- if row.context %}
+      <div class="card__body">{{ row.context }}</div>
+      {%- endif %}
+      {%- if row.location %}
+      <div class="card__body" style="color: var(--color-text-secondary)">{{ row.location }}</div>
+      {%- endif %}
+      {%- if row.details %}
+      <div class="card__body" style="white-space: pre-wrap; margin-top: var(--space-2)">{{ row.details }}</div>
+      {%- endif %}
+    </div>
+    <div style="text-align: right; white-space: nowrap">
+      <div class="card__body" style="margin-bottom: var(--space-1)">{{ entry_time(row) }}</div>
+      {{ source_badge(row) }}
+    </div>
+  </div>
+</div>
+{%- endmacro %}
+
+{# The Previous / This month / Next controls plus the range form. Every link is
+   a URL the route built from the NORMALISED range, so the application never
+   emits a range it would have to normalise again. The two date inputs are the
+   range values are re-validated server-side by
+   calendar_queries.normalize_range on the next request. #}
+{% macro range_controls(previous_url, next_url, today_url, range_start, range_end, max_range_days, action) -%}
+<div class="st-panel" style="margin-bottom: var(--space-4)">
+  <div class="ds-row" style="gap: var(--space-2); align-items: center; flex-wrap: wrap">
+    {% set layout = request.args.get('view','list') if request.args.get('view','list') in ['list','week','day'] else 'list' %}
+    <a class="btn btn--secondary" href="{{ previous_url }}{{ '&' if '?' in previous_url else '?' }}view={{ layout }}">&larr; Previous</a>
+    <a class="btn btn--secondary" href="{{ today_url }}{{ '&' if '?' in today_url else '?' }}view={{ layout }}">This month</a>
+    <a class="btn btn--secondary" href="{{ next_url }}{{ '&' if '?' in next_url else '?' }}view={{ layout }}">Next &rarr;</a>
+  </div>
+  <form method="get" action="{{ action }}" class="ds-row"
+        style="gap: var(--space-2); align-items: flex-end; flex-wrap: wrap; margin-top: var(--space-3)">
+    <div class="field" style="margin: 0">
+      <label class="field__label" for="calendar-view">Layout</label>
+      <select class="field__input" id="calendar-view" name="view" data-calendar-view>{% for value,label in [('list','List'),('week','Week grid'),('day','One day')] %}<option value="{{ value }}"{% if request.args.get('view','list') == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    </div>
+    <div class="field" style="margin: 0">
+      <label class="field__label" for="calendar-from">From</label>
+      <input class="field__input" id="calendar-from" type="date" name="from" value="{{ range_start.isoformat() }}">
+    </div>
+    <div class="field" style="margin: 0">
+      <label class="field__label" for="calendar-to">To</label>
+      <input class="field__input" id="calendar-to" type="date" name="to" value="{{ range_end.isoformat() }}">
+    </div>
+    <button type="submit" class="btn btn--primary">Show range</button>
+  </form>
+  <div class="ds-section__desc" style="margin: var(--space-2) 0 0">
+    A calendar view covers at most {{ max_range_days }} days.
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro days_view(days, range_start, range_end) -%}
+<div class="workspace-calendar" data-calendar data-calendar-layout="{{ request.args.get('view','list') if request.args.get('view','list') in ['list','week','day'] else 'list' }}">
+{% if request.args.get('view') == 'day' %}<label for="calendar-day-picker">Day in this range</label><select id="calendar-day-picker" class="field__input" data-calendar-day>{% for day in days %}<option value="{{ day.date.isoformat() }}">{{ day.date.strftime('%A %d %B %Y') }}</option>{% endfor %}</select>{% endif %}
+{% if request.args.get('view') == 'week' %}
+<div class="workspace-week-scroll" role="region" aria-label="Calendar week grid" tabindex="0">{% for week in workspace_calendar_weeks(days,range_start,range_end) %}<div class="workspace-calendar-week">{% for day in week %}<section class="workspace-calendar-day{{ ' workspace-calendar-day--outside' if not day.in_range else '' }}">{{ day_heading(day) }}{% for row in day.rows %}{{ entry(row) }}{% else %}<p class="workspace-meta">{{ 'No entries' if day.in_range else 'Outside selected range' }}</p>{% endfor %}</section>{% endfor %}</div>{% endfor %}</div>
+{% else %}<div class="workspace-calendar-days">{% for day in days %}<section class="workspace-calendar-day" data-calendar-date="{{ day.date.isoformat() }}">{{ day_heading(day) }}{% for row in day.rows %}{{ entry(row) }}{% endfor %}</section>{% endfor %}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro range_summary(range_start, range_end, range_days, entry_count, tz_name) -%}
+<p class="ds-section__desc" style="margin-bottom: var(--space-3)">
+  {{ range_start.strftime("%d %B %Y") }} &ndash; {{ range_end.strftime("%d %B %Y") }}
+  ({{ range_days }} {{ "day" if range_days == 1 else "days" }}) &middot;
+  {{ entry_count }} {{ "entry" if entry_count == 1 else "entries" }} &middot;
+  times shown in the center timezone (<strong>{{ tz_name }}</strong>)
+</p>
+{%- endmacro %}
+
+{% macro flash_messages() -%}
+  {%- with messages = get_flashed_messages(with_categories=true) -%}
+    {%- for category, message in messages %}
+      <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {%- endfor -%}
+  {%- endwith -%}
+{%- endmacro %}

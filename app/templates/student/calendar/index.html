@@ -1,8 +1,9 @@
 {% extends "layouts/portal_base.html" %}
-{% import "_calendar_macros.html" as cal with context %}
+{% import "student/template/_calendar_macros.html" as cal with context %}
 {% block title %}Calendar{% endblock %}
 {% block portal_nav %}{% set active_nav = 'calendar' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
+<div class="st-community">
 {#- Phase 4 / M10. Every entry on this page was authorized in SQL before it was
     built: a class occurrence of an active schedule of a group this student is
     actively enrolled in under a fully active academic chain, an opening or due
@@ -48,4 +49,5 @@
   </div>
 </div>
 {% endif %}
+</div>
 {% endblock %}

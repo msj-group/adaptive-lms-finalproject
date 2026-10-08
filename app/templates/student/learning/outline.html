@@ -18,15 +18,15 @@
 </div>
 {% else %}
 {% for unit in units %}
-<section id="unit-{{ unit.public_id }}" class="learning-unit">
-  <h2>{{ unit.title }}</h2>
+<section id="unit-{{ unit.public_id }}" class="st-unit">
+  <header class="st-unit-heading"><span class="st-unit-number" aria-hidden="true">{{ "%02d"|format(loop.index) }}</span><h2>{{ unit.title }}</h2></header>
   {% if unit.lessons %}
   <ul class="workspace-lesson-list">
     {% for lesson in unit.lessons %}
     <li>
-      <a class="learning-lesson-row"
+      <a class="st-lesson-row"
          href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}" data-research-id="lesson_open">
-        <span class="card__title">{{ lesson.title }}</span>
+        <span class="st-unit-number" aria-hidden="true">{{ "%02d"|format(loop.index) }}</span><span class="st-lesson-copy">{{ lesson.title }}</span>
         {#- Phase 4 / M13: this student's own completion mark in this group. -#}
         {% if lesson.is_completed %}<span class="badge badge--success">Completed</span>{% endif %}
       </a>

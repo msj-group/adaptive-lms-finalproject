@@ -2,12 +2,13 @@
 {% import "_figma_ui.html" as ui %}
 {% block title %}My records{% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
-{% block portal_content %}<nav class="workspace-tabs" aria-label="My records sections"><a href="{{ url_for('student.records') }}" aria-current="page">Enrollment history</a><a href="{{ url_for('student.grades_list') }}">Released grades</a><a href="{{ url_for('student.attendance_list') }}">Finalized attendance</a></nav>
+{% block portal_content %}
+<div class="st-journal"><nav class="workspace-tabs" aria-label="My records sections"><a href="{{ url_for('student.records') }}" aria-current="page">Enrollment history</a><a href="{{ url_for('student.grades_list') }}">Released grades</a><a href="{{ url_for('student.attendance_list') }}">Finalized attendance</a></nav>
 <h1 data-workspace-page-heading>My records<span class="figma-brand-dot">.</span></h1>
 <p class="ds-section__desc">Every chapter of your learning journey. Your enrollment periods keep their own history, including released results after withdrawal or archival.</p>
 <div class="figma-record-grid">
 {% for episode in episodes.items %}
-  <article class="card">
+  <article class="st-panel">
     <span class="badge badge--primary">{{ episode.status|capitalize }}</span>
     <h2 style="margin-top: 16px">{{ episode.group.course.title }}</h2>
     <p class="card__body">{{ episode.group.name }} · {{ episode.group.academic_term.name }} · Enrollment started {{ workspace_local(episode.created_at).strftime('%d %b %Y, %H:%M') }} ({{ config.APP_TIMEZONE }})</p>
@@ -21,4 +22,5 @@
 {% if episodes.has_prev %}<a class="btn btn--secondary" href="{{ url_for('student.records', page=episodes.prev_num) }}">Previous</a>{% endif %}
 {% if episodes.has_next %}<a class="btn btn--secondary" href="{{ url_for('student.records', page=episodes.next_num) }}">Next</a>{% endif %}
 </nav>
+</div>
 {% endblock %}

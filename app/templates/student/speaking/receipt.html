@@ -36,7 +36,7 @@
   This recording is final: it cannot be edited, replaced, or submitted again.
 </div>
 
-<div class="activity-speaking-layout">
+<div class="st-speaking-layout">
 <div class="activity-speaking-studio">
 <section>
   <h2>Your Recording</h2>
@@ -55,7 +55,7 @@
     Written by {{ feedback.reviewer_name }} on {{ feedback.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
     This is your teacher's written comment on your recording &mdash; it is not a grade or a pass mark.
   </div>
-  <div class="card">
+  <div class="st-panel">
     {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe --
        feedback is Teacher-typed text, never stored HTML or Markdown. #}
     <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
@@ -78,7 +78,7 @@
 
 <section style="margin-top: var(--space-6)">
   <h2>What to say</h2>
-  <div class="card">
+  <div class="st-panel">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe. #}
     <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
   </div>

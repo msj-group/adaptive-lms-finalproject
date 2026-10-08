@@ -2,23 +2,23 @@
 {% block title %}{{ lesson_title }} — {{ group_name }}{% endblock %}
 {% block extra_head %}
   {{ super() }}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/materials.css') }}">
+
 {% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-<header class="learning-reading-heading"><p class="ds-section__desc">
-  {{ group_name }} &middot; {{ course_title }} &middot; {{ level_name }} &middot; {{ term_name }} &middot; {{ unit_title }}
-</p>
-<h1 data-workspace-page-heading>{{ lesson_title }}</h1></header>
-<div class="learning-reading-layout"><aside class="learning-reading-outline">
-<details class="workspace-reading-nav"><summary>Course outline · {{ lesson_links|length }} published lessons</summary><ol>{% for item in lesson_links %}<li><a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.public_id) }}"{% if item.public_id == lesson_public_id %} aria-current="page"{% endif %}>{{ item.title }}</a> {{ '· Completed' if item.is_completed else '' }}</li>{% endfor %}</ol></details>
-{% if materials %}<nav class="workspace-inline-links" aria-label="In this lesson">{% for item in materials %}<a href="#material-{{ item.public_id }}">{{ item.title }}</a>{% endfor %}</nav>{% endif %}
-</aside><div class="learning-reading-main">
 
-<div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
+<div class="st-studio-return">
   <a class="btn btn--secondary" href="{{ url_for('student.group_units', group_public_id=group_public_id) }}">Back to Lessons</a>
   <a class="btn btn--secondary" href="{{ url_for('student.dashboard') }}">Dashboard</a>
 </div>
+
+<div class="st-studio"><aside class="st-studio-map"><span class="st-eyebrow">LEARNING STUDIO</span><h2>Your course map</h2>
+<details class="workspace-reading-nav" open><summary>Course outline · {{ lesson_links|length }} published lessons</summary><ol>{% for item in lesson_links %}<li><a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.public_id) }}"{% if item.public_id == lesson_public_id %} aria-current="page"{% endif %}><span class="st-lesson-number" aria-hidden="true">{{ "%02d"|format(loop.index) }}</span><span>{{ item.title }}</span></a> {{ '· Completed' if item.is_completed else '' }}</li>{% endfor %}</ol></details>
+{% if materials %}<nav class="workspace-inline-links" aria-label="In this lesson">{% for item in materials %}<a href="#material-{{ item.public_id }}">{{ item.title }}</a>{% endfor %}</nav>{% endif %}
+</aside><div class="st-studio-body"><header class="st-studio-heading"><p class="ds-section__desc">
+  {{ group_name }} &middot; {{ course_title }} &middot; {{ level_name }} &middot; {{ term_name }} &middot; {{ unit_title }}
+</p>
+<h1 data-workspace-page-heading>{{ lesson_title }}</h1></header>
 
 {%- with messages = get_flashed_messages(with_categories=true) -%}
   {%- for category, message in messages %}
@@ -26,38 +26,7 @@
   {%- endfor -%}
 {%- endwith %}
 
-{#- Phase 4 / M13. The student's own completion state, with exactly the one
-    action that state allows. The form is bound by a signed token to this
-    student, lesson, action and progress version; the route proves access and
-    the version again under locks, whatever this page showed. -#}
-<div class="learning-completion" id="progress">
-  <div class="ds-row" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3)">
-    <div>
-      {% if progress.is_completed %}
-      <span class="badge badge--success">Completed</span>
-      <div class="card__body" style="margin-top: var(--space-2)">You marked this lesson complete on {{ progress.completed_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).</div>
-      {% else %}
-      <span class="badge badge--neutral">Not completed</span>
-      <div class="card__body" style="margin-top: var(--space-2)">Mark this lesson complete when you have finished working through it.</div>
-      {% endif %}
-    </div>
-    <form method="post" action="{{ url_for('student.lesson_undo_complete' if progress_action == 'undo' else 'student.lesson_mark_complete', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id) }}"
-          data-research-form="{{ 'lesson_undo_complete' if progress_action == 'undo' else 'lesson_complete' }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="progress_state" value="{{ progress_state }}">
-      {% if progress_action == 'undo' %}
-      <button type="submit" class="btn btn--secondary" data-research-id="lesson_undo_complete">Undo completion</button>
-      {% else %}
-      <button type="submit" class="btn btn--primary" data-research-id="lesson_complete">Mark as complete</button>
-      {% if next_lesson %}
-      <button type="submit" name="after_save" value="next_lesson" class="btn btn--secondary" data-research-id="lesson_complete">Complete and next lesson</button>
-      {% endif %}
-      {% endif %}
-    </form>
-  </div>
-</div>
-
-<div class="learning-description">
+<div class="st-reading-prose">
   {% if lesson_description %}
   {# Plain text: line breaks preserved via CSS, never via |safe or stored HTML. #}
   <div style="white-space: pre-wrap; word-break: break-word;">{{ lesson_description }}</div>
@@ -75,7 +44,7 @@
   </div>
   {% else %}
   {% for material in materials %}
-  <div id="material-{{ material.public_id }}" class="material-block learning-material">
+  <div id="material-{{ material.public_id }}" class="material-block st-material">
     <div class="material-block__title">{{ material.title }}</div>
 
     {% if material.kind == "rich_text" %}
@@ -119,5 +88,36 @@
   {% endif %}
 </section>
 <nav class="workspace-tabs" aria-label="Lesson navigation">{% if previous_lesson %}<a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=previous_lesson.unit_public_id, lesson_public_id=previous_lesson.public_id) }}">Previous: {{ previous_lesson.title }}</a>{% endif %}{% if next_lesson %}<a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=next_lesson.unit_public_id, lesson_public_id=next_lesson.public_id) }}">Next: {{ next_lesson.title }}</a>{% endif %}</nav>
+{#- Phase 4 / M13. The student's own completion state, with exactly the one
+    action that state allows. The form is bound by a signed token to this
+    student, lesson, action and progress version; the route proves access and
+    the version again under locks, whatever this page showed. -#}
+<div class="learning-completion" id="progress">
+  <div class="ds-row" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3)">
+    <div>
+      {% if progress.is_completed %}
+      <span class="badge badge--success">Completed</span>
+      <div class="card__body" style="margin-top: var(--space-2)">You marked this lesson complete on {{ progress.completed_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).</div>
+      {% else %}
+      <span class="badge badge--neutral">Not completed</span>
+      <div class="card__body" style="margin-top: var(--space-2)">Mark this lesson complete when you have finished working through it.</div>
+      {% endif %}
+    </div>
+    <form method="post" action="{{ url_for('student.lesson_undo_complete' if progress_action == 'undo' else 'student.lesson_mark_complete', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id) }}"
+          data-research-form="{{ 'lesson_undo_complete' if progress_action == 'undo' else 'lesson_complete' }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="progress_state" value="{{ progress_state }}">
+      {% if progress_action == 'undo' %}
+      <button type="submit" class="btn btn--secondary" data-research-id="lesson_undo_complete">Undo completion</button>
+      {% else %}
+      <button type="submit" class="btn btn--primary" data-research-id="lesson_complete">Mark as complete</button>
+      {% if next_lesson %}
+      <button type="submit" name="after_save" value="next_lesson" class="btn btn--secondary" data-research-id="lesson_complete">Complete and next lesson</button>
+      {% endif %}
+      {% endif %}
+    </form>
+  </div>
+</div>
+
 </div></div>
 {% endblock %}

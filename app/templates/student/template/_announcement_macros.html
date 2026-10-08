@@ -1,0 +1,67 @@
+{# Shared Announcement rendering helpers (Phase 4 / M09).
+   Presentation only -- no database access, no authorization decision, and
+   nothing here is ever rendered with `|safe`. Every value arrives as a plain
+   presentation dict built by app/services/announcement_queries.py, already
+   carrying its scope label, its status label and its local timestamps.
+
+   **The body is plain text and is rendered as plain text.** `body_block`
+   prints it inside a `white-space: pre-wrap` element, so the author's line
+   breaks survive and Jinja's autoescaping is what stops anything they typed
+   from becoming markup. There is deliberately no `|safe`, no Markdown filter
+   and no sanitiser anywhere in M09 -- nothing is ever trusted, so nothing has
+   to be cleaned. #}
+
+{% macro scope_badge(announcement) -%}
+  {%- if announcement.scope == 'center' -%}
+    <span class="badge badge--primary">{{ announcement.scope_label }}</span>
+  {%- elif announcement.scope == 'course' -%}
+    <span class="badge badge--neutral">{{ announcement.scope_label }}</span>
+  {%- else -%}
+    <span class="badge badge--neutral">{{ announcement.scope_label }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{# Author-facing only. A Student never sees one of these, because a Student
+   only ever receives published announcements. #}
+{% macro status_badge(announcement) -%}
+  {%- if announcement.status == 'published' -%}
+    <span class="badge badge--success">{{ announcement.status_label }}</span>
+  {%- elif announcement.status == 'draft' -%}
+    <span class="badge badge--warning">{{ announcement.status_label }}</span>
+  {%- else -%}
+    <span class="badge badge--neutral">{{ announcement.status_label }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro body_block(announcement) -%}
+  <div class="card__body" style="white-space: pre-wrap; margin-top: var(--space-3)">{{ announcement.body }}</div>
+{%- endmacro %}
+
+{# A short one-line summary of an announcement's body, for list rows. Jinja's
+   `truncate` counts characters and never breaks escaping; the full text is one
+   click away on the detail page. #}
+{% macro body_preview(announcement, length=180) -%}
+  <div class="card__body" style="margin-top: var(--space-2)">{{ announcement.body | replace("\n", " ") | truncate(length, true, "…") }}</div>
+{%- endmacro %}
+
+{% macro published_line(announcement, tz_name) -%}
+  {%- if announcement.published_local -%}
+    Published {{ announcement.published_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})
+  {%- else -%}
+    Not published
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro context_line(announcement) -%}
+  {%- if announcement.context -%}
+    <div class="card__body">{{ announcement.context }}</div>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro flash_messages() -%}
+  {%- with messages = get_flashed_messages(with_categories=true) -%}
+    {%- for category, message in messages %}
+      <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
+    {%- endfor -%}
+  {%- endwith -%}
+{%- endmacro %}

@@ -34,7 +34,7 @@
   <a class="btn btn--secondary" href="{{ url_for('student.activities', type='speaking', group=activity.group_public_id) }}">Back to Activities</a>
 </div>
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="st-facts" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
@@ -66,11 +66,11 @@
 </div>
 {% endif %}
 
-<div class="activity-speaking-layout">
+<div class="st-speaking-layout">
 <aside class="activity-speaking-brief">
 <section>
   <h2>What to say</h2>
-  <div class="card">
+  <div class="st-panel">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
        these are Teacher-typed instructions, never stored HTML. #}
     <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>

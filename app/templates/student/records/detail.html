@@ -1,7 +1,9 @@
 {% extends "layouts/portal_base.html" %}{% block title %}{{ kinds[kind] }}{% endblock %}{% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
-{% block portal_content %}<h1 data-workspace-page-heading>{{ kinds[kind] }}</h1><p>Enrollment started {{ episode.created_at }}. Each record retains the group where it was earned.</p>
+{% block portal_content %}
+<div class="st-journal"><h1 data-workspace-page-heading>{{ kinds[kind] }}</h1><p>Enrollment started {{ episode.created_at }}. Each record retains the group where it was earned.</p>
 <nav class="workspace-tabs" aria-label="Record sections">{% for key,label in kinds.items() %}<a href="{{ url_for('student.episode_records', episode_public_id=episode.public_id, kind=key) }}"{% if kind == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
-{% for item in items %}<article class="card"><h2>{{ item.title }}</h2><p>{{ item.group }}{% if item.at %} · {{ item.at }} ({{ tz_name }}){% endif %}</p>
+{% for item in items %}<article class="st-panel"><h2>{{ item.title }}</h2><p>{{ item.group }}{% if item.at %} · {{ item.at }} ({{ tz_name }}){% endif %}</p>
 {% if item.changes is defined %}<dl>{% for label,before,after in item.changes %}<dt>{{ label }}</dt><dd>{{ before if before is not none else 'Empty' }} → {{ after if after is not none else 'Empty' }}</dd>{% endfor %}</dl>
 {% else %}<p style="white-space:pre-wrap">{{ item.text }}</p>{% if item.audio_url %}<audio controls preload="none" src="{{ item.audio_url }}"></audio><a href="{{ item.audio_url }}?download=yes">Download recording</a>{% endif %}{% if item.note %}<p style="white-space:pre-wrap">{{ item.note }}</p>{% endif %}{% endif %}</article>{% else %}<p>No available records of this type in this enrollment period.</p>{% endfor %}
-{% if page > 1 %}<a href="{{ url_for('student.episode_records', episode_public_id=episode.public_id, kind=kind, page=page-1) }}">Previous</a>{% endif %}{% if has_next %}<a href="{{ url_for('student.episode_records', episode_public_id=episode.public_id, kind=kind, page=page+1) }}">Next</a>{% endif %}<p><a href="{{ url_for('student.records') }}">All enrollment periods</a></p>{% endblock %}
+{% if page > 1 %}<a href="{{ url_for('student.episode_records', episode_public_id=episode.public_id, kind=kind, page=page-1) }}">Previous</a>{% endif %}{% if has_next %}<a href="{{ url_for('student.episode_records', episode_public_id=episode.public_id, kind=kind, page=page+1) }}">Next</a>{% endif %}<p><a href="{{ url_for('student.records') }}">All enrollment periods</a></p></div>
+{% endblock %}

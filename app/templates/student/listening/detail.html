@@ -53,12 +53,12 @@
   {% endif %}
 </div>
 
-<div class="activity-listening-layout">
+<div class="st-listening-layout">
 <aside class="activity-listening-desk">
-<h2>Listen and explore</h2>{% include "_audio_player.html" %}{% if vocabulary %}
+<h2>Listen and explore</h2>{% include "student/template/_audio_player.html" %}{% if vocabulary %}
 <section style="margin-bottom: var(--space-6)">
   <h2>Vocabulary</h2>
-  <div class="card">
+  <div class="st-panel">
     <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ vocabulary }}</div>
   </div>
 </section>
@@ -67,7 +67,7 @@
 {% if transcript %}
 <section style="margin-bottom: var(--space-6)">
   <h2>Transcript</h2>
-  <div class="card">
+  <div class="st-panel">
     {% if transcript_note %}<p class="ds-section__desc" style="margin-top:0">{{ transcript_note }}</p>{% endif %}
     <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ transcript }}</div>
   </div>
@@ -77,7 +77,7 @@
 </aside>
 <div>
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="st-facts" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 170px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
@@ -118,7 +118,7 @@
 {% if activity.instructions %}
 <section style="margin-bottom: var(--space-6)">
   <h2>Instructions</h2>
-  <div class="card">
+  <div class="st-panel">
     {# Plain text: autoescaped and laid out by CSS. Never |safe. #}
     <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
   </div>

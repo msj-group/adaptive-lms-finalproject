@@ -2,7 +2,7 @@
 {% block title %}Search{% endblock %}
 {% block extra_head %}
   {{ super() }}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
+
 {% endblock %}
 {% block portal_nav %}{% set active_nav = 'search' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
@@ -34,12 +34,12 @@
   {% endfor %}
 {% endwith %}
 
-<form class="search-form" method="get" action="{{ url_for('student.search') }}" role="search" data-research-form="search_submit">
-  <div class="field search-form__query">
+<form class="st-search-form" method="get" action="{{ url_for('student.search') }}" role="search" data-research-form="search_submit">
+  <div class="st-search-query">{% import '_figma_ui.html' as ui %}{{ ui.icon('search',22) }}  <div class="field">
     <label class="field__label" for="search-q">Search</label>
     <input class="field__input" type="search" id="search-q" name="q" value="{{ q }}"
            maxlength="100" autocomplete="off" placeholder="e.g. ENG101, present perfect, homework">
-  </div>
+  </div><button type="submit" class="btn btn--primary" data-research-id="search_submit">Search</button></div>
 
   <div class="search-form__filters">
     <div class="field">
@@ -75,7 +75,7 @@
   </div>
 
   <div class="ds-row search-form__actions">
-    <button type="submit" class="btn btn--primary" data-research-id="search_submit">Search</button>
+
     {% if content_type != 'all' or group_param or material_kind != 'all' %}
     <a class="btn btn--secondary" href="{{ url_for('student.search', q=q) }}">Clear filters</a>
     {% endif %}
@@ -96,7 +96,7 @@
     <div class="empty-state__title">Search your learning content</div>
     <div>Enter a word or phrase above to search across your courses, units, lessons, and materials.</div>
   </div>
-  <div class="search-tips card">
+  <div class="search-tips st-panel">
     <div class="card__title">Search tips</div>
     <ul>
       <li>Use a course code, a course or lesson title, or a teacher-added keyword.</li>
@@ -121,7 +121,7 @@
         <h2>{{ type_headings[type_name] }}</h2>
         <ul class="search-results__list">
           {% for item in section['items'] %}
-          <li class="search-result card">
+          <li class="st-panel st-search-result"><span class="st-search-result-icon" aria-hidden="true">{{ ui.icon('file' if type_name == 'material' else 'megaphone' if type_name == 'announcement' else 'book',23) }}</span><div class="st-search-result-copy">
             <div class="search-result__head">
               <span class="badge badge--primary">{{ item.badge }}</span>
               {% set ordinal.value = ordinal.value + 1 %}<a class="search-result__title" href="{{ destination(item) | trim }}" data-research-id="search_result"{% if ordinal.value <= 500 %} data-research-position="{{ ordinal.value }}"{% endif %}>{{ item.title }}</a>
@@ -132,7 +132,7 @@
             {% if item.snippet %}
             <div class="search-result__snippet">{{ item.snippet }}</div>
             {% endif %}
-          </li>
+          </div></li>
           {% endfor %}
         </ul>
         {% if section['has_more'] %}

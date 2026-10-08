@@ -1,8 +1,9 @@
 {% extends "layouts/portal_base.html" %}
-{% import "_announcement_macros.html" as ann %}
+{% import "student/template/_announcement_macros.html" as ann %}
 {% block title %}{{ announcement.title }}{% endblock %}
 {% block portal_nav %}{% set active_nav = 'announcements' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
+<div class="st-community">
 {#- Phase 4 / M09. This page is only ever reached after the route has re-proved,
     in SQL, that this announcement is published AND that its scope currently
     reaches this student -- so there is nothing here to hide behind a condition.
@@ -16,7 +17,7 @@
 
 {{ ann.flash_messages() }}
 
-<div class="card">
+<div class="st-panel">
   <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
     <div>
       <h1 data-workspace-page-heading style="margin: 0 0 var(--space-1)">{{ announcement.title }}</h1>
@@ -28,5 +29,6 @@
     {{ ann.published_line(announcement, tz_name) }}
   </div>
   {{ ann.body_block(announcement) }}
+</div>
 </div>
 {% endblock %}

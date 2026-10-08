@@ -1,41 +1,43 @@
 {% extends "layouts/portal_base.html" %}
 {% import "_dashboard_macros.html" as dash %}
 {% import "_figma_ui.html" as ui %}
+{% import "student/template/_ui.html" as s %}
+{% import "_announcement_macros.html" as ann %}
 {% block title %}Student Dashboard{% endblock %}
-{% block portal_nav %}{% set active_nav = 'dashboard' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
 {% set lesson_stats = namespace(total=0, completed=0) %}
 {% for group in progress_groups %}{% set lesson_stats.total = lesson_stats.total + group.lesson_total %}{% set lesson_stats.completed = lesson_stats.completed + group.completed %}{% endfor %}
-<header class="today-greeting"><div><p class="figma-eyebrow">{{ now.strftime('%A · %d %B %Y') }}</p><h2>Welcome, {{ current_user.full_name }}.</h2><p>Your learning today</p></div>{{ ui.icon('spark', 28) }}</header>
-<div class="figma-dashboard-grid today-dashboard">
-<section class="dash-section today-continue">
-  <div class="today-continue-copy">
-  <span class="figma-eyebrow">YOUR NEXT STEP</span>
+<div class="st-dashboard">
+<header class="st-greeting"><h1>Welcome, <span dir="auto">{{ current_user.full_name }}</span>.</h1><p>{{ now.strftime('%A · %d %B %Y') }}</p></header>
+<div class="st-dashboard-top">
+<section class="st-panel st-continue"><div class="st-continue-decoration" aria-hidden="true">{{ ui.icon('file',110) }}</div><div class="st-continue-inner"><span class="st-continue-icon" aria-hidden="true">{{ ui.icon('book',30) }}</span><div>
+  <span class="st-eyebrow">YOUR NEXT STEP</span>
   {% if continue_lesson %}
-  <h2>{{ continue_lesson.lesson_title }}</h2><p class="today-meta">{{ continue_lesson.course_title }} · {{ continue_lesson.group_name }}</p><p>{{ continue_lesson.unit_title }}</p>
+  <h2>{{ continue_lesson.lesson_title }}</h2><p class="ds-section__desc">{{ continue_lesson.course_title }} · {{ continue_lesson.group_name }}</p><p>{{ continue_lesson.unit_title }}</p>
   <a class="btn btn--primary" href="{{ url_for('student.lesson_detail', group_public_id=continue_lesson.group_public_id, unit_public_id=continue_lesson.unit_public_id, lesson_public_id=continue_lesson.lesson_public_id) }}">{{ 'Resume lesson' if continue_lesson.resume else 'Start lesson' }} {{ ui.icon('arrow', 17) }}</a>
   {% elif not cards %}<h2>No active enrollments</h2><p>Your courses will appear when an administrator enrolls you in a group.</p><a href="{{ url_for('student.records') }}">View your records</a>
   {% elif lesson_stats.total and lesson_stats.completed == lesson_stats.total and not progress_truncated %}<h2>Available lessons completed</h2><p>You have marked all currently available lessons complete. You can revisit them in your courses.</p><a class="btn btn--secondary" href="{{ url_for('workspace.student_courses') }}">Open my courses</a>
   {% else %}<h2>No lesson ready to continue</h2><p>Published lessons appear when your group and its content are available to you.</p><a class="btn btn--secondary" href="{{ url_for('workspace.student_courses') }}">View my courses</a>{% endif %}
-  </div>{{ ui.hero_art('learn') }}
-</section>
-{{ dash.class_card(next_class, now, tz_name, 'student') }}
+  </div></div></section>
+<section class="st-next-class"><header class="st-section-head"><span class="st-eyebrow">{{ 'CLASS IN PROGRESS' if next_class and next_class.start <= now and now < next_class.end else 'NEXT CLASS' }}</span>{{ ui.icon('calendar',19) }}</header>
+{% if next_class %}<h2>{{ next_class.ref.course_title }}</h2><p>{{ next_class.ref.group_name }} · {{ next_class.ref.term_name }}</p><p>{{ dash.weekday_name(next_class.ref.day_of_week) }} · <time datetime="{{ next_class.start.isoformat() }}">{{ next_class.start.strftime('%d %b %Y') }}, {{ dash.time_range(next_class.start, next_class.end) }}</time></p><p>{{ next_class.ref.location or 'Location not specified' }} · {{ tz_name }}</p><a class="btn" href="{{ url_for('workspace.student_course',group_public_id=next_class.ref.group_public_id) }}">Open course</a>
+{% else %}<h2>Your next chapter<br>is still taking shape.</h2><p>No upcoming class is scheduled for your current groups.</p>{% endif %}
+<div class="st-class-footer"><span>{{ tz_name }}</span><a href="{{ url_for('student.calendar') }}">View calendar {{ ui.icon('arrow',14) }}</a></div></section>
+</div>
 {% if cards %}
-<section class="dash-section figma-wide"><div class="today-section-heading"><h2>Next activities</h2><a href="{{ url_for('student.activities') }}">View all activities</a></div>
-{% if upcoming_deadlines %}<ul class="today-list">
-{% for item in upcoming_deadlines[:5] %}<li class="today-action-row"><div><span class="badge badge--neutral">{{ item.type_label }}</span> <span class="badge badge--primary">{{ item.window_label }}</span> <span class="badge">{{ item.progress_label }}</span><h3>{{ item.title }}</h3><p class="today-meta">{{ item.course_title }} · {{ item.group_name }} · {{ item.level_name }}</p><p class="today-meta">Due <time datetime="{{ item.due_local.isoformat() }}">{{ item.due_local.strftime('%d %b %Y · %H:%M') }}</time> · {{ tz_name }}</p></div><a class="btn btn--secondary" href="{{ item.url }}">{{ 'Continue activity' if item.state == 'in_progress' else 'View activity' }}</a></li>{% endfor %}</ul><p class="today-note">The next five available, unfinished activities at most. Opening details does not start an attempt.</p>
-{% else %}<p>No upcoming unfinished activities available. Visit Activities for submitted work and results.</p>{% endif %}</section>
-<section class="dash-section figma-wide" id="my-groups"><div class="today-section-heading"><h2>My courses</h2><a href="{{ url_for('workspace.student_courses') }}">View all courses</a></div><div class="workspace-card-grid today-course-grid">
-{% for card in cards[:4] %}<article class="card workspace-course-card"><h3>{{ card.course_title }}</h3><p class="today-meta">{{ card.group_name }} · {{ card.term_name }}</p>{{ dash.operational_badge(card.operational) }}
-{% set progress = namespace(item=none) %}{% for item in progress_groups %}{% if item.group_public_id == card.group_public_id %}{% set progress.item = item %}{% endif %}{% endfor %}
-{% if progress.item and progress.item.lesson_total %}<p class="today-meta">{{ progress.item.completed }} of {{ progress.item.lesson_total }} lessons marked complete</p><progress class="figma-progress" value="{{ progress.item.completed }}" max="{{ progress.item.lesson_total }}" aria-label="Completed lessons in {{ card.group_name }}">{{ progress.item.completed }} of {{ progress.item.lesson_total }}</progress>{% else %}<p class="today-meta">No lesson progress available</p>{% endif %}
-{% if card.operational %}<a class="btn btn--secondary" href="{{ url_for('workspace.student_course',group_public_id=card.group_public_id) }}">Open course</a>{% else %}<a href="{{ url_for('student.records') }}">Previous records</a>{% endif %}</article>{% endfor %}</div><p class="today-note">Lesson completion is your own mark, not a grade.</p></section>
+<section><header class="st-section-head"><h2>Your groups</h2><a href="{{ url_for('workspace.student_courses') }}">View all courses</a></header><div class="st-group-overview">
+<section class="st-panel st-group-list">{% for card in cards[:4] %}<div class="st-group-row"><span class="st-group-icon" aria-hidden="true">{{ ui.icon('users',26) }}</span><div class="st-group-copy"><div class="st-group-title"><h3>{{ card.group_name }}</h3>{{ dash.operational_badge(card.operational) }}</div><p>{{ card.course_title }} · {{ card.level_name }} · {{ card.term_name }}</p>
+{% for item in progress_groups %}{% if item.group_public_id == card.group_public_id %}<p>{{ item.completed }} of {{ item.lesson_total }} lessons marked complete</p>{% if item.lesson_total %}<progress value="{{ item.completed }}" max="{{ item.lesson_total }}" aria-label="Completed lessons in {{ card.group_name }}">{{ item.completed }} of {{ item.lesson_total }}</progress>{% endif %}{% endif %}{% endfor %}</div></div>{% endfor %}</section>
+<section class="st-panel"><p class="st-eyebrow">YOUR LEARNING PULSE</p><div class="st-progress-context"><div class="st-progress-ring"><strong>{{ lesson_stats.completed }}<span>/{{ lesson_stats.total }}</span></strong><small>LESSONS</small></div><div><h3>One lesson at a time.</h3><p>Lesson completion is your own mark, not a grade.</p>{% if progress_truncated %}<p>Showing the first {{ progress_group_cap }} groups.</p>{% endif %}</div></div><a href="#lesson-progress">Lesson progress details {{ ui.icon('arrow',14) }}</a></section>
+</div></section>
+<section id="my-groups"><header class="st-section-head"><h2>My learning studio</h2><a href="{{ url_for('workspace.student_courses') }}">View all courses</a></header><div class="st-courses">
+{% for card in cards[:4] %}{% set progress = namespace(item=none) %}{% for item in progress_groups %}{% if item.group_public_id == card.group_public_id %}{% set progress.item = item %}{% endif %}{% endfor %}{{ s.course_card(card,progress.item) }}{% endfor %}</div></section>
+
 {% endif %}
-{{ dash.compact_announcements(announcements, 'student') }}
-{{ dash.compact_messages(conversations) }}
-{% if cards %}
-<details class="dash-section figma-wide today-details"><summary>Upcoming classes · next 7 days</summary>{{ dash.upcoming_table(upcoming, now, tz_name, show_group=True) }}</details>
-<details class="dash-section figma-wide today-details" id="lesson-progress">
+<div class="st-updates">{% if cards %}<section class="st-panel"><header class="st-section-head"><h2>Next activities</h2><a href="{{ url_for('student.activities') }}">View all activities</a></header>
+{% if upcoming_deadlines %}<ul class="st-activity-rows">{% for item in upcoming_deadlines[:5] %}<li><div><span class="badge">{{ item.type_label }}</span> <span class="badge badge--primary">{{ item.window_label }}</span> <span class="badge">{{ item.progress_label }}</span><h3>{{ item.title }}</h3><p class="ds-section__desc">{{ item.course_title }} · {{ item.group_name }} · {{ item.level_name }}</p><p class="ds-section__desc">Due <time datetime="{{ item.due_local.isoformat() }}">{{ item.due_local.strftime('%d %b %Y · %H:%M') }}</time> · {{ tz_name }}</p></div><a class="btn" href="{{ item.url }}">{{ 'Continue activity' if item.state == 'in_progress' else 'View activity' }}</a></li>{% endfor %}</ul><p class="ds-section__desc">The next five available, unfinished activities at most. Opening details does not start an attempt.</p>{% else %}<p>No upcoming unfinished activities available. Visit Activities for submitted work and results.</p>{% endif %}</section>{% endif %}<section class="st-panel"><header class="st-section-head"><h2>Latest announcements</h2><a href="{{ url_for('student.announcements_list') }}">View all</a></header><ul class="st-announcement-list">{% for item in announcements[:2] %}<li><a href="{{ url_for('student.announcement_detail',announcement_public_id=item.public_id) }}">{{ item.title }}</a><p>{{ item.context }} {{ ann.scope_badge(item) }}</p>{% if item.published_local %}<time class="ds-section__desc" datetime="{{ item.published_local.isoformat() }}">{{ item.published_local.strftime('%d %b · %H:%M') }}</time>{% endif %}</li>{% else %}<li>No announcements yet.</li>{% endfor %}</ul></section></div><section class="st-panel st-conversation-context"><header class="st-section-head"><h2>Recent conversations</h2><a href="{{ url_for('messages.inbox') }}">Open messages</a></header><ul class="st-announcement-list">{% for item in conversations[:3] %}<li><a href="{{ url_for('messages.thread',thread_public_id=item.thread_public_id) }}" dir="auto">{{ item.other_name }}</a><p dir="auto">{{ item.subject }}</p><time class="ds-section__desc" datetime="{{ item.last_local.isoformat() }}">{{ item.last_local.strftime('%d %b · %H:%M') }}</time></li>{% else %}<li>No conversations yet. <a href="{{ url_for('messages.inbox') }}">Choose someone to message</a>.</li>{% endfor %}</ul></section>
+{% if cards %}<details class="st-panel st-details"><summary>Upcoming classes · next 7 days</summary>{{ dash.upcoming_table(upcoming, now, tz_name, show_group=True) }}</details>
+<details class="st-panel st-details" id="lesson-progress">
   <summary>Lesson progress details</summary>
   {% if progress_groups %}
   <div class="dash-scroll">
@@ -72,7 +74,7 @@
   {% endif %}
 </details>
 
-<details class="dash-section figma-wide today-details" id="recently-opened">
+<details class="st-panel st-details" id="recently-opened">
   <summary>Recently opened lessons</summary>
   {% if recent_lessons %}
   <div class="dash-scroll">

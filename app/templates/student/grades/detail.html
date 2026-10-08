@@ -3,6 +3,7 @@
 {% block title %}{{ group.name }} — My grades{% endblock %}
 {% block portal_nav %}{% set active_nav = 'grades' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
+<div class="st-journal">
 {#- Phase 4 / M08. Every row on this page satisfied the whole visibility
     formula in SQL before it was fetched: this student's own record, on a
     RELEASED grade item, with the acting account's role and status re-proved in
@@ -27,7 +28,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card" style="margin-bottom: var(--space-5)">
+<div class="st-panel" style="margin-bottom: var(--space-5)">
   <div class="card__title" style="margin-bottom: var(--space-2)">Overall grade</div>
   {% if overall_display %}
   <div style="font-size: var(--font-size-xl); font-weight: 600">{{ overall_display }}%</div>
@@ -96,5 +97,6 @@
 
 <div class="ds-row" style="margin-top: var(--space-5)">
   <a class="btn btn--secondary" href="{{ url_for('student.grades_list') }}">Back to all grades</a>
+</div>
 </div>
 {% endblock %}
