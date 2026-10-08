@@ -21,6 +21,17 @@ def resolve_deployment_settings(config, environment):
         }
     if environment != "production":
         return
+    if not config.get("DATABASE_USER") or not config.get("DATABASE_PASSWORD"):
+        raise ValueError("Production requires explicit MySQL application credentials.")
+    if str(config["DATABASE_USER"]).lower() == "root":
+        raise ValueError("Production requires a schema-scoped MySQL account, not root.")
+    options = config["SQLALCHEMY_ENGINE_OPTIONS"]
+    config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        **options, "pool_size": 4, "max_overflow": 2,
+        "pool_timeout": 10, "pool_recycle": 300,
+        "connect_args": {**options.get("connect_args", {}),
+                         "connect_timeout": 5, "read_timeout": 30, "write_timeout": 30},
+    }
     key = config.get("SECRET_KEY")
     if not isinstance(key, str) or len(key) < 32 or key.startswith("replace-"):
         raise ValueError("Production requires a generated SECRET_KEY of at least 32 characters.")

@@ -74,3 +74,11 @@ temp/
 
 # ---- Local AI tooling (do not ignore the whole .claude/ directory) ----
 /.claude/settings.local.json
+
+# Private operator copies and database/volume backups are never deployment source.
+backups/
+exports/
+*.sql
+*.sql.gz
+*.tar
+*.tar.gz

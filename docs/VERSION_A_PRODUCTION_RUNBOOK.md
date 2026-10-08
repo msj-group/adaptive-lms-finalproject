@@ -1,5 +1,11 @@
 # Version A production deployment and recovery
 
+For the current **unfrozen ST2 Railway candidate**, use
+[RAILWAY_DEPLOYMENT.md](RAILWAY_DEPLOYMENT.md). The D1 release ZIP, frozen
+runtime inventory and generic Docker/systemd examples below describe the
+historical D1 baseline. They must not replace current ST2 source or its explicit
+Railpack deployment configuration. D1 freeze evidence remains immutable.
+
 Authority: final owner approval, 2026-10-08. Flask modular monolith, Jinja,
 WTForms, SQLAlchemy and MySQL remain. This runbook prepares deployment; it
 does not claim an actual host was provisioned or accepted. See the acceptance

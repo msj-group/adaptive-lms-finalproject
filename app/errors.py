@@ -1,9 +1,19 @@
 import uuid
-from flask import current_app, render_template
+from flask import current_app, jsonify, render_template
 from flask_login import current_user
+from werkzeug.exceptions import SecurityError
 
 
 def register_error_handlers(app):
+    @app.errorhandler(SecurityError)
+    def invalid_host(_error):
+        # Trusted-host rejection occurs before a URL adapter exists. The
+        # normal workspace page uses url_for and cannot render at this stage.
+        response = jsonify(error="Invalid request host")
+        response.status_code = 400
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
     def error_page(code):
         reference = uuid.uuid4().hex[:12] if code == 500 else None
         if reference:

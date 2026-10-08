@@ -18,8 +18,8 @@ from app.services.research_operator import retention_report  # noqa: E402
 
 
 def main():
-    log_dir = ROOT / 'instance'
-    log_dir.mkdir(exist_ok=True)
+    log_dir = Path(os.environ.get('RESEARCH_RETENTION_LOG_DIR', str(ROOT / 'instance')))
+    log_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     log_path = log_dir / 'research-retention.jsonl'
     record = {'at': datetime.now(timezone.utc).isoformat()}
     result = 0
@@ -43,6 +43,7 @@ def main():
         log_path.replace(previous)
     with log_path.open('a', encoding='utf-8') as log:
         log.write(json.dumps(record, sort_keys=True) + '\n')
+    log_path.chmod(0o600)
     print(json.dumps(record, sort_keys=True))
     return result
 

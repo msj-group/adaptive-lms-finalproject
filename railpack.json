@@ -1,0 +1,38 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "provider": "python",
+  "packages": {"python": "3.14.6"},
+  "steps": {
+    "install": {
+      "commands": [
+        "python -c \"import sys; assert sys.version_info[:3] == (3, 14, 6), 'Python 3.14.6 is required'\"",
+        "python -m venv /app/.venv",
+        {"path": "/app/.venv/bin"},
+        {"src": "requirements-production.lock", "dest": "requirements-production.lock"},
+        "python -m pip install --no-cache-dir --only-binary=:all: --require-hashes -r requirements-production.lock"
+      ]
+    },
+    "build": {
+      "inputs": [
+        {"step": "install"},
+        {
+          "local": true,
+          "include": [
+            "app/", "migrations/", "wsgi.py", "deploy/gunicorn.conf.py",
+            "scripts/create_admin.py", "scripts/create_researcher.py",
+            "scripts/research_operator.py", "scripts/run_research_retention.py",
+            "scripts/deployment_diagnostics.py", "scripts/railway_start.py",
+            "scripts/railway_migrate.py"
+          ],
+          "exclude": ["**/__pycache__/**", "**/*.pyc", "**/*.pyo"]
+        }
+      ],
+      "commands": []
+    }
+  },
+  "deploy": {
+    "startCommand": "python scripts/railway_start.py",
+    "aptPackages": ["ca-certificates"],
+    "variables": {"PYTHON_DOTENV_DISABLED": "1", "FLASK_ENV": "production"}
+  }
+}

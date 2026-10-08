@@ -1,0 +1,9 @@
+# Optional separately approved cron service. Same Railpack image, no upload volume.
+[build]
+builder = "RAILPACK"
+
+[deploy]
+startCommand = "python scripts/run_research_retention.py"
+preDeployCommand = []
+cronSchedule = "0 0 * * *"
+restartPolicyType = "NEVER"

@@ -64,6 +64,14 @@ def create_app(config_name=None, **config_overrides):
     resolve_research_settings(app.config)
     from app.services.deployment_settings import resolve_deployment_settings
     resolve_deployment_settings(app.config, config_name)
+    if config_name == "production":
+        from app.services.production_logging import install_private_diagnostics
+        install_private_diagnostics(app)
+        # Driver exceptions may include duplicate values or SQL. Keep the
+        # exception class and the existing error-page reference, not contents.
+        def log_safe_exception(exc_info):
+            app.logger.error("Unhandled request error type=%s", exc_info[0].__name__)
+        app.log_exception = log_safe_exception
     if app.config["PROXY_TRUSTED_HOPS"]:
         from werkzeug.middleware.proxy_fix import ProxyFix
         # Configure only for a private WSGI listener behind this exact proxy
@@ -204,7 +212,8 @@ def create_app(config_name=None, **config_overrides):
                 connection.execute(text("SELECT 1"))
                 revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
             ready = revision == "7d4e2a9c6013"
-        except Exception:
+        except Exception as error:
+            app.logger.warning("Database readiness unavailable type=%s", type(error).__name__)
             ready = False
         response = app.make_response(({"status": "ready" if ready else "unavailable"}, 200 if ready else 503))
         response.headers["Cache-Control"] = "no-store"

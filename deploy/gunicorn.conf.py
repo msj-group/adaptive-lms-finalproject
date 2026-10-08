@@ -5,7 +5,8 @@ for the configured uploads. More workers require shared limiter storage first.
 """
 import os
 
-bind = os.environ.get("WSGI_BIND", "127.0.0.1:8000")
+bind = ("0.0.0.0:" + os.environ["PORT"] if os.environ.get("PORT")
+        else os.environ.get("WSGI_BIND", "127.0.0.1:8000"))
 workers = 1
 worker_class = "gthread"
 threads = 4
@@ -16,7 +17,7 @@ max_requests = 0
 preload_app = False
 accesslog = "-"
 errorlog = "-"
-loglevel = "warning"
+loglevel = "info"
 # No client IP, query string, user agent, request body or credential headers.
 access_log_format = '%(m)s %(U)s %(s)s %(L)s'
 capture_output = False

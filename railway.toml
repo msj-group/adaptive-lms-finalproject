@@ -1,0 +1,11 @@
+# Existing GitHub-connected Web service. Candidate deployment, not Study approval.
+[build]
+builder = "RAILPACK"
+
+[deploy]
+startCommand = "python scripts/railway_start.py"
+preDeployCommand = "python scripts/railway_migrate.py"
+healthcheckPath = "/health/ready"
+healthcheckTimeout = 180
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

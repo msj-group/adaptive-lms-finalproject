@@ -1,9 +1,14 @@
 # Hosting preparation and empty installation
 
-Current deployment authority (2026-10-08): use
+Current ST2 Railway preparation uses [RAILWAY_DEPLOYMENT.md](RAILWAY_DEPLOYMENT.md).
+Its migration head is `7d4e2a9c6013`; the earlier repair commands below are
+historical and must not be used for this Railway candidate. Do not deploy a
+historical D1 release ZIP in place of current ST2.
+
+Earlier D1 deployment authority (2026-10-08) referenced
 `VERSION_A_PRODUCTION_RUNBOOK.md`, `VERSION_A_RESEARCH_OPERATIONS.md` and the
-Version A release manifest. The historical migration/head and preparation
-statements below describe the earlier repair and are superseded for Version A.
+D1 release manifest. For this ST2 Railway candidate, the guide above supersedes
+that release selection and the historical migration/preparation statements below.
 
 Latest owner decision, 2026-10-06: the future hosting database starts with
 no business data or example accounts. The existing local database is retained.

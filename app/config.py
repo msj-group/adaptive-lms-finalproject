@@ -10,11 +10,12 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY")
     APP_TIMEZONE = os.environ.get("APP_TIMEZONE", "UTC")
 
-    DATABASE_HOST = os.environ.get("DATABASE_HOST", "localhost")
-    DATABASE_PORT = os.environ.get("DATABASE_PORT", "3306")
-    DATABASE_NAME = os.environ.get("DATABASE_NAME", "adaptive_english_lms")
-    DATABASE_USER = os.environ.get("DATABASE_USER", "")
-    DATABASE_PASSWORD = os.environ.get("DATABASE_PASSWORD", "")
+    # Existing local names take precedence; Railway component references also work.
+    DATABASE_HOST = os.environ.get("DATABASE_HOST", os.environ.get("MYSQLHOST", "localhost"))
+    DATABASE_PORT = os.environ.get("DATABASE_PORT", os.environ.get("MYSQLPORT", "3306"))
+    DATABASE_NAME = os.environ.get("DATABASE_NAME", os.environ.get("MYSQLDATABASE", "adaptive_english_lms"))
+    DATABASE_USER = os.environ.get("DATABASE_USER", os.environ.get("MYSQLUSER", ""))
+    DATABASE_PASSWORD = os.environ.get("DATABASE_PASSWORD", os.environ.get("MYSQLPASSWORD", ""))
 
     # Structured URL safely handles @, :, / and % inside deployment credentials.
     SQLALCHEMY_DATABASE_URI = URL.create(
