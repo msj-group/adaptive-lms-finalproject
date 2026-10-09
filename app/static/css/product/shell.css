@@ -46,7 +46,7 @@
 .yc-workspace .workspace-account-toggle::-webkit-details-marker { display:none; }
 .yc-workspace .workspace-account-toggle .figma-avatar { width:44px; height:44px; border:2px solid var(--st-border); background:linear-gradient(135deg,#ff9485,#cf3027); color:#fff; font-size:12px; box-shadow:0 8px 24px #e6302725; }
 .yc-workspace :is(.workspace-account-caption,.workspace-account-caret) { display:none; }
-.yc-workspace .workspace-account-card,.yc-workspace .notif-preview { position:absolute; inset-block-start:60px; inset-inline-end:0; width:min(330px,calc(100vw - 32px)); border:1px solid var(--st-border); border-radius:28px; background:var(--st-solid); color:var(--st-ink); box-shadow:0 20px 60px #294e9220; padding:22px; z-index:60; backdrop-filter:blur(24px); }
+.yc-workspace .workspace-account-card { position:absolute; inset-block-start:60px; inset-inline-end:0; width:min(330px,calc(100vw - 32px)); border:1px solid var(--st-border); border-radius:28px; background:var(--st-solid); color:var(--st-ink); box-shadow:0 20px 60px #294e9220; padding:22px; z-index:60; backdrop-filter:blur(24px); }
 .yc-workspace .workspace-account-identity { display:flex; align-items:center; gap:12px; padding-bottom:18px; border-bottom:1px solid var(--st-divider); }
 .yc-workspace .workspace-account-role { display:block; font-size:10px; color:var(--st-muted); }
 .yc-workspace .workspace-account-links :is(a,button) { display:flex; gap:12px; align-items:center; width:100%; min-height:64px; padding:10px 0; border:0; background:transparent; color:var(--st-ink); text-decoration:none; text-align:start; }
@@ -54,19 +54,6 @@
 .yc-workspace .workspace-menu-copy strong { display:block; font-size:12px; }
 .yc-workspace .workspace-menu-copy small { display:block; color:var(--st-muted); font-size:10px; }
 .yc-workspace .workspace-account-signout button { border:0; padding:12px 0; min-height:44px; background:transparent; color:var(--ui-danger); }
-.yc-workspace .notif-bell { position:relative; }
-.yc-workspace .figma-notification { position:relative; }
-.yc-workspace .figma-notification i { position:absolute; inset-block-start:5px; inset-inline-end:5px; width:7px; height:7px; background:#c72f27; border-radius:50%; }
-.yc-workspace .notif-preview-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-.yc-workspace .notif-preview { display:flex; flex-direction:column; max-height:calc(100dvh - 130px); }
-.yc-workspace [data-notification-preview-body] { min-height:0; max-height:min(58vh,520px); overflow-y:auto; overscroll-behavior:contain; }
-.yc-workspace .notif-preview-heading,.yc-workspace .notif-preview-all { flex-shrink:0; }
-.yc-workspace .notif-preview .notif-item { padding:16px 0; border:0; border-bottom:1px solid var(--st-divider); border-radius:0; background:transparent; }
-.yc-workspace .notif-preview .notif-item__title { font-size:14px; }
-.yc-workspace .notif-preview .notif-item__icon { padding:8px; }
-.yc-workspace .notif-preview h2 { font-size:21px; margin:0; }
-.yc-workspace .notif-preview-note { font-size:10px; color:var(--st-muted); }
-.yc-workspace .notif-preview-all { display:flex; min-height:44px; align-items:center; justify-content:space-between; font-size:12px; }
 .yc-workspace .figma-skip-link { position:fixed; z-index:120; inset-block-start:12px; inset-inline-start:12px; padding:12px 20px; border-radius:12px; background:var(--st-solid); color:var(--st-blue); transform:translateY(-200%); }
 .yc-workspace .figma-skip-link:focus { transform:none; }
 .yc-workspace :is(.st-mobile-brand,.figma-sidebar-close,.figma-nav-backdrop) { display:none; }
@@ -86,5 +73,4 @@
   .yc-workspace .st-footer { padding-bottom:110px; }
 }
 @media(max-width:639px) { .yc-workspace .st-mobile-brand { display:block; font:600 16px var(--st-display); color:var(--st-blue); } .yc-workspace .st-desktop-context { display:none; } .yc-workspace :is(.st-header,.st-content,.st-footer) { padding-inline:20px; } .yc-workspace .st-header-actions { gap:8px; } .yc-workspace .st-header-actions .st-icon-button { width:44px; height:44px; } .yc-workspace .st-page-heading { margin-bottom:24px; } }
-@media(max-width:639px) { .yc-workspace .notif-preview { position:fixed; inset-block-start:90px; inset-inline:16px; width:auto; max-height:calc(100dvh - 190px); } }
 @media(max-width:359px) { .yc-workspace :is(.st-header,.st-content,.st-footer) { padding-inline:14px; } .yc-workspace .st-mobile-brand { font-size:14px; } .yc-workspace .st-header-actions { gap:5px; } }

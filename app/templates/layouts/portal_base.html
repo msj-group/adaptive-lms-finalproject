@@ -17,6 +17,7 @@
   {% elif template_student %}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/features.css', v='st2') }}">
   {% else %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/operations.css') }}">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/mobile-navigation.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/notifications.css') }}">
 {% endblock %}
 {% block content %}
 {% set notif = notification_header() %}

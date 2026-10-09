@@ -112,8 +112,6 @@
 .yc-operations :is(.activity-motif,.activity-icon,.activity-guide-icon) { background:var(--st-wash); color:var(--st-blue); }
 .yc-operations :is(.activity-author-card,.activity-card,.activity-settings-panel,.activity-brief,.activity-feedback-panel) { border-color:var(--st-border); border-radius:26px; background:var(--st-glass); box-shadow:var(--st-shadow); backdrop-filter:blur(20px); }
 .yc-operations .activity-question-row { border-radius:18px; border-color:var(--st-divider); background:var(--st-control); }
-.yc-operations .notif-item { display:flex; justify-content:space-between; gap:18px; margin-block:12px; }
-.yc-operations .notif-item--unread { border-inline-start:3px solid var(--st-blue); }
 .yc-operations .account-section { border:1px solid var(--st-border); border-radius:28px; background:var(--st-glass); box-shadow:var(--st-shadow); backdrop-filter:blur(24px); }
 .yc-operations :is(.calendar-day,.calendar-event,.communication-card,.discussion-post) { border-color:var(--st-divider); border-radius:20px; background:var(--st-control); }
 .yc-workspace .st-navigation .st-nav-link { min-height:44px; }

@@ -1,18 +1,18 @@
 {% import "_figma_ui.html" as ui %}
 {% macro row(item, tz_name, filter_name='all', page=1, kind='', compact=false) -%}
-<li class="notif-item{{ ' notif-item--unread' if item.is_unread else '' }}{{ ' notif-item--compact' if compact else ' card' }}">
-  <span class="notif-item__icon">{{ ui.icon(item.icon) }}</span>
+<li class="notif-item notif-item--{{ item.icon }}{{ ' notif-item--unread' if item.is_unread else '' }}{{ ' notif-item--compact' if compact else '' }}">
+  <span class="notif-item__icon" aria-hidden="true">{{ ui.icon(item.icon, 22) }}</span>
   <div class="notif-item__content">
-    <div class="notif-item__head"><span class="notif-item__kind">{{ item.kind_label }}</span>{% if item.is_unread %}<span class="badge badge--primary">Unread</span>{% endif %}</div>
+    <div class="notif-item__head"><span class="notif-item__kind">{{ item.kind_label }}</span>{% if item.is_unread %}<span class="notif-status"><i aria-hidden="true"></i>Unread</span>{% endif %}</div>
     <h3 class="notif-item__title">{{ _(item.title) }}</h3>
     <p class="notif-item__message">{{ _(item.message) }}</p>
     <div class="notif-item__foot"><time class="notif-item__time" datetime="{{ item.created_local.isoformat() }}">{{ item.created_local.strftime('%d %b %Y · %H:%M') }}</time>
       <div class="notif-item__actions">
         <form method="post" action="{{ url_for('notifications.open_notification', public_id=item.public_id) }}" data-research-form="notification_open">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="filter" value="{{ filter_name }}"><input type="hidden" name="page" value="{{ page }}"><input type="hidden" name="kind" value="{{ kind }}">
-          <button type="submit" class="btn btn--{{ 'secondary' if compact else 'primary' }}" data-research-id="notification_open">{{ item.action_label }}</button>
+          <button type="submit" class="btn notif-open" data-research-id="notification_open">{{ item.action_label }} {{ ui.icon('arrow', 15) }}</button>
         </form>
-        {% if item.is_unread and not compact %}<form method="post" action="{{ url_for('notifications.read_notification', public_id=item.public_id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="filter" value="{{ filter_name }}"><input type="hidden" name="page" value="{{ page }}"><input type="hidden" name="kind" value="{{ kind }}"><button type="submit" class="btn btn--ghost">Mark read</button></form>{% endif %}
+        {% if item.is_unread and not compact %}<form method="post" action="{{ url_for('notifications.read_notification', public_id=item.public_id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="filter" value="{{ filter_name }}"><input type="hidden" name="page" value="{{ page }}"><input type="hidden" name="kind" value="{{ kind }}"><button type="submit" class="btn btn--ghost">{{ ui.icon('check', 15) }} Mark read</button></form>{% endif %}
       </div>
     </div>
   </div>
