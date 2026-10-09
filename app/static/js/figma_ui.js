@@ -119,11 +119,20 @@
   // Keep wide records inside a horizontal scroller, retaining the original
   // table nodes, form ownership, names, events and research identifiers.
   document.querySelectorAll(".figma-page table").forEach(function (table) {
-    if (table.parentElement.classList.contains("dash-scroll")) return;
-    var scroller = document.createElement("div");
-    scroller.className = "figma-table-scroll";
-    table.before(scroller);
-    scroller.appendChild(table);
+    var scroller = table.parentElement;
+    if (!scroller.classList.contains("dash-scroll")) {
+      scroller = document.createElement("div");
+      scroller.className = "figma-table-scroll";
+      table.before(scroller);
+      scroller.appendChild(table);
+    }
+    if (body.classList.contains("yc-workspace")) {
+      scroller.tabIndex = 0;
+      scroller.setAttribute("role", "region");
+      var section = table.closest("section,figure,.dash-section,.card");
+      var heading = section && section.querySelector("h2,h3");
+      scroller.setAttribute("aria-label", heading ? heading.textContent.trim() : document.title);
+    }
   });
 
   // Shared task content is immediately visible; motion belongs to explicit controls.
