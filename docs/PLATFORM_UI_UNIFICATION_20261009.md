@@ -164,3 +164,11 @@ Commit التوثيق النهائي يضم هذا التقرير وقائمة �
 5. إبقاء `RESEARCH_DATA_PROVENANCE=development` و`RAILWAY_ALLOW_STUDY=0`، مع فحص Railway بعد الإصدار دون migration أو reset أو Study activation.
 
 لم تُتخذ أي خطوة من نشر الإصدار أو تغيير baseline تلقائيًا.
+
+## Owner follow-up: compact mobile More
+
+The follow-up removes the visible Youth Centre / More navigation heading and the close button. The panel now uses compact 56px touch areas, tighter spacing and four columns (three below 360px). All visible destination icons share the bottom navigation's 21px size. The Student panel at 390px is 216px tall, compared with approximately 507px in the initial delivery.
+
+This supersedes section 9's close-button and initial-focus description: opening now focuses the first destination. Toggle, outside interaction, Escape, focus departure and focus restoration remain available; the dialog retains an accessible name without a visible heading. Destinations, permissions and research hooks are unchanged.
+
+Read-only browser inspection covered all four roles at 430/390/320px, including Arabic Dark Mode. All twelve pages returned HTTP 200, with no JavaScript errors or horizontal overflow; no header/close control remained inside the panel, and dismissal/focus behavior passed. New screenshots are saved as `compact-more-<role>-<width>.png` in the existing local QA artifact directory. No business POST, push or deployment occurred.

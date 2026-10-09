@@ -20,7 +20,7 @@
     backdrop.hidden = !open;
     toggle.setAttribute('aria-expanded', String(open));
     document.body.dataset.moreOpen = String(open);
-    if (open) panel.querySelector('[data-more-dismiss]').focus({preventScroll:true});
+    if (open) (panel.querySelector('a[href],button:not([disabled])') || panel).focus({preventScroll:true});
     else if (restoreFocus && previousFocus && previousFocus.isConnected) previousFocus.focus({preventScroll:true});
   }
   function syncLayout() {
