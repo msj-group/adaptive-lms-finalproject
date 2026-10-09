@@ -292,7 +292,16 @@ def student_account_receipt(student_public_id, receipt_public_id):
     receipt = Receipt.query.join(PaymentTransaction, Receipt.payment_transaction_id == PaymentTransaction.id).filter(
         Receipt.public_id == receipt_public_id, PaymentTransaction.student_id == student.id).first_or_404()
     from decimal import Decimal
+    from datetime import datetime
     from app.models.receipt import parse_receipt_moment
     from app.blueprints.admin.finance_registers import local_moment
+    confirmed_text = receipt.snapshot["confirmed_at"]
+    # Retained general-account receipts may use whole-second naive UTC ISO
+    # text without Z. Adapt only their read-only presentation; keep snapshot
+    # validation, stored documents, payment state and calculations unchanged.
+    if receipt.snapshot.get("schema") in {"repair.student-receipt.v1", "repair.student-receipt.online.v1"} and not confirmed_text.endswith("Z"):
+        confirmed_moment = datetime.strptime(confirmed_text, "%Y-%m-%dT%H:%M:%S")
+    else:
+        confirmed_moment = parse_receipt_moment(confirmed_text)
     return render_template("admin/general_finance/receipt.html", student=student, receipt=receipt, money=format_amount,
-        amount=format_amount(Decimal(receipt.snapshot["amount"])), confirmed_at=local_moment(parse_receipt_moment(receipt.snapshot["confirmed_at"])))
+        amount=format_amount(Decimal(receipt.snapshot["amount"])), confirmed_at=local_moment(confirmed_moment))
