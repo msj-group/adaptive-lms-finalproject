@@ -178,3 +178,31 @@ Read-only browser inspection covered all four roles at 430/390/320px, including 
 The shared phone header now displays the existing `images/figma_logo.png` asset instead of the Youth Centre text label. The 48px logo retains its aspect ratio and uses a small white backing for legibility in Light and Dark modes. Its alternative text is localized through the existing language system. Desktop header context, Login and Messages headers are unchanged.
 
 Read-only rendered checks covered every role at 430/390/320px and 1440px. The logo loaded at 48 by 48px on phones, replaced the visible brand text, aligned correctly in RTL, and remained hidden on Desktop. All sixteen pages returned HTTP 200 without JavaScript errors or horizontal overflow. Actual screenshots are saved as `mobile-logo-<role>-<width>.png` in the QA artifact directory. No business submissions, push or deployment occurred.
+
+## Owner follow-up: transparent logo and shared Messages design
+
+The owner's latest instruction explicitly approves the Messages visual redesign on phones and Desktop. This supersedes the earlier Messages visual-parity restriction and the white mobile-logo backing described above. The existing transparent centre logo now renders directly on the unchanged platform canvas, without a CSS background, padding or white badge.
+
+Messages now uses the same authenticated ST2 shell, glass rail, app bar, typography, display preferences, account controls and compact bottom navigation as the rest of the product. Its component stylesheet owns the conversation list, selected rows, contacts, segmented tabs, welcome states, thread header, bubbles, date labels, composer, emoji picker and action menus. Glass surfaces, navy text, blue actions, rounded controls and semantic Light/Dark tokens replace the former separate portal treatment. The thread retains internal scrolling and a visible composer above the mobile bottom bar. Teacher navigation no longer selects legacy classes on Messages, and shared navigation-icon geometry now belongs to the shell stylesheet.
+
+An observed emoji-picker clipping issue was corrected with presentation-only sizing: the picker measures available space inside the glass workspace when the draft/form or viewport changes. This does not alter message content processing, caret handling, validation, POSTs, event meanings or persistence.
+
+Changed application files in this follow-up:
+
+- `app/static/css/messages.css`
+- `app/static/css/product/foundation.css` (ownership comment)
+- `app/static/css/product/mobile-navigation.css` (ownership comment)
+- `app/static/css/product/operations.css` (move shared navigation rules to their owner)
+- `app/static/css/product/shell.css`
+- `app/static/js/messages.js` (picker geometry only)
+- `app/templates/layouts/_product_shell.html`
+- `app/templates/layouts/portal_base.html`
+- `app/templates/teacher/_workspace_nav.html`
+
+Read-only browser inspection rendered Inbox, Thread, recipient picker and new-message composer for Student and Teacher at 1440/1024/768/430/390/320px. Additional Student cases covered Desktop Dark, phone Dark Arabic RTL at 390/320px and System Dark. All 64 Messages cases returned HTTP 200, with zero JavaScript errors, horizontal/page overflow, missing CSRF fields or composer overlap with bottom navigation. Four role dashboards also returned HTTP 200 with transparent phone logos and no horizontal overflow. Administrator and Researcher Messages access remains HTTP 403 under existing authorization.
+
+Search, no-match feedback, conversation details, emoji loading/insertion/close, conversation action dialogs, Escape/focus restoration, More and its focus restoration were inspected. Teacher message Edit/Delete controls and the existing edit GET form rendered correctly; a growing multiline draft did not obstruct the emoji close control. A 390x500px viewport retained the composer above navigation. These were bounded browser/static checks, not an automated test suite. Sending, saving edits, hiding or clearing messages was not executed; all business POSTs were blocked during browser review. Real mobile keyboards, physical devices and screen readers remain outside this verification.
+
+Message page templates/macros, actions, CSRF/state fields, recipient fields, backend contracts, database schema and research collector source remain unchanged. No research settings or business records were changed. Verification retained `RESEARCH_DATA_PROVENANCE=development` and `RAILWAY_ALLOW_STUDY=0`. Login screenshots at matching 1440x960 and 390x960 baseline settings were pixel-identical to the original. The platform canvas remained `rgb(234, 240, 250)` in Light and `rgb(16, 30, 51)` in Dark.
+
+[Current Messages and transparent-logo screenshot gallery](http://127.0.0.1:8766/messages-st2.html) contains 30 actual rendered screenshots, including Student/Teacher Desktop/Phone, 320px, Dark, Arabic RTL, System, More, emoji, actions, editing and protected Login. Application files are in MAIN on `ui/platform-unification-20261009`; the verified source remains `113e124e2b9b06daf8162f8f6603b94a369156ad`. Local commit hashes and final cleanliness are recorded in the gallery's `delivery-state.json`. No push, deployment, migration, database reset, Study activation or baseline freeze occurred.

@@ -150,3 +150,5 @@ app/templates/workspace/review_queue.html
 app/templates/workspace/teacher_group.html
 docs/PLATFORM_UI_UNIFICATION_20261009.md
 docs/PLATFORM_UI_UNIFICATION_FILES_20261009.txt
+app/static/css/messages.css
+app/static/js/messages.js
