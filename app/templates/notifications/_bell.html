@@ -3,6 +3,7 @@
   <noscript><a class="figma-icon-button figma-notification" href="{{ url_for('notifications.inbox') }}" aria-label="Notifications">{{ ui.icon('bell') }}</a></noscript>
   <section class="notif-preview" id="notification-preview" role="dialog" aria-labelledby="notification-preview-title" data-notification-preview hidden>
     <div class="notif-preview-heading"><div><span class="st-eyebrow">YOUR UPDATES</span><h2 id="notification-preview-title" tabindex="-1">Notifications</h2></div><button class="figma-icon-button" type="button" aria-label="Close notifications" data-notification-close>{{ ui.icon('close') }}</button></div>
+    <form class="notif-preview-mark-all" method="post" action="{{ url_for('notifications.read_all') }}" data-research-form="notification_read_all"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="filter" value="all"><input type="hidden" name="page" value="1"><input type="hidden" name="kind" value=""><button type="submit" class="btn btn--ghost" data-research-id="notification_read_all"{% if not notif.unread_count %} disabled{% endif %}>{{ ui.icon('check',17) }} Mark all as read</button></form>
     <div data-notification-preview-body aria-live="polite"></div>
     <a class="notif-preview-all" href="{{ url_for('notifications.inbox') }}">More notifications {{ ui.icon('arrow', 17) }}</a>
   </section>

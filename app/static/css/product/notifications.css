@@ -24,7 +24,12 @@
 .yc-workspace .notif-list { display:block; list-style:none; margin:0; padding:0 12px 12px; }
 .yc-workspace .notif-date { padding:12px 14px 4px; }
 .yc-workspace .notif-date h2 { margin:0; font:500 11px/1.6 var(--st-body); color:var(--st-muted); }
-.yc-workspace .notif-item { display:grid; grid-template-columns:48px minmax(0,1fr); align-items:start; gap:14px; margin:4px 0; padding:18px 14px; border:1px solid transparent; border-radius:20px; background:transparent; }
+.yc-workspace .notif-item { position:relative; display:grid; grid-template-columns:48px minmax(0,1fr); align-items:start; gap:14px; margin:4px 0; padding:18px 14px; border:1px solid transparent; border-radius:20px; background:transparent; }
+.yc-workspace .notif-open::after { content:''; position:absolute; inset:0; border-radius:20px; cursor:pointer; }
+.yc-workspace .notif-item__actions .notif-open:is(:hover,:active) { transform:none; }
+.yc-workspace .notif-open:focus-visible::after { outline:3px solid var(--ui-focus); outline-offset:-2px; }
+.yc-workspace .notif-item:has(.notif-open:hover) { background:var(--st-wash); border-color:var(--st-border); }
+.yc-workspace .notif-item__actions form:not([data-research-form='notification_open']) { position:relative; z-index:1; }
 .yc-workspace .notif-item--unread { background:var(--st-wash); border-color:var(--st-border); }
 .yc-workspace .notif-item__icon { display:grid; place-items:center; width:48px; height:48px; padding:0; border:1px solid var(--st-border); border-radius:17px; color:var(--st-blue); background:var(--st-control); }
 .yc-workspace .notif-item--message .notif-item__icon { background:linear-gradient(135deg,var(--st-wash),var(--st-control)); }
@@ -59,6 +64,8 @@
 .yc-workspace .notif-preview-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-shrink:0; padding-bottom:16px; border-bottom:1px solid var(--st-divider); }
 .yc-workspace .notif-preview-heading .st-eyebrow { display:block; margin-bottom:5px; }
 .yc-workspace .notif-preview-heading h2 { margin:0; font-size:24px; }
+.yc-workspace .notif-preview-mark-all { display:flex; justify-content:flex-end; flex-shrink:0; margin:6px 0 0; }
+.yc-workspace .notif-preview-mark-all .btn { min-height:44px; padding:8px 10px; border:0; background:transparent; color:var(--st-blue); font-size:11px; }
 .yc-workspace [data-notification-preview-body] { min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--st-divider) transparent; }
 .yc-workspace .notif-preview-summary { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:14px 2px 8px; color:var(--st-muted); font-size:10px; }
 .yc-workspace .notif-preview .notif-list { padding:0; }
