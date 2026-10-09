@@ -1,0 +1,13 @@
+{% import '_figma_ui.html' as ui %}
+<div data-workspace-search-fragment>
+{% if search_query and not searchable %}<p class="workspace-search-status" role="status">Enter at least two characters to find records.</p>{% endif %}
+{% if searchable %}<p class="workspace-search-summary">{{ _('Showing %(count)s results.', count=result_count) }}</p>{% endif %}
+{% if search_destinations %}<section class="workspace-search-section" aria-label="Workspace pages"><h3>{{ 'Workspace pages' if search_query else 'Quick access' }}</h3><ul>
+{% for item in search_destinations %}<li><a href="{{ item.url }}" class="workspace-search-result"><span class="workspace-search-icon">{{ ui.icon(item.icon,21) }}</span><span class="workspace-search-copy"><strong>{{ item.title }}</strong><small>{{ item.context }}</small></span>{{ ui.icon('arrow',16) }}</a></li>{% endfor %}
+</ul></section>{% endif %}
+{% set ordinal = namespace(value=0) %}
+{% for section in search_sections %}{% if section['items'] %}<section class="workspace-search-section" aria-label="{{ section.label }}"><h3>{{ _(section.label) }}</h3><ul>
+{% for item in section['items'] %}{% set ordinal.value = ordinal.value + 1 %}<li><a href="{{ item.url }}" class="workspace-search-result"{% if current_user.role == 'student' %} data-research-id="search_result" data-research-position="{{ ordinal.value }}"{% endif %}><span class="workspace-search-icon">{{ ui.icon(section.icon,21) }}</span><span class="workspace-search-copy"><strong dir="auto">{{ item.title }}</strong><small dir="auto">{{ _(item.context) if item.context_is_label|default(false) else item.context }}</small></span>{{ ui.icon('arrow',16) }}</a></li>{% endfor %}
+</ul>{% if section.has_more %}<p class="workspace-search-note">More matches are available. Add another word to narrow the results.</p>{% endif %}</section>{% endif %}{% endfor %}
+{% if searchable and not result_count %}<div class="workspace-search-empty">{{ ui.icon('search',28) }}<h3>No matching results</h3><p>Try another word, title or code.</p></div>{% endif %}
+</div>

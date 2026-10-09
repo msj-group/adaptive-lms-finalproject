@@ -18,6 +18,7 @@
   {% else %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/operations.css') }}">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/mobile-navigation.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/notifications.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/search.css') }}">
 {% endblock %}
 {% block content %}
 {% set notif = notification_header() %}
@@ -30,4 +31,4 @@
 {% block workspace_context %}{% include "_workspace_context.html" %}{% endblock %}
 {% block portal_content %}{% endblock %}
 {% block workspace_footer %}{% endblock %}
-{% block body_scripts %}<script src="{{ url_for('static', filename='js/mobile_navigation.js') }}" defer></script><script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/mobile_navigation.js') }}" defer></script><script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace_search.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}

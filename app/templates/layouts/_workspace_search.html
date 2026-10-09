@@ -1,0 +1,10 @@
+{% import '_figma_ui.html' as ui %}
+<dialog class="workspace-search-dialog" id="workspace-search-dialog" aria-labelledby="workspace-search-title" data-workspace-search data-search-url="{{ url_for('workspace.search', preview=1) }}">
+  <header class="workspace-search-heading"><div><span class="st-eyebrow">FIND YOUR WAY</span><h2 id="workspace-search-title">Search</h2></div><button type="button" class="st-icon-button" aria-label="Close search" data-search-close>{{ ui.icon('close') }}</button></header>
+  <form class="workspace-search-form" role="search" method="get" action="{{ url_for('workspace.search') }}" data-workspace-search-form>
+    <label class="workspace-search-label" for="workspace-search-query">Search your workspace</label>
+    <div class="workspace-search-field">{{ ui.icon('search',22) }}<input type="search" name="q" id="workspace-search-query" autocomplete="off" maxlength="100" placeholder="Search pages and content…" aria-describedby="workspace-search-hint" aria-controls="workspace-search-results" data-workspace-search-query><button type="submit" class="btn">Search</button></div>
+    <p id="workspace-search-hint">Results update as you type. Enter at least two characters to find records.</p>
+  </form>
+  <div id="workspace-search-results" class="workspace-search-results" data-workspace-search-results aria-live="polite" aria-relevant="additions text"></div>
+</dialog>

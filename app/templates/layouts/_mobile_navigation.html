@@ -13,7 +13,7 @@
 <button class="workspace-more-backdrop" type="button" data-more-dismiss aria-label="Close navigation" hidden></button>
 <section class="workspace-more-panel" id="workspace-more-panel" role="dialog" aria-label="Additional destinations" tabindex="-1" data-more-panel hidden>
   <nav class="workspace-more-grid" aria-label="Additional destinations">
-    {% with mobile_more=true %}{% include 'layouts/_product_navigation.html' %}{% endwith %}
+    <div class="workspace-more-destinations">{% with mobile_more=true %}{% include 'layouts/_product_navigation.html' %}{% endwith %}</div>
     <a class="st-nav-link" href="{{ url_for('account.settings') }}" data-research-id="nav_account"{% if request.blueprint == 'account' %} aria-current="page"{% endif %}>{{ ui.icon('user') }}<span>Account settings</span></a>
     <button class="st-nav-link" type="button" popovertarget="workspace-help-panel" data-research-id="nav_help" aria-haspopup="dialog">{{ ui.icon('help') }}<span>Help</span></button>
     <button class="st-nav-link" type="button" popovertarget="workspace-display-panel" data-research-id="nav_display" aria-haspopup="dialog">{{ ui.icon('settings') }}<span>Display</span></button>

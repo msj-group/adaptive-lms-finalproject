@@ -1,6 +1,18 @@
 /* Navigation-only ownership, shared across authenticated product pages. */
 .workspace-mobile-nav,.workspace-more-panel,.workspace-more-backdrop { display:none; }
+.workspace-more-destinations { display:contents; }
+.yc-workspace .workspace-desktop-more { width:100%; border:0; margin:0 0 10px; background:transparent; text-align:start; cursor:pointer; }
+@media(min-width:1024px) {
+  .workspace-more-destinations { display:none; }
+  .workspace-more-panel:not([hidden]) { display:block; position:fixed; z-index:80; inset-inline-start:308px; bottom:24px; width:350px; padding:12px; border:1px solid var(--st-border); border-radius:24px; color:var(--st-ink); background:var(--st-glass); backdrop-filter:blur(28px); box-shadow:0 18px 65px -15px #10275c50; }
+  .workspace-more-backdrop:not([hidden]) { display:block; position:fixed; z-index:70; inset:0; width:100%; height:100%; border:0; background:#0e254d20; cursor:default; }
+  .workspace-more-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+  .yc-workspace .workspace-more-grid .st-nav-link { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-width:0; min-height:80px; margin:0; padding:12px 6px; border:1px solid var(--st-border); border-radius:16px; background:var(--st-control); text-align:center; font-size:11px; transform:none; cursor:pointer; }
+  .workspace-more-grid .st-nav-link>span { flex:0; }
+}
+@media(min-width:1024px) and (max-width:1199px) { .workspace-more-panel:not([hidden]) { inset-inline-start:276px; } }
 @media screen and (max-width:1023px) {
+  .yc-workspace .workspace-desktop-more { display:none; }
   .figma-workspace[data-ui-ready='true'] #workspace-navigation { visibility:hidden; pointer-events:none; }
   .figma-workspace:has([data-more-panel]) .figma-menu-toggle { display:none!important; }
   .figma-workspace:has([data-more-panel]) [data-workspace-body] { padding-bottom:calc(100px + env(safe-area-inset-bottom)); }

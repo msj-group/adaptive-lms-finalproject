@@ -1,0 +1,10 @@
+{% extends 'layouts/research_base.html' if current_user.role == 'researcher' else 'layouts/admin_base.html' if current_user.role == 'administrator' else 'layouts/portal_base.html' %}
+{% block title %}Search{% endblock %}
+{% macro search_content() %}
+<section class="workspace-search-page"><h1 data-workspace-page-heading>Search your workspace</h1>
+<form class="workspace-search-form" role="search" method="get" action="{{ url_for('workspace.search') }}"><label for="page-search-query">Search</label><div class="workspace-search-field"><input type="search" id="page-search-query" name="q" value="{{ search_query }}" maxlength="100" autocomplete="off"><button class="btn btn--primary" type="submit">Search</button></div></form>
+{% include 'workspace/_search_results.html' %}</section>
+{% endmacro %}
+{% block portal_content %}{{ search_content() }}{% endblock %}
+{% block admin_content %}{{ search_content() }}{% endblock %}
+{% block research_content %}{{ search_content() }}{% endblock %}

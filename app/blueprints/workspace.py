@@ -21,6 +21,33 @@ def private_page(template, **context):
     return response
 
 
+@workspace_bp.get("/workspace/search")
+@roles_required("student", "teacher", "administrator", "researcher")
+def search():
+    """Live escaped HTML, or its native GET fallback; queries never write.
+
+    Preview requests render no shell or collector and emit no page view or
+    new research outcome. Never accept a role, account or provenance from args.
+    """
+    from app.i18n import gettext
+    from app.services.search_terms import normalize_query
+    from app.services.workspace_search import destinations, search_records
+    norm = normalize_query(request.args.get("q", ""))
+    links = []
+    for label, endpoint, icon in destinations(current_user.role):
+        text = (label + " " + gettext(label)).casefold()
+        if not norm.text or all(token.casefold() in text for token in norm.tokens):
+            links.append({"title": gettext(label), "url": url_for(endpoint),
+                          "icon": icon, "context": gettext("Workspace page")})
+    sections = search_records(current_user.role, current_user.id, norm,
+        current_app.config.get("RESEARCH_DATA_PROVENANCE", "development"), url_for)
+    template = "workspace/_search_results.html" if request.args.get("preview") == "1" \
+        else "workspace/search.html"
+    return private_page(template, search_query=norm.text, search_sections=sections,
+        search_destinations=links, searchable=norm.is_searchable,
+        result_count=sum(len(section["items"]) for section in sections) + len(links))
+
+
 def _tz():
     return current_app.config.get("APP_TIMEZONE", "UTC")
 

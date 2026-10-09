@@ -3247,5 +3247,21 @@
   "There are no updates for this filter.": "لا توجد تحديثات مطابقة لهذا الفلتر.",
   "You're all caught up": "اطّلعت على كل التحديثات",
   "No unread notifications. Check back for new updates from your learning community.": "لا توجد إشعارات غير مقروءة. عد لاحقًا لمتابعة تحديثات مجتمعك التعليمي.",
-  "Your updates will appear here.": "ستظهر تحديثاتك هنا."
+  "Your updates will appear here.": "ستظهر تحديثاتك هنا.",
+  "FIND YOUR WAY": "اعثر على وجهتك",
+  "Search your workspace": "ابحث في مساحة عملك",
+  "Close search": "إغلاق البحث",
+  "Search pages and content…": "ابحث عن الصفحات والمحتوى…",
+  "Results update as you type. Enter at least two characters to find records.": "تتحدّث النتائج أثناء الكتابة. أدخل حرفين على الأقل للبحث في السجلات.",
+  "Enter at least two characters to find records.": "أدخل حرفين على الأقل للبحث في السجلات.",
+  "Workspace page": "صفحة في مساحة العمل",
+  "Workspace pages": "صفحات مساحة العمل",
+  "Quick access": "الوصول السريع",
+  "Showing %(count)s results.": "يظهر %(count)s من النتائج.",
+  "More matches are available. Add another word to narrow the results.": "توجد نتائج إضافية. أضف كلمة أخرى لتضييق البحث.",
+  "No matching results": "لا توجد نتائج مطابقة",
+  "Try another word, title or code.": "جرّب كلمة أو عنوانًا أو رمزًا آخر.",
+  "Searching…": "جارٍ البحث…",
+  "Search could not load. Try again.": "تعذّر تحميل نتائج البحث. حاول مجددًا.",
+  "Your session may have ended. Reload the page to sign in again.": "ربما انتهت جلستك. أعد تحميل الصفحة لتسجيل الدخول مجددًا."
 }

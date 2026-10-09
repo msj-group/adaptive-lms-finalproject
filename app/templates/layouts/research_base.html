@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/operations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/research.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/mobile-navigation.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/search.css') }}">
 {% endblock %}
 {% block content %}
 {% set notif = none %}
@@ -18,4 +19,4 @@
 {% block workspace_page_label %}{{ ui.page_heading(self.title()) }}{% endblock %}
 {% block workspace_content_class %}{% endblock %}
 {% block research_content %}{% endblock %}
-{% block body_scripts %}<script src="{{ url_for('static', filename='js/mobile_navigation.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/mobile_navigation.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace_search.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}
