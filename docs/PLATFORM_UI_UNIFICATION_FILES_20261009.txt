@@ -152,3 +152,10 @@ docs/PLATFORM_UI_UNIFICATION_20261009.md
 docs/PLATFORM_UI_UNIFICATION_FILES_20261009.txt
 app/static/css/messages.css
 app/static/js/messages.js
+app/static/css/product/notifications.css
+app/static/css/student/features.css
+app/static/js/notifications.js
+app/templates/_notification_macros.html
+app/templates/notifications/_bell.html
+app/templates/notifications/_preview.html
+app/templates/notifications/inbox.html

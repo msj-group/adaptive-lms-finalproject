@@ -206,3 +206,32 @@ Search, no-match feedback, conversation details, emoji loading/insertion/close, 
 Message page templates/macros, actions, CSRF/state fields, recipient fields, backend contracts, database schema and research collector source remain unchanged. No research settings or business records were changed. Verification retained `RESEARCH_DATA_PROVENANCE=development` and `RAILWAY_ALLOW_STUDY=0`. Login screenshots at matching 1440x960 and 390x960 baseline settings were pixel-identical to the original. The platform canvas remained `rgb(234, 240, 250)` in Light and `rgb(16, 30, 51)` in Dark.
 
 [Current Messages and transparent-logo screenshot gallery](http://127.0.0.1:8766/messages-st2.html) contains 30 actual rendered screenshots, including Student/Teacher Desktop/Phone, 320px, Dark, Arabic RTL, System, More, emoji, actions, editing and protected Login. Application files are in MAIN on `ui/platform-unification-20261009`; the verified source remains `113e124e2b9b06daf8162f8f6603b94a369156ad`. Local commit hashes and final cleanliness are recorded in the gallery's `delivery-state.json`. No push, deployment, migration, database reset, Study activation or baseline freeze occurred.
+
+## Owner follow-up: notification feed, mobile preview and English brand
+
+The notification inbox now presents a social-style activity feed within the shared ST2 glass system: a clear page heading, segmented All/Unread filters, existing type filtering, chronological date groups, semantic icons, explicit unread labels, compact native actions and deliberate empty states. Real page counts are labelled as page counts; the global unread count and Mark all action retain their existing all-types/all-pages meaning. New notification geometry has one owner, `css/product/notifications.css`; duplicated rules were removed from Student features, operations and the shell.
+
+The header bell is now a native button opening a read-only preview on phones, tablets and Desktop. It fetches the existing bounded latest-five endpoint without navigating or marking records read. The panel scrolls internally, keeps its More notifications link visible, respects the bottom navigation and safe-area spacing, and supports toggle/close/outside/Escape dismissal and focus restoration. A no-JavaScript link fallback remains. A demonstrated retry bug was fixed: replacing the Retry button during its click no longer makes outside-dismissal logic treat that click as outside the panel. No notification backend or read semantics changed.
+
+Seven Arabic catalog entries now preserve Youth Centre in English, including composite footer/title phrases and logo alternative text. The shared brand also declares English language, left-to-right direction and translation opt-out. Four-role rendered checks, including the refreshed existing review server at port 5002, confirmed the English brand while the surrounding interface remains Arabic. The original Login design remains intact; its Arabic title/footer brand wording follows this explicit owner correction.
+
+Changed application files:
+
+- `app/locales/ar.json`
+- `app/static/css/product/notifications.css` (new component owner)
+- `app/static/css/product/operations.css`
+- `app/static/css/product/shell.css`
+- `app/static/css/student/features.css`
+- `app/static/js/notifications.js`
+- `app/templates/_notification_macros.html`
+- `app/templates/layouts/_product_shell.html`
+- `app/templates/layouts/portal_base.html`
+- `app/templates/notifications/_bell.html`
+- `app/templates/notifications/_preview.html`
+- `app/templates/notifications/inbox.html`
+
+Bounded real browser review recorded 57 route/view observations and 22 bell-preview cases. Student/Teacher inboxes, unread/type filters and previews were inspected at 1440/1024/768/430/390/320px, with additional Dark, Arabic RTL and System Dark cases. There were no JavaScript errors or horizontal overflow; every preview retained the current route, included at most five real updates and avoided bottom-navigation overlap. Close, toggle, outside dismissal, Escape/focus restoration, keyboard Space activation, More navigation and the no-JavaScript fallback were checked. A simulated preview HTTP 503 exercised error feedback and successful retry. Short 390x500px previews remained above navigation. Administrator/Researcher notification access remains the existing HTTP 403; no destinations or permissions were added.
+
+Notification row counts and read-state fingerprints were unchanged before/after review: the inspected Student had 10 notifications/0 unread, and Teacher had 13/12. All business POSTs were blocked during inspection; opening an update, marking one/all read and other write transactions were not executed. Static comparison confirmed identical form actions, hidden fields, CSRF and research identifiers in the inbox/row macros. Routes, notification query/target services, models, collector and Event Dictionary remain unchanged. Preview fragments do not load a page collector or introduce page-view semantics. Login was pixel-identical to the original at matching 1440x960 and 390x960 baseline settings. Messages component files and the canvas tokens were unchanged.
+
+[Notification and English-brand screenshot gallery](http://127.0.0.1:8766/notifications-st2.html) contains actual rendered Desktop/Phone, Dark/RTL/System, filter-empty, preview-error/retry and four-role Arabic brand evidence. These are browser/static checks, not an automated test suite; physical mobile devices/keyboards, screen readers and write-transaction acceptance remain untested. MAIN holds every application change on the existing implementation branch. The Railway worktree, master and annotated tags remain preserved. No push, deploy, migration, database reset, Study activation or baseline freeze occurred; development provenance and disabled Study were retained.
