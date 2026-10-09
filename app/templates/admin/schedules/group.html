@@ -2,8 +2,8 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ group.name }} — Schedule{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
-  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+<div class="ds-page yc-surface">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
     <h1 data-workspace-page-heading style="margin:0">{{ group.name }} — Manage Schedule</h1>
     {{ macros.status_badge(group.status) }}
   </div>
@@ -24,7 +24,7 @@
   </div>
   {% endif %}
 
-  <div class="card" style="margin-bottom: var(--space-6)">
+  <div class="card yc-panel" style="margin-bottom: var(--space-6)">
     <dl style="display: grid; grid-template-columns: 160px 1fr; row-gap: var(--space-3); column-gap: var(--space-4); margin: 0;">
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
       <dd style="margin:0">{{ group.course.title }} ({{ group.course.level.name }})</dd>
@@ -35,7 +35,7 @@
     </dl>
   </div>
 
-  <div class="ds-row" style="margin-bottom: var(--space-6)">
+  <div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
     <a class="btn btn--secondary" href="{{ url_for('admin.group_detail', public_id=group.public_id) }}">Back to Group Details</a>
     <a class="btn btn--secondary" href="{{ url_for('admin.schedules_overview', group_id=group.id) }}">Center Schedule Overview</a>
     {% if can_create %}
@@ -65,13 +65,13 @@
         <td style="padding: var(--space-3)">{{ schedule.room.name if schedule.room else (schedule.location or "—") }}</td>
         <td style="padding: var(--space-3)">{{ macros.status_badge(schedule.status) }}</td>
         <td style="padding: var(--space-3)">
-          <div class="ds-row" style="gap: var(--space-2)">
+          <div class="ds-row yc-actions" style="gap: var(--space-2)">
             <a class="btn btn--secondary" href="{{ url_for('admin.operational_history', kind='schedule', public_id=schedule.public_id) }}">History</a>
             {% if group_is_active and not ancestor_archived and schedule.status == "active" %}
             <a class="btn btn--secondary" href="{{ url_for('admin.group_schedule_edit', group_public_id=group.public_id, schedule_public_id=schedule.public_id) }}">Edit</a>
             {% endif %}
             <form method="post" action="{{ url_for('admin.group_schedule_toggle_status', group_public_id=group.public_id, schedule_public_id=schedule.public_id) }}"
-              {% if schedule.status == "active" %}data-confirm="Archive this {{ weekday_names[schedule.day_of_week] }} slot? It will no longer be operational."{% endif %}>
+              {% if schedule.status == "active" %}data-confirm="Archive this {{ weekday_names[schedule.day_of_week] }} slot? It will no longer be operational."{% endif %} class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               {% if schedule.status == "active" %}
               <button type="submit" class="btn btn--danger-outline">Archive</button>

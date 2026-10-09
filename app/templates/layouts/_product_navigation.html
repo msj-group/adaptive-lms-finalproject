@@ -1,0 +1,42 @@
+{# One server-owned destination list for the rail and compact mobile panel.
+   mobile_more omits only shortcuts that remain visible in the bottom bar. #}
+{% import '_figma_ui.html' as ui %}
+{% set endpoint = request.endpoint or '' %}
+{% set mobile_more = mobile_more|default(false) %}
+{% if current_user.role == 'student' %}
+  {% include 'student/template/_navigation.html' %}
+{% elif current_user.role == 'teacher' %}
+  {% if not mobile_more %}
+  {% include 'teacher/_workspace_nav.html' %}
+  {% else %}
+  {{ ui.nav_link('Calendar', 'teacher.calendar', 'calendar', endpoint == 'teacher.calendar', link_class='st-nav-link') }}
+  {{ ui.nav_link('Attendance', 'teacher.attendance_overview', 'check', 'attendance' in endpoint, link_class='st-nav-link') }}
+  {{ ui.nav_link('Gradebook', 'teacher.gradebook_overview', 'graduation', 'grade' in endpoint, link_class='st-nav-link') }}
+  {% endif %}
+  <p class="st-nav-label">Communication</p>
+  {{ ui.nav_link('Announcements', 'teacher.announcements_feed', 'megaphone', 'announcement' in endpoint, link_class='st-nav-link') }}
+  {{ ui.nav_link('Discussions', 'teacher.discussions_overview', 'users', 'discussion' in endpoint, link_class='st-nav-link') }}
+  {{ ui.nav_link('Messages', 'messages.inbox', 'message', request.blueprint == 'messages', 'nav_messages', link_class='st-nav-link') }}
+  {% if notif %}{{ ui.nav_link('Notifications', 'notifications.inbox', 'bell', request.blueprint == 'notifications', 'nav_notifications', notif.unread_label if notif.unread_count else none, link_class='st-nav-link') }}{% endif %}
+{% elif current_user.role == 'administrator' %}
+  {% if not mobile_more %}<p class="st-nav-label">Overview</p>{{ ui.nav_link('Dashboard', 'admin.dashboard', 'dashboard', endpoint == 'admin.dashboard', link_class='st-nav-link') }}{% endif %}
+  {% set icons = {'Academic Terms':'calendar','Levels':'layers','Courses':'book','Students':'users','Teachers':'graduation','Groups':'users','Schedules':'calendar','Rooms':'room','Attendance':'check','Grades':'chart','Announcements':'megaphone','Calendar':'calendar','Student Accounts':'wallet','Invoices':'file','Collections & payouts':'card','Financial reports':'chart','Historical deleted records':'trash'} %}
+  {% set sections = admin_nav_sections if admin_nav_sections is defined else workspace_admin_navigation() %}
+  {% for section in sections %}
+  <p class="st-nav-label">{{ section.label }}</p>
+  {% for item in section.links %}
+  {% if item.endpoint and (not mobile_more or item.endpoint not in ['admin.groups_list','admin.students_list','admin.student_accounts']) %}{{ ui.nav_link(item.label, item.endpoint, icons.get(item.label, 'file'), workspace_nav_active(item.endpoint), link_class='st-nav-link') }}
+  {% elif not item.endpoint %}<span class="st-nav-link" aria-disabled="true">{{ ui.icon(icons.get(item.label, 'file')) }}<span>{{ item.label }}</span><span class="badge badge--neutral">Soon</span></span>{% endif %}
+  {% endfor %}
+  {% endfor %}
+{% elif current_user.role == 'researcher' %}
+  {% for heading, links in [
+    ('Workspace', [('dashboard','Dashboard','research.dashboard','dashboard'), ('configurations','Configurations','research.configurations','settings')]),
+    ('Data & review', [('sessions','Sessions','research.sessions','activity'), ('exports','Exports','research.exports','file'), ('exclusions','Exclusions','research.exclusions','users')]),
+    ('Governance', [('storage','Storage and gaps','research.storage','layers'), ('audit','Audit log','research.activity_log','lock')])] %}
+  <p class="st-nav-label">{{ heading }}</p>
+  {% for key, label, target, symbol in links %}
+  {% if not mobile_more or key not in ['dashboard','sessions','exports','configurations'] %}{{ ui.nav_link(label, target, symbol, active_nav|default('') == key, link_class='st-nav-link') }}{% endif %}
+  {% endfor %}
+  {% endfor %}
+{% endif %}

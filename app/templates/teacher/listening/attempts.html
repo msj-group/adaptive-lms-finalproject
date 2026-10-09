@@ -30,7 +30,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="ds-row" style="margin-bottom: var(--space-6)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.listening_detail', group_public_id=group.public_id, listening_public_id=activity.public_id) }}">Back to Listening Activity</a>
 </div>
 
@@ -42,7 +42,7 @@
   timezone (<strong>{{ tz_name }}</strong>).
 </div>
 
-<section class="dash-section" style="margin-top: 0">
+<section class="dash-section yc-section" style="margin-top: 0">
   <h2>Attempts</h2>
   {% if attempts %}
   <div class="dash-scroll">
@@ -90,7 +90,7 @@
   </div>
 
   {% if has_prev or has_next %}
-  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attempt pages">
+  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attempt pages">
     {% if has_prev %}
     <a class="btn btn--secondary" href="{{ url_for('teacher.listening_attempts', group_public_id=group.public_id, listening_public_id=activity.public_id, page=page - 1) }}">Previous</a>
     {% endif %}

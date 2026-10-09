@@ -4,7 +4,7 @@
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
-<div class="ds-page" style="max-width: 560px; padding: 0">
+<div class="ds-page yc-surface" style="max-width: 560px; ">
   <h1 data-workspace-page-heading>{{ 'Edit Unit' if unit else 'New Unit' }}</h1>
   <p class="ds-section__desc">
     {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
@@ -22,7 +22,7 @@
   </div>
   {% endif %}
 
-  <form method="post" novalidate>
+  <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     {% if unit %}
     <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
@@ -50,7 +50,7 @@
 
     {# No Status or Order control: status is changed only via Archive/Reactivate,
        and teaching order only via the move-up / move-down actions. #}
-    <div class="ds-row" style="margin-top: var(--space-6)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
       <a class="btn btn--secondary" href="{{ url_for('teacher.group_units', group_public_id=group.public_id) }}">Cancel</a>
     </div>

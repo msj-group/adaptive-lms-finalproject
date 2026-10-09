@@ -12,14 +12,14 @@
     reaches this teacher. There is no control here at all: even a teacher who
     could manage this announcement manages it from its own group's page, so this
     template carries no form, no token and no lifecycle data. -#}
-<div class="ds-row" style="margin-bottom: var(--space-3)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-3)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.announcements_feed') }}">← All announcements</a>
 </div>
 
 {{ ann.flash_messages() }}
 
-<div class="card">
-  <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
+<div class="card yc-panel">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: flex-start;">
     <div>
       <h1 data-workspace-page-heading style="margin: 0 0 var(--space-1)">{{ announcement.title }}</h1>
       {{ ann.context_line(announcement) }}

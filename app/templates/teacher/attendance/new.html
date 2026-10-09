@@ -30,7 +30,7 @@
     to record until this group has one. Ask an administrator to add a schedule.
   </div>
 </div>
-<div class="ds-row" style="margin-top: var(--space-4)">
+<div class="ds-row yc-actions" style="margin-top: var(--space-4)">
   <a class="btn btn--secondary" href="{{ cancel_url }}">Back to attendance</a>
 </div>
 {% else %}
@@ -43,7 +43,7 @@
   the schedule is changed or archived later.
 </div>
 
-<form method="post" class="card" novalidate>
+<form method="post" class="card yc-panel yc-form" novalidate>
   {{ form.hidden_tag() }}
 
   <div class="field">
@@ -65,7 +65,7 @@
     </div>
   </div>
 
-  <div class="ds-row" style="margin-top: var(--space-5)">
+  <div class="ds-row yc-actions" style="margin-top: var(--space-5)">
     <button type="submit" class="btn btn--primary">{{ form.submit.label.text }}</button>
     <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
   </div>

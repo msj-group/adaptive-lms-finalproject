@@ -6,7 +6,7 @@
 {% endblock %}
 {% block portal_content %}
 {% set gp = ctx.group_public_id %}{% set up = ctx.unit_public_id %}{% set lp = ctx.lesson_public_id %}
-<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
   <h1 data-workspace-page-heading style="margin:0">{{ ctx.lesson_title }} — Materials</h1>
   {{ dash.operational_badge(can_manage) }}
 </div>
@@ -17,7 +17,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="card yc-panel" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
     <dd style="margin:0">{{ ctx.group_name }}</dd>
@@ -58,7 +58,7 @@
 </div>
 {% endif %}
 
-<div class="ds-row" style="margin-bottom: var(--space-6); flex-wrap: wrap;">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-6); flex-wrap: wrap;">
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_lessons', group_public_id=gp, unit_public_id=up) }}">Back to Lessons</a>
   {% if can_manage %}
   <a class="btn btn--primary" href="{{ url_for('teacher.material_create_rich_text', group_public_id=gp, unit_public_id=up, lesson_public_id=lp) }}">Add Rich Text</a>
@@ -67,7 +67,7 @@
   {% endif %}
 </div>
 
-<section class="dash-section" style="margin-top: 0">
+<section class="dash-section yc-section" style="margin-top: 0">
   <h2>Active materials <span class="badge badge--neutral">{{ active_materials|length }}</span></h2>
   {% if active_materials %}
   <div class="dash-scroll">
@@ -87,7 +87,7 @@
         <td><strong>{{ material.title }}</strong></td>
         <td>{{ dash.material_kind_badge(material) }}</td>
         <td>
-          <div class="ds-row" style="gap: var(--space-2)">
+          <div class="ds-row yc-actions" style="gap: var(--space-2)">
             {% if material.kind == "file" %}
             <a class="btn btn--secondary" href="{{ url_for('teacher.material_open', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" target="_blank" rel="noopener">Open</a>
             <a class="btn btn--secondary" href="{{ url_for('teacher.material_download', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}">Download</a>
@@ -97,20 +97,20 @@
             {% if can_manage %}
             <a class="btn btn--secondary" href="{{ url_for('teacher.material_edit', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}">Edit</a>
             {% if not loop.first %}
-            <form method="post" action="{{ url_for('teacher.material_move_up', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" style="display:inline">
+            <form method="post" action="{{ url_for('teacher.material_move_up', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" style="display:inline" class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--secondary" aria-label="Move up">↑</button>
             </form>
             {% endif %}
             {% if not loop.last %}
-            <form method="post" action="{{ url_for('teacher.material_move_down', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" style="display:inline">
+            <form method="post" action="{{ url_for('teacher.material_move_down', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" style="display:inline" class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--secondary" aria-label="Move down">↓</button>
             </form>
             {% endif %}
             {% endif %}
             <form method="post" action="{{ url_for('teacher.material_toggle_status', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}"
-              data-confirm="Archive material '{{ material.title }}'? It will be hidden from students. Nothing is deleted.">
+              data-confirm="Archive material '{{ material.title }}'? It will be hidden from students. Nothing is deleted." class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--danger-outline">Archive</button>
             </form>
@@ -130,7 +130,7 @@
 </section>
 
 {% if archived_materials %}
-<section class="dash-section">
+<section class="dash-section yc-section">
   <h2>Archived materials <span class="badge badge--neutral">{{ archived_materials|length }}</span></h2>
   <p class="ds-section__desc">Archived materials keep their stored order and content — nothing is deleted. Reactivating one appends it to the end of the active list.</p>
   <div class="dash-scroll">
@@ -142,12 +142,12 @@
         <td>{{ material.title }}</td>
         <td>{{ dash.material_kind_badge(material) }}</td>
         <td>
-          <div class="ds-row" style="gap: var(--space-2)">
+          <div class="ds-row yc-actions" style="gap: var(--space-2)">
             {% if material.kind == "file" %}
             <a class="btn btn--secondary" href="{{ url_for('teacher.material_open', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" target="_blank" rel="noopener">Open</a>
             {% endif %}
             {% if can_manage %}
-            <form method="post" action="{{ url_for('teacher.material_toggle_status', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}">
+            <form method="post" action="{{ url_for('teacher.material_toggle_status', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--secondary">Reactivate</button>
             </form>

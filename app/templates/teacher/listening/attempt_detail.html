@@ -31,11 +31,11 @@
   {% endfor %}
 {% endwith %}
 
-<div class="ds-row" style="margin-bottom: var(--space-6)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.listening_attempts', group_public_id=group.public_id, listening_public_id=activity.public_id) }}">Back to Attempts</a>
 </div>
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="card yc-panel" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 160px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Status</dt>
@@ -69,10 +69,10 @@
 <section>
   <h2>Answers</h2>
   {% for item in review %}
-  <div class="card activity-review-question" style="margin-bottom: var(--space-3)">
-    <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
+  <div class="card activity-review-question yc-panel" style="margin-bottom: var(--space-3)">
+    <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
       <strong>Question {{ item.number }}</strong>
-      <span class="ds-row" style="gap: var(--space-2)">
+      <span class="ds-row yc-actions" style="gap: var(--space-2)">
         <span class="badge badge--neutral">{{ item.answer_mode_label }}</span>
         {% if item.is_correct %}
         <span class="badge badge--success">Correct</span>

@@ -2,12 +2,12 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ 'Edit Group' if group else 'New Group' }}{% endblock %}
 {% block admin_content %}
-<div class="ds-page" style="max-width: 560px">
+<div class="ds-page yc-surface" style="max-width: 560px">
   <h1 data-workspace-page-heading>{{ 'Edit Group' if group else 'New Group' }}</h1>
 
   {{ macros.flash_messages() }}
 
-  <form method="post" novalidate>
+  <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     <div class="field">
       {{ form.study_starts_at.label(class_="field__label") }}
@@ -73,7 +73,7 @@
     {# No Status control: a Group's active/archived status is changed only
        through the Activate/Deactivate action on the Groups list/detail
        pages (the `group_toggle_status` route). #}
-    <div class="ds-row" style="margin-top: var(--space-6)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary", id="group-form-submit") }}
       <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Cancel</a>
     </div>

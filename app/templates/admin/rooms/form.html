@@ -2,9 +2,9 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ 'Edit room' if room else 'New room' }}{% endblock %}
 {% block admin_content %}
-<div class="ds-page" style="max-width:560px"><h1 data-workspace-page-heading>{{ 'Edit room' if room else 'New room' }}</h1>
+<div class="ds-page yc-surface" style="max-width:560px"><h1 data-workspace-page-heading>{{ 'Edit room' if room else 'New room' }}</h1>
 {{ macros.flash_messages() }}
-<form method="post">{{ form.hidden_tag() }}<input type="hidden" name="snapshot" value="{{ snapshot }}">
+<form method="post" class="yc-form">{{ form.hidden_tag() }}<input type="hidden" name="snapshot" value="{{ snapshot }}">
 {% for field in [form.name, form.capacity] %}<div class="field">{{ field.label(class_='field__label') }}{{ field(class_='field__input') }}{% for error in field.errors %}<span class="field__error">{{ error }}</span>{% endfor %}</div>{% endfor %}
 {{ form.submit(class_='btn btn--primary') }} <a href="{{ url_for('admin.rooms_list') }}">Cancel</a></form></div>
 {% endblock %}

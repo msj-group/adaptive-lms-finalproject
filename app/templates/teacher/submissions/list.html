@@ -29,7 +29,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="card yc-panel" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens ({{ tz_name }})</dt>
@@ -56,11 +56,11 @@
   Written feedback is a comment, not a grade &mdash; &ldquo;Feedback provided&rdquo; does not mean marked, passed, or approved.
 </div>
 
-<div class="ds-row" style="margin-bottom: var(--space-6)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_assignments', group_public_id=group.public_id) }}">Back to Assignments</a>
 </div>
 
-<section class="dash-section" style="margin-top: 0">
+<section class="dash-section yc-section" style="margin-top: 0">
   <h2>Submissions</h2>
   {% if submissions %}
   <div class="dash-scroll">
@@ -101,7 +101,7 @@
   </div>
 
   {% if has_prev or has_next %}
-  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Submission pages">
+  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Submission pages">
     {% if has_prev %}
     <a class="btn btn--secondary" href="{{ url_for('teacher.assignment_submissions', group_public_id=group.public_id, assignment_public_id=assignment.public_id, page=page - 1) }}">Previous</a>
     {% endif %}

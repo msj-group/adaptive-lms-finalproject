@@ -3,7 +3,7 @@
 {% import "_attendance_macros.html" as att %}
 {% block title %}{{ group.name }} — Attendance{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
+<div class="ds-page yc-surface">
   {#- Phase 4 / M07. READ ONLY, scoped in SQL to this group. -#}
   <h1 data-workspace-page-heading style="margin-top:0">{{ group.name }} — Attendance</h1>
   <p class="ds-section__desc">
@@ -14,7 +14,7 @@
 
   {{ macros.flash_messages() }}
 
-  <div class="ds-row" style="margin-bottom: var(--space-4)">
+  <div class="ds-row yc-actions" style="margin-bottom: var(--space-4)">
     <a class="btn btn--secondary" href="{{ url_for('admin.attendance_overview') }}">All attendance</a>
     <a class="btn btn--secondary" href="{{ url_for('admin.group_detail', public_id=group.public_id) }}">Group details</a>
   </div>
@@ -51,7 +51,7 @@
   </div>
 
   {% if has_prev or has_next %}
-  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attendance pages">
+  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attendance pages">
     {% if has_prev %}
     <a class="btn btn--secondary" href="{{ url_for('admin.group_attendance', group_public_id=group.public_id, page=page - 1) }}">Previous</a>
     {% endif %}

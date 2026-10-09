@@ -1,5 +1,5 @@
 {% macro pager(pagination, noun) -%}
-<nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3); flex-wrap: wrap"
+<nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3); flex-wrap: wrap"
      aria-label="{{ _(noun) }} pages">
   {% if pagination.prev_url %}<a class="btn btn--secondary" href="{{ pagination.prev_url }}">Previous</a>{% endif %}
   <span class="ds-section__desc" style="margin: 0">

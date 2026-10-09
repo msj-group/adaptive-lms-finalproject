@@ -1,56 +1,21 @@
 {% extends "layouts/base.html" %}
 {% import "_figma_ui.html" as ui %}
-{% block body_class %}figma-workspace figma-research{% endblock %}
-{#- The separate Researcher workspace layout (Phase 6 replacement). It shares
-    the design tokens with the portals but none of their navigation: no link
-    here leads into an Administrator, Teacher or Student page, and no portal
-    page links here. Logout posts to the workspace's own logout. -#}
-{% block extra_head %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/portal.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/figma.css') }}">
-{% endblock %}
+{% block body_class %}figma-workspace figma-research yc-workspace yc-operations yc-research{% endblock %}
+{% block extra_head %}{% endblock %}
 {% block product_styles %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/navigation.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/research_workspace.css') }}">
   {% block feature_styles %}{% endblock %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/foundation.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/shell.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/operations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/research.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/mobile-navigation.css') }}">
 {% endblock %}
 {% block content %}
-{{ ui.ambient() }}
-<a class="figma-skip-link" href="#workspace-content">Skip to content</a>
-<div class="portal-shell">
-  <button class="figma-nav-backdrop" type="button" aria-label="Close navigation" data-nav-close hidden></button>
-  <aside class="portal-sidebar figma-sidebar" id="workspace-navigation" aria-label="Research workspace navigation" data-nav-scope="researcher">
-    {{ ui.brand('research.dashboard', 'researcher') }}
-    <button class="figma-sidebar-close figma-icon-button" type="button" aria-label="Close navigation" data-nav-close hidden>{{ ui.icon('close') }}</button>
-    <nav class="portal-nav figma-sidebar-nav" aria-label="Research workspace">
-      {% for heading, links in [
-          ('Workspace', [('dashboard', 'Dashboard', 'research.dashboard', 'dashboard'), ('configurations', 'Configurations', 'research.configurations', 'settings')]),
-          ('Data & review', [('sessions', 'Sessions', 'research.sessions', 'activity'), ('exports', 'Exports', 'research.exports', 'file'), ('exclusions', 'Exclusions', 'research.exclusions', 'users')]),
-          ('Governance', [('storage', 'Storage and gaps', 'research.storage', 'layers'), ('audit', 'Audit log', 'research.activity_log', 'lock')])] %}
-      <div class="figma-nav-section-title">{{ heading }}</div>
-      {% for key, label, endpoint, symbol in links %}
-      {{ ui.nav_link(label, endpoint, symbol, active_nav|default('') == key) }}
-      {% endfor %}
-      {% endfor %}
-    </nav>
-    {{ ui.navigation_tools() }}
-  </aside>
-  <div class="figma-body" data-workspace-body>
-  <header class="figma-topbar"><div class="figma-topbar-heading"><button class="figma-menu-toggle figma-icon-button" type="button" aria-label="Open navigation" aria-controls="workspace-navigation" aria-expanded="false" data-nav-toggle hidden>{{ ui.icon('menu') }}</button><div><span class="figma-eyebrow">RESEARCH WORKSPACE</span>{% block workspace_page_label %}{{ ui.page_heading(self.title()) }}{% endblock %}</div></div><div class="figma-topbar-user">{{ ui.account(current_user, url_for('research.logout'), csrf_token(), photo_url=account_photo_url()) }}</div></header>
-  <div class="portal-main">
-    <div class="ds-page figma-page" id="workspace-content" tabindex="-1">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}
-        <div class="alert alert--{{ category }}" role="status" style="margin-bottom: var(--space-4)">{{ message }}</div>
-        {% endfor %}
-      {% endwith %}
-      {% block research_content %}{% endblock %}
-    </div>
-  </div>
-  <footer class="figma-footer">Research workspace · Pseudonymous data · Times in {{ tz_name|default('Africa/Tripoli') }}</footer>
-  </div>
-</div>
+{% set notif = none %}
+{% set portal_blocks = self %}
+{% include 'layouts/_product_shell.html' %}
 {% endblock %}
-{% block body_scripts %}<script src="{{ url_for('static', filename='js/workspace.js') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}
+{% block workspace_page_label %}{{ ui.page_heading(self.title()) }}{% endblock %}
+{% block workspace_content_class %}{% endblock %}
+{% block research_content %}{% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/mobile_navigation.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}

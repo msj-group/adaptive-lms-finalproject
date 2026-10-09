@@ -2,8 +2,8 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ group.name }} — Members{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
-  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+<div class="ds-page yc-surface">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
     <h1 data-workspace-page-heading style="margin:0">{{ group.name }} — Manage Members</h1>
     {{ macros.status_badge(group.status) }}
   </div>
@@ -24,7 +24,7 @@
   </div>
   {% endif %}
 
-  <div class="card" style="margin-bottom: var(--space-6)">
+  <div class="card yc-panel" style="margin-bottom: var(--space-6)">
     <dl style="display: grid; grid-template-columns: 160px 1fr; row-gap: var(--space-3); column-gap: var(--space-4); margin: 0;">
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group Code</dt>
       <dd style="margin:0">{{ group.code or "--" }}</dd>
@@ -43,7 +43,7 @@
     </dl>
   </div>
 
-  <div class="ds-row" style="margin-bottom: var(--space-6)">
+  <div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
     <a class="btn btn--secondary" href="{{ url_for('admin.group_detail', public_id=group.public_id) }}">Back to Group Details</a>
     <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Back to Groups</a>
   </div>
@@ -79,12 +79,12 @@
           <td style="padding: var(--space-3)">
             {% if group.status == "active" %}
               {% if assignment.status == "active" %}
-              <form method="post" action="{{ url_for('admin.group_teacher_remove', group_public_id=group.public_id, assignment_public_id=assignment.public_id) }}" data-confirm="Remove {{ assignment.teacher.full_name }} from {{ group.name }}? This can be reversed later with Reactivate.">
+              <form method="post" action="{{ url_for('admin.group_teacher_remove', group_public_id=group.public_id, assignment_public_id=assignment.public_id) }}" data-confirm="Remove {{ assignment.teacher.full_name }} from {{ group.name }}? This can be reversed later with Reactivate." class="yc-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn--danger-outline">Remove</button>
               </form>
               {% else %}
-              <form method="post" action="{{ url_for('admin.group_teacher_reactivate', group_public_id=group.public_id, assignment_public_id=assignment.public_id) }}">
+              <form method="post" action="{{ url_for('admin.group_teacher_reactivate', group_public_id=group.public_id, assignment_public_id=assignment.public_id) }}" class="yc-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn--secondary">Reactivate</button>
               </form>
@@ -106,7 +106,7 @@
       {% if not teacher_form.teacher_public_id.choices %}
       <div class="alert alert--info">No eligible Teacher accounts are available to assign to this group.</div>
       {% else %}
-      <form method="post" action="{{ url_for('admin.group_teacher_assign', group_public_id=group.public_id) }}" class="ds-row" style="align-items:flex-end; gap: var(--space-2); flex-wrap: wrap;">
+      <form method="post" action="{{ url_for('admin.group_teacher_assign', group_public_id=group.public_id) }}" class="ds-row yc-actions yc-form" style="align-items:flex-end; gap: var(--space-2); flex-wrap: wrap;">
         {{ teacher_form.hidden_tag() }}
         <div class="field">
           {{ teacher_form.teacher_public_id.label(class_="field__label") }}
@@ -144,7 +144,7 @@
           <td style="padding: var(--space-3)">{{ macros.user_status_badge(enrollment.student.status) }}</td>
           <td style="padding: var(--space-3)">{{ enrollment.created_at.strftime("%Y-%m-%d") }}</td>
           <td style="padding: var(--space-3)">
-            <div class="ds-row" style="gap: var(--space-2); flex-wrap: wrap">
+            <div class="ds-row yc-actions" style="gap: var(--space-2); flex-wrap: wrap">
             {% if group.status == "active" %}
               {% if enrollment.status == "active" %}
               {% for action, label in [('withdraw','Withdraw'), ('transfer','Transfer'), ('correct_course','Correct course')] %}

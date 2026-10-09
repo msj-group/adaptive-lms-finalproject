@@ -24,7 +24,7 @@
 
 {{ ann.flash_messages() }}
 
-<form class="ds-row" method="get" action="{{ url_for('teacher.announcements_feed') }}" role="search"
+<form class="ds-row yc-actions yc-filter-form" method="get" action="{{ url_for('teacher.announcements_feed') }}" role="search"
       style="margin-bottom: var(--space-4); align-items: flex-end; gap: var(--space-2); flex-wrap: wrap;">
   <div class="field" style="margin:0">
     <label class="field__label" for="announcement-q">Search announcements</label>
@@ -43,13 +43,13 @@
 </div>
 {% endif %}
 
-<div class="dash-section">
+<div class="dash-section yc-section">
   <h2>Addressed to you</h2>
   {% if announcements %}
   <div class="dash-card-list">
     {% for item in announcements %}
-    <div class="card">
-      <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
+    <div class="card yc-panel">
+      <div class="ds-row yc-actions" style="justify-content: space-between; align-items: flex-start;">
         <div>
           <div class="card__title" style="margin-bottom: var(--space-1)">
             <a href="{{ url_for('teacher.announcement_detail', announcement_public_id=item.public_id) }}">{{ item.title }}</a>
@@ -67,7 +67,7 @@
   </div>
 
   {% if has_prev or has_next %}
-  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Announcement pages">
+  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Announcement pages">
     {% if has_prev %}
     <a class="btn btn--secondary" href="{{ url_for('teacher.announcements_feed', page=page - 1, q=raw_q or None) }}">Previous</a>
     {% endif %}
@@ -92,13 +92,13 @@
   {% endif %}
 </div>
 
-<div class="dash-section">
+<div class="dash-section yc-section">
   <h2>Your groups</h2>
   {% if cards %}
   <div class="dash-card-list">
     {% for card in cards %}
-    <div class="card">
-      <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
+    <div class="card yc-panel">
+      <div class="ds-row yc-actions" style="justify-content: space-between; align-items: flex-start;">
         <div>
           <div class="card__title" style="margin-bottom: var(--space-1)">{{ card.group_name }}</div>
           <div class="card__body">{{ card.course_title }} &middot; {{ card.level_name }}</div>
@@ -124,7 +124,7 @@
         {{ card.withdrawn_count }} withdrawn
       </div>
 
-      <div class="ds-row" style="margin-top: var(--space-4)">
+      <div class="ds-row yc-actions" style="margin-top: var(--space-4)">
         <a class="btn btn--primary" href="{{ url_for('teacher.group_announcements', group_public_id=card.group_public_id) }}">Manage announcements</a>
       </div>
     </div>

@@ -28,7 +28,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="ds-row" style="margin-bottom: var(--space-6)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ submission_url }}">Back to Submission</a>
   <a class="btn btn--secondary" href="{{ url_for('workspace.review_queue', group=group.public_id) }}">Group review queue</a>
 </div>
@@ -39,7 +39,7 @@
   <p class="ds-section__desc">
     Submitted {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}). The answer is final and read only.
   </p>
-  <div class="card">
+  <div class="card yc-panel">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
        a student answer is untrusted text and is never interpreted as HTML
        or Markdown. #}
@@ -51,7 +51,7 @@
   <h2>Current feedback</h2>
 
   {% if feedback.state == "present" %}
-  <div class="card" style="margin-bottom: var(--space-4)">
+  <div class="card yc-panel" style="margin-bottom: var(--space-4)">
     <p class="ds-section__desc" style="margin-top: 0">
       Last changed by {{ feedback.reviewer_name }} on {{ feedback.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
     </p>
@@ -84,7 +84,7 @@
 
   <form method="post"
         action="{{ url_for('teacher.submission_feedback', group_public_id=group.public_id, assignment_public_id=assignment.public_id, submission_public_id=submission.public_id) }}"
-        novalidate>
+        novalidate class="yc-form">
     {{ form.hidden_tag() }}
     {#- The signed feedback-state token. It binds this save to the exact
         record and version shown above, so a co-teacher's change made while
@@ -101,7 +101,7 @@
       {% for error in form.feedback_text.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    <div class="ds-row" style="margin-top: var(--space-6)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
       <a class="btn btn--secondary" href="{{ submission_url }}">Cancel</a>
     </div>

@@ -1,8 +1,8 @@
 {% extends "layouts/admin_base.html" %}{% block title %}Student Accounts{% endblock %}
 {% import "admin/_macros.html" as macros %}
 {% block admin_content %}
-<div class="ds-page"><h1 data-workspace-page-heading>Student Accounts</h1>{{ macros.flash_messages() }}
-<form method="get"><label for="q">Name or email</label><input id="q" name="q" value="{{ search }}" maxlength="100"><button class="btn">Search</button></form>
+<div class="ds-page yc-surface"><h1 data-workspace-page-heading>Student Accounts</h1>{{ macros.flash_messages() }}
+<form method="get" class="yc-filter-form"><label for="q">Name or email</label><input id="q" name="q" value="{{ search }}" maxlength="100"><button class="btn">Search</button></form>
 <div style="overflow-x:auto"><table class="table"><thead><tr><th>Student</th><th>Obligations (LYD)</th><th>Collections</th><th>Payouts</th><th>Balance</th></tr></thead><tbody>
 {% for student in page.items %}{% set facts = balances[student.id] %}<tr><td><a href="{{ url_for('admin.student_financial_record', student_public_id=student.public_id) }}">{{ student.full_name }}</a></td>
 {% for key in ['obligations','collections','payouts','balance'] %}<td>{{ money(facts[key]) }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>

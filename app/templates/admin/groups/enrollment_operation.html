@@ -1,10 +1,10 @@
 {% extends "layouts/admin_base.html" %}{% block title %}{{ action.replace('_',' ').title() }} — {{ source.name }}{% endblock %}{% import "admin/_macros.html" as macros %}
-{% block admin_content %}<div class="ds-page" style="max-width:800px"><h1 data-workspace-page-heading>{{ action.replace('_',' ').title() }} — {{ source.name }}</h1>{{ macros.flash_messages() }}
+{% block admin_content %}<div class="ds-page yc-surface" style="max-width:800px"><h1 data-workspace-page-heading>{{ action.replace('_',' ').title() }} — {{ source.name }}</h1>{{ macros.flash_messages() }}
 {% if target_study_started %}<div class="alert alert--warning" aria-labelledby="late-enrollment-title">
 <strong id="late-enrollment-title">Study has already started</strong>
 <p>Study for this group began on {{ local(target.study_starts_at) }} ({{ config.APP_TIMEZONE }}). Enrollment is still allowed, subject to the usual eligibility and capacity checks. The student will join after the start.</p>
 </div>{% endif %}
-{% if not ready %}<form method="get"><input type="hidden" name="episode" value="{{ episode.public_id if episode else '' }}"><label for="q">Search</label><input id="q" name="q" value="{{ search }}" maxlength="100"><button>Search</button></form>
+{% if not ready %}<form method="get" class="yc-filter-form"><input type="hidden" name="episode" value="{{ episode.public_id if episode else '' }}"><label for="q">Search</label><input id="q" name="q" value="{{ search }}" maxlength="100"><button>Search</button></form>
 <p>Select a {{ 'Student' if action == 'enroll' else 'destination group' }} to review the operation. Up to 50 matches are shown; refine the search if needed.</p>
 <ul>{% for row in students %}<li><a href="{{ url_for('admin.enrollment_operation', group_public_id=source.public_id, action=action, student=row.public_id) }}">{{ row.full_name }} · {{ row.email }}</a></li>{% endfor %}
 {% for row in targets %}<li><a href="{{ url_for('admin.enrollment_operation', group_public_id=source.public_id, action=action, episode=episode.public_id, target=row.public_id) }}">{{ row.name }} · {{ row.course.title }}</a></li>{% endfor %}</ul>
@@ -17,7 +17,7 @@
 {% if action == 'withdraw' %}<p>Withdrawal closes this episode. Select whether to cancel its obligation. Any money actually returned must be recorded separately as a payout.</p>{% endif %}
 <p>Current Student account balance: {{ money(facts.balance) }} LYD.</p>
 {% if invoice %}<p>Current invoice: {{ invoice.invoice_number }} · Net {{ money(invoice.charge_amount - invoice.discount_amount) }} LYD</p>{% endif %}
-<ol class="workspace-steps"><li>Choose student and destination</li><li>Review course and financial context</li><li>Save operation</li></ol><form method="post" novalidate data-finance-form data-preview-url="{{ url_for('admin.enrollment_impact_preview', group_public_id=source.public_id, action=action) }}">{{ form.hidden_tag() }}
+<ol class="workspace-steps"><li>Choose student and destination</li><li>Review course and financial context</li><li>Save operation</li></ol><form method="post" novalidate data-finance-form data-preview-url="{{ url_for('admin.enrollment_impact_preview', group_public_id=source.public_id, action=action) }}" class="yc-form">{{ form.hidden_tag() }}
 {% for field in form if field.type not in ['HiddenField','CSRFTokenField','SubmitField'] %}
 {% if (action in ['enroll','correct_course'] and field.name != 'cancel_obligation') or (action == 'withdraw' and field.name == 'cancel_obligation') %}<div class="field" data-finance-field="{{ field.name }}">{{ field.label(class_='field__label') }}{{ field(class_='field__input') }}{% for error in field.errors %}<span class="field__error">{{ error }}</span>{% endfor %}</div>{% endif %}{% endfor %}
 <section class="workspace-impact"><h2>Financial impact</h2><button type="button" class="btn btn--secondary" data-finance-preview>Review balance before saving</button><p role="status" data-finance-output></p><p data-finance-note>Preview only. Nothing is saved until you submit the enrollment operation.</p></section>

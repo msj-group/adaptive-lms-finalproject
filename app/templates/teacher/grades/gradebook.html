@@ -16,7 +16,7 @@
     No ORM row and no internal id reaches this template. There is deliberately
     no delete, unrelease, reopen, duplicate, import or export control anywhere
     on this page, and no such endpoint exists server-side either. -#}
-<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
   <h1 data-workspace-page-heading style="margin:0">{{ group.name }} — Gradebook</h1>
   {{ gr.weight_total(weight_total_display, weights_complete) }}
 </div>
@@ -27,7 +27,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card" style="margin-bottom: var(--space-5)">
+<div class="card yc-panel" style="margin-bottom: var(--space-5)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
     <dd style="margin:0">{{ group.course.title }}</dd>
@@ -59,7 +59,7 @@
 
 {{ gr.messages(config_messages) }}
 
-<div class="ds-row" style="margin-bottom: var(--space-5)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-5)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.gradebook_overview') }}">All groups</a>
   <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
   {% if operational %}
@@ -73,13 +73,13 @@
 <nav class="workspace-tabs" aria-label="Gradebook sections"><a href="#gradebook-items">Categories and items</a><a href="#gradebook-results">Released results</a></nav><div id="gradebook-items"></div>
 {% if categories %}
 {% for category in categories %}
-<section class="dash-section" style="margin-top: 0">
-  <div class="ds-row" style="justify-content: space-between; align-items: center">
+<section class="dash-section yc-section" style="margin-top: 0">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center">
     <h2 style="margin:0">
       {{ category.title }}
       <span style="color: var(--color-text-secondary); font-weight: normal">&middot; {{ gr.weight(category.weight_display) }}</span>
     </h2>
-    <div class="ds-row" style="gap: var(--space-2); align-items:center">
+    <div class="ds-row yc-actions" style="gap: var(--space-2); align-items:center">
       {% if category.frozen %}<span class="badge badge--neutral">Locked by a released item</span>{% endif %}
       {% if operational and not category.frozen %}
       <a class="btn btn--secondary" href="{{ url_for('teacher.grade_category_edit', group_public_id=group.public_id, category_public_id=category.public_id) }}">Edit category</a>
@@ -109,7 +109,7 @@
         <td>{{ gr.release_badge(item.is_released) }}</td>
         <td>{{ gr.score_progress(item) }}</td>
         <td>
-          <div class="ds-row">
+          <div class="ds-row yc-actions">
           {% if operational %}<a class="btn btn--primary" href="{{ url_for('teacher.grade_item_scores', group_public_id=group.public_id, item_public_id=item.public_id) }}">{{ _('Correct scores' if item.is_released else 'Enter scores') }}</a>{% endif %}
           <a class="btn btn--secondary" href="{{ url_for('teacher.grade_item_detail', group_public_id=group.public_id, item_public_id=item.public_id) }}">Details</a>
           </div>
@@ -131,7 +131,7 @@
 </section>
 {% endfor %}
 
-<section class="dash-section" id="gradebook-results">
+<section class="dash-section yc-section" id="gradebook-results">
   <h2>Released student totals</h2>
   <p class="ds-section__desc">
     Calculated from released items only, with exact decimal arithmetic, and rounded once for

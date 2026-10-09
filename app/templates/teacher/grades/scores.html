@@ -21,7 +21,7 @@
     any lock and before any write, and ONE bad value rejects the whole sheet --
     a failed save never leaves a partial grade change behind. Student names and
     comments are autoescaped and never rendered with `|safe`. -#}
-<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
   <h1 data-workspace-page-heading style="margin:0">{{ "Correct scores" if is_released else "Enter scores" }} — {{ item.title }}</h1>
   {{ gr.release_badge(is_released) }}
 </div>
@@ -32,7 +32,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card" style="margin-bottom: var(--space-5)">
+<div class="card yc-panel" style="margin-bottom: var(--space-5)">
   <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
     <dd style="margin:0">{{ group.name }} &middot; {{ group.course.title }}</dd>
@@ -57,11 +57,11 @@
 </div>
 {% endif %}
 
-<form method="post">
+<form method="post" class="yc-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="grade_state" value="{{ grade_state }}">
 
-  <section class="dash-section" style="margin-top: 0">
+  <section class="dash-section yc-section" style="margin-top: 0">
     <h2>Students ({{ records | length }})</h2>
     <div class="dash-scroll">
     <table class="dash-table">
@@ -98,7 +98,7 @@
     </table>
     </div>
 
-    <div class="ds-row" style="margin-top: var(--space-5)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-5)">
       <button type="submit" class="btn btn--primary">{{ "Save corrections" if is_released else "Save scores" }}</button>
       <a class="btn btn--secondary" href="{{ detail_url }}">Back to grade item</a>
       <a class="btn btn--secondary" href="{{ gradebook_url }}">Back to gradebook</a>

@@ -2,7 +2,7 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ "Edit centre event" if event else "New centre event" }}{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
+<div class="ds-page yc-surface">
   {#- Phase 4 / M10. The hidden `event_state` value is the signed token for this
       exact purpose. On a CREATE it binds only the acting account -- there is no
       row yet, and binding the values a blank form happens to show would be
@@ -29,7 +29,7 @@
     it can never be edited or restored afterwards.
   </div>
 
-  <form method="post" class="card" novalidate>
+  <form method="post" class="card yc-panel yc-form" novalidate>
     {{ form.hidden_tag() }}
     <input type="hidden" name="event_state" value="{{ event_state }}">
 
@@ -55,7 +55,7 @@
       </div>
     </div>
 
-    <div class="ds-row" style="gap: var(--space-4); margin-top: var(--space-4); flex-wrap: wrap">
+    <div class="ds-row yc-actions" style="gap: var(--space-4); margin-top: var(--space-4); flex-wrap: wrap">
       <div class="field" style="margin: 0">
         <label class="field__label" for="{{ form.start_time.id }}">{{ form.start_time.label.text }}</label>
         {{ form.start_time(class="field__input") }}
@@ -98,7 +98,7 @@
       </div>
     </div>
 
-    <div class="ds-row" style="margin-top: var(--space-6)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       <button type="submit" class="btn btn--primary">{{ form.submit.label.text }}</button>
       <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
     </div>

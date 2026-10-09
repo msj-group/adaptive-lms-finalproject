@@ -3,15 +3,15 @@
 {% block title %}{{ teacher.full_name }}{% endblock %}
 {% block admin_content %}
 <a href="{{ url_for('admin.operational_history',kind='teacher',public_id=teacher.public_id) }}">Account change history</a>
-<div class="ds-page" style="max-width: 640px">
-  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+<div class="ds-page yc-surface" style="max-width: 640px">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
     <h1 data-workspace-page-heading style="margin:0">{{ teacher.full_name }}</h1>
     {{ macros.user_status_badge(teacher.status) }}
   </div>
 
   {{ macros.flash_messages() }}
 
-  <div class="card">
+  <div class="card yc-panel">
     <dl style="display: grid; grid-template-columns: 160px 1fr; row-gap: var(--space-3); column-gap: var(--space-4); margin: 0;">
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Email</dt>
       <dd style="margin:0">{{ teacher.email }}</dd>
@@ -24,14 +24,14 @@
     </dl>
   </div>
 
-  <div class="ds-row" style="margin-top: var(--space-6); flex-wrap: wrap;">
+  <div class="ds-row yc-actions" style="margin-top: var(--space-6); flex-wrap: wrap;">
     <p class="workspace-meta">Changing the login email, suspending this account or resetting its password ends existing sessions.</p>
     <a class="btn btn--primary" href="{{ url_for('admin.teacher_edit', public_id=teacher.public_id) }}">Edit Teacher</a>
     <a class="btn btn--secondary" href="{{ url_for('admin.teacher_reset_password', public_id=teacher.public_id) }}">Reset Password</a>
     <form
       method="post"
       action="{{ url_for('admin.teacher_toggle_status', public_id=teacher.public_id) }}"
-      class="teacher-status-form"
+      class="teacher-status-form yc-form"
       {% if teacher.status == "active" %}data-confirm="Suspend {{ teacher.full_name }}? They will be signed out of any active session and unable to log in until reactivated."{% endif %}
     >
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -44,7 +44,7 @@
     </form>
     <a class="btn btn--secondary" href="{{ url_for('admin.teachers_list') }}">Back to Teachers</a>
   </div>
-  <section class="workspace-outline"><h2>Assigned groups</h2>{% for row in assigned_groups %}<article class="card"><h3><a href="{{ url_for('admin.group_detail', public_id=row.group_public_id) }}">{{ row.group_name }}</a></h3><p>{{ row.course_title }} · {{ row.term_name }}</p><p>{{ row.student_count }} active students · {{ 'Operational' if row.operational else 'Archived context' }}</p>{% for schedule in row.schedules %}<p class="workspace-meta">{{ ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][schedule.day_of_week] }} {{ schedule.start_time.strftime('%H:%M') }}–{{ schedule.end_time.strftime('%H:%M') }} · {{ schedule.location or 'Location not set' }}</p>{% endfor %}</article>{% else %}<p>No active group assignments.</p>{% endfor %}</section>
+  <section class="workspace-outline yc-content-tree"><h2>Assigned groups</h2>{% for row in assigned_groups %}<article class="card yc-panel"><h3><a href="{{ url_for('admin.group_detail', public_id=row.group_public_id) }}">{{ row.group_name }}</a></h3><p>{{ row.course_title }} · {{ row.term_name }}</p><p>{{ row.student_count }} active students · {{ 'Operational' if row.operational else 'Archived context' }}</p>{% for schedule in row.schedules %}<p class="workspace-meta">{{ ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][schedule.day_of_week] }} {{ schedule.start_time.strftime('%H:%M') }}–{{ schedule.end_time.strftime('%H:%M') }} · {{ schedule.location or 'Location not set' }}</p>{% endfor %}</article>{% else %}<p>No active group assignments.</p>{% endfor %}</section>
 </div>
 <script>
   document.querySelectorAll(".teacher-status-form[data-confirm]").forEach(function (form) {

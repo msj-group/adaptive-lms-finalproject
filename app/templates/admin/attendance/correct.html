@@ -2,13 +2,13 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}Correct finalized attendance{% endblock %}
 {% block admin_content %}
-<div class="ds-page" style="max-width:800px">
+<div class="ds-page yc-surface" style="max-width:800px">
   <h1 data-workspace-page-heading>Correct finalized attendance</h1>
   <p>{{ group.name }} · {{ session.session_date }} · {{ student.full_name }}</p>
   <p>The roster and class stay fixed. The current mark is updated and its previous values,
      operator and time are preserved. Private staff notes remain hidden from students.</p>
   {{ macros.flash_messages() }}
-  <form method="post" novalidate>
+  <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     {% for field in [form.status, form.note] %}
     <div class="field">
@@ -21,7 +21,7 @@
   <p><a href="{{ back }}">Back to attendance</a></p>
   <h2>Preserved corrections</h2>
   {% for revision, actor in history.items %}
-  <article class="card">
+  <article class="card yc-panel">
     <p>{{ local(revision.created_at) }} · {{ actor }}</p>
     <p>{{ revision.before_snapshot.status|title }} → {{ revision.after_snapshot.status|title }}</p>
     {% if revision.before_snapshot.note != revision.after_snapshot.note %}

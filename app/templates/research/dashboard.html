@@ -1,20 +1,16 @@
 {% extends "layouts/research_base.html" %}
 {% from "research/_macros.html" import provenance_notice %}
+{% import "_product_ui.html" as product %}
 {% block title %}Research dashboard{% endblock %}
 {% block research_content %}
 {#- Real counts of stored rows only, with explicit empty states. No
     prediction, no accuracy figure, no chart of measured emotion. -#}
-<h1 data-workspace-page-heading>Research dashboard</h1>
-<p class="ds-section__desc">
-  Version A natural-use collection. Students appear only as pseudonymous subject codes: no
-  names, email addresses or account identifiers appear in this workspace. Nothing here detects,
-  predicts or measures frustration; ratings are optional self-reports.
-</p>
+{{ product.workspace_intro('RESEARCH WORKSPACE', 'Research dashboard', 'Version A natural-use collection. Students appear only as pseudonymous subject codes: no names, email addresses or account identifiers appear in this workspace. Nothing here detects, predicts or measures frustration; ratings are optional self-reports.', 'chart') }}
 
-<div class="dash-section">
+<div class="dash-section yc-section">
   <h2>Collection status</h2>
   {% if active %}
-  <div class="card"><div class="card__body">
+  <div class="card yc-panel"><div class="card__body">
     <p style="margin:0 0 var(--space-2)">
       Active configuration: <strong>version {{ active.version_number }}</strong> &mdash; {{ active.label }}
       <a href="{{ url_for('research.configuration_detail', configuration_public_id=active.public_id) }}">Open</a>
@@ -39,7 +35,7 @@
 
 {% include "research/_analytics.html" %}
 
-<div class="dash-section">
+<div class="dash-section yc-section">
   <details><summary><strong>Operational checks</strong></summary><h2>Operational checks</h2><p class="workspace-meta">These checks describe deployment and collection settings. They do not establish methodological validity, data quality or scientific accuracy.</p>
   <table class="dash-table" style="width:100%">
     <tbody>
@@ -58,7 +54,7 @@
   </table></details>
 </div>
 
-<div class="dash-section">
+<div class="dash-section yc-section">
   <h2>Population</h2>
   <p class="ds-section__desc">While a configuration collects, every active Student account is
     collected automatically unless it is excluded. A subject code is created the first time
@@ -66,16 +62,16 @@
     whole population. Exclusions and reinstatements are recorded with the operator tool.
     <a href="{{ url_for('research.exclusions') }}">View exclusions</a></p>
   <div class="stat-grid">
-    <div class="stat-card" data-subjects="included"><div class="stat-card__value">{{ subjects.included }}</div><div class="stat-card__label">Collected subjects</div></div>
-    <div class="stat-card" data-subjects="reinstated"><div class="stat-card__value">{{ subjects.reinstated }}</div><div class="stat-card__label">Of which reinstated</div></div>
-    <div class="stat-card" data-subjects="excluded"><div class="stat-card__value">{{ subjects.excluded }}</div><div class="stat-card__label">Excluded</div></div>
-    <div class="stat-card" data-subjects="legacy"><div class="stat-card__value">{{ subjects.legacy_excluded }}</div><div class="stat-card__label">Of which legacy exclusions</div></div>
+    <div class="stat-card yc-stat" data-subjects="included"><div class="stat-card__value">{{ subjects.included }}</div><div class="stat-card__label">Collected subjects</div></div>
+    <div class="stat-card yc-stat" data-subjects="reinstated"><div class="stat-card__value">{{ subjects.reinstated }}</div><div class="stat-card__label">Of which reinstated</div></div>
+    <div class="stat-card yc-stat" data-subjects="excluded"><div class="stat-card__value">{{ subjects.excluded }}</div><div class="stat-card__label">Excluded</div></div>
+    <div class="stat-card yc-stat" data-subjects="legacy"><div class="stat-card__value">{{ subjects.legacy_excluded }}</div><div class="stat-card__label">Of which legacy exclusions</div></div>
   </div>
 </div>
 
 {{ provenance_notice(provenance, provenance_labels) }}
 
-<div class="dash-section">
+<div class="dash-section yc-section">
   <h2>All retained sessions and delivery counters</h2>
   <p class="ds-section__desc">Whole retained deployment population, independent of the chart range above. These are recorded counters, not a complete estimate of unreceived traffic.</p>
   {% if sessions.sessions %}
@@ -84,7 +80,7 @@
                           ('batches_received', 'Batches'), ('events_accepted', 'Events stored'),
                           ('events_duplicate', 'Duplicates refused'), ('events_invalid', 'Invalid refused'),
                           ('events_late', 'Late refused'), ('events_dropped_client', 'Dropped in browser')] %}
-    <div class="stat-card" data-sessions="{{ key }}"><div class="stat-card__value">{{ sessions[key] }}</div><div class="stat-card__label">{{ label }}</div></div>
+    <div class="stat-card yc-stat" data-sessions="{{ key }}"><div class="stat-card__value">{{ sessions[key] }}</div><div class="stat-card__label">{{ label }}</div></div>
     {% endfor %}
   </div>
   {% else %}
@@ -93,7 +89,7 @@
   {% endif %}
 </div>
 
-<div class="dash-section">
+<div class="dash-section yc-section">
   <h2>All retained feedback prompts</h2>
   <p class="ds-section__desc">Whole retained deployment population, independent of the chart filters. A missing rating remains unlabeled.</p>
   {% if prompts.offered %}
@@ -124,11 +120,11 @@
   {% endif %}
 </div>
 
-<div class="dash-section">
+<div class="dash-section yc-section">
   <h2>Coverage</h2>
   <div class="stat-grid">
     {% for size, count in devices.items() %}
-    <div class="stat-card" data-device="{{ size }}"><div class="stat-card__value">{{ count }}</div><div class="stat-card__label">Page views, {{ size }} screens</div></div>
+    <div class="stat-card yc-stat" data-device="{{ size }}"><div class="stat-card__value">{{ count }}</div><div class="stat-card__label">Page views, {{ size }} screens</div></div>
     {% endfor %}
   </div>
   <table class="dash-table" style="width:100%; margin-top: var(--space-3)">
@@ -139,7 +135,7 @@
   </table>
 </div>
 
-<div class="dash-section">
+<div class="dash-section yc-section">
   <h2>Event types</h2>
   {% if event_types %}
   <table class="dash-table" style="width:100%">

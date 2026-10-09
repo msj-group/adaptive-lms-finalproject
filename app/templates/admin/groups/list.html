@@ -2,15 +2,15 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}Groups{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
-  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+<div class="ds-page yc-surface">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
     <h1 data-workspace-page-heading style="margin:0">Groups</h1>
     <a class="btn btn--primary" href="{{ url_for('admin.group_create') }}">New Group</a>
   </div>
 
   {{ macros.flash_messages() }}
 
-  <form method="get" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+  <form method="get" class="ds-row yc-actions yc-filter-form" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
     <label class="field__label" for="q" style="margin:0">Search:</label>
     <input type="search" name="q" id="q" class="field__input" style="width:auto" placeholder="Group name or code" value="{{ search }}">
 
@@ -87,14 +87,14 @@
         <td style="padding: var(--space-3)">{{ macros.status_badge(group.status) }}</td>
         <td style="padding: var(--space-3)">{{ group.created_at.strftime("%Y-%m-%d") }}</td>
         <td style="padding: var(--space-3)">
-          <div class="ds-row" style="gap: var(--space-2)">
+          <div class="ds-row yc-actions" style="gap: var(--space-2)">
             <a class="btn btn--primary" href="{{ url_for('admin.group_members', group_public_id=group.public_id) }}">Members</a>
             <a class="btn btn--secondary" href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">Schedule</a>
             <a class="btn btn--secondary" href="{{ url_for('admin.group_edit', public_id=group.public_id) }}">Edit</a>
             <form
               method="post"
               action="{{ url_for('admin.group_toggle_status', public_id=group.public_id) }}"
-              class="group-status-form"
+              class="group-status-form yc-form"
               {% if group.status == "active" %}data-confirm="Deactivate {{ group.name }}? It will no longer appear as an active group."{% endif %}
             >
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

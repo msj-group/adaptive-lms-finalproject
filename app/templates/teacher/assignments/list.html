@@ -17,7 +17,7 @@
     course, level and academic_term up front for the header block below, and
     the Teacher's access to it was already proven by the active
     GroupTeacherAssignment check. Every destination uses public ids only. -#}
-<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
 
   {{ dash.operational_badge(operational) }}
 </div>
@@ -28,7 +28,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="card yc-panel" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
@@ -72,7 +72,7 @@
   remove a submission.
 </div>
 
-<div class="ds-row" style="margin-bottom: var(--space-6)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_units', group_public_id=group.public_id) }}">Manage Units</a>
   {% if operational %}
@@ -80,7 +80,7 @@
   {% endif %}
 </div>
 
-<section class="dash-section" style="margin-top: 0">
+<section class="dash-section yc-section" style="margin-top: 0">
   <h2>Assignments</h2>
   {% if assignments %}
   <div class="dash-scroll">
@@ -131,7 +131,7 @@
 </div>
 </dl>
 <footer>
-          <div class="ds-row" style="gap: var(--space-2)">
+          <div class="ds-row yc-actions" style="gap: var(--space-2)">
             {#- Phase 4 / M02: `has_submissions` comes from ONE bounded query for
                 the whole page, never a per-row lookup. Hiding Edit is a
                 courtesy; the freeze itself is enforced server-side, and again
@@ -145,13 +145,13 @@
             <a class="btn btn--secondary" href="{{ url_for('teacher.assignment_submissions', group_public_id=group.public_id, assignment_public_id=item.public_id) }}">Submissions</a>
             {% if item.is_published %}
             <form method="post" action="{{ url_for('teacher.assignment_toggle_publication', group_public_id=group.public_id, assignment_public_id=item.public_id) }}"
-              data-confirm="Unpublish assignment '{{ item.title }}'? Students will no longer see it. It returns to draft.">
+              data-confirm="Unpublish assignment '{{ item.title }}'? Students will no longer see it. It returns to draft." class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--danger-outline">Unpublish</button>
             </form>
             {% elif operational %}
             <form method="post" action="{{ url_for('teacher.assignment_toggle_publication', group_public_id=group.public_id, assignment_public_id=item.public_id) }}"
-              data-confirm="Publish assignment '{{ item.title }}'? Enrolled students will see it once its opening time has passed.">
+              data-confirm="Publish assignment '{{ item.title }}'? Enrolled students will see it once its opening time has passed." class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--primary">Publish</button>
             </form>
@@ -164,7 +164,7 @@
   </div>
 
   {% if has_prev or has_next %}
-  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Assignment pages">
+  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Assignment pages">
     {% if has_prev %}
     <a class="btn btn--secondary" href="{{ url_for('teacher.group_assignments', group_public_id=group.public_id, page=page - 1) }}">Previous</a>
     {% endif %}

@@ -2,9 +2,10 @@
 {% import "_figma_ui.html" as ui %}
 {% set research = research_collector(position if position is defined else none, total if total is defined else none) %}
 {% set template_student = current_user.role == 'student' and request.blueprint != 'messages' %}
-{% block body_class %}figma-workspace {{ 'figma-student' if current_user.role == 'student' else 'figma-teacher' }}{{ ' st-workspace' if template_student else '' }}{% endblock %}
+{% set template_product = request.blueprint != 'messages' %}
+{% block body_class %}figma-workspace {{ 'figma-student' if current_user.role == 'student' else 'figma-teacher' }}{{ ' yc-workspace st-workspace' if template_student else (' yc-workspace yc-operations yc-teacher' if template_product else '') }}{% endblock %}
 {% block extra_head %}
-  {% if not template_student %}
+  {% if not template_product %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/portal.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/figma.css') }}">
@@ -13,7 +14,7 @@
   {% if research %}<script type="application/json" id="research-collector-config">{{ research.config|tojson }}</script><script src="{{ url_for('static', filename='js/usage_collector.js') }}" defer></script>{% endif %}
 {% endblock %}
 {% block product_styles %}
-  {% if not template_student %}
+  {% if not template_product %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/navigation.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/today.css') }}">
@@ -23,18 +24,20 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/communication.css') }}">
   {% if current_user.role == 'teacher' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/operations.css') }}">{% endif %}
   {% endif %}
+  {% if template_product and not template_student %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/community.css') }}">{% endif %}
   {% block feature_styles %}{% endblock %}
-  {% if template_student %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/student/foundation.css', v='st2') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/student/shell.css', v='st2') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/student/features.css', v='st2') }}">
+  {% if template_product %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/foundation.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/shell.css') }}">
+  {% if template_student %}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/features.css', v='st2') }}">{% else %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/operations.css') }}">{% endif %}
   {% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/mobile-navigation.css') }}">
 {% endblock %}
 {% block content %}
 {% set notif = notification_header() %}
-{% if template_student %}
+{% if template_product %}
 {% set portal_blocks = self %}
-{% include 'student/template/_shell.html' %}
+{% include 'layouts/_product_shell.html' %}
 {% else %}
 {{ ui.ambient() }}
 <a class="figma-skip-link" href="#workspace-content">Skip to content</a>
@@ -74,10 +77,10 @@
     {% block workspace_footer %}<footer class="figma-footer">Youth Centre · {{ 'A space to learn and grow.' if current_user.role == 'student' else 'A space to inspire.' }}</footer>{% endblock %}
   </div>
 </div>
-{% if current_user.role == 'student' %}{% include 'student/_mobile_nav.html' %}{% endif %}
+{% include 'layouts/_mobile_navigation.html' %}
 {% endif %}
 {% if research %}
 {% include "_research_feedback.html" %}
 {% endif %}
 {% endblock %}
-{% block body_scripts %}<script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/mobile_navigation.js') }}" defer></script><script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}

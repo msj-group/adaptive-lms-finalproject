@@ -20,7 +20,7 @@
     DATABASE, so a request naming an extra record, omitting one, or renaming
     one adds, removes, replaces and reorders nothing. Student names and notes
     are autoescaped and never rendered with `|safe`. -#}
-<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
   <h1 data-workspace-page-heading style="margin:0">Mark attendance — {{ session.session_date.isoformat() }}</h1>
   {{ att.state_badge(false) }}
 </div>
@@ -31,7 +31,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card" style="margin-bottom: var(--space-5)">
+<div class="card yc-panel" style="margin-bottom: var(--space-5)">
   <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
     <dd style="margin:0">{{ group.name }} &middot; {{ group.course.title }}</dd>
@@ -51,13 +51,13 @@
 </div>
 
 <ol class="workspace-steps"><li>Save draft marks</li><li>Review saved marks</li><li>Finalize for students</li></ol>
-<form method="post" data-attendance-draft>
+<form method="post" data-attendance-draft class="yc-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="attendance_state" value="{{ draft_token }}">
 
-  <section class="dash-section" style="margin-top: 0">
+  <section class="dash-section yc-section" style="margin-top: 0">
     <h2>Students ({{ records | length }})</h2>
-    {% if records %}<div class="ds-row" style="margin-bottom:var(--space-3)" data-attendance-bulk-controls hidden>
+    {% if records %}<div class="ds-row yc-actions" style="margin-bottom:var(--space-3)" data-attendance-bulk-controls hidden>
       <button type="button" class="btn btn--secondary" data-attendance-all-present>Mark all present</button>
       <button type="button" class="btn btn--secondary" data-attendance-undo hidden>Undo bulk selection</button>
       <p class="ds-section__desc" role="status" data-attendance-bulk-status></p>
@@ -78,9 +78,9 @@
           <td>
             <fieldset style="border:0; margin:0; padding:0">
               <legend style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap">Attendance for {{ record.student_name }}</legend>
-              <div class="ds-row" style="gap: var(--space-3); flex-wrap: wrap">
+              <div class="ds-row yc-actions" style="gap: var(--space-3); flex-wrap: wrap">
                 {% for status in status_order %}
-                <label class="ds-row" style="gap: var(--space-1); align-items:center; margin:0">
+                <label class="ds-row yc-actions" style="gap: var(--space-1); align-items:center; margin:0">
                   <input type="radio"
                          name="status__{{ record.public_id }}"
                          value="{{ status }}"
@@ -104,7 +104,7 @@
     </table>
     </div>
 
-    <div class="ds-row" style="margin-top: var(--space-5)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-5)">
       <button type="submit" class="btn btn--primary">Save draft</button>
       <a class="btn btn--secondary" href="{{ detail_url }}">Back to session</a>
     </div>
@@ -115,7 +115,7 @@
     its own signed finalize token and an explicit confirmation the teacher must
     tick. A draft save can never finalize by accident, and a finalize can never
     carry marks. -#}
-<section class="card" style="margin-top: var(--space-6); border-color: var(--color-danger)">
+<section class="card yc-panel" style="margin-top: var(--space-6); border-color: var(--color-danger)">
   <h2 style="margin-top:0">Finalize this attendance</h2>
   <p class="card__body">
     Finalizing makes the saved marks visible to students and ends teacher editing.
@@ -123,10 +123,10 @@
     Review and save your
     marks first — finalizing does not save what is on the form above.
   </p>
-  <form method="post" action="{{ finalize_url }}" data-finalize-attendance>
+  <form method="post" action="{{ finalize_url }}" data-finalize-attendance class="yc-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="attendance_state" value="{{ finalize_token }}">
-    <label class="ds-row" style="gap: var(--space-2); align-items:center; margin: var(--space-3) 0">
+    <label class="ds-row yc-actions" style="gap: var(--space-2); align-items:center; margin: var(--space-3) 0">
       <input type="checkbox" name="confirm_finalize" value="yes">
       <span>I have checked these marks and I understand that finalizing cannot be undone.</span>
     </label>

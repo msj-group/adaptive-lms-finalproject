@@ -4,7 +4,7 @@
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
-<div class="ds-page" style="max-width: 560px; padding: 0">
+<div class="ds-page yc-surface" style="max-width: 560px; ">
   <h1 data-workspace-page-heading>Edit File Material</h1>
   <p class="ds-section__desc">
     {{ group.name }} — {{ unit.title }} — {{ lesson.title }}
@@ -22,7 +22,7 @@
   </div>
 
   {% if material and material.uploaded_file %}
-  <div class="card" style="margin-bottom: var(--space-4)">
+  <div class="card yc-panel" style="margin-bottom: var(--space-4)">
     <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">File</dt>
       <dd style="margin:0">{{ material.uploaded_file.original_filename }}</dd>
@@ -32,7 +32,7 @@
   </div>
   {% endif %}
 
-  <form method="post" novalidate>
+  <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
 
@@ -51,7 +51,7 @@
       {% for error in form.search_keywords.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    <div class="ds-row" style="margin-top: var(--space-6)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
       <a class="btn btn--secondary" href="{{ url_for('teacher.lesson_materials', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">Cancel</a>
     </div>

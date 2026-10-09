@@ -1,34 +1,31 @@
 {% extends "layouts/admin_base.html" %}
 {% import "_dashboard_macros.html" as dash %}
 {% import "_figma_ui.html" as ui %}
+{% import "_product_ui.html" as product %}
 {% block title %}Admin Dashboard{% endblock %}
 {% block extra_head %}
   {{ super() }}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 {% endblock %}
 {% block admin_content %}
-<section class="figma-hero"><div class="figma-hero-copy"><span class="figma-eyebrow">A LITTLE ORGANIZATION. A LOT OF POSSIBILITY.</span>
-  <h1>A thriving centre<br>starts with <em>you, {{ current_user.full_name }}.</em></h1>
-  <p>Your people, your courses, your next chapter. A live view of your centre, with class times in {{ tz_name }}.</p>
-  <div class="ds-row"><a class="btn btn--primary" href="{{ url_for('admin.students_list') }}">Manage students {{ ui.icon('arrow-up', 17) }}</a><a class="btn btn--secondary" href="{{ url_for('admin.courses_list') }}">Explore courses</a></div>
-</div>{{ ui.hero_art() }}</section>
+{% call product.workspace_intro('YOUR CENTRE, CONNECTED', 'Welcome, ' ~ current_user.full_name ~ '.', 'A live view of your centre, with class times in ' ~ tz_name ~ '.', 'layers') %}<a class="btn btn--primary" href="{{ url_for('admin.students_list') }}">Manage students {{ ui.icon('arrow',17) }}</a><a class="btn btn--secondary" href="{{ url_for('admin.courses_list') }}">Explore courses</a>{% endcall %}
 
 {#- Phase 5 / M10. Shortcuts only: they open the financial workspaces and show
     no financial figure. -#}
 <div class="figma-finance-shortcuts">
-<a class="card" href="{{ url_for('admin.student_accounts') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="student-accounts">
+<a class="card yc-panel" href="{{ url_for('admin.student_accounts') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="student-accounts">
   {{ ui.icon('wallet', 24) }}<div class="card__title">Student Accounts</div>
   <div class="card__body">Each student's computed financial status and complete financial record.</div>
 </a>
-<a class="card" href="{{ url_for('admin.invoice_register') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="invoices">
+<a class="card yc-panel" href="{{ url_for('admin.invoice_register') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="invoices">
   {{ ui.icon('file', 24) }}<div class="card__title">Invoices</div>
   <div class="card__body">Find invoices created by enrollment operations, review their accounts and correct current records.</div>
 </a>
-<a class="card" href="{{ url_for('admin.payments_overview') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="payments">
+<a class="card yc-panel" href="{{ url_for('admin.payments_overview') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="payments">
   {{ ui.icon('card', 24) }}<div class="card__title">Collections and payouts</div>
   <div class="card__body">Review incoming collections and actual returns of credit. Confirmed movements have receipts.</div>
 </a>
-<a class="card" href="{{ url_for('admin.deleted_financial_records') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="deleted-records">
+<a class="card yc-panel" href="{{ url_for('admin.deleted_financial_records') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="deleted-records">
   {{ ui.icon('trash', 24) }}<div class="card__title">Historical deleted records</div>
   <div class="card__body">Deleted invoices, payments and receipts, kept read-only.</div>
 </a>
@@ -36,12 +33,12 @@
 
 <h2>People</h2>
 <div class="stat-grid">
-  <div class="stat-card">
+  <div class="stat-card yc-stat">
     <div class="stat-card__value">{{ stats.students.total }}</div>
     <div class="stat-card__label">Students</div>
     <div class="stat-card__sub">{{ stats.students.active }} active &middot; {{ stats.students.suspended }} suspended</div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card yc-stat">
     <div class="stat-card__value">{{ stats.teachers.total }}</div>
     <div class="stat-card__label">Teachers</div>
     <div class="stat-card__sub">{{ stats.teachers.active }} active &middot; {{ stats.teachers.suspended }} suspended</div>
@@ -50,37 +47,37 @@
 
 <h2 style="margin-top: var(--space-8)">Academic structure</h2>
 <div class="stat-grid">
-  <div class="stat-card">
+  <div class="stat-card yc-stat">
     <div class="stat-card__value">{{ stats.academic_terms_total }}</div>
     <div class="stat-card__label">Academic Terms</div>
     <div class="stat-card__sub">{{ stats.academic_terms_active }} active</div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card yc-stat">
     <div class="stat-card__value">{{ stats.levels_total }}</div>
     <div class="stat-card__label">Levels</div>
     <div class="stat-card__sub">{{ stats.levels_active }} active</div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card yc-stat">
     <div class="stat-card__value">{{ stats.courses_total }}</div>
     <div class="stat-card__label">Courses</div>
     <div class="stat-card__sub">{{ stats.courses_active }} active</div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card yc-stat">
     <div class="stat-card__value">{{ stats.groups_total }}</div>
     <div class="stat-card__label">Groups</div>
     <div class="stat-card__sub">{{ stats.groups_active }} active</div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card yc-stat">
     <div class="stat-card__value">{{ stats.active_enrollment_rows }}</div>
     <div class="stat-card__label">Active enrollment rows</div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card yc-stat">
     <div class="stat-card__value">{{ stats.active_teacher_assignment_rows }}</div>
     <div class="stat-card__label">Active teacher-assignment rows</div>
   </div>
 </div>
 
-<div class="dash-section">
+<div class="dash-section yc-section">
   <h2>Setup needs attention</h2>
   {% if setup.operational_group_count %}
   <figure class="operations-readiness" aria-labelledby="setup-coverage-title">
@@ -118,15 +115,15 @@
   {% endif %}
 </div>
 
-<div class="dash-section">
+<div class="dash-section yc-section">
   <h2>Current &amp; upcoming classes (next 7 days)</h2>
   <p class="ds-section__desc">Only groups whose Academic Term, Level, Course, and Group are all active appear here.</p>
   {{ dash.upcoming_table(operational_classes, now, tz_name, show_group=True) }}
 </div>
 
-<div class="dash-section">
+<div class="dash-section yc-section">
   <h2>Manage</h2>
-  <div class="ds-row">
+  <div class="ds-row yc-actions">
     <a class="btn btn--secondary" href="{{ url_for('admin.academic_terms_list') }}">Academic Terms</a>
     <a class="btn btn--secondary" href="{{ url_for('admin.levels_list') }}">Levels</a>
     <a class="btn btn--secondary" href="{{ url_for('admin.courses_list') }}">Courses</a>

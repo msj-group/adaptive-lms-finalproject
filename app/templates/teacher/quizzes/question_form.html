@@ -25,8 +25,8 @@
     nothing at all, so an index-based encoding would silently misalign.
 
     Every authored string below is autoescaped. Never |safe. -#}
-<div class="ds-page" style="max-width: 780px; padding: 0">
-  <div class="ds-row" style="justify-content: space-between; align-items: center;">
+<div class="ds-page yc-surface" style="max-width: 780px; ">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center;">
 
     <span class="badge badge--neutral">Draft</span>
   </div>
@@ -57,7 +57,7 @@
   <form method="post" novalidate
         data-question-editor
         data-min-options="{{ form.MIN_OPTIONS }}"
-        data-max-options="{{ form.MAX_OPTIONS }}">
+        data-max-options="{{ form.MAX_OPTIONS }}" class="yc-form">
     {{ form.hidden_tag() }}
     <input type="hidden" name="question_state" value="{{ state_token }}">
 
@@ -99,9 +99,9 @@
 
       <div data-option-list>
         {% for row in form.option_rows %}
-        <div class="card" style="margin-bottom: var(--space-2)" data-option-row>
+        <div class="card yc-panel" style="margin-bottom: var(--space-2)" data-option-row>
           <input type="hidden" name="option_key" value="{{ row.key }}" data-option-key>
-          <div class="ds-row" style="align-items: center; gap: var(--space-3)">
+          <div class="ds-row yc-actions" style="align-items: center; gap: var(--space-3)">
             <label style="white-space: nowrap">
               <input type="checkbox" name="option_correct" value="{{ row.key }}" data-option-correct{% if row.is_correct %} checked{% endif %}>
               Correct
@@ -121,9 +121,9 @@
       {#- The blank row the script clones. It is inside <template>, so it is
           never submitted and never rendered when JavaScript is unavailable. -#}
       <template data-option-template>
-        <div class="card" style="margin-bottom: var(--space-2)" data-option-row>
+        <div class="card yc-panel" style="margin-bottom: var(--space-2)" data-option-row>
           <input type="hidden" name="option_key" value="" data-option-key>
-          <div class="ds-row" style="align-items: center; gap: var(--space-3)">
+          <div class="ds-row yc-actions" style="align-items: center; gap: var(--space-3)">
             <label style="white-space: nowrap">
               <input type="checkbox" name="option_correct" value="" data-option-correct>
               Correct
@@ -139,7 +139,7 @@
         </div>
       </template>
 
-      <div class="ds-row" style="align-items: center; gap: var(--space-3); margin-top: var(--space-2)">
+      <div class="ds-row yc-actions" style="align-items: center; gap: var(--space-3); margin-top: var(--space-2)">
         <button type="button" class="btn btn--secondary" data-option-add>Add option</button>
         <span class="ds-section__desc" style="margin:0" data-option-count aria-live="polite">
 </span>
@@ -148,7 +148,7 @@
 
     {# No status, publication, timing, scoring or attempt control: none exists
        server-side either. #}
-    <div class="ds-row" style="margin-top: var(--space-6)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
       {% if not question %}<button type="submit" name="after_save" value="add_another" class="btn btn--secondary">Save and add another question</button>{% endif %}
       <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_detail', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">Cancel</a>

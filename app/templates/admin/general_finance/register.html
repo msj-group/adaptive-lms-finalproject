@@ -1,8 +1,8 @@
-{% extends "layouts/admin_base.html" %}{% block title %}{{ 'Historical deleted financial records' if deleted else 'Invoices' if kind == 'invoice' else 'Money movements' }}{% endblock %}{% block admin_content %}<p class="workspace-meta">Sorted by recently added records. Displayed transaction dates may differ from entry order.</p><div class="ds-page">
+{% extends "layouts/admin_base.html" %}{% block title %}{{ 'Historical deleted financial records' if deleted else 'Invoices' if kind == 'invoice' else 'Money movements' }}{% endblock %}{% block admin_content %}<p class="workspace-meta">Sorted by recently added records. Displayed transaction dates may differ from entry order.</p><div class="ds-page yc-surface">
 <h1 data-workspace-page-heading>{{ 'Historical deleted financial records' if deleted else 'Invoices' if kind == 'invoice' else 'Money movements' }}</h1>
 <p>Invoice references provide context. Collections and payouts affect the student's general account.</p>
 <a href="{{ url_for('admin.student_accounts') }}">Student accounts</a>
-<form method="get"><label>Student name <input name="q" value="{{ search }}" maxlength="100"></label>
+<form method="get" class="yc-filter-form"><label>Student name <input name="q" value="{{ search }}" maxlength="100"></label>
 {% if deleted %}<select name="kind"><option value="invoice" {% if kind == 'invoice' %}selected{% endif %}>Invoices</option><option value="payment" {% if kind == 'payment' %}selected{% endif %}>Money movements</option></select>{% else %}
 <select name="state"><option value="">All states</option>{% for value in (['issued','cancelled'] if kind == 'invoice' else ['confirmed','pending','rejected']) %}<option value="{{ value }}" {% if state == value %}selected{% endif %}>{{ value.title() }}</option>{% endfor %}</select>{% endif %}<button>Filter</button></form>
 <div style="overflow-x:auto"><table class="table"><thead><tr><th>Student</th><th>Recorded</th><th>Document / movement</th><th>Amount (LYD)</th><th>State</th><th>Action</th></tr></thead><tbody>

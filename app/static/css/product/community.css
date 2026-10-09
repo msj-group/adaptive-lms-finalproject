@@ -1,0 +1,20 @@
+/* Operational calendar / announcement / discussion composition. No chat rules. */
+.yc-operations :is(.discussion-group-list,.discussion-topic-list,.announcement-reading-list) { display:grid; gap:16px; margin-block:20px; }
+.yc-operations .discussion-reply-list { display:grid; gap:14px; border-inline-start:2px solid var(--st-divider); margin-inline-start:8px; padding-inline-start:20px; }
+.yc-operations :is([data-topic-body],[data-reply-body]) { max-width:80ch; line-height:1.85; overflow-wrap:anywhere; }
+.yc-operations .notif-list { display:grid; gap:14px; }
+.yc-operations .notif-filter { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:9px 16px; border-radius:15px; color:var(--st-muted); text-decoration:none; background:var(--st-control); }
+.yc-operations .notif-filter--active { color:var(--st-blue); background:var(--st-wash); font-weight:600; }
+.yc-operations .calendar-week-grid { display:grid; grid-template-columns:repeat(7,minmax(140px,1fr)); gap:12px; overflow-x:auto; padding:4px; }
+.yc-operations .calendar-week-day { padding:18px; border:1px solid var(--st-border); border-radius:22px; background:var(--st-glass); }
+.yc-operations .calendar-week-day h2 { font-size:17px; }
+.yc-operations .calendar-week-day .card { padding:14px; border-radius:17px; }
+.yc-operations .calendar-day-picker { max-width:360px; margin-block:20px; }
+.yc-operations .workspace-week-scroll { max-width:100%; overflow-x:auto; }
+.yc-operations .workspace-calendar-week { display:grid; grid-template-columns:repeat(7,minmax(145px,1fr)); gap:12px; margin-block:16px; }
+.yc-operations .workspace-calendar-day { min-width:0; }
+.yc-operations .workspace-calendar[data-calendar-layout='week'] .workspace-calendar-day { padding:16px; border:1px solid var(--st-border); border-radius:22px; background:var(--st-glass); }
+.yc-operations .workspace-calendar-day--outside { opacity:.65; }
+.yc-operations .workspace-calendar[data-calendar-layout='week'] .workspace-calendar-day h2 { font-size:16px; }
+.yc-operations .workspace-calendar[data-calendar-layout='week'] .card { padding:14px; border-radius:18px; }
+@media(max-width:767px) { .yc-operations .calendar-week-grid { grid-template-columns:minmax(0,1fr); overflow:visible; } .yc-operations .discussion-reply-list { padding-inline-start:12px; } }

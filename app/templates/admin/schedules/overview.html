@@ -2,8 +2,8 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}Schedules{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
-  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+<div class="ds-page yc-surface">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
     <h1 data-workspace-page-heading style="margin:0">Schedules</h1>
   </div>
   <p class="ds-section__desc">
@@ -14,7 +14,7 @@
 
   {{ macros.flash_messages() }}
 
-  <form method="get" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+  <form method="get" class="ds-row yc-actions yc-filter-form" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
     <label class="field__label" for="q" style="margin:0">Location:</label>
     <input type="search" name="q" id="q" class="field__input" style="width:auto" placeholder="Location" value="{{ search }}">
 

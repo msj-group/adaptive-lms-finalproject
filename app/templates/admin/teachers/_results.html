@@ -19,12 +19,12 @@
       <td style="padding: var(--space-3)">{{ macros.user_status_badge(teacher.status) }}</td>
       <td style="padding: var(--space-3)">{{ teacher.created_at.strftime("%Y-%m-%d") }}</td>
       <td style="padding: var(--space-3)">
-        <div class="ds-row" style="gap: var(--space-2)">
+        <div class="ds-row yc-actions" style="gap: var(--space-2)">
           <a class="btn btn--secondary" href="{{ url_for('admin.teacher_edit', public_id=teacher.public_id) }}">Edit</a>
           <form
             method="post"
             action="{{ url_for('admin.teacher_toggle_status', public_id=teacher.public_id) }}"
-            class="teacher-status-form"
+            class="teacher-status-form yc-form"
             {% if teacher.status == "active" %}data-confirm="Suspend {{ teacher.full_name }}? They will be signed out of any active session and unable to log in until reactivated."{% endif %}
           >
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

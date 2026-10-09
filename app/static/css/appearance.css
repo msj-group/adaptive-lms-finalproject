@@ -1,32 +1,33 @@
 /* Preferences, RTL and print. Temporary feature-theme compatibility below is
-   retained until each owning page wave; canonical palettes live in tokens.css. */
+   retained for legacy/protected shells only; migrated operational pages own their
+   glass surfaces in product/. Canonical palettes live in tokens.css. */
 
-.figma-workspace :is(.figma-art-book,.figma-art-note,.workspace-record-table tr) { background: var(--ui-raised); border-color: var(--ui-line); }
-.figma-workspace .workspace-calendar[data-calendar-layout='week'] .workspace-calendar-day { background: var(--ui-raised); border-color: var(--ui-line); }
-.figma-workspace :is(.activity-card__meta,.activity-card__top,.figma-stat-total,.figma-art-note,.workspace-heading p), .figma-workspace .workspace-record-table td::before { color: var(--ui-muted); }
-.figma-workspace :is(.workspace-filters>summary,.workspace-finance-preview output,.workspace-impact [role='status'],.workspace-steps li::before,.figma-summary .figma-icon,.figma-finance-shortcuts .figma-icon) { color: var(--ui-link); }
-.figma-workspace .figma-skip-link { background: var(--ui-surface); color: var(--ui-link); }
-.figma-workspace .figma-progress::-webkit-progress-bar { background: var(--ui-soft); }
+.figma-workspace:where(:not(.yc-operations)) :is(.figma-art-book,.figma-art-note,.workspace-record-table tr) { background: var(--ui-raised); border-color: var(--ui-line); }
+.figma-workspace:where(:not(.yc-operations)) .workspace-calendar[data-calendar-layout='week'] .workspace-calendar-day { background: var(--ui-raised); border-color: var(--ui-line); }
+.figma-workspace:where(:not(.yc-operations)) :is(.activity-card__meta,.activity-card__top,.figma-stat-total,.figma-art-note,.workspace-heading p), .figma-workspace:where(:not(.yc-operations)) .workspace-record-table td::before { color: var(--ui-muted); }
+.figma-workspace:where(:not(.yc-operations)) :is(.workspace-filters>summary,.workspace-finance-preview output,.workspace-impact [role='status'],.workspace-steps li::before,.figma-summary .figma-icon,.figma-finance-shortcuts .figma-icon) { color: var(--ui-link); }
+.figma-workspace:where(:not(.yc-operations)) .figma-skip-link { background: var(--ui-surface); color: var(--ui-link); }
+.figma-workspace:where(:not(.yc-operations)) .figma-progress::-webkit-progress-bar { background: var(--ui-soft); }
 .today-list>li { border-color: var(--ui-line); }
-.figma-workspace .today-dashboard > .dash-section, .figma-workspace .today-dashboard .card { background: var(--ui-surface); border-color: var(--ui-line); }
-.figma-workspace .today-dashboard > .today-continue { background: var(--ui-soft); border-color: var(--ui-line); }
+.figma-workspace:where(:not(.yc-operations)) .today-dashboard > .dash-section, .figma-workspace:where(:not(.yc-operations)) .today-dashboard .card { background: var(--ui-surface); border-color: var(--ui-line); }
+.figma-workspace:where(:not(.yc-operations)) .today-dashboard > .today-continue { background: var(--ui-soft); border-color: var(--ui-line); }
 .today-greeting { color: var(--ui-ink); }
-.today-meta, .today-note, .figma-workspace .today-dashboard .today-note { color: var(--ui-muted); }
-.figma-workspace :is(.dash-section,.activity-filters,.workspace-reading-card,.workspace-document,.workspace-preferences,.workspace-confirmation,.messenger-action-menu,.messenger-emoji) { background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-text); }
-.figma-workspace :is(.messenger-action-menu,.messenger-emoji,.workspace-confirmation) { box-shadow: var(--ui-shadow); }
-.figma-workspace :is(.figma-eyebrow,.workspace-meta,.workspace-kicker,.workspace-breadcrumb,.workspace-context>p,.account-intro,.account-hint,.account-profile>div>span,.figma-footer,.notif-item__kind,.notif-preview-note,.messenger-action-note,.messenger-date,.messenger-bubble__meta) { color: var(--ui-muted); }
+body:where(:not(.yc-operations)) .today-meta, body:where(:not(.yc-operations)) .today-note, .figma-workspace:where(:not(.yc-operations)) .today-dashboard .today-note { color: var(--ui-muted); }
+.figma-workspace:where(:not(.yc-operations)) :is(.dash-section,.activity-filters,.workspace-reading-card,.workspace-document,.workspace-preferences,.workspace-confirmation,.messenger-action-menu,.messenger-emoji) { background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-text); }
+.figma-workspace:where(:not(.yc-operations)) :is(.messenger-action-menu,.messenger-emoji,.workspace-confirmation) { box-shadow: var(--ui-shadow); }
+.figma-workspace:where(:not(.yc-operations)) :is(.figma-eyebrow,.workspace-meta,.workspace-kicker,.workspace-breadcrumb,.workspace-context>p,.account-intro,.account-hint,.account-profile>div>span,.figma-footer,.notif-item__kind,.notif-preview-note,.messenger-action-note,.messenger-date,.messenger-bubble__meta) { color: var(--ui-muted); }
 .workspace-opening-logo img, .figma-login-logo { background: #fff; border-radius: 10px; padding: 4px; }
-.figma-workspace .account-file, .account-file::file-selector-button { background: var(--ui-soft); border-color: var(--ui-line); color: var(--ui-link); }
-.figma-workspace :is(.messenger-tabs [aria-selected='true'],.notif-filter--active) { background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-ink); }
-.figma-workspace :is(.figma-pagination,.notif-pagination,.messenger-pagination,.figma-page nav[aria-label$='pages']) a { background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-link); }
-.figma-workspace td a:not(.btn), .workspace-reading-nav li a, .workspace-outline li>a { color: var(--ui-link); }
-.figma-workspace :is(.messenger-secondary,.workspace-opening-continue) { background: var(--ui-soft); border-color: var(--ui-line); color: var(--ui-link); }
-.figma-workspace :is(.field__error,.account-errors,.messenger-danger) { color: var(--ui-danger); }
-.figma-workspace :is(.workspace-error-summary) { background: var(--ui-danger-bg); border-color: var(--ui-danger); }
-.figma-workspace :is(.workspace-unsaved) { background: var(--ui-warning-bg); color: var(--ui-warning); border-color: var(--ui-warning); }
-.figma-workspace :is(.workspace-finance-preview,.workspace-impact,.workspace-step,.workspace-steps li) { background: var(--ui-soft); color: var(--ui-link); border-color: var(--ui-line); }
-.figma-workspace :is(.notif-item--unread,.notif-item--compact.notif-item--unread) { background: var(--ui-raised); }
-.figma-workspace .notif-item__icon { background: var(--ui-soft); color: var(--ui-link); }
+.figma-workspace:where(:not(.yc-operations)) .account-file, .account-file::file-selector-button { background: var(--ui-soft); border-color: var(--ui-line); color: var(--ui-link); }
+.figma-workspace:where(:not(.yc-operations)) :is(.messenger-tabs [aria-selected='true'],.notif-filter--active) { background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-ink); }
+.figma-workspace:where(:not(.yc-operations)) :is(.figma-pagination,.notif-pagination,.messenger-pagination,.figma-page nav[aria-label$='pages']) a { background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-link); }
+.figma-workspace:where(:not(.yc-operations)) td a:not(.btn), .workspace-reading-nav li a, .workspace-outline li>a { color: var(--ui-link); }
+.figma-workspace:where(:not(.yc-operations)) :is(.messenger-secondary,.workspace-opening-continue) { background: var(--ui-soft); border-color: var(--ui-line); color: var(--ui-link); }
+.figma-workspace:where(:not(.yc-operations)) :is(.field__error,.account-errors,.messenger-danger) { color: var(--ui-danger); }
+.figma-workspace:where(:not(.yc-operations)) :is(.workspace-error-summary) { background: var(--ui-danger-bg); border-color: var(--ui-danger); }
+.figma-workspace:where(:not(.yc-operations)) :is(.workspace-unsaved) { background: var(--ui-warning-bg); color: var(--ui-warning); border-color: var(--ui-warning); }
+.figma-workspace:where(:not(.yc-operations)) :is(.workspace-finance-preview,.workspace-impact,.workspace-step,.workspace-steps li) { background: var(--ui-soft); color: var(--ui-link); border-color: var(--ui-line); }
+.figma-workspace:where(:not(.yc-operations)) :is(.notif-item--unread,.notif-item--compact.notif-item--unread) { background: var(--ui-raised); }
+.figma-workspace:where(:not(.yc-operations)) .notif-item__icon { background: var(--ui-soft); color: var(--ui-link); }
 .figma-login { background: var(--ui-page); }
 .figma-login .figma-login-scene { background: var(--ui-page); }
 .figma-login :is(.figma-login-card,.workspace-opening-card) { background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-text); box-shadow: var(--ui-shadow); }

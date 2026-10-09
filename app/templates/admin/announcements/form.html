@@ -2,7 +2,7 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ "Edit announcement" if announcement else "New announcement" }}{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
+<div class="ds-page yc-surface">
   {#- Phase 4 / M09. The hidden `announcement_state` value is the signed token
       binding the author, the announcement's public id, its version, and the
       scope and target the STORED row currently has -- not whatever this form
@@ -32,7 +32,7 @@
     its title, text, scope and target can never be changed — only withdrawn.
   </div>
 
-  <form method="post" class="card" novalidate>
+  <form method="post" class="card yc-panel yc-form" novalidate>
     {{ form.hidden_tag() }}
     <input type="hidden" name="announcement_state" value="{{ announcement_state }}">
 
@@ -94,7 +94,7 @@
       </div>
     </div>
 
-    <div class="ds-row" style="margin-top: var(--space-5)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-5)">
       <button type="submit" class="btn btn--primary">{{ form.submit.label.text }}</button>
       <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
     </div>

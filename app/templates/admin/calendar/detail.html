@@ -2,7 +2,7 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ event.title }}{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
+<div class="ds-page yc-surface">
   {#- Phase 4 / M10. One centre event in full, with whichever control its state
       allows. A SCHEDULED event offers editing and cancellation; a CANCELLED one
       offers neither and no token is minted for it -- the page is a record.
@@ -14,14 +14,14 @@
       `details` is plain text rendered inside a pre-wrap block: Jinja's
       autoescaping is what makes it safe, and nothing on this surface is ever
       marked safe. -#}
-  <div class="ds-row" style="margin-bottom: var(--space-3)">
+  <div class="ds-row yc-actions" style="margin-bottom: var(--space-3)">
     <a class="btn btn--secondary" href="{{ calendar_url }}">&larr; Calendar</a>
   </div>
 
   {{ macros.flash_messages() }}
 
-  <div class="card">
-    <div class="ds-row" style="justify-content: space-between; align-items: flex-start">
+  <div class="card yc-panel">
+    <div class="ds-row yc-actions" style="justify-content: space-between; align-items: flex-start">
       <div>
         <h1 data-workspace-page-heading style="margin: 0 0 var(--space-1)">{{ event.title }}</h1>
         <div class="card__body">
@@ -63,11 +63,11 @@
     restored. Create a new event instead.
   </div>
   {% else %}
-  <div class="ds-row" style="margin-top: var(--space-4); gap: var(--space-3); align-items: flex-start">
+  <div class="ds-row yc-actions" style="margin-top: var(--space-4); gap: var(--space-3); align-items: flex-start">
     <a class="btn btn--secondary" href="{{ edit_url }}">Edit event</a>
   </div>
 
-  <div class="card" style="margin-top: var(--space-4)">
+  <div class="card yc-panel" style="margin-top: var(--space-4)">
     <div class="card__title">Cancel this event</div>
     <div class="card__body">
       Cancelling hides the event from every student's and teacher's calendar immediately
@@ -76,7 +76,7 @@
     </div>
     <form method="post"
           action="{{ url_for('admin.calendar_event_cancel', event_public_id=event.public_id) }}"
-          style="margin-top: var(--space-3)">
+          style="margin-top: var(--space-3)" class="yc-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="event_state" value="{{ cancel_token }}">
       <label class="field__label" style="display: flex; align-items: center; gap: var(--space-2)">

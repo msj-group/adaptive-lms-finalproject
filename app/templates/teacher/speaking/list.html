@@ -18,7 +18,7 @@
     its OWN public id -- an ordinary assignment's id resolves to nothing here.
     There is deliberately no delete, archive, duplicate, score or grade
     control anywhere on this page -- none exists server-side either. -#}
-<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
 
   {{ dash.operational_badge(operational) }}
 </div>
@@ -29,7 +29,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="card yc-panel" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
@@ -67,7 +67,7 @@
 </div>
 {% endif %}
 
-<div class="ds-row" style="margin-bottom: var(--space-6)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_assignments', group_public_id=group.public_id) }}">Manage Assignments</a>
   {% if operational %}
@@ -75,7 +75,7 @@
   {% endif %}
 </div>
 
-<section class="dash-section" style="margin-top: 0">
+<section class="dash-section yc-section" style="margin-top: 0">
   <h2>Speaking activities</h2>
   {% if activities %}
   <div class="dash-scroll">
@@ -137,7 +137,7 @@
   </div>
 
   {% if has_prev or has_next %}
-  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Speaking pages">
+  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Speaking pages">
     {% if has_prev %}
     <a class="btn btn--secondary" href="{{ url_for('teacher.group_speaking', group_public_id=group.public_id, page=page - 1) }}">Previous</a>
     {% endif %}

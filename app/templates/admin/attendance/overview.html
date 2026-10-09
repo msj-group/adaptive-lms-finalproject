@@ -3,12 +3,12 @@
 {% import "_attendance_macros.html" as att %}
 {% block title %}Attendance{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
+<div class="ds-page yc-surface">
   {#- Phase 4 / M07. READ ONLY. There is no create, edit, mark, finalize,
       reopen, delete, export, bulk or grade control on this page, and none
       behind it: no such administrator endpoint exists. Attendance is recorded
       by the teacher who taught the class. -#}
-  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
     <h1 data-workspace-page-heading style="margin:0">Attendance</h1>
   </div>
   <p class="ds-section__desc">
@@ -20,7 +20,7 @@
 
   {{ macros.flash_messages() }}
 
-  <form method="get" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+  <form method="get" class="ds-row yc-actions yc-filter-form" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
     <label class="field__label" for="group">Group:</label><select name="group" id="group" class="field__input"><option value="">All groups</option>{% set choices = workspace_group_choices() %}{% set found = namespace(value=false) %}{% for row in choices %}{% if filter_group == row.public_id %}{% set found.value=true %}{% endif %}<option value="{{ row.public_id }}" {{ 'selected' if filter_group == row.public_id else '' }}>{{ row.name }} · {{ row.title }} · {{ row.term_name }}</option>{% endfor %}{% if filter_group and not found.value %}<option value="{{ filter_group }}" selected>Selected group (outside the first 500 choices)</option>{% endif %}</select>
 
     <label class="field__label" for="session_date" style="margin:0">Class date:</label>
@@ -88,7 +88,7 @@
   </div>
 
   {% if has_prev or has_next %}
-  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attendance pages">
+  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attendance pages">
     {% if has_prev %}
     <a class="btn btn--secondary" href="{{ url_for('admin.attendance_overview', page=page - 1, group=filter_group, session_date=filter_date.isoformat() if filter_date else None, state=filter_state or None) }}">Previous</a>
     {% endif %}

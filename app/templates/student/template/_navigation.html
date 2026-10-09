@@ -1,12 +1,14 @@
 {# Keep the approved LMS information architecture and order; only composition changes. #}
 {% import 'student/template/_ui.html' as s %}
 {% set endpoint = request.endpoint or '' %}
+{% if not mobile_more|default(false) %}
 <p class="st-nav-label">Overview</p>
 {{ s.nav('Dashboard','student.dashboard','dashboard',endpoint == 'student.dashboard','nav_dashboard') }}
 {{ s.nav('Search materials','student.search','search',endpoint == 'student.search','nav_search') }}
 <p class="st-nav-label">Learning</p>
 {{ s.nav('My courses','workspace.student_courses','book',endpoint.startswith('workspace.student_course') or 'lesson' in endpoint or endpoint == 'student.group_units','nav_courses') }}
 {{ s.nav('Activities','student.activities','activity',endpoint == 'student.activities' or endpoint.startswith('student.quiz_') or endpoint.startswith('student.listening_') or endpoint.startswith('student.speaking_') or endpoint.startswith('student.assignment_'),'nav_activities') }}
+{% endif %}
 <p class="st-nav-label">My record</p>
 {{ s.nav('My records','student.records','file',endpoint in ['student.records','student.episode_records'],'nav_records') }}
 {{ s.nav('Attendance','student.attendance_list','check','attendance' in endpoint,'nav_attendance') }}
@@ -15,5 +17,5 @@
 <p class="st-nav-label">Communication</p>
 {{ s.nav('Announcements','student.announcements_list','megaphone','announcement' in endpoint,'nav_announcements') }}
 {{ s.nav('Discussions','student.discussions_overview','users',endpoint.startswith('student.discussions_'),'nav_discussions') }}
-{{ s.nav('Messages','messages.inbox','message',false,'nav_messages') }}
+{{ s.nav('Messages','messages.inbox','message',request.blueprint == 'messages','nav_messages') }}
 {% if notif %}{{ s.nav('Notifications','notifications.inbox','bell',request.blueprint == 'notifications','nav_notifications',notif.unread_label if notif.unread_count else none) }}{% endif %}

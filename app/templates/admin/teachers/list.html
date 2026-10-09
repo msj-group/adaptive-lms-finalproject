@@ -2,21 +2,21 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}Teachers{% endblock %}
 {% block admin_content %}
-<div class="ds-page"
+<div class="ds-page yc-surface"
      data-live-search
      data-list-url="{{ url_for('admin.teachers_list') }}"
      data-singular="teacher"
      data-plural="teachers"
      data-status-form-selector=".teacher-status-form[data-confirm]"
 >
-  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
     <h1 data-workspace-page-heading style="margin:0">Teachers</h1>
     <a class="btn btn--primary" href="{{ url_for('admin.teacher_create') }}">New Teacher</a>
   </div>
 
   {{ macros.flash_messages() }}
 
-  <form method="get" id="teacher-filter-form" data-live-search-form class="ds-row" style="margin-bottom: var(--space-2); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+  <form method="get" id="teacher-filter-form" data-live-search-form class="ds-row yc-actions yc-filter-form" style="margin-bottom: var(--space-2); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
     <label class="field__label" for="q" style="margin:0">Search:</label>
     <input type="search" name="q" id="q" data-live-search-input class="field__input" style="width:auto" placeholder="Full name or email" value="{{ search }}" autocomplete="off">
 

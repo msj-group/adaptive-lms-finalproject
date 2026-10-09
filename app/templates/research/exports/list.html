@@ -27,7 +27,7 @@
       <td>{{ row[4] if row[4] is not none else "All" }}</td>
       <td>{{ row[2] or "…" }} &ndash; {{ row[3] or "…" }}</td>
       <td>{{ row[5] }}</td><td>{{ row[6] }}</td><td>{{ row[7] }}</td><td>{{ row[8] }}</td>
-      <td><div class="ds-row">{% if row[10] %}<a class="btn btn--primary" href="{{ url_for('research.export_download', export_public_id=row[0]) }}">Download ZIP</a>{% else %}<span class="badge badge--neutral">Archive removed under the retention rule</span>{% endif %}<a class="btn btn--secondary" href="{{ url_for('research.export_detail', export_public_id=row[0]) }}">Details</a></div></td>
+      <td><div class="ds-row yc-actions">{% if row[10] %}<a class="btn btn--primary" href="{{ url_for('research.export_download', export_public_id=row[0]) }}">Download ZIP</a>{% else %}<span class="badge badge--neutral">Archive removed under the retention rule</span>{% endif %}<a class="btn btn--secondary" href="{{ url_for('research.export_detail', export_public_id=row[0]) }}">Details</a></div></td>
     </tr>
   {% endfor %}
   </tbody>

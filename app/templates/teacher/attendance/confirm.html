@@ -22,7 +22,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card" style="margin-bottom: var(--space-5)">
+<div class="card yc-panel" style="margin-bottom: var(--space-5)">
   <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Class date</dt>
     <dd style="margin:0"><strong>{{ session_date.isoformat() }}</strong> ({{ weekday }})</dd>
@@ -42,10 +42,10 @@
   session and are never rewritten if the schedule changes.
 </div>
 
-<form method="post" action="{{ url_for('teacher.attendance_create_confirm', group_public_id=group.public_id) }}">
+<form method="post" action="{{ url_for('teacher.attendance_create_confirm', group_public_id=group.public_id) }}" class="yc-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="attendance_state" value="{{ create_token }}">
-  <div class="ds-row">
+  <div class="ds-row yc-actions">
     <button type="submit" class="btn btn--primary">Open attendance for this class</button>
     <a class="btn btn--secondary" href="{{ back_url }}">Choose a different class</a>
   </div>

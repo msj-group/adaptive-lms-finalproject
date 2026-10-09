@@ -19,7 +19,7 @@
 
     There is deliberately no delete, unrelease, reopen or duplicate control
     anywhere on this page -- no such endpoint exists. -#}
-<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
   <h1 data-workspace-page-heading style="margin:0">{{ item.title }}</h1>
   {{ gr.release_badge(item.is_released) }}
 </div>
@@ -30,7 +30,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card" style="margin-bottom: var(--space-5)">
+<div class="card yc-panel" style="margin-bottom: var(--space-5)">
   <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
     <dd style="margin:0">{{ group.name }} &middot; {{ group.course.title }}</dd>
@@ -68,7 +68,7 @@
 </div>
 {% endif %}
 
-<div class="ds-row" style="margin-bottom: var(--space-5)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-5)">
   <a class="btn btn--secondary" href="{{ gradebook_url }}">Back to gradebook</a>
   {% if operational %}
   <a class="btn btn--primary" href="{{ scores_url }}">{{ "Correct scores" if item.is_released else "Enter scores" }}</a>
@@ -78,7 +78,7 @@
   {% endif %}
 </div>
 
-<section class="dash-section" style="margin-top: 0">
+<section class="dash-section yc-section" style="margin-top: 0">
   <h2>Students ({{ records | length }})</h2>
   <p class="ds-section__desc">
     This list was captured when the item was created and never changes. A student who enrolled
@@ -121,7 +121,7 @@
 </section>
 
 {% if not item.is_released %}
-<section class="card" style="margin-top: var(--space-5); border-color: var(--color-danger)">
+<section class="card yc-panel" style="margin-top: var(--space-5); border-color: var(--color-danger)">
   <h2 style="margin-top:0">Release this grade item</h2>
   <p class="card__body">
     Releasing shows every student on the list their own score and your comment to them. It
@@ -132,10 +132,10 @@
   </p>
   {{ gr.messages(blocker_messages) }}
   {% if releasable %}
-  <form method="post" action="{{ release_url }}">
+  <form method="post" action="{{ release_url }}" class="yc-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="grade_state" value="{{ release_token }}">
-    <label class="ds-row" style="gap: var(--space-2); align-items:center; margin: var(--space-3) 0">
+    <label class="ds-row yc-actions" style="gap: var(--space-2); align-items:center; margin: var(--space-3) 0">
       <input type="checkbox" name="confirm_release" value="yes">
       <span>I have checked these scores and I understand that releasing cannot be undone.</span>
     </label>

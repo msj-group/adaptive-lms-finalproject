@@ -22,7 +22,7 @@
 <div class="alert alert--danger" role="alert" style="margin-bottom: var(--space-4)">{{ form_error }}</div>
 {% endif %}
 
-<form method="post" action="{{ url_for('teacher.discussions_create', group_public_id=group.public_id) }}" novalidate>
+<form method="post" action="{{ url_for('teacher.discussions_create', group_public_id=group.public_id) }}" novalidate class="yc-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="topic_state" value="{{ topic_state }}">
   <div class="field">
@@ -36,7 +36,7 @@
     {% if errors.body %}<div class="field__error">{{ errors.body }}</div>{% endif %}
     <p class="ds-section__desc" style="margin: var(--space-1) 0 0">Plain text, up to {{ body_max }} characters.</p>
   </div>
-  <div class="ds-row" style="gap: var(--space-3)">
+  <div class="ds-row yc-actions" style="gap: var(--space-3)">
     <button type="submit" class="btn btn--primary">Create topic</button>
     <a class="btn btn--secondary" href="{{ url_for('teacher.discussions_group', group_public_id=group.public_id) }}">Cancel</a>
   </div>

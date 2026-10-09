@@ -3,7 +3,7 @@
 {% import "_announcement_macros.html" as ann %}
 {% block title %}{{ announcement.title }}{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
+<div class="ds-page yc-surface">
   {#- Phase 4 / M09. One announcement in full, with whichever of the two
       lifecycle controls its current state allows:
         draft      -> Edit, Publish
@@ -16,14 +16,14 @@
       active cannot publish into one that has since been archived.
 
       No recipient list and no notification row appears here, in any state. -#}
-  <div class="ds-row" style="margin-bottom: var(--space-3)">
+  <div class="ds-row yc-actions" style="margin-bottom: var(--space-3)">
     <a class="btn btn--secondary" href="{{ overview_url }}">← All announcements</a>
   </div>
 
   {{ macros.flash_messages() }}
 
-  <div class="card">
-    <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
+  <div class="card yc-panel">
+    <div class="ds-row yc-actions" style="justify-content: space-between; align-items: flex-start;">
       <div>
         <h1 data-workspace-page-heading style="margin: 0 0 var(--space-1)">{{ announcement.title }}</h1>
         <div class="card__body">{{ announcement.context or "Everybody at the centre" }}</div>
@@ -58,7 +58,7 @@
   </div>
 
   {% if announcement.status == 'draft' %}
-  <div class="card" style="margin-top: var(--space-4)">
+  <div class="card yc-panel" style="margin-top: var(--space-4)">
     <div class="card__title">This is a draft</div>
     <div class="card__body" style="margin-top: var(--space-2)">
       Nobody can see it yet. Publishing makes it readable by everyone its scope currently
@@ -72,10 +72,10 @@
       cannot be published. Edit it to choose a target that is still active.
     </div>
     {% endif %}
-    <div class="ds-row" style="margin-top: var(--space-4)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-4)">
       <a class="btn btn--secondary" href="{{ edit_url }}">Edit draft</a>
       {% if publish_token %}
-      <form method="post" action="{{ url_for('admin.announcement_publish', announcement_public_id=announcement.public_id) }}">
+      <form method="post" action="{{ url_for('admin.announcement_publish', announcement_public_id=announcement.public_id) }}" class="yc-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="announcement_state" value="{{ publish_token }}">
         <button type="submit" class="btn btn--primary">Publish</button>
@@ -84,7 +84,7 @@
     </div>
   </div>
   {% elif announcement.status == 'published' %}
-  <div class="card" style="margin-top: var(--space-4)">
+  <div class="card yc-panel" style="margin-top: var(--space-4)">
     <div class="card__title">Withdraw this announcement</div>
     <div class="card__body" style="margin-top: var(--space-2)">
       Withdrawing hides it from everyone immediately. It is permanent: a withdrawn
@@ -92,14 +92,14 @@
       already received stay in their inbox as a record that they were told, but opening one
       will no longer show anything. Write a new announcement if this one needs correcting.
     </div>
-    <form method="post" action="{{ url_for('admin.announcement_withdraw', announcement_public_id=announcement.public_id) }}" style="margin-top: var(--space-4)">
+    <form method="post" action="{{ url_for('admin.announcement_withdraw', announcement_public_id=announcement.public_id) }}" style="margin-top: var(--space-4)" class="yc-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="announcement_state" value="{{ withdraw_token }}">
-      <label class="ds-row" style="gap: var(--space-2); align-items: center">
+      <label class="ds-row yc-actions" style="gap: var(--space-2); align-items: center">
         <input type="checkbox" name="confirm" value="yes">
         <span>I understand that withdrawing cannot be undone.</span>
       </label>
-      <div class="ds-row" style="margin-top: var(--space-3)">
+      <div class="ds-row yc-actions" style="margin-top: var(--space-3)">
         <button type="submit" class="btn btn--danger">Withdraw</button>
       </div>
     </form>

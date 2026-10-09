@@ -1,5 +1,5 @@
 {% extends "layouts/admin_base.html" %}{% block title %}{{ student.full_name }} — Financial account{% endblock %}{% import "admin/_macros.html" as macros %}
-{% block admin_content %}<div class="ds-page"><h1 data-workspace-page-heading>{{ student.full_name }} — Financial account</h1>{{ macros.flash_messages() }}
+{% block admin_content %}<div class="ds-page yc-surface"><h1 data-workspace-page-heading>{{ student.full_name }} — Financial account</h1>{{ macros.flash_messages() }}
 <nav class="workspace-tabs" aria-label="Financial account sections"><a href="#account-overview">Overview</a><a href="#invoices">Invoices</a><a href="#movements">Movements</a><a href="{{ url_for('admin.student_financial_history',student_public_id=student.public_id) }}">History</a></nav><section id="account-overview"><p>Balance: {{ money(facts.balance) }} LYD. Positive: due from student. Negative: student credit.</p>
 <p>Obligations {{ money(facts.obligations) }} · Collections {{ money(facts.collections) }} · Payouts {{ money(facts.payouts) }}</p>
 <a class="btn btn--primary" href="{{ url_for('admin.student_money_new', student_public_id=student.public_id) }}">Record money movement</a>

@@ -15,7 +15,7 @@
     with its own CSRF token and its own signed state, re-checked against locked
     rows. There is deliberately no delete, archive, duplicate, score, grade or
     manual-marking control -- none exists server-side either. -#}
-<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
+<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
 
   {{ dash.operational_badge(operational) }}
 </div>
@@ -29,7 +29,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="ds-row" style="margin-bottom: var(--space-6)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_speaking', group_public_id=group.public_id) }}">Back to Speaking</a>
   <a class="btn btn--secondary" href="{{ submissions_url }}">Recordings</a>
   {% if operational and not frozen_message %}
@@ -49,7 +49,7 @@
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">{{ frozen_message }}</div>
 {% endif %}
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="card yc-panel" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 160px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Status</dt>
@@ -90,7 +90,7 @@
 <div class="activity-speaking-studio">
 <section>
   <h2>Instructions</h2>
-  <div class="card">
+  <div class="card yc-panel">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
        these are Teacher-typed instructions, never stored HTML. #}
     <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
@@ -115,7 +115,7 @@
     </div>
     {% endif %}
     {% if publish_token %}
-    <form method="post" action="{{ url_for('teacher.speaking_publish', group_public_id=group.public_id, speaking_public_id=activity.public_id) }}">
+    <form method="post" action="{{ url_for('teacher.speaking_publish', group_public_id=group.public_id, speaking_public_id=activity.public_id) }}" class="yc-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="speaking_state" value="{{ publish_token }}">
       <button type="submit" class="btn btn--primary">Publish</button>
@@ -133,7 +133,7 @@
     </div>
     {% if withdraw_token %}
     <form method="post" action="{{ url_for('teacher.speaking_withdraw', group_public_id=group.public_id, speaking_public_id=activity.public_id) }}"
-          data-confirm="Withdraw this speaking activity? Students will no longer see it.">
+          data-confirm="Withdraw this speaking activity? Students will no longer see it." class="yc-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="speaking_state" value="{{ withdraw_token }}">
       <button type="submit" class="btn btn--secondary">Withdraw</button>

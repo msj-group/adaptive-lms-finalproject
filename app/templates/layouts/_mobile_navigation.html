@@ -1,0 +1,26 @@
+{% import '_figma_ui.html' as ui %}
+{% set endpoint = request.endpoint or '' %}
+{% set role = current_user.role %}
+{% if role == 'student' %}
+{% set shortcuts = [('Home','student.dashboard','dashboard','nav_dashboard',endpoint == 'student.dashboard'), ('Courses','workspace.student_courses','book','nav_courses',endpoint.startswith('workspace.student_course') or 'lesson' in endpoint or endpoint == 'student.group_units'), ('Activities','student.activities','activity','nav_activities',endpoint == 'student.activities' or endpoint.startswith('student.quiz_') or endpoint.startswith('student.assignment_') or endpoint.startswith('student.listening_') or endpoint.startswith('student.speaking_')), ('Search','student.search','search','nav_search',endpoint == 'student.search')] %}
+{% elif role == 'teacher' %}
+{% set shortcuts = [('Home','teacher.dashboard','dashboard',none,endpoint == 'teacher.dashboard'), ('Groups','workspace.teacher_groups','book',none,endpoint.startswith('workspace.teacher_group') or endpoint.startswith('teacher.group_units') or endpoint.startswith('teacher.group_lessons')), ('Activities','teacher.activities','activity',none,'assignment' in endpoint or 'quiz' in endpoint or 'listening' in endpoint or 'speaking' in endpoint or endpoint in ['teacher.activities','teacher.group_activities']), ('Review','workspace.review_queue','check',none,endpoint == 'workspace.review_queue' or 'submission' in endpoint)] %}
+{% elif role == 'administrator' %}
+{% set shortcuts = [('Home','admin.dashboard','dashboard',none,endpoint == 'admin.dashboard'), ('Groups','admin.groups_list','book',none,'group' in endpoint or 'enrollment' in endpoint), ('Students','admin.students_list','users',none,'student' in endpoint and 'account' not in endpoint and 'financial' not in endpoint), ('Finance','admin.student_accounts','wallet',none,'financial' in endpoint or 'invoice' in endpoint or 'payment' in endpoint or 'receipt' in endpoint or 'account' in endpoint)] %}
+{% else %}
+{% set shortcuts = [('Home','research.dashboard','dashboard',none,endpoint == 'research.dashboard'), ('Sessions','research.sessions','activity',none,active_nav|default('') == 'sessions'), ('Exports','research.exports','file',none,active_nav|default('') == 'exports'), ('Config','research.configurations','settings',none,active_nav|default('') == 'configurations')] %}
+{% endif %}
+<button class="workspace-more-backdrop" type="button" data-more-dismiss aria-label="Close navigation" hidden></button>
+<section class="workspace-more-panel" id="workspace-more-panel" role="dialog" aria-labelledby="workspace-more-title" tabindex="-1" data-more-panel hidden>
+  <header class="workspace-more-heading"><div><span>Youth Centre</span><h2 id="workspace-more-title">More navigation</h2></div><button class="workspace-more-close" type="button" data-more-dismiss aria-label="Close navigation">{{ ui.icon('close') }}</button></header>
+  <nav class="workspace-more-grid" aria-label="Additional destinations">
+    {% with mobile_more=true %}{% include 'layouts/_product_navigation.html' %}{% endwith %}
+    <a class="st-nav-link" href="{{ url_for('account.settings') }}" data-research-id="nav_account"{% if request.blueprint == 'account' %} aria-current="page"{% endif %}>{{ ui.icon('user') }}<span>Account settings</span></a>
+    <button class="st-nav-link" type="button" popovertarget="workspace-help-panel" data-research-id="nav_help" aria-haspopup="dialog">{{ ui.icon('help') }}<span>Help</span></button>
+    <button class="st-nav-link" type="button" popovertarget="workspace-display-panel" data-research-id="nav_display" aria-haspopup="dialog">{{ ui.icon('settings') }}<span>Display</span></button>
+  </nav>
+</section>
+<nav class="workspace-mobile-nav" aria-label="Mobile workspace">
+  {% for label, target, symbol, research_id, selected in shortcuts %}<a href="{{ url_for(target) }}"{% if label == 'Config' %} aria-label="Configurations"{% endif %}{% if research_id %} data-research-id="{{ research_id }}"{% endif %}{% if selected %} aria-current="page"{% endif %}>{{ ui.icon(symbol) }}<span>{{ label }}</span></a>{% endfor %}
+  <button type="button" aria-label="More navigation" aria-controls="workspace-more-panel" aria-expanded="false" aria-haspopup="dialog" data-more-toggle data-research-id="nav_more" hidden>{{ ui.icon('menu') }}<span>More</span></button>
+</nav>

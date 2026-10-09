@@ -2,8 +2,8 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}Academic Terms{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
-  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+<div class="ds-page yc-surface">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
     <h1 data-workspace-page-heading style="margin:0">Academic Terms</h1>
     <a class="btn btn--primary" href="{{ url_for('admin.academic_term_create') }}">New Academic Term</a>
   </div>
@@ -30,9 +30,9 @@
         <td style="padding: var(--space-3)">{{ term.end_date.isoformat() }}</td>
         <td style="padding: var(--space-3)">{{ macros.status_badge(term.status) }}</td>
         <td style="padding: var(--space-3)">
-          <div class="ds-row" style="gap: var(--space-2)">
+          <div class="ds-row yc-actions" style="gap: var(--space-2)">
             <a class="btn btn--secondary" href="{{ url_for('admin.academic_term_edit', public_id=term.public_id) }}">Edit</a>
-            <form method="post" action="{{ url_for('admin.academic_term_toggle_status', public_id=term.public_id) }}">
+            <form method="post" action="{{ url_for('admin.academic_term_toggle_status', public_id=term.public_id) }}" class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               {% if term.status == "active" %}
                 <button type="submit" class="btn btn--danger-outline">Deactivate</button>

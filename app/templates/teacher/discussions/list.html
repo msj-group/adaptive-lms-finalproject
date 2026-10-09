@@ -10,7 +10,7 @@
     page. Reaching this page required an active assignment to this exact
     operational group; every actively assigned teacher is an equal moderator. -#}
 <p style="margin-top: 0"><a href="{{ url_for('teacher.discussions_overview') }}">&larr; All discussion groups</a></p>
-<div class="ds-row" style="justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap;">
+<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap;">
   <h1 data-workspace-page-heading style="margin: 0; word-break: break-word">Discussions — {{ group.name }}</h1>
   <a class="btn btn--primary" href="{{ url_for('teacher.discussions_new', group_public_id=group.public_id) }}">New topic</a>
 </div>

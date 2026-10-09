@@ -3,7 +3,7 @@
 {% import "_announcement_macros.html" as ann %}
 {% block title %}Announcements{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
+<div class="ds-page yc-surface">
   {#- Phase 4 / M09. The centre's announcements in all three scopes, newest
       first, with the two filters an administrator may apply. Both filters are
       normalised to a known value or dropped before they reach SQL.
@@ -16,7 +16,7 @@
       **Nothing here names a recipient.** Who was notified is not announcement
       administration, and no query behind this page fetches a notification
       row. -#}
-  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
     <h1 data-workspace-page-heading style="margin:0">Announcements</h1>
     <a class="btn btn--primary" href="{{ url_for('admin.announcement_create') }}">New announcement</a>
   </div>
@@ -28,7 +28,7 @@
 
   {{ macros.flash_messages() }}
 
-  <form method="get" class="ds-row" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+  <form method="get" class="ds-row yc-actions yc-filter-form" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
     <label class="field__label" for="scope" style="margin:0">Scope:</label>
     <select name="scope" id="scope" class="field__input" style="width:auto">
       <option value="">All scopes</option>
@@ -82,7 +82,7 @@
   </div>
 
   {% if has_prev or has_next %}
-  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Announcement pages">
+  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Announcement pages">
     {% if has_prev %}
     <a class="btn btn--secondary" href="{{ url_for('admin.announcements_overview', page=page - 1, scope=filter_scope or None, status=filter_status or None) }}">Previous</a>
     {% endif %}

@@ -17,9 +17,9 @@
 
 {{ disc.topic_header(topic, tz_name) }}
 
-<div class="dash-section" id="moderation">
+<div class="dash-section yc-section" id="moderation">
   <h2>Moderation</h2>
-  <form method="post" action="{{ url_for('teacher.discussions_' ~ moderation_action, group_public_id=group.public_id, topic_public_id=topic.public_id) }}">
+  <form method="post" action="{{ url_for('teacher.discussions_' ~ moderation_action, group_public_id=group.public_id, topic_public_id=topic.public_id) }}" class="yc-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="moderation_state" value="{{ moderation_state }}">
     {% if moderation_action == 'lock' %}

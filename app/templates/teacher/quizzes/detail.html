@@ -22,9 +22,9 @@
     either. `operational` was decided server-side and is re-proved against
     locked rows by each write route, so this template never decides
     authorization -- hiding a control here is a courtesy, not the rule. -#}
-<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
+<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
 
-  <span class="ds-row" style="gap: var(--space-2)">
+  <span class="ds-row yc-actions" style="gap: var(--space-2)">
     {% if published %}
     <span class="badge badge--success">Published</span>
     {% if availability.state_label %}<span class="badge badge--neutral">{{ availability.state_label }}</span>{% endif %}
@@ -43,7 +43,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="ds-row" style="margin-bottom: var(--space-6)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_quizzes', group_public_id=group.public_id) }}">Back to Quizzes</a>
   {#- Every control below is hidden purely as a courtesy: the same rules are
       re-checked against the locked rows in each write route, so a bookmarked
@@ -54,14 +54,14 @@
   {% endif %}
   <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_attempts', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">Attempts</a>
   {% if publish_token and not readiness %}
-  <form method="post" action="{{ url_for('teacher.quiz_publish', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">
+  <form method="post" action="{{ url_for('teacher.quiz_publish', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}" class="yc-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="quiz_state" value="{{ publish_token }}">
     <button type="submit" class="btn btn--primary">Publish</button>
   </form>
   {% endif %}
   {% if unpublish_token %}
-  <form method="post" action="{{ url_for('teacher.quiz_unpublish', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">
+  <form method="post" action="{{ url_for('teacher.quiz_unpublish', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}" class="yc-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="quiz_state" value="{{ unpublish_token }}">
     <button type="submit" class="btn btn--danger-outline">Withdraw</button>
@@ -93,7 +93,7 @@
 {% endif %}
 
 {% if not published %}
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="card yc-panel" style="margin-bottom: var(--space-6)">
   <div class="card__title" style="margin-bottom: var(--space-2)">Availability</div>
   <dl style="display:grid; grid-template-columns: 160px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
@@ -135,7 +135,7 @@
 </div>
 {% endif %}
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="card yc-panel" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>
@@ -152,7 +152,7 @@
 <div>
 <section>
   <h2>Instructions</h2>
-  <div class="card">
+  <div class="card yc-panel">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
        authored text is never interpreted as HTML or Markdown. #}
     <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ quiz.instructions }}</div>
@@ -160,7 +160,7 @@
 </section>
 
 <section id="activity-questions" style="margin-top: var(--space-6)">
-  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-3)">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-3)">
     <h2 style="margin:0">Questions</h2>
     {% if operational and not published and not frozen_message %}
     <a class="btn btn--primary" href="{{ url_for('teacher.quiz_question_create', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">Add Question</a>
@@ -198,14 +198,14 @@
 </dl>
 <footer>
           {% if operational and not published and not frozen_message %}
-          <div class="ds-row" style="gap: var(--space-2)">
+          <div class="ds-row yc-actions" style="gap: var(--space-2)">
             <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_question_edit', group_public_id=group.public_id, quiz_public_id=quiz.public_id, question_public_id=item.public_id) }}">Edit</a>
-            <form method="post" action="{{ url_for('teacher.quiz_question_move_up', group_public_id=group.public_id, quiz_public_id=quiz.public_id, question_public_id=item.public_id) }}">
+            <form method="post" action="{{ url_for('teacher.quiz_question_move_up', group_public_id=group.public_id, quiz_public_id=quiz.public_id, question_public_id=item.public_id) }}" class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="question_state" value="{{ item.move_up_token }}">
               <button type="submit" class="btn btn--secondary" aria-label="Move question {{ item.number }} up">Move Up</button>
             </form>
-            <form method="post" action="{{ url_for('teacher.quiz_question_move_down', group_public_id=group.public_id, quiz_public_id=quiz.public_id, question_public_id=item.public_id) }}">
+            <form method="post" action="{{ url_for('teacher.quiz_question_move_down', group_public_id=group.public_id, quiz_public_id=quiz.public_id, question_public_id=item.public_id) }}" class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="question_state" value="{{ item.move_down_token }}">
               <button type="submit" class="btn btn--secondary" aria-label="Move question {{ item.number }} down">Move Down</button>
@@ -221,7 +221,7 @@
   </div>
 
   {% if has_prev or has_next %}
-  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Question pages">
+  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Question pages">
     {% if has_prev %}
     <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_detail', group_public_id=group.public_id, quiz_public_id=quiz.public_id, page=page - 1) }}">Previous</a>
     {% endif %}

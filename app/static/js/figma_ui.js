@@ -62,7 +62,7 @@
     });
   });
 
-  if (sidebar && toggle && workspace && backdrop) {
+  if (sidebar && toggle && workspace && backdrop && !document.querySelector("[data-more-panel]")) {
     function setOpen(open, restoreFocus) {
       open = Boolean(open && compact.matches);
       body.dataset.navOpen = String(open);

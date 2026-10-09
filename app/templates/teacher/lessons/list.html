@@ -5,7 +5,7 @@
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
-<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
   <h1 data-workspace-page-heading style="margin:0">{{ unit.title }} — Lessons</h1>
   {{ dash.operational_badge(operational and unit_active) }}
 </div>
@@ -16,7 +16,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="card yc-panel" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
     <dd style="margin:0">{{ group.name }}</dd>
@@ -52,14 +52,14 @@
 </div>
 {% endif %}
 
-<div class="ds-row" style="margin-bottom: var(--space-6)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_units', group_public_id=group.public_id) }}">Back to Units</a>
   {% if can_manage %}
   <a class="btn btn--primary" href="{{ url_for('teacher.lesson_create', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Add Lesson</a>
   {% endif %}
 </div>
 
-<section class="dash-section" style="margin-top: 0">
+<section class="dash-section yc-section" style="margin-top: 0">
   <h2>Lessons <span class="badge badge--neutral">{{ lessons|length }}</span></h2>
   {% if lessons %}
   <div class="dash-scroll">
@@ -95,18 +95,18 @@
           {% endif %}
         </td>
         <td>
-          <div class="ds-row" style="gap: var(--space-2)">
+          <div class="ds-row yc-actions" style="gap: var(--space-2)">
             <a class="btn btn--secondary" href="{{ url_for('teacher.lesson_materials', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">Manage Materials</a>
             {% if can_manage %}
             <a class="btn btn--secondary" href="{{ url_for('teacher.lesson_edit', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">Edit</a>
             {% if not loop.first %}
-            <form method="post" action="{{ url_for('teacher.lesson_move_up', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}" style="display:inline">
+            <form method="post" action="{{ url_for('teacher.lesson_move_up', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}" style="display:inline" class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--secondary" aria-label="Move up">↑</button>
             </form>
             {% endif %}
             {% if not loop.last %}
-            <form method="post" action="{{ url_for('teacher.lesson_move_down', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}" style="display:inline">
+            <form method="post" action="{{ url_for('teacher.lesson_move_down', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}" style="display:inline" class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--secondary" aria-label="Move down">↓</button>
             </form>
@@ -114,13 +114,13 @@
             {% endif %}
             {% if lesson.status == "published" %}
             <form method="post" action="{{ url_for('teacher.lesson_toggle_publication', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}"
-              data-confirm="Unpublish lesson '{{ lesson.title }}'? Students will no longer see it. It returns to draft.">
+              data-confirm="Unpublish lesson '{{ lesson.title }}'? Students will no longer see it. It returns to draft." class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--danger-outline">Unpublish</button>
             </form>
             {% elif can_manage %}
             <form method="post" action="{{ url_for('teacher.lesson_toggle_publication', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}"
-              data-confirm="Publish lesson '{{ lesson.title }}'? Enrolled students will be able to open it.">
+              data-confirm="Publish lesson '{{ lesson.title }}'? Enrolled students will be able to open it." class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--primary">Publish</button>
             </form>

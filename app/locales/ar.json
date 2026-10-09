@@ -2743,7 +2743,7 @@
   "Values": "القيم",
   "Verified payment provider": "مزود دفع موثّق",
   "Version": "الإصدار",
-  "Version A natural-use collection. Students appear only as pseudonymous subject codes: no names, email addresses or account identifiers appear in this workspace. Nothing here detects, predicts or measures frustration; ratings are optional self-reports.": "جمع الاستخدام الطبيعي للإصدار A. يظهر الطلاب برموز مشاركين مستعارة فقط، دون أسماء أو بريد أو معرّفات حسابات. لا يكتشف أو يتنبأ أو يقيس شيء هنا الإحباط؛ التقييمات تقارير ذاتية اختيارية.",
+  "Version A natural-use collection. Students appear only as pseudonymous subject codes: no names, email addresses or account identifiers appear in this workspace. Nothing here detects, predicts or measures frustration; ratings are optional self-reports.": "جمع الاستخدام الطبيعي للإصدار A. يظهر الطلاب برموز بحثية مستعارة فقط؛ لا تظهر الأسماء أو عناوين البريد أو معرّفات الحسابات في هذه المساحة. لا يكشف أي شيء هنا الإحباط أو يتنبأ به أو يقيسه؛ التقييمات تقارير ذاتية اختيارية.",
   "View": "عرض",
   "View activity": "عرض النشاط",
   "View all": "عرض الكل",
@@ -3227,5 +3227,11 @@
   "← Back to filtered list": "→ العودة إلى القائمة المصفّاة",
   "← Calendar": "→ التقويم",
   "← Dashboard": "→ لوحة التحكم",
-  "← Previous": "→ السابق"
+  "← Previous": "→ السابق",
+  "More": "المزيد",
+  "More navigation": "المزيد من الوجهات",
+  "Additional destinations": "وجهات إضافية",
+  "Mobile workspace": "التنقل في المنصة",
+  "Welcome, %(name)s.": "مرحبًا، %(name)s.",
+  "A live view of your centre, with class times in %(timezone)s.": "عرض حي لمركزك، مع مواعيد الحصص بحسب %(timezone)s."
 }

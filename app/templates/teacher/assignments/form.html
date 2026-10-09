@@ -10,7 +10,7 @@
 <div class="activity-author-layout">
 <div class="activity-author-main">
 
-<div class="ds-page" style="max-width: 680px; padding: 0">
+<div class="ds-page yc-surface" style="max-width: 680px; ">
 
   <p class="ds-section__desc">
     {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
@@ -37,7 +37,7 @@
   </div>
   {% endif %}
 
-  <form method="post" novalidate>
+  <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     {% if assignment %}
     <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
@@ -87,7 +87,7 @@
 
     {# No Status or Published-at control: publication is changed only via
        Publish / Unpublish on the assignments page. #}
-    <div class="ds-row" style="margin-top: var(--space-6)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
       <a class="btn btn--secondary" href="{{ url_for('teacher.group_assignments', group_public_id=group.public_id) }}">Cancel</a>
     </div>

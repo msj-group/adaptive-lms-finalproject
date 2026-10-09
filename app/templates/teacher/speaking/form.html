@@ -18,7 +18,7 @@
     task, the student records the answer. There is likewise no status,
     published-at, version or public-id control -- publication is changed only
     by its own POST routes. -#}
-<div class="ds-page" style="max-width: 680px; padding: 0">
+<div class="ds-page yc-surface" style="max-width: 680px; ">
 
   <p class="ds-section__desc">
     {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
@@ -44,7 +44,7 @@
   </div>
   {% endif %}
 
-  <form method="post" novalidate>
+  <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     {#- The signed state token. On create it carries a random nonce that makes a
         double submission idempotent; on edit it carries the exact authored
@@ -94,7 +94,7 @@
       {% for error in form.due_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    <div class="ds-row" style="margin-top: var(--space-6)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
       <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
     </div>

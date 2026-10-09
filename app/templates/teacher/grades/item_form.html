@@ -48,7 +48,7 @@
   {% endif %}
 </div>
 
-<form method="post" class="card" novalidate>
+<form method="post" class="card yc-panel yc-form" novalidate>
   {{ form.hidden_tag() }}
   <input type="hidden" name="grade_state" value="{{ grade_state }}">
 
@@ -108,7 +108,7 @@
     </div>
   </div>
 
-  <div class="ds-row" style="margin-top: var(--space-5)">
+  <div class="ds-row yc-actions" style="margin-top: var(--space-5)">
     <button type="submit" class="btn btn--primary">{{ form.submit.label.text }}</button>
     <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
   </div>

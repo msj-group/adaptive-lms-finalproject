@@ -2,12 +2,12 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ 'Edit Teacher' if teacher else 'New Teacher' }}{% endblock %}
 {% block admin_content %}
-<div class="ds-page" style="max-width: 480px">
+<div class="ds-page yc-surface" style="max-width: 480px">
   <h1 data-workspace-page-heading>{{ 'Edit Teacher' if teacher else 'New Teacher' }}</h1>
 
   {{ macros.flash_messages() }}
 
-  <form method="post" novalidate>
+  <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     {% if teacher %}<input type="hidden" name="account_snapshot" value="{{ snapshot_token }}">{% endif %}
     <div class="field">
@@ -35,7 +35,7 @@
       At least 15 characters. Passphrases are welcome -- no specific mix of letters, numbers, or symbols is required.
     </p>
     {% endif %}
-    <div class="ds-row" style="margin-top: var(--space-6)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary", id="teacher-form-submit") }}
       <a class="btn btn--secondary" href="{{ url_for('admin.teachers_list') }}">Cancel</a>
     </div>

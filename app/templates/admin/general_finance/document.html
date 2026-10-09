@@ -19,7 +19,7 @@
 {% if document.deleted_at %}<dt>Deleted</dt><dd>{{ local(document.deleted_at) }} · {{ document.deletion_reason or 'Reason not recorded' }}</dd>{% endif %}
 </dl>
 <p>Invoice references provide context. They do not allocate a payment or create installments.</p>
-<div class="ds-row">
+<div class="ds-row yc-actions">
 <a class="btn btn--secondary" href="{{ url_for('admin.student_financial_record', student_public_id=student.public_id) }}">Back to account</a>
 <a class="btn btn--secondary" href="{{ url_for('admin.student_financial_history', student_public_id=student.public_id) }}">Correction history</a>
 {% if not document.deleted_at and (kind == 'invoice' or document.kind == 'collection') %}<a class="btn btn--primary" href="{{ url_for('admin.student_document_correct', student_public_id=student.public_id, kind=kind, document_public_id=document.public_id) }}">Review correction</a>{% endif %}

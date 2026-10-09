@@ -26,8 +26,8 @@
     input rather than a form field, exactly like the M01 assignment snapshot and
     the M04A quiz edit state. On create it carries the creation nonce, so
     pressing Create twice resolves to the one activity that was made. -#}
-<div class="ds-page" style="max-width: 780px; padding: 0">
-  <div class="ds-row" style="justify-content: space-between; align-items: center;">
+<div class="ds-page yc-surface" style="max-width: 780px; ">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center;">
 
     <span class="badge badge--neutral">Draft</span>
   </div>
@@ -60,7 +60,7 @@
   </div>
   {% endif %}
 
-  <form method="post" novalidate {% if not activity %}enctype="multipart/form-data"{% endif %}>
+  <form method="post" novalidate {% if not activity %}enctype="multipart/form-data"{% endif %} class="yc-form">
     {{ form.hidden_tag() }}
     <input type="hidden" name="listening_state" value="{{ state_token }}">
 
@@ -133,7 +133,7 @@
 
     {# No status, publication, timing, question or scoring control: none exists
        server-side either, so a forged field has nowhere to land. #}
-    <div class="ds-row" style="margin-top: var(--space-6)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
       {% if activity %}
       <a class="btn btn--secondary" href="{{ url_for('teacher.listening_detail', group_public_id=group.public_id, listening_public_id=activity.public_id) }}">Cancel</a>

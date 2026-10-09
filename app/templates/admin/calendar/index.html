@@ -2,7 +2,7 @@
 {% import "_calendar_macros.html" as cal with context %}
 {% block title %}Calendar{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
+<div class="ds-page yc-surface">
 {#- Phase 4 / M10. The centre's whole calendar for one bounded date range,
     assembled from the EXISTING sources -- active schedules expanded by the
     canonical occurrence arithmetic, published assignment / quiz / listening
@@ -16,7 +16,7 @@
     What is deliberately NOT on this page: any individual student's enrollment,
     quiz attempt, submission, grade, attendance record or notification. None of
     them is a calendar entry, and no query behind this page fetches one. -#}
-  <div class="ds-row" style="justify-content: space-between; align-items: flex-start">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: flex-start">
     <div>
       <h1 data-workspace-page-heading style="margin-top: 0">Calendar</h1>
       <p class="ds-section__desc">

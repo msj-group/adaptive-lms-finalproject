@@ -21,7 +21,7 @@
       draft      -> Edit, Publish
       published  -> Withdraw
       withdrawn  -> nothing at all, permanently -#}
-<div class="ds-row" style="margin-bottom: var(--space-3)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-3)">
   <a class="btn btn--secondary" href="{{ list_url }}">← {{ group.name }} announcements</a>
 </div>
 
@@ -35,8 +35,8 @@
 </div>
 {% endif %}
 
-<div class="card">
-  <div class="ds-row" style="justify-content: space-between; align-items: flex-start;">
+<div class="card yc-panel">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: flex-start;">
     <div>
       <h1 data-workspace-page-heading style="margin: 0 0 var(--space-1)">{{ announcement.title }}</h1>
       <div class="card__body">{{ group.name }} &middot; {{ group.course.title }}</div>
@@ -71,19 +71,19 @@
 </div>
 
 {% if announcement.status == 'draft' %}
-<div class="card" style="margin-top: var(--space-4)">
+<div class="card yc-panel" style="margin-top: var(--space-4)">
   <div class="card__title">This is a draft</div>
   <div class="card__body" style="margin-top: var(--space-2)">
     Nobody but this group's teachers can see it. Publishing makes it readable by everyone
     currently in the group and sends each of them one notification. A published announcement
     can never be edited again — only withdrawn.
   </div>
-  <div class="ds-row" style="margin-top: var(--space-4)">
+  <div class="ds-row yc-actions" style="margin-top: var(--space-4)">
     {% if operational %}
     <a class="btn btn--secondary" href="{{ edit_url }}">Edit draft</a>
     {% endif %}
     {% if publish_token %}
-    <form method="post" action="{{ url_for('teacher.announcement_publish', group_public_id=group.public_id, announcement_public_id=announcement.public_id) }}">
+    <form method="post" action="{{ url_for('teacher.announcement_publish', group_public_id=group.public_id, announcement_public_id=announcement.public_id) }}" class="yc-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="announcement_state" value="{{ publish_token }}">
       <button type="submit" class="btn btn--primary">Publish to this group</button>
@@ -92,7 +92,7 @@
   </div>
 </div>
 {% elif announcement.status == 'published' %}
-<div class="card" style="margin-top: var(--space-4)">
+<div class="card yc-panel" style="margin-top: var(--space-4)">
   <div class="card__title">Withdraw this announcement</div>
   <div class="card__body" style="margin-top: var(--space-2)">
     Withdrawing hides it from everyone immediately. It is permanent: a withdrawn
@@ -100,14 +100,14 @@
     already received stay in their inbox as a record that they were told, but opening one
     will no longer show anything. Write a new announcement if this one needs correcting.
   </div>
-  <form method="post" action="{{ url_for('teacher.announcement_withdraw', group_public_id=group.public_id, announcement_public_id=announcement.public_id) }}" style="margin-top: var(--space-4)">
+  <form method="post" action="{{ url_for('teacher.announcement_withdraw', group_public_id=group.public_id, announcement_public_id=announcement.public_id) }}" style="margin-top: var(--space-4)" class="yc-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="announcement_state" value="{{ withdraw_token }}">
-    <label class="ds-row" style="gap: var(--space-2); align-items: center">
+    <label class="ds-row yc-actions" style="gap: var(--space-2); align-items: center">
       <input type="checkbox" name="confirm" value="yes">
       <span>I understand that withdrawing cannot be undone.</span>
     </label>
-    <div class="ds-row" style="margin-top: var(--space-3)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-3)">
       <button type="submit" class="btn btn--danger">Withdraw</button>
     </div>
   </form>

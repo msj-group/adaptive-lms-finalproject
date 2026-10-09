@@ -23,7 +23,7 @@
   stored bytes; nothing is rebuilt from data that changed later. The archive is removed when the
   oldest data in it reaches the deployment's retention. Every download is audited.
 </p>
-<div class="ds-row" style="gap: var(--space-3)">
+<div class="ds-row yc-actions" style="gap: var(--space-3)">
   {% if available %}
   <a class="btn btn--primary" href="{{ url_for('research.export_download', export_public_id=export.public_id) }}">Download ZIP</a>
   {% else %}

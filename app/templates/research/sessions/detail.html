@@ -19,10 +19,10 @@
   </tbody>
 </table>
 
-<div class="dash-section">
+<div class="dash-section yc-section">
   <h2>Feedback prompts</h2>
   {% if prompts %}
-  <table class="dash-table" style="width:100%">
+  <table class="dash-table research-dense-table" style="width:100%">
     <thead><tr><th scope="col">Reason</th><th scope="col">State</th><th scope="col">Offered</th><th scope="col">Deferrals</th>
       <th scope="col">Shown</th><th scope="col">Observed in window</th><th scope="col">Rating (1&ndash;5)</th></tr></thead>
     <tbody>
@@ -44,13 +44,13 @@
   {% endif %}
 </div>
 
-<div class="dash-section">
+<div class="dash-section yc-section">
   <h2>Event timeline</h2>
   <p class="ds-section__desc">Up to {{ timeline_cap }} events, in order of occurrence (server timescale). No content is stored for any event.</p>
   {% if timeline|length == timeline_cap %}<div class="alert alert--warning" role="status">The display limit of {{ timeline_cap }} events has been reached. Later events may be omitted from this view; use an available export to inspect the selected data.</div>{% endif %}<div class="field"><label for="timeline-type">Filter displayed events</label><select class="field__input" id="timeline-type" data-timeline-filter><option value="">All displayed event types</option>{% for row in timeline|unique(attribute=1) %}<option value="{{ row[1] }}">{{ row[1]|replace('_',' ') }}</option>{% endfor %}</select></div><p class="workspace-meta" data-timeline-count>{{ timeline|length }} events displayed</p>
 {% if timeline %}
   <div style="overflow-x: auto">
-  <table class="dash-table" style="width:100%">
+  <table class="dash-table research-dense-table" style="width:100%">
     <thead><tr><th scope="col">Time</th><th scope="col">Source</th><th scope="col">Event</th><th scope="col">Page</th>
       <th scope="col">Element</th><th scope="col">Detail</th><th scope="col">Values</th></tr></thead>
     <tbody>

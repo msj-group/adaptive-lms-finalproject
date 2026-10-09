@@ -18,8 +18,8 @@
     signed, version-bound stale-form token; it is a hidden input rather than
     a form field, exactly like the M01 assignment snapshot and the M03
     feedback state token. -#}
-<div class="ds-page" style="max-width: 680px; padding: 0">
-  <div class="ds-row" style="justify-content: space-between; align-items: center;">
+<div class="ds-page yc-surface" style="max-width: 680px; ">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center;">
 
     <span class="badge badge--neutral">Draft</span>
   </div>
@@ -46,7 +46,7 @@
   </div>
   {% endif %}
 
-  <form method="post" novalidate>
+  <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     {% if quiz %}
     <input type="hidden" name="edit_state" value="{{ edit_state_token }}">
@@ -72,7 +72,7 @@
 
     {# No status, publication, timing or question control: none exists
        server-side either, so a forged field has nowhere to land. #}
-    <div class="ds-row" style="margin-top: var(--space-6)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
       {% if quiz %}
       <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_detail', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">Cancel</a>

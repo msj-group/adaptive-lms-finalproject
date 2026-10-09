@@ -5,7 +5,7 @@
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
-<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
   <h1 data-workspace-page-heading style="margin:0">{{ group.name }} — Units</h1>
   {{ dash.operational_badge(operational) }}
 </div>
@@ -16,7 +16,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="card yc-panel" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
     <dd style="margin:0">{{ group.course.title }}</dd>
@@ -34,14 +34,14 @@
 </div>
 {% endif %}
 
-<div class="ds-row" style="margin-bottom: var(--space-6)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
   {% if operational %}
   <a class="btn btn--primary" href="{{ url_for('teacher.unit_create', group_public_id=group.public_id) }}">Add Unit</a>
   {% endif %}
 </div>
 
-<section class="dash-section" style="margin-top: 0">
+<section class="dash-section yc-section" style="margin-top: 0">
   <h2>Active units <span class="badge badge--neutral">{{ active_units|length }}</span></h2>
   {% if active_units %}
   <div class="dash-scroll">
@@ -56,25 +56,25 @@
         <td><strong>{{ unit.title }}</strong></td>
         <td>{{ (unit.description or "")|truncate(90) }}</td>
         <td>
-          <div class="ds-row" style="gap: var(--space-2)">
+          <div class="ds-row yc-actions" style="gap: var(--space-2)">
             <a class="btn btn--secondary" href="{{ url_for('teacher.group_lessons', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Manage Lessons</a>
             {% if operational %}
             <a class="btn btn--secondary" href="{{ url_for('teacher.unit_edit', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Edit</a>
             {% if not loop.first %}
-            <form method="post" action="{{ url_for('teacher.unit_move_up', group_public_id=group.public_id, unit_public_id=unit.public_id) }}" style="display:inline">
+            <form method="post" action="{{ url_for('teacher.unit_move_up', group_public_id=group.public_id, unit_public_id=unit.public_id) }}" style="display:inline" class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--secondary" aria-label="Move up">↑</button>
             </form>
             {% endif %}
             {% if not loop.last %}
-            <form method="post" action="{{ url_for('teacher.unit_move_down', group_public_id=group.public_id, unit_public_id=unit.public_id) }}" style="display:inline">
+            <form method="post" action="{{ url_for('teacher.unit_move_down', group_public_id=group.public_id, unit_public_id=unit.public_id) }}" style="display:inline" class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--secondary" aria-label="Move down">↓</button>
             </form>
             {% endif %}
             {% endif %}
             <form method="post" action="{{ url_for('teacher.unit_toggle_status', group_public_id=group.public_id, unit_public_id=unit.public_id) }}"
-              data-confirm="Archive unit '{{ unit.title }}'? It moves out of the teaching order and its lessons become unavailable to students. Lesson publication statuses are preserved and no content is deleted — reactivating the unit restores visibility.">
+              data-confirm="Archive unit '{{ unit.title }}'? It moves out of the teaching order and its lessons become unavailable to students. Lesson publication statuses are preserved and no content is deleted — reactivating the unit restores visibility." class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--danger-outline">Archive</button>
             </form>
@@ -94,7 +94,7 @@
 </section>
 
 {% if archived_units %}
-<section class="dash-section">
+<section class="dash-section yc-section">
   <h2>Archived units <span class="badge badge--neutral">{{ archived_units|length }}</span></h2>
   <p class="ds-section__desc">Archived units keep their stored order and are not part of the teaching sequence. Their lessons are hidden from students while the unit stays archived; publication statuses are preserved and nothing is deleted. Reactivating a unit restores its lessons to students without rewriting any status.</p>
   <div class="dash-scroll">
@@ -106,10 +106,10 @@
         <td>{{ unit.title }}</td>
         <td>{{ (unit.description or "")|truncate(90) }}</td>
         <td>
-          <div class="ds-row" style="gap: var(--space-2)">
+          <div class="ds-row yc-actions" style="gap: var(--space-2)">
             <a class="btn btn--secondary" href="{{ url_for('teacher.group_lessons', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Manage Lessons</a>
             {% if operational %}
-            <form method="post" action="{{ url_for('teacher.unit_toggle_status', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">
+            <form method="post" action="{{ url_for('teacher.unit_toggle_status', group_public_id=group.public_id, unit_public_id=unit.public_id) }}" class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--secondary">Reactivate</button>
             </form>

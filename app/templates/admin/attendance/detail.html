@@ -3,15 +3,15 @@
 {% import "_attendance_macros.html" as att %}
 {% block title %}Attendance {{ session.session_date.isoformat() }} — {{ group.name }}{% endblock %}
 {% block admin_content %}
-<div class="ds-page">
-  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+<div class="ds-page yc-surface">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
     <h1 data-workspace-page-heading style="margin:0">Attendance — {{ session.session_date.isoformat() }}</h1>
     {{ att.state_badge(is_finalized) }}
   </div>
 
   {{ macros.flash_messages() }}
 
-  <div class="card" style="margin-bottom: var(--space-5)">
+  <div class="card yc-panel" style="margin-bottom: var(--space-5)">
     <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
       <dd style="margin:0">{{ group.name }} &middot; {{ group.course_title }} &middot; {{ group.level_name }} &middot; {{ group.term_name }}</dd>
@@ -36,12 +36,12 @@
   </div>
   {% endif %}
 
-  <div class="ds-row" style="margin-bottom: var(--space-5)">
+  <div class="ds-row yc-actions" style="margin-bottom: var(--space-5)">
     <a class="btn btn--secondary" href="{{ url_for('admin.group_attendance', group_public_id=group.public_id) }}">This group's attendance</a>
     <a class="btn btn--secondary" href="{{ url_for('admin.attendance_overview') }}">All attendance</a>
   </div>
 
-  <section class="dash-section" style="margin-top: 0">
+  <section class="dash-section yc-section" style="margin-top: 0">
     <h2>Students</h2>
     <p class="ds-section__desc">
       The students who were actively enrolled when this session was opened. The list is fixed:

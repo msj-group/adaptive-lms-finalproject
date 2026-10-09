@@ -12,7 +12,7 @@
     counter and never a per-row lookup. No ORM row and no internal id reaches
     this template. There is deliberately no delete, reopen, duplicate, export
     or grade control anywhere on this page. -#}
-<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
+<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
   <h1 data-workspace-page-heading style="margin:0">{{ group.name }} — Attendance</h1>
   {% if operational %}<span class="badge badge--success">Operational</span>
   {% else %}<span class="badge badge--neutral">Not operational</span>{% endif %}
@@ -24,7 +24,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="card yc-panel" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
     <dd style="margin:0">{{ group.name }}</dd>
@@ -56,7 +56,7 @@
 </div>
 {% endif %}
 
-<div class="ds-row" style="margin-bottom: var(--space-6)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.attendance_overview') }}">All groups</a>
   <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
   {% if operational %}
@@ -64,7 +64,7 @@
   {% endif %}
 </div>
 
-<section class="dash-section" style="margin-top: 0">
+<section class="dash-section yc-section" style="margin-top: 0">
   <h2>Recorded classes</h2>
   {% if sessions %}
   <div class="dash-scroll">
@@ -88,7 +88,7 @@
         <td>{{ att.state_badge(item.is_finalized) }}</td>
         <td>{{ att.count_summary(item.counts) }}</td>
         <td>
-          <div class="ds-row">
+          <div class="ds-row yc-actions">
           {% if operational and not item.is_finalized %}<a class="btn btn--primary" href="{{ url_for('teacher.attendance_mark', group_public_id=group.public_id, session_public_id=item.public_id) }}">Mark attendance</a>{% endif %}
           <a class="btn btn--secondary" href="{{ url_for('teacher.attendance_detail', group_public_id=group.public_id, session_public_id=item.public_id) }}">Details</a>
           </div>
@@ -100,7 +100,7 @@
   </div>
 
   {% if has_prev or has_next %}
-  <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attendance pages">
+  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attendance pages">
     {% if has_prev %}
     <a class="btn btn--secondary" href="{{ url_for('teacher.group_attendance', group_public_id=group.public_id, page=page - 1) }}">Previous</a>
     {% endif %}

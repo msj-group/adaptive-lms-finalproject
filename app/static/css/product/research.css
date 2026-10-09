@@ -1,0 +1,52 @@
+/* Research presentation. Every chart retains its server counts, axis, source,
+   population and exact-count table. No client arithmetic or animated results. */
+/* Timelines and exact chart counts stay compact tables on small screens.
+   The existing figma table wrapper owns horizontal scrolling and keyboard access. */
+@media(max-width:767px) {
+  .yc-research .figma-table-scroll:has(.research-dense-table) { max-height:65dvh; overflow:auto; }
+  .yc-research :is(.research-dense-table,.research-bar-table).workspace-record-table thead { position:static; width:auto; height:auto; overflow:visible; clip-path:none; }
+  .yc-research :is(.research-dense-table,.research-bar-table).workspace-record-table tbody { display:table-row-group; }
+  .yc-research :is(.research-dense-table,.research-bar-table).workspace-record-table tr { display:table-row; padding:0; }
+  .yc-research :is(.research-dense-table,.research-bar-table).workspace-record-table td { display:table-cell; padding:12px!important; }
+  .yc-research :is(.research-dense-table,.research-bar-table).workspace-record-table td::before { display:none; }
+  .yc-research .research-dense-table { min-width:720px; }
+}
+.yc-research .research-section-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin:26px 0; }
+.yc-research .research-section-heading h2 { margin:8px 0; font-size:32px; }
+.yc-research .research-section-heading p { max-width:65ch; color:var(--st-muted); }
+.yc-research .research-filter-band { display:grid; grid-template-columns:repeat(2,minmax(120px,1fr)) minmax(160px,2fr) auto auto; align-items:end; gap:16px; padding:24px; border:1px solid var(--st-border); border-radius:26px; background:var(--st-glass); backdrop-filter:blur(24px); box-shadow:var(--st-shadow); }
+.yc-research .research-filter-band .field { max-width:none; min-width:0; margin:0; }
+.yc-research .research-filter-band>p { grid-column:1 / -1; margin:0; font-size:12px; color:var(--st-muted); }
+.yc-research .research-filter-band>a { display:flex; align-items:center; min-height:44px; }
+.yc-research .research-kpis { grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+.yc-research .research-kpis>div { display:grid; gap:10px; padding:22px; border:1px solid var(--st-border); border-radius:24px; background:var(--st-glass); box-shadow:var(--st-shadow); backdrop-filter:blur(24px); }
+.yc-research .research-kpis :is(span,small) { font-size:11px; color:var(--st-muted); }
+.yc-research .research-kpis strong { font:500 clamp(24px,2.5vw,34px)/1.25 var(--st-display); color:var(--st-blue); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.yc-research .research-chart-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; margin-block:24px; }
+.yc-research .research-chart { min-width:0; margin:0; padding:26px; border:1px solid var(--st-border); border-radius:28px; background:var(--st-glass); box-shadow:var(--st-shadow); backdrop-filter:blur(24px); }
+.yc-research .research-chart figcaption { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
+.yc-research .research-chart h3 { margin:0; font-size:21px; }
+.yc-research .research-chart figcaption>span { font-size:10px; color:var(--st-muted); }
+.yc-research .research-chart__source { font-size:11px; line-height:1.8; color:var(--st-muted); margin:18px 0 0; overflow-wrap:anywhere; }
+.yc-research .research-bar-table { width:100%; table-layout:fixed; }
+.yc-research .research-bar-table :is(th,td) { padding:8px 0; border:0; background:transparent; }
+.yc-research .research-bar-table th { width:45%; font-size:11px; font-weight:500; letter-spacing:normal; color:var(--st-ink); overflow-wrap:anywhere; }
+.yc-research .research-bar-table td:last-child { width:42px; text-align:end; font-size:12px; font-variant-numeric:tabular-nums; }
+.yc-research .research-bar-cell { padding-inline:12px!important; }
+.yc-research .research-bar-cell svg { display:block; width:100%; height:8px; }
+.yc-research .research-bar-track { fill:var(--st-wash); }
+.yc-research .research-bar-fill { fill:var(--st-blue); }
+.yc-research .research-chart .figma-table-scroll { border:0; border-radius:0; background:transparent; backdrop-filter:none; }
+.yc-research .research-chart .empty-state { padding:20px; border-radius:20px; box-shadow:none; }
+.yc-research [data-event] td:nth-child(3) { border-inline-start:3px solid var(--st-blue); }
+@media(max-width:1199px) { .yc-research .research-filter-band { grid-template-columns:repeat(3,minmax(0,1fr)); } .yc-research .research-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:767px) {
+  .yc-research .research-section-heading { flex-direction:column; }
+  .yc-research .research-filter-band { grid-template-columns:repeat(2,minmax(0,1fr)); padding:20px; }
+  .yc-research .research-filter-band .field:nth-child(3) { grid-column:1 / -1; }
+  .yc-research .research-kpis>div { padding:18px; }
+  .yc-research .research-chart-grid { grid-template-columns:minmax(0,1fr); }
+  .yc-research .research-chart { padding:20px; border-radius:25px; }
+}
+@media(max-width:359px) { .yc-research .research-filter-band .field { grid-column:1 / -1; } .yc-research .research-chart { padding:16px; } }
+@media(forced-colors:active) { .yc-research .research-bar-fill { fill:Highlight; } .yc-research .research-bar-track { fill:Canvas; stroke:CanvasText; stroke-width:.5; } }

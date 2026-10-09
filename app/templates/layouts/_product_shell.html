@@ -1,0 +1,46 @@
+{# Presentation owner: active AdaptiveTemplates StudentDashboard.tsx.
+   Existing navigation, account, notification, keyboard and research contracts remain native. #}
+{% import '_figma_ui.html' as ui %}
+{% set role = current_user.role %}
+{% set home_endpoint = {'student':'student.dashboard','teacher':'teacher.dashboard','administrator':'admin.dashboard','researcher':'research.dashboard'}[role] %}
+<a class="figma-skip-link" href="#workspace-content">Skip to content</a>
+<div class="st-shell">
+  <button class="figma-nav-backdrop" type="button" aria-label="Close navigation" data-nav-close hidden></button>
+  <aside class="st-sidebar figma-sidebar" id="workspace-navigation" aria-label="{{ role|capitalize }} navigation" data-nav-scope="{{ role }}">
+    <a class="st-brand" href="{{ url_for(home_endpoint) }}" aria-label="Youth Centre {{ role }} dashboard">
+      <img src="{{ url_for('static', filename='images/figma_logo.png') }}" alt="" width="52" height="60">
+      <span><strong>Youth Centre<span>.</span></strong><small>ENGLISH LEARNING PLATFORM</small></span>
+    </a>
+    <button class="figma-sidebar-close st-icon-button" type="button" aria-label="Close navigation" data-nav-close hidden>{{ ui.icon('close') }}</button>
+    <nav class="st-navigation figma-sidebar-nav" aria-label="Primary">
+      {% include 'layouts/_product_navigation.html' %}
+    </nav>
+    <div class="st-sidebar-footer">
+      {{ ui.navigation_tools() }}
+      <a class="st-profile" href="{{ url_for('account.settings') }}" data-research-id="nav_account">
+        {{ ui.avatar(current_user.full_name, account_photo_url()) }}
+        <span><strong dir="auto">{{ current_user.full_name }}</strong><small>{{ role|capitalize }}</small></span>{{ ui.icon('chevron',14) }}
+      </a>
+    </div>
+  </aside>
+  <div class="st-body figma-body" data-workspace-body>
+    <header class="st-header">
+      <div class="st-header-context"><span class="st-mobile-brand">Youth Centre</span><span class="st-desktop-context">{{ role|capitalize }} portal <i>/</i> {{ portal_blocks.title()|striptags }}</span></div>
+      <div class="st-header-actions">
+        <button class="st-icon-button" type="button" popovertarget="workspace-display-panel" data-research-id="nav_display" aria-label="Display preferences" aria-haspopup="dialog">{{ ui.icon('settings',18) }}</button>
+        {% if notif %}{% include 'notifications/_bell.html' %}{% endif %}
+        {{ ui.account(current_user, url_for('research.logout' if role == 'researcher' else 'auth.logout'), csrf_token(), photo_url=account_photo_url()) }}
+      </div>
+    </header>
+    <div class="st-content figma-page {{ portal_blocks.workspace_content_class() }}" id="workspace-content" tabindex="-1">
+      {% if request.endpoint not in ['student.dashboard','teacher.dashboard','admin.dashboard','research.dashboard'] %}
+      <header class="st-page-heading"><p class="st-eyebrow">{{ {'student':'YOUR LEARNING SPACE','teacher':'YOUR TEACHING SPACE','administrator':'YOUR CENTRE, CONNECTED','researcher':'RESEARCH WORKSPACE'}[role] }}</p>{{ portal_blocks.workspace_page_label() }}</header>
+      {% endif %}
+      {% if role in ['student','teacher'] %}{{ portal_blocks.workspace_context() }}{{ portal_blocks.portal_content() }}
+      {% elif role == 'administrator' %}{% include '_workspace_context.html' %}{{ portal_blocks.admin_content() }}
+      {% else %}{% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="alert alert--{{ category }}" role="status">{{ message }}</div>{% endfor %}{% endwith %}{{ portal_blocks.research_content() }}{% endif %}
+    </div>
+    <footer class="st-footer"><span>Youth Centre · {{ role|capitalize }} portal</span><span>{{ 'Your learning, in your own time.' if role == 'student' else ('Pseudonymous data · ' ~ tz_name|default('Africa/Tripoli') if role == 'researcher' else 'A space to inspire.') }}</span></footer>
+  </div>
+</div>
+{% include 'layouts/_mobile_navigation.html' %}

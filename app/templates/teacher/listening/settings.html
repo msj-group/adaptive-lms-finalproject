@@ -21,8 +21,8 @@
     nowhere to land. Draft-only -- a published activity's settings are
     read-only, enforced against the locked row and not merely by hiding this
     page. -#}
-<div class="ds-page" style="max-width: 680px; padding: 0">
-  <div class="ds-row" style="justify-content: space-between; align-items: center;">
+<div class="ds-page yc-surface" style="max-width: 680px; ">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center;">
 
     <span class="badge badge--neutral">Draft</span>
   </div>
@@ -43,7 +43,7 @@
     These settings can only be changed while the activity is a draft.
   </div>
 
-  <form method="post" novalidate>
+  <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     <input type="hidden" name="listening_state" value="{{ state_token }}">
 
@@ -91,7 +91,7 @@
       {% for error in form.attempt_limit.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    <div class="ds-row" style="margin-top: var(--space-6)">
+    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
       <a class="btn btn--secondary" href="{{ url_for('teacher.listening_detail', group_public_id=group.public_id, listening_public_id=activity.public_id) }}">Cancel</a>
     </div>

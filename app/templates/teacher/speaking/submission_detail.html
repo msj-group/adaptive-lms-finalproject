@@ -26,12 +26,12 @@
   {{ activity.title }} &middot; {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
 </p>
 
-<div class="ds-row" style="margin-bottom: var(--space-6)">
+<div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ submissions_url }}">Back to Recordings</a>
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_speaking', group_public_id=group.public_id) }}">Back to Speaking</a>
 </div>
 
-<div class="card" style="margin-bottom: var(--space-6)">
+<div class="card yc-panel" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submitted</dt>
@@ -55,7 +55,7 @@
 <section>
   <h2>Recording</h2>
   {% include "_audio_player.html" %}
-  <div class="ds-row">
+  <div class="ds-row yc-actions">
     <a class="btn btn--secondary" href="{{ download_url }}">Download recording</a>
   </div>
 </section>
@@ -66,7 +66,7 @@
   <h2>Feedback</h2>
 
   {% if feedback.state == "present" %}
-  <div class="card" style="margin-bottom: var(--space-4)">
+  <div class="card yc-panel" style="margin-bottom: var(--space-4)">
     <p class="ds-section__desc" style="margin-top: 0">
       Last changed by {{ feedback.reviewer_name }} on {{ feedback.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
       The student sees this text whenever they can open this speaking activity.

@@ -17,7 +17,7 @@
   <section class="{{ 'st-panel' if current_user.role == 'student' else 'card' }} account-section" aria-labelledby="photo-heading">
     <h2 id="photo-heading">Profile photo</h2>
     <div class="account-profile">{{ account_ui.avatar(current_user.full_name, account_photo_url()) }}<div><strong dir="auto">{{ current_user.full_name }}</strong><span>{{ current_user.role|capitalize }}</span></div></div>
-    <form method="post" action="{{ url_for('account.upload_photo') }}" enctype="multipart/form-data" data-research-form="account_photo_submit">
+    <form method="post" action="{{ url_for('account.upload_photo') }}" enctype="multipart/form-data" data-research-form="account_photo_submit" class="yc-form">
       {{ photo_form.hidden_tag() }}{{ errors(photo_form.state) }}{{ errors(photo_form.csrf_token) }}
       <div class="field">
         {{ photo_form.photo.label(class_="field__label") }}
@@ -31,7 +31,7 @@
   <section class="{{ 'st-panel' if current_user.role == 'student' else 'card' }} account-section" aria-labelledby="password-heading">
     <h2 id="password-heading">Change password</h2>
     <p class="account-hint" id="password-help">Use 15–128 characters. A long passphrase works well. After saving, sign in again; your other sessions will also end.</p>
-    <form method="post" action="{{ url_for('account.password') }}" data-research-form="account_password_submit">
+    <form method="post" action="{{ url_for('account.password') }}" data-research-form="account_password_submit" class="yc-form">
       {{ password_form.hidden_tag() }}{{ errors(password_form.state) }}{{ errors(password_form.csrf_token) }}
       {% for field in [password_form.current_password, password_form.new_password, password_form.confirm_password] %}
       <div class="field">

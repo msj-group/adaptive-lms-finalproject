@@ -2,8 +2,8 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ group.name }}{% endblock %}
 {% block admin_content %}
-<div class="ds-page" style="max-width: 640px">
-  <div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
+<div class="ds-page yc-surface" style="max-width: 640px">
+  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
     <h1 data-workspace-page-heading style="margin:0">{{ group.name }}</h1>
     {{ macros.status_badge(group.status) }}
   </div>
@@ -21,7 +21,7 @@
   </div>
   {% endif %}
 
-  <div class="card">
+  <div class="card yc-panel">
     <dl style="display: grid; grid-template-columns: 160px 1fr; row-gap: var(--space-3); column-gap: var(--space-4); margin: 0;">
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group Code</dt>
       <dd style="margin:0">{{ group.code or "--" }}</dd>
@@ -55,7 +55,7 @@
     </dl>
   </div>
 
-  <div class="ds-row" style="margin-top: var(--space-6)">
+  <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
     <a class="btn btn--primary" href="{{ url_for('admin.group_edit', public_id=group.public_id) }}">Edit Group</a>
     <a class="btn btn--primary" href="{{ url_for('admin.group_members', group_public_id=group.public_id) }}">Manage Members</a>
     <a class="btn btn--primary" href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">Manage Schedule</a>
