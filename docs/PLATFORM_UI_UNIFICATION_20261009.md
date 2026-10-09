@@ -172,3 +172,9 @@ The follow-up removes the visible Youth Centre / More navigation heading and the
 This supersedes section 9's close-button and initial-focus description: opening now focuses the first destination. Toggle, outside interaction, Escape, focus departure and focus restoration remain available; the dialog retains an accessible name without a visible heading. Destinations, permissions and research hooks are unchanged.
 
 Read-only browser inspection covered all four roles at 430/390/320px, including Arabic Dark Mode. All twelve pages returned HTTP 200, with no JavaScript errors or horizontal overflow; no header/close control remained inside the panel, and dismissal/focus behavior passed. New screenshots are saved as `compact-more-<role>-<width>.png` in the existing local QA artifact directory. No business POST, push or deployment occurred.
+
+## Owner follow-up: mobile header logo
+
+The shared phone header now displays the existing `images/figma_logo.png` asset instead of the Youth Centre text label. The 48px logo retains its aspect ratio and uses a small white backing for legibility in Light and Dark modes. Its alternative text is localized through the existing language system. Desktop header context, Login and Messages headers are unchanged.
+
+Read-only rendered checks covered every role at 430/390/320px and 1440px. The logo loaded at 48 by 48px on phones, replaced the visible brand text, aligned correctly in RTL, and remained hidden on Desktop. All sixteen pages returned HTTP 200 without JavaScript errors or horizontal overflow. Actual screenshots are saved as `mobile-logo-<role>-<width>.png` in the QA artifact directory. No business submissions, push or deployment occurred.

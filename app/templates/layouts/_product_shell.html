@@ -25,7 +25,7 @@
   </aside>
   <div class="st-body figma-body" data-workspace-body>
     <header class="st-header">
-      <div class="st-header-context"><span class="st-mobile-brand">Youth Centre</span><span class="st-desktop-context">{{ role|capitalize }} portal <i>/</i> {{ portal_blocks.title()|striptags }}</span></div>
+      <div class="st-header-context"><span class="st-mobile-brand"><img src="{{ url_for('static', filename='images/figma_logo.png') }}" alt="Youth Centre" width="48" height="48"></span><span class="st-desktop-context">{{ role|capitalize }} portal <i>/</i> {{ portal_blocks.title()|striptags }}</span></div>
       <div class="st-header-actions">
         <button class="st-icon-button" type="button" popovertarget="workspace-display-panel" data-research-id="nav_display" aria-label="Display preferences" aria-haspopup="dialog">{{ ui.icon('settings',18) }}</button>
         {% if notif %}{% include 'notifications/_bell.html' %}{% endif %}

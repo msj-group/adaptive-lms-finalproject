@@ -67,6 +67,7 @@
 .yc-workspace .figma-skip-link { position:fixed; z-index:120; inset-block-start:12px; inset-inline-start:12px; padding:12px 20px; border-radius:12px; background:var(--st-solid); color:var(--st-blue); transform:translateY(-200%); }
 .yc-workspace .figma-skip-link:focus { transform:none; }
 .yc-workspace :is(.st-mobile-brand,.figma-sidebar-close,.figma-nav-backdrop) { display:none; }
+.yc-workspace .st-mobile-brand img { display:block; width:48px; height:48px; padding:3px; border-radius:10px; background:#fff; object-fit:contain; }
 @keyframes st-arrive { from { transform:translateY(4px); } to { transform:translateY(0); } }
 @media(hover:hover) { .yc-workspace .st-nav-link:hover { background:var(--st-control); transform:translateX(2px); } html[dir='rtl'] .yc-workspace .st-nav-link:hover { transform:translateX(-2px); } }
 @media(max-width:1199px) and (min-width:1024px) { .yc-workspace .st-sidebar { width:248px; inset-inline-start:16px; } .yc-workspace .st-brand { padding-inline:18px; gap:8px; } .yc-workspace .st-brand strong { font-size:19px; } .yc-workspace .st-body { margin-inline-start:284px; } .yc-workspace :is(.st-content,.st-header,.st-footer) { padding-inline:24px; } }
