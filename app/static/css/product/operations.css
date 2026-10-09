@@ -116,9 +116,6 @@
 .yc-operations .notif-item--unread { border-inline-start:3px solid var(--st-blue); }
 .yc-operations .account-section { border:1px solid var(--st-border); border-radius:28px; background:var(--st-glass); box-shadow:var(--st-shadow); backdrop-filter:blur(24px); }
 .yc-operations :is(.calendar-day,.calendar-event,.communication-card,.discussion-post) { border-color:var(--st-divider); border-radius:20px; background:var(--st-control); }
-.yc-workspace .workspace-nav-icon { display:inline-flex; flex:0!important; }
-.yc-workspace .st-nav-link>.workspace-nav-label { flex:1; }
-.yc-workspace .workspace-nav-chevron { display:none; }
 .yc-workspace .st-navigation .st-nav-link { min-height:44px; }
 .yc-operations[data-ui-density='compact'] :is(.yc-panel,.card,.yc-section,.yc-surface) { padding:20px; }
 @media(hover:hover) { .yc-operations .figma-finance-shortcuts .card:hover { background:var(--st-control); } }

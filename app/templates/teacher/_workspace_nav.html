@@ -1,15 +1,15 @@
-{% set nav_class = 'st-nav-link' if request.blueprint != 'messages' else 'portal-nav__link' %}
+{% set nav_class = 'st-nav-link' %}
 {% import "_figma_ui.html" as ui %}
 {% set endpoint = request.endpoint or '' %}
-<div class="{{ 'st-nav-label' if request.blueprint != 'messages' else 'figma-nav-section-title' }}">Overview</div>
+<div class="st-nav-label">Overview</div>
 {{ ui.nav_link('Dashboard', 'teacher.dashboard', 'dashboard', endpoint == 'teacher.dashboard', link_class=nav_class) }}
 {{ ui.nav_link('Calendar', 'teacher.calendar', 'calendar', endpoint == 'teacher.calendar', link_class=nav_class) }}
-<div class="{{ 'st-nav-label' if request.blueprint != 'messages' else 'figma-nav-section-title' }}">Teaching</div>
+<div class="st-nav-label">Teaching</div>
 {% set activity_selected = endpoint in ['teacher.activities','teacher.group_activities'] or (endpoint.startswith('teacher.') and ('assignment' in endpoint or 'quiz' in endpoint or 'listening' in endpoint or 'speaking' in endpoint or 'submission' in endpoint)) %}
 {% set group_selected = endpoint in ['workspace.teacher_groups','workspace.teacher_group','workspace.lesson_preview'] or (endpoint.startswith('teacher.') and endpoint != 'teacher.dashboard' and endpoint != 'teacher.calendar' and not activity_selected and 'grade' not in endpoint and 'attendance' not in endpoint and 'announcement' not in endpoint and 'discussion' not in endpoint) %}
 {{ ui.nav_link('My groups', 'workspace.teacher_groups', 'book', group_selected, link_class=nav_class) }}
 {{ ui.nav_link('Activities', 'teacher.activities', 'activity', activity_selected, link_class=nav_class) }}
 {{ ui.nav_link('Review queue', 'workspace.review_queue', 'check', endpoint == 'workspace.review_queue', link_class=nav_class) }}
-<div class="{{ 'st-nav-label' if request.blueprint != 'messages' else 'figma-nav-section-title' }}">Class records</div>
+<div class="st-nav-label">Class records</div>
 {{ ui.nav_link('Attendance', 'teacher.attendance_overview', 'activity', 'attendance' in endpoint, link_class=nav_class) }}
 {{ ui.nav_link('Gradebook', 'teacher.gradebook_overview', 'graduation', 'grade' in endpoint, link_class=nav_class) }}

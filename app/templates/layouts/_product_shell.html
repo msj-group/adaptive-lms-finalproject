@@ -40,7 +40,7 @@
       {% elif role == 'administrator' %}{% include '_workspace_context.html' %}{{ portal_blocks.admin_content() }}
       {% else %}{% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="alert alert--{{ category }}" role="status">{{ message }}</div>{% endfor %}{% endwith %}{{ portal_blocks.research_content() }}{% endif %}
     </div>
-    <footer class="st-footer"><span>Youth Centre · {{ role|capitalize }} portal</span><span>{{ 'Your learning, in your own time.' if role == 'student' else ('Pseudonymous data · ' ~ tz_name|default('Africa/Tripoli') if role == 'researcher' else 'A space to inspire.') }}</span></footer>
+    {% if request.blueprint != 'messages' %}<footer class="st-footer"><span>Youth Centre · {{ role|capitalize }} portal</span><span>{{ 'Your learning, in your own time.' if role == 'student' else ('Pseudonymous data · ' ~ tz_name|default('Africa/Tripoli') if role == 'researcher' else 'A space to inspire.') }}</span></footer>{% endif %}
   </div>
 </div>
 {% include 'layouts/_mobile_navigation.html' %}

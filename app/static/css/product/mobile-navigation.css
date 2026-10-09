@@ -1,4 +1,4 @@
-/* Navigation-only ownership, also used by the protected Messages shell. */
+/* Navigation-only ownership, shared across authenticated product pages. */
 .workspace-mobile-nav,.workspace-more-panel,.workspace-more-backdrop { display:none; }
 @media screen and (max-width:1023px) {
   .figma-workspace[data-ui-ready='true'] #workspace-navigation { visibility:hidden; pointer-events:none; }

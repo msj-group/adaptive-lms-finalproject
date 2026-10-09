@@ -1,5 +1,5 @@
 /* Shared authenticated ST2 primitives. tokens.css owns the canvas and semantic colors.
-   Login and Messages never load this file. Feature and shell geometry have separate owners. */
+   Login never loads this file. Feature and shell geometry have separate owners. */
 @font-face { font-family: 'ST Outfit'; src:url('../../fonts/Outfit-variable.ttf') format('truetype'); font-weight:100 900; font-style:normal; font-display:swap; }
 @font-face { font-family: 'ST Inter'; src:url('../../fonts/Inter-variable.ttf') format('truetype'); font-weight:100 900; font-style:normal; font-display:swap; }
 @font-face { font-family: 'ST Arabic'; src:url('../../fonts/NotoSansArabic-variable.ttf') format('truetype'); font-weight:100 900; font-style:normal; font-display:swap; }

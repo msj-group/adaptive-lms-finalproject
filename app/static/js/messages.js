@@ -139,6 +139,21 @@
     var grid = panel.querySelector("[data-emoji-grid]");
     var status = panel.querySelector("[data-emoji-status]");
     var more = panel.querySelector("[data-emoji-more]");
+    // Keep the picker inside the shared glass workspace as the draft/composer grows.
+    var messageWorkspace = form.closest(".messenger");
+    function fitPicker() {
+      if (panel.hidden || !messageWorkspace) return;
+      var top = messageWorkspace.getBoundingClientRect().top;
+      var bottom = form.getBoundingClientRect().top - 8;
+      panel.style.setProperty("--message-picker-room", Math.max(0, bottom - top - 8) + "px");
+    }
+    if (typeof ResizeObserver === "function" && messageWorkspace) {
+      var pickerSize = new ResizeObserver(fitPicker);
+      pickerSize.observe(messageWorkspace);
+      pickerSize.observe(form);
+    }
+    window.addEventListener("resize", fitPicker);
+    input.addEventListener("input", function () { requestAnimationFrame(fitPicker); });
     var data, visible = [], limit = 80, caretStart = input.selectionStart, caretEnd = input.selectionEnd;
     function rememberCaret() { caretStart = input.selectionStart; caretEnd = input.selectionEnd; }
     ["select", "input", "keyup", "click", "blur"].forEach(function (event) { input.addEventListener(event, rememberCaret); });
@@ -166,7 +181,7 @@
     toggle.hidden = false;
     toggle.addEventListener("click", async function () {
       if (!panel.hidden) { close(false); return; }
-      panel.hidden = false; toggle.setAttribute("aria-expanded", "true"); search.focus();
+      panel.hidden = false; fitPicker(); toggle.setAttribute("aria-expanded", "true"); search.focus();
       if (!data) {
         status.textContent = t("Loading emoji…");
         try {

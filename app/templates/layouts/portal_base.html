@@ -1,86 +1,32 @@
 {% extends "layouts/base.html" %}
 {% import "_figma_ui.html" as ui %}
 {% set research = research_collector(position if position is defined else none, total if total is defined else none) %}
-{% set template_student = current_user.role == 'student' and request.blueprint != 'messages' %}
-{% set template_product = request.blueprint != 'messages' %}
-{% block body_class %}figma-workspace {{ 'figma-student' if current_user.role == 'student' else 'figma-teacher' }}{{ ' yc-workspace st-workspace' if template_student else (' yc-workspace yc-operations yc-teacher' if template_product else '') }}{% endblock %}
+{% set template_messages = request.blueprint == 'messages' %}
+{% set template_student = current_user.role == 'student' and not template_messages %}
+{% block body_class %}figma-workspace {{ 'figma-student' if current_user.role == 'student' else 'figma-teacher' }} yc-workspace{{ ' yc-messages' if template_messages else (' st-workspace' if template_student else ' yc-operations yc-teacher') }}{% endblock %}
 {% block extra_head %}
-  {% if not template_product %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/portal.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/figma.css') }}">
-  {% endif %}
   {# Capture intentions before Quiz's async navigation guards; never block them. #}
   {% if research %}<script type="application/json" id="research-collector-config">{{ research.config|tojson }}</script><script src="{{ url_for('static', filename='js/usage_collector.js') }}" defer></script>{% endif %}
 {% endblock %}
 {% block product_styles %}
-  {% if not template_product %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/navigation.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/today.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/learning.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/messages.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/communication.css') }}">
-  {% if current_user.role == 'teacher' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/operations.css') }}">{% endif %}
-  {% endif %}
-  {% if template_product and not template_student %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/community.css') }}">{% endif %}
+  {% if not template_student and not template_messages %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/community.css') }}">{% endif %}
   {% block feature_styles %}{% endblock %}
-  {% if template_product %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/foundation.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/shell.css') }}">
-  {% if template_student %}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/features.css', v='st2') }}">{% else %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/operations.css') }}">{% endif %}
-  {% endif %}
+  {% if template_messages %}<link rel="stylesheet" href="{{ url_for('static', filename='css/messages.css') }}">
+  {% elif template_student %}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/features.css', v='st2') }}">
+  {% else %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/operations.css') }}">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/mobile-navigation.css') }}">
 {% endblock %}
 {% block content %}
 {% set notif = notification_header() %}
-{% if template_product %}
 {% set portal_blocks = self %}
 {% include 'layouts/_product_shell.html' %}
-{% else %}
-{{ ui.ambient() }}
-<a class="figma-skip-link" href="#workspace-content">Skip to content</a>
-<div class="portal-shell">
-  <button class="figma-nav-backdrop" type="button" aria-label="Close navigation" data-nav-close hidden></button>
-  <aside class="portal-sidebar figma-sidebar" id="workspace-navigation" aria-label="{{ current_user.role|capitalize }} navigation" data-nav-scope="{{ current_user.role }}">
-    {{ ui.brand('student.dashboard' if current_user.role == 'student' else 'teacher.dashboard', current_user.role) }}
-    <button class="figma-sidebar-close figma-icon-button" type="button" aria-label="Close navigation" data-nav-close hidden>{{ ui.icon('close') }}</button>
-    <nav class="portal-nav figma-sidebar-nav" aria-label="Primary">
-      {% if current_user.role == 'teacher' %}{% include "teacher/_workspace_nav.html" %}{% else %}{% include "student/_portal_nav.html" %}{% endif %}
-      <div class="figma-nav-section-title">Communication</div>
-      {% if current_user.role == 'teacher' %}
-      {{ ui.nav_link('Announcements', 'teacher.announcements_feed', 'megaphone', 'announcement' in (request.endpoint or '')) }}
-      {{ ui.nav_link('Discussions', 'teacher.discussions_overview', 'users', 'discussion' in (request.endpoint or '')) }}
-      {% else %}
-      {{ ui.nav_link('Announcements', 'student.announcements_list', 'megaphone', active_nav|default('') == 'announcements' or 'announcement' in (request.endpoint or ''), 'nav_announcements') }}
-      {{ ui.nav_link('Discussions', 'student.discussions_overview', 'users', (request.endpoint or '').startswith('student.discussions_'), 'nav_discussions') }}
-      {% endif %}
-      {% if current_user.is_authenticated and current_user.role in ('student', 'teacher') %}
-      {{ ui.nav_link('Messages', 'messages.inbox', 'message', request.blueprint == 'messages', 'nav_messages') }}
-      {% endif %}
-      {% if notif %}
-      {{ ui.nav_link('Notifications', 'notifications.inbox', 'bell', request.blueprint == 'notifications', 'nav_notifications', notif.unread_label if notif.unread_count else none, notif.unread_count ~ ' unread' if notif.unread_count else none) }}
-      {% endif %}
-    </nav>
-    {{ ui.navigation_tools() }}
-  </aside>
-  <div class="figma-body" data-workspace-body>
-    <header class="figma-topbar">
-      <div class="figma-topbar-heading"><button class="figma-menu-toggle figma-icon-button" type="button" aria-label="Open navigation" aria-controls="workspace-navigation" aria-expanded="false" data-nav-toggle hidden>{{ ui.icon('menu') }}</button><div><span class="figma-eyebrow">{{ 'YOUR LEARNING SPACE' if current_user.role == 'student' else 'YOUR TEACHING SPACE' }}</span>{% block workspace_page_label %}{{ ui.page_heading(self.title()) }}{% endblock %}</div></div>
-      <div class="figma-topbar-user">
-        {% if notif %}{% include "notifications/_bell.html" %}{% endif %}
-        {{ ui.account(current_user, url_for('auth.logout'), csrf_token(), photo_url=account_photo_url()) }}
-      </div>
-    </header>
-    <div class="portal-main"><div class="ds-page figma-page {% block workspace_content_class %}{% endblock %}" id="workspace-content" tabindex="-1">{% block workspace_context %}{% include "_workspace_context.html" %}{% endblock %}{% block portal_content %}{% endblock %}</div></div>
-    {% block workspace_footer %}<footer class="figma-footer">Youth Centre · {{ 'A space to learn and grow.' if current_user.role == 'student' else 'A space to inspire.' }}</footer>{% endblock %}
-  </div>
-</div>
-{% include 'layouts/_mobile_navigation.html' %}
-{% endif %}
-{% if research %}
-{% include "_research_feedback.html" %}
-{% endif %}
+{% if research %}{% include "_research_feedback.html" %}{% endif %}
 {% endblock %}
+{% block workspace_page_label %}{{ ui.page_heading(self.title()) }}{% endblock %}
+{% block workspace_content_class %}{% endblock %}
+{% block workspace_context %}{% include "_workspace_context.html" %}{% endblock %}
+{% block portal_content %}{% endblock %}
+{% block workspace_footer %}{% endblock %}
 {% block body_scripts %}<script src="{{ url_for('static', filename='js/mobile_navigation.js') }}" defer></script><script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}

@@ -11,6 +11,9 @@
 .yc-workspace .st-nav-label:first-child { margin-top:0; }
 .yc-workspace .st-nav-link { display:flex; align-items:center; gap:12px; min-height:44px; padding:10px 16px; margin:4px 0; border-radius:16px; color:var(--st-muted); font-size:13px; text-decoration:none; transition:background-color 140ms ease,transform 140ms ease; }
 .yc-workspace .st-nav-link>span:first-of-type { flex:1; }
+.yc-workspace .workspace-nav-icon { display:inline-flex; flex:0!important; }
+.yc-workspace .st-nav-link>.workspace-nav-label { flex:1; }
+.yc-workspace .workspace-nav-chevron { display:none; }
 .yc-workspace .st-nav-link[aria-current='page'] { color:var(--st-blue); font-weight:600; background:var(--st-wash); box-shadow:inset 0 1px 0 #ffffff30; }
 .yc-workspace .st-nav-link i { width:6px; height:6px; border-radius:50%; background:#3069e2; }
 .yc-workspace .st-unread { display:grid; place-items:center; min-width:20px; height:20px; border-radius:50%; background:#c82f27; color:#fff; font-size:9px; }
@@ -67,7 +70,7 @@
 .yc-workspace .figma-skip-link { position:fixed; z-index:120; inset-block-start:12px; inset-inline-start:12px; padding:12px 20px; border-radius:12px; background:var(--st-solid); color:var(--st-blue); transform:translateY(-200%); }
 .yc-workspace .figma-skip-link:focus { transform:none; }
 .yc-workspace :is(.st-mobile-brand,.figma-sidebar-close,.figma-nav-backdrop) { display:none; }
-.yc-workspace .st-mobile-brand img { display:block; width:48px; height:48px; padding:3px; border-radius:10px; background:#fff; object-fit:contain; }
+.yc-workspace .st-mobile-brand img { display:block; width:48px; height:48px; object-fit:contain; }
 @keyframes st-arrive { from { transform:translateY(4px); } to { transform:translateY(0); } }
 @media(hover:hover) { .yc-workspace .st-nav-link:hover { background:var(--st-control); transform:translateX(2px); } html[dir='rtl'] .yc-workspace .st-nav-link:hover { transform:translateX(-2px); } }
 @media(max-width:1199px) and (min-width:1024px) { .yc-workspace .st-sidebar { width:248px; inset-inline-start:16px; } .yc-workspace .st-brand { padding-inline:18px; gap:8px; } .yc-workspace .st-brand strong { font-size:19px; } .yc-workspace .st-body { margin-inline-start:284px; } .yc-workspace :is(.st-content,.st-header,.st-footer) { padding-inline:24px; } }
