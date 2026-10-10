@@ -54,7 +54,10 @@ More keyboard Tab/Shift+Tab, Escape, outside dismissal, focus return, role links
 Compact density, reduced motion and browser accessibility-tree names are checked.
 Explicit Light/Dark and System Light/Dark with preference reload are observed for
 four roles at mobile/desktop. Protected Login/Messages comparisons are captured
-separately; empty Messages is the actual dataset state, not a fabricated thread.
+separately. Login remains pixel-identical. Messages geometry/CSS/composer/thread
+contracts remain intact; final empty/search states remove only redundant guidance
+paragraphs, with the resulting copy-only pixel differences identified separately.
+Empty Messages is the actual dataset state, not a fabricated thread.
 
 ## Limits and research boundary
 
