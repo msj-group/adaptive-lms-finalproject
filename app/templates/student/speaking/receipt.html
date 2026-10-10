@@ -15,9 +15,7 @@
     here discloses a storage key, a path, a digest, a byte size or an internal
     id. There is deliberately no edit, delete, replace or resubmit control
     anywhere on this page -- none exists server-side either. -#}
-<p class="ds-section__desc" style="margin-bottom: var(--space-2)">
-  {{ activity.group_name }} &middot; {{ activity.course_title }} &middot; {{ activity.level_name }} &middot; {{ activity.term_name }}
-</p>
+
 
 
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -26,12 +24,10 @@
   {% endfor %}
 {% endwith %}
 
-<div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
-  <a class="btn btn--secondary" href="{{ detail_url }}">Back to the activity</a>
-  <a class="btn btn--secondary" href="{{ url_for('student.activities', type='speaking', group=activity.group_public_id) }}">Back to Activities</a>
-</div>
+
 
 <div class="alert alert--success" style="margin-bottom: var(--space-6)">
+  <span dir="auto">{{ activity.group_name }} · {{ activity.term_name }}</span><br>
   <strong>Submitted</strong> on {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
   This recording is final: it cannot be edited, replaced, or submitted again.
 </div>
@@ -71,7 +67,6 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No teacher feedback yet</div>
-    <div>Your teacher has not written feedback on this recording yet. It will appear here once they do.</div>
   </div>
   {% endif %}
 </section>

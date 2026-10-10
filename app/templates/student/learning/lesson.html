@@ -7,18 +7,12 @@
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
 
-<div class="st-studio-return">
-  <a class="btn btn--secondary" href="{{ url_for('student.group_units', group_public_id=group_public_id) }}">Back to Lessons</a>
-  <a class="btn btn--secondary" href="{{ url_for('student.dashboard') }}">Dashboard</a>
-</div>
 
-<div class="st-studio"><aside class="st-studio-map"><span class="st-eyebrow">LEARNING STUDIO</span><h2>Your course map</h2>
+
+<div class="st-studio"><aside class="st-studio-map"><h2>Your course map</h2>
 <details class="workspace-reading-nav" open><summary>Course outline · {{ lesson_links|length }} published lessons</summary><ol>{% for item in lesson_links %}<li><a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.public_id) }}"{% if item.public_id == lesson_public_id %} aria-current="page"{% endif %}><span class="st-lesson-number" aria-hidden="true">{{ "%02d"|format(loop.index) }}</span><span>{{ item.title }}</span></a> {{ '· Completed' if item.is_completed else '' }}</li>{% endfor %}</ol></details>
 {% if materials %}<nav class="workspace-inline-links" aria-label="In this lesson">{% for item in materials %}<a href="#material-{{ item.public_id }}">{{ item.title }}</a>{% endfor %}</nav>{% endif %}
-</aside><div class="st-studio-body"><header class="st-studio-heading"><p class="ds-section__desc">
-  {{ group_name }} &middot; {{ course_title }} &middot; {{ level_name }} &middot; {{ term_name }} &middot; {{ unit_title }}
-</p>
-<h1 data-workspace-page-heading>{{ lesson_title }}</h1></header>
+</aside><div class="st-studio-body"><header class="st-studio-heading"><h1 data-workspace-page-heading>{{ lesson_title }}</h1><small dir="auto">{{ group_name }} · {{ term_name }} · {{ unit_title }}</small></header>
 
 {%- with messages = get_flashed_messages(with_categories=true) -%}
   {%- for category, message in messages %}
@@ -26,21 +20,17 @@
   {%- endfor -%}
 {%- endwith %}
 
-<div class="st-reading-prose">
-  {% if lesson_description %}
+{% if lesson_description %}<div class="st-reading-prose">
   {# Plain text: line breaks preserved via CSS, never via |safe or stored HTML. #}
   <div style="white-space: pre-wrap; word-break: break-word;">{{ lesson_description }}</div>
-  {% else %}
-  <p class="ds-section__desc" style="margin: 0">This lesson has no description yet.</p>
-  {% endif %}
-</div>
+</div>{% endif %}
 
 <section>
   <h2>Materials</h2>
   {% if not materials %}
   <div class="empty-state">
     <div class="empty-state__title">No materials yet</div>
-    <div>Your teacher has not added any materials to this lesson yet.</div>
+
   </div>
   {% else %}
   {% for material in materials %}
@@ -100,7 +90,7 @@
       <div class="card__body" style="margin-top: var(--space-2)">You marked this lesson complete on {{ progress.completed_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).</div>
       {% else %}
       <span class="badge badge--neutral">Not completed</span>
-      <div class="card__body" style="margin-top: var(--space-2)">Mark this lesson complete when you have finished working through it.</div>
+
       {% endif %}
     </div>
     <form method="post" action="{{ url_for('student.lesson_undo_complete' if progress_action == 'undo' else 'student.lesson_mark_complete', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id) }}"

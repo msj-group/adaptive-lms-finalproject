@@ -20,11 +20,7 @@
     <h1 data-workspace-page-heading style="margin:0">Announcements</h1>
     <a class="btn btn--primary" href="{{ url_for('admin.announcement_create') }}">New announcement</a>
   </div>
-  <p class="ds-section__desc">
-    Notices addressed to the whole centre, to one course, or to one group. A draft is
-    visible to nobody; publishing makes it readable by everyone the scope currently reaches
-    and notifies each of them once; withdrawing hides it permanently.
-  </p>
+  <p class="ds-section__desc">Drafts are private. Publishing notifies the current audience; withdrawal is permanent.</p>
 
   {{ macros.flash_messages() }}
 
@@ -96,7 +92,7 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No announcements</div>
-    <div>Nothing matches these filters. Use “New announcement” to write one.</div>
+    <div></div>
   </div>
   {% endif %}
 </div>

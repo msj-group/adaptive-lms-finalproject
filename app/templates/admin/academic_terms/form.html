@@ -14,12 +14,12 @@
       {{ form.name(class_="field__input") }}
       {% for error in form.name.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       {{ form.start_date.label(class_="field__label") }}
       {{ form.start_date(class_="field__input") }}
       {% for error in form.start_date.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       {{ form.end_date.label(class_="field__label") }}
       {{ form.end_date(class_="field__input") }}
       {% for error in form.end_date.errors %}<span class="field__error">{{ error }}</span>{% endfor %}

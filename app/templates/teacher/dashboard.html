@@ -4,7 +4,7 @@
 {% import "_product_ui.html" as product %}
 {% block title %}Teacher Dashboard{% endblock %}
 {% block portal_content %}
-{% call product.workspace_intro(now.strftime('%A · %d %B %Y'), 'Welcome, ' ~ current_user.full_name ~ '.', 'Your teaching today', 'graduation') %}<a class="btn btn--primary" href="{{ url_for('workspace.teacher_groups') }}">My groups {{ ui.icon('arrow',17) }}</a><a class="btn btn--secondary" href="{{ url_for('workspace.review_queue') }}">Review queue</a>{% endcall %}
+{% call product.workspace_heading('Teacher Dashboard', now.strftime('%A · %d %B %Y')) %}<a class="btn btn--primary" href="{{ url_for('workspace.teacher_groups') }}">My groups {{ ui.icon('arrow',17) }}</a><a class="btn btn--secondary" href="{{ url_for('workspace.review_queue') }}">Review queue</a>{% endcall %}
 <div class="figma-dashboard-grid today-dashboard">
 {{ dash.class_card(next_class, now, tz_name, 'teacher') }}
 <section class="dash-section yc-section"><div class="today-section-heading"><h2>Work to review</h2><a href="{{ url_for('workspace.review_queue') }}">View review queue</a></div>

@@ -25,7 +25,7 @@
   </aside>
   <div class="st-body figma-body" data-workspace-body>
     <header class="st-header">
-      <div class="st-header-context"><span class="st-mobile-brand"><img src="{{ url_for('static', filename='images/figma_logo.png') }}" alt="Youth Centre" width="48" height="48"></span><span class="st-desktop-context">{{ role|capitalize }} portal <i>/</i> {{ portal_blocks.title()|striptags }}</span></div>
+      <div class="st-header-context"><span class="st-mobile-brand"><img src="{{ url_for('static', filename='images/figma_logo.png') }}" alt="Youth Centre" width="48" height="48"></span><span class="st-desktop-context">{{ role|capitalize }} portal{% if request.blueprint == 'messages' %} <i>/</i> {{ portal_blocks.title()|striptags }}{% endif %}</span></div>
       <div class="st-header-actions">
         <a class="st-icon-button" href="{{ url_for('workspace.search') }}" data-workspace-search-open data-research-id="nav_search" aria-label="Search your workspace" aria-haspopup="dialog" aria-controls="workspace-search-dialog">{{ ui.icon('search') }}</a>
         {% if notif %}{% include 'notifications/_bell.html' %}{% endif %}
@@ -33,14 +33,15 @@
       </div>
     </header>
     <div class="st-content figma-page {{ portal_blocks.workspace_content_class() }}" id="workspace-content" tabindex="-1">
+      {% set page_content %}{% if role in ['student','teacher'] %}{{ portal_blocks.portal_content() }}{% elif role == 'administrator' %}{{ portal_blocks.admin_content() }}{% else %}{{ portal_blocks.research_content() }}{% endif %}{% endset %}
       {% if request.endpoint not in ['student.dashboard','teacher.dashboard','admin.dashboard','research.dashboard'] %}
-      <header class="st-page-heading"><p class="st-eyebrow">{{ {'student':'YOUR LEARNING SPACE','teacher':'YOUR TEACHING SPACE','administrator':'YOUR CENTRE, CONNECTED','researcher':'RESEARCH WORKSPACE'}[role] }}</p>{{ portal_blocks.workspace_page_label() }}</header>
+      {% if request.blueprint == 'messages' %}<header class="st-page-heading"><p class="st-eyebrow">{{ {'student':'YOUR LEARNING SPACE','teacher':'YOUR TEACHING SPACE','administrator':'YOUR CENTRE, CONNECTED','researcher':'RESEARCH WORKSPACE'}[role] }}</p>{{ portal_blocks.workspace_page_label() }}</header>{% elif 'data-workspace-page-heading' not in page_content %}<header class="st-page-heading">{{ portal_blocks.workspace_page_label() }}</header>{% endif %}
       {% endif %}
-      {% if role in ['student','teacher'] %}{{ portal_blocks.workspace_context() }}{{ portal_blocks.portal_content() }}
-      {% elif role == 'administrator' %}{% include '_workspace_context.html' %}{{ portal_blocks.admin_content() }}
-      {% else %}{% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="alert alert--{{ category }}" role="status">{{ message }}</div>{% endfor %}{% endwith %}{{ portal_blocks.research_content() }}{% endif %}
+      {% if role in ['student','teacher'] %}{{ portal_blocks.workspace_context() }}{% elif role == 'administrator' %}{% include '_workspace_context.html' %}{% else %}{% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="alert alert--{{ category }}" role="status">{{ message }}</div>{% endfor %}{% endwith %}{% endif %}
+      {{ page_content }}
+      {% if request.blueprint != 'messages' %}{% include '_workspace_navigation.html' %}{% endif %}
     </div>
-    {% if request.blueprint != 'messages' %}<footer class="st-footer"><span>Youth Centre · {{ role|capitalize }} portal</span><span>{{ 'Your learning, in your own time.' if role == 'student' else ('Pseudonymous data · ' ~ tz_name|default('Africa/Tripoli') if role == 'researcher' else 'A space to inspire.') }}</span></footer>{% endif %}
+    {% if request.blueprint != 'messages' %}<footer class="st-footer"><span>Youth Centre · {{ role|capitalize }} portal</span>{% if role == 'researcher' %}<span>Pseudonymous data · {{ tz_name|default('Africa/Tripoli') }}</span>{% endif %}</footer>{% endif %}
   </div>
 </div>
 {% include 'layouts/_mobile_navigation.html' %}

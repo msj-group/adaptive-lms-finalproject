@@ -20,10 +20,7 @@
       `ck_announcements_scope_target` refuses the same shapes in the database as
       the final defense. -#}
   <h1 data-workspace-page-heading style="margin-top: 0">{{ "Edit announcement" if announcement else "New announcement" }}</h1>
-  <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
-    Write the notice, choose who it is addressed to, and save it as a draft. Publishing is a
-    separate step.
-  </p>
+
 
   {{ macros.flash_messages() }}
 
@@ -42,10 +39,7 @@
       {% for error in form.scope.errors %}
       <div class="field__error">{{ error }}</div>
       {% endfor %}
-      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
-        Pick the scope first, then fill in only the matching selection below. A centre
-        announcement names neither a course nor a group.
-      </div>
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">Select the matching course or group. Centre notices need neither.</div>
     </div>
 
     <div class="field" style="margin-top: var(--space-4)">
@@ -77,21 +71,16 @@
       {% for error in form.title.errors %}
       <div class="field__error">{{ error }}</div>
       {% endfor %}
-      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
-        One short line, at most {{ title_max }} characters.
-      </div>
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">Up to {{ title_max }} characters.</div>
     </div>
 
     <div class="field" style="margin-top: var(--space-4)">
       <label class="field__label" for="{{ form.body.id }}">{{ form.body.label.text }}</label>
-      {{ form.body(class="field__input", rows=12, maxlength=body_max) }}
+      {{ form.body(class="field__input", rows=6, maxlength=body_max) }}
       {% for error in form.body.errors %}
       <div class="field__error">{{ error }}</div>
       {% endfor %}
-      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
-        Plain text, at most {{ body_max }} characters. Line breaks are kept. There is no
-        formatting and no attachment.
-      </div>
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">Plain text, up to {{ body_max }} characters. Line breaks preserved; no attachments.</div>
     </div>
 
     <div class="ds-row yc-actions" style="margin-top: var(--space-5)">

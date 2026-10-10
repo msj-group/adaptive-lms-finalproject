@@ -32,7 +32,7 @@
   </div>
   <div class="field">
     <label class="field__label" for="topic-body">Topic text</label>
-    <textarea class="field__input" id="topic-body" name="body" rows="10" maxlength="{{ body_max }}">{{ body }}</textarea>
+    <textarea class="field__input" id="topic-body" name="body" rows="6" maxlength="{{ body_max }}">{{ body }}</textarea>
     {% if errors.body %}<div class="field__error">{{ errors.body }}</div>{% endif %}
     <p class="ds-section__desc" style="margin: var(--space-1) 0 0">Plain text, up to {{ body_max }} characters.</p>
   </div>

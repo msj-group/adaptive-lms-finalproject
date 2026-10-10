@@ -12,7 +12,7 @@
 {% endmacro %}
 
 <section class="research-analytics" aria-labelledby="analytics-title">
-  <div class="research-section-heading"><div><span class="figma-eyebrow">OBSERVED DATA. CLEAR CONTEXT.</span><h2 id="analytics-title">Collection evidence</h2><p>Stored observations, delivery counters and optional self-reports. No predictions or causal conclusions.</p></div><a class="btn btn--secondary" href="{{ url_for('research.sessions') }}">Inspect sessions</a></div>
+  <div class="research-section-heading"><div><h2 id="analytics-title">Collection evidence</h2><p>Stored observations, delivery counters and optional self-reports. No predictions or causal conclusions.</p></div><a class="btn btn--secondary" href="{{ url_for('research.sessions') }}">Inspect sessions</a></div>
   <form class="research-filter-band yc-filter-form" method="get" action="{{ url_for('research.dashboard') }}">
     <div class="field"><label for="analytics-from">From (UTC)</label><input class="field__input" type="date" id="analytics-from" name="from" value="{{ analytics_filters.from }}" required></div>
     <div class="field"><label for="analytics-to">Through (UTC)</label><input class="field__input" type="date" id="analytics-to" name="to" value="{{ analytics_filters.to }}" required></div>

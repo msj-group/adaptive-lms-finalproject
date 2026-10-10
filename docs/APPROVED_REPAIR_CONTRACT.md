@@ -7,6 +7,29 @@ has already been implemented or verified.
 
 ## Authority and current checkpoint
 
+- Latest release authorization, 2026-10-10: the owner approved final four-portal
+  removal of nonessential platform-use explanations and redundant upper context,
+  precise blue-to-white Dark logo rendering, bounded actual-app acceptance,
+  commits, safe branch integration, official GitHub push and deployment to the
+  existing Railway web service. Preserve the preceding density/A1 work, protected
+  Login/Messages, MySQL/data/volumes/secrets and all domain/research contracts.
+  Use only the owned disposable local MySQL dataset for write verification.
+  No production schema/data mutation, new paid resources, Study, Version B or
+  scientific Baseline Freeze. This supersedes earlier Git/deployment exclusions
+  for this presentation release. Evidence and honest limits are recorded in
+  [FINAL_UX_RELEASE.md](FINAL_UX_RELEASE.md).
+
+- Latest presentation authorization, 2026-10-10: the owner approved global
+  removal of nonessential explanatory prose and introductory structures, and
+  responsive density corrections across all four roles and shared components.
+  Implement in the existing main checkout using ST2 glass and D-MOTION. Protect
+  Login and the Messages composition/content. Preserve authored content,
+  required disclosures, explicit operations, stable research IDs and all domain
+  contracts. Earlier A/B/C behavior proposals are not included. Evidence and
+  runtime/accessibility limits are recorded in
+  [UX_DENSITY_IMPLEMENTATION.md](UX_DENSITY_IMPLEMENTATION.md). No new Baseline
+  Freeze, Study activation, Git mutation, database work or Railway deployment.
+
 - Latest redesign authorization, 2026-10-07: P01-P06 and the Design Proposal /
   Architecture Review are approved. Begin W0, then W1, and follow dependency
   gates. The canonical visual/wave target is

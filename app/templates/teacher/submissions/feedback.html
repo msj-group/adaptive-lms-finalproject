@@ -19,7 +19,7 @@
     delete or resubmit control here: none exists server-side either. -#}
 
 <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
-  {{ submission.student_name }} &middot; {{ assignment.title }} &middot; {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
+  {{ assignment.title }} · {{ group.name }} · {{ group.academic_term.name }}
 </p>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -70,7 +70,7 @@
   {% else %}
   <div class="empty-state" style="margin-bottom: var(--space-4)">
     <div class="empty-state__title">No feedback yet</div>
-    <div>No teacher has written feedback on this submission.</div>
+
   </div>
   {% endif %}
 
@@ -94,10 +94,8 @@
 
     <div class="field" style="max-width:none">
       {{ form.feedback_text.label(class_="field__label") }}
-      {{ form.feedback_text(class_="field__input", rows="12") }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Plain text only. Line breaks are preserved. Up to {{ form.FEEDBACK_MAX }} characters.
-      </span>
+      {{ form.feedback_text(class_="field__input", rows="6") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">Plain text; line breaks preserved. Up to {{ form.FEEDBACK_MAX }} characters.</span>
       {% for error in form.feedback_text.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 

@@ -28,26 +28,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card yc-panel" style="margin-bottom: var(--space-6)">
-  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
-    <dd style="margin:0">{{ group.name }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
-    <dd style="margin:0">{{ group.course.title }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
-    <dd style="margin:0">{{ group.course.level.name }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
-    <dd style="margin:0">{{ group.academic_term.name }} ({{ group.academic_term.start_date.isoformat() }} – {{ group.academic_term.end_date.isoformat() }})</dd>
-</div>
-  </dl>
-</div>
+<small class="workspace-meta" dir="auto">{{ group.academic_term.name }}</small>
 
 {% if not operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
@@ -73,7 +54,7 @@
 </div>
 
 <div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
+
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_units', group_public_id=group.public_id) }}">Manage Units</a>
   {% if operational %}
   <a class="btn btn--primary" href="{{ url_for('teacher.assignment_create', group_public_id=group.public_id) }}">Add Assignment</a>
@@ -178,11 +159,6 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No assignments yet</div>
-    <div>
-      {% if operational %}Add the first assignment for this group. New assignments begin as drafts and stay invisible to students
-      until you publish them and their opening time passes.
-      {% else %}This group has no assignments.{% endif %}
-    </div>
   </div>
   {% endif %}
 </section>

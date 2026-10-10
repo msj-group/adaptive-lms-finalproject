@@ -1,6 +1,24 @@
 # Repair implementation plan
 
-> Current authority: final owner approval, 2026-10-08. Execute W0 → W1 → W2 →
+> Current release authority: final owner directive, 2026-10-10. Finish platform
+> usage/context cleanup and exact Dark-logo recoloring, preserve prior density/A1
+> changes, verify the actual four-role application using the owned local MySQL
+> dataset, commit, safely fast-forward the existing release branch, push and
+> deploy the verified revision to the existing Railway service. Preserve all
+> production data/services/volumes/secrets. No Study, Version B, research policy
+> change, new test package or new Baseline Freeze. Release evidence and limitations:
+> [FINAL_UX_RELEASE.md](FINAL_UX_RELEASE.md).
+
+> Current authority: final owner decision, 2026-10-10. Implement platform-wide
+> content decluttering, removal of redundant introductory components and
+> responsive density in the existing main project. Preserve Login, Messages,
+> domain/security/research contracts and explicit Apply/Search/Save/Finalize.
+> Implementation and bounded source-render evidence are recorded in
+> [UX_DENSITY_IMPLEMENTATION.md](UX_DENSITY_IMPLEMENTATION.md). Authenticated
+> runtime and expanded accessibility acceptance remain pending; no new freeze,
+> Study activation, push or deployment is authorized.
+
+> Earlier delivery authority: final owner approval, 2026-10-08. Execute W0 → W1 → W2 →
 > W2-D02 → W3 → W4 → W5 → W6 → W7 → W8 → W9 under
 > [VERSION_A_DELIVERY.md](VERSION_A_DELIVERY.md). The earlier W1 appearance and
 > per-wave preview stops below are superseded. Preserve domain/research policy,

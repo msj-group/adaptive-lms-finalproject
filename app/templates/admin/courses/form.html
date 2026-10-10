@@ -32,27 +32,25 @@
       {% for error in form.level_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
     {% endif %}
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       {{ form.title.label(class_="field__label") }}
       {{ form.title(class_="field__input") }}
       {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       {{ form.code.label(class_="field__label") }}
       {{ form.code(class_="field__input") }}
       {% for error in form.code.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       {{ form.description.label(class_="field__label") }}
       {{ form.description(class_="field__input", rows="4") }}
       {% for error in form.description.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
     {% if course %}
-    <p class="ds-section__desc" style="margin-top: var(--space-4)">
-      Display order is managed from the Courses list using the up/down actions.
-    </p>
+
     {% endif %}
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       {{ form.price.label(class_="field__label") }}
       {{ form.price(class_="field__input", inputmode="decimal") }}
       {% for error in form.price.errors %}<span class="field__error">{{ error }}</span>{% endfor %}

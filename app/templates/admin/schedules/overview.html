@@ -6,11 +6,7 @@
   <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
     <h1 data-workspace-page-heading style="margin:0">Schedules</h1>
   </div>
-  <p class="ds-section__desc">
-    Center-wide view of every recurring weekly group schedule. Times are local wall-clock values
-    in the center timezone (<strong>{{ app_timezone }}</strong>). Slots are created and changed from
-    each group's own schedule page.
-  </p>
+  <p class="ds-section__desc">Recurring schedules · {{ app_timezone }}.</p>
 
   {{ macros.flash_messages() }}
 
@@ -120,7 +116,7 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No schedules yet</div>
-    <div>Schedule slots will appear here once added from a group's schedule page.</div>
+    <div></div>
   </div>
   {% endif %}
 </div>

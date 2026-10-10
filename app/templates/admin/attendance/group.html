@@ -6,11 +6,7 @@
 <div class="ds-page yc-surface">
   {#- Phase 4 / M07. READ ONLY, scoped in SQL to this group. -#}
   <h1 data-workspace-page-heading style="margin-top:0">{{ group.name }} — Attendance</h1>
-  <p class="ds-section__desc">
-    {{ group.course_title }} &middot; {{ group.level_name }} &middot; {{ group.term_name }}.
-    Class dates and times are local values in the center timezone
-    (<strong>{{ tz_name }}</strong>). This page is read-only.
-  </p>
+  <small class="workspace-meta" dir="auto">{{ group.term_name }} · {{ tz_name }} · Read-only</small>
 
   {{ macros.flash_messages() }}
 

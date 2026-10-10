@@ -7,7 +7,7 @@
 <div class="ds-page yc-surface" style="max-width: 640px; ">
   <h1 data-workspace-page-heading>{{ 'Edit Lesson' if lesson else 'New Lesson' }}</h1>
   <p class="ds-section__desc">
-    {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }} — Unit: {{ unit.title }}
+    {{ group.name }} · {{ group.academic_term.name }} · {{ unit.title }}
   </p>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -37,21 +37,16 @@
       {{ form.title(class_="field__input") }}
       {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.description.label(class_="field__label") }}
-      {{ form.description(class_="field__input", rows="8") }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Plain text only. Line breaks are preserved when students read the lesson. Up to 5000 characters.
-      </span>
+      {{ form.description(class_="field__input", rows="6") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">Plain text; line breaks preserved. Up to 5000 characters.</span>
       {% for error in form.description.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.search_keywords.label(class_="field__label") }}
       {{ form.search_keywords(class_="field__input", rows="2") }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Optional. Extra words students can search this lesson by — separate them with commas or new lines.
-        Up to 20 keywords, 50 characters each.
-      </span>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">Optional search keywords: commas or line breaks. Up to 20, each at most 50 characters.</span>
       {% for error in form.search_keywords.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 

@@ -17,25 +17,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card yc-panel" style="margin-bottom: var(--space-6)">
-  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
-    <dd style="margin:0">{{ ctx.group_name }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
-    <dd style="margin:0">{{ ctx.course_title }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
-    <dd style="margin:0">{{ ctx.level_name }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
-    <dd style="margin:0">{{ ctx.term_name }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Unit</dt>
-    <dd style="margin:0">{{ ctx.unit_title }}{% if not ctx.unit_active %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Lesson</dt>
-    <dd style="margin:0">
-      {{ ctx.lesson_title }}
-      {% if ctx.lesson_published %}<span class="badge badge--success">Published</span>{% else %}<span class="badge badge--neutral">Draft</span>{% endif %}
-    </dd>
-  </dl>
-</div>
+<small class="workspace-meta" dir="auto">{{ ctx.group_name }} · {{ ctx.term_name }} · {{ ctx.unit_title }}</small>
 
 {% if not operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
@@ -124,7 +106,7 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No materials yet</div>
-    <div>{% if can_manage %}Add rich text, an external link, or a file to start building this lesson.{% else %}This lesson has no materials.{% endif %}</div>
+
   </div>
   {% endif %}
 </section>

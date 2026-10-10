@@ -19,9 +19,7 @@
     There is deliberately no delete control: a category's weight is part of how
     already-released grades were calculated, and no delete endpoint exists. -#}
 <h1 data-workspace-page-heading style="margin-top: 0">{{ "Edit grade category" if category else "New grade category" }}</h1>
-<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
-  {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }}
-</p>
+
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for message_category, message in messages %}
@@ -29,14 +27,9 @@
   {% endfor %}
 {% endwith %}
 
-<div class="alert alert--info" style="margin-bottom: var(--space-5)">
-  A category's weight is how much of the group's final grade it is worth. The group's
-  categories may never add up to more than 100%, and an overall grade is only calculated once
-  they add up to exactly 100%. <strong>{{ remaining_display }}%</strong> is still unallocated.
-  Once any item in a category has been released, its name and weight are locked permanently —
-  students will already have been shown results calculated with them.
-</div>
+<div class="alert alert--info" style="margin-bottom: var(--space-5)">Total weight cannot exceed 100%; an overall grade requires exactly 100%. {{ remaining_display }}% remains. A released item permanently locks its category name and weight.</div>
 
+<p class="workspace-meta" dir="auto">{{ group.name }} · {{ group.academic_term.name }}</p>
 <form method="post" class="card yc-panel yc-form" novalidate>
   {{ form.hidden_tag() }}
   <input type="hidden" name="grade_state" value="{{ grade_state }}">
@@ -47,10 +40,7 @@
     {% for error in form.title.errors %}
     <div class="field__error">{{ error }}</div>
     {% endfor %}
-    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
-      For example Homework, Quizzes, Speaking, or Final exam. Names must be unique inside this
-      group.
-    </div>
+    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">Unique name within this group.</div>
   </div>
 
   <div class="field" style="margin-top: var(--space-4)">
@@ -59,10 +49,7 @@
     {% for error in form.weight.errors %}
     <div class="field__error">{{ error }}</div>
     {% endfor %}
-    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
-      A percentage with at most two decimal places, for example 25 or 12.5. Weights are stored
-      as exact whole hundredths of a percent, never as a rounded decimal.
-    </div>
+    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">Percentage, up to two decimal places.</div>
   </div>
 
   <div class="ds-row yc-actions" style="margin-top: var(--space-5)">

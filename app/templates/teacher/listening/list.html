@@ -28,35 +28,9 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card yc-panel" style="margin-bottom: var(--space-6)">
-  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
-    <dd style="margin:0">{{ group.name }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
-    <dd style="margin:0">{{ group.course.title }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
-    <dd style="margin:0">{{ group.course.level.name }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
-    <dd style="margin:0">{{ group.academic_term.name }}</dd>
-</div>
-  </dl>
-</div>
+<small class="workspace-meta" dir="auto">{{ group.academic_term.name }}</small>
 
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">
-  A listening activity is one audio recording with multiple-choice questions about it. Students
-  can play, pause, replay and slow down or speed up the recording as often as they like — there
-  is no listening limit. Attempts are graded automatically, one point per question, with no
-  partial credit and no pass or fail, and students never see which options are correct.
-  A new activity starts as a <strong>draft</strong> that no student can see. All times below are
-  in the center timezone (<strong>{{ tz_name }}</strong>).
-</div>
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">Unlimited replays. Automatic exact-set scoring; no partial credit or pass/fail. Correct options stay hidden. Drafts are private. Times: {{ tz_name }}.</div>
 
 {% if not operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
@@ -67,7 +41,7 @@
 {% endif %}
 
 <div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
+
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_quizzes', group_public_id=group.public_id) }}">Manage Quizzes</a>
   {% if operational %}
   <a class="btn btn--primary" href="{{ url_for('teacher.listening_create', group_public_id=group.public_id) }}">Add Listening Activity</a>
@@ -142,11 +116,6 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No listening activities yet</div>
-    <div>
-      {% if operational %}Upload an MP3 or WAV recording and write questions about it. Students
-      cannot see the activity until you publish it and its opening time arrives.
-      {% else %}This group has no listening activities.{% endif %}
-    </div>
   </div>
   {% endif %}
 </section>

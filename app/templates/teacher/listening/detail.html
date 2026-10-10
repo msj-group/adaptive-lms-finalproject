@@ -33,9 +33,7 @@
     {% endif %}
   </span>
 </div>
-<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
-  Listening &middot; {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
-</p>
+
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}
@@ -213,7 +211,7 @@
     {% if activity.vocabulary_notes %}
     <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.vocabulary_notes }}</div>
     {% else %}
-    <p class="ds-section__desc" style="margin:0">No vocabulary notes written. Students see this section only when you write something here.</p>
+
     {% endif %}
   </div>
 </section>
@@ -296,12 +294,6 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No questions yet</div>
-    <div>
-      {% if operational and not frozen_message %}Add the first multiple-choice question about the
-      recording. You choose whether it has one correct answer or several, and you write between
-      {{ min_options }} and {{ max_options }} answer options for it.
-      {% else %}This listening activity has no questions.{% endif %}
-    </div>
   </div>
   {% endif %}
 </section>

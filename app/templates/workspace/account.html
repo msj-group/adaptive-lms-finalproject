@@ -12,7 +12,7 @@
 {% if current_user.role != 'researcher' %}
 {% for category, message in get_flashed_messages(with_categories=true) %}<div class="alert alert--{{ category }}" role="status">{{ message }}</div>{% endfor %}
 {% endif %}
-<p class="account-intro">Make this space yours and keep your account secure.</p>
+
 <div class="account-settings-grid">
   <section class="{{ 'st-panel' if current_user.role == 'student' else 'card' }} account-section" aria-labelledby="photo-heading">
     <h2 id="photo-heading">Profile photo</h2>

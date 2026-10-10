@@ -5,10 +5,11 @@
 {% block research_content %}
 {#- Real counts of stored rows only, with explicit empty states. No
     prediction, no accuracy figure, no chart of measured emotion. -#}
-{{ product.workspace_intro('RESEARCH WORKSPACE', 'Research dashboard', 'Version A natural-use collection. Students appear only as pseudonymous subject codes: no names, email addresses or account identifiers appear in this workspace. Nothing here detects, predicts or measures frustration; ratings are optional self-reports.', 'chart') }}
+{{ product.workspace_heading('Research dashboard') }}
 
 <div class="dash-section yc-section">
   <h2>Collection status</h2>
+  <p class="workspace-meta">Pseudonymous data only. No frustration detection or prediction; ratings are optional self-reports.</p>
   {% if active %}
   <div class="card yc-panel"><div class="card__body">
     <p style="margin:0 0 var(--space-2)">
@@ -28,7 +29,7 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No active configuration</div>
-    <div>Nothing is being collected. Create and activate a configuration, then start collecting.</div>
+    <div>Nothing is being collected.</div>
   </div>
   {% endif %}
 </div>
@@ -36,7 +37,7 @@
 {% include "research/_analytics.html" %}
 
 <div class="dash-section yc-section">
-  <details><summary><strong>Operational checks</strong></summary><h2>Operational checks</h2><p class="workspace-meta">These checks describe deployment and collection settings. They do not establish methodological validity, data quality or scientific accuracy.</p>
+  <details><summary><strong>Operational checks</strong></summary><p class="workspace-meta">Deployment checks do not establish scientific validity or data quality.</p>
   <table class="dash-table" style="width:100%">
     <tbody>
     {% for item in readiness %}
@@ -127,7 +128,7 @@
     <div class="stat-card yc-stat" data-device="{{ size }}"><div class="stat-card__value">{{ count }}</div><div class="stat-card__label">Page views, {{ size }} screens</div></div>
     {% endfor %}
   </div>
-  <table class="dash-table" style="width:100%; margin-top: var(--space-3)">
+  <table class="dash-table research-summary-table" style="width:100%; margin-top: var(--space-3)">
     <thead><tr><th scope="col">Workflow area</th><th scope="col">Page views</th></tr></thead>
     <tbody>
     {% for area in coverage_areas %}<tr data-area="{{ area }}"><td>{{ area }}</td><td>{{ areas[area] }}</td></tr>{% endfor %}
@@ -138,7 +139,7 @@
 <div class="dash-section yc-section">
   <h2>Event types</h2>
   {% if event_types %}
-  <table class="dash-table" style="width:100%">
+  <table class="dash-table research-summary-table" style="width:100%">
     <thead><tr><th scope="col">Source</th><th scope="col">Event type</th><th scope="col">Stored</th></tr></thead>
     <tbody>
     {% for source, event_type, count in event_types %}

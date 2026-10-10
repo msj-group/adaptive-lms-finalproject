@@ -11,14 +11,14 @@
 {% block product_styles %}
   {% if not template_student and not template_messages %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/community.css') }}">{% endif %}
   {% block feature_styles %}{% endblock %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/foundation.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/shell.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/foundation.css', v='st2-density-20261010') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/shell.css', v='st2-density-20261010') }}">
   {% if template_messages %}<link rel="stylesheet" href="{{ url_for('static', filename='css/messages.css') }}">
-  {% elif template_student %}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/features.css', v='st2') }}">
-  {% else %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/operations.css') }}">{% endif %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/mobile-navigation.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/notifications.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/search.css') }}">
+  {% elif template_student %}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/features.css', v='st2-density-20261010') }}">
+  {% else %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/operations.css', v='st2-density-20261010') }}">{% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/mobile-navigation.css', v='st2-density-20261010') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/notifications.css', v='st2-density-20261010') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/search.css', v='st2-density-20261010') }}">
 {% endblock %}
 {% block content %}
 {% set notif = notification_header() %}

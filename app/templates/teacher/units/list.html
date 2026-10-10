@@ -16,16 +16,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card yc-panel" style="margin-bottom: var(--space-6)">
-  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
-    <dd style="margin:0">{{ group.course.title }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
-    <dd style="margin:0">{{ group.course.level.name }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
-    <dd style="margin:0">{{ group.academic_term.name }} ({{ group.academic_term.start_date.isoformat() }} – {{ group.academic_term.end_date.isoformat() }})</dd>
-  </dl>
-</div>
+<small class="workspace-meta" dir="auto">{{ group.academic_term.name }}</small>
 
 {% if not operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
@@ -88,7 +79,6 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No active units yet</div>
-    <div>{% if operational %}Add the first unit to start building this group's teaching order.{% else %}This group has no active units.{% endif %}</div>
   </div>
   {% endif %}
 </section>

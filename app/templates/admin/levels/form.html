@@ -14,15 +14,13 @@
       {{ form.name(class_="field__input") }}
       {% for error in form.name.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       {{ form.code.label(class_="field__label") }}
       {{ form.code(class_="field__input") }}
       {% for error in form.code.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
     {% if level %}
-    <p class="ds-section__desc" style="margin-top: var(--space-4)">
-      Display order is managed from the Levels list using the up/down actions.
-    </p>
+
     {% endif %}
     <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}

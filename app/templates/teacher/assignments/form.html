@@ -7,14 +7,11 @@
 {% endblock %}
 {% block portal_content %}
 <div class="activity-surface">
-<div class="activity-author-layout">
-<div class="activity-author-main">
+
 
 <div class="ds-page yc-surface" style="max-width: 680px; ">
 
-  <p class="ds-section__desc">
-    {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
-  </p>
+
 
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
@@ -28,15 +25,12 @@
     assignments page to withdraw it.
   </div>
   {% elif assignment %}
-  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
-    This assignment is a draft. Saving does not publish it — use Publish on the assignments page when it is ready for students.
-  </div>
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">Draft: hidden from students. Save does not publish.</div>
   {% else %}
-  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
-    New assignments are created as drafts. Students see nothing until you publish it <em>and</em> its opening time has passed.
-  </div>
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">New draft: hidden until publication and opening time.</div>
   {% endif %}
 
+  <p class="workspace-meta" dir="auto">{{ group.name }} · {{ group.academic_term.name }}</p>
   <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     {% if assignment %}
@@ -49,12 +43,10 @@
       {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.instructions.label(class_="field__label") }}
-      {{ form.instructions(class_="field__input", rows="10") }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Plain text only. Line breaks are preserved when students read the assignment. Up to {{ form.INSTRUCTIONS_MAX }} characters.
-      </span>
+      {{ form.instructions(class_="field__input", rows="6") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">Plain text; line breaks preserved. Up to {{ form.INSTRUCTIONS_MAX }} characters.</span>
       {% for error in form.instructions.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
@@ -67,7 +59,7 @@
     {#- step="1" on both datetime-local controls: the stored columns keep
         seconds, and the form renders them, so the control must accept a
         second-bearing value rather than round it away. -#}
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.opens_at.label(class_="field__label") }}
       {{ form.opens_at(class_="field__input", step="1") }}
       <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
@@ -76,12 +68,10 @@
       {% for error in form.opens_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.due_at.label(class_="field__label") }}
       {{ form.due_at(class_="field__input", step="1") }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Center timezone (<strong>{{ tz_name }}</strong>). Must be after the opening time. The assignment stays visible to students after the deadline.
-      </span>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">{{ tz_name }}. After opening time; the task stays readable after the deadline.</span>
       {% for error in form.due_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
@@ -94,6 +84,5 @@
   </form>
 </div>
 
-</div>{{ activity_ui.guide('assignment','author') }}</div>
 </div>
 {% endblock %}

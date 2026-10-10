@@ -6,9 +6,7 @@
 {% block portal_content %}
 <div class="ds-page yc-surface" style="max-width: 560px; ">
   <h1 data-workspace-page-heading>{{ 'Edit Unit' if unit else 'New Unit' }}</h1>
-  <p class="ds-section__desc">
-    {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
-  </p>
+
 
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
@@ -22,7 +20,8 @@
   </div>
   {% endif %}
 
-  <form method="post" novalidate class="yc-form">
+  <p class="workspace-meta" dir="auto">{{ group.name }} · {{ group.academic_term.name }}</p>
+<form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     {% if unit %}
     <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
@@ -33,18 +32,15 @@
       {{ form.title(class_="field__input") }}
       {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.description.label(class_="field__label") }}
       {{ form.description(class_="field__input", rows="5") }}
       {% for error in form.description.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.search_keywords.label(class_="field__label") }}
       {{ form.search_keywords(class_="field__input", rows="2") }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Optional. Extra words students can search this unit by — separate them with commas or new lines.
-        Up to 20 keywords, 50 characters each.
-      </span>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">Optional search keywords: commas or line breaks. Up to 20, each at most 50 characters.</span>
       {% for error in form.search_keywords.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 

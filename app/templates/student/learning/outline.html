@@ -3,18 +3,14 @@
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
 <h1 data-workspace-page-heading>{{ group_name }} — Lessons</h1>
-<p class="ds-section__desc">
-  {{ course_title }} &middot; {{ level_name }} &middot; {{ term_name }}
-</p>
+<p class="workspace-meta" dir="auto">{{ term_name }}</p>
 
-<div class="ds-row" style="margin-bottom: var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('student.dashboard') }}">Back to Dashboard</a>
-</div>
+
 
 {% if not units %}
 <div class="empty-state">
   <div class="empty-state__title">No lessons available yet</div>
-  <div>Your teacher has not published any lessons for this group yet. Check back later.</div>
+
 </div>
 {% else %}
 {% for unit in units %}
@@ -36,7 +32,7 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No lessons in this unit yet</div>
-    <div>This unit does not have any published lessons at the moment.</div>
+
   </div>
   {% endif %}
 </section>

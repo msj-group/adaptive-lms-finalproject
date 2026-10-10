@@ -11,12 +11,7 @@
   <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
     <h1 data-workspace-page-heading style="margin:0">Attendance</h1>
   </div>
-  <p class="ds-section__desc">
-    Center-wide review of recorded attendance, most recent class date first. Class dates and
-    times are local values in the center timezone (<strong>{{ tz_name }}</strong>), stored with
-    each session exactly as its schedule read when it was opened. This page is read-only:
-    attendance is recorded and finalized by the group's assigned teachers.
-  </p>
+  <p class="ds-section__desc">Read-only attendance · {{ tz_name }}. The original class details are retained.</p>
 
   {{ macros.flash_messages() }}
 
@@ -102,7 +97,7 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No attendance to review</div>
-    <div>Nothing matches these filters. Teachers record attendance from their own group pages.</div>
+    <div></div>
   </div>
   {% endif %}
 </div>

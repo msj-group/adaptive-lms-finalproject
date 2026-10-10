@@ -1,20 +1,12 @@
 {% import '_figma_ui.html' as ui %}
 {% set hub_endpoint = 'teacher.activities' if teacher else 'student.activities' %}
-<header class="activity-hub-heading">
-<div>
-<span class="activity-eyebrow">{{ _('TEACHING STUDIO' if teacher else 'YOUR PRACTICE SPACE') }}</span>
-<h2>{{ _('Good learning starts with good activities.' if teacher else 'Your practice, your pace.') }}</h2>
-<p>{{ _('Plan, publish and review across your assigned groups.' if teacher else 'Choose a task, follow your progress, and return to your course whenever you need.') }}</p>
-</div>
-<a class="btn btn--secondary" href="{{ url_for('workspace.teacher_groups' if teacher else 'workspace.student_courses') }}">{{ ui.icon('book',18) }} {{ _('My groups' if teacher else 'My courses') }}</a>
-</header>
+
 <nav class="activity-kind-browser" aria-label="Activity type">
 <a class="activity-kind-all" href="{{ url_for(hub_endpoint,state=selected_state,course=selected_course,group=selected_group) }}"{% if not selected_type %} aria-current="page"{% endif %}>{{ ui.icon('layers',24) }}<span>All activities</span>
 </a>
 {% for kind,label in types.items() %}<a class="activity-kind-tile activity-kind-tile--{{ kind }}" href="{{ url_for(hub_endpoint,type=kind,state=selected_state,course=selected_course,group=selected_group) }}"{% if selected_type == kind %} aria-current="page"{% endif %}{% if not teacher %} data-research-id="activity_filter"{% endif %}>
 <span>{{ activity_ui.symbol(kind,25) }}</span>
 <strong>{{ label }}</strong>
-<small>{{ _({'quiz':'Choose & challenge','listening':'Listen & discover','speaking':'Record & express','assignment':'Write & reflect'}[kind]) }}</small>
 </a>{% endfor %}</nav>
 <form method="get" action="{{ url_for(hub_endpoint) }}" class="activity-hub-filters">
 <input type="hidden" name="type" value="{{ selected_type }}">
@@ -64,7 +56,7 @@
 <a class="activity-card-action" href="{{ item.url }}">Open activity {{ ui.icon('arrow',17) }}</a>{% else %}<span class="activity-card-progress">{{ item.progress_label }}{% if item.result_available %}<small>Result available</small>{% endif %}</span>
 <a class="activity-card-action" href="{{ item.url }}" data-research-id="activity_open">{{ item.action_label }} {{ ui.icon('arrow',17) }}</a>{% endif %}</footer>
 </article>{% else %}<div class="activity-hub-empty">{{ ui.icon('layers',38) }}<h3>No activities in this view</h3>
-<p>{{ _('Choose another group or filter. Create an activity from its group workspace.' if teacher else 'Try another filter, or open your course to explore its lessons.') }}</p>
+
 <a class="btn btn--secondary" href="{{ url_for(hub_endpoint) }}">Reset filters</a>
 </div>{% endfor %}</div>
 <p class="activity-timezone">{{ tz_name }}</p>

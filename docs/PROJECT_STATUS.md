@@ -1,5 +1,53 @@
 # Repair status
 
+## Final presentation release candidate — 2026-10-10
+
+The owner now explicitly authorizes commit, safe integration, official GitHub
+push and deployment to the existing Railway web service after bounded real-app
+verification. The prior density implementation and eight A1 corrections remain.
+Shared upper hierarchy/context introductions and generic platform guidance are
+removed throughout four portals; necessary object identity and functional return
+destinations remain. The Dark logo changes only original visible blue pixels to
+white, preserving original Light bytes, other colors and alpha.
+
+Current actual-authentication, responsive, functional, accessibility and research
+evidence is recorded in [FINAL_UX_RELEASE.md](FINAL_UX_RELEASE.md). This is a
+release candidate entry, not an assertion that push/deployment has occurred.
+Historical A1 limitations remain explicitly PARTIAL. No Study, Version B,
+production database modification or new scientific Baseline Freeze is authorized.
+
+## A1 actual-application acceptance — 2026-10-10
+
+The owner authorized bounded QA and confirmed a unique disposable local MySQL
+target. Ordinary four-role Login and representative real Flask workflows were
+verified with fictional persisted data, CSRF enabled and TESTING disabled.
+Eight presentation files received targeted corrections; the prior density work
+is preserved. The 480-capture core responsive matrix and later affected-page,
+accessibility and protected-page comparisons are recorded in
+[A1_ACCEPTANCE.md](A1_ACCEPTANCE.md) and its external Arabic evidence gallery.
+
+Overall acceptance is **PARTIAL**: physical microphone, native 200%/400% browser
+zoom, real screen-reader/device checks, populated Messages and sensitive financial
+or final academic paths remain unverified. Development collection was rehearsed
+only on the owned disposable target, exported as operational review and paused.
+Study remains disabled. No commit/push/deploy or existing database change, new
+automated test package, Version B or Baseline Freeze is claimed.
+
+## Owner-authorized presentation cleanup — 2026-10-10
+
+The owner authorized platform-wide content removal, structural cleanup and
+responsive density implementation in the main checkout. Native templates, the
+existing component CSS owners and Arabic catalog are updated. Generic page
+introductions/tutorials and redundant context panels are removed; essential
+authored content, operational disclosures and explicit actions remain.
+
+Current evidence and limits are in
+[UX_DENSITY_IMPLEMENTATION.md](UX_DENSITY_IMPLEMENTATION.md). This changes source
+after the historical 2026-10-08 baseline; it does not declare another freeze.
+No authenticated runtime acceptance, database operation, Study activation,
+Git mutation, Railway deployment or production artifact refresh is claimed.
+Earlier A/B/C behavioral proposals remain separate.
+
 ## Active Version A delivery — 2026-10-08
 
 Final owner approval authorizes W0–W9 under Direction D + D-MOTION, protected

@@ -17,12 +17,7 @@
     <tr><th scope="row" style="text-align:left">Created ({{ tz_name }})</th><td>{{ workspace_local(export.created_at).strftime("%d %b %Y, %H:%M:%S") }}</td></tr>
   </tbody>
 </table>
-<p class="ds-section__desc" style="margin-top: var(--space-3)">
-  Every value in the archive was read in one database snapshot taken before the cutoff: it
-  contains only what had been saved by then, and nothing dated after it. The archive was built once, when this export was created. Every download serves exactly those
-  stored bytes; nothing is rebuilt from data that changed later. The archive is removed when the
-  oldest data in it reaches the deployment's retention. Every download is audited.
-</p>
+<p class="ds-section__desc" style="margin-top: var(--space-3)">One database snapshot: saved values through the cutoff only. Each download serves the original stored bytes and is audited. The archive expires when its oldest data reaches deployment retention.</p>
 <div class="ds-row yc-actions" style="gap: var(--space-3)">
   {% if available %}
   <a class="btn btn--primary" href="{{ url_for('research.export_download', export_public_id=export.public_id) }}">Download ZIP</a>

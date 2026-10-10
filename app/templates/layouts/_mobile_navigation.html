@@ -10,7 +10,7 @@
 {% else %}
 {% set shortcuts = [('Home','research.dashboard','dashboard',none,endpoint == 'research.dashboard'), ('Sessions','research.sessions','activity',none,active_nav|default('') == 'sessions'), ('Exports','research.exports','file',none,active_nav|default('') == 'exports'), ('Config','research.configurations','settings',none,active_nav|default('') == 'configurations')] %}
 {% endif %}
-<button class="workspace-more-backdrop" type="button" data-more-dismiss aria-label="Close navigation" hidden></button>
+<button class="workspace-more-backdrop" type="button" tabindex="-1" data-more-dismiss aria-label="Close navigation" hidden></button>
 <section class="workspace-more-panel" id="workspace-more-panel" role="dialog" aria-label="Additional destinations" tabindex="-1" data-more-panel hidden>
   <nav class="workspace-more-grid" aria-label="Additional destinations">
     <div class="workspace-more-destinations">{% with mobile_more=true %}{% include 'layouts/_product_navigation.html' %}{% endwith %}</div>

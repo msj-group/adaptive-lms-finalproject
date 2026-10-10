@@ -48,11 +48,11 @@
 {% elif search or selected_status %}
 <div class="empty-state">
   <div class="empty-state__title">No students match your filters</div>
-  <div>Try a different name or email, or <a href="{{ url_for('admin.students_list') }}">clear all filters</a>.</div>
+  <a href="{{ url_for('admin.students_list') }}">clear all filters</a>
 </div>
 {% else %}
 <div class="empty-state">
   <div class="empty-state__title">No students yet</div>
-  <div>Student accounts created by the center administration will appear here.</div>
+  <div></div>
 </div>
 {% endif %}

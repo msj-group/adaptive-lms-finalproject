@@ -7,7 +7,7 @@
    CSRF-protected POST that revalidates the destination and current access. #}
 <div class="notif-page">
   <header class="notif-page-heading">
-    <div class="notif-page-heading__copy"><span class="st-eyebrow">YOUR UPDATES</span><h1 id="notifications-title" data-workspace-page-heading>Notifications</h1><p>Updates from your learning community, all in one place.</p></div>
+    <div class="notif-page-heading__copy"><h1 id="notifications-title" data-workspace-page-heading>Notifications</h1></div>
     {% if unread_total %}<form method="post" action="{{ url_for('notifications.read_all') }}" data-research-form="notification_read_all">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="filter" value="{{ filter_name }}"><input type="hidden" name="page" value="{{ page }}"><input type="hidden" name="kind" value="{{ selected_kind }}">
       <button type="submit" class="btn notif-mark-all" data-research-id="notification_read_all">{{ ui.icon('check', 17) }} Mark all as read</button>
@@ -23,7 +23,7 @@
       <form class="notif-kind-filter" method="get" action="{{ url_for('notifications.inbox') }}"><input type="hidden" name="filter" value="{{ filter_name }}"><label for="notification-kind">Update type</label><select id="notification-kind" name="kind" class="field__input"><option value="">All types</option>{% for value, choice in kind_choices.items() %}<option value="{{ value }}"{% if value == selected_kind %} selected{% endif %}>{{ choice[0] }}</option>{% endfor %}</select><button class="btn" type="submit">Apply</button></form>
     </div>
     <div class="notif-list-heading"><h2>{{ 'Unread updates' if filter_name == 'unread' else 'Recent updates' }}</h2><p>{{ _('Showing %(count)s on this page.', count=notifications|length) }}</p></div>
-    {% if unread_total %}<p class="notif-scope-note">The unread count and “Mark all” include every type and page.</p>{% endif %}
+    {% if unread_total %}<p class="notif-scope-note">Unread count and Mark all cover every type and page.</p>{% endif %}
     {% if notifications %}
     <ul class="notif-list">
       {% set dates = namespace(previous=none) %}
@@ -36,8 +36,8 @@
     {% else %}
     <div class="notif-empty"><span class="notif-empty-icon" aria-hidden="true">{{ ui.icon('check' if filter_name == 'unread' and not selected_kind else 'bell', 28) }}</span>
       {% if selected_kind %}<h2>No matching updates</h2><p>There are no updates for this filter.</p><a href="{{ url_for('notifications.inbox', filter=filter_name) }}">Clear the type filter {{ ui.icon('arrow', 16) }}</a>
-      {% elif filter_name == 'unread' %}<h2>You're all caught up</h2><p>No unread notifications. Check back for new updates from your learning community.</p><a href="{{ url_for('notifications.inbox') }}">View all notifications {{ ui.icon('arrow', 16) }}</a>
-      {% else %}<h2>No notifications yet</h2><p>Updates about your groups, class times, and new learning content will appear here.</p>{% endif %}
+      {% elif filter_name == 'unread' %}<h2>You're all caught up</h2><p>No unread notifications.</p><a href="{{ url_for('notifications.inbox') }}">View all notifications {{ ui.icon('arrow', 16) }}</a>
+      {% else %}<h2>No notifications yet</h2>{% endif %}
     </div>
     {% endif %}
     {% if has_prev or has_next %}<nav class="notif-pagination" aria-label="Notification pages">{% if has_prev %}<a class="btn" href="{{ url_for('notifications.inbox', filter=filter_name, kind=selected_kind, page=page - 1) }}">Previous</a>{% endif %}<span class="notif-pagination__page">Page {{ page }}</span>{% if has_next %}<a class="btn" href="{{ url_for('notifications.inbox', filter=filter_name, kind=selected_kind, page=page + 1) }}">Next</a>{% endif %}</nav>{% endif %}

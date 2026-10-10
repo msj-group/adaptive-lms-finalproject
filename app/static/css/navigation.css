@@ -122,10 +122,6 @@
 }
 
 /* Context menus and section links retain native document navigation. */
-.workspace-context { padding: 0 0 24px; margin-bottom: 24px; border-bottom: 1px solid var(--nav-line); }
-.workspace-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; color: var(--ui-muted); font-size: 13px; }
-.workspace-breadcrumb a { color: var(--ui-link); text-decoration: none; font-weight: 600; }
-.workspace-context > p { color: var(--nav-muted); font-size: 13px; }
 .workspace-tabs, .figma-workspace .ds-nav { display: flex; flex-wrap: wrap; gap: 5px; width: fit-content; max-width: 100%; padding: 5px; border: 1px solid var(--nav-line); border-radius: 14px; background: var(--ui-soft); }
 .workspace-tabs a, .figma-workspace .ds-nav__item { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 15px; border: 1px solid transparent; border-radius: 10px; color: var(--ui-muted); background: transparent; font-size: 13px; font-weight: 600; text-decoration: none; }
 .workspace-tabs a:hover, .figma-workspace .ds-nav__item:hover { color: var(--ui-link); background: var(--ui-raised); }
@@ -133,7 +129,6 @@
 .workspace-tabs--secondary { margin-top: 10px; padding: 0; gap: 8px; border: 0; background: transparent; }
 .workspace-tabs--secondary a { min-height: 44px; padding: 7px 12px; border-radius: 9px; color: var(--ui-muted); font-size: 12px; }
 .workspace-tabs--secondary a[aria-current] { border-color: var(--ui-line); color: var(--ui-link); background: var(--ui-soft); box-shadow: none; }
-.workspace-context > .workspace-tabs + .workspace-tabs:not(.workspace-tabs--secondary) { margin-top: 12px; }
 .figma-workspace .figma-page nav[aria-label$='pages'], .figma-workspace :is(.figma-pagination, .notif-pagination, .messenger-pagination) { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; padding: 16px 0; margin-top: 18px; font-size: 12px; color: var(--nav-muted); }
 .figma-workspace .figma-page nav[aria-label$='pages'] a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--nav-line); border-radius: 10px; background: var(--ui-surface); color: var(--ui-link); font-weight: 600; text-decoration: none; }
 .figma-workspace .figma-page nav[aria-label$='pages'] a:hover { background: var(--nav-wash); border-color: var(--ui-line); }

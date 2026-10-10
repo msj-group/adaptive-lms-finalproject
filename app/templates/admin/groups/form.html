@@ -13,7 +13,7 @@
       {{ form.study_starts_at.label(class_="field__label") }}
       {{ form.study_starts_at(class_="field__input") }}
       {% for error in form.study_starts_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
-      <p>Study start marks the beginning of teaching. Enrollment remains available after this time, with a notice before saving. Transfers within the same course use a separate action.</p>
+      <p>Enrollment remains available after the study start, with a notice. Same-course transfers use a separate action.</p>
     </div>
     {% if group %}
     <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
@@ -41,7 +41,7 @@
       {{ form.academic_term_id(class_="field__input") }}
       {% for error in form.academic_term_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       <label class="field__label" for="course_id">Course</label>
       <select name="course_id" id="course_id" class="field__input">
         {% for course in courses %}
@@ -50,22 +50,22 @@
       </select>
       {% for error in form.course_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       <label class="field__label" for="course-level-display">Level</label>
       <div id="course-level-display" class="field__input" role="status" aria-live="polite" style="background: var(--color-bg-subtle); color: var(--color-text-secondary);">&mdash;</div>
     </div>
     {% endif %}
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       {{ form.name.label(class_="field__label") }}
       {{ form.name(class_="field__input") }}
       {% for error in form.name.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       {{ form.code.label(class_="field__label") }}
       {{ form.code(class_="field__input") }}
       {% for error in form.code.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       {{ form.capacity.label(class_="field__label") }}
       {{ form.capacity(class_="field__input") }}
       {% for error in form.capacity.errors %}<span class="field__error">{{ error }}</span>{% endfor %}

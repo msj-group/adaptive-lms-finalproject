@@ -15,25 +15,23 @@
       {{ form.full_name(class_="field__input") }}
       {% for error in form.full_name.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       {{ form.email.label(class_="field__label") }}
       {{ form.email(class_="field__input", autocomplete="email") }}
       {% for error in form.email.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
     {% if not student %}
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       {{ form.password.label(class_="field__label") }}
       {{ form.password(class_="field__input") }}
       {% for error in form.password.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" style="">
       {{ form.confirm_password.label(class_="field__label") }}
       {{ form.confirm_password(class_="field__input") }}
       {% for error in form.confirm_password.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <p class="ds-section__desc" style="margin-top: var(--space-4)">
-      At least 15 characters. Passphrases are welcome -- no specific mix of letters, numbers, or symbols is required.
-    </p>
+    <p class="ds-section__desc" style="margin-top: var(--space-4)">At least 15 characters; no required character mix.</p>
     {% endif %}
     <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary", id="student-form-submit") }}

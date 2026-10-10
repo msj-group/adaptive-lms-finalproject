@@ -19,9 +19,7 @@
     edit, delete, score, grade, publish or approval control anywhere on
     this page -- none exists server-side. -#}
 
-<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
-  {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
-</p>
+
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}

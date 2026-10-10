@@ -1,7 +1,7 @@
 {% extends "layouts/activity_base.html" %}
 {% set activity_kind = 'assignment' %}
 {% set activity_phase = 'overview' %}
-{% block title %}{{ assignment.title }} — {{ assignment.group_name }}{% endblock %}
+{% block title %}{{ assignment.title }}{% endblock %}
 {% block portal_nav %}{% set active_nav = 'assignments' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
 <div class="activity-surface">
@@ -13,17 +13,8 @@
     assignment_id alone. `feedback` is read only for that exact Submission, so
     it can never carry a classmate's text, and it is read-only here: there is
     no reply, comment or edit control, and none exists server-side. -#}
-<p class="ds-section__desc" style="margin-bottom: var(--space-2)">
-  {{ assignment.group_name }} &middot; {{ assignment.course_title }} &middot; {{ assignment.level_name }} &middot; {{ assignment.term_name }}
-</p>
-<div class="ds-row" style="justify-content: space-between; align-items: flex-start; gap: var(--space-4)">
 
-  {% if assignment.state == "open" %}
-  <span class="badge badge--success">Open</span>
-  {% else %}
-  <span class="badge badge--neutral">Past due</span>
-  {% endif %}
-</div>
+
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}
@@ -31,10 +22,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('student.activities', type='assignment', group=assignment.group_public_id) }}">Back to Activities</a>
-  <a class="btn btn--secondary" href="{{ url_for('student.group_units', group_public_id=assignment.group_public_id) }}">Open Lessons</a>
-</div>
+
 
 <div class="st-panel" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
@@ -46,6 +34,7 @@
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
     <dd style="margin:0">{{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
 </div>
+    <div class="activity-fact"><dt>Group</dt><dd dir="auto">{{ assignment.group_name }} · {{ assignment.term_name }}</dd></div>
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submission</dt>
     <dd style="margin:0">
@@ -121,7 +110,6 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No teacher feedback yet</div>
-    <div>Your teacher has not written feedback on this answer yet. It will appear here once they do.</div>
   </div>
   {% endif %}
 </section>
@@ -129,11 +117,7 @@
 {% elif can_submit %}
 <section style="margin-top: var(--space-6)">
   <h2>Your Answer</h2>
-  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
-    <strong>You can submit once.</strong> When you submit, your answer becomes final immediately — it cannot be edited,
-    replaced, or submitted again, and there is no draft to come back to. Please read your answer carefully before submitting.
-    Submissions close at {{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
-  </div>
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)"><strong>One final submission.</strong> No draft, edit, replacement or resubmission. Review before submitting. Deadline: {{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).</div>
   <form method="post"
         {% if assignment.submission_type == 'file' %}enctype="multipart/form-data"{% endif %}
         action="{{ url_for('student.assignment_submit', group_public_id=assignment.group_public_id, assignment_public_id=assignment.public_id) }}"
@@ -156,7 +140,7 @@
     {% else %}
     <div class="field" style="max-width:none">
       {{ form.answer_text.label(class_="field__label") }}
-      {{ form.answer_text(class_="field__input", rows="14") }}
+      {{ form.answer_text(class_="field__input", rows="8") }}
       <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
         Plain text only. Line breaks are preserved. Up to {{ form.ANSWER_MAX }} characters.
       </span>

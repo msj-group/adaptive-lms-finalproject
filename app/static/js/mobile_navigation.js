@@ -44,7 +44,7 @@
   // Non-modal dialog: the bottom bar stays available. Keyboard users may leave
   // normally; dismiss without stealing the focus they just moved to.
   document.addEventListener('focusin', function (event) {
-    if (!panel.hidden && !panel.contains(event.target) && !event.target.closest('.workspace-mobile-nav,[data-more-toggle]')) setOpen(false, false);
+    if (!panel.hidden && !panel.contains(event.target) && !event.target.closest('.workspace-mobile-nav,[data-more-toggle],[data-more-dismiss]')) setOpen(false, false);
   });
   compact.addEventListener('change', syncLayout);
   if (window.ResizeObserver && bottomNav) new ResizeObserver(measureNavigation).observe(bottomNav);

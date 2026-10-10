@@ -7,8 +7,7 @@
 {% endblock %}
 {% block portal_content %}
 <div class="activity-surface">
-<div class="activity-author-layout">
-<div class="activity-author-main">
+
 
 {#- Phase 4 / M04A. `quiz` is None for create and a plain presentation dict
     for edit. The form carries ONLY title and instructions: there is no
@@ -23,9 +22,7 @@
 
     <span class="badge badge--neutral">Draft</span>
   </div>
-  <p class="ds-section__desc">
-    {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
-  </p>
+
 
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
@@ -34,18 +31,12 @@
   {% endwith %}
 
   {% if quiz %}
-  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
-    This quiz is a draft and stays one when you save. Students cannot see it. Every teacher currently assigned to this group can
-    edit this same draft, so if someone else changes it while this form is open, your save is refused and you are shown their
-    version first — nothing is silently overwritten.
-  </div>
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">Draft: Save does not publish. Students cannot access it. All assigned teachers can edit; a concurrent change refuses your save and shows the other version first.</div>
   {% else %}
-  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
-    A new quiz is created as a draft. Students cannot see it, open it or answer it. Every teacher currently assigned to this group
-    can edit it with you.
-  </div>
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">New draft: hidden from students. Every assigned teacher can edit it.</div>
   {% endif %}
 
+  <p class="workspace-meta" dir="auto">{{ group.name }} · {{ group.academic_term.name }}</p>
   <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     {% if quiz %}
@@ -55,18 +46,14 @@
     <div class="field" style="max-width:none">
       {{ form.title.label(class_="field__label") }}
       {{ form.title(class_="field__input") }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Up to {{ form.TITLE_MAX }} characters. Two quizzes in the same group cannot share a title; another group may reuse it.
-      </span>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">Up to {{ form.TITLE_MAX }} characters; unique within this group.</span>
       {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.instructions.label(class_="field__label") }}
-      {{ form.instructions(class_="field__input", rows="10") }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Plain text only. Line breaks are preserved. Up to {{ form.INSTRUCTIONS_MAX }} characters.
-      </span>
+      {{ form.instructions(class_="field__input", rows="6") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">Plain text; line breaks preserved. Up to {{ form.INSTRUCTIONS_MAX }} characters.</span>
       {% for error in form.instructions.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
@@ -83,6 +70,5 @@
   </form>
 </div>
 
-</div>{{ activity_ui.guide('quiz','author') }}</div>
 </div>
 {% endblock %}

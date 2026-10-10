@@ -168,10 +168,7 @@
       <label class="field__label" for="reply-body">Your reply</label>
       <textarea class="field__input" id="reply-body" name="body" rows="6" maxlength="{{ body_max }}">{{ draft }}</textarea>
       {% if body_error %}<div class="field__error">{{ body_error }}</div>{% endif %}
-      <p class="ds-section__desc" style="margin: var(--space-1) 0 0">
-        Plain text, up to {{ body_max }} characters. Everyone currently in this group can read it,
-        and it cannot be edited or deleted once it is posted.
-      </p>
+      <p class="ds-section__desc" style="margin: var(--space-1) 0 0">Plain text, up to {{ body_max }} characters. Visible to current group members; posting is final.</p>
     </div>
     <button type="submit" class="btn btn--primary" data-research-id="discussion_reply">Post reply</button>
   </form>

@@ -7,8 +7,7 @@
 {% endblock %}
 {% block portal_content %}
 <div class="activity-surface">
-<div class="activity-author-layout">
-<div class="activity-author-main">
+
 
 {#- Phase 4 / M04B. `quiz` and `question` are plain presentation dicts;
     `question` is None for a new question. The form carries ONLY the prompt,
@@ -31,7 +30,7 @@
     <span class="badge badge--neutral">Draft</span>
   </div>
   <p class="ds-section__desc">
-    {{ quiz.title }} — {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
+    {{ quiz.title }} — {{ group.name }} · {{ group.academic_term.name }}
   </p>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -40,11 +39,7 @@
     {% endfor %}
   {% endwith %}
 
-  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
-    This question belongs to a draft quiz. Students cannot see it, open it or answer it. Every teacher currently assigned to this
-    group can edit it, so if someone else changes this question while this form is open, your save is refused and you are shown
-    their version first — nothing is silently overwritten.
-  </div>
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">Draft question: students cannot access it. All assigned teachers can edit; a concurrent change refuses your save and shows the other version first.</div>
 
   {% if form.option_errors %}
   <div class="alert alert--danger" style="margin-bottom: var(--space-4)">
@@ -64,9 +59,7 @@
     <div class="field" style="max-width:none">
       {{ form.prompt.label(class_="field__label") }}
       {{ form.prompt(class_="field__input", rows="5") }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Plain text only. Line breaks are preserved. Up to {{ form.PROMPT_MAX }} characters.
-      </span>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">Plain text; line breaks preserved. Up to {{ form.PROMPT_MAX }} characters.</span>
       {% for error in form.prompt.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
@@ -79,23 +72,14 @@
       {% endfor %}
       {#- Only the explanatory text changes when the mode changes. No option is
           ever checked or unchecked for the teacher, in either direction. -#}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)" data-mode-help="single">
-        Exactly one answer option must be marked correct. If several are marked, choose which one is right and clear the others —
-        nothing is cleared for you.
-      </span>
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)" data-mode-help="multiple" hidden>
-        At least two answer options must be marked correct. Marking every option correct is allowed. Nothing is marked for you.
-      </span>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)" data-mode-help="single">Mark exactly one correct option.</span>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)" data-mode-help="multiple" hidden>Mark at least two correct options; all may be correct.</span>
       {% for error in form.answer_mode.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </fieldset>
 
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       <span class="field__label">Answer options</span>
-      <span class="ds-section__desc" style="display:block; margin-bottom: var(--space-2)">
-        Between {{ form.MIN_OPTIONS }} and {{ form.MAX_OPTIONS }} options, in the order students would read them. Each option is
-        plain text, up to {{ form.OPTION_TEXT_MAX }} characters, and no two options may repeat the same wording. Tick every option
-        that is correct.
-      </span>
+      <span class="ds-section__desc" style="display:block; margin-bottom: var(--space-2)">{{ form.MIN_OPTIONS }}–{{ form.MAX_OPTIONS }} options. Unique plain text, up to {{ form.OPTION_TEXT_MAX }} characters each. Mark every correct option.</span>
 
       <div data-option-list>
         {% for row in form.option_rows %}
@@ -158,6 +142,5 @@
 <script src="{{ url_for('static', filename='js/quiz_question_editor.js') }}" defer>
 </script>
 
-</div>{{ activity_ui.guide('quiz','editor') }}</div>
 </div>
 {% endblock %}

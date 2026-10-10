@@ -33,9 +33,7 @@
     {% endif %}
   </span>
 </div>
-<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
-  {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }} &middot; {{ group.academic_term.name }}
-</p>
+
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}
@@ -235,15 +233,10 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No questions yet</div>
-    <div>
-      {% if operational %}Add the first multiple-choice question. You choose whether it has one correct answer or several, and you
-      write between {{ min_options }} and {{ max_options }} answer options for it.
-      {% else %}This quiz has no questions.{% endif %}
-    </div>
   </div>
   {% endif %}
 </section>
 
-</div>{{ activity_ui.guide('quiz','overview') }}</div>
+</div></div>
 </div>
 {% endblock %}

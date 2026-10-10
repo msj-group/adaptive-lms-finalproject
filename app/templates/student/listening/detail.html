@@ -7,10 +7,7 @@
 {% endblock %}
 {% block portal_content %}
 <div class="activity-surface">
-<div class="alert alert--info">
-<strong>Before you start</strong>
-<p>Starting creates an attempt when none is in progress. Save each answer with Save answer or Save and next. Moving to another question does not save automatically. The final result uses saved answers and the server deadline.</p>
-</div>
+
 {#- Phase 4 / M05. Plain presentation dicts only. The answer key is never read
     for this page, so it cannot leak from it.
 
@@ -41,8 +38,8 @@
   {% endfor %}
 {% endwith %}
 
+<p class="activity-note">Start creates or resumes an attempt. Use Save answer or Save and next; changing questions does not save. Final submission uses saved answers and the server deadline.</p>
 <div class="ds-row" style="margin-bottom: var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('student.activities', type='listening', group=group_public_id) }}">Back to Activities</a>
   {% if can_start %}
   <form method="post" action="{{ url_for('student.listening_start', group_public_id=group_public_id, listening_public_id=activity.public_id) }}" data-research-form="listening_start">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -78,7 +75,7 @@
 <div>
 
 <div class="st-facts" style="margin-bottom: var(--space-6)">
-  <dl style="display:grid; grid-template-columns: 170px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+  <dl style="display:grid; grid-template-columns: 170px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;"><div class="activity-fact"><dt>Group</dt><dd dir="auto">{{ activity.group_name }} · {{ workspace_context().term_name }}</dd></div>
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
     <dd style="margin:0">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>

@@ -7,8 +7,7 @@
 {% endblock %}
 {% block portal_content %}
 <div class="activity-surface">
-<div class="activity-author-layout">
-<div class="activity-author-main">
+
 
 {#- Phase 4 / M05. `activity` is None on create and a plain presentation dict
     on edit. The form carries ONLY the title, the instructions, the transcript,
@@ -31,9 +30,7 @@
 
     <span class="badge badge--neutral">Draft</span>
   </div>
-  <p class="ds-section__desc">
-    {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
-  </p>
+
 
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
@@ -42,24 +39,16 @@
   {% endwith %}
 
   {% if activity %}
-  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
-    This listening activity is a draft and stays one when you save. Students cannot see it. Every
-    teacher currently assigned to this group can edit this same activity, so if someone else changes
-    it while this form is open, your save is refused and you are shown their version first — nothing
-    is silently overwritten.
-  </div>
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">Draft: Save does not publish. Students cannot access it. All assigned teachers can edit; a concurrent change refuses your save and shows the other version first.</div>
   <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
     {{ audio_immutable_message }}
     {% if audio %}The attached recording is <strong>{{ audio.filename }}</strong> ({{ audio.format }}).{% endif %}
   </div>
   {% else %}
-  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
-    A new listening activity is created as a draft. Students cannot see it, hear it or answer it
-    until you publish it and its opening time arrives. Every teacher currently assigned to this
-    group can edit it with you.
-  </div>
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">New draft: students cannot read, listen or answer until publication and opening time. All assigned teachers can edit.</div>
   {% endif %}
 
+  <p class="workspace-meta" dir="auto">{{ group.name }} · {{ group.academic_term.name }}</p>
   <form method="post" novalidate {% if not activity %}enctype="multipart/form-data"{% endif %} class="yc-form">
     {{ form.hidden_tag() }}
     <input type="hidden" name="listening_state" value="{{ state_token }}">
@@ -67,15 +56,12 @@
     <div class="field" style="max-width:none">
       {{ form.title.label(class_="field__label") }}
       {{ form.title(class_="field__input") }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Up to {{ form.TITLE_MAX }} characters. Within one group, a listening activity and a quiz
-        cannot share a title; another group may reuse it.
-      </span>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">Up to {{ form.TITLE_MAX }} characters; unique across quizzes and listening in this group.</span>
       {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
     {% if not activity %}
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.audio.label(class_="field__label") }}
       {{ form.audio(class_="field__input", accept=audio_accept) }}
       <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
@@ -85,34 +71,24 @@
     </div>
     {% endif %}
 
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.instructions.label(class_="field__label") }}
       {{ form.instructions(class_="field__input", rows="6") }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Plain text only. Line breaks are preserved. Up to {{ form.INSTRUCTIONS_MAX }} characters.
-        Tell students what to listen for.
-      </span>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">Plain text; line breaks preserved. Up to {{ form.INSTRUCTIONS_MAX }} characters.</span>
       {% for error in form.instructions.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.vocabulary_notes.label(class_="field__label") }}
       {{ form.vocabulary_notes(class_="field__input", rows="4") }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Optional plain text, up to {{ form.VOCABULARY_MAX }} characters. Shown to students before and
-        while they answer — useful for words they will hear. Leave it empty to show nothing.
-      </span>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">Optional plain text, up to {{ form.VOCABULARY_MAX }} characters. Visible before and during attempts.</span>
       {% for error in form.vocabulary_notes.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.transcript.label(class_="field__label") }}
-      {{ form.transcript(class_="field__input", rows="10") }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Optional plain text, up to {{ form.TRANSCRIPT_MAX }} characters. You can always read it
-        yourself; whether students ever see it is decided by the setting below. Leaving it empty is
-        allowed with every setting.
-      </span>
+      {{ form.transcript(class_="field__input", rows="6") }}
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">Optional plain text, up to {{ form.TRANSCRIPT_MAX }} characters. Student access follows the transcript setting.</span>
       {% for error in form.transcript.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
@@ -144,6 +120,5 @@
   </form>
 </div>
 
-</div>{{ activity_ui.guide('listening','author') }}</div>
 </div>
 {% endblock %}

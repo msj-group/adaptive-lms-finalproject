@@ -18,9 +18,7 @@
     to, so there is no "new centre announcement" or "new course announcement"
     control anywhere on this surface -- and no such endpoint exists either. -#}
 <h1 data-workspace-page-heading style="margin-top: 0">Announcements</h1>
-<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
-  Notices addressed to you, and the groups whose announcements you can write.
-</p>
+
 
 {{ ann.flash_messages() }}
 
@@ -85,7 +83,7 @@
       {% if searching %}
       Nothing addressed to you matches “{{ q }}”. Try a different word or clear the search.
       {% else %}
-      When the centre, one of your courses, or one of your groups posts a notice, it appears here.
+
       {% endif %}
     </div>
   </div>
@@ -133,7 +131,7 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No teaching assignments</div>
-    <div>When an administrator assigns you to a group, its announcements appear here.</div>
+    <div></div>
   </div>
   {% endif %}
 </div>

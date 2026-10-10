@@ -16,10 +16,7 @@
       status field on this form, and no placeholder for one. A centre event is
       addressed to the whole centre, happens on one date, and is plain text. -#}
   <h1 data-workspace-page-heading style="margin-top: 0">{{ "Edit centre event" if event else "New centre event" }}</h1>
-  <p class="ds-section__desc" style="margin-bottom: var(--space-4)">
-    Something the centre itself is doing on a particular day. Every active student and
-    teacher sees it on their calendar.
-  </p>
+  <p class="ds-section__desc" style="margin-bottom: var(--space-4)">Visible to all active students and teachers.</p>
 
   {{ macros.flash_messages() }}
 
@@ -88,14 +85,11 @@
 
     <div class="field" style="margin-top: var(--space-4)">
       <label class="field__label" for="{{ form.details.id }}">{{ form.details.label.text }}</label>
-      {{ form.details(class="field__input", rows=10, maxlength=details_max) }}
+      {{ form.details(class="field__input", rows=6, maxlength=details_max) }}
       {% for error in form.details.errors %}
       <div class="field__error">{{ error }}</div>
       {% endfor %}
-      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
-        Optional plain text, at most {{ details_max }} characters. Line breaks are kept.
-        There is no formatting, no attachment and no link.
-      </div>
+      <div class="ds-section__desc" style="margin: var(--space-1) 0 0">Optional plain text, up to {{ details_max }} characters. Line breaks preserved; no links or attachments.</div>
     </div>
 
     <div class="ds-row yc-actions" style="margin-top: var(--space-6)">

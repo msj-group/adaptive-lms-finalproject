@@ -42,19 +42,9 @@
 </div>
 
 {% if is_released %}
-<div class="alert alert--warning" style="margin-bottom: var(--space-5)">
-  This item has been <strong>released</strong>. Students can already see these results, so a
-  change here is a <strong>correction</strong> and they will see it immediately. A score cannot
-  be cleared once it has been released — correct the number instead.
-</div>
+<div class="alert alert--warning" style="margin-bottom: var(--space-5)">Released results: corrections are immediately visible. A released score cannot be cleared.</div>
 {% else %}
-<div class="alert alert--info" style="margin-bottom: var(--space-5)">
-  This item is a <strong>draft</strong>. Students cannot see any of it. Leave a score blank for
-  a student you have not graded yet; every student needs a score before the item can be
-  released. Comments are your message to that one student and nobody else sees them — not
-  another student, and not an administrator's report. Saving again with nothing changed does
-  not count as a change.
-</div>
+<div class="alert alert--info" style="margin-bottom: var(--space-5)">Draft: hidden from students. Blank means ungraded; all students need a score before release. Comments are private to that student.</div>
 {% endif %}
 
 <form method="post" class="yc-form">

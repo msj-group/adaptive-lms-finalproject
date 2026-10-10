@@ -1,7 +1,7 @@
 {% extends "layouts/activity_base.html" %}
 {% set activity_kind = 'speaking' %}
 {% set activity_phase = 'overview' %}
-{% block title %}{{ activity.title }} — {{ activity.group_name }}{% endblock %}
+{% block title %}{{ activity.title }}{% endblock %}
 {% block portal_nav %}{% set active_nav = 'speaking' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
 <div class="activity-surface">
@@ -12,17 +12,8 @@
     student together -- never by the activity alone. A GET never creates or
     changes anything, and there is no edit, delete or resubmit control here --
     none exists server-side either. -#}
-<p class="ds-section__desc" style="margin-bottom: var(--space-2)">
-  {{ activity.group_name }} &middot; {{ activity.course_title }} &middot; {{ activity.level_name }} &middot; {{ activity.term_name }}
-</p>
-<div class="ds-row" style="justify-content: space-between; align-items: flex-start; gap: var(--space-4)">
 
-  {% if activity.state == "open" %}
-  <span class="badge badge--success">Open</span>
-  {% else %}
-  <span class="badge badge--neutral">Past due</span>
-  {% endif %}
-</div>
+
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}
@@ -30,13 +21,13 @@
   {% endfor %}
 {% endwith %}
 
-<div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('student.activities', type='speaking', group=activity.group_public_id) }}">Back to Activities</a>
-</div>
+
 
 <div class="st-facts" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
+<dt>Group</dt><dd dir="auto">{{ activity.group_name }} · {{ activity.term_name }}</dd>
+</div><div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
     <dd style="margin:0">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
 </div>
@@ -91,13 +82,7 @@
 {% elif can_record %}
 <section style="margin-top: var(--space-6)">
   <h2>Record Your Answer</h2>
-  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
-    <strong>You can submit once.</strong> You may record as many times as you like and listen back
-    before you hand anything in — nothing is sent to the center until you press the final submit
-    button. Once you submit, your recording becomes final immediately: it cannot be edited,
-    replaced, or submitted again. Recording closes at
-    {{ activity.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
-  </div>
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)"><strong>One final recording.</strong> Unlimited local retakes; only final submission uploads it. No edit, replacement or resubmission. Deadline: {{ activity.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).</div>
   <a class="btn btn--primary" href="{{ record_url }}">Open the recorder</a>
 </section>
 {% else %}<div class="empty-state"><div class="empty-state__title">Recording unavailable</div><p>Recording is not available right now. You can still read the task instructions.</p></div>

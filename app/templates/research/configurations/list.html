@@ -6,10 +6,7 @@
   <h1 data-workspace-page-heading style="margin:0">Collection configurations</h1>
   <a class="btn btn--primary" href="{{ url_for('research.configuration_new') }}">New draft</a>
 </div>
-<p class="ds-section__desc">
-  A configuration version fixes the event schema, the collection period, the observed workflow
-  areas and the feedback sampling policy. It is not a consent document and not an ethics approval.
-</p>
+<p class="ds-section__desc">Versioned collection and sampling settings; neither consent nor ethics approval.</p>
 {% if rows %}
 <div style="overflow-x: auto">
 <table class="dash-table" style="width:100%">
@@ -37,6 +34,6 @@
 {{ pager(pagination, "Configurations") }}
 {% else %}
 <div class="empty-state"><div class="empty-state__title">No configurations</div>
-  <div>Create a draft to define how natural-use collection will run.</div></div>
+  <div></div></div>
 {% endif %}
 {% endblock %}

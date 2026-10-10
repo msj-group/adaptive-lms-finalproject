@@ -29,31 +29,9 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card yc-panel" style="margin-bottom: var(--space-6)">
-  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
-    <dd style="margin:0">{{ group.name }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
-    <dd style="margin:0">{{ group.course.title }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
-    <dd style="margin:0">{{ group.course.level.name }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
-    <dd style="margin:0">{{ group.academic_term.name }} ({{ group.academic_term.start_date.isoformat() }} – {{ group.academic_term.end_date.isoformat() }})</dd>
-</div>
-  </dl>
-</div>
+<small class="workspace-meta" dir="auto">{{ group.academic_term.name }}</small>
 
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">
-  Drafts stay private to the group's teachers. Published quizzes follow their availability window;
-  open a quiz to review its current availability and attempts. Times use <strong>{{ tz_name }}</strong>.
-</div>
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">Drafts are private; published quizzes follow their availability window. Times: {{ tz_name }}.</div>
 
 {% if not operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
@@ -64,7 +42,7 @@
 {% endif %}
 
 <div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
+
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_units', group_public_id=group.public_id) }}">Manage Units</a>
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_assignments', group_public_id=group.public_id) }}">Manage Assignments</a>
   {% if operational %}
@@ -136,11 +114,7 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No quizzes yet</div>
-    <div>
-      {% if operational %}Start the first quiz draft for this group. Students cannot see it, and every teacher assigned to this
-      group can work on it with you.
-      {% else %}This group has no quizzes.{% endif %}
-    </div>
+
   </div>
   {% endif %}
 </section>

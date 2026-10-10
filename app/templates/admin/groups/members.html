@@ -24,29 +24,9 @@
   </div>
   {% endif %}
 
-  <div class="card yc-panel" style="margin-bottom: var(--space-6)">
-    <dl style="display: grid; grid-template-columns: 160px 1fr; row-gap: var(--space-3); column-gap: var(--space-4); margin: 0;">
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group Code</dt>
-      <dd style="margin:0">{{ group.code or "--" }}</dd>
+  <small class="workspace-meta" dir="auto">{{ group.code or group.name }} · {{ group.academic_term.name }}</small>
 
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
-      <dd style="margin:0">{{ group.course.title }}{% if group.course.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
 
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
-      <dd style="margin:0">{{ group.course.level.name }}{% if group.course.level.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
-
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
-      <dd style="margin:0">{{ group.academic_term.name }}{% if group.academic_term.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
-
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Active Students</dt>
-      <dd style="margin:0">{{ active_student_count }}/{{ group.capacity }} ({{ _n('%(count)d seat remaining', '%(count)d seats remaining', remaining_seats) }})</dd>
-    </dl>
-  </div>
-
-  <div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
-    <a class="btn btn--secondary" href="{{ url_for('admin.group_detail', public_id=group.public_id) }}">Back to Group Details</a>
-    <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Back to Groups</a>
-  </div>
 
   <section style="margin-bottom: var(--space-8)">
     <h2>Teachers</h2>
@@ -120,7 +100,7 @@
   </section>
 
   <section>
-    <h2>Students</h2>
+    <h2>Students</h2><p class="workspace-meta">{{ active_student_count }}/{{ group.capacity }} · {{ _n('%(count)d seat remaining', '%(count)d seats remaining', remaining_seats) }}</p>
 
     {% if enrollments %}
     <div style="overflow-x:auto; margin-bottom: var(--space-4)">

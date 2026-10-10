@@ -7,8 +7,7 @@
 {% endblock %}
 {% block portal_content %}
 <div class="activity-surface">
-<div class="activity-author-layout">
-<div class="activity-author-main">
+
 
 {#- Phase 4 / M04D. Availability, timing and attempt settings only. There is
     deliberately no status, published-at, question, option or score control
@@ -21,9 +20,7 @@
 
     <span class="badge badge--neutral">Draft</span>
   </div>
-  <p class="ds-section__desc">
-    {{ quiz.title }} — {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
-  </p>
+
 
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
@@ -38,7 +35,8 @@
     These settings can only be changed while the quiz is a draft.
   </div>
 
-  <form method="post" novalidate class="yc-form">
+  <p class="workspace-meta" dir="auto">{{ group.name }} · {{ group.academic_term.name }}</p>
+<form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     <input type="hidden" name="quiz_state" value="{{ state_token }}">
 
@@ -51,7 +49,7 @@
       {% for error in form.opens_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.closes_at.label(class_="field__label") }}
       {{ form.closes_at(class_="field__input", step="1") }}
       <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
@@ -61,25 +59,19 @@
       {% for error in form.closes_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.time_limit_minutes.label(class_="field__label") }}
       {{ form.time_limit_minutes(class_="field__input", type="number",
                                  min=form.MIN_TIME_LIMIT, max=form.MAX_TIME_LIMIT) }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Between {{ form.MIN_TIME_LIMIT }} and {{ form.MAX_TIME_LIMIT }} minutes, or leave empty for no
-        limit of its own. An attempt always ends at the closing time as well — whichever comes first.
-      </span>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">{{ form.MIN_TIME_LIMIT }}–{{ form.MAX_TIME_LIMIT }} minutes, or blank for no separate limit. Closing time still ends the attempt.</span>
       {% for error in form.time_limit_minutes.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    <div class="field" style="max-width:none; margin-top: var(--space-4)">
+    <div class="field" style="max-width:none; ">
       {{ form.attempt_limit.label(class_="field__label") }}
       {{ form.attempt_limit(class_="field__input", type="number",
                             min=form.MIN_ATTEMPTS, max=form.MAX_ATTEMPTS) }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        How many attempts each student may start, from {{ form.MIN_ATTEMPTS }} to {{ form.MAX_ATTEMPTS }}.
-        There is no unlimited option.
-      </span>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">{{ form.MIN_ATTEMPTS }}–{{ form.MAX_ATTEMPTS }} attempts per student.</span>
       {% for error in form.attempt_limit.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
@@ -90,6 +82,5 @@
   </form>
 </div>
 
-</div>{{ activity_ui.guide('quiz','settings') }}</div>
 </div>
 {% endblock %}

@@ -14,7 +14,7 @@
       {% if card.next_class is defined and card.next_class %}<p>Next class: {{ card.next_class.start.strftime('%a %d %b, %H:%M') }}</p>{% endif %}
       {% if card.operational %}<a class="st-course-action" href="{{ url_for('workspace.student_course', group_public_id=card.group_public_id) }}"{% if research_identity %} data-research-id="{{ research_identity }}"{% endif %}>Open course {{ ui.icon('arrow',16) }}</a>{% else %}<p>Content access has ended. Your enrollment records remain available.</p><a class="st-course-action" href="{{ url_for('student.records') }}">View records {{ ui.icon('arrow',16) }}</a>{% endif %}
     </div>
-    <div class="st-course-image"><img src="{{ url_for('static',filename='images/student_study.jpg') }}" alt="" loading="lazy" width="600" height="400"><span>Your learning, your pace</span></div>
+    <div class="st-course-image"><img src="{{ url_for('static',filename='images/student_study.jpg') }}" alt="" loading="lazy" width="600" height="400"></div>
   </div>
   <footer><span>{{ ui.icon('users',14) }} {{ card.group_name }} · {{ card.term_name }}</span><span>{% if progress and progress.lesson_total %}{{ ui.icon('check',15) }} {{ progress.completed }} of {{ progress.lesson_total }} lessons marked complete{% else %}No lesson progress available{% endif %}</span></footer>
   {% if progress and progress.lesson_total %}<progress value="{{ progress.completed }}" max="{{ progress.lesson_total }}" aria-label="Completed lessons in {{ card.group_name }}">{{ progress.completed }} of {{ progress.lesson_total }}</progress>{% endif %}

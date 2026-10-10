@@ -21,9 +21,7 @@
     deliberate POST with its own token and its own notification, so a slip of
     the mouse here cannot tell a whole group something. -#}
 <h1 data-workspace-page-heading style="margin-top: 0">{{ "Edit announcement" if announcement else "New announcement" }}</h1>
-<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
-  {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }}
-</p>
+
 
 {{ ann.flash_messages() }}
 
@@ -33,6 +31,7 @@
   never be changed — only withdrawn.
 </div>
 
+<p class="workspace-meta" dir="auto">{{ group.name }} · {{ group.academic_term.name }}</p>
 <form method="post" class="card yc-panel yc-form" novalidate>
   {{ form.hidden_tag() }}
   <input type="hidden" name="announcement_state" value="{{ announcement_state }}">
@@ -43,23 +42,16 @@
     {% for error in form.title.errors %}
     <div class="field__error">{{ error }}</div>
     {% endfor %}
-    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
-      One short line, at most {{ title_max }} characters — for example “Room change on
-      Tuesday”.
-    </div>
+    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">Up to {{ title_max }} characters.</div>
   </div>
 
   <div class="field" style="margin-top: var(--space-4)">
     <label class="field__label" for="{{ form.body.id }}">{{ form.body.label.text }}</label>
-    {{ form.body(class="field__input", rows=12, maxlength=body_max) }}
+    {{ form.body(class="field__input", rows=6, maxlength=body_max) }}
     {% for error in form.body.errors %}
     <div class="field__error">{{ error }}</div>
     {% endfor %}
-    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
-      Plain text, at most {{ body_max }} characters. Line breaks are kept. There is no
-      formatting, no link preview and no attachment: share learning material through the
-      group's lessons instead.
-    </div>
+    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">Plain text, up to {{ body_max }} characters. Line breaks preserved; no attachments.</div>
   </div>
 
   <div class="ds-row yc-actions" style="margin-top: var(--space-5)">

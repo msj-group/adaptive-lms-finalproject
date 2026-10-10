@@ -338,6 +338,7 @@ def navigation_context():
                 links.append(dict(label=label, url=url_for(target, **params), active=active))
             context = dict(title=group.name, subtitle=group.course.title + " · " + group.academic_term.name,
                 course_title=group.course.title, course_public_id=group.course.public_id, group_public_id=group_id,
+                term_name=group.academic_term.name,
                 parent=url_for("workspace.student_courses" if current_user.role == "student" else "workspace.teacher_groups"),
                 parent_label="My courses" if current_user.role == "student" else "My groups", tabs=links)
             if current_user.role == "teacher":

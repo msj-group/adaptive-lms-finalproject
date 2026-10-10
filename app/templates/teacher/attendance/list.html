@@ -24,29 +24,9 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card yc-panel" style="margin-bottom: var(--space-6)">
-  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
-    <dd style="margin:0">{{ group.name }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
-    <dd style="margin:0">{{ group.course.title }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
-    <dd style="margin:0">{{ group.course.level.name }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
-    <dd style="margin:0">{{ group.academic_term.name }}</dd>
-  </dl>
-</div>
+<small class="workspace-meta" dir="auto">{{ group.academic_term.name }}</small>
 
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">
-  Attendance is opened for one real meeting of one of this group's scheduled classes — the same
-  weekday, inside the class's own start and end dates, and never a date that has not arrived
-  yet. The students on the list are the ones actively enrolled at the moment you open it, and
-  that list never changes afterwards. Every student starts as <strong>absent</strong>; you mark
-  them, save as often as you like, and <strong>finalize</strong> when you are done. Finalized
-  attendance keeps its roster and class fixed. An administrator can correct a finalized mark
-  with preserved history. All dates and times are in
-  the center timezone (<strong>{{ tz_name }}</strong>).
-</div>
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">Scheduled classes only; no future dates. Opening fixes the roster and class details; students start absent. Save marks before finalizing. Finalized teacher editing ends; audited Admin corrections remain available. Times: {{ tz_name }}.</div>
 
 {% if not operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
@@ -58,7 +38,7 @@
 
 <div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.attendance_overview') }}">All groups</a>
-  <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
+
   {% if operational %}
   <a class="btn btn--primary" href="{{ url_for('teacher.attendance_create', group_public_id=group.public_id) }}">Record attendance</a>
   {% endif %}
@@ -114,10 +94,6 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No attendance recorded yet</div>
-    <div>
-      {% if operational %}Open attendance for a class that has already met and mark who was
-      there.{% else %}This group has no recorded attendance.{% endif %}
-    </div>
   </div>
   {% endif %}
 </section>

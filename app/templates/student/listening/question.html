@@ -65,16 +65,7 @@
 {% endif %}
 
 </aside>
-<div class="activity-question-main">{{ activity_ui.progress(answered_count,total) }}<div class="alert alert--info" style="margin-bottom: var(--space-4)">
-  {% if question.is_multiple %}
-  <strong>This question has more than one correct answer.</strong> Select every option you think is
-  correct — you only get the point if your selection matches the correct set exactly. There is no
-  partial credit.
-  {% else %}
-  <strong>This question has one correct answer.</strong> Select exactly one option.
-  {% endif %}
-  Your answer is saved when you press Save; you can change it until you submit or the time runs out.
-</div>
+<div class="activity-question-main">{{ activity_ui.progress(answered_count,total) }}<div class="alert alert--info" style="margin-bottom: var(--space-4)">{% if question.is_multiple %}Select the exact correct set; no partial credit.{% else %}Select one answer.{% endif %} Use Save to keep the answer. Changes are allowed until final submission or expiry.</div>
 
 <form method="post" data-answer-form data-research-form="listening_save"
       action="{{ url_for('student.listening_answer', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=attempt.public_id, question_public_id=question.public_id) }}">

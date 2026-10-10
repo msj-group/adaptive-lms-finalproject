@@ -89,7 +89,7 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No schedule slots yet</div>
-    <div>Add a recurring weekly slot to record when this group meets.</div>
+    <div></div>
     {% if can_create %}
     <a class="btn btn--primary" style="margin-top: var(--space-4)" href="{{ url_for('admin.group_schedule_create', group_public_id=group.public_id) }}">Add Schedule Slot</a>
     {% endif %}

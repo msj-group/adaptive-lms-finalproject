@@ -12,7 +12,7 @@
 <aside class="activity-launch-panel">
 <div class="activity-status-line">
 <span class="badge badge--{{ 'success' if assignment.is_published else 'neutral' }}">{{ assignment.status|capitalize }}</span>{% if assignment.state_label %}<span class="badge badge--neutral">{{ assignment.state_label }}</span>{% endif %}</div>
-<dl class="activity-fact-list">
+<dl class="activity-fact-list"><div><dt>Group</dt><dd dir="auto">{{ group.name }} · {{ group.academic_term.name }}</dd></div>
 <div><dt>Submission</dt><dd>{{ 'Single file' if assignment.submission_type == 'file' else 'Text' }} · one final submission</dd></div>
 <div>
 <dt>Opens</dt>

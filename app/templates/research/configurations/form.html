@@ -2,11 +2,8 @@
 {% block title %}{{ "Edit draft" if configuration else "New draft" }}{% endblock %}
 {% block research_content %}
 <h1 data-workspace-page-heading>{% if configuration %}Edit draft version {{ configuration.version_number }}{% else %}New configuration draft{% endif %}</h1>
-<p class="ds-section__desc">
-  Times are in {{ tz_name }}. The sampling values are pilot settings to be versioned and
-  revisited, not validated scientific constants. Saving a draft collects nothing.
-</p>
-<form method="post" novalidate class="yc-form">
+<p class="ds-section__desc">Times: {{ tz_name }}. Versioned pilot settings, not validated constants. Saving a draft collects nothing.</p>
+<form method="post" novalidate class="yc-form research-configuration-form">
   {{ form.csrf_token }}
   {{ form.state }}
   <div class="field">
@@ -14,7 +11,7 @@
     {{ form.label(class_="field__input", maxlength=80) }}
     {% for error in form.label.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
   </div>
-  <div class="ds-row yc-actions" style="gap: var(--space-4); flex-wrap: wrap; margin-top: var(--space-4)">
+  <div class="research-configuration-dates">
     {% for field in (form.collection_starts_at, form.collection_ends_at) %}
     <div class="field" style="margin:0">
       {{ field.label(class_="field__label") }}
@@ -24,27 +21,30 @@
     {% endfor %}
   </div>
 
-  <p class="ds-section__desc" style="margin-top: var(--space-6)">
+  <p class="ds-section__desc">
     An active configuration covers every Student page and outcome in the event dictionary, for
     every eligible Student account. There is no setting that narrows it.
   </p>
 
   {% for section, columns in [('Sessions and limits',['session_inactivity_minutes','max_prompts_per_session','max_prompts_per_day']),('Observation window',['lookback_seconds','min_observed_seconds']),('Sampling probabilities',['random_prompt_permille','activity_end_prompt_permille']),('Offer and response timing',['offer_ttl_seconds','response_window_seconds'])] %}
-  <fieldset style="margin-top: var(--space-6)">
-    <legend><strong>{{ section }}</strong></legend>
+  <fieldset class="research-policy-section">
+    <legend><strong>{{ _(section) }}</strong></legend>
+    {% if section == 'Sampling probabilities' %}<p class="workspace-meta" id="configuration-sampling-help">Parts per thousand: 1000 = 100%, 100 = 10%. This is a sampling parameter, not a measured outcome.</p>{% endif %}
+    <div class="research-policy-fields">
     {% for column in columns %}{% set label = policy_labels[column] %}
-    <div class="field" style="margin-top: var(--space-3)">
+    <div class="field">
       <label class="field__label" for="{{ column }}">{{ label }}
         <span class="ds-section__desc">({{ policy_bounds[column][0] }}&ndash;{{ policy_bounds[column][1] }})</span></label>
-      {% if 'permille' in column %}<p class="workspace-meta">Parts per thousand: 1000 = 100%, 100 = 10%. This is a sampling parameter, not a measured outcome.</p>{% elif 'seconds' in column %}<p class="workspace-meta">Unit: seconds.</p>{% elif 'minutes' in column %}<p class="workspace-meta">Unit: minutes.</p>{% endif %}{{ form[column](class_="field__input", min=policy_bounds[column][0], max=policy_bounds[column][1], style="width: 12rem") }}
-      {% if baseline %}<p class="workspace-meta">Current active version {{ baseline.version_number }}: {{ baseline[column] }}. This draft keeps a separate version.</p>{% endif %}
+      {% if 'permille' in column %}{{ form[column](class_="field__input", min=policy_bounds[column][0], max=policy_bounds[column][1], aria_describedby="configuration-sampling-help") }}{% else %}{{ form[column](class_="field__input", min=policy_bounds[column][0], max=policy_bounds[column][1]) }}{% endif %}
+      {% if baseline %}<p class="workspace-meta">Active v{{ baseline.version_number }}: {{ baseline[column] }}. Separate draft.</p>{% endif %}
       {% for error in form[column].errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
     {% endfor %}
+    </div>
   </fieldset>
   {% endfor %}
 
-  <div class="ds-row yc-actions" style="gap: var(--space-3); margin-top: var(--space-6)">
+  <div class="ds-row yc-actions" style="gap: var(--space-3)">
     {{ form.submit(class_="btn btn--primary") }}
     <a class="btn btn--secondary" href="{{ url_for('research.configuration_detail', configuration_public_id=configuration.public_id) if configuration else url_for('research.configurations') }}">Cancel</a>
   </div>

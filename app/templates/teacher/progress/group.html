@@ -10,9 +10,7 @@
     and no such route exists. -#}
 <p style="margin-top: 0"><a href="{{ url_for('teacher.dashboard') }}">&larr; Dashboard</a></p>
 <h1 data-workspace-page-heading style="margin-top: 0">{{ group.name }} — Lesson progress</h1>
-<p class="ds-section__desc">
-  {{ group.course_title }} &middot; {{ group.level_name }} &middot; {{ group.term_name }}
-</p>
+<small class="workspace-meta" dir="auto">{{ group.term_name }}</small>
 
 {% if not group.operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
@@ -65,7 +63,7 @@
 {% else %}
 <div class="empty-state">
   <div class="empty-state__title">No active students</div>
-  <div>Students actively enrolled in this group will appear here with their lesson progress.</div>
+  <div></div>
 </div>
 {% endif %}
 {% endblock %}

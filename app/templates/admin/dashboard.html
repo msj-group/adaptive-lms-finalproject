@@ -8,26 +8,26 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 {% endblock %}
 {% block admin_content %}
-{% call product.workspace_intro('YOUR CENTRE, CONNECTED', 'Welcome, ' ~ current_user.full_name ~ '.', 'A live view of your centre, with class times in ' ~ tz_name ~ '.', 'layers') %}<a class="btn btn--primary" href="{{ url_for('admin.students_list') }}">Manage students {{ ui.icon('arrow',17) }}</a><a class="btn btn--secondary" href="{{ url_for('admin.courses_list') }}">Explore courses</a>{% endcall %}
+{% call product.workspace_heading('Admin Dashboard') %}<a class="btn btn--primary" href="{{ url_for('admin.students_list') }}">Manage students {{ ui.icon('arrow',17) }}</a><a class="btn btn--secondary" href="{{ url_for('admin.courses_list') }}">Explore courses</a>{% endcall %}
 
 {#- Phase 5 / M10. Shortcuts only: they open the financial workspaces and show
     no financial figure. -#}
 <div class="figma-finance-shortcuts">
 <a class="card yc-panel" href="{{ url_for('admin.student_accounts') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="student-accounts">
   {{ ui.icon('wallet', 24) }}<div class="card__title">Student Accounts</div>
-  <div class="card__body">Each student's computed financial status and complete financial record.</div>
+
 </a>
 <a class="card yc-panel" href="{{ url_for('admin.invoice_register') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="invoices">
   {{ ui.icon('file', 24) }}<div class="card__title">Invoices</div>
-  <div class="card__body">Find invoices created by enrollment operations, review their accounts and correct current records.</div>
+
 </a>
 <a class="card yc-panel" href="{{ url_for('admin.payments_overview') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="payments">
   {{ ui.icon('card', 24) }}<div class="card__title">Collections and payouts</div>
-  <div class="card__body">Review incoming collections and actual returns of credit. Confirmed movements have receipts.</div>
+
 </a>
 <a class="card yc-panel" href="{{ url_for('admin.deleted_financial_records') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="deleted-records">
   {{ ui.icon('trash', 24) }}<div class="card__title">Historical deleted records</div>
-  <div class="card__body">Deleted invoices, payments and receipts, kept read-only.</div>
+
 </a>
 </div>
 

@@ -1,5 +1,5 @@
 {# Presentation primitives only. Callers supply existing server values/actions. #}
 {% import '_figma_ui.html' as ui %}
-{% macro workspace_intro(eyebrow, title, description, symbol='book') -%}
-<header class="yc-hero"><div><p class="st-eyebrow">{{ ui_date(_(eyebrow)) }}</p><h1>{{ _(title) }}</h1><p>{{ _(description) }}</p>{% if caller is defined %}<div class="ds-row yc-actions">{{ caller() }}</div>{% endif %}</div>{{ ui.icon(symbol,64) }}</header>
+{% macro workspace_heading(title, date=none) -%}
+<header class="workspace-heading"><div><h1 data-workspace-page-heading>{{ _(title) }}</h1>{% if date %}<time class="workspace-meta">{{ ui_date(date) }}</time>{% endif %}</div>{% if caller is defined %}<div class="yc-actions">{{ caller() }}</div>{% endif %}</header>
 {%- endmacro %}

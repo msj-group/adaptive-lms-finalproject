@@ -29,35 +29,9 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card yc-panel" style="margin-bottom: var(--space-6)">
-  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
-    <dd style="margin:0">{{ group.name }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
-    <dd style="margin:0">{{ group.course.title }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
-    <dd style="margin:0">{{ group.course.level.name }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
-    <dd style="margin:0">{{ group.academic_term.name }}</dd>
-</div>
-  </dl>
-</div>
+<small class="workspace-meta" dir="auto">{{ group.academic_term.name }}</small>
 
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">
-  A speaking activity asks students to record a spoken answer in their browser and hand it in
-  once. Students may re-record as often as they like <em>before</em> submitting; only the
-  recording they finally submit is uploaded, and it cannot be changed, replaced or submitted
-  again afterwards. You listen to each recording here and write feedback in words — there is no
-  score, grade or pass mark. A new activity starts as a <strong>draft</strong> that no student
-  can see. All times below are in the center timezone (<strong>{{ tz_name }}</strong>).
-</div>
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">One final recording per student; unlimited local retakes, only final submission uploads it. Feedback is a comment, not a grade. Drafts are private. Times: {{ tz_name }}.</div>
 
 {% if not operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
@@ -68,7 +42,7 @@
 {% endif %}
 
 <div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
+
   <a class="btn btn--secondary" href="{{ url_for('teacher.group_assignments', group_public_id=group.public_id) }}">Manage Assignments</a>
   {% if operational %}
   <a class="btn btn--primary" href="{{ url_for('teacher.speaking_create', group_public_id=group.public_id) }}">Add Speaking Activity</a>
@@ -151,11 +125,7 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No speaking activities yet</div>
-    <div>
-      {% if operational %}Write what students should say and when they can record it. Students
-      cannot see the activity until you publish it and its opening time arrives.
-      {% else %}This group has no speaking activities.{% endif %}
-    </div>
+
   </div>
   {% endif %}
 </section>

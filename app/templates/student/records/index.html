@@ -5,7 +5,7 @@
 {% block portal_content %}
 <div class="st-journal"><nav class="workspace-tabs" aria-label="My records sections"><a href="{{ url_for('student.records') }}" aria-current="page">Enrollment history</a><a href="{{ url_for('student.grades_list') }}">Released grades</a><a href="{{ url_for('student.attendance_list') }}">Finalized attendance</a></nav>
 <h1 data-workspace-page-heading>My records<span class="figma-brand-dot">.</span></h1>
-<p class="ds-section__desc">Every chapter of your learning journey. Your enrollment periods keep their own history, including released results after withdrawal or archival.</p>
+<p class="ds-section__desc">Enrollment history, including released results after withdrawal or archival.</p>
 <div class="figma-record-grid">
 {% for episode in episodes.items %}
   <article class="st-panel">

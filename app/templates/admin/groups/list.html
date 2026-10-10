@@ -114,12 +114,12 @@
   {% elif search or selected_term_id or selected_course_id or selected_level_id or selected_status %}
   <div class="empty-state">
     <div class="empty-state__title">No groups match your filters</div>
-    <div>Try different search terms or filters, or <a href="{{ url_for('admin.groups_list') }}">clear all filters</a>.</div>
+    <a href="{{ url_for('admin.groups_list') }}">clear all filters</a>
   </div>
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No groups yet</div>
-    <div>Groups will appear here once created for a course and academic term.</div>
+
     <a class="btn btn--primary" style="margin-top: var(--space-4)" href="{{ url_for('admin.group_create') }}">Create Group</a>
   </div>
   {% endif %}

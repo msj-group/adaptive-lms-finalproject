@@ -27,27 +27,9 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card yc-panel" style="margin-bottom: var(--space-5)">
-  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
-    <dd style="margin:0">{{ group.course.title }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
-    <dd style="margin:0">{{ group.course.level.name }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
-    <dd style="margin:0">{{ group.academic_term.name }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Unallocated weight</dt>
-    <dd style="margin:0">{{ gr.weight(weight_remaining_display) }}</dd>
-  </dl>
-</div>
+<p class="workspace-meta" dir="auto">{{ group.academic_term.name }} · Unallocated weight: {{ gr.weight(weight_remaining_display) }}</p>
 
-<div class="alert alert--info" style="margin-bottom: var(--space-5)">
-  A group's grade is split into weighted <strong>categories</strong> that must add up to
-  exactly 100%. Each category holds <strong>grade items</strong> — an assignment, a quiz or
-  listening activity, a speaking activity, a class activity, or a grade you enter yourself.
-  Creating an item captures the students enrolled at that moment, and that list never changes
-  afterwards. Students see nothing until you <strong>release</strong> an item; after that you
-  can still correct a score, and the student sees the correction.
-</div>
+<div class="alert alert--info" style="margin-bottom: var(--space-5)">Categories must total 100%. Each item captures a fixed roster. Students see released results; later score corrections remain visible.</div>
 
 {% if not operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-5)">
@@ -61,7 +43,7 @@
 
 <div class="ds-row yc-actions" style="margin-bottom: var(--space-5)">
   <a class="btn btn--secondary" href="{{ url_for('teacher.gradebook_overview') }}">All groups</a>
-  <a class="btn btn--secondary" href="{{ url_for('teacher.dashboard') }}">Back to Dashboard</a>
+
   {% if operational %}
   <a class="btn btn--primary" href="{{ url_for('teacher.grade_category_create', group_public_id=group.public_id) }}">Add category</a>
   {% if categories %}
@@ -182,11 +164,7 @@
 {% else %}
 <div class="empty-state">
   <div class="empty-state__title">This gradebook has no categories yet</div>
-  <div>
-    {% if operational %}Start by adding the weighted categories this group's grade is made of —
-    for example Homework 30%, Quizzes 30%, Speaking 40%.{% else %}This group has no grade
-    categories.{% endif %}
-  </div>
+
 </div>
 {% endif %}
 {% endblock %}

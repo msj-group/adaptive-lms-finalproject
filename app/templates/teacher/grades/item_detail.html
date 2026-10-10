@@ -60,12 +60,7 @@
 {% endif %}
 
 {% if item.is_released %}
-<div class="alert alert--success" style="margin-bottom: var(--space-5)">
-  This item has been released. The students on its list can see their own score, the maximum,
-  their percentage and your comment to them — and nobody else's. Its category, name, kind,
-  linked item and maximum points are now permanent. You can still correct a score or a comment,
-  and the student sees the correction immediately.
-</div>
+<div class="alert alert--success" style="margin-bottom: var(--space-5)">Released: each listed student sees only their own score, maximum, percentage and comment. Category, name, kind, linked item and maximum points are permanent. Score and comment corrections are visible immediately.</div>
 {% endif %}
 
 <div class="ds-row yc-actions" style="margin-bottom: var(--space-5)">
@@ -123,13 +118,7 @@
 {% if not item.is_released %}
 <section class="card yc-panel" style="margin-top: var(--space-5); border-color: var(--color-danger)">
   <h2 style="margin-top:0">Release this grade item</h2>
-  <p class="card__body">
-    Releasing shows every student on the list their own score and your comment to them. It
-    freezes this item's category, name, kind, linked item and maximum points
-    <strong>permanently</strong> — there is no way to unrelease, reopen or delete a released
-    grade item, and no such control exists anywhere in the system. You will still be able to
-    correct a student's score afterwards.
-  </p>
+  <p class="card__body">Release shows each listed student their own score and comment. Category, name, kind, linked item and maximum points become permanent; release cannot be undone and the item cannot be reopened or deleted. Scores remain correctable.</p>
   {{ gr.messages(blocker_messages) }}
   {% if releasable %}
   <form method="post" action="{{ release_url }}" class="yc-form">

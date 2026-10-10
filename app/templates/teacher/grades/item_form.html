@@ -24,9 +24,7 @@
     POST-only route with its own confirmation and its own signed token, so a
     forged released_at field in this body has nowhere to land. -#}
 <h1 data-workspace-page-heading style="margin-top: 0">{{ "Edit grade item" if item else "New grade item" }}</h1>
-<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
-  {{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }}
-</p>
+
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for message_category, message in messages %}
@@ -48,6 +46,7 @@
   {% endif %}
 </div>
 
+<p class="workspace-meta" dir="auto">{{ group.name }} · {{ group.academic_term.name }}</p>
 <form method="post" class="card yc-panel yc-form" novalidate>
   {{ form.hidden_tag() }}
   <input type="hidden" name="grade_state" value="{{ grade_state }}">
@@ -102,10 +101,7 @@
     {% for error in form.max_points.errors %}
     <div class="field__error">{{ error }}</div>
     {% endfor %}
-    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
-      A number with at most two decimal places, for example 20 or 12.5. Stored exactly, never
-      as a floating-point value.
-    </div>
+    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">Up to two decimal places; stored exactly.</div>
   </div>
 
   <div class="ds-row yc-actions" style="margin-top: var(--space-5)">

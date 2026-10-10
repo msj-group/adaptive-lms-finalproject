@@ -5,12 +5,7 @@
 {% block portal_nav %}{% set active_nav = 'speaking' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
 <div class="activity-surface">
-<ol class="workspace-steps" aria-label="Speaking submission steps">
-<li>Record or choose audio</li>
-<li>Listen and review</li>
-<li>Submit final recording</li>
-<li>Open receipt</li>
-</ol>
+
 {#- Phase 4 / M06, the browser recording page.
 
     `activity` is a plain presentation dict; the row behind it already
@@ -29,9 +24,7 @@
     Microphone permission is NOT requested when this page loads. It is
     requested only after the student presses "Start recording", and the
     guidance below says so before they do. -#}
-<p class="ds-section__desc" style="margin-bottom: var(--space-2)">
-  {{ activity.group_name }} &middot; {{ activity.course_title }} &middot; {{ activity.level_name }} &middot; {{ activity.term_name }}
-</p>
+
 
 
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -40,16 +33,9 @@
   {% endfor %}
 {% endwith %}
 
-<div class="ds-row" style="margin: var(--space-4) 0 var(--space-6)">
-  <a class="btn btn--secondary" href="{{ detail_url }}">Back to the activity</a>
-</div>
 
-<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
-  <strong>You can submit once, and it is final.</strong> Record as many times as you like and
-  listen back first — a recording you discard is never sent anywhere. Only the recording you
-  finally submit is uploaded, and after that it cannot be edited, replaced, or submitted again.
-  Recording closes at {{ activity.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
-</div>
+
+<div class="alert alert--warning" style="margin-bottom: var(--space-6)"><span dir="auto">{{ activity.group_name }} · {{ activity.term_name }}</span><br><strong>One final recording.</strong> Unlimited local retakes; discarded recordings stay on your device. Only final submission uploads it. No edit, replacement or resubmission. Deadline: {{ activity.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).</div>
 
 <div class="st-speaking-layout">
 <aside class="activity-speaking-brief">
@@ -72,13 +58,7 @@
         starts hidden and is revealed by the recorder module, so a browser
         that cannot record never shows instructions it cannot follow. -#}
     <div data-recorder-guidance hidden>
-      <p style="margin-top: 0">
-        When you press <strong>Start recording</strong>, your browser will ask for permission to
-        use your microphone. Choose <strong>Allow</strong>. If you accidentally block it, you can
-        allow microphone access for this site again in your browser's site settings and then
-        press Start recording once more. Nothing is recorded before you press that button, and
-        nothing is sent to the center until you press Submit.
-      </p>
+      <p style="margin-top: 0">Start recording requests microphone access. If blocked, allow it in your browser site settings and retry. Recording starts only on request; upload starts only on final submission.</p>
     </div>
 
     {#- The recorder's own controls. They start hidden and are revealed only
@@ -104,10 +84,7 @@
       <audio data-recorder-preview data-research-media="speaking_playback" controls preload="metadata" style="width:100%"
              aria-label="Your recording, before you submit it">
 </audio>
-      <p class="ds-section__desc" style="margin: var(--space-2) 0 0">
-        This is only on your device. Press <strong>Record again</strong> to throw it away and
-        start over — nothing is sent until you submit.
-      </p>
+      <p class="ds-section__desc" style="margin: var(--space-2) 0 0">Local preview. Record again discards it; only Submit uploads it.</p>
     </div>
 
     <div class="alert alert--danger" style="margin-top: var(--space-4)" data-recorder-error hidden>

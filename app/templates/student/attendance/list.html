@@ -15,11 +15,7 @@
     own finalized records; there is deliberately no percentage, rate or
     attendance score anywhere. -#}
 <h1 data-workspace-page-heading style="margin-top: 0">Attendance</h1>
-<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
-  Your own attendance for classes your teacher has finished recording, most recent first. A
-  class only appears here once its attendance has been finalized. Dates and times are in the
-  center timezone (<strong>{{ tz_name }}</strong>).
-</p>
+<p class="ds-section__desc" style="margin-bottom: var(--space-4)">Finalized attendance only · {{ tz_name }}.</p>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}
@@ -35,10 +31,7 @@
       {{ att.status_badge(item.status, _(item.label) ~ " " ~ item.count) }}
     {% endfor %}
   </div>
-  <p class="card__body" style="margin-top: var(--space-3)">
-    {{ _n('%(count)d finalized class in total.', '%(count)d finalized classes in total.', total_count) }} These are
-    counts of what has been recorded so far — they are not a score, a grade or a percentage.
-  </p>
+  <p class="card__body" style="margin-top: var(--space-3)">{{ _n("%(count)d finalized class in total.", "%(count)d finalized classes in total.", total_count) }} Recorded counts; no score or percentage.</p>
 </div>
 {% endif %}
 
@@ -83,10 +76,7 @@
 {% else %}
 <div class="empty-state">
   <div class="empty-state__title">No attendance recorded yet</div>
-  <div>
-    Once a teacher finishes recording attendance for one of your classes, your own mark for it
-    appears here.
-  </div>
+
 </div>
 {% endif %}
 </div>
