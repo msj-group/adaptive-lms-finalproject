@@ -3,6 +3,10 @@
 .yc-workspace .st-sidebar { position:fixed; inset-block:24px; inset-inline-start:24px; z-index:50; display:flex; flex-direction:column; width:272px; border:1px solid var(--st-border); border-radius:32px; background:var(--st-glass); box-shadow:0 20px 70px -30px #4d66ae45,inset 0 1px 0 #ffffff50; backdrop-filter:blur(24px); }
 .yc-workspace .st-brand { display:flex; align-items:center; gap:12px; padding:32px 24px; text-decoration:none; }
 .yc-workspace .st-brand img { width:52px; height:60px; object-fit:contain; }
+.yc-workspace .workspace-theme-logo { display:flex; flex-shrink:0; }
+.yc-workspace .workspace-theme-logo .workspace-logo--dark { display:none; }
+html[data-theme='dark'] .yc-workspace .workspace-theme-logo .workspace-logo--light { display:none; }
+html[data-theme='dark'] .yc-workspace .workspace-theme-logo .workspace-logo--dark { display:block; }
 .yc-workspace .st-brand strong { display:block; white-space:nowrap; color:var(--st-blue); font:600 21px/1.2 var(--st-display); }
 .yc-workspace .st-brand strong>span { color:var(--st-accent); }
 .yc-workspace .st-brand small { display:block; margin-top:5px; font-size:7px; font-weight:600; letter-spacing:.13em; color:var(--st-muted); }

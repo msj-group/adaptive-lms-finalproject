@@ -55,6 +55,9 @@
 {% macro avatar(name, photo_url=none) -%}
 {% set parts = name.split() %}<span class="figma-avatar" aria-hidden="true">{% if photo_url %}<img src="{{ photo_url }}" alt="" width="39" height="39">{% else %}{{ parts[0][:1]|upper if parts else '?' }}{{ parts[-1][:1]|upper if parts|length > 1 else '' }}{% endif %}</span>
 {%- endmacro %}
+{% macro brand_logo(alt='', width=52, height=60) -%}
+<span class="workspace-theme-logo"><img class="workspace-logo--light" src="{{ url_for('static', filename='images/figma_logo.png') }}" alt="{{ alt }}" width="{{ width }}" height="{{ height }}"><img class="workspace-logo--dark" src="{{ url_for('static', filename='images/figma_logo_dark.png') }}" alt="{{ alt }}" width="{{ width }}" height="{{ height }}"></span>
+{%- endmacro %}
 {% macro page_heading(title) -%}
 <h1 class="figma-page-label">{{ title|striptags }}</h1>
 {%- endmacro %}
