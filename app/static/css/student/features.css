@@ -5,6 +5,7 @@
 .st-workspace .st-greeting h1 span { color:var(--st-accent); }
 .st-workspace .st-greeting>p { margin:12px 0 0; color:var(--st-muted); font-size:16px; }
 .st-workspace .st-dashboard-top,.st-workspace .st-group-overview { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr); gap:var(--st-section-gap); }
+.st-workspace .st-dashboard-top--single { grid-template-columns:minmax(0,1fr); }
 .st-workspace .st-continue { position:relative; overflow:hidden; min-height:0; padding:var(--st-panel-pad); border-radius:var(--st-panel-radius); }
 .st-workspace .st-continue-inner { position:relative; display:flex; gap:var(--st-section-gap); align-items:center; }
 .st-workspace .st-continue-icon { display:grid; place-items:center; width:36px; height:36px; flex-shrink:0; border-radius:24px; color:#3269de; background:var(--st-wash); }
@@ -93,8 +94,8 @@
 .st-workspace .workspace-lesson-list { list-style:none; padding:0; margin:0; }
 .st-workspace .st-lesson-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 0; min-height:70px; border-top:1px solid var(--st-divider); text-decoration:none; }
 .st-workspace .st-lesson-row .st-lesson-copy { flex:1; font:500 20px var(--st-display); }
-.st-workspace .st-studio { display:grid; grid-template-columns:250px minmax(0,1fr); margin:24px 0; overflow:hidden; border:1px solid var(--st-border); border-radius:var(--st-panel-radius); background:var(--st-glass); box-shadow:var(--st-shadow); backdrop-filter:blur(24px); }
-.st-workspace .st-studio-map { background:var(--st-wash); padding:26px 24px; border-inline-end:1px solid var(--st-divider); min-width:0; }
+.st-workspace .st-studio { display:grid; grid-template-columns:minmax(0,1fr) 250px; margin:24px 0; overflow:hidden; border:1px solid var(--st-border); border-radius:var(--st-panel-radius); background:var(--st-glass); box-shadow:var(--st-shadow); backdrop-filter:blur(24px); }
+.st-workspace .st-studio-map { grid-column:2; grid-row:2; background:var(--st-wash); padding:var(--st-panel-pad); border-inline-start:1px solid var(--st-divider); min-width:0; }
 .st-workspace .st-studio-map h2 { font-size:22px; margin:12px 0; }
 .st-workspace .workspace-reading-nav { margin:24px 0; }
 .st-workspace .workspace-reading-nav summary { min-height:44px; cursor:pointer; font-size:12px; font-weight:600; }
@@ -105,8 +106,8 @@
 .st-workspace .st-lesson-number { display:grid; place-items:center; flex-shrink:0; width:30px; height:30px; border-radius:50%; background:#1b3a8a; color:#fff; font-size:10px; }
 .st-workspace .st-studio-return { display:flex; flex-wrap:wrap; gap:var(--st-section-gap); margin-bottom:var(--st-section-gap); }
 .st-workspace .st-studio-return .btn { padding:0; background:none; border:0; box-shadow:none; min-height:44px; font-weight:500; }
-.st-workspace .st-studio-body { min-width:0; padding:var(--st-panel-pad); }
-.st-workspace .st-studio-heading { padding-bottom:24px; margin-bottom:var(--st-section-gap); border-bottom:1px solid var(--st-divider); }
+.st-workspace .st-studio-body { grid-column:1; grid-row:2; min-width:0; padding:var(--st-panel-pad); }
+.st-workspace .st-studio-heading { grid-column:1/-1; padding:var(--st-panel-pad); margin:0; border-bottom:1px solid var(--st-divider); }
 .st-workspace .st-studio-heading h1 { font-size:var(--st-title-size); font-weight:500; }
 .st-workspace .st-reading-prose { padding:24px 0; font-size:17px; line-height:1.85; }
 .st-workspace .learning-completion { padding:20px 0; margin:20px 0; border-block:1px solid var(--st-divider); }
@@ -130,7 +131,7 @@
 .st-workspace .activity-card-symbol { display:grid; place-items:center; width:32px; height:32px; border:1px solid var(--st-border); border-radius:18px; background:var(--st-wash); color:var(--st-blue); }
 .st-workspace .activity-type-label { flex:1; font-size:9px; font-weight:600; letter-spacing:.12em; }
 .st-workspace .st-activity-card h3 { font-size:22px; margin:0 0 12px; }
-.st-workspace .st-activity-card h3 a { text-decoration:none; }
+.st-workspace .st-activity-card h3 a { display:block; min-height:44px; text-decoration:none; }
 .st-workspace .activity-card-course { display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--st-muted); }
 .st-workspace .activity-card-deadline { display:flex; gap:12px; align-items:center; font-size:12px; margin:12px 0; }
 .st-workspace .activity-card-deadline small { display:block; color:var(--st-muted); font-size:10px; }
@@ -281,7 +282,7 @@
 .st-workspace .activity-hub-pager { display:flex; justify-content:center; flex-wrap:wrap; gap:12px; margin-top:var(--st-section-gap); }
 @media(hover:hover) { .st-workspace .st-course-card:hover { transform:translateY(-3px); } }
 @media(max-width:1279px) { .st-workspace .st-dashboard-top,.st-workspace .st-group-overview { grid-template-columns:1fr; } .st-workspace .st-hub-filters { grid-template-columns:repeat(3,minmax(0,1fr)); } .st-workspace .st-hub-filters .activity-filter-actions { grid-column:1/-1; } }
-@media(max-width:1023px) { .st-workspace .st-studio { grid-template-columns:210px minmax(0,1fr); } .st-workspace .st-studio-body { padding:var(--st-panel-pad); } .st-workspace .st-question-layout { grid-template-columns:minmax(0,1fr) 230px; } }
+@media(max-width:1023px) { .st-workspace .st-studio { grid-template-columns:minmax(0,1fr) 210px; } .st-workspace .st-studio-body { padding:var(--st-panel-pad); } .st-workspace .st-question-layout { grid-template-columns:minmax(0,1fr) 230px; } }
 @media(max-width:767px) {
   .st-workspace .st-conversation-context .st-announcement-list { grid-template-columns:1fr; }
   .st-workspace .st-conversation-context .st-announcement-list li+li { padding-top:12px; border-top:1px solid var(--st-divider); }
@@ -298,7 +299,7 @@
   .st-workspace .st-hub-heading h2 { font-size:31px; }
   .st-workspace .st-hub-filters { grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr)); }
   .st-workspace .st-studio { display:flex; flex-direction:column; }
-  .st-workspace .st-studio-map { padding:18px 22px; border-inline-end:0; border-bottom:1px solid var(--st-divider); }
+  .st-workspace .st-studio-map { padding:var(--st-panel-pad); border-inline-start:0; border-top:1px solid var(--st-divider); }
   .st-workspace .st-studio-map>h2 { display:none; }
   .st-workspace .workspace-reading-nav { margin:8px 0; }
   .st-workspace .st-studio-body { padding:var(--st-panel-pad); }

@@ -2,11 +2,5 @@
 {% import "admin/_macros.html" as macros %}
 {% block admin_content %}
 <div class="ds-page yc-surface"><h1 data-workspace-page-heading>Student Accounts</h1>{{ macros.flash_messages() }}
-<form method="get" data-live-query class="yc-filter-form"><label for="q">Name or email</label><input id="q" name="q" value="{{ search }}" maxlength="100"><button class="btn">Search</button></form>
-<div style="overflow-x:auto"><table class="table"><thead><tr><th>Student</th><th>Obligations (LYD)</th><th>Collections</th><th>Payouts</th><th>Balance</th></tr></thead><tbody>
-{% for student in page.items %}{% set facts = balances[student.id] %}<tr><td><a href="{{ url_for('admin.student_financial_record', student_public_id=student.public_id) }}">{{ student.full_name }}</a></td>
-{% for key in ['obligations','collections','payouts','balance'] %}<td>{{ money(facts[key]) }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
-<p>A positive balance is due from the student. A negative balance is credit owed to the student.</p>
-{% if page.has_prev %}<a href="{{ url_for('admin.student_accounts', page=page.prev_num, q=search) }}">Previous</a>{% endif %}
-{% if page.has_next %}<a href="{{ url_for('admin.student_accounts', page=page.next_num, q=search) }}">Next</a>{% endif %}</div>
+<form method="get" class="yc-filter-form" data-query-form data-query-results="query-results" data-query-min="0"><label for="q">Name or email</label><input id="q" name="q" value="{{ search }}" maxlength="100"><button data-query-submit class="btn">Search</button></form><div id="query-results">{% include "admin/general_finance/_account_results.html" %}</div></div>
 {% endblock %}

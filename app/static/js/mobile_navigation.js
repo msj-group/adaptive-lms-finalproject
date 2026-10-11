@@ -10,6 +10,9 @@
   var bottomNav = document.querySelector('.workspace-mobile-nav');
   var compact = window.matchMedia('(max-width:1023px)');
   if (!panel || !toggle || !backdrop) return;
+  if (bottomNav && !bottomNav.querySelector('a[aria-current="page"]') && panel.querySelector('a[aria-current="page"]')) {
+    bottomNav.querySelector('[data-more-toggle]').setAttribute('aria-current', 'page');
+  }
   var previousFocus = null;
   function measureNavigation() {
     if (bottomNav) document.body.style.setProperty('--mobile-nav-height', bottomNav.getBoundingClientRect().height + 'px');

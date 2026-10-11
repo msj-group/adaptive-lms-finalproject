@@ -1,8 +1,8 @@
 {% import '_figma_ui.html' as ui %}
 {% set hub_endpoint = 'teacher.activities' if teacher else 'student.activities' %}
 
-<nav class="st-kind-tabs" aria-label="Activity type"><a href="{{ url_for(hub_endpoint,state=selected_state,course=selected_course,group=selected_group) }}"{% if not selected_type %} aria-current="page"{% endif %}>All activities</a>{% for kind,label in types.items() %}<a href="{{ url_for(hub_endpoint,type=kind,state=selected_state,course=selected_course,group=selected_group) }}"{% if selected_type == kind %} aria-current="page"{% endif %} data-research-id="activity_filter">{{ activity_ui.symbol(kind,16) }} {{ label }}</a>{% endfor %}</nav>
-<form method="get" action="{{ url_for(hub_endpoint) }}" class="st-hub-filters">
+<nav class="st-kind-tabs" aria-label="Activity type"><a data-query-type href="{{ url_for(hub_endpoint,state=selected_state,course=selected_course,group=selected_group) }}"{% if not selected_type %} aria-current="page"{% endif %}>All activities</a>{% for kind,label in types.items() %}<a data-query-type href="{{ url_for(hub_endpoint,type=kind,state=selected_state,course=selected_course,group=selected_group) }}"{% if selected_type == kind %} aria-current="page"{% endif %} data-research-id="activity_filter">{{ activity_ui.symbol(kind,16) }} {{ label }}</a>{% endfor %}</nav>
+<form method="get" action="{{ url_for(hub_endpoint) }}" class="st-hub-filters" data-query-form data-query-results="query-results" data-query-min="0">
 <input type="hidden" name="type" value="{{ selected_type }}">
 <div class="field">
 <label for="state">{{ _('Publication' if teacher else 'Progress & availability') }}</label>
@@ -20,38 +20,7 @@
 <option value="">All groups</option>{% if hub_group and not groups|selectattr('group_public_id','equalto',selected_group)|list %}<option value="{{ hub_group.public_id }}" selected>{{ hub_group.name }}</option>{% endif %}{% for row in groups %}<option value="{{ row.group_public_id }}"{% if selected_group == row.group_public_id %} selected{% endif %}>{{ row.group_name }}</option>{% endfor %}</select>
 </div>
 <div class="activity-filter-actions">
-<button type="submit" class="btn btn--primary">Apply filters</button>
+<button data-query-submit type="submit" class="btn btn--primary">Apply filters</button>
 <a href="{{ url_for(hub_endpoint) }}">Reset filters</a>
 </div>
-</form>
-{% if teacher and hub_group and hub_operational %}<nav class="activity-create-strip" aria-label="Create a group activity">
-<span>Build for this group</span>{% for kind,endpoint in [('assignment','teacher.assignment_create'),('quiz','teacher.quiz_create'),('listening','teacher.listening_create'),('speaking','teacher.speaking_create')] %}<a href="{{ url_for(endpoint,group_public_id=hub_group.public_id) }}">{{ activity_ui.symbol(kind,16) }} {{ _('New %(type)s',type=_(types[kind])) }}</a>{% endfor %}</nav>{% endif %}
-<div class="activity-results-heading">
-<h2>{{ _('Activity library' if teacher else 'Your activities') }}</h2>
-<p>{{ _('Page %(page)d · %(count)d activities shown',page=page,count=items|length) }}{% if has_next %} <span>More on the next page</span>{% endif %}</p>
-</div>
-<div class="st-activity-grid">{% for item in items %}<article class="st-panel st-activity-card st-activity-card--{{ item.kind }}">
-<header>
-<span class="activity-card-symbol">{{ activity_ui.symbol(item.kind,25) }}</span>
-<span class="activity-type-label">{{ item.type_label }}</span>
-<span class="badge badge--{{ 'success' if (item.status == 'published' if teacher else item.window_label == 'Open') else 'neutral' }}">{{ item.state_label if teacher else item.window_label }}</span>
-</header>
-<h3>
-<a href="{{ item.url }}" dir="auto"{% if not teacher %} data-research-id="activity_open"{% endif %}>{{ item.title }}</a>
-</h3>
-<p class="activity-card-course">
-<a href="{{ item.course_url }}" dir="auto">{{ ui.icon('book',15) }} {{ item.course_title }}</a>
-<span dir="auto">{{ item.group_name }}</span>
-</p>
-<div class="activity-card-deadline">{{ ui.icon('clock',16) }}<div>
-<small>Due</small>{% if item.due_local %}<time datetime="{{ item.due_local.isoformat() }}">{{ item.due_local.strftime('%d %b %Y · %H:%M') }}</time>{% else %}<span>Availability not set</span>{% endif %}</div>
-</div>
-<footer>{% if teacher %}<span class="activity-card-progress">{{ _('Read only' if not item.operational else 'Open to manage') }}</span>
-<a class="activity-card-action" href="{{ item.url }}">Open activity {{ ui.icon('arrow',17) }}</a>{% else %}<span class="activity-card-progress">{{ item.progress_label }}{% if item.result_available %}<small>Result available</small>{% endif %}</span>
-<a class="activity-card-action" href="{{ item.url }}" data-research-id="activity_open">{{ item.action_label }} {{ ui.icon('arrow',17) }}</a>{% endif %}</footer>
-</article>{% else %}<div class="st-empty">{{ ui.icon('layers',38) }}<h3>No activities in this view</h3>
-
-<a class="btn btn--secondary" href="{{ url_for(hub_endpoint) }}">Reset filters</a>
-</div>{% endfor %}</div>
-<p class="activity-timezone">{{ tz_name }}</p>
-<nav class="activity-hub-pager" aria-label="Activity pages">{% if page > 1 %}<a class="btn btn--secondary" href="{{ url_for(hub_endpoint,page=page-1,type=selected_type,state=selected_state,course=selected_course,group=selected_group) }}">Previous</a>{% endif %}{% if has_next %}<a class="btn btn--secondary" href="{{ url_for(hub_endpoint,page=page+1,type=selected_type,state=selected_state,course=selected_course,group=selected_group) }}">Next</a>{% endif %}</nav>
+</form><div id="query-results">{% include "student/template/_activity_results.html" %}</div>

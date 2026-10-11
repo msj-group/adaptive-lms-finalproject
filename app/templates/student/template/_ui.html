@@ -16,7 +16,7 @@
     </div>
     <div class="st-course-image"><img src="{{ url_for('static',filename='images/student_study.jpg') }}" alt="" loading="lazy" width="600" height="400"></div>
   </div>
-  <footer><span>{{ ui.icon('users',14) }} {{ card.group_name }} · {{ card.term_name }}</span><span>{% if progress and progress.lesson_total %}{{ ui.icon('check',15) }} {{ progress.completed }} of {{ progress.lesson_total }} lessons marked complete{% else %}No lesson progress available{% endif %}</span></footer>
+  <footer><span>{% if progress and progress.lesson_total %}{{ ui.icon('check',15) }} {{ progress.completed }} of {{ progress.lesson_total }} lessons marked complete{% else %}No lesson progress available{% endif %}</span></footer>
   {% if progress and progress.lesson_total %}<progress value="{{ progress.completed }}" max="{{ progress.lesson_total }}" aria-label="Completed lessons in {{ card.group_name }}">{{ progress.completed }} of {{ progress.lesson_total }}</progress>{% endif %}
 </article>
 {%- endmacro %}

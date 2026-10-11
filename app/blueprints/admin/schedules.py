@@ -1,3 +1,5 @@
+from app.services.search_terms import escape_like
+from app.services.query_presentation import render_query_page
 from flask_login import current_user
 from app.services.schedule_resources import lock_schedule_resources, resource_schedule_conflict
 from app.services.scheduling_history import schedule_snapshot, record_scheduling_change
@@ -141,7 +143,7 @@ def _redirect_to_group_schedules(group_public_id):
 @admin_bp.get("/schedules")
 @roles_required(UserRole.ADMINISTRATOR.value)
 def schedules_overview():
-    search = request.args.get("q", "").strip()
+    search = request.args.get("q", "").strip()[:100]
     term_id = _safe_id_arg("term_id")
     course_id = _safe_id_arg("course_id")
     level_id = _safe_id_arg("level_id")
@@ -156,7 +158,7 @@ def schedules_overview():
     ).join(Group, Schedule.group_id == Group.id)
 
     if search:
-        query = query.filter(Schedule.location.ilike(f"%{search}%"))
+        query = query.filter(Schedule.location.ilike(f"%{escape_like(search)}%", escape="\\"))
     if term_id:
         query = query.filter(Group.academic_term_id == term_id)
     if course_id:
@@ -174,7 +176,7 @@ def schedules_overview():
         Group.name, Schedule.day_of_week, Schedule.start_time, Schedule.id
     ).all()
 
-    return render_template(
+    return render_query_page(
         "admin/schedules/overview.html",
         schedules=schedules,
         search=search,

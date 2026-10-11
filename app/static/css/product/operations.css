@@ -145,3 +145,10 @@
 @media print { .yc-workspace :is(.st-sidebar,.st-header,.st-footer,.workspace-context,.figma-skip-link,.btn) { display:none!important; } .yc-workspace .st-body { margin:0; } .yc-operations :is(.yc-surface,.yc-panel,.card,.dash-section) { background:white; color:black; box-shadow:none; backdrop-filter:none; } }
 @container workspace (max-width:680px) { .yc-operations :is(.workspace-split-review,.today-dashboard) { grid-template-columns:minmax(0,1fr); } }
 .yc-operations .activity-kind-browser a { flex-direction:row; align-items:center; flex-wrap:wrap; padding:10px 12px; min-height:44px; background:var(--st-glass); border-color:var(--st-border); border-radius:var(--st-control-radius); }
+
+/* Approved Home rows: keep operational identity and 44px actions compact. */
+.yc-operations .today-dashboard .today-action-row h3 { margin:6px 0; }
+.yc-operations .today-dashboard .today-action-row .today-meta { margin:4px 0; }
+.yc-operations .today-dashboard .today-action-row { gap:8px; }
+.yc-operations .workspace-date-filters { grid-column:1 / -1; }
+.yc-operations .workspace-date-filters>summary { min-height:44px; cursor:pointer; }

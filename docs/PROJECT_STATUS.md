@@ -1,5 +1,30 @@
 # Repair status
 
+## Approved UX release authorization — 2026-10-11
+
+The owner explicitly requested commit, push and deployment of the reviewed UX
+implementation to the existing Railway web service. This supersedes the prior
+local-only boundary for this release. Preserve remote follow-up f337f2d, the
+production database/volumes/secrets and development provenance with Study off.
+No schema change, study activation or new Baseline Freeze is authorized.
+Release execution and honest verification limits are recorded in
+[APPROVED_UX_RELEASE.md](APPROVED_UX_RELEASE.md).
+
+## Approved UX proposals, local implementation — 2026-10-11
+
+The latest owner instruction supersedes every earlier release authorization:
+implement the remaining compatible A–M, N–U and corrected V–Z/W proposals in
+MAIN, preserve completed density/content/Dark-logo work and protected pages,
+and verify with the existing owned disposable Development dataset. The selected
+dashboards and exact role-specific mobile destinations are authoritative.
+No commit, push, deployment, Railway modification, migration, production data
+change, Study, Version B or Baseline Freeze is authorized. Verification remains
+bounded browser/static review; do not recreate the deleted test package.
+Compatible source implementation and bounded four-role actual-app checks are
+complete. Scope, original proposal IDs, evidence and PARTIAL acceptance limits
+are recorded in [APPROVED_UX_PROPOSALS.md](APPROVED_UX_PROPOSALS.md). All changes
+remain local and unstaged; historical release permissions below remain superseded.
+
 ## Owner-requested search and messaging UI follow-up — 2026-10-11
 
 The owner requested live results for search fields, a compact emoji category

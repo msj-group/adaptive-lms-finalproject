@@ -1,0 +1,35 @@
+{% import '_figma_ui.html' as ui %}
+{% import 'activities/_ui.html' as activity_ui %}
+{% set hub_endpoint = 'teacher.activities' if teacher else 'student.activities' %}
+<span hidden data-query-count="{{ items|length }}"></span>
+
+{% if teacher and hub_group and hub_operational %}<nav class="activity-create-strip" aria-label="Create a group activity">
+<span>Build for this group</span>{% for kind,endpoint in [('assignment','teacher.assignment_create'),('quiz','teacher.quiz_create'),('listening','teacher.listening_create'),('speaking','teacher.speaking_create')] %}<a href="{{ url_for(endpoint,group_public_id=hub_group.public_id) }}">{{ activity_ui.symbol(kind,16) }} {{ _('New %(type)s',type=_(types[kind])) }}</a>{% endfor %}</nav>{% endif %}
+<div class="activity-results-heading">
+<h2>{{ _('Activity library' if teacher else 'Your activities') }}</h2>
+<p>{{ _('Page %(page)d · %(count)d activities shown',page=page,count=items|length) }}{% if has_next %} <span>More on the next page</span>{% endif %}</p>
+</div>
+<div class="activity-hub-grid">{% for item in items %}<article class="activity-hub-card activity-hub-card--{{ item.kind }}">
+<header>
+<span class="activity-card-symbol">{{ activity_ui.symbol(item.kind,25) }}</span>
+<span class="activity-type-label">{{ item.type_label }}</span>
+<span class="badge badge--{{ 'success' if (item.status == 'published' if teacher else item.window_label == 'Open') else 'neutral' }}">{{ item.state_label if teacher else item.window_label }}</span>
+</header>
+<h3>
+<a href="{{ item.url }}" dir="auto"{% if not teacher %} data-research-id="activity_open"{% endif %}>{{ item.title }}</a>
+</h3>
+<p class="activity-card-course">
+<a href="{{ item.course_url }}" dir="auto">{{ ui.icon('book',15) }} {{ item.course_title }}</a>
+<span dir="auto">{{ item.group_name }}</span>
+</p>
+<div class="activity-card-deadline">{{ ui.icon('clock',16) }}<div>
+<small>Due</small>{% if item.due_local %}<time datetime="{{ item.due_local.isoformat() }}">{{ item.due_local.strftime('%d %b %Y · %H:%M') }}</time>{% else %}<span>Availability not set</span>{% endif %}</div>
+</div>
+<footer>{% if teacher %}<span class="activity-card-progress">{{ _('Read only' if not item.operational else 'Open to manage') }}</span>
+{% else %}<span class="activity-card-progress">{{ item.progress_label }}{% if item.result_available %}<small>Result available</small>{% endif %}</span>
+{% endif %}</footer>
+</article>{% else %}<div class="activity-hub-empty">{{ ui.icon('layers',38) }}<h3>No activities in this view</h3>
+
+</div>{% endfor %}</div>
+<p class="activity-timezone">{{ tz_name }}</p>
+<nav class="activity-hub-pager" aria-label="Activity pages">{% if page > 1 %}<a class="btn btn--secondary" href="{{ url_for(hub_endpoint,page=page-1,type=selected_type,state=selected_state,course=selected_course,group=selected_group) }}">Previous</a>{% endif %}{% if has_next %}<a class="btn btn--secondary" href="{{ url_for(hub_endpoint,page=page+1,type=selected_type,state=selected_state,course=selected_course,group=selected_group) }}">Next</a>{% endif %}</nav>

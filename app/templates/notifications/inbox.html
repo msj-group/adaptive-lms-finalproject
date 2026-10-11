@@ -17,30 +17,12 @@
   <section class="notif-inbox" aria-labelledby="notifications-title">
     <div class="notif-toolbar">
       <nav class="notif-filters" aria-label="Notification filters">
-        <a class="notif-filter" href="{{ url_for('notifications.inbox', kind=selected_kind) }}"{% if filter_name == 'all' %} aria-current="page"{% endif %}>All</a>
-        <a class="notif-filter" href="{{ url_for('notifications.inbox', filter='unread', kind=selected_kind) }}" aria-label="{{ _('Unread, %(count)s overall', count=unread_total) }}"{% if filter_name == 'unread' %} aria-current="page"{% endif %}>Unread <span class="notif-count" aria-hidden="true">{{ unread_total }}</span></a>
+        <a data-query-kind-link class="notif-filter" href="{{ url_for('notifications.inbox', kind=selected_kind) }}"{% if filter_name == 'all' %} aria-current="page"{% endif %}>All</a>
+        <a data-query-kind-link class="notif-filter" href="{{ url_for('notifications.inbox', filter='unread', kind=selected_kind) }}" aria-label="{{ _('Unread, %(count)s overall', count=unread_total) }}"{% if filter_name == 'unread' %} aria-current="page"{% endif %}>Unread <span class="notif-count" aria-hidden="true">{{ unread_total }}</span></a>
       </nav>
-      <form class="notif-kind-filter" method="get" action="{{ url_for('notifications.inbox') }}"><input type="hidden" name="filter" value="{{ filter_name }}"><label for="notification-kind">Update type</label><select id="notification-kind" name="kind" class="field__input"><option value="">All types</option>{% for value, choice in kind_choices.items() %}<option value="{{ value }}"{% if value == selected_kind %} selected{% endif %}>{{ choice[0] }}</option>{% endfor %}</select><button class="btn" type="submit">Apply</button></form>
+      <form class="notif-kind-filter" method="get" action="{{ url_for('notifications.inbox') }}" data-query-form data-query-results="query-results" data-query-min="0"><input type="hidden" name="filter" value="{{ filter_name }}"><label for="notification-kind">Update type</label><select id="notification-kind" name="kind" class="field__input"><option value="">All types</option>{% for value, choice in kind_choices.items() %}<option value="{{ value }}"{% if value == selected_kind %} selected{% endif %}>{{ choice[0] }}</option>{% endfor %}</select><button data-query-submit class="btn" type="submit">Apply</button></form>
     </div>
-    <div class="notif-list-heading"><h2>{{ 'Unread updates' if filter_name == 'unread' else 'Recent updates' }}</h2><p>{{ _('Showing %(count)s on this page.', count=notifications|length) }}</p></div>
-    {% if unread_total %}<p class="notif-scope-note">Unread count and Mark all cover every type and page.</p>{% endif %}
-    {% if notifications %}
-    <ul class="notif-list">
-      {% set dates = namespace(previous=none) %}
-      {% for item in notifications %}
-      {% set day = item.created_local.date() %}
-      {% if dates.previous != day %}<li class="notif-date" role="presentation"><h2><time datetime="{{ day.isoformat() }}">{{ day.strftime('%A, %d %b %Y') }}</time></h2></li>{% set dates.previous = day %}{% endif %}
-      {{ notice.row(item, tz_name, filter_name, page, selected_kind) }}
-      {% endfor %}
-    </ul>
-    {% else %}
-    <div class="notif-empty"><span class="notif-empty-icon" aria-hidden="true">{{ ui.icon('check' if filter_name == 'unread' and not selected_kind else 'bell', 28) }}</span>
-      {% if selected_kind %}<h2>No matching updates</h2><p>There are no updates for this filter.</p><a href="{{ url_for('notifications.inbox', filter=filter_name) }}">Clear the type filter {{ ui.icon('arrow', 16) }}</a>
-      {% elif filter_name == 'unread' %}<h2>You're all caught up</h2><p>No unread notifications.</p><a href="{{ url_for('notifications.inbox') }}">View all notifications {{ ui.icon('arrow', 16) }}</a>
-      {% else %}<h2>No notifications yet</h2>{% endif %}
-    </div>
-    {% endif %}
-    {% if has_prev or has_next %}<nav class="notif-pagination" aria-label="Notification pages">{% if has_prev %}<a class="btn" href="{{ url_for('notifications.inbox', filter=filter_name, kind=selected_kind, page=page - 1) }}">Previous</a>{% endif %}<span class="notif-pagination__page">Page {{ page }}</span>{% if has_next %}<a class="btn" href="{{ url_for('notifications.inbox', filter=filter_name, kind=selected_kind, page=page + 1) }}">Next</a>{% endif %}</nav>{% endif %}
+<div id="query-results">{% include "notifications/_inbox_results.html" %}</div>
   </section>
   <p class="notif-preview-note">{{ _('Times shown in %(timezone)s.', timezone=tz_name) }}</p>
 </div>

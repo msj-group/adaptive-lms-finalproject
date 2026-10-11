@@ -9,10 +9,10 @@
 
 
 
-<div class="st-studio"><aside class="st-studio-map"><h2>Your course map</h2>
-<details class="workspace-reading-nav" open><summary>Course outline · {{ lesson_links|length }} published lessons</summary><ol>{% for item in lesson_links %}<li><a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.public_id) }}"{% if item.public_id == lesson_public_id %} aria-current="page"{% endif %}><span class="st-lesson-number" aria-hidden="true">{{ "%02d"|format(loop.index) }}</span><span>{{ item.title }}</span></a> {{ '· Completed' if item.is_completed else '' }}</li>{% endfor %}</ol></details>
-{% if materials %}<nav class="workspace-inline-links" aria-label="In this lesson">{% for item in materials %}<a href="#material-{{ item.public_id }}">{{ item.title }}</a>{% endfor %}</nav>{% endif %}
-</aside><div class="st-studio-body"><header class="st-studio-heading"><h1 data-workspace-page-heading>{{ lesson_title }}</h1><small dir="auto">{{ group_name }} · {{ term_name }} · {{ unit_title }}</small></header>
+<div class="st-studio"><header class="st-studio-heading"><h1 data-workspace-page-heading>{{ lesson_title }}</h1><small dir="auto">{{ group_name }} · {{ term_name }} · {{ unit_title }}</small></header><aside class="st-studio-map"><h2>Your course map</h2>
+<details class="workspace-reading-nav"><summary>Course outline · {{ lesson_links|length }} published lessons</summary><ol>{% for item in lesson_links %}<li><a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.public_id) }}"{% if item.public_id == lesson_public_id %} aria-current="page"{% endif %}><span class="st-lesson-number" aria-hidden="true">{{ "%02d"|format(loop.index) }}</span><span>{{ item.title }}</span></a> {{ '· Completed' if item.is_completed else '' }}</li>{% endfor %}</ol></details>
+{% if materials|length > 1 %}<nav class="workspace-inline-links" aria-label="In this lesson">{% for item in materials %}<a href="#material-{{ item.public_id }}">{{ item.title }}</a>{% endfor %}</nav>{% endif %}
+</aside><div class="st-studio-body">
 
 {%- with messages = get_flashed_messages(with_categories=true) -%}
   {%- for category, message in messages %}

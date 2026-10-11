@@ -1,4 +1,6 @@
 """Reviewable enrollment operations with signed academic/financial previews."""
+
+from app.services.query_presentation import render_query_page
 import uuid
 from decimal import Decimal
 from flask import abort, current_app, flash, jsonify, redirect, render_template, request, url_for
@@ -163,7 +165,7 @@ def enrollment_operation(group_public_id, action):
         targets = targets.filter(Group.course_id != source.course_id)
     if search and action != "enroll":
         targets = targets.filter(Group.name.ilike(f"%{search}%"))
-    return render_template("admin/groups/enrollment_operation.html", form=form, action=action, source=source,
+    return render_query_page("admin/groups/enrollment_operation.html", form=form, action=action, source=source,
         student=student, target=target, episode=episode, invoice=invoice, ready=ready, search=search,
         students=student_query.order_by(User.full_name, User.id).limit(50).all() if action == "enroll" and not ready else [],
         targets=targets.order_by(Group.name, Group.id).limit(50).all() if action in {"transfer", "correct_course"} and not ready else [],

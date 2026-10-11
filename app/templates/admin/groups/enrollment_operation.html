@@ -4,11 +4,8 @@
 <strong id="late-enrollment-title">Study has already started</strong>
 <p>Study for this group began on {{ local(target.study_starts_at) }} ({{ config.APP_TIMEZONE }}). Enrollment is still allowed, subject to the usual eligibility and capacity checks. The student will join after the start.</p>
 </div>{% endif %}
-{% if not ready %}<form method="get" data-live-query class="yc-filter-form"><input type="hidden" name="episode" value="{{ episode.public_id if episode else '' }}"><label for="q">Search</label><input id="q" name="q" value="{{ search }}" maxlength="100"><button class="btn btn--secondary">Search</button></form>
-<p>Up to 50 matches.</p>
-<ul>{% for row in students %}<li><a href="{{ url_for('admin.enrollment_operation', group_public_id=source.public_id, action=action, student=row.public_id) }}">{{ row.full_name }} · {{ row.email }}</a></li>{% endfor %}
-{% for row in targets %}<li><a href="{{ url_for('admin.enrollment_operation', group_public_id=source.public_id, action=action, episode=episode.public_id, target=row.public_id) }}">{{ row.name }} · {{ row.course.title }} · {{ row.academic_term.name }}</a></li>{% endfor %}</ul>
-{% else %}<h2>Review before saving</h2><p>Student: {{ student.full_name }}</p>
+{% if not ready %}<form method="get" class="yc-filter-form" data-query-form data-query-results="query-results" data-query-min="0"><input type="hidden" name="episode" value="{{ episode.public_id if episode else '' }}"><label for="q">Search</label><input id="q" name="q" value="{{ search }}" maxlength="100"><button data-query-submit class="btn btn--secondary">Search</button></form>
+<div id="query-results">{% include "admin/groups/_selection_results.html" %}</div>{% else %}<h2>Review before saving</h2><p>Student: {{ student.full_name }}</p>
 {% if episode %}<p>Current course/group: {{ source.course.title }} / {{ source.name }}. Existing episode and learning history will remain recorded.</p>{% endif %}
 {% if target %}<p>Destination: {{ target.course.title }} / {{ target.name }} · {{ target.academic_term.name }} · Study starts: {{ local(target.study_starts_at) if target.study_starts_at else 'Not configured' }} ({{ config.APP_TIMEZONE }})</p>{% endif %}
 {% if action in ['enroll','correct_course'] %}<p>New course price: {{ money(target.course.price) if target.course.price is not none else 'Not configured' }} LYD. The chosen discount and collection will be saved with the new invoice.</p>{% endif %}

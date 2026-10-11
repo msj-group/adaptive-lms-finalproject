@@ -1,0 +1,5 @@
+<span hidden data-query-count="{{ students|length + targets|length }}"></span>
+<p>Up to 50 matches.</p>
+{% if not students and not targets %}<p>No matching records.</p>{% endif %}
+<ul>{% for row in students %}<li><a href="{{ url_for('admin.enrollment_operation', group_public_id=source.public_id, action=action, student=row.public_id) }}">{{ row.full_name }} · {{ row.email }}</a></li>{% endfor %}
+{% for row in targets %}<li><a href="{{ url_for('admin.enrollment_operation', group_public_id=source.public_id, action=action, episode=episode.public_id, target=row.public_id) }}">{{ row.name }} · {{ row.course.title }} · {{ row.academic_term.name }}</a></li>{% endfor %}</ul>

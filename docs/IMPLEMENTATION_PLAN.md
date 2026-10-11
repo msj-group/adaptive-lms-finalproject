@@ -1,5 +1,23 @@
 # Repair implementation plan
 
+> Latest release authority, 2026-10-11: the owner now explicitly requests commit,
+> push and deployment of the reviewed compatible UX implementation. Safely
+> integrate the existing remote follow-up, deploy the exact verified GitHub SHA
+> to the existing Railway web service and verify public readiness/assets. Preserve
+> production data, volumes, variables and research boundaries. No schema change,
+> Study, Version B or Baseline Freeze. See APPROVED_UX_RELEASE.md.
+
+> Current authority, 2026-10-11: implement all remaining compatible approved
+> A–M, N–U and corrected V–Z/W UX proposals in the current MAIN source. Preserve
+> completed work and the selected dashboards/mobile navigation. Incremental
+> actual-app verification uses only the existing owned disposable target.
+> NO COMMIT, NO PUSH, NO DEPLOY, NO RAILWAY MODIFICATIONS, NO MIGRATION.
+> This supersedes the historical release permissions below.
+
+> Local compatible implementation and bounded actual-app review are complete;
+> see [APPROVED_UX_PROPOSALS.md](APPROVED_UX_PROPOSALS.md) for original IDs,
+> evidence and remaining PARTIAL acceptance boundaries. Source stays unstaged.
+
 > Current release authority: final owner directive, 2026-10-10. Finish platform
 > usage/context cleanup and exact Dark-logo recoloring, preserve prior density/A1
 > changes, verify the actual four-role application using the owned local MySQL

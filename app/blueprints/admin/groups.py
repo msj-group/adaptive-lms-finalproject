@@ -1,3 +1,5 @@
+from app.services.search_terms import escape_like
+from app.services.query_presentation import render_query_page
 from flask import abort, current_app, flash, redirect, render_template, request, url_for
 from itsdangerous import BadSignature, URLSafeSerializer
 from sqlalchemy import or_
@@ -134,7 +136,7 @@ def _safe_id_arg(name):
 @admin_bp.get("/groups")
 @roles_required(UserRole.ADMINISTRATOR.value)
 def groups_list():
-    search = request.args.get("q", "").strip()
+    search = request.args.get("q", "").strip()[:100]
     term_id = _safe_id_arg("term_id")
     course_id = _safe_id_arg("course_id")
     level_id = _safe_id_arg("level_id")
@@ -145,8 +147,8 @@ def groups_list():
         joinedload(Group.academic_term),
     )
     if search:
-        like = f"%{search}%"
-        query = query.filter(or_(Group.name.ilike(like), Group.code.ilike(like)))
+        like = f"%{escape_like(search)}%"
+        query = query.filter(or_(Group.name.ilike(like, escape="\\"), Group.code.ilike(like, escape="\\")))
     if term_id:
         query = query.filter(Group.academic_term_id == term_id)
     if course_id:
@@ -157,7 +159,7 @@ def groups_list():
         query = query.filter(Group.status == status)
 
     groups = query.order_by(Group.created_at.desc()).all()
-    return render_template(
+    return render_query_page(
         "admin/groups/list.html",
         groups=groups,
         search=search,

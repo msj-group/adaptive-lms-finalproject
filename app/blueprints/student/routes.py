@@ -1,3 +1,4 @@
+from app.services.query_presentation import render_query_page
 from datetime import datetime, timezone
 
 from flask import current_app, make_response, redirect, render_template
@@ -15,16 +16,8 @@ from app.services.announcement_queries import (
 from app.services.dashboard_queries import student_dashboard
 from app.services.lesson_progress_queries import (
     DASHBOARD_GROUP_LIMIT,
-    RECENTLY_OPENED_LIMIT,
-    build_recent_view,
     continue_learning,
-    recently_opened,
     student_group_progress,
-)
-from app.services.message_queries import (
-    DASHBOARD_RECENT_CAP,
-    build_inbox_view,
-    recent_conversations,
 )
 from app.services.schedule_occurrences import app_now, utc_reference_now
 
@@ -51,7 +44,7 @@ def private_no_store(template, **context):
     share it without a circular import: this module imports nothing from
     ``student.assignments``, and ``__init__`` loads ``routes`` first.
     """
-    response = make_response(render_template(template, **context))
+    response = make_response(render_query_page(template, **context))
     response.headers["Cache-Control"] = "private, no-store"
     response.vary.add("Cookie")
     return response
@@ -84,25 +77,17 @@ def dashboard():
     # sees the center's announcements, which is why this section is
     # rendered outside the "no active enrollments" branch.
     announcements = build_reader_view(student_dashboard_preview(current_user.id), tz_name)
-    # Phase 4 / M11: one more bounded query. Thread membership alone
-    # decides what appears, so a conversation whose academic relationship
-    # has ended stays listed -- which is also why it renders outside the
-    # "no active enrollments" branch.
-    conversations = build_inbox_view(
-        recent_conversations(current_user.id), current_user.id, tz_name
-    )
-    # Phase 4 / M13: three more bounded queries, independent of how many
+    # Phase 4 / M13: bounded progress and continue queries, independent of how many
     # Groups, Lessons or progress rows exist, and run only for a Student
     # with an active enrollment -- the only case the sections render. Each
     # one re-proves the whole Student visibility formula in SQL, so no
     # Group, Lesson or destination can appear here that this Student could
     # not open right now.
     progress_groups, progress_truncated = [], False
-    continue_lesson, recent_lessons = None, []
+    continue_lesson = None
     if data["cards"]:
         progress_groups, progress_truncated = student_group_progress(current_user.id)
         continue_lesson = continue_learning(current_user.id)
-        recent_lessons = build_recent_view(recently_opened(current_user.id), tz_name)
     return private_no_store(
         "student/dashboard.html",
         tz_name=tz_name,
@@ -111,13 +96,9 @@ def dashboard():
         deadline_cap=DASHBOARD_DEADLINE_CAP,
         announcements=announcements,
         announcement_cap=DASHBOARD_PREVIEW_CAP,
-        conversations=conversations,
-        conversation_cap=DASHBOARD_RECENT_CAP,
         progress_groups=progress_groups,
         progress_truncated=progress_truncated,
         progress_group_cap=DASHBOARD_GROUP_LIMIT,
         continue_lesson=continue_lesson,
-        recent_lessons=recent_lessons,
-        recent_cap=RECENTLY_OPENED_LIMIT,
         **data,
     )

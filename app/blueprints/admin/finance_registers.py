@@ -1,4 +1,7 @@
 """Bounded center-wide registers using direct Student account ownership."""
+
+from app.services.search_terms import escape_like
+from app.services.query_presentation import render_query_page
 from flask import abort, render_template, request
 from app.extensions import db
 from app.models import Invoice, PaymentTransaction, Receipt, User
@@ -25,11 +28,11 @@ def register_page(kind):
         query = query.filter(model.status == state, model.deleted_at.is_(None))
     search = request.args.get("q", "").strip()[:100]
     if search:
-        query = query.filter(User.full_name.ilike(f"%{search}%"))
+        query = query.filter(User.full_name.ilike(f"%{escape_like(search)}%", escape="\\"))
     page = query.order_by(model.id.desc()).paginate(page=max(1, request.args.get("page", 1, type=int)), per_page=50, error_out=False)
     receipts = {row.payment_transaction_id: row for row in Receipt.query.filter(Receipt.payment_transaction_id.in_(
         [doc.id for doc, _student in page.items])).all()} if doc_kind == "payment" else {}
-    return render_template("admin/general_finance/register.html", page=page, kind=doc_kind,
+    return render_query_page("admin/general_finance/register.html", page=page, kind=doc_kind,
         deleted=kind == "deleted", search=search, state=state, money=format_amount, local=local_moment, receipts=receipts)
 
 

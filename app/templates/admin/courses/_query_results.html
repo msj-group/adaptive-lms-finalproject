@@ -1,0 +1,65 @@
+{% import "admin/_macros.html" as macros %}
+{% import "_grade_macros.html" as gr %}
+<span hidden data-query-count="{{ courses|length }}"></span>
+
+
+  {% if courses %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th style="padding: var(--space-3)">Title</th>
+        <th style="padding: var(--space-3)">Level</th>
+        <th style="padding: var(--space-3)">Code</th>
+        <th style="padding: var(--space-3)">Price (LYD)</th>
+        <th style="padding: var(--space-3)">Status</th>
+        <th style="padding: var(--space-3)">Order</th>
+        <th style="padding: var(--space-3)">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for course in courses %}
+      <tr style="border-bottom:1px solid var(--color-border)">
+        <td style="padding: var(--space-3)">
+          {{ course.title }}
+          {% if course.status == "active" and course.level.status != "active" %}
+          <span class="badge badge--warning" title="This course's Level is archived">Level archived</span>
+          {% endif %}
+        </td>
+        <td style="padding: var(--space-3)">{{ course.level.name }}{% if course.level.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</td>
+        <td style="padding: var(--space-3)">{{ course.code or "--" }}</td>
+        <td style="padding: var(--space-3)">{{ money(course.price) if course.price is not none else 'Set before enrollment' }}</td>
+        <td style="padding: var(--space-3)">{{ macros.status_badge(course.status) }}</td>
+        <td style="padding: var(--space-3)">{{ course.display_order }}</td>
+        <td style="padding: var(--space-3)">
+          <div class="ds-row yc-actions" style="gap: var(--space-2)">
+            <form method="post" action="{{ url_for('admin.course_move_up', public_id=course.public_id) }}" class="yc-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--secondary" aria-label="Move {{ course.title }} up">&uarr;</button>
+            </form>
+            <form method="post" action="{{ url_for('admin.course_move_down', public_id=course.public_id) }}" class="yc-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--secondary" aria-label="Move {{ course.title }} down">&darr;</button>
+            </form>
+            <a class="btn btn--secondary" href="{{ url_for('admin.course_edit', public_id=course.public_id) }}">Edit</a>
+            <form method="post" action="{{ url_for('admin.course_toggle_status', public_id=course.public_id) }}" class="yc-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              {% if course.status == "active" %}
+                <button type="submit" class="btn btn--danger-outline">Deactivate</button>
+              {% else %}
+                <button type="submit" class="btn btn--secondary">Activate</button>
+              {% endif %}
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No courses yet</div>
+    <div>Create the first course to get started.</div>
+  </div>
+  {% endif %}

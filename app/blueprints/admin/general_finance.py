@@ -1,4 +1,7 @@
 """General Student account forms, corrections and immutable revision views."""
+
+from app.services.search_terms import escape_like
+from app.services.query_presentation import render_query_page
 import uuid
 from functools import wraps
 from flask import abort, current_app, flash, jsonify, redirect, render_template, request, url_for
@@ -70,9 +73,9 @@ def accounts_page():
     search = request.args.get("q", "").strip()[:100]
     query = User.query.filter_by(role="student")
     if search:
-        query = query.filter(or_(User.full_name.ilike(f"%{search}%"), User.email.ilike(f"%{search}%")))
+        query = query.filter(or_(User.full_name.ilike(f"%{escape_like(search)}%", escape="\\"), User.email.ilike(f"%{escape_like(search)}%", escape="\\")))
     page = query.order_by(User.full_name, User.id).paginate(page=max(1, request.args.get("page", 1, type=int)), per_page=50, error_out=False)
-    return render_template("admin/general_finance/accounts.html", page=page,
+    return render_query_page("admin/general_finance/accounts.html", page=page,
         balances=balances_for_students(row.id for row in page.items), search=search, money=format_amount)
 
 

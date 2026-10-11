@@ -1,0 +1,75 @@
+{% import "admin/_macros.html" as macros %}
+{% import "_grade_macros.html" as gr %}
+<span hidden data-query-count="{{ groups|length }}"></span>
+
+
+  {% if groups %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th style="padding: var(--space-3)">Group Name</th>
+        <th style="padding: var(--space-3)">Code</th>
+        <th style="padding: var(--space-3)">Course</th>
+        <th style="padding: var(--space-3)">Level</th>
+        <th style="padding: var(--space-3)">Academic Term</th>
+        <th style="padding: var(--space-3)">Capacity</th>
+        <th style="padding: var(--space-3)">Status</th>
+        <th style="padding: var(--space-3)">Created</th>
+        <th style="padding: var(--space-3)">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for group in groups %}
+      {% set ancestor_archived = group.academic_term.status != "active"
+            or group.course.status != "active"
+            or group.course.level.status != "active" %}
+      <tr style="border-bottom:1px solid var(--color-border)">
+        <td style="padding: var(--space-3)">
+          <a href="{{ url_for('admin.group_detail', public_id=group.public_id) }}">{{ group.name }}</a>
+          {% if group.status == "active" and ancestor_archived %}
+          <span class="badge badge--warning" title="An Academic Term, Course, or Level above this group is archived">Parent archived</span>
+          {% endif %}
+        </td>
+        <td style="padding: var(--space-3)">{{ group.code or "--" }}</td>
+        <td style="padding: var(--space-3)">{{ group.course.title }}{% if group.course.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</td>
+        <td style="padding: var(--space-3)">{{ group.course.level.name }}{% if group.course.level.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</td>
+        <td style="padding: var(--space-3)">{{ group.academic_term.name }}{% if group.academic_term.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</td>
+        <td style="padding: var(--space-3)">{{ group.capacity }}</td>
+        <td style="padding: var(--space-3)">{{ macros.status_badge(group.status) }}</td>
+        <td style="padding: var(--space-3)">{{ group.created_at.strftime("%Y-%m-%d") }}</td>
+        <td style="padding: var(--space-3)">
+          <div class="ds-row yc-actions" style="gap: var(--space-2)">
+            <a class="btn btn--primary" href="{{ url_for('admin.group_members', group_public_id=group.public_id) }}">Members</a>
+            <a class="btn btn--secondary" href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">Schedule</a>
+            <a class="btn btn--secondary" href="{{ url_for('admin.group_edit', public_id=group.public_id) }}">Edit</a>
+            <form
+              method="post"
+              action="{{ url_for('admin.group_toggle_status', public_id=group.public_id) }}"
+              class="group-status-form yc-form"
+              {% if group.status == "active" %}data-confirm="Deactivate {{ group.name }}? It will no longer appear as an active group."{% endif %}
+            >
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              {% if group.status == "active" %}
+                <button type="submit" class="btn btn--danger-outline">Deactivate</button>
+              {% else %}
+                <button type="submit" class="btn btn--secondary">Activate</button>
+              {% endif %}
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% elif search or selected_term_id or selected_course_id or selected_level_id or selected_status %}
+  <div class="empty-state">
+    <div class="empty-state__title">No groups match your filters</div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No groups yet</div>
+
+  </div>
+  {% endif %}

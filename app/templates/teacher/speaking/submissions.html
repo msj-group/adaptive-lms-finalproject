@@ -61,42 +61,9 @@
 <section class="dash-section yc-section" style="margin-top: 0">
   <h2>Recordings</h2>
   {% if submissions %}
-  <div class="dash-scroll">
-  <div class="activity-library-grid">
-      {% for item in submissions %}
-      <article class="activity-library-card">
-<header>
-<span class="activity-card-symbol">{{ activity_ui.symbol(activity_kind,22) }}</span>
-<h3>
-<strong>{{ item.student_name }}</strong>
-</h3>
-</header>
-<dl class="activity-library-meta">
-<div class="activity-fact">
-<dt>Submitted ({{ tz_name }})</dt>
-<dd>{{ item.submitted_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-</div>
-<div class="activity-fact">
-<dt>Feedback</dt>
-<dd>
-          {#- Derived from whether a feedback row exists, never from a stored
-              status. A row whose reviewer is no longer a teacher is reported
-              as its own state, never as "awaiting". -#}
-          {% if item.feedback_state == "present" %}<span class="badge badge--success">Feedback provided</span>
-          {% elif item.feedback_state == "invalid" %}<span class="badge badge--danger">Needs admin review</span>
-          {% else %}<span class="badge badge--neutral">Awaiting feedback</span>{% endif %}
-        </dd>
-</div>
-</dl>
-<footer>
-          {% if item.feedback_state != "invalid" %}<a class="btn btn--primary" href="{{ url_for('teacher.speaking_submission_feedback', group_public_id=group.public_id, speaking_public_id=activity.public_id, submission_public_id=item.public_id) }}">Review feedback</a>{% endif %}
-          <a class="btn btn--secondary"
-             href="{{ url_for('teacher.speaking_submission_detail', group_public_id=group.public_id, speaking_public_id=activity.public_id, submission_public_id=item.public_id) }}">Listen</a>
-        </footer>
-</article>
-      {% endfor %}
-    </div>
-  </div>
+  <div class="dash-scroll"><table class="dash-table"><thead><tr><th scope="col">Student</th><th scope="col">Submitted ({{ tz_name }})</th><th scope="col">Feedback</th><th scope="col">Actions</th></tr></thead><tbody>
+  {% for item in submissions %}<tr><td>{{ item.student_name }}</td><td>{{ item.submitted_local.strftime("%Y-%m-%d %H:%M") }}</td><td>{% if item.feedback_state == "present" %}<span class="badge badge--success">Feedback provided</span>{% elif item.feedback_state == "invalid" %}<span class="badge badge--danger">Needs admin review</span>{% else %}<span class="badge badge--neutral">Awaiting feedback</span>{% endif %}</td><td><div class="ds-row yc-actions">{% if item.feedback_state != "invalid" %}<a class="btn btn--primary" href="{{ url_for('teacher.speaking_submission_feedback', group_public_id=group.public_id, speaking_public_id=activity.public_id, submission_public_id=item.public_id) }}">Review feedback</a>{% endif %}<a class="btn btn--secondary" href="{{ url_for('teacher.speaking_submission_detail', group_public_id=group.public_id, speaking_public_id=activity.public_id, submission_public_id=item.public_id) }}">Listen</a></div></td></tr>{% endfor %}
+  </tbody></table></div>
 
   {% if has_prev or has_next %}
   <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Recording pages">
@@ -113,7 +80,6 @@
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No recordings yet</div>
-    <div>No student has submitted a recording for this speaking activity.</div>
   </div>
   {% endif %}
 </section>

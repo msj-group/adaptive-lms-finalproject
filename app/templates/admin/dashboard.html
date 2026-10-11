@@ -8,30 +8,60 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 {% endblock %}
 {% block admin_content %}
-{% call product.workspace_heading('Admin Dashboard') %}<a class="btn btn--primary" href="{{ url_for('admin.students_list') }}">Manage students {{ ui.icon('arrow',17) }}</a><a class="btn btn--secondary" href="{{ url_for('admin.courses_list') }}">Explore courses</a>{% endcall %}
+{{ product.workspace_heading('Admin Dashboard') }}
 
-{#- Phase 5 / M10. Shortcuts only: they open the financial workspaces and show
-    no financial figure. -#}
-<div class="figma-finance-shortcuts">
-<a class="card yc-panel" href="{{ url_for('admin.student_accounts') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="student-accounts">
-  {{ ui.icon('wallet', 24) }}<div class="card__title">Student Accounts</div>
-
-</a>
-<a class="card yc-panel" href="{{ url_for('admin.invoice_register') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="invoices">
-  {{ ui.icon('file', 24) }}<div class="card__title">Invoices</div>
-
-</a>
-<a class="card yc-panel" href="{{ url_for('admin.payments_overview') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="payments">
-  {{ ui.icon('card', 24) }}<div class="card__title">Collections and payouts</div>
-
-</a>
-<a class="card yc-panel" href="{{ url_for('admin.deleted_financial_records') }}" style="display:block; text-decoration:none; color:inherit" data-shortcut="deleted-records">
-  {{ ui.icon('trash', 24) }}<div class="card__title">Historical deleted records</div>
-
-</a>
+<div class="dash-section yc-section">
+  <h2>Setup needs attention</h2>
+  {% if setup.operational_group_count == 0 %}
+  <div class="alert alert--info">No operational active groups yet. Create a group under an active academic term, level, and course to get started.</div>
+  {% elif not setup.missing_teacher and not setup.missing_schedule %}
+  <div class="alert alert--success">Every active group has an eligible active teacher and at least one active schedule.</div>
+  {% else %}
+    {% if setup.missing_teacher %}
+    <div class="alert alert--warning" style="flex-direction: column; align-items: flex-start;">
+      <strong>Active groups with no eligible active teacher</strong>
+      <ul style="margin: var(--space-2) 0 0; padding-left: var(--space-6);">
+        {% for g in setup.missing_teacher %}
+        <li><a href="{{ url_for('admin.group_members', group_public_id=g.public_id) }}">{{ g.name }}</a> &mdash; {{ g.course_title }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% if setup.missing_schedule %}
+    <div class="alert alert--warning" style="flex-direction: column; align-items: flex-start; margin-top: var(--space-3);">
+      <strong>Active groups with no active schedule</strong>
+      <ul style="margin: var(--space-2) 0 0; padding-left: var(--space-6);">
+        {% for g in setup.missing_schedule %}
+        <li><a href="{{ url_for('admin.group_schedules', group_public_id=g.public_id) }}">{{ g.name }}</a> &mdash; {{ g.course_title }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  {% endif %}
 </div>
 
-<h2>People</h2>
+<div class="dash-section yc-section">
+  <h2>Current &amp; upcoming classes</h2>
+  <p class="ds-section__desc">Only groups whose Academic Term, Level, Course, and Group are all active appear here.</p>
+  <ul class="today-list">{% for occ in operational_classes[:3] %}<li class="today-action-row"><div><h3><a href="{{ url_for('admin.group_schedules',group_public_id=occ.ref.group_public_id) }}">{{ occ.ref.group_name }}</a></h3><p class="today-meta">{{ occ.ref.course_title }} · {{ occ.ref.term_name }}</p><time datetime="{{ occ.start.isoformat() }}">{{ occ.start.strftime('%a %d %b') }} · {{ dash.time_range(occ.start,occ.end) }} · {{ tz_name }}</time><p class="today-meta">{{ occ.ref.location or 'Location not specified' }}</p></div></li>{% else %}<li>No classes in the next 7 days</li>{% endfor %}</ul><a href="{{ url_for('admin.calendar') }}">View calendar</a>
+</div>
+
+<div class="dash-section yc-section">
+  <h2>Manage</h2>
+  <div class="ds-row yc-actions">
+    <a class="btn btn--secondary" href="{{ url_for('admin.academic_terms_list') }}">Academic Terms</a>
+    <a class="btn btn--secondary" href="{{ url_for('admin.levels_list') }}">Levels</a>
+    <a class="btn btn--secondary" href="{{ url_for('admin.courses_list') }}">Courses</a>
+    <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Groups</a>
+    <a class="btn btn--secondary" href="{{ url_for('admin.schedules_overview') }}">Schedules</a>
+    <a class="btn btn--secondary" href="{{ url_for('admin.students_list') }}">Students</a>
+    <a class="btn btn--secondary" href="{{ url_for('admin.teachers_list') }}">Teachers</a>
+  </div>
+</div>
+{#- Phase 5 / M10. Shortcuts only: they open the financial workspaces and show
+    no financial figure. -#}
+<section class="dash-section yc-section"><h2>Finance</h2><nav class="workspace-inline-links" aria-label="Financial workspaces"><a href="{{ url_for('admin.student_accounts') }}">Student Accounts</a><a href="{{ url_for('admin.invoice_register') }}">Invoices</a><a href="{{ url_for('admin.payments_overview') }}">Collections and payouts</a><a href="{{ url_for('admin.deleted_financial_records') }}">Historical deleted records</a><a href="{{ url_for('admin.financial_reports_index') }}">Financial reports</a></nav></section>
+<h2>Indicators</h2>
 <div class="stat-grid">
   <div class="stat-card yc-stat">
     <div class="stat-card__value">{{ stats.students.total }}</div>
@@ -45,7 +75,7 @@
   </div>
 </div>
 
-<h2 style="margin-top: var(--space-8)">Academic structure</h2>
+<details class="st-details"><summary>Academic structure</summary>
 <div class="stat-grid">
   <div class="stat-card yc-stat">
     <div class="stat-card__value">{{ stats.academic_terms_total }}</div>
@@ -77,9 +107,7 @@
   </div>
 </div>
 
-<div class="dash-section yc-section">
-  <h2>Setup needs attention</h2>
-  {% if setup.operational_group_count %}
+</details><details class="dash-section yc-section"><summary>Operational group readiness</summary>  {% if setup.operational_group_count %}
   <figure class="operations-readiness" aria-labelledby="setup-coverage-title">
     <figcaption id="setup-coverage-title">Operational group readiness</figcaption>
     <div class="operations-readiness__row"><span>Eligible active teacher</span><progress aria-label="Operational groups with an eligible active teacher" value="{{ setup.operational_group_count - setup.missing_teacher|length }}" max="{{ setup.operational_group_count }}">{{ setup.operational_group_count - setup.missing_teacher|length }} of {{ setup.operational_group_count }}</progress><strong>{{ setup.operational_group_count - setup.missing_teacher|length }} / {{ setup.operational_group_count }} groups</strong></div>
@@ -87,50 +115,5 @@
     <p class="operations-source">Source: current group, hierarchy, teacher-assignment, account and schedule records. Scope and denominator: {{ setup.operational_group_count }} groups whose term, level, course and group are active. Range: current state at page load. Each row is a separate readiness condition; rows may overlap. This is not attendance or room utilization.</p>
   </figure>
   {% endif %}
-  {% if setup.operational_group_count == 0 %}
-  <div class="alert alert--info">No operational active groups yet. Create a group under an active academic term, level, and course to get started.</div>
-  {% elif not setup.missing_teacher and not setup.missing_schedule %}
-  <div class="alert alert--success">Every active group has an eligible active teacher and at least one active schedule.</div>
-  {% else %}
-    {% if setup.missing_teacher %}
-    <div class="alert alert--warning" style="flex-direction: column; align-items: flex-start;">
-      <strong>Active groups with no eligible active teacher</strong>
-      <ul style="margin: var(--space-2) 0 0; padding-left: var(--space-6);">
-        {% for g in setup.missing_teacher %}
-        <li><a href="{{ url_for('admin.group_members', group_public_id=g.public_id) }}">{{ g.name }}</a> &mdash; {{ g.course_title }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
-    {% if setup.missing_schedule %}
-    <div class="alert alert--warning" style="flex-direction: column; align-items: flex-start; margin-top: var(--space-3);">
-      <strong>Active groups with no active schedule</strong>
-      <ul style="margin: var(--space-2) 0 0; padding-left: var(--space-6);">
-        {% for g in setup.missing_schedule %}
-        <li><a href="{{ url_for('admin.group_schedules', group_public_id=g.public_id) }}">{{ g.name }}</a> &mdash; {{ g.course_title }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
-  {% endif %}
-</div>
-
-<div class="dash-section yc-section">
-  <h2>Current &amp; upcoming classes (next 7 days)</h2>
-  <p class="ds-section__desc">Only groups whose Academic Term, Level, Course, and Group are all active appear here.</p>
-  {{ dash.upcoming_table(operational_classes, now, tz_name, show_group=True) }}
-</div>
-
-<div class="dash-section yc-section">
-  <h2>Manage</h2>
-  <div class="ds-row yc-actions">
-    <a class="btn btn--secondary" href="{{ url_for('admin.academic_terms_list') }}">Academic Terms</a>
-    <a class="btn btn--secondary" href="{{ url_for('admin.levels_list') }}">Levels</a>
-    <a class="btn btn--secondary" href="{{ url_for('admin.courses_list') }}">Courses</a>
-    <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Groups</a>
-    <a class="btn btn--secondary" href="{{ url_for('admin.schedules_overview') }}">Schedules</a>
-    <a class="btn btn--secondary" href="{{ url_for('admin.students_list') }}">Students</a>
-    <a class="btn btn--secondary" href="{{ url_for('admin.teachers_list') }}">Teachers</a>
-  </div>
-</div>
+</details>
 {% endblock %}

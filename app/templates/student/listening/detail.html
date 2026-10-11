@@ -30,7 +30,6 @@
   <span class="badge badge--neutral">{{ activity.state_label }}</span>
   {% endif %}
 </div>
-<p class="ds-section__desc" style="margin-bottom: var(--space-4)">Listening &middot; {{ activity.group_name }}</p>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}
@@ -38,7 +37,49 @@
   {% endfor %}
 {% endwith %}
 
-<p class="activity-note">Start creates or resumes an attempt. Use Save answer or Save and next; changing questions does not save. Final submission uses saved answers and the server deadline.</p>
+{% if activity.instructions %}
+<section style="margin-bottom: var(--space-6)">
+  <h2>Instructions</h2>
+  <div class="st-panel">
+    {# Plain text: autoescaped and laid out by CSS. Never |safe. #}
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
+  </div>
+</section>
+{% endif %}<div class="st-facts" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 170px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;"><div class="activity-fact"><dt>Group</dt><dd dir="auto">{{ activity.group_name }} · {{ workspace_context().term_name }}</dd></div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
+    <dd style="margin:0">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Closes</dt>
+    <dd style="margin:0">{{ activity.closes_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Questions</dt>
+    <dd style="margin:0">{{ question_total }}</dd>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time limit</dt>
+    <dd style="margin:0">{% if activity.time_limit_minutes %}{{ activity.time_limit_minutes }} minutes per attempt{% else %}None{% endif %}</dd>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Attempts</dt>
+    <dd style="margin:0">{{ attempts_used }} used of {{ activity.attempt_limit }} allowed</dd>
+</div>
+  </dl>
+</div><details class="activity-policy-details" open>
+<summary>How attempts work</summary>
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  You can start an attempt only while the activity is open — not before it opens, and not once it
+  closes. {% if activity.time_limit_minutes %}Each attempt lasts {{ activity.time_limit_minutes }} minutes, or until the activity
+  closes, whichever comes first.{% else %}An attempt lasts until the activity closes.{% endif %}
+  You may play the recording as many times as you like. You may leave questions unanswered, but
+  unanswered questions are marked incorrect. For questions with several correct answers you must
+  select <strong>all</strong> of them to get the point — there is no partial credit. Your results
+  show which questions you got right, but <strong>never which options were correct</strong>.
+</div>
+</details><p class="activity-note">Start creates or resumes an attempt. Use Save answer or Save and next; changing questions does not save. Final submission uses saved answers and the server deadline.</p>
 <div class="ds-row" style="margin-bottom: var(--space-6)">
   {% if can_start %}
   <form method="post" action="{{ url_for('student.listening_start', group_public_id=group_public_id, listening_public_id=activity.public_id) }}" data-research-form="listening_start">
@@ -74,53 +115,11 @@
 </aside>
 <div>
 
-<div class="st-facts" style="margin-bottom: var(--space-6)">
-  <dl style="display:grid; grid-template-columns: 170px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;"><div class="activity-fact"><dt>Group</dt><dd dir="auto">{{ activity.group_name }} · {{ workspace_context().term_name }}</dd></div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
-    <dd style="margin:0">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Closes</dt>
-    <dd style="margin:0">{{ activity.closes_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Questions</dt>
-    <dd style="margin:0">{{ question_total }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time limit</dt>
-    <dd style="margin:0">{% if activity.time_limit_minutes %}{{ activity.time_limit_minutes }} minutes per attempt{% else %}None{% endif %}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Attempts</dt>
-    <dd style="margin:0">{{ attempts_used }} used of {{ activity.attempt_limit }} allowed</dd>
-</div>
-  </dl>
-</div>
 
-<details class="activity-policy-details">
-<summary>How attempts work</summary>
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">
-  You can start an attempt only while the activity is open — not before it opens, and not once it
-  closes. {% if activity.time_limit_minutes %}Each attempt lasts {{ activity.time_limit_minutes }} minutes, or until the activity
-  closes, whichever comes first.{% else %}An attempt lasts until the activity closes.{% endif %}
-  You may play the recording as many times as you like. You may leave questions unanswered, but
-  unanswered questions are marked incorrect. For questions with several correct answers you must
-  select <strong>all</strong> of them to get the point — there is no partial credit. Your results
-  show which questions you got right, but <strong>never which options were correct</strong>.
-</div>
-</details>
 
-{% if activity.instructions %}
-<section style="margin-bottom: var(--space-6)">
-  <h2>Instructions</h2>
-  <div class="st-panel">
-    {# Plain text: autoescaped and laid out by CSS. Never |safe. #}
-    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
-  </div>
-</section>
-{% endif %}
+
+
+
 
 </div>
 </div>

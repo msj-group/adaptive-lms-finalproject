@@ -10,9 +10,9 @@
 
   {{ macros.flash_messages() }}
 
-  <form method="get" data-live-query class="ds-row yc-actions yc-filter-form" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+  <form method="get" class="ds-row yc-actions yc-filter-form" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;" data-query-form data-query-results="query-results" data-query-min="0">
     <label class="field__label" for="q" style="margin:0">Search:</label>
-    <input type="search" name="q" id="q" class="field__input" style="width:auto" placeholder="Group name or code" value="{{ search }}">
+    <input type="search" name="q" id="q" class="field__input" style="width:auto" placeholder="Group name or code" value="{{ search }}" maxlength="100">
 
     <label class="field__label" for="term_id" style="margin:0">Term:</label>
     <select name="term_id" id="term_id" class="field__input" style="width:auto">
@@ -45,85 +45,11 @@
       <option value="archived" {{ "selected" if selected_status == "archived" else "" }}>Archived</option>
     </select>
 
-    <button type="submit" class="btn btn--secondary">Filter</button>
-    {% if search or selected_term_id or selected_course_id or selected_level_id or selected_status %}
-      <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}" data-live-query-clear>Clear</a>
-    {% endif %}
-  </form>
+    <button data-query-submit type="submit" class="btn btn--secondary">Filter</button>
 
-  {% if groups %}
-  <div style="overflow-x:auto">
-  <table style="width:100%; border-collapse:collapse">
-    <thead>
-      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
-        <th style="padding: var(--space-3)">Group Name</th>
-        <th style="padding: var(--space-3)">Code</th>
-        <th style="padding: var(--space-3)">Course</th>
-        <th style="padding: var(--space-3)">Level</th>
-        <th style="padding: var(--space-3)">Academic Term</th>
-        <th style="padding: var(--space-3)">Capacity</th>
-        <th style="padding: var(--space-3)">Status</th>
-        <th style="padding: var(--space-3)">Created</th>
-        <th style="padding: var(--space-3)">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for group in groups %}
-      {% set ancestor_archived = group.academic_term.status != "active"
-            or group.course.status != "active"
-            or group.course.level.status != "active" %}
-      <tr style="border-bottom:1px solid var(--color-border)">
-        <td style="padding: var(--space-3)">
-          <a href="{{ url_for('admin.group_detail', public_id=group.public_id) }}">{{ group.name }}</a>
-          {% if group.status == "active" and ancestor_archived %}
-          <span class="badge badge--warning" title="An Academic Term, Course, or Level above this group is archived">Parent archived</span>
-          {% endif %}
-        </td>
-        <td style="padding: var(--space-3)">{{ group.code or "--" }}</td>
-        <td style="padding: var(--space-3)">{{ group.course.title }}{% if group.course.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</td>
-        <td style="padding: var(--space-3)">{{ group.course.level.name }}{% if group.course.level.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</td>
-        <td style="padding: var(--space-3)">{{ group.academic_term.name }}{% if group.academic_term.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</td>
-        <td style="padding: var(--space-3)">{{ group.capacity }}</td>
-        <td style="padding: var(--space-3)">{{ macros.status_badge(group.status) }}</td>
-        <td style="padding: var(--space-3)">{{ group.created_at.strftime("%Y-%m-%d") }}</td>
-        <td style="padding: var(--space-3)">
-          <div class="ds-row yc-actions" style="gap: var(--space-2)">
-            <a class="btn btn--primary" href="{{ url_for('admin.group_members', group_public_id=group.public_id) }}">Members</a>
-            <a class="btn btn--secondary" href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">Schedule</a>
-            <a class="btn btn--secondary" href="{{ url_for('admin.group_edit', public_id=group.public_id) }}">Edit</a>
-            <form
-              method="post"
-              action="{{ url_for('admin.group_toggle_status', public_id=group.public_id) }}"
-              class="group-status-form yc-form"
-              {% if group.status == "active" %}data-confirm="Deactivate {{ group.name }}? It will no longer appear as an active group."{% endif %}
-            >
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              {% if group.status == "active" %}
-                <button type="submit" class="btn btn--danger-outline">Deactivate</button>
-              {% else %}
-                <button type="submit" class="btn btn--secondary">Activate</button>
-              {% endif %}
-            </form>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  </div>
-  {% elif search or selected_term_id or selected_course_id or selected_level_id or selected_status %}
-  <div class="empty-state">
-    <div class="empty-state__title">No groups match your filters</div>
-    <a href="{{ url_for('admin.groups_list') }}">clear all filters</a>
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">No groups yet</div>
+      <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Clear</a>
 
-    <a class="btn btn--primary" style="margin-top: var(--space-4)" href="{{ url_for('admin.group_create') }}">Create Group</a>
-  </div>
-  {% endif %}
-</div>
+  </form><div id="query-results">{% include "admin/groups/_query_results.html" %}</div></div>
 <script>
   document.querySelectorAll(".group-status-form[data-confirm]").forEach(function (form) {
     form.addEventListener("submit", function (event) {

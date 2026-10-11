@@ -1,3 +1,4 @@
+from app.services.query_presentation import render_query_page
 from app.blueprints.admin.account_actions import edit_account, toggle_account, reset_account_password
 from flask import flash, redirect, render_template, request, url_for
 from sqlalchemy import or_
@@ -77,7 +78,7 @@ def students_list():
     students = query.order_by(User.created_at.desc(), User.id.desc()).all()
     is_live_search_request = request.headers.get("X-Requested-With") == "XMLHttpRequest"
     template = "admin/students/_results.html" if is_live_search_request else "admin/students/list.html"
-    return render_template(
+    return render_query_page(
         template,
         students=students,
         search=search,

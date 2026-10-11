@@ -1,3 +1,4 @@
+from app.services.query_presentation import render_query_page
 from flask import abort, current_app, flash, redirect, render_template, request, url_for
 from itsdangerous import BadSignature, URLSafeSerializer
 from sqlalchemy.exc import IntegrityError
@@ -36,7 +37,7 @@ def courses_list():
     level_id = request.args.get("level_id", type=int)
     courses = _courses_query(level_id).options(joinedload(Course.level)).all()
     levels = Level.query.order_by(Level.display_order, Level.id).all()
-    return render_template(
+    return render_query_page(
         "admin/courses/list.html", courses=courses, levels=levels, selected_level_id=level_id
     )
 

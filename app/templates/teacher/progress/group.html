@@ -48,7 +48,7 @@
   </tbody>
 </table>
 </div>
-<p class="operations-source">Source: saved lesson-completion records for this group's active enrollment episodes. Scope: the active students on this roster page. Range: retained completion history for those episodes, as of this page load. Denominator per student: {{ lesson_total }} currently published lessons in active units. Completion is self-marked work, not a proficiency measure.</p>
+<details><summary>Progress source and scope</summary><p class="operations-source">Source: saved lesson-completion records for this group's active enrollment episodes. Scope: the active students on this roster page. Range: retained completion history for those episodes, as of this page load. Denominator per student: {{ lesson_total }} currently published lessons in active units. Completion is self-marked work, not a proficiency measure.</p></details>
 {% if has_prev or has_next %}
 <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Student pages">
   {% if has_prev %}

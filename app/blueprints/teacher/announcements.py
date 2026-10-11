@@ -71,6 +71,8 @@ produce a second notification either, because no code path publishes an
 announcement twice.
 """
 
+from app.services.query_presentation import render_query_page
+
 from flask import abort, current_app, flash, redirect, request, url_for
 from flask_login import current_user
 from sqlalchemy.exc import IntegrityError
@@ -424,7 +426,7 @@ def announcements_feed():
         page = 1
         rows, has_next = teacher_feed_page(current_user.id, page, tokens)
 
-    return _private_no_store(
+    return render_query_page(
         "teacher/announcements/feed.html",
         announcements=build_reader_view(rows, _tz_name()),
         cards=teacher_group_cards(current_user.id),

@@ -1,0 +1,55 @@
+{% import "admin/_macros.html" as macros %}
+{% import "_grade_macros.html" as gr %}
+<span hidden data-query-count="{{ schedules|length }}"></span>
+
+
+  {% if schedules %}
+  <div style="overflow-x:auto">
+  <table style="width:100%; border-collapse:collapse">
+    <thead>
+      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
+        <th style="padding: var(--space-3)">Group</th>
+        <th style="padding: var(--space-3)">Course / Level</th>
+        <th style="padding: var(--space-3)">Term</th>
+        <th style="padding: var(--space-3)">Day</th>
+        <th style="padding: var(--space-3)">Time</th>
+        <th style="padding: var(--space-3)">Effective Range</th>
+        <th style="padding: var(--space-3)">Location</th>
+        <th style="padding: var(--space-3)">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for schedule in schedules %}
+      {% set group = schedule.group %}
+      {% set parent_archived = group.status != "active"
+            or group.academic_term.status != "active"
+            or group.course.status != "active"
+            or group.course.level.status != "active" %}
+      <tr style="border-bottom:1px solid var(--color-border)">
+        <td style="padding: var(--space-3)">
+          <a href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">{{ group.name }}</a>
+          {% if schedule.status == "active" and parent_archived %}
+          <span class="badge badge--warning" title="This group or one of its academic parents is archived">Not operational</span>
+          {% endif %}
+        </td>
+        <td style="padding: var(--space-3)">{{ group.course.title }} / {{ group.course.level.name }}</td>
+        <td style="padding: var(--space-3)">{{ group.academic_term.name }}</td>
+        <td style="padding: var(--space-3)">{{ weekday_names[schedule.day_of_week] }}</td>
+        <td style="padding: var(--space-3)">{{ schedule.start_time.strftime("%H:%M") }}–{{ schedule.end_time.strftime("%H:%M") }}</td>
+        <td style="padding: var(--space-3)">{{ schedule.effective_start_date.isoformat() }} → {{ schedule.effective_end_date.isoformat() }}</td>
+        <td style="padding: var(--space-3)">{{ schedule.location or "—" }}</td>
+        <td style="padding: var(--space-3)">{{ macros.status_badge(schedule.status) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% elif has_filters %}
+  <div class="empty-state">
+    <div class="empty-state__title">No schedules match your filters</div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No schedules yet</div>
+  </div>
+  {% endif %}

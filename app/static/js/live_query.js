@@ -5,6 +5,7 @@
   if (!window.fetch || !window.AbortController || !window.DOMParser) return;
   var t = window.aelmsUI ? window.aelmsUI.t : function (value) { return value; };
   document.querySelectorAll("form[data-live-query]").forEach(function (form) {
+    if (form.hasAttribute("data-query-form") || (form.getAttribute("method") || "get").toLowerCase() !== "get") return;
     var query = form.querySelector("input[name='q']");
     if (!query) return;
     var status = document.createElement("span");

@@ -80,9 +80,8 @@
 </div>
 {% else %}
 <div class="alert alert--info" style="margin-bottom: var(--space-6)">
-  <strong>This quiz is a draft.</strong> Students cannot see it, open it or answer it. Every teacher currently assigned to this
-  group can edit it. Publishing needs a complete availability window and between 1 and {{ max_questions }} questions, each with a
-  valid set of answer options. Times are shown in the center timezone (<strong>{{ tz_name }}</strong>).
+  <strong>{{ _('Draft — hidden from students.') }}</strong> {{ _('Assigned teachers share editing.') }}
+  {{ _('Publish requires %(audio)sa complete availability window and 1–%(count)d questions with valid answer options. Times: %(timezone)s.', audio=_('valid audio, ') if activity_kind == 'listening' else '', count=max_questions, timezone=tz_name) }}
 </div>
 {% endif %}
 

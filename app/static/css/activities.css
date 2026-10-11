@@ -219,7 +219,7 @@ html[dir=rtl] .activity-eyebrow { letter-spacing: normal; }
 .activity-hub-card header .badge { margin-inline-start: auto; }
 .activity-type-label { color: var(--ui-muted); font-size: .72rem; font-weight: 700; }
 .activity-hub-card h3 { margin-block: 22px 12px; font-size: 1.18rem; line-height: 1.6; }
-.activity-hub-card h3 a { color: var(--ui-ink); text-decoration: none; }
+.activity-hub-card h3 a { display:block; min-height:44px; color: var(--ui-ink); text-decoration: none; }
 .activity-hub-card h3 a:hover { text-decoration: underline; }
 .activity-card-course { color: var(--ui-muted); font-size: .8rem; display: flex; flex-direction: column; gap: 7px; margin: 0 0 22px; }
 .activity-card-course a { display: inline-flex; align-items: center; gap: 7px; text-decoration: none; }

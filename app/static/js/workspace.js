@@ -22,11 +22,12 @@
   body.appendChild(confirmationDialog);
   var confirmationResolve = null;
   var confirmationFocus = null;
-  function confirmAction(message) {
+  function confirmAction(message, actionLabel) {
     if (confirmationResolve) return Promise.resolve(false);
     return new Promise(function (resolve) {
       confirmationResolve = resolve; confirmationFocus = document.activeElement;
       confirmationDialog.querySelector("[data-confirmation-message]").textContent = t(message);
+      confirmationDialog.querySelector('[value="continue"]').textContent = actionLabel || t('Continue');
       confirmationDialog.returnValue = "cancel";
       confirmationDialog.showModal();
     });
@@ -35,6 +36,16 @@
     var resolve = confirmationResolve; confirmationResolve = null;
     if (confirmationFocus && confirmationFocus.isConnected) confirmationFocus.focus();
     if (resolve) resolve(confirmationDialog.returnValue === "continue");
+  });
+  confirmationDialog.addEventListener("keydown", function (event) {
+    if (event.key !== "Tab") return;
+    var first = confirmationDialog.querySelector('[value="cancel"]');
+    var last = confirmationDialog.querySelector('[value="continue"]');
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault(); first.focus();
+    }
   });
   window.aelmsConfirm = confirmAction;
 
@@ -104,7 +115,8 @@
     if (confirmation || otherDirty || recordingPending() && !form.matches("[data-speaking-form]")) {
       event.preventDefault(); event.stopImmediatePropagation();
       var submitter = event.submitter;
-      confirmAction(confirmation || t("Another form or recording has unsaved work. Continue without saving that work?")).then(function (accepted) {
+      var actionLabel = submitter && (submitter.textContent.trim() || submitter.value || submitter.getAttribute("aria-label"));
+      confirmAction(confirmation || t("Another form or recording has unsaved work. Continue without saving that work?"), actionLabel).then(function (accepted) {
         if (!accepted) return;
         if (otherDirty || recordingPending() && !form.matches("[data-speaking-form]")) discardPending();
         approvedForms.add(form);
@@ -124,25 +136,29 @@
     var url = new URL(link.href, location.href);
     if (url.pathname === location.pathname && url.search === location.search && url.hash) return;
     event.preventDefault();
-    confirmAction(t("You have unsaved work. Leave this page and discard it?")).then(function (accepted) { if (accepted) { discardPending(); location.assign(url.href); } });
+    confirmAction(t("You have unsaved work. Leave this page and discard it?"), t("Leave this page")).then(function (accepted) { if (accepted) { discardPending(); location.assign(url.href); } });
   });
-  document.querySelectorAll("form[method='post']").forEach(function (form) {
+  var submittingForms = new WeakSet();
+  document.addEventListener("submit", function (event) {
+    var form = event.target;
+    if ((form.getAttribute("method") || "get").toLowerCase() !== "post") return;
     // The recorder owns its asynchronous confirmation, upload and retry state.
     if (form.matches("[data-speaking-form]")) return;
-    var submitting = false;
-    form.addEventListener("submit", function (event) {
+    if (event.defaultPrevented) return;
+    if (submittingForms.has(form)) { event.preventDefault(); return; }
+    queueMicrotask(function () {
       if (event.defaultPrevented) return;
-      if (submitting) { event.preventDefault(); return; }
-      queueMicrotask(function () {
-        if (event.defaultPrevented) return;
-        submitting = true; form.setAttribute("aria-busy","true");
-        if (event.submitter) { event.submitter.classList.add("workspace-submitting"); event.submitter.setAttribute("aria-disabled","true"); }
-      });
+      submittingForms.add(form); form.setAttribute("aria-busy","true");
+      if (event.submitter) { event.submitter.classList.add("workspace-submitting"); event.submitter.setAttribute("aria-disabled","true"); }
     });
-    window.addEventListener("pageshow", function () { submitting = false; form.removeAttribute("aria-busy"); form.querySelectorAll(".workspace-submitting").forEach(function (button) { button.classList.remove("workspace-submitting"); button.removeAttribute("aria-disabled"); }); });
+  });
+  window.addEventListener("pageshow", function () {
+    submittingForms = new WeakSet();
+    document.querySelectorAll("form[method='post'][aria-busy]").forEach(function (form) { form.removeAttribute("aria-busy"); });
+    document.querySelectorAll(".workspace-submitting").forEach(function (button) { button.classList.remove("workspace-submitting"); button.removeAttribute("aria-disabled"); });
   });
 
-  document.querySelectorAll(".figma-page table").forEach(function (table) {
+  window.aelmsEnhanceTables = function (root) { root.querySelectorAll("table").forEach(function (table) {
     // Editable grade/attendance matrices and compound headers keep their table semantics.
     if (table.querySelector("input,textarea,select,[rowspan],[colspan]") || !table.tHead || !table.tBodies.length) return;
     var headers = Array.from(table.tHead.rows[0].cells).map(function (cell) { return cell.textContent.trim(); });
@@ -152,6 +168,8 @@
       Array.from(row.cells).forEach(function (cell, index) { cell.dataset.label = headers[index] || ""; });
     }); });
   });
+  };
+  window.aelmsEnhanceTables(document.querySelector(".figma-page") || document);
   if (window.matchMedia("(max-width:767px)").matches) document.querySelectorAll(".workspace-filters").forEach(function (panel) { panel.open = false; });
 
   var errors = Array.from(document.querySelectorAll(".field__error")).filter(function (error) { return error.textContent.trim(); });

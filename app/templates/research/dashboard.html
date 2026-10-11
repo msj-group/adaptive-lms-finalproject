@@ -6,12 +6,12 @@
 {#- Real counts of stored rows only, with explicit empty states. No
     prediction, no accuracy figure, no chart of measured emotion. -#}
 {{ product.workspace_heading('Research dashboard') }}
+{{ provenance_notice(provenance, provenance_labels) }}
 
 <div class="dash-section yc-section">
   <h2>Collection status</h2>
-  <p class="workspace-meta">Pseudonymous data only. No frustration detection or prediction; ratings are optional self-reports.</p>
+  <p class="workspace-meta">Pseudonymous data. Optional self-reports; no frustration detection or prediction.</p>
   {% if active %}
-  <div class="card yc-panel"><div class="card__body">
     <p style="margin:0 0 var(--space-2)">
       Active configuration: <strong>version {{ active.version_number }}</strong> &mdash; {{ active.label }}
       <a href="{{ url_for('research.configuration_detail', configuration_public_id=active.public_id) }}">Open</a>
@@ -25,7 +25,6 @@
       <span class="badge badge--neutral">Paused</span>
       {% endif %}
     </p>
-  </div></div>
   {% else %}
   <div class="empty-state">
     <div class="empty-state__title">No active configuration</div>
@@ -55,6 +54,8 @@
   </table></details>
 </div>
 
+<nav class="workspace-inline-links" aria-label="Research operations">{% for target,label in [('sessions','Sessions'),('configurations','Configurations'),('exports','Exports'),('exclusions','Exclusions'),('storage','Storage and gaps'),('activity_log','Audit log')] %}<a href="{{ url_for('research.' ~ target) }}">{{ _(label) }}</a>{% endfor %}</nav>
+<details class="dash-section yc-section"><summary>All retained evidence</summary>
 <div class="dash-section yc-section">
   <h2>Population</h2>
   <p class="ds-section__desc">While a configuration collects, every active Student account is
@@ -70,7 +71,7 @@
   </div>
 </div>
 
-{{ provenance_notice(provenance, provenance_labels) }}
+
 
 <div class="dash-section yc-section">
   <h2>All retained sessions and delivery counters</h2>
@@ -151,4 +152,5 @@
   <div class="empty-state"><div class="empty-state__title">No events</div><div>No events have been stored for this deployment.</div></div>
   {% endif %}
 </div>
+</details>
 {% endblock %}

@@ -6,7 +6,8 @@
 <div class="workspace-heading"><div><h1 data-workspace-page-heading>{{ 'My groups' if teacher else 'My courses' }}</h1></div>{% if not teacher %}<a class="btn btn--secondary" href="{{ url_for('student.records') }}">Previous enrollment records</a>{% endif %}</div>
 {% if not teacher %}
 {% import 'student/template/_ui.html' as s %}
-<div class="st-courses">{% for card in cards %}{{ s.course_card(card,research_identity='course_open',show_term_state=true,today=today) }}{% else %}<div class="empty-state"><h2>No current courses</h2></div>{% endfor %}</div>
+<div class="st-courses">{% for card in cards %}{% set progress = namespace(item=none) %}{% for item in progress_groups if item.group_public_id == card.group_public_id %}{% set progress.item = item %}{% endfor %}{{ s.course_card(card,progress.item,research_identity='course_open',show_term_state=true,today=today) }}{% else %}<div class="empty-state"><h2>No current courses</h2></div>{% endfor %}</div>
+{% if cards %}{% include "student/_learning_details.html" %}{% endif %}
 {% else %}<div class="workspace-card-grid yc-group-grid">{% for card in cards %}
 <article class="card yc-panel workspace-course-card"><span class="workspace-card-icon">{{ ui.icon('book', 25) }}</span><p class="workspace-kicker">{{ card.level_name }} · {{ card.term_name }}</p><h2>{{ card.course_title }}</h2><p>{{ card.group_name }}</p><span class="badge badge--{{ 'success' if card.operational else 'neutral' }}">{{ ('Current assignment' if teacher else 'Current enrollment') if card.operational else 'Archived context' }}</span>{% if card.term_start > today %}<span class="badge badge--neutral">Upcoming term · {{ card.term_start }}</span>{% elif card.term_end < today %}<span class="badge badge--neutral">Term ended · {{ card.term_end }}</span>{% endif %}
 {% if teacher %}<p>{{ card.student_count }} active students</p>{% endif %}

@@ -27,6 +27,8 @@ route enforces its own current rules, so an old notification can never
 be used as proof of access to content the recipient has since lost.
 """
 
+from app.services.query_presentation import render_query_page
+
 from flask import (
     abort,
     current_app,
@@ -106,7 +108,7 @@ def inbox():
         rows, has_next = inbox_page(current_user.id, filter_name, page, kind)
 
     response = make_response(
-        render_template(
+        render_query_page(
             "notifications/inbox.html",
             notifications=build_inbox_view(rows, tz_name),
             filter_name=filter_name,

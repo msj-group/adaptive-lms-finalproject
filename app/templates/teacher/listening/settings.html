@@ -36,10 +36,7 @@
   {% endwith %}
 
   <div class="alert alert--info" style="margin-bottom: var(--space-4)">
-    Students can open this listening activity from its opening time until its closing time, and can
-    only <strong>start</strong> an attempt while it is open. After it closes they can still read the
-    attempts they already made. Both times are in the center timezone (<strong>{{ tz_name }}</strong>).
-    These settings can only be changed while the activity is a draft.
+    {{ _('Students may open and start attempts only within this window (%(timezone)s). Existing attempts remain readable after closing. Only draft settings can change.', timezone=tz_name) }}
   </div>
 
   <form method="post" novalidate class="yc-form">

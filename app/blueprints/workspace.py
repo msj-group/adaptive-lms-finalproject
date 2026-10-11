@@ -1,4 +1,6 @@
 """Read-only, role-scoped navigation workspaces; existing writes stay authoritative."""
+
+from app.services.query_presentation import render_query_page
 from datetime import timedelta
 
 from flask import Blueprint, abort, current_app, g, jsonify, redirect, render_template, request, url_for
@@ -15,7 +17,7 @@ workspace_bp = Blueprint("workspace", __name__)
 
 
 def private_page(template, **context):
-    response = current_app.make_response(render_template(template, **context))
+    response = current_app.make_response(render_query_page(template, **context))
     response.headers["Cache-Control"] = "private, no-store"
     response.vary.add("Cookie")
     return response
@@ -48,8 +50,15 @@ def _tz():
 @workspace_bp.get("/student/courses")
 @roles_required("student")
 def student_courses():
+    from app.services.lesson_progress_queries import (student_group_progress,
+        recently_opened, build_recent_view, DASHBOARD_GROUP_LIMIT, RECENTLY_OPENED_LIMIT)
     data = student_dashboard(current_user.id, app_now(_tz()))
+    progress, truncated = student_group_progress(current_user.id) if data["cards"] else ([], False)
+    recent = build_recent_view(recently_opened(current_user.id), _tz()) if data["cards"] else []
     return private_page("workspace/groups.html", cards=data["cards"], teacher=False,
+                        progress_groups=progress, progress_truncated=truncated,
+                        progress_group_cap=DASHBOARD_GROUP_LIMIT,
+                        recent_lessons=recent, recent_cap=RECENTLY_OPENED_LIMIT,
                         tz_name=_tz(), today=app_now(_tz()).date(), active_nav="courses")
 
 
@@ -183,7 +192,36 @@ def workspace_context():
             to_app_local(_tz(), moment) if moment else None, "workspace_group_choices": group_choices,
             "workspace_nav_active": nav_active, "workspace_size": human_size,
             "workspace_calendar_weeks": calendar_weeks, "workspace_back": filtered_back_link,
-            "workspace_admin_navigation": admin_navigation}
+            "workspace_admin_navigation": admin_navigation,
+            "workspace_mobile_shortcuts": mobile_shortcuts}
+
+
+def mobile_shortcuts():
+    """Owner-selected fixed destinations; shared predicates also own rail state."""
+    definitions = {
+        "student": [("Home", "student.dashboard", "dashboard", "nav_dashboard"),
+            ("Courses", "workspace.student_courses", "book", "nav_courses"),
+            ("Activities", "student.activities", "activity", "nav_activities"),
+            ("Calendar", "student.calendar", "calendar", "nav_calendar")],
+        "teacher": [("Home", "teacher.dashboard", "dashboard", None),
+            ("Groups", "workspace.teacher_groups", "book", None),
+            ("Review", "workspace.review_queue", "check", None),
+            ("Attendance", "teacher.attendance_overview", "activity", None)],
+        "administrator": [("Home", "admin.dashboard", "dashboard", None),
+            ("Groups", "admin.groups_list", "book", None),
+            ("Schedules", "admin.schedules_overview", "calendar", None),
+            ("Finance", "admin.student_accounts", "wallet", None)],
+        "researcher": [("Home", "research.dashboard", "dashboard", None),
+            ("Sessions", "research.sessions", "activity", None),
+            ("Exports", "research.exports", "file", None),
+            ("Config", "research.configurations", "settings", None)],
+    }
+    finance_registers = {"admin.invoice_register", "admin.payments_overview",
+        "admin.deleted_financial_records", "admin.financial_reports_index"}
+    return [(label, target, icon, identity, nav_active(target) or
+             label == "Finance" and (request.endpoint in finance_registers or
+                                     (request.endpoint or "").startswith("admin.financial_report")))
+            for label, target, icon, identity in definitions.get(current_user.role, [])]
 
 
 def admin_navigation():
@@ -256,8 +294,42 @@ def nav_active(target):
     endpoint = request.endpoint or ""
     if endpoint == target:
         return True
+    if target.startswith("research."):
+        families = {"research.sessions": ("research.session_detail",),
+            "research.exports": ("research.export_",),
+            "research.configurations": ("research.configuration_",)}
+        return any(endpoint.startswith(prefix) for prefix in families.get(target, ()))
+    if target == "workspace.student_courses":
+        return endpoint in {"workspace.student_course", "student.group_units"} or endpoint.startswith(("student.lesson_", "student.material_"))
+    if target == "student.activities":
+        return endpoint.startswith(("student.quiz_", "student.assignment_", "student.listening_", "student.speaking_"))
+    if target == "student.records":
+        return endpoint == "student.episode_records"
+    if target == "student.attendance_list":
+        return endpoint.startswith("student.") and "attendance" in endpoint
+    if target == "student.grades_list":
+        return endpoint.startswith("student.") and "grade" in endpoint
+    if target == "student.announcements_list":
+        return endpoint.startswith("student.") and "announcement" in endpoint
+    if target == "student.discussions_overview":
+        return endpoint.startswith("student.discussions_")
+    if target == "messages.inbox":
+        return request.blueprint == "messages"
+    if target == "workspace.review_queue":
+        return endpoint.startswith(("teacher.submission_", "teacher.assignment_submissions",
+            "teacher.speaking_submission", "teacher.speaking_feedback", "teacher.quiz_attempt",
+            "teacher.listening_attempt"))
+    if target == "teacher.attendance_overview":
+        return endpoint.startswith("teacher.") and "attendance" in endpoint
+    if target == "teacher.activities":
+        return endpoint.startswith("teacher.") and not nav_active("workspace.review_queue") and (
+            any(token in endpoint for token in ("assignment", "quiz", "question", "listening", "speaking"))
+            or endpoint in {"teacher.activities", "teacher.group_activities"})
+    if target == "workspace.teacher_groups":
+        return endpoint in {"workspace.teacher_group", "workspace.lesson_preview"} or (
+            endpoint.startswith("teacher.") and any(token in endpoint for token in ("unit", "lesson", "material", "progress")))
     if target == "admin.student_accounts":
-        return endpoint in {"admin.student_financial_record", "admin.student_money_new", "admin.student_money_preview",
+        return endpoint in {"admin.student_accounts", "admin.student_financial_record", "admin.student_money_new", "admin.student_money_preview",
             "admin.student_document_correct", "admin.student_document_detail", "admin.student_financial_history", "admin.student_account_receipt"}
     if target == "admin.students_list":
         return endpoint.startswith("admin.student_") and not nav_active("admin.student_accounts") or endpoint == "workspace.student_enrollments"
@@ -266,6 +338,10 @@ def nav_active(target):
         "admin.rooms_list":"admin.room", "admin.schedules_overview":"admin.schedule", "admin.attendance_overview":"admin.attendance",
         "admin.gradebook_overview":"admin.grade", "admin.announcements_overview":"admin.announcement",
         "admin.financial_reports_index":"admin.financial_report"}
+    if target == "admin.groups_list":
+        return (endpoint.startswith("admin.group") and endpoint != "admin.group_schedules") or "enrollment" in endpoint and endpoint.startswith("admin.")
+    if target == "admin.schedules_overview":
+        return endpoint.startswith("admin.schedule") or endpoint == "admin.group_schedules"
     return endpoint.startswith(families[target]) if target in families else False
 
 

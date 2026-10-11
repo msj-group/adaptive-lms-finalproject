@@ -47,6 +47,8 @@ and unpublished drafts, and a shared or reused cache entry must never be
 able to hand it to somebody else.
 """
 
+from app.services.query_presentation import render_query_page
+
 from flask import abort, current_app, flash, make_response, redirect, render_template, request, url_for
 from flask_login import current_user
 from sqlalchemy.exc import IntegrityError
@@ -435,7 +437,7 @@ def announcements_overview():
         page = 1
         rows, has_next = admin_announcements_page(page, scope=scope, status=status)
 
-    return _private_no_store(
+    return render_query_page(
         "admin/announcements/overview.html",
         announcements=build_management_view(rows, _tz_name()),
         scope_choices=SCOPE_CHOICES,

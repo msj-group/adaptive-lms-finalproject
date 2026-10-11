@@ -7,6 +7,22 @@ has already been implemented or verified.
 
 ## Authority and current checkpoint
 
+- Latest release authority, 2026-10-11: the owner's subsequent request explicitly
+  authorizes commit, push and deployment of the reviewed UX implementation.
+  Preserve the existing remote follow-up and Railway production database,
+  services, volumes and variables. Deployment is limited to the existing web
+  service; no schema change, Study, Version B or Baseline Freeze. This supersedes
+  the earlier local-only release exclusions below. See APPROVED_UX_RELEASE.md.
+
+- Latest owner authority, 2026-10-11: direct local implementation of all
+  remaining compatible approved UX proposals, including selected dashboards
+  and exact mobile navigation. Preserve completed source, density, content
+  cleanup, Dark logo, protected Login/Messages and all domain/research contracts.
+  Use the existing owned disposable Development dataset for bounded checks.
+  NO COMMIT, PUSH, DEPLOY, RAILWAY MODIFICATION, MIGRATION or production data
+  change. No Study, Version B or new Baseline Freeze. Earlier release permissions
+  below are historical and superseded for this task.
+
 - Latest release authorization, 2026-10-10: the owner approved final four-portal
   removal of nonessential platform-use explanations and redundant upper context,
   precise blue-to-white Dark logo rendering, bounded actual-app acceptance,

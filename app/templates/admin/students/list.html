@@ -3,11 +3,6 @@
 {% block title %}Students{% endblock %}
 {% block admin_content %}
 <div class="ds-page yc-surface"
-     data-live-search
-     data-list-url="{{ url_for('admin.students_list') }}"
-     data-singular="student"
-     data-plural="students"
-     data-status-form-selector=".student-status-form[data-confirm]"
 >
   <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
     <h1 data-workspace-page-heading style="margin:0">Students</h1>
@@ -16,27 +11,25 @@
 
   {{ macros.flash_messages() }}
 
-  <form method="get" id="student-filter-form" data-live-search-form class="ds-row yc-actions yc-filter-form" style="margin-bottom: var(--space-2); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+  <form method="get" id="student-filter-form" class="ds-row yc-actions yc-filter-form" style="margin-bottom: var(--space-2); align-items:center; gap: var(--space-2); flex-wrap: wrap;" data-query-form data-query-results="student-results" data-query-min="0" data-query-history="replace">
     <label class="field__label" for="q" style="margin:0">Search:</label>
-    <input type="search" name="q" id="q" data-live-search-input class="field__input" style="width:auto" placeholder="Full name or email" value="{{ search }}" autocomplete="off">
+    <input type="search" name="q" id="q" class="field__input" style="width:auto" placeholder="Full name or email" value="{{ search }}" autocomplete="off">
 
     <label class="field__label" for="status" style="margin:0">Status:</label>
-    <select name="status" id="status" data-live-search-status class="field__input" style="width:auto">
+    <select name="status" id="status" class="field__input" style="width:auto">
       <option value="">All Statuses</option>
       <option value="active" {{ "selected" if selected_status == "active" else "" }}>Active</option>
       <option value="suspended" {{ "selected" if selected_status == "suspended" else "" }}>Suspended</option>
     </select>
 
-    <noscript>
-      <button type="submit" class="btn btn--secondary">Filter</button>
-    </noscript>
+
+      <button data-query-submit type="submit" class="btn btn--secondary">Filter</button>
+
   </form>
 
-  <div id="student-search-status" data-live-search-status-region role="status" aria-live="polite" style="min-height: 1.25em; color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--space-4)"></div>
-
-  <div id="student-results" data-live-search-results>
+  <div id="student-results">
     {% include "admin/students/_results.html" %}
   </div>
 </div>
-<script src="{{ url_for('static', filename='js/admin_live_search.js') }}" defer></script>
+
 {% endblock %}

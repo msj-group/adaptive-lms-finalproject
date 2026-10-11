@@ -64,3 +64,6 @@
 }
 @media(max-width:359px) { .yc-research .research-filter-band .field { grid-column:1 / -1; } .yc-research .research-chart { padding:16px; } }
 @media(forced-colors:active) { .yc-research .research-bar-fill { fill:Highlight; } .yc-research .research-bar-track { fill:Canvas; stroke:CanvasText; stroke-width:.5; } }
+
+.yc-research .workspace-date-filters { grid-column:1 / -1; }
+.yc-research .workspace-date-filters>summary { min-height:44px; cursor:pointer; }

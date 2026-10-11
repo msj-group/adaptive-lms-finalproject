@@ -23,6 +23,8 @@ rather than restated here, so this page cannot become one row more
 generous than the announcement feed itself.
 """
 
+from app.services.query_presentation import render_query_page
+
 from flask import make_response, render_template, request
 from flask_login import current_user
 
@@ -106,8 +108,9 @@ def search():
         note_outcome("search", "results" if found else "no_results", count=min(found, 1000))
 
     response = make_response(
-        render_template(
+        render_query_page(
             "student/search.html",
+            query_result_count=sum(len(v["items"]) for v in (results or {}).values()),
             q=query_norm.text,
             raw_q=raw_q,
             content_type=content_type,

@@ -1,0 +1,22 @@
+{% import "_notification_macros.html" as notice %}
+{% import "_figma_ui.html" as ui %}
+<span hidden data-query-count="{{ notifications|length }}"></span>
+    <div class="notif-list-heading"><h2>{{ 'Unread updates' if filter_name == 'unread' else 'Recent updates' }}</h2><p>{{ _('Showing %(count)s on this page.', count=notifications|length) }}</p></div>
+    {% if unread_total %}<p class="notif-scope-note">Unread count and Mark all cover every type and page.</p>{% endif %}
+    {% if notifications %}
+    <ul class="notif-list">
+      {% set dates = namespace(previous=none) %}
+      {% for item in notifications %}
+      {% set day = item.created_local.date() %}
+      {% if dates.previous != day %}<li class="notif-date" role="presentation"><h2><time datetime="{{ day.isoformat() }}">{{ day.strftime('%A, %d %b %Y') }}</time></h2></li>{% set dates.previous = day %}{% endif %}
+      {{ notice.row(item, tz_name, filter_name, page, selected_kind) }}
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="notif-empty"><span class="notif-empty-icon" aria-hidden="true">{{ ui.icon('check' if filter_name == 'unread' and not selected_kind else 'bell', 28) }}</span>
+      {% if selected_kind %}<h2>No matching updates</h2><p>There are no updates for this filter.</p><a href="{{ url_for('notifications.inbox', filter=filter_name) }}">Clear the type filter {{ ui.icon('arrow', 16) }}</a>
+      {% elif filter_name == 'unread' %}<h2>You're all caught up</h2><p>No unread notifications.</p><a href="{{ url_for('notifications.inbox') }}">View all notifications {{ ui.icon('arrow', 16) }}</a>
+      {% else %}<h2>No notifications yet</h2>{% endif %}
+    </div>
+    {% endif %}
+    {% if has_prev or has_next %}<nav class="notif-pagination" aria-label="Notification pages">{% if has_prev %}<a class="btn" href="{{ url_for('notifications.inbox', filter=filter_name, kind=selected_kind, page=page - 1) }}">Previous</a>{% endif %}<span class="notif-pagination__page">Page {{ page }}</span>{% if has_next %}<a class="btn" href="{{ url_for('notifications.inbox', filter=filter_name, kind=selected_kind, page=page + 1) }}">Next</a>{% endif %}</nav>{% endif %}

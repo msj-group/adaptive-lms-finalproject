@@ -1,15 +1,8 @@
 {% import '_figma_ui.html' as ui %}
 {% set endpoint = request.endpoint or '' %}
 {% set role = current_user.role %}
-{% if role == 'student' %}
-{% set shortcuts = [('Home','student.dashboard','dashboard','nav_dashboard',endpoint == 'student.dashboard'), ('Courses','workspace.student_courses','book','nav_courses',endpoint.startswith('workspace.student_course') or 'lesson' in endpoint or endpoint == 'student.group_units'), ('Activities','student.activities','activity','nav_activities',endpoint == 'student.activities' or endpoint.startswith('student.quiz_') or endpoint.startswith('student.assignment_') or endpoint.startswith('student.listening_'))] %}
-{% elif role == 'teacher' %}
-{% set shortcuts = [('Home','teacher.dashboard','dashboard',none,endpoint == 'teacher.dashboard'), ('Groups','workspace.teacher_groups','book',none,endpoint.startswith('workspace.teacher_group') or endpoint.startswith('teacher.group_units') or endpoint.startswith('teacher.group_lessons')), ('Activities','teacher.activities','activity',none,'assignment' in endpoint or 'quiz' in endpoint or 'listening' in endpoint or 'speaking' in endpoint or endpoint in ['teacher.activities','teacher.group_activities']), ('Review','workspace.review_queue','check',none,endpoint == 'workspace.review_queue' or 'submission' in endpoint)] %}
-{% elif role == 'administrator' %}
-{% set shortcuts = [('Home','admin.dashboard','dashboard',none,endpoint == 'admin.dashboard'), ('Groups','admin.groups_list','book',none,'group' in endpoint or 'enrollment' in endpoint), ('Students','admin.students_list','users',none,'student' in endpoint and 'account' not in endpoint and 'financial' not in endpoint), ('Finance','admin.student_accounts','wallet',none,'financial' in endpoint or 'invoice' in endpoint or 'payment' in endpoint or 'receipt' in endpoint or 'account' in endpoint)] %}
-{% else %}
-{% set shortcuts = [('Home','research.dashboard','dashboard',none,endpoint == 'research.dashboard'), ('Sessions','research.sessions','activity',none,active_nav|default('') == 'sessions'), ('Exports','research.exports','file',none,active_nav|default('') == 'exports'), ('Config','research.configurations','settings',none,active_nav|default('') == 'configurations')] %}
-{% endif %}
+{% set shortcuts = workspace_mobile_shortcuts() %}
+{% set primary_targets = shortcuts|map(attribute=1)|list %}
 <button class="workspace-more-backdrop" type="button" tabindex="-1" data-more-dismiss aria-label="Close navigation" hidden></button>
 <section class="workspace-more-panel" id="workspace-more-panel" role="dialog" aria-label="Additional destinations" tabindex="-1" data-more-panel hidden>
   <nav class="workspace-more-grid" aria-label="Additional destinations">

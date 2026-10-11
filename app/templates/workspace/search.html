@@ -2,8 +2,8 @@
 {% block title %}Search{% endblock %}
 {% macro search_content() %}
 <section class="workspace-search-page"><h1 data-workspace-page-heading>Search your workspace</h1>
-<form class="workspace-search-form" role="search" method="get" action="{{ url_for('workspace.search') }}" data-live-query><label for="page-search-query">Search</label><div class="workspace-search-field"><input type="search" id="page-search-query" name="q" value="{{ search_query }}" maxlength="100" autocomplete="off"><button class="btn btn--primary" type="submit">Search</button></div></form>
-{% include 'workspace/_search_results.html' %}</section>
+<form class="workspace-search-form" role="search" method="get" action="{{ url_for('workspace.search') }}" data-query-form data-query-results="query-results" data-query-min="0" data-query-delay="160"><label for="page-search-query">Search</label><div class="workspace-search-field"><input type="search" id="page-search-query" name="q" value="{{ search_query }}" maxlength="100" autocomplete="off"><button data-query-submit class="btn btn--primary" type="submit">Search</button></div></form>
+<div id="query-results">{% include 'workspace/_search_results.html' %}</div></section>
 {% endmacro %}
 {% block portal_content %}{{ search_content() }}{% endblock %}
 {% block admin_content %}{{ search_content() }}{% endblock %}

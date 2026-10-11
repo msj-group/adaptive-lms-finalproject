@@ -3,16 +3,11 @@
 {% import '_figma_ui.html' as ui %}
 {% set endpoint = request.endpoint or '' %}
 {% set mobile_more = mobile_more|default(false) %}
+{% set primary_targets = primary_targets|default([]) %}
 {% if current_user.role == 'student' %}
   {% include 'student/template/_navigation.html' %}
 {% elif current_user.role == 'teacher' %}
-  {% if not mobile_more %}
   {% include 'teacher/_workspace_nav.html' %}
-  {% else %}
-  {{ ui.nav_link('Calendar', 'teacher.calendar', 'calendar', endpoint == 'teacher.calendar', link_class='st-nav-link') }}
-  {{ ui.nav_link('Attendance', 'teacher.attendance_overview', 'check', 'attendance' in endpoint, link_class='st-nav-link') }}
-  {{ ui.nav_link('Gradebook', 'teacher.gradebook_overview', 'graduation', 'grade' in endpoint, link_class='st-nav-link') }}
-  {% endif %}
   <p class="st-nav-label">Communication</p>
   {{ ui.nav_link('Announcements', 'teacher.announcements_feed', 'megaphone', 'announcement' in endpoint, link_class='st-nav-link') }}
   {{ ui.nav_link('Discussions', 'teacher.discussions_overview', 'users', 'discussion' in endpoint, link_class='st-nav-link') }}
@@ -25,7 +20,7 @@
   {% for section in sections %}
   <p class="st-nav-label">{{ section.label }}</p>
   {% for item in section.links %}
-  {% if item.endpoint and (not mobile_more or item.endpoint not in ['admin.groups_list','admin.students_list','admin.student_accounts']) %}{{ ui.nav_link(item.label, item.endpoint, icons.get(item.label, 'file'), workspace_nav_active(item.endpoint), link_class='st-nav-link') }}
+  {% if item.endpoint and (not mobile_more or item.endpoint not in primary_targets) %}{{ ui.nav_link(item.label, item.endpoint, icons.get(item.label, 'file'), workspace_nav_active(item.endpoint), link_class='st-nav-link') }}
   {% elif not item.endpoint %}<span class="st-nav-link" aria-disabled="true">{{ ui.icon(icons.get(item.label, 'file')) }}<span>{{ item.label }}</span><span class="badge badge--neutral">Soon</span></span>{% endif %}
   {% endfor %}
   {% endfor %}
@@ -36,7 +31,7 @@
     ('Governance', [('storage','Storage and gaps','research.storage','layers'), ('audit','Audit log','research.activity_log','lock')])] %}
   <p class="st-nav-label">{{ heading }}</p>
   {% for key, label, target, symbol in links %}
-  {% if not mobile_more or key not in ['dashboard','sessions','exports','configurations'] %}{{ ui.nav_link(label, target, symbol, active_nav|default('') == key, link_class='st-nav-link') }}{% endif %}
+  {% if not mobile_more or target not in primary_targets %}{{ ui.nav_link(label, target, symbol, active_nav|default('') == key, link_class='st-nav-link') }}{% endif %}
   {% endfor %}
   {% endfor %}
 {% endif %}

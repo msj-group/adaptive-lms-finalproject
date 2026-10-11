@@ -49,6 +49,8 @@ academic progress, and a shared or reused cache entry must never be able
 to hand it to somebody else.
 """
 
+from app.services.query_presentation import render_query_page
+
 from flask import abort, current_app, make_response, render_template, request
 
 from app.blueprints.admin import admin_bp
@@ -201,7 +203,7 @@ def gradebook_overview():
             )
 
     group_ids = [row.id for row in rows]
-    return _private_no_store(
+    return render_query_page(
         "admin/grades/overview.html",
         groups=build_admin_report_view(
             rows,

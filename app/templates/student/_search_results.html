@@ -1,0 +1,64 @@
+{% import '_figma_ui.html' as ui %}
+{%- macro destination(item) -%}
+  {%- if item.type == 'course' -%}
+    {{ url_for('student.group_units', group_public_id=item.group_public_id) }}
+  {%- elif item.type == 'unit' -%}
+    {{ url_for('student.group_units', group_public_id=item.group_public_id) }}#unit-{{ item.unit_public_id }}
+  {%- elif item.type == 'lesson' -%}
+    {{ url_for('student.lesson_detail', group_public_id=item.group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.lesson_public_id) }}
+  {%- elif item.type == 'material' -%}
+    {{ url_for('student.lesson_detail', group_public_id=item.group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.lesson_public_id) }}#material-{{ item.material_public_id }}
+  {%- elif item.type == 'announcement' -%}
+    {{ url_for('student.announcement_detail', announcement_public_id=item.announcement_public_id) }}
+  {%- endif -%}
+{%- endmacro -%}
+<span hidden data-query-count="{{ query_result_count }}"></span>
+{% if not searched %}
+  {% if too_short %}
+  <div class="empty-state">
+    <div class="empty-state__title">Keep typing</div>
+    <div>Enter at least {{ min_query_length }} characters to search.</div>
+  </div>
+  {% else %}
+
+  {% endif %}
+{% else %}
+  {% if not any_results %}
+  <div class="empty-state">
+    <div class="empty-state__title">No matching content</div>
+
+  </div>
+  {% else %}
+    {% set type_headings = {'course': 'Courses', 'unit': 'Units', 'lesson': 'Lessons', 'material': 'Materials', 'announcement': 'Announcements'} %}
+    {% set ordinal = namespace(value=0) %}
+    {% for type_name in ['course', 'unit', 'lesson', 'material', 'announcement'] %}
+      {% set section = results.get(type_name) %}
+      {% if section and section['items'] %}
+      <section class="search-results" aria-label="{{ type_headings[type_name] }} results">
+        <h2>{{ type_headings[type_name] }}</h2>
+        <ul class="search-results__list">
+          {% for item in section['items'] %}
+          <li class="st-panel st-search-result"><span class="st-search-result-icon" aria-hidden="true">{{ ui.icon('file' if type_name == 'material' else 'megaphone' if type_name == 'announcement' else 'book',23) }}</span><div class="st-search-result-copy">
+            <div class="search-result__head">
+              <span class="badge badge--primary">{{ item.badge }}</span>
+              {% set ordinal.value = ordinal.value + 1 %}<a class="search-result__title" href="{{ destination(item) | trim }}" data-research-id="search_result"{% if ordinal.value <= 500 %} data-research-position="{{ ordinal.value }}"{% endif %}>{{ item.title }}</a>
+            </div>
+            {% if item.breadcrumb %}
+            <div class="search-result__crumb">{{ item.breadcrumb | join(' › ') }}</div>
+            {% endif %}
+            {% if item.snippet %}
+            <div class="search-result__snippet">{{ item.snippet }}</div>
+            {% endif %}
+          </div></li>
+          {% endfor %}
+        </ul>
+        {% if section['has_more'] %}
+        <p class="search-results__more">
+          Showing the first {{ section['items'] | length }} {{ type_headings[type_name] | lower }}.
+        </p>
+        {% endif %}
+      </section>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endif %}
