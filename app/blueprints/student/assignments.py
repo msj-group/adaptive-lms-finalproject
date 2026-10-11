@@ -60,6 +60,8 @@ cache entry could show one Student another's answer, or show an
 Assignment after it stopped being visible.
 """
 
+from hashlib import sha256
+
 from flask import abort, current_app, flash, redirect, request, url_for
 from flask_login import current_user
 from itsdangerous import BadSignature, URLSafeSerializer
@@ -327,6 +329,7 @@ def _render_assignment_detail(
         form=form,
         can_submit=can_submit,
         submission_context_token=context_token,
+        assignment_draft_context=sha256(context_token.encode("utf-8")).hexdigest() if context_token else "",
         upload_policy=upload_policy_view() if assignment.submission_type == "file" else None,
     )
 

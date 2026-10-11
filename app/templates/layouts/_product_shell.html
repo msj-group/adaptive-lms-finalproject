@@ -33,6 +33,17 @@
       </div>
     </header>
     <div class="st-content figma-page {{ portal_blocks.workspace_content_class() }}" id="workspace-content" tabindex="-1">
+      {% set back = workspace_back() %}
+      {% if back %}
+      <div class="workspace-page-navigation">
+        <a class="workspace-page-back" href="{{ back }}"><span aria-hidden="true">&larr;</span> Back</a>
+        <nav class="workspace-page-trail" aria-label="Breadcrumb">
+          <ol>{% for crumb in workspace_breadcrumbs(portal_blocks.title()|striptags) %}
+            <li>{% if crumb.url %}<a href="{{ crumb.url }}" dir="auto">{{ _(crumb.label) if crumb.owned else crumb.label }}</a>{% else %}<span aria-current="page" dir="auto">{{ crumb.label }}</span>{% endif %}</li>
+          {% endfor %}</ol>
+        </nav>
+      </div>
+      {% endif %}
       {% set page_content %}{% if role in ['student','teacher'] %}{{ portal_blocks.portal_content() }}{% elif role == 'administrator' %}{{ portal_blocks.admin_content() }}{% else %}{{ portal_blocks.research_content() }}{% endif %}{% endset %}
       {% if request.endpoint not in ['student.dashboard','teacher.dashboard','admin.dashboard','research.dashboard'] %}
       {% if request.blueprint == 'messages' %}<header class="st-page-heading"><p class="st-eyebrow">{{ {'student':'YOUR LEARNING SPACE','teacher':'YOUR TEACHING SPACE','administrator':'YOUR CENTRE, CONNECTED','researcher':'RESEARCH WORKSPACE'}[role] }}</p>{{ portal_blocks.workspace_page_label() }}</header>{% elif 'data-workspace-page-heading' not in page_content %}<header class="st-page-heading">{{ portal_blocks.workspace_page_label() }}</header>{% endif %}

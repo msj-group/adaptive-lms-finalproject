@@ -68,7 +68,7 @@
       var dirty = baseline !== formValue(form);
       if (dirty) dirtyForms.add(form); else dirtyForms.delete(form);
       // The autosave client owns its visible status; retain unload protection.
-      status.hidden = !dirty || form.matches("[data-quiz-autosave]");
+      status.hidden = !dirty || form.matches("[data-quiz-autosave],[data-assignment-draft]");
       status.textContent = form.matches("[data-answer-form]") ? t("Unsaved answer — use Save answer or Save and next.") : t("Unsaved changes — save before leaving this page.");
     }
     form.addEventListener("input", changed);

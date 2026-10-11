@@ -1,3 +1,4 @@
+{% from '_file_input.html' import file_input %}
   <div class="speaking-recorder" data-speaking-recorder data-recorder-state="ready">
     <div class="speaking-recorder-controls" data-recorder-controls hidden>
       <button type="button" class="speaking-mic-toggle" data-recorder-toggle
@@ -49,7 +50,7 @@
 
     <div class="field" style="max-width:none" data-speaking-fallback>
       {{ form.audio.label(class_="field__label") }}
-      {{ form.audio(class_="field__input", accept=audio_accept, **{"data-speaking-file": "1", "data-research-id": "speaking_file_select"}) }}
+      {{ file_input(form.audio, class_="field__input", accept=audio_accept, **{"data-speaking-file": "1", "data-research-id": "speaking_file_select"}) }}
       <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
         {{ supported_formats }} audio files only. The file is checked on the server.
       </span>

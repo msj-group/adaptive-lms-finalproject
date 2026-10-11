@@ -90,6 +90,13 @@ html[data-theme='dark'] .yc-workspace { --st-ink:#e1eaff; --st-muted:#b1c2df; --
 .yc-workspace :is(input[type='checkbox'],input[type='radio']) { width:18px; height:18px; margin:0; accent-color:#3166dc; flex-shrink:0; }
 .yc-workspace select option { background:var(--st-solid); color:var(--st-ink); }
 .yc-workspace input::file-selector-button { padding:9px 14px; margin-inline-end:12px; border:0; border-radius:11px; color:var(--st-blue); background:var(--st-wash); font:600 12px var(--st-body); }
+.yc-workspace .workspace-file-control[data-file-enhanced='true'] { position:relative; display:flex; align-items:center; flex-wrap:wrap; gap:10px 14px; min-height:48px; padding:8px 12px; border:1px solid var(--st-border); border-radius:var(--st-control-radius,16px); background:var(--st-control); }
+.yc-workspace .workspace-file-control[data-file-enhanced='true']>input[type='file'] { position:absolute; inset:0; width:100%; height:100%; min-height:0; padding:0; margin:0; opacity:0; cursor:pointer; z-index:1; }
+.yc-workspace .workspace-file-control:focus-within { outline:3px solid var(--st-blue); outline-offset:3px; }
+.yc-workspace .workspace-file-control:has(input[aria-invalid='true']) { border-color:var(--ui-danger); }
+.yc-workspace .workspace-file-control:has(input:disabled) { opacity:.55; }
+.yc-workspace .workspace-file-button { flex-shrink:0; padding:8px 12px; border-radius:10px; background:var(--st-wash); color:var(--st-blue); font-size:12px; font-weight:600; }
+.yc-workspace .workspace-file-name { flex:1; min-width:0; overflow-wrap:anywhere; color:var(--st-muted); font-size:12px; }
 .yc-workspace .badge { display:inline-flex; align-items:center; gap:5px; white-space:normal; padding:6px 12px; border:1px solid var(--st-divider); border-radius:50px; color:var(--st-muted); background:var(--st-wash); font:600 10px/1.5 var(--st-body); }
 .yc-workspace .badge--success { color:var(--ui-success); background:var(--ui-success-bg); }
 .yc-workspace :is(.badge--warning,.badge--amber) { color:var(--ui-warning); background:var(--ui-warning-bg); }

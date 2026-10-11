@@ -7,6 +7,27 @@ has already been implemented or verified.
 
 ## Authority and current checkpoint
 
+- Latest release authority, 2026-10-11: the owner explicitly requests GitHub
+  upload and Railway deployment of the implemented Back/breadcrumb, Quiz,
+  browser-only Assignment draft and localized file-control changes. This
+  supersedes local-only Git/deployment exclusions for this bounded release.
+  Existing unimplemented login-session proposals remain proposals. Preserve
+  unrelated local files, production data/schema, volumes, variables and services.
+
+- Latest owner follow-up, 2026-10-11: remove the manual Assignment draft button,
+  keep automatic browser saving, redistribute Student Quiz cards, remove the
+  result-page Back to Quiz button, and add linked hierarchy beside shared Back.
+  Session expiry is a review/opinion request only; no authentication policy
+  change is included. The preceding local-only verification/release limits apply.
+
+- Latest local owner authority, 2026-10-11: add shared Back navigation across
+  all four roles, remove the Quiz attempt-policy disclosure, add automatic and
+  manual Assignment text drafts, and localize file-selection controls. The owner
+  explicitly chose same-device/browser draft storage without database changes.
+  This supersedes the earlier no-draft exclusion for browser-only working text;
+  final submissions remain immutable. No migration, data reset, automated test
+  package, Git mutation or deployment is included. See PROJECT_STATUS.md.
+
 - Latest release authority, 2026-10-11: the owner's subsequent request explicitly
   authorizes commit, push and deployment of the reviewed UX implementation.
   Preserve the existing remote follow-up and Railway production database,

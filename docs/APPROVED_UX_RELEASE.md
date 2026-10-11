@@ -1,5 +1,34 @@
 # Approved UX release — 2026-10-11
 
+## Platform navigation, Quiz and browser drafts follow-up release
+
+The owner's latest instruction explicitly requests GitHub upload and Railway
+deployment of the implemented four-role Back/breadcrumb navigation, Quiz
+disclosure/card/result cleanup, automatic-only local Assignment text drafts and
+platform-language file controls. Login-session policy recommendations have not
+been implemented and are excluded from this release.
+
+Starting checkpoint: b8e85ae01844505304b752d8988cf2590d65f173 on
+`ui/platform-unification-20261009`. Both GitHub follow-up/release branches and
+the live Railway service were verified at this SHA before release. No Railway
+changes were staged. Preserve the unrelated untracked Help template and ignored
+presentation-review artifacts. Push the reviewed commit normally to the existing
+follow-up and `preserve/st2-20261008` release branches; do not force-push.
+
+Deploy only `adaptive-lms-web` (0134642d-f6f5-4e40-9f16-6fc389502d9c) in the
+existing production environment (78c6b914-a09a-4a0e-81a9-ec82cd22a5da) of
+AdaptiveEnglishLMS (c0fa2362-4e1e-4412-908a-1b4cbee38efd). Advance its existing
+exact source-commit pin after GitHub verification. Preserve all other service
+settings, the /data volume, MySQL service, variables and research policy. Models,
+migrations and deployment scripts are unchanged; existing predeploy must verify
+the already-current 7d4e2a9c6013 head, not introduce a new migration.
+
+Current static/manual verification and its presentation-only boundary are in
+PROJECT_STATUS.md. Production acceptance still requires the actual successful
+build/predeploy/startup, exact source SHA, readiness, Login and changed assets.
+Execution evidence is retained in ignored `instance/platform_release_20261011/`
+and reported to the owner after execution; authorization is not proof of success.
+
 ## Owner authority and source boundary
 
 Following review of the implemented proposals and account access, the owner

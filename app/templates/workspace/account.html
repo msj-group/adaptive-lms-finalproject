@@ -1,5 +1,6 @@
 {% extends "layouts/research_base.html" if current_user.role == 'researcher' else "layouts/admin_base.html" if current_user.role == 'administrator' else "layouts/portal_base.html" %}
 {% import "_figma_ui.html" as account_ui %}
+{% from '_file_input.html' import file_input %}
 {% block title %}Account settings{% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block feature_styles %}{{ super() }}{% if current_user.role != 'student' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">{% endif %}{% endblock %}
@@ -21,7 +22,7 @@
       {{ photo_form.hidden_tag() }}{{ errors(photo_form.state) }}{{ errors(photo_form.csrf_token) }}
       <div class="field">
         {{ photo_form.photo.label(class_="field__label") }}
-        {{ photo_form.photo(class_="field__input account-file", accept="image/jpeg,image/png,image/webp", required=true, aria_describedby=photo_form.photo.id ~ '-hint' ~ (' ' ~ photo_form.photo.id ~ '-errors' if photo_form.photo.errors else ''), aria_invalid='true' if photo_form.photo.errors else 'false') }}
+        {{ file_input(photo_form.photo, class_="field__input account-file", accept="image/jpeg,image/png,image/webp", required=true, aria_describedby=photo_form.photo.id ~ '-hint' ~ (' ' ~ photo_form.photo.id ~ '-errors' if photo_form.photo.errors else ''), aria_invalid='true' if photo_form.photo.errors else 'false') }}
         <p class="account-hint" id="{{ photo_form.photo.id }}-hint">JPG, PNG or WebP · up to 5 MB and 16 million pixels. Still images only. Your photo will be cropped to a square.</p>
         {{ errors(photo_form.photo) }}
       </div>

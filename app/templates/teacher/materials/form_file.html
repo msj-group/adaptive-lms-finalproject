@@ -1,4 +1,5 @@
 {% extends "layouts/portal_base.html" %}
+{% from '_file_input.html' import file_input %}
 {% block title %}New File Material — {{ lesson.title }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
@@ -33,7 +34,7 @@
     </div>
     <div class="field" style="max-width:none; ">
       {{ form.file.label(class_="field__label") }}
-      {{ form.file(class_="field__input") }}
+      {{ file_input(form.file, class_="field__input") }}
       <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
         Supported: PDF, DOCX, PNG, JPG/JPEG, GIF, WebP, MP3, WAV, MP4, WebM. The file cannot be changed after saving —
         to replace it, archive this material and add a new one.

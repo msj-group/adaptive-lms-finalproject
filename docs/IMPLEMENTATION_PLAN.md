@@ -1,5 +1,21 @@
 # Repair implementation plan
 
+> Latest release authority, 2026-10-11: commit and push the reviewed platform
+> navigation/Quiz/browser-draft/file-control follow-up to the existing GitHub
+> branches, then deploy its exact SHA to the existing Railway web service.
+> No login-session feature, schema/data change or unrelated local file is included.
+
+> Latest owner follow-up, 2026-10-11: automatic-only Assignment drafts, compact
+> Quiz overview/result cleanup and shared linked breadcrumbs beside Back.
+> Review existing login expiry and recommend a policy; do not implement one
+> before the owner chooses it. Continue local source/static/manual work only.
+
+> Latest local scope, 2026-10-11: four-role Back navigation, Quiz disclosure
+> removal, same-browser Assignment text drafts and localized file controls.
+> The owner explicitly declines database changes for drafts. Keep final-submit
+> contracts and existing data. Source/static/manual review only; no automated
+> test package, migration, commit, push or deployment in this follow-up.
+
 > Latest release authority, 2026-10-11: the owner now explicitly requests commit,
 > push and deployment of the reviewed compatible UX implementation. Safely
 > integrate the existing remote follow-up, deploy the exact verified GitHub SHA

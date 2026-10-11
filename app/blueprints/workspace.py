@@ -5,6 +5,7 @@ from datetime import timedelta
 
 from flask import Blueprint, abort, current_app, g, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
+from jinja2 import pass_context
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
@@ -192,7 +193,8 @@ def workspace_context():
     return {"workspace_context": navigation_context, "workspace_local": lambda moment:
             to_app_local(_tz(), moment) if moment else None, "workspace_group_choices": group_choices,
             "workspace_nav_active": nav_active, "workspace_size": human_size,
-            "workspace_calendar_weeks": calendar_weeks, "workspace_back": filtered_back_link,
+            "workspace_calendar_weeks": calendar_weeks, "workspace_back": workspace_back_link,
+            "workspace_breadcrumbs": workspace_breadcrumbs,
             "workspace_admin_navigation": admin_navigation,
             "workspace_mobile_shortcuts": mobile_shortcuts}
 
@@ -233,31 +235,174 @@ def admin_navigation():
     return ADMIN_NAV_SECTIONS
 
 
-def filtered_back_link():
-    """Same-origin, role-scoped list return; never stores private content or URLs."""
-    from urllib.parse import urlsplit
+def _workspace_page_match(path):
+    """Match a same-role GET page; destination authorization remains authoritative."""
     from werkzeug.exceptions import HTTPException
-    if not current_user.is_authenticated or not request.referrer:
-        return None
-    previous = urlsplit(request.referrer)
-    current = urlsplit(request.url)
-    if previous.netloc != current.netloc or previous.scheme != current.scheme or not previous.query or previous.path == current.path:
+
+    if not current_user.is_authenticated or not path.startswith("/") or path.startswith("//") \
+            or "\\" in path or any(ord(char) < 32 for char in path):
         return None
     try:
-        endpoint, _args = current_app.url_map.bind_to_environ(request.environ).match(previous.path, method="GET")
+        endpoint, args = current_app.url_map.bind_to_environ(request.environ).match(path, method="GET")
     except HTTPException:
         return None
-    allowed = {
-        "student": {"student.activities", "student.search", "student.records"},
-        "teacher": {"workspace.review_queue", "teacher.activities", "teacher.group_activities", "teacher.group_assignments", "teacher.group_quizzes",
-            "teacher.group_listening", "teacher.group_speaking", "teacher.group_progress"},
-        "administrator": {"admin.students_list", "admin.teachers_list", "admin.groups_list", "admin.invoice_register",
-            "admin.payments_overview", "admin.deleted_financial_records", "admin.student_accounts"},
-        "researcher": {"research.sessions", "research.exports", "research.activity_log"},
-    }
-    if endpoint not in allowed.get(current_user.role, set()) or len(previous.query) > 2048:
+    if any(word in endpoint for word in ("download", "attachment", "audio", "photo", "stream", "login", "logout")):
         return None
-    return previous.path + "?" + previous.query
+    role = current_user.role
+    own_blueprint = {"administrator": "admin", "researcher": "research"}.get(role, role)
+    shared = {
+        "student": {"workspace.student_courses", "workspace.student_course"},
+        "teacher": {"workspace.teacher_groups", "workspace.teacher_group", "workspace.lesson_preview", "workspace.review_queue"},
+        "administrator": {"workspace.student_enrollments"},
+    }
+    allowed = endpoint.startswith(own_blueprint + ".") or endpoint in {"account.settings", "workspace.search"} \
+        or endpoint.startswith("messages.") and role in ("student", "teacher") \
+        or endpoint in shared.get(role, set())
+    return (endpoint, args) if allowed else None
+
+
+@pass_context
+def workspace_breadcrumbs(context, page_title):
+    """Build a hierarchy from registered pages and already-authorized render data.
+
+    No extra queries, raw identifiers as labels, referrers or stored history.
+    Unknown ancestors are omitted rather than inventing a destination.
+    """
+    from app.blueprints.auth.routes import home_endpoint_for
+    from werkzeug.routing import BuildError
+
+    if not current_user.is_authenticated:
+        return []
+    endpoint = request.endpoint or ""
+    role = current_user.role
+    home = home_endpoint_for(current_user)
+    if endpoint == home:
+        return []
+    sections = {
+        "student": [("My courses", "workspace.student_courses"), ("Activities", "student.activities"),
+            ("My records", "student.records"), ("Attendance", "student.attendance_list"),
+            ("Grades", "student.grades_list"), ("Calendar", "student.calendar"),
+            ("Announcements", "student.announcements_list"), ("Discussions", "student.discussions_overview")],
+        "teacher": [("My groups", "workspace.teacher_groups"), ("Activities", "teacher.activities"),
+            ("Review queue", "workspace.review_queue"), ("Attendance", "teacher.attendance_overview"),
+            ("Gradebook", "teacher.gradebook_overview"), ("Calendar", "teacher.calendar"),
+            ("Announcements", "teacher.announcements_feed"), ("Discussions", "teacher.discussions_overview")],
+        "researcher": [("Sessions", "research.sessions"), ("Exports", "research.exports"),
+            ("Configurations", "research.configurations"), ("Exclusions", "research.exclusions"),
+            ("Storage and gaps", "research.storage"), ("Audit log", "research.activity_log")],
+    }
+    if role == "administrator":
+        from app.blueprints.admin.navigation import ADMIN_NAV_SECTIONS
+        sections[role] = [(item["label"], item["endpoint"]) for section in ADMIN_NAV_SECTIONS
+                          for item in section["links"] if item.get("endpoint")]
+    destinations = sections.get(role, []) + [("Messages", "messages.inbox"),
+        ("Notifications", "notifications.inbox"), ("Account", "account.settings"), ("Search", "workspace.search")]
+    labels = {target: label for label, target in destinations}
+    labels.update({"student.group_units": "Lessons", "teacher.group_units": "Units & lessons",
+        "teacher.group_activities": "Activities", "teacher.group_assignments": "Assignments",
+        "teacher.group_quizzes": "Quizzes", "teacher.group_listening": "Listening",
+        "teacher.group_speaking": "Speaking", "teacher.group_attendance": "Attendance",
+        "teacher.group_gradebook": "Gradebook", "teacher.group_announcements": "Announcements"})
+    crumbs = [dict(label="Home", url=url_for(home), owned=True)]
+
+    def add(label, target, owned=True, **params):
+        if not label or target == endpoint:
+            return
+        try:
+            link = url_for(target, **params)
+        except BuildError:
+            return
+        if _workspace_page_match(link.split("?", 1)[0]) and all(crumb["url"] != link for crumb in crumbs):
+            crumbs.append(dict(label=label, url=link, owned=owned))
+
+    def value(item, name):
+        return item.get(name) if isinstance(item, dict) else getattr(item, name, None)
+
+    def object_label(args):
+        identity = next((args[key] for key in ("lesson_public_id", "material_public_id", "question_public_id",
+            "attempt_public_id", "quiz_public_id", "assignment_public_id", "listening_public_id", "speaking_public_id",
+            "unit_public_id", "student_public_id", "teacher_public_id", "configuration_public_id", "public_id", "group_public_id")
+            if args.get(key)), None)
+        for name in ("lesson", "unit", "quiz", "assignment", "listening", "speaking",
+                     "student", "teacher", "course", "level", "academic_term", "room", "configuration", "group"):
+            item = context.get(name)
+            public_id = value(item, "public_id")
+            if public_id and public_id == identity:
+                return value(item, "title") or value(item, "name") or value(item, "full_name")
+        return None
+
+    args = request.view_args or {}
+    group_id = args.get("group_public_id")
+    if group_id and role in ("student", "teacher"):
+        add("My courses" if role == "student" else "My groups",
+            "workspace.student_courses" if role == "student" else "workspace.teacher_groups")
+        group_label = object_label({"group_public_id": group_id})
+        if not group_label:
+            for name in ("quiz", "assignment", "listening", "speaking"):
+                group_label = value(context.get(name), "group_name")
+                if group_label:
+                    break
+        add(group_label or "Group", "workspace.student_course" if role == "student" else "workspace.teacher_group",
+            owned=not bool(group_label), group_public_id=group_id)
+        if role == "student" and nav_active("student.activities"):
+            add("Activities", "student.activities", group=group_id)
+    else:
+        for label, target in destinations:
+            if nav_active(target) or target == "teacher.gradebook_overview" and "grade" in endpoint:
+                add(label, target)
+                break
+    parents = []
+    path = request.path.rstrip("/").rsplit("/", 1)[0]
+    while path:
+        match = _workspace_page_match(path)
+        if match:
+            target, params = match
+            label = labels.get(target) or object_label(params)
+            if label:
+                parents.append((label, target, params, target in labels))
+        path = path.rsplit("/", 1)[0]
+    for label, target, params, owned in reversed(parents):
+        add(label, target, owned=owned, **params)
+    crumbs.append(dict(label=str(page_title).strip() or "Page", url=None, owned=False))
+    return crumbs
+
+
+def workspace_back_link():
+    """Return to a same-origin GET page in this role, or a registered parent.
+
+    A native link preserves the activity save/leave guards and works without JS.
+    No navigation history, query values or private content is persisted.
+    Destination views remain responsible for object-level authorization.
+    """
+    from urllib.parse import urlsplit
+    from app.blueprints.auth.routes import home_endpoint_for
+
+    if not current_user.is_authenticated:
+        return None
+    home = home_endpoint_for(current_user)
+    if request.endpoint == home:
+        return None
+    role = current_user.role
+
+    try:
+        previous = urlsplit(request.referrer or "")
+        current = urlsplit(request.url)
+        if (previous.netloc == current.netloc and previous.scheme == current.scheme
+                and not previous.username and not previous.password
+                and len(previous.query) <= 2048 and previous.path != current.path
+                and _workspace_page_match(previous.path)):
+            return previous.path + ("?" + previous.query if previous.query else "")
+    except ValueError:
+        pass
+    parent = request.path.rstrip("/").rsplit("/", 1)[0]
+    while parent:
+        if _workspace_page_match(parent):
+            return parent
+        parent = parent.rsplit("/", 1)[0]
+    if role in ("student", "teacher") and (request.view_args or {}).get("group_public_id"):
+        return url_for("workspace.student_course" if role == "student" else "workspace.teacher_group",
+                       group_public_id=request.view_args["group_public_id"])
+    return url_for(home)
 
 
 def calendar_weeks(days, start, end):

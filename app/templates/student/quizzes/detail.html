@@ -30,8 +30,27 @@
   {% endfor %}
 {% endwith %}
 
-<div class="st-brief-layout st-quiz-overview">
-<div class="activity-brief-paper st-feature-panel">
+<div class="st-quiz-overview">
+  <section class="st-quiz-availability st-feature-panel" aria-label="Quiz details">
+    <dl class="st-quiz-facts">
+      <div class="activity-fact"><dt>Group</dt><dd dir="auto">{{ quiz.group_name }} · {{ workspace_context().term_name }}</dd></div>
+      <div class="activity-fact"><dt>Opens</dt><dd>{{ quiz.opens_local.strftime("%Y-%m-%d %H:%M") }}</dd></div>
+      <div class="activity-fact"><dt>Closes</dt><dd>{{ quiz.closes_local.strftime("%Y-%m-%d %H:%M") }}</dd></div>
+      <div class="activity-fact"><dt>Questions</dt><dd>{{ question_total }}</dd></div>
+      <div class="activity-fact"><dt>Time limit</dt><dd>{% if quiz.time_limit_minutes %}{{ quiz.time_limit_minutes }} minutes per attempt{% else %}None{% endif %}</dd></div>
+      <div class="activity-fact"><dt>Attempts</dt><dd>{{ attempts_used }} used of {{ quiz.attempt_limit }} allowed</dd></div>
+    </dl>
+    {% if can_start %}<div class="st-quiz-launch">
+  <form method="post" action="{{ url_for('student.quiz_start', group_public_id=group_public_id, quiz_public_id=quiz.public_id) }}" data-research-form="quiz_start">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn--primary" data-research-id="quiz_start">
+      {% if open_attempt %}Continue attempt{% else %}Start attempt{% endif %}
+    </button>
+  </form>
+    </div>{% endif %}
+  </section>
+  <div class="st-quiz-overview-body">
+    <section class="activity-brief-paper st-feature-panel">
 <div class="st-brief-content">{% if quiz.instructions %}
 <section style="margin-bottom: var(--space-6)">
   <h2>Instructions</h2>
@@ -47,65 +66,8 @@
 <p>Start creates or resumes an attempt. Answers save when selected; check save status before leaving. Final submission uses saved answers and the server deadline.</p>
 </div>
 </div>
-
-</div>
-<aside class="activity-launch-panel">
-
-
-<div class="st-quiz-availability st-feature-panel">
-<div class="st-facts" style="margin-bottom: var(--space-6)">
-  <dl style="display:grid; grid-template-columns: 170px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;"><div class="activity-fact"><dt>Group</dt><dd dir="auto">{{ quiz.group_name }} · {{ workspace_context().term_name }}</dd></div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
-    <dd style="margin:0">{{ quiz.opens_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Closes</dt>
-    <dd style="margin:0">{{ quiz.closes_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Questions</dt>
-    <dd style="margin:0">{{ question_total }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time limit</dt>
-    <dd style="margin:0">{% if quiz.time_limit_minutes %}{{ quiz.time_limit_minutes }} minutes per attempt{% else %}None{% endif %}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Attempts</dt>
-    <dd style="margin:0">{{ attempts_used }} used of {{ quiz.attempt_limit }} allowed</dd>
-</div>
-  </dl>
-</div><details class="activity-policy-details" open>
-<summary>How attempts work</summary>
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">
-  You can start an attempt only while the quiz is open — not before it opens, and not once it
-  closes. {% if quiz.time_limit_minutes %}Each attempt lasts {{ quiz.time_limit_minutes }} minutes, or until the quiz closes,
-  whichever comes first.{% else %}An attempt lasts until the quiz closes.{% endif %}
-  You may leave questions unanswered, but unanswered questions are marked incorrect. For
-  questions with several correct answers you must select <strong>all</strong> of them to get the
-  point — there is no partial credit. Your results show which questions you got right, but
-  <strong>never which options were correct</strong>.
-</div>
-</details><div class="st-quiz-launch">
-
-<div class="ds-row">
-  {% if can_start %}
-  <form method="post" action="{{ url_for('student.quiz_start', group_public_id=group_public_id, quiz_public_id=quiz.public_id) }}" data-research-form="quiz_start">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn btn--primary" data-research-id="quiz_start">
-      {% if open_attempt %}Continue attempt{% else %}Start attempt{% endif %}
-    </button>
-  </form>
-  {% endif %}
-</div>
-</div>
-
-
-
-
-</div>
-{% if attempts %}<section class="st-quiz-history st-feature-panel{% if attempts %} st-quiz-history--recorded{% endif %}">
+    </section>
+{% if attempts %}<section class="st-quiz-history st-feature-panel st-quiz-history--recorded">
   <h2>Your attempts</h2>
   <div class="dash-scroll">
   <div class="activity-library-grid">
@@ -144,7 +106,8 @@
       {% endfor %}
     </div>
   </div>
-</section>{% endif %}</aside>
+</section>{% endif %}
+  </div>
 </div>
 
 </div>

@@ -1,0 +1,7 @@
+{% macro file_input(field) -%}
+<div class="workspace-file-control" data-file-control>
+  {{ field(**kwargs) }}
+  <span class="workspace-file-button" data-file-button aria-hidden="true" hidden>Choose file</span>
+  <span class="workspace-file-name" id="{{ field.id }}-filename" data-file-name dir="auto" role="status" hidden>No file selected</span>
+</div>
+{%- endmacro %}

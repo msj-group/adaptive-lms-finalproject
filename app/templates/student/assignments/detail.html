@@ -1,10 +1,14 @@
 {% extends "layouts/activity_base.html" %}
+{% from '_file_input.html' import file_input %}
 {% set activity_kind = 'assignment' %}
 {% set activity_phase = 'overview' %}
 {% block title %}{{ assignment.title }}{% endblock %}
 {% block portal_nav %}{% set active_nav = 'assignments' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-<div class="activity-surface">
+<div class="activity-surface" data-assignment-draft-scope
+     data-draft-student="{{ current_user.public_id }}" data-draft-group="{{ assignment.group_public_id }}"
+     data-draft-assignment="{{ assignment.public_id }}" data-draft-context="{{ assignment_draft_context }}"
+     data-draft-submitted="{{ 'true' if submission else 'false' }}">
 
 {#- Phase 4 / M01 + M02 + M03. `assignment`, `submission` and `feedback` are
     plain presentation dicts; the rows behind them already satisfied the whole
@@ -117,11 +121,10 @@
 {% elif can_submit %}
 <section style="margin-top: var(--space-6)">
   <h2>Your Answer</h2>
-  <div class="alert alert--warning" style="margin-bottom: var(--space-4)"><strong>One final submission.</strong> No draft, edit, replacement or resubmission. Review before submitting. Deadline: {{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }}.</div>
   <form method="post"
         {% if assignment.submission_type == 'file' %}enctype="multipart/form-data"{% endif %}
         action="{{ url_for('student.assignment_submit', group_public_id=assignment.group_public_id, assignment_public_id=assignment.public_id) }}"
-        novalidate data-research-form="assignment_submit"
+        novalidate data-research-form="assignment_submit" {% if assignment.submission_type != 'file' %}data-assignment-draft{% endif %}
         data-confirm="Submit this answer? It is final and cannot be edited or resubmitted.">
     {{ form.hidden_tag() }}
     {#- The signed submission-context token. It binds this answer to the exact
@@ -133,19 +136,36 @@
     {% if assignment.submission_type == 'file' %}
     <div class="field assignment-upload">
       {{ form.file.label(class_="field__label") }}
-      {{ form.file(class_="field__input", data_research_id="assignment_file_select", accept=upload_policy.accept, required=true, aria_describedby="assignment-file-policy assignment-file-error", aria_invalid='true' if form.file.errors else 'false') }}
+      {{ file_input(form.file, class_="field__input", data_research_id="assignment_file_select", accept=upload_policy.accept, required=true, aria_describedby="assignment-file-policy assignment-file-error", aria_invalid='true' if form.file.errors else 'false') }}
       <div id="assignment-file-policy" class="ds-section__desc"><p>One file: {{ upload_policy.extensions }}.</p><p>{% for category, limit in upload_policy.limits %}{{ category|title }}: up to {{ limit }} MiB{{ ' · ' if not loop.last else '' }}{% endfor %}.</p><p>After a validation error, select the file again. Your submission becomes final only after the server confirms it.</p></div>
       <div id="assignment-file-error">{% for error in form.file.errors %}<span class="field__error">{{ error }}</span>{% endfor %}</div>
     </div>
     {% else %}
     <div class="field" style="max-width:none">
       {{ form.answer_text.label(class_="field__label") }}
-      {{ form.answer_text(class_="field__input", rows="8") }}
+      {{ form.answer_text(class_="field__input", rows="8", maxlength=form.ANSWER_MAX, data_draft_answer=true) }}
       <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
         Plain text only. Line breaks are preserved. Up to {{ form.ANSWER_MAX }} characters.
       </span>
       {% for error in form.answer_text.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
+    {% endif %}
+
+    {% if assignment.submission_type != 'file' %}
+    <div class="assignment-draft-tools" data-draft-tools hidden>
+      <p class="assignment-draft-status" data-draft-status role="status" aria-live="polite"></p>
+      <p class="ds-section__desc">Text drafts save automatically on this device and browser. Saving a draft does not submit your answer.</p>
+    </div>
+    <div class="assignment-draft-recovery alert alert--warning" data-draft-recovery hidden>
+      <p data-draft-recovery-message></p>
+      <label class="field__label" for="assignment-saved-draft">Saved draft</label>
+      <textarea class="field__input" id="assignment-saved-draft" data-draft-recovery-answer readonly data-form-ui dir="auto"></textarea>
+      <div class="ds-row">
+        <button type="button" class="btn btn--secondary" data-draft-use>Use saved draft</button>
+        <button type="button" class="btn btn--secondary" data-draft-keep>Keep current answer</button>
+      </div>
+    </div>
+    <noscript><p class="alert alert--warning">Turn on JavaScript to save a draft on this browser. Your answer is only submitted when you select Submit Final Answer.</p></noscript>
     {% endif %}
 
     <div class="ds-row" style="margin-top: var(--space-6)">
@@ -164,7 +184,14 @@
 {% else %}<div class="empty-state"><div class="empty-state__title">Submission unavailable</div><p>Submission is not available right now. You can still read the task instructions.</p></div>
 {% endif %}
 
+<section class="assignment-draft-archive" data-draft-archive hidden>
+  <h2>Saved draft on this browser</h2>
+  <p class="ds-section__desc">This is a local draft, not a submitted answer.</p>
+  <textarea class="field__input" aria-label="Saved draft" data-draft-archive-answer readonly dir="auto"></textarea>
+</section>
+<p class="assignment-draft-status" data-draft-receipt-status role="status" hidden></p>
 </div>
 </div>
 </div>
 {% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/assignment_draft.js', v='platform-navigation-20261011') }}" defer></script>{% endblock %}

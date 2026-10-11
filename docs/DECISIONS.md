@@ -1,5 +1,60 @@
 # Project Decisions
 
+## 2026-10-11 — Automatic drafts, Quiz layout and linked hierarchy follow-up
+
+- The owner's latest request removes the explicit Save draft button. Keep the
+  per-input browser save, restoration, recovery choices and failure notices.
+- Student Quiz overview uses a full-width availability/launch card, followed by
+  instructions and compact attempt history. With no attempts, instructions use
+  the full width. Keep all Start/Continue CSRF/research identities and facts.
+  Remove only the result-page Back to Quiz button; the shared Back and hierarchy
+  still provide navigation, subject to the existing leave guards.
+- Put semantic linked breadcrumbs beside Back in the shared four-role shell.
+  Use role home, existing section predicates, public Group links and registered
+  GET ancestors with titles from already-authorized render context. Do not add
+  database queries or expose identifiers as labels. Unknown ancestors are
+  omitted. Translate owned labels; preserve authored object names. Wrap on
+  narrow screens and mark the current page without a link.
+- Login expiry was requested as an opinion, not an authentication change.
+  Source inspection finds login_user(user) without remember=True and no
+  explicit idle/absolute authentication limit. Research session inactivity is
+  a separate scientific setting and must remain unchanged. Recommend server
+  enforcement, a pre-expiry warning, 30-minute Student/Teacher idle time,
+  15-minute Administrator/Researcher idle time and an 8-hour absolute limit,
+  with deliberate handling of active writing and timed activities. This is a
+  proposal awaiting an owner policy decision, not an implemented guarantee.
+
+## 2026-10-11 — Shared Back navigation and local Assignment drafts
+
+- The owner requests Back links in all four portals. Render one shared native
+  link before the page heading. Prefer a same-origin GET referrer within the
+  account's role, retaining its filters; otherwise use a registered parent,
+  Group workspace or role home. Exclude cross-role/authentication/file-serving
+  destinations. Existing activity save/leave guards and destination
+  authorization remain authoritative; store no navigation history.
+- Remove only the Student Quiz "How attempts work" disclosure and its body;
+  retain availability facts, Start/Continue, attempt history and grading rules.
+- The owner explicitly selects same-device/browser Assignment text drafts,
+  without database changes. This supersedes the historical no-draft exclusion
+  only for local working text. Save on each input and through an explicit
+  Save draft button, keyed by Student/Group/Assignment public identifiers.
+  Bind restoration to a digest of the signed submission context; changed tasks,
+  conflicting server form values or another tab's changes require a visible
+  choice. Local saving is not a Submission or research save outcome.
+- Clear the exact local draft only on an authorized confirmed receipt page.
+  Keep text visible after storage failures and preserve unsaved-leave guards.
+  An available past-due page may show its local draft read-only. Back/forward
+  cache restoration reloads an editable draft page to re-authorize its state.
+- Do not persist files, file paths, CSRF tokens or signed submission tokens.
+  Final submission, deadline/ownership checks, stale context, locks, grading
+  and research policies remain unchanged. Browser storage clearing/private
+  browsing/device changes can remove or isolate local drafts; they do not sync.
+- Use one progressively enhanced file-input macro in Assignment, Speaking,
+  Teacher material/audio and account-photo forms. Keep the real native input,
+  labels, required/accept/disabled/errors, multipart forms and research IDs.
+  Translate owned Choose file/No file selected text using the platform language;
+  render selected names as plain DOM text only. The OS picker retains OS UI.
+
 ## 2026-10-07 — Approved Version A redesign and wave authorization
 
 - P01: Modern Academic Workspace, tangible partial redesign with unified

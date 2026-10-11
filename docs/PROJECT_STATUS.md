@@ -1,5 +1,135 @@
 # Repair status
 
+## GitHub/Railway follow-up release authorized — 2026-10-11
+
+The owner now explicitly requests upload and deployment of the implemented
+interface changes below. This supersedes their earlier local-only release
+boundary. GitHub follow-up/release branches and Railway were verified at
+`b8e85ae` before release, with no staged Railway changes. Prepare one bounded
+reviewed commit and deploy its exact SHA to the existing web service. Preserve
+the unrelated Help template, production data/schema, volumes and variables.
+Login-session proposals remain unimplemented. See APPROVED_UX_RELEASE.md;
+execution results are recorded externally after they actually complete.
+
+## Automatic-only drafts, Quiz layout and breadcrumbs — 2026-10-11 follow-up
+
+Checkpoint remains HEAD `b8e85ae`, branch `ui/platform-unification-20261009`.
+The owner's follow-up directly authorizes these interface changes. Existing
+local draft/file-control work and the unrelated untracked Help template remain.
+
+- Removed the Assignment Save draft button and its JavaScript listener. Per-edit
+  local saving, restoration, conflict choices and failure/leave notices remain.
+- Student Quiz detail now has a full-width facts/Start-or-Continue card followed
+  by instructions and smaller attempt-history cards. Without history, the
+  instructions span the available width. Narrow workspaces stack the cards and
+  show two fact columns. Removed the result-page Back to Quiz button.
+- The shared four-role shell places a semantic linked breadcrumb beside Back,
+  with role home, relevant section/Group and known registered GET ancestors.
+  Titles come from already-authorized render data; unknown ancestors are
+  omitted. No extra database queries/history storage or raw-ID labels. Owned
+  labels translate; object names remain authored text. The current page has
+  aria-current and no link. Native links keep existing unsaved/activity guards.
+- Updated shared/Student CSS, asset versions, translation and authority/decision
+  docs. Main files: `blueprints/workspace.py`, `layouts/_product_shell.html`,
+  `student/quizzes/detail.html`, `student/quizzes/result.html`,
+  `student/assignments/detail.html`, `static/js/assignment_draft.js` and the
+  existing product shell/Student feature stylesheets.
+
+Verification actually performed in this follow-up:
+
+- Python AST parsing of the changed blueprints; real localization-extension
+  parsing of all 230 templates; Arabic JSON validation with duplicate detection;
+  Node syntax checks for the three affected draft/file/workspace clients.
+- Manual loopback presentation review with real templates/styles/clients and
+  fictional role/request fixtures, without the database application factory.
+  Verified autosave/reload restoration with line breaks and no manual button;
+  Student breadcrumb navigation; Quiz overview with/without attempt history;
+  result button removal and a linked Quiz ancestor; representative Teacher,
+  Admin and Researcher trails and parent-link navigation. Reviewed English/light
+  and Arabic/dark, desktop 1280px and narrow 390/320px. Inspected content/cards
+  and trail bounds had no horizontal overflow. Browser console errors: none.
+- Final diff whitespace review and unstaged-state inspection. Original tracked
+  line-ending conventions are retained. No automated tests were created/run.
+
+Source-only login review: `auth/routes.py` calls `login_user(user)` without a
+remember option. There is no explicit authentication idle/absolute timeout in
+the application source. Browser session restoration can retain a session cookie
+after reopening; it is not evidence that Remember Me was enabled. Existing
+Research configuration inactivity describes research sessions, not login expiry.
+The owner asked for an opinion, so authentication behavior remains unchanged.
+The proposed 30/15-minute role idle limits, 8-hour absolute limit and advance
+warning are recorded in DECISIONS.md as an unimplemented proposal.
+
+Limits: presentation/static/manual evidence, not a real authenticated MySQL
+workflow, production-session reproduction or comprehensive regression acceptance.
+No database access/reset/migration, credential/environment/settings change,
+installation, scheduler change, Git mutation or deployment. Review server and
+temporary browser tabs are closed after review.
+
+## Shared Back links, Quiz cleanup and browser Assignment drafts — 2026-10-11
+
+Checkpoint: HEAD `b8e85ae`, branch `ui/platform-unification-20261009`.
+The owner's current request authorizes these local source corrections. In the
+follow-up answer the owner explicitly selects same-device/browser text drafts,
+without a database change. Preserve the pre-existing untracked
+`app/templates/workspace/help.html`. No release operation is included.
+
+- Shared `layouts/_product_shell.html` renders one Back link for every nested
+  Student/Teacher/Administrator/Researcher page. `blueprints/workspace.py`
+  validates a same-origin, role-compatible GET referrer and preserves its
+  filters; direct entry falls back to a registered parent, Group or role home.
+  Native links retain the existing Quiz/recording/unsaved-form guards. Removed
+  duplicate filtered-list links from shared/activity context templates.
+- Student Quiz detail removes the complete "How attempts work" disclosure.
+  Facts, start/continue and attempt history remain; Student CSS closes the gap.
+- Student Assignment detail removes the requested pre-submission warning and
+  adds Save draft, per-edit local saving, restoration and recovery choices.
+  `assignment_draft.js` keys text by Student/Group/Assignment public IDs and
+  compares a digest of the signed context supplied by the existing detail
+  renderer. Changed context, another tab or differing server form values do not
+  silently replace the displayed answer. Receipt rendering clears the exact
+  local key; available closed tasks show saved text read-only. Storage errors
+  keep the answer visible and preserve generic unsaved-leave protection.
+- `_file_input.html` and `file_inputs.js` provide language-owned Choose file,
+  empty-selection and plain-text filename presentation for all five existing
+  file form locations: Assignment, Speaking, Teacher materials, Teacher audio
+  and account photo. Native inputs, IDs, labels, required/accept/disabled/error
+  attributes, CSRF, multipart forms and upload validation remain in place.
+- Updated Arabic strings, shared/Student styling, relevant asset versions and
+  current authority/decision documentation. No final-submit write logic, model,
+  schema, research instrumentation or retention policy changes.
+
+Verification actually performed:
+
+- Node syntax checks for `assignment_draft.js`, `file_inputs.js`, `workspace.js`;
+  Python AST parsing for both changed blueprints; parsing all **230** HTML
+  templates through the real localization extension; Arabic JSON parsing.
+- Manual browser review in an ignored loopback presentation sandbox using the
+  actual templates, CSS, clients and Back resolver with fictional request/user
+  fixtures. Observed automatic/manual saving, reload restoration, changed-task
+  recovery, cross-tab choices, account-key separation, blocked-storage failure
+  and leave warning, read-only closed-task draft, receipt-fixture clearing,
+  localized file selection/name and four-role Back fallback/links. Reviewed
+  English and Arabic controls, Arabic dark presentation and responsive bounds
+  at desktop 1280px and phone 390px; no horizontal overflow in the inspected
+  Quiz/Assignment content bounds. Final browser console error read was empty.
+- Final whitespace review uses `git -c core.whitespace=cr-at-eol diff --check`
+  to recognize the repository's existing mixed CRLF/LF files. Original tracked
+  line-ending conventions are preserved. Changes remain unstaged.
+
+Limits: this was presentation/manual/static verification, not authenticated
+database-backed acceptance, a real submission/upload/Teacher review, physical
+device/assistive-technology coverage or an automated regression suite. No tests
+were created or run. LocalStorage is browser-local and nontransactional across
+tabs; observed competing changes pause saving, but near-simultaneous writes
+are not a database-style atomic guarantee. Browser clearing, private browsing,
+storage failure or another device can remove/isolate drafts. File selections
+are not drafts and must be selected again after reopening. The OS picker uses
+OS language; the platform-owned controls use the platform language.
+No database access/reset/migration, environment/secret change, installation,
+scheduler, staging/commit/push or deployment was performed. The review server
+is stopped after review; its ignored fictional artifacts are not delivery code.
+
 ## Speaking microphone control and live waveform — 2026-10-11
 
 Following the deployed UI cleanup at 3138f32, the owner requested removal of
