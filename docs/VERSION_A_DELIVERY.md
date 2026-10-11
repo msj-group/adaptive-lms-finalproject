@@ -88,3 +88,7 @@ alone is not an attribution baseline for this delivery. No commit or push is
 assumed. The local source/UI freeze is recorded in VERSION_A_BASELINE_FREEZE.md;
 executed evidence is in VERSION_A_ACCEPTANCE.md and final fourteen statuses in
 VERSION_A_READINESS.md. No production deployment or Study collection is claimed.
+
+Owner-requested UI work on 2026-10-10 follows that historical freeze. Its
+search, messaging and validation source changes are not included in the
+YC-VA-D1-20261008 hashes or acceptance. A new baseline requires fresh review.

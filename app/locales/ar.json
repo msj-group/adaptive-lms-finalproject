@@ -3373,5 +3373,12 @@
   "Draft question: students cannot access it. All assigned teachers can edit; a concurrent change refuses your save and shows the other version first.": "سؤال في مسودة: لا يستطيع الطلاب الوصول إليه. يمكن لجميع المعلمين المكلّفين التعديل؛ عند حدوث تغيير متزامن يُرفض حفظك وتُعرض النسخة الأخرى أولًا.",
   "Lesson progress": "تقدّم الدروس",
   "Published lessons marked complete": "الدروس المنشورة التي علّمتها كمكتملة",
-  "Completion is your record of finished work, not a proficiency score.": "الإكمال سجلّك الشخصي للعمل المنجز، وليس درجة لإجادة اللغة."
+  "Completion is your record of finished work, not a proficiency score.": "الإكمال سجلّك الشخصي للعمل المنجز، وليس درجة لإجادة اللغة.",
+  "Emoji categories": "فئات الإيموجي",
+  "Results updated.": "تحدّثت النتائج.",
+  "No matching contacts.": "لا توجد جهات اتصال مطابقة.",
+  "Smileys": "وجوه",
+  "Nature": "طبيعة",
+  "Food": "طعام",
+  "Travel": "سفر"
 }

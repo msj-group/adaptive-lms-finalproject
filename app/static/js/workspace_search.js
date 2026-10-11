@@ -58,7 +58,7 @@
     cancel();
     if (!composing) timer = setTimeout(load, 160);
   }
-  document.querySelectorAll("[data-workspace-search-open],a[href='/student/search']").forEach(function (trigger) {
+  document.querySelectorAll("[data-workspace-search-open]").forEach(function (trigger) {
     trigger.addEventListener("click", function (event) {
       if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button > 0) return;
       event.preventDefault();

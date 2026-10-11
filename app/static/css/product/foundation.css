@@ -121,7 +121,6 @@ html[data-theme='dark'] .yc-workspace { --st-ink:#e1eaff; --st-muted:#b1c2df; --
 .yc-workspace .workspace-tabs a { display:inline-flex; align-items:center; min-height:44px; padding:10px 17px; border-radius:50px; color:var(--st-muted); background:var(--st-control); font-size:12px; text-decoration:none; }
 .yc-workspace .workspace-tabs a[aria-current] { color:#fff; background:#1b3a8a; }
 .yc-workspace :is(.workspace-inline-links a,.workspace-back) { display:inline-flex; align-items:center; min-height:44px; font-size:12px; }
-.yc-workspace .workspace-error-summary { border:1px solid var(--ui-danger); border-radius:18px; padding:18px; background:var(--ui-danger-bg); color:var(--ui-danger); }
 /* Retain the existing device-owned compact preference within Student surfaces. */
 .yc-workspace[data-ui-density='compact'] :is(.st-panel,.st-feature-panel,.account-section) { padding:var(--st-panel-pad,20px); }
 .yc-workspace[data-ui-density='compact'] :is(td,th) { padding:var(--st-table-pad,12px 16px); }

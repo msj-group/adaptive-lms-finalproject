@@ -3,7 +3,6 @@
 {% set section = active_nav|default('') %}
 <div class="figma-nav-section-title">Overview</div>
 {{ ui.nav_link('Dashboard', 'student.dashboard', 'dashboard', section == 'dashboard' or endpoint == 'student.dashboard', 'nav_dashboard') }}
-{{ ui.nav_link('Search materials', 'student.search', 'search', section == 'search' or endpoint == 'student.search', 'nav_search') }}
 <div class="figma-nav-section-title">Learning</div>
 {{ ui.nav_link('My courses', 'workspace.student_courses', 'book', section == 'courses' or endpoint.startswith('workspace.student_course') or 'lesson' in endpoint or endpoint == 'student.group_units', 'nav_courses') }}
 {{ ui.nav_link('Activities', 'student.activities', 'activity', section in ['activities','assignments','quizzes','listening','speaking'] or endpoint == 'student.activities' or endpoint.startswith('student.quiz_') or endpoint.startswith('student.listening_') or endpoint.startswith('student.speaking_') or endpoint.startswith('student.assignment_'), 'nav_activities') }}

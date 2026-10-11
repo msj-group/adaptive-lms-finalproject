@@ -156,18 +156,17 @@
 
   var errors = Array.from(document.querySelectorAll(".field__error")).filter(function (error) { return error.textContent.trim(); });
   if (errors.length) {
-    var summary = document.createElement("section"); summary.className = "workspace-error-summary"; summary.tabIndex = -1; summary.setAttribute("role", "alert");
-    var title = document.createElement("h2"); title.textContent = t("Check the highlighted fields"); summary.appendChild(title);
-    var list = document.createElement("ul");
+    var firstInvalid = null;
     errors.forEach(function (error, i) {
       error.id = error.id || "workspace-field-error-" + i;
       var field = error.closest(".field"); var input = field && field.querySelector("input:not([type='hidden']),select,textarea,[contenteditable]");
-      var item = document.createElement("li");
-      if (input) { input.id = input.id || "workspace-field-" + i; input.setAttribute("aria-invalid", "true"); input.setAttribute("aria-describedby", ((input.getAttribute("aria-describedby") || "") + " " + error.id).trim()); var anchor = document.createElement("a"); anchor.href = "#" + input.id; anchor.textContent = error.textContent; item.appendChild(anchor); }
-      else item.textContent = error.textContent;
-      list.appendChild(item);
-    }); summary.appendChild(list);
-    var page = document.querySelector(".figma-page"); if (page) { page.prepend(summary); summary.focus(); }
+      if (input) {
+        input.setAttribute("aria-invalid", "true");
+        input.setAttribute("aria-describedby", ((input.getAttribute("aria-describedby") || "") + " " + error.id).trim());
+        if (!firstInvalid) firstInvalid = input;
+      }
+    });
+    if (firstInvalid) firstInvalid.focus();
   }
   document.querySelectorAll("[data-copy]").forEach(function (button) { button.addEventListener("click", function () {
     if (!navigator.clipboard) { button.textContent = t("Select the value below to copy"); return; }

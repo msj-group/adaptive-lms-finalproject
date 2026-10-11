@@ -27,49 +27,6 @@ def _section(label, icon, rows, build):
             "has_more": len(rows) > CAP}
 
 
-def destinations(role):
-    """Existing GET destinations only; no generic endpoint or caller role input."""
-    common = [("Account settings", "account.settings", "user")]
-    if role == "student":
-        return [("Dashboard", "student.dashboard", "dashboard"),
-                ("My courses", "workspace.student_courses", "book"),
-                ("Activities", "student.activities", "activity"),
-                ("My records", "student.records", "file"),
-                ("Attendance", "student.attendance_list", "check"),
-                ("Grades", "student.grades_list", "chart"),
-                ("Calendar", "student.calendar", "calendar"),
-                ("Announcements", "student.announcements_list", "megaphone"),
-                ("Discussions", "student.discussions_overview", "users"),
-                ("Messages", "messages.inbox", "message"),
-                ("Notifications", "notifications.inbox", "bell")] + common
-    if role == "teacher":
-        return [("Dashboard", "teacher.dashboard", "dashboard"),
-                ("My groups", "workspace.teacher_groups", "book"),
-                ("Activities", "teacher.activities", "activity"),
-                ("Review queue", "workspace.review_queue", "check"),
-                ("Attendance", "teacher.attendance_overview", "check"),
-                ("Gradebook", "teacher.gradebook_overview", "graduation"),
-                ("Calendar", "teacher.calendar", "calendar"),
-                ("Announcements", "teacher.announcements_feed", "megaphone"),
-                ("Discussions", "teacher.discussions_overview", "users"),
-                ("Messages", "messages.inbox", "message"),
-                ("Notifications", "notifications.inbox", "bell")] + common
-    if role == "administrator":
-        from app.blueprints.admin.navigation import ADMIN_NAV_SECTIONS
-        return [("Dashboard", "admin.dashboard", "dashboard")] + [
-            (item["label"], item["endpoint"], "file") for section in ADMIN_NAV_SECTIONS
-            for item in section["links"] if item.get("endpoint")] + common
-    if role == "researcher":
-        return [("Dashboard", "research.dashboard", "dashboard"),
-                ("Configurations", "research.configurations", "settings"),
-                ("Sessions", "research.sessions", "activity"),
-                ("Exports", "research.exports", "file"),
-                ("Exclusions", "research.exclusions", "users"),
-                ("Storage and gaps", "research.storage", "layers"),
-                ("Audit log", "research.activity_log", "lock")] + common
-    return []
-
-
 def _student(user_id, norm, url):
     from app.services.search_queries import search_learning_content
     headings = {"course": "Courses", "unit": "Units", "lesson": "Lessons",

@@ -22,7 +22,7 @@
 
 {{ ann.flash_messages() }}
 
-<form class="ds-row yc-actions yc-filter-form" method="get" action="{{ url_for('teacher.announcements_feed') }}" role="search"
+<form class="ds-row yc-actions yc-filter-form" method="get" action="{{ url_for('teacher.announcements_feed') }}" role="search" data-live-query
       style="margin-bottom: var(--space-4); align-items: flex-end; gap: var(--space-2); flex-wrap: wrap;">
   <div class="field" style="margin:0">
     <label class="field__label" for="announcement-q">Search announcements</label>
@@ -31,7 +31,7 @@
   </div>
   <button type="submit" class="btn btn--secondary">Search</button>
   {% if raw_q %}
-  <a class="btn btn--secondary" href="{{ url_for('teacher.announcements_feed') }}">Clear</a>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.announcements_feed') }}" data-live-query-clear>Clear</a>
   {% endif %}
 </form>
 

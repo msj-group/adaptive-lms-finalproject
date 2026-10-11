@@ -38,3 +38,5 @@ html[dir='rtl'] .workspace-search-result>svg { transform:rotate(180deg); }
 @media(prefers-reduced-motion:reduce) { .yc-workspace .workspace-search-dialog[open] { animation:none; } }
 @media(forced-colors:active) { .yc-workspace :is(.workspace-search-dialog,.workspace-search-icon,.workspace-search-field) { border:1px solid CanvasText; } }
 @media print { .workspace-search-dialog { display:none!important; } }
+.workspace-live-query-status { flex-basis:100%; color:var(--ui-muted); font-size:12px; line-height:1.4; }
+.workspace-live-query-status:empty { display:none; }

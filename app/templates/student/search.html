@@ -30,7 +30,7 @@
   {% endfor %}
 {% endwith %}
 
-<form class="st-search-form" method="get" action="{{ url_for('student.search') }}" role="search" data-research-form="search_submit">
+<form class="st-search-form" method="get" action="{{ url_for('student.search') }}" role="search" data-research-form="search_submit" data-live-query>
   <div class="st-search-query">{% import '_figma_ui.html' as ui %}{{ ui.icon('search',22) }}  <div class="field">
     <label class="field__label" for="search-q">Search</label><span class="search-match-hint">Every word must match.</span>
     <input class="field__input" type="search" id="search-q" name="q" value="{{ q }}"
@@ -70,7 +70,7 @@
     </div>
   </div>
 
-  <div class="ds-row search-form__actions">
+  <div class="ds-row search-form__actions" data-live-query-actions>
 
     {% if content_type != 'all' or group_param or material_kind != 'all' %}
     <a class="btn btn--secondary" href="{{ url_for('student.search', q=q) }}">Clear filters</a>

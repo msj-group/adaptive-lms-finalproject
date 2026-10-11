@@ -23,7 +23,6 @@ body:where(:not(.yc-operations)) .today-meta, body:where(:not(.yc-operations)) .
 .figma-workspace:where(:not(.yc-operations)) td a:not(.btn), .workspace-reading-nav li a, .workspace-outline li>a { color: var(--ui-link); }
 .figma-workspace:where(:not(.yc-operations)) :is(.messenger-secondary,.workspace-opening-continue) { background: var(--ui-soft); border-color: var(--ui-line); color: var(--ui-link); }
 .figma-workspace:where(:not(.yc-operations)) :is(.field__error,.account-errors,.messenger-danger) { color: var(--ui-danger); }
-.figma-workspace:where(:not(.yc-operations)) :is(.workspace-error-summary) { background: var(--ui-danger-bg); border-color: var(--ui-danger); }
 .figma-workspace:where(:not(.yc-operations)) :is(.workspace-unsaved) { background: var(--ui-warning-bg); color: var(--ui-warning); border-color: var(--ui-warning); }
 .figma-workspace:where(:not(.yc-operations)) :is(.workspace-finance-preview,.workspace-impact,.workspace-step,.workspace-steps li) { background: var(--ui-soft); color: var(--ui-link); border-color: var(--ui-line); }
 .figma-workspace:where(:not(.yc-operations)) :is(.notif-item--unread,.notif-item--compact.notif-item--unread) { background: var(--ui-raised); }

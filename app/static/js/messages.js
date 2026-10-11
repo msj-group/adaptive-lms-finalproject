@@ -1,5 +1,5 @@
-/* Presentation enhancements only. Private content is never stored or fetched here.
-   Native POST, CSRF, nonce protection and unsaved-work handling remain authoritative. */
+/* Presentation enhancements only. Contact search reads the existing scoped GET
+   endpoint without storing content. Native POST, CSRF and nonce protection remain authoritative. */
 (function () {
   "use strict";
   var t = window.aelmsUI ? window.aelmsUI.t : function (text) { return text; };
@@ -11,9 +11,44 @@
     var status = panel.querySelector("[data-conversation-status]");
     var tabs = Array.from(panel.querySelectorAll("[data-chat-tab]"));
     var current = panel.dataset.initialTab || "chats";
+    var contacts = panel.querySelector(".messenger-contacts");
+    var contactTimer, contactController, contactSequence = 0;
     if (!search || !input || !status) return;
     search.hidden = false;
     panel.querySelector("[data-chat-tabs]").hidden = false;
+    function cancelContactSearch() {
+      clearTimeout(contactTimer);
+      contactSequence += 1;
+      if (contactController) contactController.abort();
+      contactController = null;
+    }
+    async function loadContacts() {
+      if (current !== "contacts" || !contacts || !window.fetch || !window.AbortController) return;
+      cancelContactSearch();
+      var request = new AbortController(); contactController = request;
+      var revision = contactSequence;
+      var url = new URL(search.action, location.origin);
+      url.searchParams.set("q", input.value.trim());
+      status.hidden = false; status.textContent = t("Searching…");
+      try {
+        var response = await fetch(url.href, {credentials:"same-origin", cache:"no-store", signal:request.signal});
+        if (request.signal.aborted || revision !== contactSequence || current !== "contacts") return;
+        if (response.redirected || response.status === 401 || response.status === 403) {
+          status.textContent = t("Your session may have ended. Reload the page to sign in again."); return;
+        }
+        if (!response.ok) throw new Error("Search unavailable");
+        var page = new DOMParser().parseFromString(await response.text(), "text/html");
+        var incoming = page.querySelector(".messenger-contacts");
+        if (!incoming || request.signal.aborted || revision !== contactSequence || current !== "contacts") throw new Error("Search unavailable");
+        contacts.replaceChildren(...Array.from(incoming.childNodes));
+        var count = contacts.querySelectorAll("[data-contact-row]").length;
+        status.textContent = count ? t(count === 1 ? "%(count)s match in the loaded list." : "%(count)s matches in the loaded list.", {count:count}) : t("No matching contacts.");
+      } catch (error) {
+        if (!request.signal.aborted && revision === contactSequence) status.textContent = t("Search could not load. Try again.");
+      } finally {
+        if (contactController === request) contactController = null;
+      }
+    }
     function filter() {
       if (panel.hasAttribute("data-contacts-search-only") && current === "chats") {
         panel.querySelectorAll("[data-conversation-row]").forEach(function (row) { row.hidden = false; });
@@ -31,12 +66,14 @@
       status.textContent = visible ? t(visible === 1 ? "%(count)s match in the loaded list." : "%(count)s matches in the loaded list.", {count:visible}) : t("No matches in the loaded list. Use Browse or search to find other contacts.");
     }
     function activate(name) {
+      if (name !== "contacts") cancelContactSearch();
       current = name;
       search.hidden = panel.hasAttribute("data-contacts-search-only") && name === "chats";
       panel.querySelector("[data-contact-search-submit]").hidden = name !== "contacts";
       tabs.forEach(function (tab) { tab.setAttribute("aria-selected", String(tab.dataset.chatTab === name)); tab.tabIndex = tab.dataset.chatTab === name ? 0 : -1; });
       panel.querySelectorAll("[data-chat-panel]").forEach(function (section) { section.hidden = section.dataset.chatPanel !== name; section.setAttribute("role", "tabpanel"); });
       filter();
+      if (name === "contacts" && input.value.trim() && window.fetch) loadContacts();
     }
     tabs.forEach(function (tab, index) {
       tab.addEventListener("click", function () { activate(tab.dataset.chatTab); });
@@ -45,9 +82,17 @@
         if (next !== null) { event.preventDefault(); activate(tabs[next].dataset.chatTab); tabs[next].focus(); }
       });
     });
-    input.addEventListener("input", filter);
+    input.addEventListener("input", function () {
+      filter();
+      if (current === "contacts" && window.fetch && window.AbortController) {
+        cancelContactSearch(); contactTimer = setTimeout(loadContacts, 250);
+      }
+    });
     input.addEventListener("keydown", function (event) { if (event.key === "Enter" && current === "chats" && !event.isComposing) { event.preventDefault(); filter(); } });
-    search.addEventListener("submit", function (event) { if (current === "chats") { event.preventDefault(); filter(); } });
+    search.addEventListener("submit", function (event) {
+      if (current === "chats") { event.preventDefault(); filter(); }
+      else if (window.fetch && window.AbortController) { event.preventDefault(); loadContacts(); }
+    });
     activate(current);
   });
 
@@ -135,6 +180,7 @@
     if (!toggle || !panel) return;
     var search = panel.querySelector("[data-emoji-search]");
     var category = panel.querySelector("[data-emoji-category]");
+    var shortcuts = panel.querySelector("[data-emoji-shortcuts]");
     var tone = panel.querySelector("[data-emoji-tone]");
     var grid = panel.querySelector("[data-emoji-grid]");
     var status = panel.querySelector("[data-emoji-status]");
@@ -158,6 +204,17 @@
     function rememberCaret() { caretStart = input.selectionStart; caretEnd = input.selectionEnd; }
     ["select", "input", "keyup", "click", "blur"].forEach(function (event) { input.addEventListener(event, rememberCaret); });
     function close(restore) { panel.hidden = true; toggle.setAttribute("aria-expanded", "false"); if (restore) toggle.focus(); }
+    function selectCategory(value) {
+      if (!data) return;
+      category.value = value;
+      shortcuts.querySelectorAll("button").forEach(function (button) {
+        button.setAttribute("aria-pressed", String(button.dataset.emojiGroup === value));
+      });
+      limit = 80; grid.scrollTop = 0; render();
+    }
+    shortcuts.querySelectorAll("button").forEach(function (button) {
+      button.addEventListener("click", function () { selectCategory(button.dataset.emojiGroup); });
+    });
     function render() {
       var query = search.value.trim().toLocaleLowerCase();
       visible = data.filter(function (emoji) {
@@ -192,7 +249,7 @@
       render();
     });
     panel.querySelector("[data-emoji-close]").addEventListener("click", function () { close(true); });
-    [search, category, tone].forEach(function (field) { field.addEventListener(field === search ? "input" : "change", function () { if (data) { limit = 80; grid.scrollTop = 0; render(); } }); });
+    [search, tone].forEach(function (field) { field.addEventListener(field === search ? "input" : "change", function () { if (data) { limit = 80; grid.scrollTop = 0; render(); } }); });
     more.addEventListener("click", function () { var top = grid.scrollTop; limit += 80; render(); grid.scrollTop = top; });
     document.addEventListener("pointerdown", function (event) { if (!panel.hidden && !panel.contains(event.target) && !toggle.contains(event.target)) close(false); });
     document.addEventListener("keydown", function (event) { if (event.key === "Escape" && !panel.hidden) { event.preventDefault(); close(true); } });

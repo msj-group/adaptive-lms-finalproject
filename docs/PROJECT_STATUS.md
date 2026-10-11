@@ -1,5 +1,18 @@
 # Repair status
 
+## Owner-requested search and messaging UI follow-up — 2026-10-11
+
+The owner requested live results for search fields, a compact emoji category
+shortcut strip, removal of the large field-error summary, and removal of the
+Search materials navigation link across all four roles. The subsequent request
+removed the complete Quick access/Workspace pages section for every query.
+The emoji shortcuts are server-rendered, the picker grid has a minimum height,
+and versioned Messages assets force refreshed pages to load the new layout.
+These changes follow the earlier A1 acceptance and require fresh authenticated
+browser review before a new presentation acceptance claim. Static Python,
+JavaScript, Jinja and Arabic JSON syntax checks passed. No automated tests,
+database operation, migration or research baseline change was performed.
+
 ## Final presentation release candidate — 2026-10-10
 
 The owner now explicitly authorizes commit, safe integration, official GitHub
