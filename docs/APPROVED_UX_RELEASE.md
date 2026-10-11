@@ -48,3 +48,26 @@ Arabic release report and machine-readable evidence directory:
 An authorization or successful push alone is not deployment acceptance.
 No production account credentials are available for an authenticated postdeploy
 four-role smoke; local QA credentials must never be copied to production.
+
+## Phone-reported bottom navigation correction — 2026-10-11
+
+After the release, the owner reported More wrapping on an S23 Ultra. The actual
+local Student dashboard reproduced two navigation rows and a 106px bar at 384px:
+an obsolete Student-only four-column CSS rule overrode the shared five columns.
+Remove that rule in the existing navigation stylesheet and bump only that asset's
+version in the three authenticated layouts, so refreshed phones request the fix.
+The selected destinations, More implementation and protected page design remain.
+
+Bounded actual-app checks on owned fictional MySQL cover all four authenticated
+roles at 320, 360, 384, 390, 412, 430, 540, 768, 900, 1023 and 1024px in English
+Light and Arabic Dark: 88 observations. Below the desktop breakpoint, all five
+controls occupy one row with targets at least 44px and no horizontal overflow;
+Student's bar is 60px at 384px. More opening, Tab/Shift+Tab, Escape, outside-click
+dismissal and focus return passed for all four roles. Student/Teacher Messages
+retain the 66px bar, one row and correct More active state. These are touch/mobile
+browser emulations, not verification on a physical S23 Ultra. The earlier checks
+missed the row-count criterion; the correction evidence records it explicitly.
+
+Continue the owner's commit/push/deploy authorization for this bounded deployed
+defect, preserving database/configuration/provenance. Execution evidence is in
+the external `mobile-nav-hotfix-20261011` directory alongside the release report.
