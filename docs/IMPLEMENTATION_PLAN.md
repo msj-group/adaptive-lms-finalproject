@@ -1,5 +1,12 @@
 # Repair implementation plan
 
+> Latest owner follow-up, 2026-10-11: present Student Quiz attempt history as
+> one visible summary with a native Attempt selector, newest first. Use existing
+> authorized summaries and preserve no-JavaScript reading and result links.
+> Verify source/templates/static assets and bounded manual presentation behavior,
+> then deliver under the owner's existing GitHub/Railway authorization. No new
+> automated test package, migration or domain/research policy change.
+
 > Latest release authority, 2026-10-11: commit and push the reviewed platform
 > navigation/Quiz/browser-draft/file-control follow-up to the existing GitHub
 > branches, then deploy its exact SHA to the existing Railway web service.

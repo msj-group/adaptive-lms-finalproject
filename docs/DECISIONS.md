@@ -1,5 +1,19 @@
 # Project Decisions
 
+## 2026-10-11 — Single-card Student Quiz attempt history
+
+- The owner replaces the long Quiz overview attempt list with one visible
+  summary and a native Attempt selector. Default to the first, newest summary
+  supplied by the existing authorized query; change the status, time, score and
+  native Result link together without navigation, requests or persistence.
+- Keep selection keyboard accessible, owned labels localized and result changes
+  politely announced. One attempt needs no selector; no attempts need no history
+  panel. If JavaScript is unavailable, retain all readable summaries and links.
+- Reconcile the card after native browser-history form restoration. Keep scores
+  and timestamps isolated left-to-right in RTL layouts, and translate Time expired.
+- Preserve Start/Continue, finalization, ownership, score and answer-key rules,
+  research contracts and database schema. This is a presentation-only follow-up.
+
 ## 2026-10-11 — Automatic drafts, Quiz layout and linked hierarchy follow-up
 
 - The owner's latest request removes the explicit Save draft button. Keep the

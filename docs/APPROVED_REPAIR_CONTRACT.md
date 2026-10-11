@@ -7,6 +7,12 @@ has already been implemented or verified.
 
 ## Authority and current checkpoint
 
+- Latest owner follow-up, 2026-10-11: replace the Student Quiz overview's long
+  attempt list with one visible result summary and an Attempt dropdown. Keep
+  existing authorized summaries, native Result links and all domain/research
+  contracts. Continue the existing GitHub/Railway delivery authorization for
+  this bounded final Quiz addition. No database or authentication change.
+
 - Latest release authority, 2026-10-11: the owner explicitly requests GitHub
   upload and Railway deployment of the implemented Back/breadcrumb, Quiz,
   browser-only Assignment draft and localized file-control changes. This

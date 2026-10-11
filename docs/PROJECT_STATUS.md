@@ -1,5 +1,45 @@
 # Repair status
 
+## Single-card Quiz attempt selector — 2026-10-11 final follow-up
+
+Starting checkpoint: `0a75016f4191f0f39edcbf614db0f45d2fc0bec9` on
+`ui/platform-unification-20261009`, the successfully deployed preceding release.
+The owner requests a final Quiz presentation change. Continue the owner's
+existing GitHub/Railway delivery authorization for this bounded addition only.
+Preserve the unrelated untracked Help template and existing deployment settings.
+
+- Student Quiz overview shows one attempt summary with a native Attempt dropdown
+  when multiple attempts exist. Default to the newest existing authorized summary.
+  Switching changes status, started time, score and its native Result link together
+  without requests or storage. One attempt retains a plain heading; no attempts
+  omit the panel. Without the client, every summary and Result link stays readable.
+- Native keyboard selection and polite result announcements remain available.
+  Synchronize after browser history restores the select, so Back from Result
+  cannot pair one attempt number with a different card. Isolate dates/scores for
+  correct RTL reading; translate Time expired and retain a visible dropdown arrow
+  in either theme. Update the Student stylesheet URL for cache invalidation.
+- No query, ownership, Start/Continue, finalization, score, answer-key, research,
+  authentication, model or migration change. Files: Student Quiz detail, Student
+  feature CSS, portal stylesheet reference, new `quiz_attempt_history.js`, Arabic
+  catalog and the authority/decision/status/release documents.
+
+Verification actually performed: parsed all 230 HTML templates with the real
+OwnedUIExtension; Node syntax verification; Arabic JSON and duplicate-key review;
+Git whitespace/diff review. Manual loopback presentation review uses the actual
+templates, styles and clients with fictional request fixtures, without application
+factory/database access. Reviewed English/light and Arabic/dark, 1280px and 320px;
+selection, correct Result URL/navigation, zero score, expired/in-progress states,
+one/no/ten attempts and an unavailable-client fallback. A history-restoration
+mismatch was reproduced, corrected and rechecked: restored selector and card agree.
+Final inspected page/card bounds show no horizontal overflow. Console errors: none.
+Screenshots/evidence remain ignored under `instance/quiz_attempt_picker_20261011/`.
+
+No automated tests were created or run, no real authenticated MySQL workflow was
+reviewed, and no database/reset/migration or configuration change was made. This
+is bounded presentation/static evidence, not comprehensive regression acceptance.
+Commit/push/deployment results are recorded separately after actual execution;
+this entry does not claim release success before that evidence exists.
+
 ## GitHub/Railway follow-up release authorized — 2026-10-11
 
 The owner now explicitly requests upload and deployment of the implemented

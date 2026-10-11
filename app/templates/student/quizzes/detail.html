@@ -67,15 +67,23 @@
 </div>
 </div>
     </section>
-{% if attempts %}<section class="st-quiz-history st-feature-panel st-quiz-history--recorded">
-  <h2>Your attempts</h2>
-  <div class="dash-scroll">
-  <div class="activity-library-grid">
+{% if attempts %}<section class="st-quiz-history st-feature-panel st-quiz-history--recorded" data-quiz-attempt-history aria-labelledby="quiz-attempt-history-title">
+  <h2 id="quiz-attempt-history-title">Your attempts</h2>
+  {% if attempts|length > 1 %}
+  <div class="st-attempt-selector" data-attempt-picker hidden>
+    <span class="activity-card-symbol" aria-hidden="true">{{ activity_ui.symbol(activity_kind,22) }}</span>
+    <label for="quiz-attempt-choice">Attempt</label>
+    <select id="quiz-attempt-choice" aria-controls="quiz-attempt-panels">
+      {% for item in attempts %}<option value="{{ item.public_id }}">{{ item.attempt_number }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endif %}
+  <div class="st-attempt-panels" id="quiz-attempt-panels">
       {% for item in attempts %}
-      <article class="activity-library-card st-attempt-card">
-<header>
+      <article class="activity-library-card st-attempt-card" data-quiz-attempt="{{ item.public_id }}" aria-labelledby="quiz-attempt-heading-{{ loop.index }}">
+<header data-attempt-heading>
 <span class="activity-card-symbol">{{ activity_ui.symbol(activity_kind,22) }}</span>
-<h3><span>Attempt</span> {{ item.attempt_number }}</h3>
+<h3 id="quiz-attempt-heading-{{ loop.index }}"><span>Attempt</span> {{ item.attempt_number }}</h3>
 </header>
 <dl class="activity-library-meta">
 <div class="activity-fact">
@@ -86,13 +94,13 @@
 </div>
 <div class="activity-fact">
 <dt>Started</dt>
-<dd>{{ item.started_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+<dd><bdi dir="ltr">{{ item.started_local.strftime("%Y-%m-%d %H:%M") }}</bdi></dd>
 </div>
 <div class="activity-fact">
 <dt>Score</dt>
 <dd>
           {% if item.total_questions is not none %}
-          {{ item.correct_count }} / {{ item.total_questions }}{% if item.percentage is not none %} ({{ item.percentage }}%){% endif %}
+          <bdi dir="ltr">{{ item.correct_count }} / {{ item.total_questions }}{% if item.percentage is not none %} ({{ item.percentage }}%){% endif %}</bdi>
           {% else %}&mdash;{% endif %}
         </dd>
 </div>
@@ -104,11 +112,14 @@
         </footer>
 </article>
       {% endfor %}
-    </div>
   </div>
 </section>{% endif %}
   </div>
 </div>
 
 </div>
+{% endblock %}
+{% block body_scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/quiz_attempt_history.js', v='attempt-picker-20261011') }}" defer></script>
 {% endblock %}

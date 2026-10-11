@@ -1,5 +1,22 @@
 # Approved UX release — 2026-10-11
 
+## Final Quiz attempt selector follow-up
+
+After the preceding deployment, the owner requests a final Quiz adjustment:
+one visible attempt summary and an Attempt dropdown instead of a long list.
+Continue the existing explicit GitHub/Railway delivery authorization for this
+bounded addition. Starting SHA: `0a75016f4191f0f39edcbf614db0f45d2fc0bec9`.
+Static/manual presentation evidence and limits are in PROJECT_STATUS.md.
+
+Create one reviewed commit for only the Quiz template/client/styles, portal
+stylesheet cache version, Arabic Time expired label and directly related docs.
+Preserve the untracked Help template and ignored manual review artifacts. Push
+normally to the same follow-up/release branches, verify the exact SHA and update
+only the existing web service's source pin. Preserve all other production config,
+services, volumes and data. No models, migrations, authentication or research
+policy changes. The unchanged predeploy must verify the existing schema head.
+Record actual release results separately after execution.
+
 ## Platform navigation, Quiz and browser drafts follow-up release
 
 The owner's latest instruction explicitly requests GitHub upload and Railway
