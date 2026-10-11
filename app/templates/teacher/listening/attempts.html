@@ -37,7 +37,7 @@
   and no pass or fail. A question is correct only when the student selected exactly the options
   you marked correct. Unanswered questions count as incorrect. You cannot change a score here.
   How often a student played the recording is deliberately not recorded. Times are in the center
-  timezone (<strong>{{ tz_name }}</strong>).
+  timezone.
 </div>
 
 <section class="dash-section yc-section" style="margin-top: 0">
@@ -63,11 +63,11 @@
 </dd>
 </div>
 <div class="activity-fact">
-<dt>Started ({{ tz_name }})</dt>
+<dt>Started</dt>
 <dd>{{ item.started_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
 <div class="activity-fact">
-<dt>Submitted ({{ tz_name }})</dt>
+<dt>Submitted</dt>
 <dd>{% if item.submitted_local %}{{ item.submitted_local.strftime("%Y-%m-%d %H:%M") }}{% else %}&mdash;{% endif %}</dd>
 </div>
 <div class="activity-fact">

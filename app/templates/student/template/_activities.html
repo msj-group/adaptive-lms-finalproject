@@ -1,9 +1,13 @@
 {% import '_figma_ui.html' as ui %}
 {% set hub_endpoint = 'teacher.activities' if teacher else 'student.activities' %}
 
+<div class="st-activity-tools">
 <nav class="st-kind-tabs" aria-label="Activity type"><a data-query-type href="{{ url_for(hub_endpoint,state=selected_state,course=selected_course,group=selected_group) }}"{% if not selected_type %} aria-current="page"{% endif %}>All activities</a>{% for kind,label in types.items() %}<a data-query-type href="{{ url_for(hub_endpoint,type=kind,state=selected_state,course=selected_course,group=selected_group) }}"{% if selected_type == kind %} aria-current="page"{% endif %} data-research-id="activity_filter">{{ activity_ui.symbol(kind,16) }} {{ label }}</a>{% endfor %}</nav>
-<form method="get" action="{{ url_for(hub_endpoint) }}" class="st-hub-filters" data-query-form data-query-results="query-results" data-query-min="0">
+<details class="st-activity-filters">
+<summary aria-label="Activity filters" title="Activity filters">{{ ui.icon('chevron-down',20) }}</summary>
+<form method="get" action="{{ url_for(hub_endpoint) }}" class="st-hub-filters" data-query-form data-query-results="query-results" data-query-min="0" data-query-quiet-success>
 <input type="hidden" name="type" value="{{ selected_type }}">
+{% if selected_group %}<input type="hidden" name="group" value="{{ selected_group }}">{% endif %}
 <div class="field">
 <label for="state">{{ _('Publication' if teacher else 'Progress & availability') }}</label>
 <select id="state" name="state"{% if not teacher %} data-research-id="activity_filter"{% endif %}>
@@ -14,13 +18,10 @@
 <select id="course" name="course"{% if not teacher %} data-research-id="activity_filter"{% endif %}>
 <option value="">All courses</option>{% for row in courses %}<option value="{{ row.course_public_id }}"{% if selected_course == row.course_public_id %} selected{% endif %}>{{ row.course_title }}</option>{% endfor %}</select>
 </div>
-<div class="field">
-<label for="group">Group</label>
-<select id="group" name="group"{% if not teacher %} data-research-id="activity_filter"{% endif %}>
-<option value="">All groups</option>{% if hub_group and not groups|selectattr('group_public_id','equalto',selected_group)|list %}<option value="{{ hub_group.public_id }}" selected>{{ hub_group.name }}</option>{% endif %}{% for row in groups %}<option value="{{ row.group_public_id }}"{% if selected_group == row.group_public_id %} selected{% endif %}>{{ row.group_name }}</option>{% endfor %}</select>
-</div>
 <div class="activity-filter-actions">
 <button data-query-submit type="submit" class="btn btn--primary">Apply filters</button>
-<a href="{{ url_for(hub_endpoint) }}">Reset filters</a>
 </div>
-</form><div id="query-results">{% include "student/template/_activity_results.html" %}</div>
+</form>
+</details>
+</div>
+<div id="query-results">{% include "student/template/_activity_results.html" %}</div>

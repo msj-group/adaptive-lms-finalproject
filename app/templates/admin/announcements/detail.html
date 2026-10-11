@@ -39,19 +39,19 @@
 
     <dl style="display:grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: var(--space-4) 0 0;">
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>
-      <dd style="margin:0">{{ announcement.created_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+      <dd style="margin:0">{{ announcement.created_local.strftime("%Y-%m-%d %H:%M") }}</dd>
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Last changed</dt>
-      <dd style="margin:0">{{ announcement.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+      <dd style="margin:0">{{ announcement.updated_local.strftime("%Y-%m-%d %H:%M") }}</dd>
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Published</dt>
       <dd style="margin:0">
         {%- if announcement.published_local -%}
-          {{ announcement.published_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})
+          {{ announcement.published_local.strftime("%Y-%m-%d %H:%M") }}
         {%- else -%}—{%- endif -%}
       </dd>
       <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Withdrawn</dt>
       <dd style="margin:0">
         {%- if announcement.withdrawn_local -%}
-          {{ announcement.withdrawn_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})
+          {{ announcement.withdrawn_local.strftime("%Y-%m-%d %H:%M") }}
         {%- else -%}—{%- endif -%}
       </dd>
     </dl>

@@ -11,8 +11,7 @@
   {{ macros.flash_messages() }}
 
   <div class="alert alert--info" style="margin-bottom: var(--space-4)">
-    Times are local wall-clock values in the center timezone
-    (<strong>{{ app_timezone }}</strong>). Weekly slots are not converted between timezones.
+    Times are local wall-clock values in the center timezone. Weekly slots are not converted between timezones.
     {% if schedule and schedule.status != "active" %}
     <br>This slot is currently <strong>archived</strong>. Saving keeps it archived — use the
     Reactivate action on the schedules page to bring it back.

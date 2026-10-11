@@ -41,7 +41,7 @@
       {{ page_content }}
       {% if request.blueprint != 'messages' %}{% include '_workspace_navigation.html' %}{% endif %}
     </div>
-    {% if request.blueprint != 'messages' %}<footer class="st-footer"><span>Youth Centre · {{ role|capitalize }} portal</span>{% if role == 'researcher' %}<span>Pseudonymous data · {{ tz_name|default('Africa/Tripoli') }}</span>{% endif %}</footer>{% endif %}
+    {% if request.blueprint != 'messages' %}<footer class="st-footer"><span>Youth Centre · {{ role|capitalize }} portal</span>{% if role == 'researcher' %}<span>Pseudonymous data</span>{% endif %}</footer>{% endif %}
   </div>
 </div>
 {% include 'layouts/_mobile_navigation.html' %}

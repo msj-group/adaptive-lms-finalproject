@@ -1,5 +1,52 @@
 # Repair status
 
+## Student UI cleanup and hidden timezone labels — 2026-10-11
+
+The owner requested these changes in the existing main checkout. Before editing,
+the local HEAD and the remote `ui/platform-unification-20261009` branch both
+resolved to `c8f59a94113fb8ea36d168a09d22757c27f825ac`. The pre-existing untracked
+`app/templates/workspace/help.html` was preserved.
+
+- Removed technical timezone names from all four portals, shared macros,
+  notification/accessibility copy, attendance choices, the enrollment notice
+  and financial CSV/PDF generation labels. Center-local conversion, input
+  interpretation and machine-readable research-export provenance are retained.
+- Removed redundant course/group context from Student dashboard cards and the
+  requested lesson-completion explanation.
+- Removed course artwork and the Current enrollment badge. Progress and the
+  lesson-outline link remain inside each card; recently opened lessons occupy
+  the former artwork area, including dates/status and an empty state. A single
+  authorized window-function query returns up to five recent lessons per Group
+  without changing the original global-query default or enrollment scoping.
+- Activity filters use a native disclosure arrow beside the type tabs, closed
+  by default. Removed the Group selector, its unused choices query, Reset
+  filters, and Student result-count copy. Course-scoped Group URLs still retain
+  their authorized scope. Live success notices are quiet only for this form;
+  pending/error/retry and native GET recovery remain available.
+- Moved the existing recorder and multipart form into Record Your Answer.
+  CSRF, the freshly signed task/window token, local retakes, fallback file input,
+  research control IDs and authoritative final-submission checks are preserved.
+  Validation failures render the same inline recorder with the original token;
+  the old `/record` URL redirects through the existing visibility checks.
+- Added Arabic translations for the revised owned UI copy and refreshed changed
+  asset versions. No authored course/lesson/activity content was rewritten.
+
+Verification is bounded: static parsing of seven changed Python files, all 229
+Jinja templates and the Arabic catalog; JavaScript syntax checks; source/diff
+review; fictional English/Arabic template rendering; and manual browser review
+of course cards, closed/open activity filters, quiet empty results and inline
+recording controls, including a 390px Arabic viewport. These previews use an
+isolated presentation shell, not authenticated application/database workflows.
+No microphone capture, audio submission, actual MySQL query execution, automated
+test suite, migration or database change was performed during implementation.
+The owner subsequently explicitly requested GitHub push and Railway deployment.
+The development and existing release branches were fetched and both remain at
+c8f59a94113fb8ea36d168a09d22757c27f825ac before this release commit. Publish this
+reviewed UI scope with normal fast-forward pushes, excluding the pre-existing
+untracked help template. Railway deployment and live acceptance remain pending
+until the matching source revision and production readiness are verified.
+Preserve existing service configuration, secrets, volumes and database schema.
+
 ## Approved UX release authorization — 2026-10-11
 
 The owner explicitly requested commit, push and deployment of the reviewed UX

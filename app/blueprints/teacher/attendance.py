@@ -698,7 +698,7 @@ def _schedule_choices(schedules, tz_name):
         choices.append(
             (
                 schedule.public_id,
-                f"{weekday} {window} ({tz_name}) · {period}{place}",
+                f"{weekday} {window} · {period}{place}",
             )
         )
     return choices

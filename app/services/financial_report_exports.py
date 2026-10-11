@@ -7,7 +7,7 @@ bundled font. Both return the whole document as ``bytes``; nothing is written
 to disk and nothing is kept.
 
 Both outputs state exactly what the HTML page states -- the title, the
-applied filters, the generation moment and its timezone, the currency, the
+applied filters, the generation moment in center time, the currency, the
 operational notice, the notes, every row of every section in the report's own
 order and every total. Neither drops, truncates or reorders a row.
 
@@ -80,8 +80,8 @@ _NUMERIC_KINDS = (AMOUNT, COUNT)
 
 
 def generated_text(report):
-    """``2026-09-18 14:05:09 (Africa/Tripoli)``."""
-    return f"{report.generated_local.strftime(GENERATED_FORMAT)} ({report.tz_name})"
+    """The center-local generation moment without a technical zone label."""
+    return report.generated_local.strftime(GENERATED_FORMAT)
 
 
 def display_text(value):

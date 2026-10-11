@@ -30,7 +30,7 @@
 
 <small class="workspace-meta" dir="auto">{{ group.academic_term.name }}</small>
 
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">Unlimited replays. Automatic exact-set scoring; no partial credit or pass/fail. Correct options stay hidden. Drafts are private. Times: {{ tz_name }}.</div>
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">Unlimited replays. Automatic exact-set scoring; no partial credit or pass/fail. Correct options stay hidden. Drafts are private. </div>
 
 {% if not operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
@@ -89,7 +89,7 @@
 <dd>{{ item.transcript_visibility_label }}</dd>
 </div>
 <div class="activity-fact">
-<dt>Created ({{ tz_name }})</dt>
+<dt>Created</dt>
 <dd>{{ item.created_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
 </dl>

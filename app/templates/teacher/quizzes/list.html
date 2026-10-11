@@ -31,7 +31,7 @@
 
 <small class="workspace-meta" dir="auto">{{ group.academic_term.name }}</small>
 
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">Drafts are private; published quizzes follow their availability window. Times: {{ tz_name }}.</div>
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">Drafts are private; published quizzes follow their availability window. </div>
 
 {% if not operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
@@ -75,11 +75,11 @@
 <dd>{% if item.status == 'published' %}Published · {{ item.opens_local.strftime('%Y-%m-%d %H:%M') if item.opens_local else 'No opening time' }} – {{ item.closes_local.strftime('%Y-%m-%d %H:%M') if item.closes_local else 'No closing time' }}{% else %}Private draft{% endif %}</dd>
 </div>
 <div class="activity-fact">
-<dt>Created ({{ tz_name }})</dt>
+<dt>Created</dt>
 <dd>{{ item.created_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
 <div class="activity-fact">
-<dt>Last changed ({{ tz_name }})</dt>
+<dt>Last changed</dt>
 <dd>{{ item.updated_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
 </dl>

@@ -184,14 +184,6 @@ def _detail_url(group_public_id, speaking_public_id):
     )
 
 
-def _record_url(group_public_id, speaking_public_id):
-    return url_for(
-        "student.speaking_record",
-        group_public_id=group_public_id,
-        speaking_public_id=speaking_public_id,
-    )
-
-
 def _receipt_url(group_public_id, speaking_public_id):
     return url_for(
         "student.speaking_receipt",
@@ -410,8 +402,8 @@ def speaking_detail(group_public_id, speaking_public_id):
     valid activity id paired with the wrong Group id -- and every other
     unauthorized combination -- produces no row and the same 404.
 
-    The page shows exactly one of three states: a link to the recording
-    page (visible, open, nothing submitted), a link to this Student's own
+    The page shows exactly one of three states: the recording form
+    (visible, open, nothing submitted), a link to this Student's own
     immutable receipt (already submitted), or a "Not submitted" notice
     (visible, past due, nothing submitted). A GET never creates or changes
     anything.
@@ -419,27 +411,31 @@ def speaking_detail(group_public_id, speaking_public_id):
     tz_name = _tz_name()
     reference_utc = _now()
     row = _visible_or_404(group_public_id, speaking_public_id, reference_utc)
-    activity = row[5]
+    assignment, activity = row[0], row[5]
     submission = student_speaking_submission(activity.id, current_user.id)
     item = build_student_speaking_item(row, tz_name, reference_utc)
+    can_record = submission is None and item["state"] == STATE_OPEN
+    recorder = _recorder_context(
+        group_public_id, speaking_public_id, SpeakingSubmissionForm(formdata=None),
+        _make_token(current_user.public_id, group_public_id, assignment, activity),
+    ) if can_record else {}
 
     return private_no_store(
         "student/speaking/detail.html",
         activity=item,
         tz_name=tz_name,
         submission=build_student_receipt(submission, tz_name),
-        can_record=submission is None and item["state"] == STATE_OPEN,
-        record_url=_record_url(group_public_id, speaking_public_id),
+        can_record=can_record,
         receipt_url=_receipt_url(group_public_id, speaking_public_id),
         list_url=_list_url(),
+        **recorder,
     )
 
 
 @student_bp.get("/groups/<group_public_id>/speaking/<speaking_public_id>/record")
 @roles_required(UserRole.STUDENT.value)
 def speaking_record(group_public_id, speaking_public_id):
-    """The browser recording page: microphone guidance, the recorder, a
-    local preview, "record again", and the one final submit control.
+    """Compatibility URL for bookmarks to the former recording page.
 
     Reachable **only** while the activity is open and nothing has been
     submitted. An already-submitted Student is sent to their receipt; a
@@ -448,14 +444,13 @@ def speaking_record(group_public_id, speaking_public_id):
     re-proved authoritatively in the POST, so this page decides
     presentation and never authorization.
 
-    The signed submission token is minted here, from **freshly read
-    persisted state**, and travels as a hidden input. A GET writes
-    nothing.
+    The authorized overview now contains the recorder and mints its signed
+    token from freshly read persisted state. A GET writes nothing.
     """
     tz_name = _tz_name()
     reference_utc = _now()
     row = _visible_or_404(group_public_id, speaking_public_id, reference_utc)
-    assignment, activity = row[0], row[5]
+    activity = row[5]
     submission = student_speaking_submission(activity.id, current_user.id)
     if submission is not None:
         flash(
@@ -474,17 +469,22 @@ def speaking_record(group_public_id, speaking_public_id):
         )
         return redirect(_detail_url(group_public_id, speaking_public_id))
 
-    return _render_record_page(
-        group_public_id, speaking_public_id, item,
-        SpeakingSubmissionForm(formdata=None),
-        _make_token(
-            current_user.public_id, group_public_id, assignment, activity
-        ),
-    )
+    return private_redirect(_detail_url(group_public_id, speaking_public_id))
+
+
+def _recorder_context(group_public_id, speaking_public_id, form, token):
+    """Shared presentation for the inline recorder and rejected uploads."""
+    return {
+        "form": form,
+        "submission_token": token,
+        "submit_url": _submit_url(group_public_id, speaking_public_id),
+        "audio_accept": SPEAKING_AUDIO_ACCEPT,
+        "supported_formats": SPEAKING_FORMATS_LABEL,
+    }
 
 
 def _render_record_page(group_public_id, speaking_public_id, item, form, token):
-    """Render the recording page with a form and a token the caller
+    """Render the activity's inline recorder with a form and a token the caller
     supplies.
 
     The caller decides which token: a fresh one on a GET (paired with
@@ -494,15 +494,14 @@ def _render_record_page(group_public_id, speaking_public_id, item, form, token):
     exists to close.
     """
     return private_no_store(
-        "student/speaking/record.html",
+        "student/speaking/detail.html",
         activity=item,
-        form=form,
-        submission_token=token,
-        submit_url=_submit_url(group_public_id, speaking_public_id),
-        detail_url=_detail_url(group_public_id, speaking_public_id),
-        audio_accept=SPEAKING_AUDIO_ACCEPT,
-        supported_formats=SPEAKING_FORMATS_LABEL,
+        submission=None,
+        can_record=True,
+        receipt_url=_receipt_url(group_public_id, speaking_public_id),
+        list_url=_list_url(),
         tz_name=_tz_name(),
+        **_recorder_context(group_public_id, speaking_public_id, form, token),
     )
 
 
@@ -711,7 +710,6 @@ def speaking_submit(group_public_id, speaking_public_id):
     """
     detail_url = _detail_url(group_public_id, speaking_public_id)
     receipt_url = _receipt_url(group_public_id, speaking_public_id)
-    record_url = _record_url(group_public_id, speaking_public_id)
 
     # ------------------------------------------------------------------
     # Pre-lock preview: the same SQL-scoped authorization the GET uses.
@@ -956,7 +954,7 @@ def speaking_submit(group_public_id, speaking_public_id):
                 "again.",
                 "danger",
             )
-            return redirect(record_url)
+            return redirect(detail_url)
         committed = True
     except HTTPException:
         # An intentional abort() (e.g. the non-disclosing 404 from the

@@ -38,7 +38,7 @@
     {% if has_prev %}
     <a class="btn btn--secondary" href="{{ url_for('admin.announcements_overview', page=page - 1, scope=filter_scope or None, status=filter_status or None) }}">Previous</a>
     {% endif %}
-    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page &middot; times in {{ tz_name }}</span>
+    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page </span>
     {% if has_next %}
     <a class="btn btn--secondary" href="{{ url_for('admin.announcements_overview', page=page + 1, scope=filter_scope or None, status=filter_status or None) }}">Next</a>
     {% endif %}

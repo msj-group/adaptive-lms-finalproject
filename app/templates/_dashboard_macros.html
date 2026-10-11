@@ -11,7 +11,7 @@
   {% if occ %}
   <h3>{{ occ.ref.course_title }}</h3><p class="today-meta">{{ occ.ref.group_name }} · {{ occ.ref.term_name }}</p>
   <p>{{ weekday_name(occ.ref.day_of_week) }} · <time datetime="{{ occ.start.isoformat() }}">{{ occ.start.strftime('%d %b %Y') }}, {{ time_range(occ.start, occ.end) }}</time></p>
-  <p class="today-meta">{{ occ.ref.location or 'Location not specified' }} · {{ tz_name }}</p>
+  <p class="today-meta">{{ occ.ref.location or 'Location not specified' }}</p>
   <div class="today-actions">{% if role == 'teacher' %}<a class="btn btn--primary" href="{{ url_for('teacher.group_attendance', group_public_id=occ.ref.group_public_id) }}">Open attendance</a><a href="{{ url_for('workspace.teacher_group', group_public_id=occ.ref.group_public_id) }}">Open group</a>{% else %}<a class="btn btn--secondary" href="{{ url_for('workspace.student_course', group_public_id=occ.ref.group_public_id) }}">Open course</a>{% endif %}</div>
   {% else %}<p>No upcoming class is scheduled for your current groups.</p>{% endif %}
   <a class="today-calendar-link" href="{{ url_for(role ~ '.calendar') }}">View calendar</a>
@@ -58,7 +58,7 @@
         {% if show_group %}<th>Group</th><th>Course</th>{% endif %}
         <th>Day</th>
         <th>Date</th>
-        <th>Time ({{ tz_name }})</th>
+        <th>Time</th>
         <th>Location</th>
         <th>Status</th>
       </tr>
@@ -117,7 +117,7 @@
       <strong>Next</strong>:
     {%- endif -%}
     {{ " " }}{{ weekday_name(occ.ref.day_of_week) }} {{ occ.start.strftime("%Y-%m-%d") }},
-    {{ time_range(occ.start, occ.end) }} ({{ tz_name }})
+    {{ time_range(occ.start, occ.end) }}
     {%- if occ.ref.location %} &mdash; {{ occ.ref.location }}{% endif -%}
   {%- else -%}
     <span class="badge badge--neutral">No upcoming class</span>

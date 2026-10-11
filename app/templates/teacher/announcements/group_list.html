@@ -56,9 +56,9 @@
     <div class="card__body" style="margin-top: var(--space-3); color: var(--color-text-secondary)">
       {% if item.published_local %}
         {{ ann.published_line(item, tz_name) }}
-        {%- if item.withdrawn_local %} &middot; withdrawn {{ item.withdrawn_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}){% endif %}
+        {%- if item.withdrawn_local %} &middot; withdrawn {{ item.withdrawn_local.strftime("%Y-%m-%d %H:%M") }}{% endif %}
       {% else %}
-        Draft &middot; last saved {{ item.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})
+        Draft &middot; last saved {{ item.updated_local.strftime("%Y-%m-%d %H:%M") }}
       {% endif %}
     </div>
   </div>

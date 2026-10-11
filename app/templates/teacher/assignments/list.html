@@ -42,7 +42,7 @@
   <strong>Student visibility:</strong> enrolled students see an assignment only once it is <em>published</em> <em>and</em> its opening
   time has passed, while the whole academic chain stays active. A published assignment that has not opened yet shows as
   <em>Scheduled</em> to you and to nobody else. An assignment stays visible to students after its deadline. All times below are in the
-  center timezone (<strong>{{ tz_name }}</strong>).
+  center timezone.
 </div>
 {% endif %}
 
@@ -103,11 +103,11 @@
         </dd>
 </div>
 <div class="activity-fact">
-<dt>Opens ({{ tz_name }})</dt>
+<dt>Opens</dt>
 <dd>{{ item.opens_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
 <div class="activity-fact">
-<dt>Due ({{ tz_name }})</dt>
+<dt>Due</dt>
 <dd>{{ item.due_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
 </dl>

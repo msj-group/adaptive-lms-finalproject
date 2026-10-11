@@ -68,7 +68,7 @@
         <div class="card__title" style="margin-bottom: var(--space-1); word-break: break-word">
           <a href="{{ url_for(topic_endpoint, group_public_id=group.public_id, topic_public_id=topic.public_id) }}">{{ topic.title }}</a>
         </div>
-        <div class="card__body">Started by {{ topic.author_name }} ({{ topic.author_role_label }}) &middot; {{ topic.created_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</div>
+        <div class="card__body">Started by {{ topic.author_name }} ({{ topic.author_role_label }}) &middot; {{ topic.created_local.strftime("%Y-%m-%d %H:%M") }}</div>
       </div>
       {{ status_badge(topic.is_locked) }}
     </div>
@@ -103,8 +103,7 @@
 </div>
 <p class="ds-section__desc">
   Started by <strong>{{ topic.author_name }}</strong> ({{ topic.author_role_label }}) on
-  {{ topic.created_local.strftime("%Y-%m-%d %H:%M") }}. Times are shown in the center timezone
-  (<strong>{{ tz_name }}</strong>).
+  {{ topic.created_local.strftime("%Y-%m-%d %H:%M") }}. Times are shown in the center timezone.
 </p>
 {% if topic.is_locked %}
 <div class="alert alert--warning" role="status" style="margin-bottom: var(--space-4)">

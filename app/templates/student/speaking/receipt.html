@@ -28,7 +28,7 @@
 
 <div class="alert alert--success" style="margin-bottom: var(--space-6)">
   <span dir="auto">{{ activity.group_name }} · {{ activity.term_name }}</span><br>
-  <strong>Submitted</strong> on {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+  <strong>Submitted</strong> on {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }}.
   Final recording: no edit, replacement or resubmission.
 </div>
 
@@ -48,7 +48,7 @@
   <h2>Teacher Feedback</h2>
   {% if feedback and feedback.state == "present" %}
   <div class="alert alert--info" style="margin-bottom: var(--space-4)">
-    Written by {{ feedback.reviewer_name }} on {{ feedback.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+    Written by {{ feedback.reviewer_name }} on {{ feedback.updated_local.strftime("%Y-%m-%d %H:%M") }}.
     This is your teacher's written comment on your recording &mdash; it is not a grade or a pass mark.
   </div>
   <div class="st-panel">

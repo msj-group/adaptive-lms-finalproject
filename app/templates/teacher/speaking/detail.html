@@ -60,15 +60,15 @@
     </dd>
 </div>
     <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens ({{ tz_name }})</dt>
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
     <dd style="margin:0">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
     <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due ({{ tz_name }})</dt>
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
     <dd style="margin:0">{{ activity.due_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
     <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Published ({{ tz_name }})</dt>
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Published</dt>
     <dd style="margin:0">
       {% if activity.published_local %}{{ activity.published_local.strftime("%Y-%m-%d %H:%M") }}
       {% else %}&mdash;{% endif %}

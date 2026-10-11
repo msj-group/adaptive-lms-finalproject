@@ -50,5 +50,5 @@
 {% macro session_when(session, tz_name, weekday) -%}
   {{ session.session_date.isoformat() }}
   {%- if weekday is not none %} ({{ weekday_name(weekday) }}){% endif %}
-  &middot; {{ time_range(session.start_time, session.end_time) }} ({{ tz_name }})
+  &middot; {{ time_range(session.start_time, session.end_time) }}
 {%- endmacro %}

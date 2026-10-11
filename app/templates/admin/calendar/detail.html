@@ -29,7 +29,6 @@
           {%- if event.all_day %} All day
           {%- else %} {{ event.start_time.strftime("%H:%M") }}&ndash;{{ event.end_time.strftime("%H:%M") }}
           {%- endif %}
-          ({{ tz_name }})
         </div>
         {% if event.location %}
         <div class="card__body" style="color: var(--color-text-secondary)">{{ event.location }}</div>
@@ -48,7 +47,7 @@
 
     <div class="card__body" style="margin-top: var(--space-4); color: var(--color-text-secondary)">
       Created by {{ event.created_by_name }} on
-      {{ event.created_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}) &middot;
+      {{ event.created_local.strftime("%Y-%m-%d %H:%M") }} &middot;
       last changed {{ event.updated_local.strftime("%Y-%m-%d %H:%M") }} &middot;
       version {{ event.version }}
       {%- if event.cancelled_local %} &middot; cancelled

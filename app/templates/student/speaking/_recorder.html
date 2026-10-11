@@ -1,57 +1,3 @@
-{% extends "layouts/activity_base.html" %}
-{% set activity_kind = 'speaking' %}
-{% set activity_phase = 'record' %}
-{% block title %}Record — {{ activity.title }}{% endblock %}
-{% block portal_nav %}{% set active_nav = 'speaking' %}{% include "student/_portal_nav.html" %}{% endblock %}
-{% block portal_content %}
-<div class="activity-surface">
-
-{#- Phase 4 / M06, the browser recording page.
-
-    `activity` is a plain presentation dict; the row behind it already
-    satisfied the whole visibility formula in SQL, and the route additionally
-    proved that this student has NOT submitted yet and that the activity is
-    currently open. Both of those are re-proved authoritatively under locks in
-    the POST, so nothing on this page is an authorization decision.
-
-    **This page works without JavaScript.** The form below is an ordinary
-    multipart POST with a real file input and a real submit button. When the
-    browser supports MediaRecorder, static/js/speaking_recorder.js hides the
-    file input and drives the recorder instead, attaching the recorded take to
-    that same input before the same form is submitted -- so the CSRF token and
-    the signed submission token travel with the audio unchanged either way.
-
-    Microphone permission is NOT requested when this page loads. It is
-    requested only after the student presses "Start recording", and the
-    guidance below says so before they do. -#}
-
-
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for category, message in messages %}
-  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
-  {% endfor %}
-{% endwith %}
-
-
-
-<div class="alert alert--warning" style="margin-bottom: var(--space-6)"><span dir="auto">{{ activity.group_name }} · {{ activity.term_name }}</span><br><strong>One final recording.</strong> Unlimited local retakes; discarded recordings stay on your device. Only final submission uploads it. No edit, replacement or resubmission. Deadline: {{ activity.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).</div>
-
-<div class="st-speaking-layout">
-<aside class="activity-speaking-brief">
-<section style="margin-bottom: var(--space-6)">
-  <h2>What to say</h2>
-  <div class="st-panel">
-    {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe. #}
-    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
-  </div>
-</section>
-
-</aside>
-<div class="activity-speaking-studio">
-<section>
-  <h2>Your recording</h2>
-
   <div class="st-panel" style="margin-bottom: var(--space-4)" data-speaking-recorder data-recorder-state="ready">
     <div class="activity-record-mark" aria-hidden="true">{{ activity_ui.symbol('speaking',40) }}</div>
     {#- Microphone guidance, shown BEFORE any permission is requested. It
@@ -121,14 +67,7 @@
 
     <div class="ds-row" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary", **{"data-speaking-submit": "1", "data-research-id": "speaking_submit"}) }}
-      <a class="btn btn--secondary" href="{{ detail_url }}">Cancel</a>
+      <a class="btn btn--secondary" href="{{ list_url }}">Cancel</a>
     </div>
   </form>
-</section>
-</div>
-</div>
-<script src="{{ url_for('static', filename='js/speaking_recorder.js') }}" defer>
-</script>
-
-</div>
-{% endblock %}
+<script src="{{ url_for('static', filename='js/speaking_recorder.js') }}" defer></script>

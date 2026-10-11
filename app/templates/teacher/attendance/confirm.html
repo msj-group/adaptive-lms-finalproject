@@ -24,7 +24,7 @@
   <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Class date</dt>
     <dd style="margin:0"><strong>{{ session_date.isoformat() }}</strong> ({{ weekday }})</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time ({{ tz_name }})</dt>
+    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time</dt>
     <dd style="margin:0">{{ start_time.strftime("%H:%M") }}&ndash;{{ end_time.strftime("%H:%M") }}</dd>
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Location</dt>
     <dd style="margin:0">{{ location or "—" }}</dd>

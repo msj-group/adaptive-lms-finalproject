@@ -54,7 +54,8 @@ def student_courses():
         recently_opened, build_recent_view, DASHBOARD_GROUP_LIMIT, RECENTLY_OPENED_LIMIT)
     data = student_dashboard(current_user.id, app_now(_tz()))
     progress, truncated = student_group_progress(current_user.id) if data["cards"] else ([], False)
-    recent = build_recent_view(recently_opened(current_user.id), _tz()) if data["cards"] else []
+    recent = build_recent_view(recently_opened(current_user.id,
+        group_public_ids=[card["group_public_id"] for card in data["cards"]]), _tz()) if data["cards"] else []
     return private_page("workspace/groups.html", cards=data["cards"], teacher=False,
                         progress_groups=progress, progress_truncated=truncated,
                         progress_group_cap=DASHBOARD_GROUP_LIMIT,

@@ -4,11 +4,11 @@
 {% block research_content %}
 <h1 data-workspace-page-heading>Audit log</h1>
 <p class="ds-section__desc">Operator audit: configurations, collection, exclusions, exports, downloads and retention. No student content.</p>
-<form method="get" class="workspace-filter-grid yc-filter-form"><div class="field"><label for="action">Action</label><select class="field__input" id="action" name="action"><option value="">All actions</option>{% for action in actions %}<option value="{{ action }}"{% if filters.action == action %} selected{% endif %}>{{ action.replace('_',' ').title() }}</option>{% endfor %}</select></div><details class="workspace-date-filters"{% if filters['from'] or filters['to'] %} open{% endif %}><summary>Date range · {{ filters["from"] or "—" }} – {{ filters["to"] or "—" }}</summary><div class="workspace-filter-grid">{% for key,label in [('from','From'),('to','Through')] %}<div class="field"><label for="{{ key }}">{{ label }} ({{ tz_name }})</label><input class="field__input" type="date" name="{{ key }}" id="{{ key }}" value="{{ filters[key] }}"></div>{% endfor %}</div></details><div class="ds-row yc-actions"><button class="btn btn--primary">Apply filters</button><a href="{{ url_for('research.activity_log') }}">Reset</a></div></form>
+<form method="get" class="workspace-filter-grid yc-filter-form"><div class="field"><label for="action">Action</label><select class="field__input" id="action" name="action"><option value="">All actions</option>{% for action in actions %}<option value="{{ action }}"{% if filters.action == action %} selected{% endif %}>{{ action.replace('_',' ').title() }}</option>{% endfor %}</select></div><details class="workspace-date-filters"{% if filters['from'] or filters['to'] %} open{% endif %}><summary>Date range · {{ filters["from"] or "—" }} – {{ filters["to"] or "—" }}</summary><div class="workspace-filter-grid">{% for key,label in [('from','From'),('to','Through')] %}<div class="field"><label for="{{ key }}">{{ label }}</label><input class="field__input" type="date" name="{{ key }}" id="{{ key }}" value="{{ filters[key] }}"></div>{% endfor %}</div></details><div class="ds-row yc-actions"><button class="btn btn--primary">Apply filters</button><a href="{{ url_for('research.activity_log') }}">Reset</a></div></form>
 {% if rows %}
 <div style="overflow-x: auto">
 <table class="dash-table" style="width:100%">
-  <thead><tr><th scope="col">When ({{ tz_name }})</th><th scope="col">Action</th><th scope="col">By</th>
+  <thead><tr><th scope="col">When</th><th scope="col">Action</th><th scope="col">By</th>
     <th scope="col">Configuration</th><th scope="col">Subject</th><th scope="col">Detail</th></tr></thead>
   <tbody>
   {% for row in rows %}

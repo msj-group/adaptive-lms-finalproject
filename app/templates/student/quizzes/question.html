@@ -15,7 +15,7 @@
   </span>
 </div>
 <p class="ds-section__desc">
-  Attempt {{ attempt.attempt_number }} &middot; closes {{ attempt.deadline_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})
+  Attempt {{ attempt.attempt_number }} &middot; closes {{ attempt.deadline_local.strftime("%Y-%m-%d %H:%M") }}
 </p>
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}{% if message not in ('Answer saved.', _('Answer saved.')) %}<div class="alert alert--{{ category }}">{{ message }}</div>{% endif %}{% endfor %}

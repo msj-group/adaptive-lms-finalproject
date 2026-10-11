@@ -23,7 +23,6 @@
 <dd>{{ assignment.due_local.strftime('%d %b %Y · %H:%M') }}</dd>
 </div>
 </dl>
-<p class="activity-timezone">{{ tz_name }}</p>
 {% if assignment.has_submissions %}<p class="activity-note">This assignment has student submissions and can no longer be edited.</p>{% elif operational %}<a class="btn btn--primary" href="{{ url_for('teacher.assignment_edit',group_public_id=group.public_id,assignment_public_id=assignment.public_id) }}">Edit Assignment</a>{% endif %}<a class="btn btn--secondary" href="{{ url_for('teacher.assignment_submissions',group_public_id=group.public_id,assignment_public_id=assignment.public_id) }}">Submissions</a>
 <a href="{{ url_for('teacher.group_assignments',group_public_id=group.public_id) }}">Publication & all assignments</a>
 </aside>

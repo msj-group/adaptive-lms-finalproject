@@ -71,7 +71,7 @@
 <div class="alert alert--info" style="margin-bottom: var(--space-6)">
   <strong>This quiz is published.</strong> Enrolled students can open it from
   {{ availability.opens_local.strftime("%Y-%m-%d %H:%M") }} and can start an attempt until
-  {{ availability.closes_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}); after that they can still read
+  {{ availability.closes_local.strftime("%Y-%m-%d %H:%M") }}; after that they can still read
   the attempts they already made. Each student may start
   {{ _n('%(count)d attempt', '%(count)d attempts', availability.attempt_limit) }}{% if availability.time_limit_minutes %},
   each limited to {{ availability.time_limit_minutes }} minutes or the closing time, whichever comes first{% endif %}.
@@ -81,7 +81,7 @@
 {% else %}
 <div class="alert alert--info" style="margin-bottom: var(--space-6)">
   <strong>{{ _('Draft — hidden from students.') }}</strong> {{ _('Assigned teachers share editing.') }}
-  {{ _('Publish requires %(audio)sa complete availability window and 1–%(count)d questions with valid answer options. Times: %(timezone)s.', audio=_('valid audio, ') if activity_kind == 'listening' else '', count=max_questions, timezone=tz_name) }}
+  {{ _('Publish requires %(audio)sa complete availability window and 1–%(count)d questions with valid answer options.', audio=_('valid audio, ') if activity_kind == 'listening' else '', count=max_questions) }}
 </div>
 {% endif %}
 
@@ -95,11 +95,11 @@
   <dl style="display:grid; grid-template-columns: 160px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
-    <dd style="margin:0">{% if availability.opens_local %}{{ availability.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}){% else %}Not set{% endif %}</dd>
+    <dd style="margin:0">{% if availability.opens_local %}{{ availability.opens_local.strftime("%Y-%m-%d %H:%M") }}{% else %}Not set{% endif %}</dd>
 </div>
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Closes</dt>
-    <dd style="margin:0">{% if availability.closes_local %}{{ availability.closes_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}){% else %}Not set{% endif %}</dd>
+    <dd style="margin:0">{% if availability.closes_local %}{{ availability.closes_local.strftime("%Y-%m-%d %H:%M") }}{% else %}Not set{% endif %}</dd>
 </div>
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time limit</dt>
@@ -136,11 +136,11 @@
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>
-    <dd style="margin:0">{{ quiz.created_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dd style="margin:0">{{ quiz.created_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Last changed</dt>
-    <dd style="margin:0">{{ quiz.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dd style="margin:0">{{ quiz.updated_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
   </dl>
 </div>

@@ -149,8 +149,8 @@ def enrollment_operation(group_public_id, action):
         flash("Enrollment operation saved with its academic and financial history.", "success")
         if action in {"enroll", "correct_course"} and study_has_started(episode.group, at=episode.created_at):
             flash(
-                f"Study for {episode.group.name} started on {local_moment(episode.group.study_starts_at)} "
-                f"({current_app.config['APP_TIMEZONE']}). The student was enrolled after study started.",
+                f"Study for {episode.group.name} started on {local_moment(episode.group.study_starts_at)}. "
+                "The student was enrolled after study started.",
                 "warning",
             )
         return redirect(url_for("admin.group_members", group_public_id=episode.group.public_id))

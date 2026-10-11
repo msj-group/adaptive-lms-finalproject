@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/foundation.css', v='st2-density-20261010') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/shell.css', v='st2-density-20261010') }}">
   {% if template_messages %}<link rel="stylesheet" href="{{ url_for('static', filename='css/messages.css', v='emoji2') }}">
-  {% elif template_student %}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/features.css', v='st2-density-20261010') }}">
+  {% elif template_student %}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/features.css', v='student-cards-20261011') }}">
   {% else %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/operations.css', v='st2-density-20261010') }}">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/mobile-navigation.css', v='st2-nav-five-20261011') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/notifications.css', v='st2-density-20261010') }}">
@@ -31,4 +31,4 @@
 {% block workspace_context %}{% include "_workspace_context.html" %}{% endblock %}
 {% block portal_content %}{% endblock %}
 {% block workspace_footer %}{% endblock %}
-{% block body_scripts %}<script src="{{ url_for('static', filename='js/query_filters.js') }}" defer></script><script src="{{ url_for('static', filename='js/mobile_navigation.js') }}" defer></script><script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace_search.js') }}" defer></script><script src="{{ url_for('static', filename='js/live_query.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/query_filters.js', v='quiet-success-20261011') }}" defer></script><script src="{{ url_for('static', filename='js/mobile_navigation.js') }}" defer></script><script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace_search.js') }}" defer></script><script src="{{ url_for('static', filename='js/live_query.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}

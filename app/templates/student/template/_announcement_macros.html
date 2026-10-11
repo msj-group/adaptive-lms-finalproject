@@ -46,7 +46,7 @@
 
 {% macro published_line(announcement, tz_name) -%}
   {%- if announcement.published_local -%}
-    Published {{ announcement.published_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})
+    Published {{ announcement.published_local.strftime("%Y-%m-%d %H:%M") }}
   {%- else -%}
     Not published
   {%- endif -%}

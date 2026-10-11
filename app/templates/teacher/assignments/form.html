@@ -63,7 +63,7 @@
       {{ form.opens_at.label(class_="field__label") }}
       {{ form.opens_at(class_="field__input", step="1") }}
       <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">
-        Center timezone (<strong>{{ tz_name }}</strong>). Students cannot see this assignment before this moment, even once it is published.
+        Center timezone. Students cannot see this assignment before this moment, even once it is published.
       </span>
       {% for error in form.opens_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
@@ -71,7 +71,7 @@
     <div class="field" style="max-width:none; ">
       {{ form.due_at.label(class_="field__label") }}
       {{ form.due_at(class_="field__input", step="1") }}
-      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">{{ tz_name }}. After opening time; the task stays readable after the deadline.</span>
+      <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">After opening time; the task stays readable after the deadline.</span>
       {% for error in form.due_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 

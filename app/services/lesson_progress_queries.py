@@ -390,11 +390,13 @@ def continue_learning(student_id):
     }
 
 
-def recently_opened(student_id, limit=RECENTLY_OPENED_LIMIT):
+def recently_opened(student_id, limit=RECENTLY_OPENED_LIMIT, *, group_public_ids=None):
     """At most `limit` Lessons the Student may open right now, most
     recently opened first (``last_opened_at`` then row id, both
     descending). Rows of Lessons that are no longer visible are skipped by
-    the query itself, never counted towards the limit. One query."""
+    the query itself, never counted towards the limit. With explicit course-card
+    groups, apply the limit to each Group in the same batched query. One query.
+    """
     query = (
         db.session.query(
             Lesson.public_id,
@@ -411,7 +413,7 @@ def recently_opened(student_id, limit=RECENTLY_OPENED_LIMIT):
         .join(Unit, and_(Unit.id == Lesson.unit_id, Unit.group_id == LessonProgress.group_id))
         .join(Group, Group.id == LessonProgress.group_id)
     )
-    return (
+    query = (
         scope_to_student(query, student_id)
         .filter(
             LessonProgress.student_id == student_id,
@@ -420,6 +422,24 @@ def recently_opened(student_id, limit=RECENTLY_OPENED_LIMIT):
             Lesson.status == _PUBLISHED,
             Unit.status == _ACTIVE,
         )
+    )
+    if group_public_ids is not None:
+        ranked = (
+            query.filter(Group.public_id.in_(group_public_ids))
+            .add_columns(func.row_number().over(
+                partition_by=Group.id,
+                order_by=(LessonProgress.last_opened_at.desc(), LessonProgress.id.desc()),
+            ).label("recent_rank"))
+            .subquery()
+        )
+        return (
+            db.session.query(*list(ranked.c)[:8])
+            .filter(ranked.c.recent_rank <= limit)
+            .order_by(list(ranked.c)[4], ranked.c.recent_rank)
+            .all()
+        )
+    return (
+        query
         .order_by(LessonProgress.last_opened_at.desc(), LessonProgress.id.desc())
         .limit(limit)
         .all()

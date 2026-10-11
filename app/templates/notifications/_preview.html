@@ -3,5 +3,4 @@
 <div data-notification-fragment>
 <div class="notif-preview-summary"><span class="notif-count">{{ _('%(count)s unread overall', count=unread_total) }}</span><span>Recent updates</span></div>
 {% if notifications %}<ul class="notif-list">{% for item in notifications %}{{ notice.row(item, tz_name, compact=true) }}{% endfor %}</ul>{% else %}<div class="notif-preview-empty"><span class="notif-empty-icon" aria-hidden="true">{{ ui.icon('bell', 28) }}</span><strong>No notifications yet</strong><p>Your updates will appear here.</p></div>{% endif %}
-<p class="notif-preview-note">{{ _('Times shown in %(timezone)s.', timezone=tz_name) }}</p>
 </div>

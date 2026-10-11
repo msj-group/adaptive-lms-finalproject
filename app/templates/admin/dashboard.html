@@ -43,7 +43,7 @@
 <div class="dash-section yc-section">
   <h2>Current &amp; upcoming classes</h2>
   <p class="ds-section__desc">Only groups whose Academic Term, Level, Course, and Group are all active appear here.</p>
-  <ul class="today-list">{% for occ in operational_classes[:3] %}<li class="today-action-row"><div><h3><a href="{{ url_for('admin.group_schedules',group_public_id=occ.ref.group_public_id) }}">{{ occ.ref.group_name }}</a></h3><p class="today-meta">{{ occ.ref.course_title }} · {{ occ.ref.term_name }}</p><time datetime="{{ occ.start.isoformat() }}">{{ occ.start.strftime('%a %d %b') }} · {{ dash.time_range(occ.start,occ.end) }} · {{ tz_name }}</time><p class="today-meta">{{ occ.ref.location or 'Location not specified' }}</p></div></li>{% else %}<li>No classes in the next 7 days</li>{% endfor %}</ul><a href="{{ url_for('admin.calendar') }}">View calendar</a>
+  <ul class="today-list">{% for occ in operational_classes[:3] %}<li class="today-action-row"><div><h3><a href="{{ url_for('admin.group_schedules',group_public_id=occ.ref.group_public_id) }}">{{ occ.ref.group_name }}</a></h3><p class="today-meta">{{ occ.ref.course_title }} · {{ occ.ref.term_name }}</p><time datetime="{{ occ.start.isoformat() }}">{{ occ.start.strftime('%a %d %b') }} · {{ dash.time_range(occ.start,occ.end) }}</time><p class="today-meta">{{ occ.ref.location or 'Location not specified' }}</p></div></li>{% else %}<li>No classes in the next 7 days</li>{% endfor %}</ul><a href="{{ url_for('admin.calendar') }}">View calendar</a>
 </div>
 
 <div class="dash-section yc-section">

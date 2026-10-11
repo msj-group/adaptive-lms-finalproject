@@ -29,11 +29,11 @@
 <dt>Group</dt><dd dir="auto">{{ activity.group_name }} · {{ activity.term_name }}</dd>
 </div><div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
-    <dd style="margin:0">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dd style="margin:0">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
-    <dd style="margin:0">{{ activity.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dd style="margin:0">{{ activity.due_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Your answer</dt>
@@ -73,7 +73,7 @@
 <section style="margin-top: var(--space-6)">
   <h2>Your Recording</h2>
   <div class="alert alert--success" style="margin-bottom: var(--space-4)">
-    <strong>Submitted</strong> on {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+    <strong>Submitted</strong> on {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }}.
     Final recording: no edit, replacement or resubmission.
   </div>
   <a class="btn btn--primary" href="{{ receipt_url }}">Listen to your recording and read feedback</a>
@@ -82,8 +82,8 @@
 {% elif can_record %}
 <section style="margin-top: var(--space-6)">
   <h2>Record Your Answer</h2>
-  <div class="alert alert--warning" style="margin-bottom: var(--space-4)"><strong>One final recording.</strong> Unlimited local retakes; only final submission uploads it. No edit, replacement or resubmission. Deadline: {{ activity.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).</div>
-  <a class="btn btn--primary" href="{{ record_url }}">Open the recorder</a>
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)"><strong>One final recording.</strong> Unlimited local retakes; only final submission uploads it. No edit, replacement or resubmission. Deadline: {{ activity.due_local.strftime("%Y-%m-%d %H:%M") }}.</div>
+  {% include "student/speaking/_recorder.html" %}
 </section>
 {% else %}<div class="empty-state"><div class="empty-state__title">Recording unavailable</div><p>Recording is not available right now. You can still read the task instructions.</p></div>
 {% endif %}

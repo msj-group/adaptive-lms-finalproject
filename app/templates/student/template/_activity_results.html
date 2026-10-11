@@ -7,7 +7,7 @@
 <span>Build for this group</span>{% for kind,endpoint in [('assignment','teacher.assignment_create'),('quiz','teacher.quiz_create'),('listening','teacher.listening_create'),('speaking','teacher.speaking_create')] %}<a href="{{ url_for(endpoint,group_public_id=hub_group.public_id) }}">{{ activity_ui.symbol(kind,16) }} {{ _('New %(type)s',type=_(types[kind])) }}</a>{% endfor %}</nav>{% endif %}
 <div class="activity-results-heading">
 <h2>{{ _('Activity library' if teacher else 'Your activities') }}</h2>
-<p>{{ _('Page %(page)d · %(count)d activities shown',page=page,count=items|length) }}{% if has_next %} <span>More on the next page</span>{% endif %}</p>
+{% if teacher %}<p>{{ _('Page %(page)d · %(count)d activities shown',page=page,count=items|length) }}{% if has_next %} <span>More on the next page</span>{% endif %}</p>{% endif %}
 </div>
 <div class="st-activity-grid">{% for item in items %}<article class="st-panel st-activity-card st-activity-card--{{ item.kind }}">
 <header>
@@ -31,5 +31,4 @@
 </article>{% else %}<div class="st-empty">{{ ui.icon('layers',38) }}<h3>No activities in this view</h3>
 
 </div>{% endfor %}</div>
-<p class="activity-timezone">{{ tz_name }}</p>
 <nav class="activity-hub-pager" aria-label="Activity pages">{% if page > 1 %}<a class="btn btn--secondary" href="{{ url_for(hub_endpoint,page=page-1,type=selected_type,state=selected_state,course=selected_course,group=selected_group) }}">Previous</a>{% endif %}{% if has_next %}<a class="btn btn--secondary" href="{{ url_for(hub_endpoint,page=page+1,type=selected_type,state=selected_state,course=selected_course,group=selected_group) }}">Next</a>{% endif %}</nav>

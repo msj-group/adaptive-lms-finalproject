@@ -19,7 +19,7 @@
     <div id="thread-search" class="messenger-thread-search" data-thread-search hidden><label class="messenger-sr-only" for="thread-query">Search messages on this page</label><input id="thread-query" type="search" placeholder="Search messages on this page" data-thread-query><span role="status" data-thread-search-status></span></div>
     {{ msg.flash_messages() }}
     <div class="messenger-timeline-wrap">
-      <div class="messenger-timeline" tabindex="0" role="region" aria-label="Conversation messages, times in {{ tz_name }}" data-message-timeline data-latest-page="{{ 'true' if page == 1 else 'false' }}">
+      <div class="messenger-timeline" tabindex="0" role="region" aria-label="Conversation messages" data-message-timeline data-latest-page="{{ 'true' if page == 1 else 'false' }}">
         {% if has_older %}<nav class="messenger-history" aria-label="Older messages"><a href="{{ url_for('messages.thread', thread_public_id=thread.public_id, page=page + 1) }}">{{ msg.icon('clock', 16) }} Older messages</a></nav>{% endif %}
         {% set dates = namespace(previous=none) %}
         {% if not messages %}<div class="messenger-greeting"><div>{{ msg.avatar(other.full_name if other else 'Member', other.role_label if other else 'Member') }}<h2>Your conversation starts here.</h2><p>Write a new message below.</p></div></div>{% endif %}

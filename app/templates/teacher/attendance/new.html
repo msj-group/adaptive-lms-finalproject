@@ -33,7 +33,7 @@
 </div>
 {% else %}
 
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">Choose a past or current meeting on the scheduled weekday and within its date range. Times: {{ tz_name }}; today: {{ today_local.isoformat() }}. The class details are captured permanently.</div>
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">Choose a past or current meeting on the scheduled weekday and within its date range. Today: {{ today_local.isoformat() }}. The class details are captured permanently.</div>
 
 <form method="post" class="card yc-panel yc-form" novalidate>
   {{ form.hidden_tag() }}

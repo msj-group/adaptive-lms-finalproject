@@ -11,7 +11,7 @@
   <article class="st-panel">
     <span class="badge badge--primary">{{ episode.status|capitalize }}</span>
     <h2 style="margin-top: 16px">{{ episode.group.course.title }}</h2>
-    <p class="card__body">{{ episode.group.name }} · {{ episode.group.academic_term.name }} · Enrollment started {{ workspace_local(episode.created_at).strftime('%d %b %Y, %H:%M') }} ({{ config.APP_TIMEZONE }})</p>
+    <p class="card__body">{{ episode.group.name }} · {{ episode.group.academic_term.name }} · Enrollment started {{ workspace_local(episode.created_at).strftime('%d %b %Y, %H:%M') }}</p>
     <div class="ds-row">{% for kind,label in kinds.items() %}<a class="btn btn--secondary" href="{{ url_for('student.episode_records', episode_public_id=episode.public_id, kind=kind) }}">{{ label }} {{ ui.icon('arrow-up', 15) }}</a>{% endfor %}</div>
   </article>
 {% else %}

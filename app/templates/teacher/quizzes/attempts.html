@@ -30,7 +30,7 @@
   Attempts are graded automatically, one point per question and nothing else — no partial credit
   and no pass or fail. A question is correct only when the student selected exactly the options
   you marked correct. Unanswered questions count as incorrect. You cannot change a score here.
-  Times are in the center timezone (<strong>{{ tz_name }}</strong>).
+  Times are in the center timezone.
 </div>
 
 <section class="dash-section yc-section" style="margin-top: 0">
@@ -56,11 +56,11 @@
 </dd>
 </div>
 <div class="activity-fact">
-<dt>Started ({{ tz_name }})</dt>
+<dt>Started</dt>
 <dd>{{ item.started_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
 <div class="activity-fact">
-<dt>Submitted ({{ tz_name }})</dt>
+<dt>Submitted</dt>
 <dd>{% if item.submitted_local %}{{ item.submitted_local.strftime("%Y-%m-%d %H:%M") }}{% else %}&mdash;{% endif %}</dd>
 </div>
 <div class="activity-fact">

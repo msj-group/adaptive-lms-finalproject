@@ -31,7 +31,7 @@
 
 <small class="workspace-meta" dir="auto">{{ group.academic_term.name }}</small>
 
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">One final recording per student; unlimited local retakes, only final submission uploads it. Feedback is a comment, not a grade. Drafts are private. Times: {{ tz_name }}.</div>
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">One final recording per student; unlimited local retakes, only final submission uploads it. Feedback is a comment, not a grade. Drafts are private. </div>
 
 {% if not operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
@@ -86,7 +86,7 @@
         </dd>
 </div>
 <div class="activity-fact">
-<dt>Due ({{ tz_name }})</dt>
+<dt>Due</dt>
 <dd>{{ item.due_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
 <div class="activity-fact">

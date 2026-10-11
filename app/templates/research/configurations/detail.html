@@ -18,7 +18,7 @@
 
 <table class="dash-table" style="width:100%">
   <tbody>
-    <tr><th scope="row" style="text-align:left">Collection period ({{ tz_name }})</th>
+    <tr><th scope="row" style="text-align:left">Collection period</th>
         <td>{{ local(configuration.collection_starts_at).strftime("%Y-%m-%d %H:%M") }} &ndash; {{ local(configuration.collection_ends_at).strftime("%Y-%m-%d %H:%M") }}</td></tr>
     <tr><th scope="row" style="text-align:left">Retention in force</th>
         <td>{% if configuration.retention_days %}{{ configuration.retention_days }} days (recorded at activation){% else %}Recorded at activation from the deployment{% endif %}</td></tr>
@@ -26,8 +26,8 @@
     {% for column, label in policy_labels.items() %}
     <tr><th scope="row" style="text-align:left">{{ label }}</th><td>{{ configuration[column] }}</td></tr>
     {% endfor %}
-    {% if configuration.activated_at %}<tr><th scope="row" style="text-align:left">Activated ({{ tz_name }})</th><td>{{ local(configuration.activated_at).strftime("%Y-%m-%d %H:%M") }}</td></tr>{% endif %}
-    {% if configuration.retired_at %}<tr><th scope="row" style="text-align:left">Retired ({{ tz_name }})</th><td>{{ local(configuration.retired_at).strftime("%Y-%m-%d %H:%M") }}</td></tr>{% endif %}
+    {% if configuration.activated_at %}<tr><th scope="row" style="text-align:left">Activated</th><td>{{ local(configuration.activated_at).strftime("%Y-%m-%d %H:%M") }}</td></tr>{% endif %}
+    {% if configuration.retired_at %}<tr><th scope="row" style="text-align:left">Retired</th><td>{{ local(configuration.retired_at).strftime("%Y-%m-%d %H:%M") }}</td></tr>{% endif %}
   </tbody>
 </table>
 

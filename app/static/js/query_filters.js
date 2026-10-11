@@ -92,6 +92,7 @@
         committed = url.href; region.removeAttribute("aria-busy");
         var count = region.querySelector("[data-query-count]");
         status.textContent = count ? t("Showing %(count)s results.", {count:count.dataset.queryCount}) : t("Results updated.");
+        status.hidden = form.hasAttribute("data-query-quiet-success");
         submit.hidden = true;
       } catch (error) {
         if (mine !== revision || error.name === "AbortError") return;

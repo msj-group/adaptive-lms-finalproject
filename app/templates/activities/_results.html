@@ -31,5 +31,4 @@
 </article>{% else %}<div class="activity-hub-empty">{{ ui.icon('layers',38) }}<h3>No activities in this view</h3>
 
 </div>{% endfor %}</div>
-<p class="activity-timezone">{{ tz_name }}</p>
 <nav class="activity-hub-pager" aria-label="Activity pages">{% if page > 1 %}<a class="btn btn--secondary" href="{{ url_for(hub_endpoint,page=page-1,type=selected_type,state=selected_state,course=selected_course,group=selected_group) }}">Previous</a>{% endif %}{% if has_next %}<a class="btn btn--secondary" href="{{ url_for(hub_endpoint,page=page+1,type=selected_type,state=selected_state,course=selected_course,group=selected_group) }}">Next</a>{% endif %}</nav>

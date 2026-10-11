@@ -45,15 +45,15 @@
 </div>
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Started</dt>
-    <dd style="margin:0">{{ attempt.started_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dd style="margin:0">{{ attempt.started_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Deadline</dt>
-    <dd style="margin:0">{{ attempt.deadline_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dd style="margin:0">{{ attempt.deadline_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submitted</dt>
-    <dd style="margin:0">{% if attempt.submitted_local %}{{ attempt.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}){% else %}&mdash;{% endif %}</dd>
+    <dd style="margin:0">{% if attempt.submitted_local %}{{ attempt.submitted_local.strftime("%Y-%m-%d %H:%M") }}{% else %}&mdash;{% endif %}</dd>
 </div>
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Score</dt>

@@ -28,11 +28,11 @@
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
-    <dd style="margin:0">{{ assignment.opens_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dd style="margin:0">{{ assignment.opens_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
-    <dd style="margin:0">{{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }})</dd>
+    <dd style="margin:0">{{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }}</dd>
 </div>
     <div class="activity-fact"><dt>Group</dt><dd dir="auto">{{ assignment.group_name }} · {{ assignment.term_name }}</dd></div>
     <div class="activity-fact">
@@ -78,7 +78,7 @@
 <section style="margin-top: var(--space-6)">
   <h2>Your Answer</h2>
   <div class="alert alert--success" style="margin-bottom: var(--space-4)">
-    <strong>Submitted</strong> on {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+    <strong>Submitted</strong> on {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }}.
     Final submission: no edit, replacement or resubmission.
   </div>
   <div class="st-panel">
@@ -91,7 +91,7 @@
   <h2>Teacher Feedback</h2>
   {% if feedback and feedback.state == "present" %}
   <div class="alert alert--info" style="margin-bottom: var(--space-4)">
-    Written by {{ feedback.reviewer_name }} on {{ feedback.updated_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).
+    Written by {{ feedback.reviewer_name }} on {{ feedback.updated_local.strftime("%Y-%m-%d %H:%M") }}.
     This is your teacher's written comment on your answer &mdash; it is not a grade or a pass mark.
   </div>
   <div class="st-panel">
@@ -117,7 +117,7 @@
 {% elif can_submit %}
 <section style="margin-top: var(--space-6)">
   <h2>Your Answer</h2>
-  <div class="alert alert--warning" style="margin-bottom: var(--space-4)"><strong>One final submission.</strong> No draft, edit, replacement or resubmission. Review before submitting. Deadline: {{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }} ({{ tz_name }}).</div>
+  <div class="alert alert--warning" style="margin-bottom: var(--space-4)"><strong>One final submission.</strong> No draft, edit, replacement or resubmission. Review before submitting. Deadline: {{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }}.</div>
   <form method="post"
         {% if assignment.submission_type == 'file' %}enctype="multipart/form-data"{% endif %}
         action="{{ url_for('student.assignment_submit', group_public_id=assignment.group_public_id, assignment_public_id=assignment.public_id) }}"
