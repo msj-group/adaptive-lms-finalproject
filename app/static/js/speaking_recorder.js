@@ -9,8 +9,7 @@
  * What this module deliberately does NOT do:
  *
  *   - it never requests microphone permission on load. The permission
- *     prompt appears only after the Student presses "Start recording",
- *     and the page explains what will happen before they do;
+ *     prompt appears only after the Student activates the microphone control;
  *   - it never contacts the server on its own. Re-recording discards the
  *     previous Blob locally; nothing leaves the browser until the
  *     Student presses the one final submit button, which performs an
@@ -126,12 +125,19 @@
     var submitButton = form.querySelector("[data-speaking-submit]");
     var controls = root.querySelector("[data-recorder-controls]");
     var unsupportedBlock = root.querySelector("[data-recorder-unsupported]");
-    var guidance = root.querySelector("[data-recorder-guidance]");
     var status = root.querySelector("[data-recorder-status]");
     var errorBox = root.querySelector("[data-recorder-error]");
-    var startButton = root.querySelector("[data-recorder-start]");
-    var stopButton = root.querySelector("[data-recorder-stop]");
-    var againButton = root.querySelector("[data-recorder-again]");
+    var toggleButton = root.querySelector("[data-recorder-toggle]");
+    var waveform = root.querySelector("[data-recorder-waveform]");
+    var waveBars = root.querySelectorAll("[data-recorder-wave-bar]");
+    var reducedMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+    var audioContext = null;
+    var audioSource = null;
+    var analyser = null;
+    var waveFrame = null;
+    var disposed = false;
+    var requestVersion = 0;
+    var stopping = false;
     var preview = root.querySelector("[data-recorder-preview]");
     var previewBlock = root.querySelector("[data-recorder-preview-block]");
     var confirmMessage = form.getAttribute("data-confirm") || "";
@@ -173,7 +179,73 @@
       }
     }
 
+    function stopVisualization() {
+      if (waveFrame !== null) window.cancelAnimationFrame(waveFrame);
+      waveFrame = null;
+      if (audioSource) audioSource.disconnect();
+      if (analyser) analyser.disconnect();
+      audioSource = null;
+      analyser = null;
+      if (audioContext && audioContext.state !== "closed") {
+        audioContext.close().catch(function () {});
+      }
+      audioContext = null;
+      if (waveform) {
+        waveform.hidden = true;
+        waveform.removeAttribute("data-wave-live");
+      }
+      waveBars.forEach(function (bar) { bar.style.removeProperty("transform"); });
+    }
+
+    function motionIsReduced() {
+      return (reducedMotion && reducedMotion.matches) || document.documentElement.getAttribute("data-ui-motion") === "reduce";
+    }
+
+    function startVisualization() {
+      if (!waveform) return;
+      waveform.hidden = false;
+      var AudioContext = window.AudioContext || window.webkitAudioContext;
+      // Visualization is optional. A missing Web Audio API never blocks a take.
+      if (!AudioContext || motionIsReduced()) return;
+      try {
+        audioContext = new AudioContext();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.72;
+        audioSource = audioContext.createMediaStreamSource(stream);
+        audioSource.connect(analyser); // No speaker output or feedback loop.
+        var levels = new Uint8Array(analyser.frequencyBinCount);
+        var sampleRate = audioContext.sampleRate;
+        waveform.setAttribute("data-wave-live", "true");
+        var visualContext = audioContext;
+        audioContext.resume().catch(function () {
+          if (audioContext === visualContext && waveform) waveform.removeAttribute("data-wave-live");
+        });
+        function draw() {
+          if (!analyser || state !== STATES.RECORDING) return;
+          if (motionIsReduced()) {
+            waveFrame = null;
+            waveBars.forEach(function (bar) { bar.style.removeProperty("transform"); });
+            return;
+          }
+          analyser.getByteFrequencyData(levels);
+          waveBars.forEach(function (bar, index) {
+            var frequency = 100 * Math.pow(40, index / Math.max(1, waveBars.length - 1));
+            var bin = Math.min(levels.length - 1, Math.round(frequency * 256 / sampleRate));
+            var level = Math.max(levels[bin] || 0, levels[bin + 1] || 0) / 255;
+            bar.style.transform = "scaleY(" + (0.12 + level * 0.88).toFixed(3) + ")";
+          });
+          waveFrame = window.requestAnimationFrame(draw);
+        }
+        draw();
+      } catch (visualizationError) {
+        stopVisualization();
+        waveform.hidden = false;
+      }
+    }
+
     function stopTracks() {
+      stopVisualization();
       if (!stream) {
         return;
       }
@@ -209,17 +281,14 @@
       var hasTake = state === STATES.PREVIEW;
       var busy = state === STATES.REQUESTING || state === STATES.UPLOADING;
 
-      if (startButton) {
-        startButton.disabled = recording || hasTake || busy;
-        startButton.hidden = hasTake;
-      }
-      if (stopButton) {
-        stopButton.disabled = !recording;
-        stopButton.hidden = !recording;
-      }
-      if (againButton) {
-        againButton.disabled = !hasTake;
-        againButton.hidden = !hasTake;
+      stopping = false;
+      if (toggleButton) {
+        var label = recording ? "Stop recording" : hasTake ? "Record again" : "Start recording";
+        toggleButton.disabled = busy || state === STATES.UNSUPPORTED;
+        toggleButton.setAttribute("aria-pressed", recording ? "true" : "false");
+        toggleButton.setAttribute("aria-label", t(label));
+        toggleButton.setAttribute("title", t(label));
+        toggleButton.setAttribute("data-research-id", recording ? "speaking_record_stop" : hasTake ? "speaking_record_again" : "speaking_record_start");
       }
       if (submitButton) {
         var selectedFile = fileField && fileField.files && fileField.files.length === 1;
@@ -242,18 +311,22 @@
 
     function fail(message, code) {
       markFailure(code || "recorder_error");
-      stopTracks();
+      var failedRecorder = recorder;
       recorder = null;
+      if (failedRecorder && failedRecorder.state !== "inactive") {
+        try { failedRecorder.stop(); } catch (stopError) {}
+      }
+      stopTracks();
       discardRecording();
-      // ERROR is a reported state, not a dead end: `applyState` leaves
-      // Start enabled in it, so the Student can simply try again.
+      // The microphone stays available after ERROR so the Student can retry.
       applyState(STATES.ERROR);
       showError(message);
-      say(t("Recording stopped because of a problem. You can press Start recording to try again."));
+      say(t("Recording stopped because of a problem. Select the microphone to try again."));
       if (fallbackBlock) fallbackBlock.hidden = false;
     }
 
-    function onStop() {
+    function onStop(event) {
+      if (disposed || event.target !== recorder) return;
       stopTracks();
       var type = (recorder && recorder.mimeType) || pickedType || "";
       var extension = extensionFor(type);
@@ -295,6 +368,9 @@
     }
 
     function startRecording() {
+      if (disposed || state === STATES.REQUESTING || state === STATES.RECORDING || state === STATES.UPLOADING) return;
+      var version = ++requestVersion;
+      if (preview) preview.pause();
       showError("");
       if (fallbackBlock) fallbackBlock.hidden = true;
       applyState(STATES.REQUESTING);
@@ -303,6 +379,10 @@
       window.navigator.mediaDevices
         .getUserMedia({ audio: true })
         .then(function (granted) {
+          if (disposed || version !== requestVersion) {
+            granted.getTracks().forEach(function (track) { track.stop(); });
+            return;
+          }
           stream = granted;
           pickedType = pickType();
           try {
@@ -321,19 +401,22 @@
           }
           chunks = [];
           recorder.addEventListener("dataavailable", function (event) {
-            if (event.data && event.data.size > 0) {
+            if (!disposed && event.target === recorder && event.data && event.data.size > 0) {
               chunks.push(event.data);
             }
           });
           recorder.addEventListener("stop", onStop);
-          recorder.addEventListener("error", function () {
+          recorder.addEventListener("error", function (event) {
+            if (disposed || event.target !== recorder) return;
             fail(t("Recording stopped unexpectedly. Please try again."));
           });
           recorder.start();
           applyState(STATES.RECORDING);
-          say(t("Recording… press Stop when you have finished speaking."));
+          startVisualization();
+          say(t("Recording. Select the stop icon when you have finished speaking."));
         })
         .catch(function (permissionError) {
+          if (disposed || version !== requestVersion) return;
           stopTracks();
           var name = permissionError && permissionError.name;
           markFailure(
@@ -344,13 +427,13 @@
           var message;
           if (name === "NotAllowedError" || name === "SecurityError") {
             message =
-              t("Your browser blocked access to the microphone. Allow microphone access for this site in your browser settings, then press Start recording again.");
+              t("Your browser blocked access to the microphone. Allow microphone access for this site in your browser settings, then select the microphone again.");
           } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
             message =
-              t("No microphone was found. Connect a microphone and press Start recording again.");
+              t("No microphone was found. Connect a microphone and select the microphone again.");
           } else if (name === "NotReadableError") {
             message =
-              t("Your microphone is already in use by another program. Close it and press Start recording again.");
+              t("Your microphone is already in use by another program. Close it and select the microphone again.");
           } else {
             message =
               t("The microphone could not be started. Please check your browser's microphone settings and try again.");
@@ -365,8 +448,16 @@
     }
 
     function stopRecording() {
+      if (stopping) return;
+      stopping = true;
+      if (toggleButton) toggleButton.disabled = true;
+      stopVisualization();
       if (recorder && recorder.state !== "inactive") {
-        recorder.stop(); // `onStop` stops every track and builds the take
+        try {
+          recorder.stop(); // `onStop` stops every track and builds the take
+        } catch (stopError) {
+          fail("Recording stopped unexpectedly. Please try again.");
+        }
       } else {
         stopTracks();
         applyState(STATES.READY);
@@ -379,16 +470,13 @@
       discardRecording();
       showError("");
       applyState(STATES.READY);
-      say(t("Previous recording discarded. Press Start recording when you are ready."));
+      say(t("Previous recording discarded."));
     }
 
     function revealFallback(message) {
       // Hand the page back to the ordinary file input.
       if (controls) {
         controls.hidden = true;
-      }
-      if (guidance) {
-        guidance.hidden = true;
       }
       if (previewBlock) {
         previewBlock.hidden = true;
@@ -502,8 +590,22 @@
     });
 
     window.addEventListener("pagehide", function () {
+      disposed = true;
+      requestVersion += 1;
+      var activeRecorder = recorder;
+      recorder = null;
+      if (activeRecorder && activeRecorder.state !== "inactive") {
+        try { activeRecorder.stop(); } catch (stopError) {}
+      }
       stopTracks();
-      releaseObjectUrl();
+      discardRecording();
+    });
+    window.addEventListener("pageshow", function (event) {
+      if (event.persisted) {
+        disposed = false;
+        showError("");
+        applyState(recordingIsSupported() ? STATES.READY : STATES.UNSUPPORTED);
+      }
     });
 
     if (!recordingIsSupported()) {
@@ -523,20 +625,18 @@
     if (controls) {
       controls.hidden = false;
     }
-    if (guidance) {
-      guidance.hidden = false;
-    }
     applyState(STATES.READY);
-    say(t("Press Start recording when you are ready. Your browser will ask for permission to use the microphone."));
+    say(t("Select the microphone to start recording."));
 
-    if (startButton) {
-      startButton.addEventListener("click", startRecording);
-    }
-    if (stopButton) {
-      stopButton.addEventListener("click", stopRecording);
-    }
-    if (againButton) {
-      againButton.addEventListener("click", recordAgain);
+    if (toggleButton) {
+      toggleButton.addEventListener("click", function () {
+        if (state === STATES.RECORDING) {
+          stopRecording();
+        } else if (state === STATES.READY || state === STATES.ERROR || state === STATES.PREVIEW) {
+          if (state === STATES.PREVIEW) recordAgain();
+          startRecording();
+        }
+      });
     }
   }
 

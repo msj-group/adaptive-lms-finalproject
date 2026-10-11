@@ -1,25 +1,17 @@
-  <div class="st-panel" style="margin-bottom: var(--space-4)" data-speaking-recorder data-recorder-state="ready">
-    <div class="activity-record-mark" aria-hidden="true">{{ activity_ui.symbol('speaking',40) }}</div>
-    {#- Microphone guidance, shown BEFORE any permission is requested. It
-        starts hidden and is revealed by the recorder module, so a browser
-        that cannot record never shows instructions it cannot follow. -#}
-    <div data-recorder-guidance hidden>
-      <p style="margin-top: 0">Start recording requests microphone access. If blocked, allow it in your browser site settings and retry. Recording starts only on request; upload starts only on final submission.</p>
-    </div>
-
-    {#- The recorder's own controls. They start hidden and are revealed only
-        when navigator.mediaDevices, getUserMedia and MediaRecorder are all
-        available, so a JavaScript-disabled or unsupported browser never sees
-        a button that would do nothing. -#}
-    <div data-recorder-controls hidden>
-      <div class="ds-row" style="gap: var(--space-2); flex-wrap: wrap">
-        <button type="button" class="btn btn--primary" data-recorder-start data-research-id="speaking_record_start">Start recording</button>
-        <button type="button" class="btn btn--secondary" data-recorder-stop data-research-id="speaking_record_stop" disabled hidden>Stop recording</button>
-        <button type="button" class="btn btn--secondary" data-recorder-again data-research-id="speaking_record_again" disabled hidden>Record again</button>
+  <div class="speaking-recorder" data-speaking-recorder data-recorder-state="ready">
+    <div class="speaking-recorder-controls" data-recorder-controls hidden>
+      <button type="button" class="speaking-mic-toggle" data-recorder-toggle
+              data-research-id="speaking_record_start" aria-label="Start recording"
+              title="Start recording" aria-pressed="false">
+        <span class="speaking-mic-icon" aria-hidden="true">{{ activity_ui.symbol('speaking',36) }}</span>
+        <svg class="speaking-stop-icon" aria-hidden="true" viewBox="0 0 36 36" width="36" height="36" focusable="false"><rect x="8" y="8" width="20" height="20" rx="5" fill="currentColor"/></svg>
+      </button>
+      <div class="speaking-wave-space" aria-hidden="true">
+        <div class="speaking-waveform" data-recorder-waveform hidden>
+          {% for bar in range(24) %}<span style="--wave-delay:{{ (bar % 7) * -0.11 }}s" data-recorder-wave-bar></span>{% endfor %}
+        </div>
       </div>
-      <p class="ds-section__desc" style="margin: var(--space-3) 0 0" data-recorder-status role="status" aria-live="polite">
-        Press Start recording when you are ready.
-      </p>
+      <p class="speaking-recorder-status" data-recorder-status role="status" aria-live="polite" aria-atomic="true"></p>
     </div>
 
     {#- The local preview. `controls` only -- never autoplay, and the audio
@@ -30,7 +22,6 @@
       <audio data-recorder-preview data-research-media="speaking_playback" controls preload="metadata" style="width:100%"
              aria-label="Your recording, before you submit it">
 </audio>
-      <p class="ds-section__desc" style="margin: var(--space-2) 0 0">Local preview. Record again discards it; only Submit uploads it.</p>
     </div>
 
     <div class="alert alert--danger" style="margin-top: var(--space-4)" data-recorder-error hidden>
@@ -70,4 +61,4 @@
       <a class="btn btn--secondary" href="{{ list_url }}">Cancel</a>
     </div>
   </form>
-<script src="{{ url_for('static', filename='js/speaking_recorder.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/speaking_recorder.js', v='mic-waveform-20261011') }}" defer></script>

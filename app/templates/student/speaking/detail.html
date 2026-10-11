@@ -80,9 +80,8 @@
 </section>
 
 {% elif can_record %}
-<section style="margin-top: var(--space-6)">
+<section class="speaking-record-section">
   <h2>Record Your Answer</h2>
-  <div class="alert alert--warning" style="margin-bottom: var(--space-4)"><strong>One final recording.</strong> Unlimited local retakes; only final submission uploads it. No edit, replacement or resubmission. Deadline: {{ activity.due_local.strftime("%Y-%m-%d %H:%M") }}.</div>
   {% include "student/speaking/_recorder.html" %}
 </section>
 {% else %}<div class="empty-state"><div class="empty-state__title">Recording unavailable</div><p>Recording is not available right now. You can still read the task instructions.</p></div>

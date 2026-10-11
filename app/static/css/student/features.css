@@ -347,3 +347,34 @@
  .st-workspace .st-course-recent { border-inline-start:0; border-top:1px solid #ffffff26; }
 }
 @container workspace (max-width:460px) { .st-workspace .st-activity-grid,.st-workspace .st-activity-filters .st-hub-filters { grid-template-columns:minmax(0,1fr); } }
+
+/* Inline speaking controls: the microphone is the single start/stop/retake action. */
+.st-workspace .speaking-record-section { min-width:0; }
+.st-workspace .speaking-recorder { min-width:0; margin-block:20px; }
+.st-workspace .speaking-recorder-controls { display:grid; justify-items:center; gap:18px; padding-block:20px 6px; }
+.st-workspace .speaking-recorder-controls[hidden] { display:none; }
+.st-workspace .speaking-mic-toggle { display:grid; place-items:center; width:clamp(80px,10vw,104px); height:clamp(80px,10vw,104px); padding:0; border:1px solid var(--st-border); border-radius:50%; color:var(--st-blue); background:var(--st-wash); box-shadow:0 8px 24px -12px #1b3a8a40; cursor:pointer; touch-action:manipulation; transition:background .18s,color .18s,box-shadow .18s,transform .18s; }
+.st-workspace .speaking-mic-toggle:focus-visible { outline:3px solid var(--ui-focus); outline-offset:6px; }
+.st-workspace .speaking-mic-toggle:disabled { cursor:wait; opacity:.6; }
+.st-workspace .speaking-mic-toggle:active:not(:disabled) { transform:scale(.96); }
+.st-workspace .speaking-mic-icon { display:grid; place-items:center; }
+.st-workspace .speaking-stop-icon { display:none; }
+.st-workspace [data-recorder-state=recording] .speaking-mic-toggle { color:#fff; background:#be354b; border-color:#be354b; box-shadow:0 0 0 8px #be354b14,0 8px 24px -12px #be354b70; }
+.st-workspace [data-recorder-state=recording] .speaking-mic-icon { display:none; }
+.st-workspace [data-recorder-state=recording] .speaking-stop-icon { display:block; }
+.st-workspace .speaking-wave-space { display:grid; place-items:center; height:40px; width:min(100%,240px); }
+.st-workspace .speaking-waveform { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; height:40px; color:var(--st-blue); }
+.st-workspace .speaking-waveform[hidden] { display:none; }
+.st-workspace .speaking-waveform span { flex:1; max-width:6px; height:100%; border-radius:10px; background:currentColor; transform:scaleY(.2); }
+.st-workspace .speaking-waveform:not([data-wave-live]) span { animation:speaking-wave .75s ease-in-out var(--wave-delay) infinite alternate; }
+.st-workspace .speaking-recorder-status { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.st-workspace .speaking-recorder [data-recorder-preview-block] { margin-block:12px 20px; }
+.st-workspace .speaking-recorder [data-recorder-error] { overflow-wrap:anywhere; }
+html[data-ui-motion=reduce] .st-workspace .speaking-mic-toggle { transition:none; }
+html[data-ui-motion=reduce] .st-workspace .speaking-waveform span { animation:none!important; transform:scaleY(.35)!important; }
+@keyframes speaking-wave { from { transform:scaleY(.18); } to { transform:scaleY(.88); } }
+@media(hover:hover) { .st-workspace .speaking-mic-toggle:hover:not(:disabled) { box-shadow:0 0 0 6px var(--st-wash),0 8px 24px -12px #1b3a8a40; } }
+@media(prefers-reduced-motion:reduce) {
+ .st-workspace .speaking-mic-toggle { transition:none; }
+ .st-workspace .speaking-waveform span { animation:none!important; transform:scaleY(.35)!important; }
+}

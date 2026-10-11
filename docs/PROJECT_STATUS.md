@@ -1,5 +1,37 @@
 # Repair status
 
+## Speaking microphone control and live waveform — 2026-10-11
+
+Following the deployed UI cleanup at 3138f32, the owner requested removal of
+the yellow final-recording notice, recorder card, visible microphone guidance,
+Start/Stop/Record again buttons and explanatory status copy. The microphone
+itself is now one accessible keyboard-operable control: start, a red stop square
+while recording, then the original microphone for a local retake. The retained
+audio preview and explicit final-submit confirmation keep the submission policy.
+
+Web Audio frequency bars use the active local stream only, without speaker
+output, persistence or telemetry. They disappear on stop/error/navigation.
+Visual-only fallback animation never blocks recording; OS and in-app reduced
+motion preferences use static bars. Busy actions are disabled. Track/context/
+animation-frame/blob cleanup and late MediaRecorder/permission-event guards
+protect navigation, errors and retakes. Existing research control IDs and state
+meanings, CSRF/signed token, format checks and final upload flow are retained.
+New owned strings are translated; changed CSS/JS have refreshed asset versions.
+
+Verification: JavaScript syntax, all 229 Jinja templates, Arabic JSON and diff
+whitespace passed. Manual local browser review used the real MediaRecorder and
+controller with synthetic audio in a separate presentation sandbox that blocks
+submissions. Start, stop, preview, Enter-key retake, Arabic permission failure,
+responsive controls at 320/390/768/1440px, Light/Dark, unsupported recording and
+reduced motion were reviewed. This is not a physical microphone/device check,
+authenticated production workflow or automated test suite. No backend/model,
+migration, configuration, database or research-policy changes are included.
+
+Continue the owner's existing GitHub/Railway release workflow for this speaking
+follow-up, publishing only the reviewed source revision to adaptive-lms-web in
+production. Exact deployment/readiness evidence is recorded outside the checkout
+after execution; preserve the pre-existing untracked help template.
+
 ## Student UI cleanup and hidden timezone labels — 2026-10-11
 
 The owner requested these changes in the existing main checkout. Before editing,

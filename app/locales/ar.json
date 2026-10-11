@@ -3472,5 +3472,12 @@
   "· last changed": "· آخر تعديل",
   "· times shown in the center timezone": "· الأوقات بتوقيت المركز",
   "Publish requires %(audio)sa complete availability window and 1–%(count)d questions with valid answer options.": "يتطلب النشر %(audio)sفترة إتاحة مكتملة ومن 1 إلى %(count)d أسئلة بخيارات إجابة صالحة.",
-  "Students may open and start attempts only within this window. Existing attempts remain readable after closing. Only draft settings can change.": "يمكن للطلاب الفتح وبدء المحاولات ضمن هذه الفترة فقط. تظل المحاولات السابقة قابلة للقراءة بعد الإغلاق. يمكن تعديل إعدادات المسودة فقط."
+  "Students may open and start attempts only within this window. Existing attempts remain readable after closing. Only draft settings can change.": "يمكن للطلاب الفتح وبدء المحاولات ضمن هذه الفترة فقط. تظل المحاولات السابقة قابلة للقراءة بعد الإغلاق. يمكن تعديل إعدادات المسودة فقط.",
+  "Recording stopped because of a problem. Select the microphone to try again.": "توقف التسجيل بسبب مشكلة. اضغط على الميكروفون للمحاولة مجددًا.",
+  "Your browser blocked access to the microphone. Allow microphone access for this site in your browser settings, then select the microphone again.": "منع المتصفح الوصول إلى الميكروفون. اسمح لهذا الموقع باستخدامه من إعدادات المتصفح، ثم اضغط على الميكروفون مجددًا.",
+  "No microphone was found. Connect a microphone and select the microphone again.": "لم يتم العثور على ميكروفون. وصّل ميكروفونًا ثم اضغط على أيقونته مجددًا.",
+  "Your microphone is already in use by another program. Close it and select the microphone again.": "يستخدم برنامج آخر الميكروفون. أغلقه ثم اضغط على الميكروفون مجددًا.",
+  "Previous recording discarded.": "تم تجاهل التسجيل السابق.",
+  "Select the microphone to start recording.": "اضغط على الميكروفون لبدء التسجيل.",
+  "Recording. Select the stop icon when you have finished speaking.": "جارٍ التسجيل. اضغط على أيقونة الإيقاف عند الانتهاء من التحدث."
 }
