@@ -1,5 +1,29 @@
 # Approved UX release — 2026-10-11
 
+## Activity, mobile header and Messages release — 2026-10-13
+
+The owner requests upload and explicitly confirms GitHub plus updating the
+Railway website. This supersedes the 2026-10-12/13 delivery pause for the reviewed
+activity overview/result/receipt alignment, summary selectors, bottom details,
+mobile breadcrumb/header behavior and Messages density. Checkpoint and both
+remote branch heads were verified at
+`747bf751e1d893df7a1d6786f1d634adb6af478b`; the existing Railway web service is
+also pinned to that SHA, successful, with no staged environment changes.
+
+Create one reviewed commit for the 22-file allowlist recorded in PROJECT_STATUS.
+Push normally to `ui/platform-unification-20261009` and `preserve/st2-20261008`;
+do not force-push or include the unrelated untracked Help template. Stage only
+the new exact source pin for the same repo/release branch on `adaptive-lms-web`
+in the existing production environment identified below. Verify that this is
+the sole staged change before committing the Railway patch. Preserve services,
+volumes, variables, domain, startup/predeploy commands, schema and research policy.
+No automated tests, new migration or production business-data operation.
+
+Static/manual evidence is in PROJECT_STATUS. Record actual commit, remote heads,
+deployment identity/status, readiness, public Login and exact asset-byte checks
+in ignored `instance/activity_mobile_release_20261013/release_report.json` after
+execution; this authorization is not a claim of deployment success.
+
 ## Final Quiz attempt selector follow-up
 
 After the preceding deployment, the owner requests a final Quiz adjustment:

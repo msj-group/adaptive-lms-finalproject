@@ -7,6 +7,50 @@ has already been implemented or verified.
 
 ## Authority and current checkpoint
 
+- Latest release authority, 2026-10-13: the owner requests upload of the reviewed
+  activity/mobile/Messages changes and explicitly confirms GitHub plus updating
+  the Railway website. This supersedes the paused-delivery boundary for this
+  bounded release. Commit the reviewed allowlist once, push normally to the
+  existing follow-up/release branches, then advance only the existing web
+  service's exact source pin. Preserve the unrelated Help template, local and
+  production data, volumes, variables, schema and research settings. No new
+  automated tests, migration, Study or authentication-policy change.
+
+- Latest owner follow-up, 2026-10-13: hide the upper activity breadcrumb context
+  on phones, move the availability/details card to the end of all four Student
+  activity overviews, and make the shared mobile header hide on downward scroll
+  and return over content on upward scroll without moving the page. Compact
+  Messages conversations/contacts and chat typography/spacing. This explicitly
+  permits the bounded Messages presentation changes previously protected from
+  global density work. Preserve existing local work, workflows and data; local
+  source/static/manual review only. Delivery remains paused; no automated tests,
+  database/migration, Git mutation or deployment is included.
+
+- Latest owner verification request, 2026-10-12: perform all available checks
+  for the local activity presentation changes, including previously interrupted
+  browser cases. Keep the existing no-automated-tests and no-database-mutation
+  boundaries and paused delivery. Record actual evidence and findings; this
+  verification request does not authorize unrelated repairs or release actions.
+
+- Latest owner follow-up, 2026-10-12, superseding the intervening upload request:
+  pause delivery and review all Student activity types (Listening, Quiz,
+  Assignment and Speaking). Align their presentation with the latest Listening
+  changes where appropriate. This includes full-width instructions after facts,
+  consistent attempt/question summaries and bottom result/submission summaries.
+  Preserve each activity's own answering, recording, save, finalization, feedback,
+  authorization and research contracts. Local source/static/manual presentation
+  review only; no automated tests, database/migration, Git mutation or deployment.
+
+- Latest owner follow-up, 2026-10-12: locally reorganize Student Listening
+  overview/results. Put Instructions below availability facts, close the attempt
+  disclosure by default, remove the specified helper prose and result Back links,
+  pair audio/Vocabulary and Transcript/Vocabulary, and use one visible summary
+  with native selectors for attempts and per-question results. Remove the duplicate
+  Final score card; move Score/Submitted to the bottom as Result summary using its
+  blue gradient. Preserve authorized data, transcript policy and domain/research
+  contracts. Source/static/manual presentation review only; no database, migration,
+  automated tests, Git mutation or deployment is included in this follow-up.
+
 - Latest owner follow-up, 2026-10-11: replace the Student Quiz overview's long
   attempt list with one visible result summary and an Attempt dropdown. Keep
   existing authorized summaries, native Result links and all domain/research

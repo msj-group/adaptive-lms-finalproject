@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/foundation.css', v='platform-navigation-20261011') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/shell.css', v='platform-navigation-20261011') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/operations.css', v='st2-density-20261010') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/mobile-navigation.css', v='st2-nav-five-20261011') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/mobile-navigation.css', v='scroll-header-20261013') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/search.css', v='st2-density-20261010') }}">
 {% endblock %}
 {% block content %}
@@ -19,4 +19,4 @@
 {% block workspace_page_label %}{{ ui.page_heading(self.title()) }}{% endblock %}
 {% block workspace_content_class %}{% endblock %}
 {% block admin_content %}{% endblock %}
-{% block body_scripts %}<script src="{{ url_for('static', filename='js/query_filters.js', v='quiet-success-20261011') }}" defer></script><script src="{{ url_for('static', filename='js/mobile_navigation.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace_search.js') }}" defer></script><script src="{{ url_for('static', filename='js/live_query.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js', v='platform-navigation-20261011') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/query_filters.js', v='quiet-success-20261011') }}" defer></script><script src="{{ url_for('static', filename='js/mobile_navigation.js', v='scroll-header-20261013') }}" defer></script><script src="{{ url_for('static', filename='js/workspace_search.js') }}" defer></script><script src="{{ url_for('static', filename='js/live_query.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js', v='platform-navigation-20261011') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}

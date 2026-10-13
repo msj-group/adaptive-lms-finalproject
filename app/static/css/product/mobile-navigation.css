@@ -12,6 +12,15 @@
 }
 @media(min-width:1024px) and (max-width:1199px) { .workspace-more-panel:not([hidden]) { inset-inline-start:276px; } }
 @media screen and (max-width:1023px) {
+  /* Reserve one stable header slot; direction changes only transform the overlay. */
+  .yc-workspace[data-scroll-header='true'] .st-body { padding-top:var(--mobile-header-height,var(--st-header-height,68px)); }
+  .yc-workspace[data-scroll-header='true'] .st-header {
+    position:fixed; inset:0 0 auto; z-index:60; width:100%; max-width:none;
+    background:var(--st-glass); border-bottom:1px solid var(--st-border);
+    backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
+    transition:transform 180ms ease;
+  }
+  .yc-workspace[data-header-hidden='true'] .st-header { transform:translateY(-100%); pointer-events:none; }
   .yc-workspace .workspace-desktop-more { display:none; }
   .figma-workspace[data-ui-ready='true'] #workspace-navigation { visibility:hidden; pointer-events:none; }
   .figma-workspace:has([data-more-panel]) .figma-menu-toggle { display:none!important; }
@@ -69,6 +78,8 @@
 @media(prefers-color-scheme:dark) { html[data-theme='system'] :is(.workspace-mobile-nav,.workspace-more-panel) { --mobile-border:var(--st-border,#a5c1eb33); --mobile-glass:var(--st-glass,#152b43e8); } }
 @keyframes yc-more-arrive { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
 @media(prefers-reduced-motion:reduce) { .workspace-more-panel,.workspace-more-grid *,.workspace-mobile-nav * { animation:none!important; transition:none!important; } }
+@media(prefers-reduced-motion:reduce) { .yc-workspace .st-header { transition:none!important; } }
+html[data-ui-motion='reduce'] .yc-workspace .st-header,body[data-ui-motion='reduce'] .st-header { transition:none!important; }
 html[data-ui-motion='reduce'] :is(.workspace-more-panel,.workspace-mobile-nav) * { animation:none!important; transition:none!important; }
 html[data-ui-motion='reduce'] .workspace-more-panel { animation:none!important; }
 @supports not (backdrop-filter:blur(1px)) { .workspace-more-panel:not([hidden]),.figma-workspace .workspace-mobile-nav { background:var(--mobile-solid); } }

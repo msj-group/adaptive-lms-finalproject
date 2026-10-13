@@ -1,5 +1,6 @@
 {% extends "layouts/activity_base.html" %}
 {% from '_file_input.html' import file_input %}
+{% from "student/template/_result_panels.html" import submission_summary %}
 {% set activity_kind = 'assignment' %}
 {% set activity_phase = 'overview' %}
 {% block title %}{{ assignment.title }}{% endblock %}
@@ -28,30 +29,6 @@
 
 
 
-<div class="st-panel" style="margin-bottom: var(--space-6)">
-  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
-    <dd style="margin:0">{{ assignment.opens_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
-    <dd style="margin:0">{{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-</div>
-    <div class="activity-fact"><dt>Group</dt><dd dir="auto">{{ assignment.group_name }} · {{ assignment.term_name }}</dd></div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submission</dt>
-    <dd style="margin:0">
-      {% if submission %}
-      <span class="badge badge--success">Submitted</span>
-      {% else %}
-      <span class="badge badge--neutral">Not submitted</span>
-      {% endif %}
-    </dd>
-</div>
-  </dl>
-</div>
-
 {% if not submission and assignment.state == "past_due" %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
   The deadline for this assignment has passed and you did not submit an answer. It stays here for your reference, but it can no
@@ -63,9 +40,7 @@
 </div>
 {% endif %}
 
-<div class="st-writing-layout">
-<aside class="activity-writing-brief">
-<section>
+<section class="st-activity-instructions">
   <h2>Instructions</h2>
   <div class="st-panel">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
@@ -74,24 +49,20 @@
   </div>
 </section>
 
-</aside>
-<div class="activity-writing-paper st-feature-panel">{% if submission %}
+<div class="st-activity-response">{% if submission %}
+<div class="st-activity-columns">
 {#- The immutable receipt. Only THIS Student's own answer is ever rendered
     here, and there is deliberately no edit control, no delete control and no
     resubmit control anywhere on the page -- none exists server-side either. -#}
-<section style="margin-top: var(--space-6)">
+<section>
   <h2>Your Answer</h2>
-  <div class="alert alert--success" style="margin-bottom: var(--space-4)">
-    <strong>Submitted</strong> on {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }}.
-    Final submission: no edit, replacement or resubmission.
-  </div>
   <div class="st-panel">
     {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe. #}
     {% include 'activities/_assignment_payload.html' %}
   </div>
 </section>
 
-<section style="margin-top: var(--space-6)">
+<section>
   <h2>Teacher Feedback</h2>
   {% if feedback and feedback.state == "present" %}
   <div class="alert alert--info" style="margin-bottom: var(--space-4)">
@@ -118,8 +89,11 @@
   {% endif %}
 </section>
 
+</div>
+{{ submission_summary(submission, assignment.group_name, assignment.term_name, activity_kind) }}
+
 {% elif can_submit %}
-<section style="margin-top: var(--space-6)">
+<section class="st-panel st-activity-answer">
   <h2>Your Answer</h2>
   <form method="post"
         {% if assignment.submission_type == 'file' %}enctype="multipart/form-data"{% endif %}
@@ -191,7 +165,31 @@
 </section>
 <p class="assignment-draft-status" data-draft-receipt-status role="status" hidden></p>
 </div>
+
+<div class="st-facts" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
+    <dd style="margin:0"><bdi dir="ltr">{{ assignment.opens_local.strftime("%Y-%m-%d %H:%M") }}</bdi></dd>
 </div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
+    <dd style="margin:0"><bdi dir="ltr">{{ assignment.due_local.strftime("%Y-%m-%d %H:%M") }}</bdi></dd>
+</div>
+    <div class="activity-fact"><dt>Group</dt><dd dir="auto">{{ assignment.group_name }} · {{ assignment.term_name }}</dd></div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submission</dt>
+    <dd style="margin:0">
+      {% if submission %}
+      <span class="badge badge--success">Submitted</span>
+      {% else %}
+      <span class="badge badge--neutral">Not submitted</span>
+      {% endif %}
+    </dd>
+</div>
+  </dl>
+</div>
+
 </div>
 {% endblock %}
 {% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/assignment_draft.js', v='platform-navigation-20261011') }}" defer></script>{% endblock %}

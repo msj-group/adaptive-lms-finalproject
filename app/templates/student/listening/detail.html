@@ -45,7 +45,113 @@
     <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
   </div>
 </section>
-{% endif %}<div class="st-facts" style="margin-bottom: var(--space-6)">
+{% endif %}
+<details class="activity-policy-details">
+<summary>How attempts work</summary>
+<div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  You can start an attempt only while the activity is open — not before it opens, and not once it
+  closes. {% if activity.time_limit_minutes %}Each attempt lasts {{ activity.time_limit_minutes }} minutes, or until the activity
+  closes, whichever comes first.{% else %}An attempt lasts until the activity closes.{% endif %}
+  You may play the recording as many times as you like. You may leave questions unanswered, but
+  unanswered questions are marked incorrect. For questions with several correct answers you must
+  select <strong>all</strong> of them to get the point — there is no partial credit. Your results
+  show which questions you got right, but <strong>never which options were correct</strong>.
+</div>
+</details>
+<div class="ds-row" style="margin-bottom: var(--space-6)">
+  {% if can_start %}
+  <form method="post" action="{{ url_for('student.listening_start', group_public_id=group_public_id, listening_public_id=activity.public_id) }}" data-research-form="listening_start">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn--primary" data-research-id="listening_start">
+      {% if open_attempt %}Continue attempt{% else %}Start attempt{% endif %}
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="st-listening-resources">
+<section>
+  <h2>Listen and explore</h2>
+  {% include "student/template/_audio_player.html" %}
+</section>
+{% if vocabulary %}
+<section>
+  <h2>Vocabulary</h2>
+  <div class="st-panel">
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ vocabulary }}</div>
+  </div>
+</section>
+{% endif %}
+
+</div>
+
+{% if transcript %}
+<section style="margin-bottom: var(--space-6)">
+  <h2>Transcript</h2>
+  <div class="st-panel">
+    {% if transcript_note %}<p class="ds-section__desc" style="margin-top:0">{{ transcript_note }}</p>{% endif %}
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ transcript }}</div>
+  </div>
+</section>
+{% endif %}
+
+<section class="st-panel st-activity-picker" data-activity-picker aria-labelledby="listening-attempt-history-title">
+  <h2 id="listening-attempt-history-title">Your attempts</h2>
+  {% if attempts %}
+  {% if attempts|length > 1 %}
+  <div class="st-activity-picker-choice" data-picker-control hidden>
+    <span class="activity-card-symbol" aria-hidden="true">{{ activity_ui.symbol(activity_kind,22) }}</span>
+    <label for="listening-attempt-choice">Attempt</label>
+    <select id="listening-attempt-choice" aria-controls="listening-attempt-panels">
+      {% for item in attempts %}<option value="{{ item.public_id }}">{{ item.attempt_number }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endif %}
+  <div id="listening-attempt-panels" data-picker-panels>
+      {% for item in attempts %}
+      <article class="st-activity-picker-card" data-picker-card="{{ item.public_id }}" aria-labelledby="listening-attempt-heading-{{ loop.index }}">
+<header data-picker-heading>
+<span class="activity-card-symbol">{{ activity_ui.symbol(activity_kind,22) }}</span>
+<h3 id="listening-attempt-heading-{{ loop.index }}"><span>Attempt</span> {{ item.attempt_number }}</h3>
+</header>
+<dl class="activity-library-meta">
+<div class="activity-fact">
+<dt>Status</dt>
+<dd>
+<span class="badge badge--neutral">{{ item.status_label }}</span>
+</dd>
+</div>
+<div class="activity-fact">
+<dt>Started</dt>
+<dd><bdi dir="ltr">{{ item.started_local.strftime("%Y-%m-%d %H:%M") }}</bdi></dd>
+</div>
+<div class="activity-fact">
+<dt>Score</dt>
+<dd>
+          {% if item.total_questions is not none %}
+          <bdi dir="ltr">{{ item.correct_count }} / {{ item.total_questions }}{% if item.percentage is not none %} ({{ item.percentage }}%){% endif %}</bdi>
+          {% else %}&mdash;{% endif %}
+        </dd>
+</div>
+</dl>
+<footer>
+          {% if item.is_finalized %}
+          <a class="btn btn--secondary" href="{{ url_for('student.listening_result', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=item.public_id) }}">Result</a>
+          {% endif %}
+        </footer>
+</article>
+      {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No attempts yet</div>
+    <div>{% if can_start %}Listen first, then start your attempt when you are ready.{% else %}You cannot start an attempt right now.{% endif %}</div>
+  </div>
+  {% endif %}
+</section>
+
+
+<div class="st-facts" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 170px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;"><div class="activity-fact"><dt>Group</dt><dd dir="auto">{{ activity.group_name }} · {{ workspace_context().term_name }}</dd></div>
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opens</dt>
@@ -68,108 +174,11 @@
     <dd style="margin:0">{{ attempts_used }} used of {{ activity.attempt_limit }} allowed</dd>
 </div>
   </dl>
-</div><details class="activity-policy-details" open>
-<summary>How attempts work</summary>
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">
-  You can start an attempt only while the activity is open — not before it opens, and not once it
-  closes. {% if activity.time_limit_minutes %}Each attempt lasts {{ activity.time_limit_minutes }} minutes, or until the activity
-  closes, whichever comes first.{% else %}An attempt lasts until the activity closes.{% endif %}
-  You may play the recording as many times as you like. You may leave questions unanswered, but
-  unanswered questions are marked incorrect. For questions with several correct answers you must
-  select <strong>all</strong> of them to get the point — there is no partial credit. Your results
-  show which questions you got right, but <strong>never which options were correct</strong>.
-</div>
-</details><p class="activity-note">Start creates or resumes an attempt. Use Save answer or Save and next; changing questions does not save. Final submission uses saved answers and the server deadline.</p>
-<div class="ds-row" style="margin-bottom: var(--space-6)">
-  {% if can_start %}
-  <form method="post" action="{{ url_for('student.listening_start', group_public_id=group_public_id, listening_public_id=activity.public_id) }}" data-research-form="listening_start">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn btn--primary" data-research-id="listening_start">
-      {% if open_attempt %}Continue attempt{% else %}Start attempt{% endif %}
-    </button>
-  </form>
-  {% endif %}
 </div>
 
-<div class="st-listening-layout">
-<aside class="activity-listening-desk">
-<h2>Listen and explore</h2>{% include "student/template/_audio_player.html" %}{% if vocabulary %}
-<section style="margin-bottom: var(--space-6)">
-  <h2>Vocabulary</h2>
-  <div class="st-panel">
-    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ vocabulary }}</div>
-  </div>
-</section>
-{% endif %}
-
-{% if transcript %}
-<section style="margin-bottom: var(--space-6)">
-  <h2>Transcript</h2>
-  <div class="st-panel">
-    {% if transcript_note %}<p class="ds-section__desc" style="margin-top:0">{{ transcript_note }}</p>{% endif %}
-    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ transcript }}</div>
-  </div>
-</section>
-{% endif %}
-
-</aside>
-<div>
-
-
-
-
-
-
-
 </div>
-</div>
-<section>
-  <h2>Your attempts</h2>
-  {% if attempts %}
-  <div class="dash-scroll">
-  <div class="activity-library-grid">
-      {% for item in attempts %}
-      <article class="activity-library-card">
-<header>
-<span class="activity-card-symbol">{{ activity_ui.symbol(activity_kind,22) }}</span>
-<h3><span>Attempt</span> {{ item.attempt_number }}</h3>
-</header>
-<dl class="activity-library-meta">
-<div class="activity-fact">
-<dt>Status</dt>
-<dd>
-<span class="badge badge--neutral">{{ item.status_label }}</span>
-</dd>
-</div>
-<div class="activity-fact">
-<dt>Started</dt>
-<dd>{{ item.started_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-</div>
-<div class="activity-fact">
-<dt>Score</dt>
-<dd>
-          {% if item.total_questions is not none %}
-          {{ item.correct_count }} / {{ item.total_questions }}{% if item.percentage is not none %} ({{ item.percentage }}%){% endif %}
-          {% else %}&mdash;{% endif %}
-        </dd>
-</div>
-</dl>
-<footer>
-          {% if item.is_finalized %}
-          <a class="btn btn--secondary" href="{{ url_for('student.listening_result', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=item.public_id) }}">Result</a>
-          {% endif %}
-        </footer>
-</article>
-      {% endfor %}
-    </div>
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">No attempts yet</div>
-    <div>{% if can_start %}Listen first, then start your attempt when you are ready.{% else %}You cannot start an attempt right now.{% endif %}</div>
-  </div>
-  {% endif %}
-</section>
-
-</div>
+{% endblock %}
+{% block body_scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/activity_card_picker.js', v='activity-layout-20261012') }}" defer></script>
 {% endblock %}

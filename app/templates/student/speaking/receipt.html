@@ -1,4 +1,5 @@
 {% extends "layouts/activity_base.html" %}
+{% from "student/template/_result_panels.html" import submission_summary %}
 {% set activity_kind = 'speaking' %}
 {% set activity_phase = 'receipt' %}
 {% block title %}Your recording — {{ activity.title }}{% endblock %}
@@ -26,13 +27,15 @@
 
 
 
-<div class="alert alert--success" style="margin-bottom: var(--space-6)">
-  <span dir="auto">{{ activity.group_name }} · {{ activity.term_name }}</span><br>
-  <strong>Submitted</strong> on {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }}.
-  Final recording: no edit, replacement or resubmission.
-</div>
+<section class="st-activity-instructions">
+  <h2>What to say</h2>
+  <div class="st-panel">
+    {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe. #}
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
+  </div>
+</section>
 
-<div class="st-speaking-layout">
+<div class="st-activity-columns">
 <div class="activity-speaking-studio">
 <section>
   <h2>Your Recording</h2>
@@ -44,7 +47,7 @@
 
 </div>
 <div>
-<section style="margin-top: var(--space-6)">
+<section>
   <h2>Teacher Feedback</h2>
   {% if feedback and feedback.state == "present" %}
   <div class="alert alert--info" style="margin-bottom: var(--space-4)">
@@ -71,15 +74,10 @@
   {% endif %}
 </section>
 
-<section style="margin-top: var(--space-6)">
-  <h2>What to say</h2>
-  <div class="st-panel">
-    {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe. #}
-    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ activity.instructions }}</div>
-  </div>
-</section>
+
 
 </div>
 </div>
+{{ submission_summary(submission, activity.group_name, activity.term_name, activity_kind) }}
 </div>
 {% endblock %}

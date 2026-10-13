@@ -31,15 +31,13 @@
 {% endwith %}
 
 <div class="st-quiz-overview">
-  <section class="st-quiz-availability st-feature-panel" aria-label="Quiz details">
-    <dl class="st-quiz-facts">
-      <div class="activity-fact"><dt>Group</dt><dd dir="auto">{{ quiz.group_name }} · {{ workspace_context().term_name }}</dd></div>
-      <div class="activity-fact"><dt>Opens</dt><dd>{{ quiz.opens_local.strftime("%Y-%m-%d %H:%M") }}</dd></div>
-      <div class="activity-fact"><dt>Closes</dt><dd>{{ quiz.closes_local.strftime("%Y-%m-%d %H:%M") }}</dd></div>
-      <div class="activity-fact"><dt>Questions</dt><dd>{{ question_total }}</dd></div>
-      <div class="activity-fact"><dt>Time limit</dt><dd>{% if quiz.time_limit_minutes %}{{ quiz.time_limit_minutes }} minutes per attempt{% else %}None{% endif %}</dd></div>
-      <div class="activity-fact"><dt>Attempts</dt><dd>{{ attempts_used }} used of {{ quiz.attempt_limit }} allowed</dd></div>
-    </dl>
+  {% if quiz.instructions %}<section class="st-activity-instructions">
+  <h2>Instructions</h2>
+  <div class="st-panel">
+    {# Plain text: autoescaped and laid out by CSS. Never |safe. #}
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ quiz.instructions }}</div>
+  </div>
+</section>{% endif %}
     {% if can_start %}<div class="st-quiz-launch">
   <form method="post" action="{{ url_for('student.quiz_start', group_public_id=group_public_id, quiz_public_id=quiz.public_id) }}" data-research-form="quiz_start">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -48,29 +46,10 @@
     </button>
   </form>
     </div>{% endif %}
-  </section>
-  <div class="st-quiz-overview-body">
-    <section class="activity-brief-paper st-feature-panel">
-<div class="st-brief-content">{% if quiz.instructions %}
-<section style="margin-bottom: var(--space-6)">
-  <h2>Instructions</h2>
-  <div class="st-instructions">
-    {# Plain text: autoescaped and laid out by CSS. Never |safe. #}
-    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ quiz.instructions }}</div>
-  </div>
-</section>
-{% endif %}
-
-<div class="st-quiz-save-note">
-<strong>Before you start</strong>
-<p>Start creates or resumes an attempt. Answers save when selected; check save status before leaving. Final submission uses saved answers and the server deadline.</p>
-</div>
-</div>
-    </section>
-{% if attempts %}<section class="st-quiz-history st-feature-panel st-quiz-history--recorded" data-quiz-attempt-history aria-labelledby="quiz-attempt-history-title">
+{% if attempts %}<section class="st-panel st-activity-picker" data-activity-picker aria-labelledby="quiz-attempt-history-title">
   <h2 id="quiz-attempt-history-title">Your attempts</h2>
   {% if attempts|length > 1 %}
-  <div class="st-attempt-selector" data-attempt-picker hidden>
+  <div class="st-activity-picker-choice" data-picker-control hidden>
     <span class="activity-card-symbol" aria-hidden="true">{{ activity_ui.symbol(activity_kind,22) }}</span>
     <label for="quiz-attempt-choice">Attempt</label>
     <select id="quiz-attempt-choice" aria-controls="quiz-attempt-panels">
@@ -78,10 +57,10 @@
     </select>
   </div>
   {% endif %}
-  <div class="st-attempt-panels" id="quiz-attempt-panels">
+  <div id="quiz-attempt-panels" data-picker-panels>
       {% for item in attempts %}
-      <article class="activity-library-card st-attempt-card" data-quiz-attempt="{{ item.public_id }}" aria-labelledby="quiz-attempt-heading-{{ loop.index }}">
-<header data-attempt-heading>
+      <article class="st-activity-picker-card" data-picker-card="{{ item.public_id }}" aria-labelledby="quiz-attempt-heading-{{ loop.index }}">
+<header data-picker-heading>
 <span class="activity-card-symbol">{{ activity_ui.symbol(activity_kind,22) }}</span>
 <h3 id="quiz-attempt-heading-{{ loop.index }}"><span>Attempt</span> {{ item.attempt_number }}</h3>
 </header>
@@ -114,12 +93,22 @@
       {% endfor %}
   </div>
 </section>{% endif %}
-  </div>
+  <section class="st-quiz-availability st-feature-panel" aria-label="Quiz details">
+    <dl class="st-quiz-facts">
+      <div class="activity-fact"><dt>Group</dt><dd dir="auto">{{ quiz.group_name }} · {{ workspace_context().term_name }}</dd></div>
+      <div class="activity-fact"><dt>Opens</dt><dd><bdi dir="ltr">{{ quiz.opens_local.strftime("%Y-%m-%d %H:%M") }}</bdi></dd></div>
+      <div class="activity-fact"><dt>Closes</dt><dd><bdi dir="ltr">{{ quiz.closes_local.strftime("%Y-%m-%d %H:%M") }}</bdi></dd></div>
+      <div class="activity-fact"><dt>Questions</dt><dd>{{ question_total }}</dd></div>
+      <div class="activity-fact"><dt>Time limit</dt><dd>{% if quiz.time_limit_minutes %}{{ quiz.time_limit_minutes }} minutes per attempt{% else %}None{% endif %}</dd></div>
+      <div class="activity-fact"><dt>Attempts</dt><dd>{{ attempts_used }} used of {{ quiz.attempt_limit }} allowed</dd></div>
+    </dl>
+
+  </section>
 </div>
 
 </div>
 {% endblock %}
 {% block body_scripts %}
 {{ super() }}
-<script src="{{ url_for('static', filename='js/quiz_attempt_history.js', v='attempt-picker-20261011') }}" defer></script>
+<script src="{{ url_for('static', filename='js/activity_card_picker.js', v='activity-layout-20261012') }}" defer></script>
 {% endblock %}

@@ -55,3 +55,68 @@
   window.addEventListener('pageshow', syncLayout);
   syncLayout();
 })();
+
+/* Direction-aware header, including the Messages surface's internal scroll areas. */
+(function () {
+  "use strict";
+  var header = document.querySelector('.yc-workspace .st-header');
+  if (!header) return;
+  var body = document.body;
+  var compact = window.matchMedia('(max-width:1023px)');
+  var positions = new WeakMap();
+  var hasScrollIntent = false;
+  function showHeader() {
+    body.dataset.headerHidden = 'false';
+    header.inert = false;
+  }
+  function measureHeader() {
+    if (compact.matches) body.style.setProperty('--mobile-header-height', header.offsetHeight + 'px');
+  }
+  function syncHeader() {
+    positions = new WeakMap();
+    hasScrollIntent = false;
+    body.dataset.scrollHeader = String(compact.matches);
+    showHeader();
+    measureHeader();
+    var root = document.scrollingElement;
+    if (root) positions.set(root, {position:root.scrollTop, anchor:root.scrollTop, direction:0});
+  }
+  document.addEventListener('scroll', function (event) {
+    if (!compact.matches) return;
+    var target = event.target === document ? document.scrollingElement : event.target;
+    if (!target || (target !== document.scrollingElement && !target.matches('.messenger-sidebar__list,.messenger-timeline,.messenger-welcome,.messenger-greeting'))) return;
+    var position = Math.max(0, Math.min(target.scrollTop, target.scrollHeight - target.clientHeight));
+    var state = positions.get(target) || {position:0, anchor:0, direction:0};
+    var delta = position - state.position;
+    var direction = Math.sign(delta);
+    if (direction && direction !== state.direction) state.anchor = state.position;
+    state.position = position;
+    if (direction) state.direction = direction;
+    positions.set(target, state);
+    // Initial message-history positioning is not a request to hide navigation.
+    if (!hasScrollIntent) { state.anchor = position; return; }
+    if (position <= 12 || header.contains(document.activeElement) || header.querySelector('details[open],[aria-expanded="true"]') || body.dataset.moreOpen === 'true') {
+      showHeader();
+      state.anchor = position;
+      return;
+    }
+    if (Math.abs(position - state.anchor) < 10) return;
+    var hidden = direction > 0;
+    body.dataset.headerHidden = String(hidden);
+    header.inert = hidden;
+  }, {capture:true, passive:true});
+  // Tabbing into the header restores it before the focused control can be obscured.
+  ['wheel','touchmove','pointerdown'].forEach(function (name) {
+    document.addEventListener(name, function () { hasScrollIntent = true; }, {passive:true});
+  });
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Tab') showHeader();
+    if (['ArrowDown','ArrowUp','PageDown','PageUp','Home','End',' '].indexOf(event.key) !== -1) hasScrollIntent = true;
+  });
+  header.addEventListener('focusin', showHeader);
+  compact.addEventListener('change', syncHeader);
+  window.addEventListener('resize', measureHeader);
+  window.addEventListener('pageshow', syncHeader);
+  if (window.ResizeObserver) new ResizeObserver(measureHeader).observe(header);
+  syncHeader();
+})();

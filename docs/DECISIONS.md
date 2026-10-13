@@ -1,5 +1,87 @@
 # Project Decisions
 
+## 2026-10-13 — Release the reviewed activity/mobile/Messages changes
+
+- The owner requests upload and explicitly selects GitHub plus Railway website
+  update, superseding the preceding local-only pause for this reviewed scope.
+- Publish the reviewed activity presentation work from 2026-10-12 together with
+  the 2026-10-13 activity-details, mobile-header and Messages density corrections.
+  Preserve the unrelated untracked Help template and ignored review evidence.
+- Use one bounded local commit and normal fast-forward-compatible pushes to
+  `ui/platform-unification-20261009` and `preserve/st2-20261008`. Advance only the
+  existing `adaptive-lms-web` exact source pin in its production environment.
+  Review staged Railway fields before applying them; retain every other service,
+  volume, variable, startup/predeploy setting and domain. No new schema revision,
+  production business-data operation, authentication or research-policy change.
+- Record exact GitHub/deployed SHA, build/predeploy/startup and public readiness,
+  Login/static-asset checks after execution. Existing static/manual evidence is
+  bounded presentation evidence; no new automated test package is authorized.
+
+## 2026-10-13 — Activity details, mobile header and Messages density
+
+- The owner's screenshot identifies the overview availability/details card.
+  Move it in source order to the end of Quiz, Listening, Assignment and Speaking
+  overviews at every viewport, including submitted/unavailable states. Keep
+  Start/Continue next to instructions, outside the relocated Quiz facts card.
+  Existing result/receipt summaries and domain behavior remain intact.
+- On phones (up to 767px), hide only Student activity breadcrumbs; retain the
+  shared Back link, page title, availability state and important notices.
+- The shared compact shell (up to 1023px) reserves a measured stable header slot
+  and uses a fixed overlay with transform-only visibility changes. Follow both
+  page scrolling and Messages internal list/timeline scrolling. Keep header
+  controls available for keyboard focus/open menus; reset on layout/history
+  restoration and respect reduced motion. Initial automatic message-history
+  positioning does not hide navigation before a user scroll interaction.
+- The owner explicitly permits compact Messages presentation, superseding its
+  previous exclusion from global density changes for this bounded follow-up.
+  Reduce list rows, avatars, headings, chat header, bubbles and composer spacing.
+  Keep 44px action targets and 16px mobile text inputs. Narrow thread headers
+  omit the decorative avatar and keep the name and all actions in one row.
+- No routes, queries, message operations, authorization, CSRF/context tokens,
+  research identities, data, schema or authentication policy changes.
+
+## 2026-10-12 — Align Student activity presentation; delivery paused
+
+- The owner's latest request pauses upload and extends the Listening presentation
+  review to all four Student activity types. Keep the existing uniform activity
+  hub and the distinct Quiz autosave / Listening explicit-save execution pages.
+- Put Quiz instructions full-width below availability facts, then its attempt
+  history. Use the same neutral summary card and native picker as Listening.
+  Share question-result and bottom blue Result summary macros across both types.
+  Remove duplicate score cards, local result Back links and optional helper prose;
+  retain the shared Back/breadcrumbs, zero scores and expired submission wording.
+- Put Assignment/Speaking instructions before the answer/recorder or receipt.
+  Pair the submitted answer/recording with Teacher Feedback on wide screens and
+  stack on narrow workspaces. Move submission time/finality into a bottom blue
+  Submission summary, with a localized heading. Keep feedback distinct from grades.
+- Isolate availability timestamps and summary dates/scores left-to-right in Arabic.
+  Reuse the generic activity picker without requests or storage, keeping readable
+  fallback, native Result links, keyboard selection and history reconciliation.
+- Forms, CSRF/context tokens, research identities, local drafts, recorder/audio
+  clients, feedback fail-closed behavior, routes, scoring and data are unchanged.
+
+## 2026-10-12 — Student Listening layout and summary selectors
+
+- Instructions follow availability facts. How attempts work starts collapsed;
+  remove the specified Start/Save prose. Pair Listen and explore with Vocabulary
+  on wide screens; pair Transcript with Vocabulary on results. Stack on narrow
+  workspaces and expand a lone resource to the available width.
+- Present Listening history as one visible attempt summary, newest first, using
+  a native Attempt selector. Present question results similarly with a Question
+  selector, initially the first question. Switch only existing authorized display
+  data, including each attempt's own native Result link; no requests or storage.
+  Single items keep headings without a selector, and empty states remain readable.
+  Without the picker client, every summary remains readable. Preserve keyboard
+  selection, polite announcements and browser-history selection reconciliation.
+- Remove the two result-page Back links and duplicate Final score card. Keep the
+  shared Back/breadcrumbs. Move Score/Submitted to the bottom with the former
+  blue gradient and a localized Result summary heading. Remove the optional
+  scoring prose under the owner's explicit choice. Keep zero scores and expired
+  submission wording; isolate timestamps/scores left-to-right for Arabic reading.
+- No route/query, authorization, scoring, transcript release, Start/Continue,
+  CSRF/research identity, authentication, model or migration change. This owner
+  follow-up authorizes local source and presentation review only.
+
 ## 2026-10-11 — Single-card Student Quiz attempt history
 
 - The owner replaces the long Quiz overview attempt list with one visible

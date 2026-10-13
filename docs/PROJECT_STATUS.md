@@ -1,5 +1,254 @@
 # Repair status
 
+## Activity/mobile/Messages release authorized — 2026-10-13
+
+The owner requests upload and explicitly confirms GitHub plus the Railway website
+update. The preceding delivery pause is superseded for this reviewed scope.
+Local HEAD and both GitHub follow-up/release branch heads were verified at
+`747bf751e1d893df7a1d6786f1d634adb6af478b`. Railway `adaptive-lms-web` is live,
+successful and pinned to that same SHA; no environment changes are staged.
+
+The reviewed 22-file commit allowlist is:
+
+- `app/locales/ar.json`
+- `app/static/css/messages.css`
+- `app/static/css/product/mobile-navigation.css`
+- `app/static/css/student/features.css`
+- `app/static/js/activity_card_picker.js`
+- `app/static/js/mobile_navigation.js`
+- `app/templates/layouts/admin_base.html`
+- `app/templates/layouts/portal_base.html`
+- `app/templates/layouts/research_base.html`
+- `app/templates/student/assignments/detail.html`
+- `app/templates/student/listening/detail.html`
+- `app/templates/student/listening/result.html`
+- `app/templates/student/quizzes/detail.html`
+- `app/templates/student/quizzes/result.html`
+- `app/templates/student/speaking/detail.html`
+- `app/templates/student/speaking/receipt.html`
+- `app/templates/student/template/_result_panels.html`
+- `docs/APPROVED_REPAIR_CONTRACT.md`
+- `docs/APPROVED_UX_RELEASE.md`
+- `docs/DECISIONS.md`
+- `docs/IMPLEMENTATION_PLAN.md`
+- `docs/PROJECT_STATUS.md`
+
+Preserve `app/templates/workspace/help.html` and ignored preview artifacts. The
+completed static/manual observations and their real-device/authenticated-workflow
+limits are recorded below. No server/service/model/migration/deployment-script
+source changes are included. Release only this allowlist with one local commit,
+normal pushes and the existing Railway web service's exact source-pin update.
+Actual release results are recorded separately in ignored
+`instance/activity_mobile_release_20261013/release_report.json` after execution.
+
+## Activity mobile layout and Messages density — 2026-10-13
+
+The owner's current request authorizes these local presentation corrections.
+Checkpoint remains `747bf751e1d893df7a1d6786f1d634adb6af478b` on
+`ui/platform-unification-20261009`. Pre-existing activity/localization/source
+changes and the unrelated untracked Help template were preserved. Delivery
+remains paused; the earlier Messages density exclusion is superseded only for
+this explicitly requested Messages presentation work.
+
+Changes:
+
+- The details/availability card shown in the owner's screenshot is now last
+  in all four Student activity overview templates: Quiz, Listening, Assignment
+  and Speaking. Quiz Start/Continue stays with instructions above attempt
+  history. Card values, forms, tokens and authorized activity data are retained.
+- `student/features.css` hides Student activity breadcrumbs up to 767px,
+  retaining Back, the page title, state and notices. Desktop breadcrumbs remain.
+- `mobile_navigation.js` and `product/mobile-navigation.css` provide the shared
+  direction-aware fixed mobile header up to 1023px. A measured stable slot and
+  transform-only reveal prevent content shifts. Messages internal scrolling is
+  supported. Initial automatic history positioning does not hide the header;
+  open header menus, keyboard access, resize/history restoration and reduced
+  motion retain their presentation safeguards.
+- `messages.css` reduces conversation/contact rows, avatars, page/sidebar/chat
+  headings, chat header, bubbles and composer spacing. Narrow thread headers
+  keep all actions in one row; inputs retain 16px mobile text and action targets
+  retain 44px dimensions. Asset versions are updated in the shared Portal,
+  Administrator and Researcher layouts.
+- Authority, implementation plan and decisions record this bounded follow-up.
+
+Checks actually executed:
+
+- JavaScript syntax: `node --check app/static/js/mobile_navigation.js` passed.
+- Parsed all 231 HTML templates with the real OwnedUIExtension and compiled
+  11 affected/consuming templates in the existing presentation environment,
+  without application-factory or database startup.
+- Reviewed the final source diff and Git state. `git diff --check` passed with
+  CR-at-EOL handling for existing CRLF files; staging is empty.
+- Manual browser review used real templates/styles/clients and fictional
+  display fixtures only. Reviewed all four overview types at 320px and 1440px,
+  including submitted Assignment/Speaking desktop states. Each has exactly one
+  details card at the end. Phone breadcrumbs are hidden; desktop breadcrumbs
+  remain visible. No horizontal overflow was observed in the inspected views.
+- Reviewed Messages Inbox, contact picker, compose and thread at phone sizes
+  320x640 and 390x844, and the desktop contact picker at 1440x900. The picker
+  displayed six complete contacts at 390x844 and eight at 1440x900. An Arabic
+  Inbox tab state displayed five complete contacts. Counts depend on viewport,
+  text wrapping, search controls and current list scroll position.
+- Verified downward hide/upward reveal for page and internal Messages scrolling.
+  Messages content top remained 69px in both states; the activity content's
+  document position also remained approximately 69px across direction changes.
+  Verified an open account menu keeps the header visible. Initial thread
+  auto-positioning retains the visible header before user scrolling.
+- Reviewed English/light and Arabic/dark presentation, native recipient
+  navigation, 44px thread-header actions and 16px composer input. Shared Teacher,
+  Administrator and Researcher mobile fixtures retained a fixed header and no
+  horizontal page overflow. Captured browser console errors: zero.
+- Ignored manual preview and screenshots are under
+  `instance/mobile_layout_20261013/`. Temporary browser sizing was reset and
+  the owned review tab/server were closed after review.
+
+No automated tests were created or executed. No authenticated real-MySQL
+workflow, real message sending, recording/upload/final submission, database
+reset/migration, scheduler or machine setting change, staging/commit/push or
+deployment occurred. This is bounded static and manual presentation evidence,
+not comprehensive automated regression or real-device acceptance. Local source
+is the stop point; upload/deployment remains paused.
+
+## Activity verification follow-up completed — 2026-10-12
+
+The owner requested all available checks for the preceding local activity UI
+changes. Checkpoint remains `747bf751e1d893df7a1d6786f1d634adb6af478b` on
+`ui/platform-unification-20261009`. This turn changed verification documentation
+only; application source and the unrelated Help template were preserved.
+
+Checks actually executed:
+
+- Python syntax: parsed 303 application files with `ast.parse`, without bytecode
+  writes or application-factory/database startup. JavaScript syntax: all 23 files
+  under `app/static/js` passed `node --check` (zero failures).
+- Parsed all 231 HTML templates with the real OwnedUIExtension; compiled all
+  eight changed/new activity templates in the existing presentation environment.
+  Arabic JSON parsed with duplicate-key rejection: 3,509 unique keys.
+- Reviewed the source diff, preserved forms/context/CSRF/research identities and
+  confirmed no changed server/service/model/migration files. Git whitespace review
+  passes with CR-at-EOL handling for existing CRLF templates. Staging remains empty.
+- Browser access recovered. Completed the three previously interrupted Quiz
+  overview cases: one attempt has no selector; no attempts omit history; an
+  unavailable picker leaves all summaries and native Result links readable.
+- Reviewed 10-attempt and in-progress presentations, native keyboard selection,
+  correct Result URL and Back-restored selection. A 100-question result selected
+  question 100 using End on a 320px viewport, showing exactly its summary.
+  Inspected labels/aria-controls/live-region relationships and duplicate IDs.
+- Rechecked Listening no/one-attempt and unavailable-picker states, default-closed
+  policy disclosure, missing resources and a full-width lone result resource.
+  Browser CSSOM includes the added layout/picker/summary rules. Reviewed zero score
+  and expired result wording, single-question presentation and local Back removal.
+- Reviewed Assignment file validation/error associations and immutable file/text
+  receipt presentation; absent and invalid feedback remain distinct and invalid
+  text stays hidden. Speaking receipt navigation, expiry, feedback safety and
+  synthetic audio playback/rate changes work in the presentation fixture.
+- English/light and Arabic/dark, desktop and 320px views were inspected. Columns
+  stack/expand as intended; inspected page bounds have no horizontal overflow.
+  Captured browser console errors: zero. Temporary viewport was reset, the review
+  tab closed, and the owned loopback preview server stopped after verification.
+  Evidence remains ignored under `instance/activity_layout_20261012/`, including
+  `verification-question-100-mobile.jpg` and `verification-quiz-single-ar.jpg`.
+
+Finding: the unchanged shared Assignment file receipt still displays English
+`Download submitted file` and `Private, final submission.` in Arabic mode.
+The same literals exist at HEAD in `activities/_assignment_payload.html` and lack
+Arabic catalog entries. This is a pre-existing copy/localization gap, not introduced
+by the layout changes. It is recorded, not repaired during this verification turn.
+
+No new defect was observed in the changed presentation behavior. These checks use
+real templates/styles/clients with fictional display fixtures, not authenticated
+real-MySQL workflows. Fixture attempt/score values are synthetic presentation input,
+not grading-validation evidence. No automated tests/test package, microphone
+recording, actual upload/download/final submission, database/migration, settings,
+scheduler, staging/commit/push or deployment was performed. Delivery stays paused.
+This does not claim comprehensive automated regression or end-to-end acceptance.
+
+## Student activity presentation alignment — 2026-10-12
+
+Checkpoint remains `747bf751e1d893df7a1d6786f1d634adb6af478b` on
+`ui/platform-unification-20261009`. The owner paused the intervening upload
+request and asked to review every Student activity type against the latest
+Listening presentation. All four existing types were reviewed. Work is local
+and unstaged; the unrelated untracked Help template is preserved.
+
+- Quiz overview now places full-width instructions after availability facts and
+  uses the same neutral Attempt card/picker as Listening. Quiz/Listening results
+  share one Question card/picker and one bottom blue Result summary, without
+  duplicate score cards, local Back buttons or the optional scoring prose.
+- Assignment/Speaking show full-width instructions before answering/recording.
+  Receipts pair the answer/recording with Teacher Feedback and finish with a blue
+  Submission summary. Narrow workspaces stack the columns. Availability dates
+  and summary dates/scores have explicit LTR isolation for Arabic.
+- The existing activity hub and execution pages already fit their workflows and
+  remain unchanged. Preserve Quiz autosave, Listening Save/Save and next, forms,
+  CSRF/context tokens, research identifiers, local drafts, recorder/playback,
+  finality, feedback safety, transcript release and all server/domain contracts.
+- Files: seven Student activity templates, new `student/template/_result_panels.html`,
+  generic `activity_card_picker.js` (replacing this work's untracked Listening-only
+  client), Student feature CSS/cache version, Arabic catalog and authority/status
+  documents. Existing `quiz_attempt_history.js` is retained for older cached pages.
+
+Verification actually performed: all 231 HTML templates parsed with the real
+OwnedUIExtension; Node syntax verification; Arabic JSON duplicate-key rejection
+(3,509 keys); Git whitespace/diff review with CR-at-EOL handling. Manual loopback
+presentation review used real templates/styles/clients and fictional request
+fixtures, without application factory or database access. Reviewed English/light
+and Arabic/dark, desktop and 320px layouts; attempt/question selection, native
+Result navigation and Back restoration; zero/expired results, one/no-question and
+unavailable-picker result fallback; Assignment text draft save/reload, file-form
+presentation and past-due state; Speaking recorder presentation, submitted/expired
+states and receipt navigation; present/absent/invalid feedback display. Inspected
+page bounds showed no horizontal overflow; captured browser console errors: none.
+Evidence is ignored under `instance/activity_layout_20261012/`.
+
+Browser access later timed out in automatic approval review twice, with no approval
+decision. The final post-unification Quiz overview one/no-attempt and unavailable-
+client spot checks could not be completed; these are not claimed as newly reviewed.
+No automated tests, authenticated real-MySQL workflow, final answer/recording
+submission, microphone recording/upload, database/migration, configuration,
+scheduler, staging/commit/push or deployment was performed. This is bounded
+static/manual presentation evidence, not comprehensive regression acceptance.
+
+## Student Listening overview/results follow-up — 2026-10-12
+
+Starting checkpoint: `747bf751e1d893df7a1d6786f1d634adb6af478b` on
+`ui/platform-unification-20261009`. The owner authorizes the requested local
+Listening presentation changes, then confirms that the unlabeled Score/Submitted
+card should move below the results and may receive a title. Preserve the unrelated
+untracked Help template. This follow-up includes no Git mutation or deployment.
+
+- Instructions now follow availability facts; How attempts work starts closed.
+  Remove the specified Start/Save note. Put Vocabulary beside Listen and explore.
+- Listening history uses one visible summary and an Attempt dropdown when multiple
+  attempts exist. Results use one visible question summary and a Question dropdown
+  when multiple questions exist. Keep single/empty states and native Result links;
+  without the client all summaries remain readable. Reconcile restored browser
+  selections and announce changed summaries politely, without requests/storage.
+- Remove both local result Back buttons, duplicate Final score and scoring prose.
+  Pair Transcript/Vocabulary, and place Score/Submitted at the bottom in the same
+  blue gradient with the localized Result summary title. Stack on narrow screens.
+- Files: both Student Listening templates, `listening_card_picker.js`, Student
+  feature CSS, its portal stylesheet version, Arabic catalog and authority/status
+  documents. Server routes, queries, transcript policy, scoring, CSRF/research
+  identities and all data/domain/research contracts are unchanged.
+
+Verification actually performed: all 230 HTML templates parsed with the real
+OwnedUIExtension; Node syntax verification; Arabic JSON parsed with duplicate-key
+rejection (3,508 keys). Git whitespace review passes with CR-at-EOL handling for
+the existing CRLF templates. Manual loopback presentation review uses actual
+templates/styles/clients with fictional request fixtures and no application
+factory/database access. Reviewed Arabic/dark and English/light, desktop and
+320px mobile: paired/stacked resources, zero score, expired submission wording,
+single/no/ten attempts, one/100 questions, selectors, native Result navigation,
+Back restoration and unavailable-picker fallback. Inspected page bounds show no
+horizontal overflow; browser console errors: none. Local evidence is ignored
+under `instance/listening_layout_20261012/`.
+
+No automated tests were created or run. No authenticated real-MySQL workflow,
+database/reset/migration, configuration, scheduler, Git mutation or deployment
+was performed. This is bounded static/presentation evidence, not comprehensive
+automated regression acceptance or a hosted release.
+
 ## Single-card Quiz attempt selector — 2026-10-11 final follow-up
 
 Starting checkpoint: `0a75016f4191f0f39edcbf614db0f45d2fc0bec9` on

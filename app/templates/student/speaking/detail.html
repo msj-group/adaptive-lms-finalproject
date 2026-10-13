@@ -1,4 +1,5 @@
 {% extends "layouts/activity_base.html" %}
+{% from "student/template/_result_panels.html" import submission_summary %}
 {% set activity_kind = 'speaking' %}
 {% set activity_phase = 'overview' %}
 {% block title %}{{ activity.title }}{% endblock %}
@@ -23,28 +24,6 @@
 
 
 
-<div class="st-facts" style="margin-bottom: var(--space-6)">
-  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <div class="activity-fact">
-<dt>Group</dt><dd dir="auto">{{ activity.group_name }} · {{ activity.term_name }}</dd>
-</div><div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
-    <dd style="margin:0">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
-    <dd style="margin:0">{{ activity.due_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Your answer</dt>
-    <dd style="margin:0">
-      {% if submission %}<span class="badge badge--success">Submitted</span>
-      {% else %}<span class="badge badge--neutral">Not submitted</span>{% endif %}
-    </dd>
-</div>
-  </dl>
-</div>
-
 {% if not submission and activity.state == "past_due" %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
   The deadline for this speaking activity has passed and you did not submit a recording. It stays
@@ -57,9 +36,7 @@
 </div>
 {% endif %}
 
-<div class="st-speaking-layout">
-<aside class="activity-speaking-brief">
-<section>
+<section class="st-activity-instructions">
   <h2>What to say</h2>
   <div class="st-panel">
     {# Plain text: autoescaped by Jinja and laid out by CSS. Never |safe --
@@ -68,19 +45,15 @@
   </div>
 </section>
 
-</aside>
-<div class="activity-speaking-studio">{% if submission %}
-<section style="margin-top: var(--space-6)">
+<div class="st-activity-response">{% if submission %}
+<section class="st-panel">
   <h2>Your Recording</h2>
-  <div class="alert alert--success" style="margin-bottom: var(--space-4)">
-    <strong>Submitted</strong> on {{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }}.
-    Final recording: no edit, replacement or resubmission.
-  </div>
   <a class="btn btn--primary" href="{{ receipt_url }}">Listen to your recording and read feedback</a>
 </section>
+{{ submission_summary(submission, activity.group_name, activity.term_name, activity_kind) }}
 
 {% elif can_record %}
-<section class="speaking-record-section">
+<section class="st-panel speaking-record-section">
   <h2>Record Your Answer</h2>
   {% include "student/speaking/_recorder.html" %}
 </section>
@@ -88,6 +61,28 @@
 {% endif %}
 
 </div>
+
+<div class="st-facts" style="margin-bottom: var(--space-6)">
+  <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+    <div class="activity-fact">
+<dt>Group</dt><dd dir="auto">{{ activity.group_name }} · {{ activity.term_name }}</dd>
+</div><div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>
+    <dd style="margin:0"><bdi dir="ltr">{{ activity.opens_local.strftime("%Y-%m-%d %H:%M") }}</bdi></dd>
 </div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Due</dt>
+    <dd style="margin:0"><bdi dir="ltr">{{ activity.due_local.strftime("%Y-%m-%d %H:%M") }}</bdi></dd>
+</div>
+    <div class="activity-fact">
+<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Your answer</dt>
+    <dd style="margin:0">
+      {% if submission %}<span class="badge badge--success">Submitted</span>
+      {% else %}<span class="badge badge--neutral">Not submitted</span>{% endif %}
+    </dd>
+</div>
+  </dl>
+</div>
+
 </div>
 {% endblock %}

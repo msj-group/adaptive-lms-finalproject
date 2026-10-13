@@ -1,5 +1,40 @@
 # Repair implementation plan
 
+> Latest release authority, 2026-10-13: the owner now explicitly requests GitHub
+> upload and Railway website update of the reviewed activity/mobile/Messages
+> changes. Create one reviewed allowlisted commit; push fast-forward-compatible
+> updates to the existing follow-up and release branches, then deploy its exact
+> SHA to the existing web service. Preserve unrelated Help, data, schema, volumes,
+> variables and research policy. No new automated tests or migrations. Actual
+> release evidence is recorded separately after execution.
+
+> Latest owner follow-up, 2026-10-13: move all four Student activity overview
+> details cards to the end, hide activity breadcrumbs on phones, add a shared
+> mobile header that follows scroll direction without shifting content, and
+> compact Messages list/chat presentation. Preserve native actions, forms,
+> research contracts and existing local work. Local source/static/manual review
+> only; no automated tests, database/migration, Git mutation or deployment.
+> Implementation evidence and limits: PROJECT_STATUS.md.
+
+> Latest verification request, 2026-10-12: complete available static and manual
+> browser checks for the local activity presentation changes. Complete the three
+> interrupted Quiz overview cases and record exact findings. Preserve the
+> no-automated-tests/database-mutation boundary and paused upload/deployment.
+> Completed evidence and remaining acceptance limits: PROJECT_STATUS.md.
+
+> Latest owner follow-up, 2026-10-12: pause upload and review all four Student
+> activity types. Align Quiz overview/results and Assignment/Speaking instructions
+> and receipts with the latest Listening presentation where appropriate. Preserve
+> activity-specific workflows and domain/research contracts. Local source/static
+> and bounded manual presentation review only; no automated tests, database,
+> migration, Git mutation or deployment. Actual evidence: PROJECT_STATUS.md.
+
+> Latest local owner follow-up, 2026-10-12: compact Student Listening overview
+> and results, with native Attempt/Question selectors and a bottom blue Result
+> summary. Keep transcript visibility and all domain/research semantics. Verify
+> templates, assets and bounded manual presentation behavior; no automated tests,
+> database/migration, Git mutation or deployment. See PROJECT_STATUS.md.
+
 > Latest owner follow-up, 2026-10-11: present Student Quiz attempt history as
 > one visible summary with a native Attempt selector, newest first. Use existing
 > authorized summaries and preserve no-JavaScript reading and result links.

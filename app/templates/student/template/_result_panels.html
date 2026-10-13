@@ -1,0 +1,66 @@
+{% import 'activities/_ui.html' as activity_ui %}
+
+{# Presentation only: callers supply their already-authorized result dictionaries. #}
+{% macro question_results(results, kind) %}
+<section class="st-panel st-activity-picker" data-activity-picker aria-labelledby="{{ kind }}-questions-title">
+  <h2 id="{{ kind }}-questions-title">Questions</h2>
+  {% if results %}
+  {% if results|length > 1 %}
+  <div class="st-activity-picker-choice" data-picker-control hidden>
+    <span class="activity-card-symbol" aria-hidden="true">{{ activity_ui.symbol(kind,22) }}</span>
+    <label for="{{ kind }}-question-choice">Question</label>
+    <select id="{{ kind }}-question-choice" aria-controls="{{ kind }}-question-panels">
+      {% for item in results %}<option value="{{ item.number }}">{{ item.number }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endif %}
+  <div id="{{ kind }}-question-panels" data-picker-panels>
+    {% for item in results %}
+    <article class="st-activity-picker-card" data-picker-card="{{ item.number }}" aria-labelledby="{{ kind }}-question-heading-{{ loop.index }}">
+      <header data-picker-heading>
+        <span class="activity-card-symbol">{{ activity_ui.symbol(kind,22) }}</span>
+        <h3 id="{{ kind }}-question-heading-{{ loop.index }}"><span>Question</span> {{ item.number }}</h3>
+      </header>
+      <dl class="activity-library-meta">
+        <div class="activity-fact"><dt>Answered</dt><dd>{% if item.answered %}Yes{% else %}No{% endif %}</dd></div>
+        <div class="activity-fact"><dt>Result</dt><dd>{% if item.is_correct %}<span class="badge badge--success">Correct</span>{% else %}<span class="badge badge--neutral">Incorrect</span>{% endif %}</dd></div>
+      </dl>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">Nothing to show</div>
+    <div>{% if kind == 'listening' %}This listening activity has no questions.{% else %}This quiz has no questions.{% endif %}</div>
+  </div>
+  {% endif %}
+</section>
+{% endmacro %}
+
+{% macro result_summary(attempt, kind) %}
+<section class="activity-result-score st-activity-summary" aria-labelledby="{{ kind }}-result-summary-title">
+  <h2 id="{{ kind }}-result-summary-title">Result summary</h2>
+  <dl>
+    <div class="activity-fact">
+      <dt>Score</dt>
+      <dd><strong><bdi dir="ltr">{{ attempt.correct_count }} / {{ attempt.total_questions }}{% if attempt.percentage is not none %} ({{ attempt.percentage }}%){% endif %}</bdi></strong></dd>
+    </div>
+    <div class="activity-fact">
+      <dt>Submitted</dt>
+      <dd>{% if attempt.submitted_local %}<bdi dir="ltr">{{ attempt.submitted_local.strftime("%Y-%m-%d %H:%M") }}</bdi>{% else %}Not submitted — the time ran out{% endif %}</dd>
+    </div>
+  </dl>
+</section>
+{% endmacro %}
+
+{% macro submission_summary(submission, group_name, term_name, kind) %}
+<section class="activity-result-score st-activity-summary" aria-labelledby="{{ kind }}-submission-summary-title">
+  <h2 id="{{ kind }}-submission-summary-title">Submission summary</h2>
+  <dl>
+    <div class="activity-fact"><dt>Status</dt><dd>Submitted</dd></div>
+    <div class="activity-fact"><dt>Submitted</dt><dd><bdi dir="ltr">{{ submission.submitted_local.strftime("%Y-%m-%d %H:%M") }}</bdi></dd></div>
+    <div class="activity-fact"><dt>Group</dt><dd dir="auto">{{ group_name }} · {{ term_name }}</dd></div>
+  </dl>
+  <p>{% if kind == 'speaking' %}Final recording: no edit, replacement or resubmission.{% else %}Final submission: no edit, replacement or resubmission.{% endif %}</p>
+</section>
+{% endmacro %}

@@ -1,4 +1,5 @@
 {% extends "layouts/activity_base.html" %}
+{% from "student/template/_result_panels.html" import question_results, result_summary %}
 {% set activity_kind = 'listening' %}
 {% set activity_phase = 'result' %}
 {% block title %}Result — {{ activity.title }}{% endblock %}
@@ -33,35 +34,10 @@
   {% endfor %}
 {% endwith %}
 
-<div class="ds-row" style="margin-bottom: var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('student.listening_detail', group_public_id=group_public_id, listening_public_id=activity.public_id) }}">Back to Listening Activity</a>
-  <a class="btn btn--secondary" href="{{ url_for('student.activities', type='listening', group=group_public_id) }}">Back to Activities</a>
-</div>
-
-<div class="st-result-layout">
-<aside>
-<div class="activity-result-score">
-<span>Final score</span>
-<strong>{{ attempt.correct_count }} / {{ attempt.total_questions }}</strong>{% if attempt.percentage is not none %}<p>{{ attempt.percentage }}%</p>{% endif %}</div>
-<div class="st-facts" style="margin-bottom: var(--space-6)">
-  <dl style="display:grid; grid-template-columns: 170px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Score</dt>
-    <dd style="margin:0">
-      <strong>{{ attempt.correct_count }} / {{ attempt.total_questions }}</strong>{% if attempt.percentage is not none %} ({{ attempt.percentage }}%){% endif %}
-    </dd>
-</div>
-    <div class="activity-fact">
-<dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Submitted</dt>
-    <dd style="margin:0">{% if attempt.submitted_local %}{{ attempt.submitted_local.strftime("%Y-%m-%d %H:%M") }}{% else %}Not submitted — the time ran out{% endif %}</dd>
-</div>
-  </dl>
-</div>
-
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">One point per exact correct set; no partial credit. Unanswered questions are incorrect. Correct options remain hidden.</div>
-
+{% if transcript or vocabulary %}
+<div class="st-listening-resources">
 {% if transcript %}
-<section style="margin-bottom: var(--space-6)">
+<section>
   <h2>Transcript</h2>
   <div class="st-panel">
     {% if transcript_note %}<p class="ds-section__desc" style="margin-top:0">{{ transcript_note }}</p>{% endif %}
@@ -71,7 +47,7 @@
 {% endif %}
 
 {% if vocabulary %}
-<section style="margin-bottom: var(--space-6)">
+<section>
   <h2>Vocabulary</h2>
   <div class="st-panel">
     <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ vocabulary }}</div>
@@ -79,48 +55,15 @@
 </section>
 {% endif %}
 
-</aside>
-<div>
-<section>
-  <h2>Questions</h2>
-  {% if results %}
-  <div class="dash-scroll">
-  <div class="activity-library-grid">
-      {% for item in results %}
-      <article class="activity-library-card">
-<header>
-<span class="activity-card-symbol">{{ activity_ui.symbol(activity_kind,22) }}</span>
-<h3><span>Question</span> {{ item.number }}</h3>
-</header>
-<dl class="activity-library-meta">
-<div class="activity-fact">
-<dt>Answered</dt>
-<dd>{% if item.answered %}Yes{% else %}No{% endif %}</dd>
 </div>
-<div class="activity-fact">
-<dt>Result</dt>
-<dd>
-          {% if item.is_correct %}
-          <span class="badge badge--success">Correct</span>
-          {% else %}
-          <span class="badge badge--neutral">Incorrect</span>
-          {% endif %}
-        </dd>
-</div>
-</dl>
-</article>
-      {% endfor %}
-    </div>
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">Nothing to show</div>
-    <div>This listening activity has no questions.</div>
-  </div>
-  {% endif %}
-</section>
+{% endif %}
+
+{{ question_results(results, activity_kind) }}
+{{ result_summary(attempt, activity_kind) }}
 
 </div>
-</div>
-</div>
+{% endblock %}
+{% block body_scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/activity_card_picker.js', v='activity-layout-20261012') }}" defer></script>
 {% endblock %}
