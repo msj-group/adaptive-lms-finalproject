@@ -80,10 +80,12 @@ from app.blueprints.student import student_bp
 from app.blueprints.student.quizzes import (
     _STALE_MESSAGE,
     _all_strings,
+    _autosave_request,
     _hierarchy_broken,
     _lock_student_chain,
     _own_attempt_summaries,
     _positive_int,
+    _quiz_json,
     _serializer,
     _student_authz_broken,
     _validate_selection,
@@ -111,6 +113,7 @@ from app.services.listening_queries import (
     student_vocabulary,
 )
 from app.services.material_serving import serve_uploaded_file
+from app.services.listening_playback import playback_rates
 from app.services.quiz_attempts import (
     ATTEMPT_STATUS_LABELS,
     STATE_LABELS,
@@ -126,6 +129,7 @@ from app.services.quiz_attempts import (
     student_attempt_rows,
 )
 from app.services.quiz_queries import (
+    MAX_QUIZ_QUESTIONS,
     PAGE_SIZE,
     active_options_ordered,
     answered_question_ids,
@@ -136,6 +140,7 @@ from app.services.quiz_queries import (
     normalize_page,
     question_navigation,
     student_result_rows,
+    student_question_index,
     teacher_question,
 )
 from app.services.quiz_transactions import (
@@ -357,10 +362,10 @@ def _first_question_redirect(group_public_id, listening_public_id, attempt):
     )
 
 
-def _player(group_public_id, listening_public_id, title):
+def _player(group_public_id, listening_public_id, title, speed_mask):
     """The context the shared audio-player partial needs.
 
-    Only an authorized endpoint URL and a label. No storage key, no
+    Only an authorized endpoint URL, label and authored rates. No storage key, no
     filesystem path, no digest, no byte size, no internal id and no
     transcript -- the player is presentation, and it is handed nothing it
     does not need to render controls.
@@ -368,6 +373,7 @@ def _player(group_public_id, listening_public_id, title):
     return {
         "src": _audio_url(group_public_id, listening_public_id),
         "label": title,
+        "rates": playback_rates(speed_mask),
     }
 
 
@@ -435,7 +441,7 @@ def listening_detail(group_public_id, listening_public_id):
             "state": state,
             "state_label": STATE_LABELS.get(state),
         },
-        player=_player(group.public_id, activity.public_id, quiz.title),
+        player=_player(group.public_id, activity.public_id, quiz.title, activity.playback_speed_mask),
         transcript=student_transcript(activity),
         transcript_note=STUDENT_TRANSCRIPT_NOTE.get(activity.transcript_visibility),
         vocabulary=student_vocabulary(activity),
@@ -636,9 +642,8 @@ def listening_question(
     activity, never another question's options, and never a per-question
     query loop.
 
-    The transcript appears here **only** under the ``always`` policy; the
-    vocabulary notes appear whenever the Teacher wrote any, because they
-    are teaching support with no policy of their own.
+    The transcript appears here **only** under the ``always`` policy.
+    Vocabulary stays on the overview/result; question pages omit it.
     """
     reference_utc = _now()
     preview = _visible_activity_or_404(
@@ -669,7 +674,10 @@ def listening_question(
 
     options = active_options_ordered(question.id)
     selected = attempt_selected_option_ids(attempt.id, question.id)
-    question_ids = quiz_question_ids(quiz.id)
+    index_rows = student_question_index(quiz.id)
+    if len(index_rows) > MAX_QUIZ_QUESTIONS or question_public_id not in {item.public_id for item in index_rows}:
+        abort(404)
+    question_ids = [item.id for item in index_rows]
     answered = answered_question_ids(attempt.id, question_ids)
     tz_name = _tz_name()
 
@@ -681,10 +689,9 @@ def listening_question(
             "title": quiz.title,
             "time_limit_minutes": quiz.time_limit_minutes,
         },
-        player=_player(group_public_id, activity.public_id, quiz.title),
+        player=_player(group_public_id, activity.public_id, quiz.title, activity.playback_speed_mask),
         transcript=student_transcript(activity),
         transcript_note=STUDENT_TRANSCRIPT_NOTE.get(activity.transcript_visibility),
-        vocabulary=student_vocabulary(activity),
         attempt={
             "public_id": attempt.public_id,
             "attempt_number": attempt.attempt_number,
@@ -707,6 +714,7 @@ def listening_question(
         next_public_id=next_id,
         answered_count=len(answered),
         unanswered_count=max(total - len(answered), 0),
+        question_links=[dict(public_id=item.public_id, position=number, answered=item.id in answered) for number, item in enumerate(index_rows, 1)],
         answer_token=_make_token(
             "listening-answer",
             student_public_id=current_user.public_id,
@@ -749,10 +757,9 @@ def listening_answer(
     repeated identifier are all refused identically and generically --
     which one it was must not be distinguishable.
 
-    Cardinality while saving is the shared ``_validate_selection`` rule: a
-    single-answer question needs exactly one selection, a multiple-answer
-    question at least one. Final correctness still requires the complete
-    exact set, which is a grading rule rather than a saving one.
+    Cardinality uses the shared ``_validate_selection`` rule. Autosave also
+    accepts the empty set to clear a selection. Final exact-set correctness
+    is a grading rule rather than a saving one.
     """
     reference_utc = _now()
     preview = _visible_activity_or_404(
@@ -809,12 +816,16 @@ def listening_answer(
     if expire_if_due(attempt, reference_utc):
         db.session.commit()
         note_outcome("listening_answer", "expired")
+        if _autosave_request():
+            return _quiz_json(409, error="Your time ran out, so this attempt was submitted as it was.", redirect_url=_result_url(group_public_id, listening_public_id, attempt_public_id))
         flash("Your time ran out, so this attempt was submitted as it was.", "danger")
         return redirect(
             _result_url(group_public_id, listening_public_id, attempt_public_id)
         )
     if attempt.is_finalized:
         db.session.rollback()
+        if _autosave_request():
+            return _quiz_json(409, error="This attempt has ended.", redirect_url=_result_url(group_public_id, listening_public_id, attempt_public_id))
         return redirect(
             _result_url(group_public_id, listening_public_id, attempt_public_id)
         )
@@ -837,6 +848,8 @@ def listening_answer(
     ):
         db.session.rollback()
         note_outcome("listening_answer", "rejected")
+        if _autosave_request():
+            return _quiz_json(409, error=_STALE_MESSAGE)
         flash(_STALE_MESSAGE, "danger")
         return redirect(
             _question_url(
@@ -846,10 +859,12 @@ def listening_answer(
         )
 
     locked_options = lock_active_option_rows(locked_question.id)
-    error = _validate_selection(submitted_options, locked_options, locked_question)
+    error = _validate_selection(submitted_options, locked_options, locked_question, allow_empty=_autosave_request())
     if error is not None:
         db.session.rollback()
         note_outcome("listening_answer", "rejected")
+        if _autosave_request():
+            return _quiz_json(422, error=error)
         flash(error, "danger")
         return redirect(
             _question_url(
@@ -861,9 +876,8 @@ def listening_answer(
     chosen = [
         locked_options[public_id] for public_id in dict.fromkeys(submitted_options)
     ]
-    replace_answer_selections(attempt, locked_question, chosen, reference_utc)
-
     try:
+        replace_answer_selections(attempt, locked_question, chosen, reference_utc)
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
@@ -872,6 +886,8 @@ def listening_answer(
         ) is None:
             abort(404)
         note_outcome("listening_answer", "rejected")
+        if _autosave_request():
+            return _quiz_json(409, error="This answer could not be saved. Please reload the page and try again.")
         flash(
             "This answer could not be saved. Please reload the page and try again.",
             "danger",
@@ -886,6 +902,8 @@ def listening_answer(
     navigation = question_navigation(quiz_id, question_public_id)
     next_id = navigation[3] if navigation else None
     note_outcome("listening_answer", "saved")
+    if _autosave_request():
+        return _quiz_json(question_public_id=question_public_id, answered=bool(submitted_options))
     flash("Answer saved.", "success")
     if request.form.get("go") == "next" and next_id:
         return redirect(

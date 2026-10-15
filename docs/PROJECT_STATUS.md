@@ -1,5 +1,245 @@
 # Repair status
 
+## Login and Student release execution — 2026-10-15
+
+The owner explicitly authorizes migration execution, push and deploy, requires both
+local and hosting operation, asks creation/configuration of a separate local migration
+account with private credential delivery, and requests continuation on 2026-10-15.
+The earlier prepared/local-only stop point is superseded for this bounded release.
+Checkpoint and both remote branch heads: 238e1189712bc7d254a8b28b223a51393e435b7f.
+
+Actual local execution:
+
+- The runtime account's earlier DDL attempt was refused. Inspection confirmed the
+  old head, absent new column and preserved table counts; no partial DDL occurred.
+- Created a separate local migration account through the configured administrative
+  connection at the owner's request. It has schema SELECT, Listening ALTER and
+  Alembic-version DML. Runtime account privileges are unchanged. New credentials
+  are only in ignored .env/private delivery artifacts; no administrator credential
+  was exported. No production account/configuration was changed.
+- Took and verified a fresh private application-table/trigger SQL snapshot and the
+  configured private-file archive. These do not include server event/routine
+  definitions; the configured private storage is currently empty. Artifacts are
+  ignored under instance/login_student_release_20261013/local-execution-*.
+- Applied only 7d4e2a9c6013 -> 8e5f3b0d7124 on local MySQL 8.4.8. All 75 table
+  counts are unchanged. Five existing Listening rows retain mask 15; the NOT NULL
+  field and CHECK exist. Alembic model/schema check: no new upgrade operations.
+- Static verification: eight affected/new Python ASTs and all 232 HTML templates
+  parsed; four changed/new JavaScript clients passed syntax checking. Earlier
+  bounded manual Login/Student/browser evidence and limitations remain below.
+
+The first local HTTP readiness probe returned 503 because its fixed revision
+still referenced the parent. Advancing the readiness endpoint, read-only
+deployment diagnostics and release-manifest revision to the approved target is
+necessary to finish the migration release. No health/configuration policy change.
+The three additional Python files passed AST parsing. The verified workspace
+Flask process was restarted, and the existing launcher confirmed local readiness.
+Actual local GETs for Login and placement returned 200; no authenticated data-write
+workflow was exercised for this execution step.
+
+Reviewed commit allowlist (34 files):
+
+- `app/__init__.py`
+- `app/blueprints/auth/routes.py`
+- `app/blueprints/student/listening.py`
+- `app/blueprints/teacher/listening.py`
+- `app/blueprints/teacher/listening_forms.py`
+- `app/locales/ar.json`
+- `app/models/listening_activity.py`
+- `app/services/listening_playback.py`
+- `app/static/css/login.css`
+- `app/static/css/product/mobile-navigation.css`
+- `app/static/css/student/features.css`
+- `app/static/js/audio_player.js`
+- `app/static/js/login_entry.js`
+- `app/static/js/mobile_navigation.js`
+- `app/static/js/quiz_autosave.js`
+- `app/templates/appearance/_panels.html`
+- `app/templates/auth/login.html`
+- `app/templates/auth/placement.html`
+- `app/templates/layouts/_product_shell.html`
+- `app/templates/layouts/portal_base.html`
+- `app/templates/student/dashboard.html`
+- `app/templates/student/listening/question.html`
+- `app/templates/student/quizzes/question.html`
+- `app/templates/student/template/_audio_player.html`
+- `app/templates/teacher/listening/form.html`
+- `docs/APPROVED_REPAIR_CONTRACT.md`
+- `docs/APPROVED_UX_RELEASE.md`
+- `docs/DECISIONS.md`
+- `docs/IMPLEMENTATION_PLAN.md`
+- `docs/PROJECT_STATUS.md`
+- `migrations/versions/8e5f3b0d7124_add_listening_playback_speeds.py`
+- `scripts/railway_migrate.py`
+- `scripts/deployment_diagnostics.py`
+- `scripts/build_release.py`
+
+Keep unrelated app/templates/workspace/help.html and every secret, backup, log and
+QA artifact out of Git. One reviewed commit, normal pushes to both existing
+branches and only the existing Railway web service's source-pin update are
+approved. Predeploy now validates the exact source/parent/target, applies only the
+approved revision, checks existing Listening rows/defaults and model agreement.
+All other hosting settings/services/volumes/variables are preserved.
+
+No automated tests, reset, additional migration, scheduler or research-policy
+change. Hosting build/migration/startup and public Login/placement/assets remain
+to be recorded after execution in the ignored release report; this entry does not
+claim deployment completion.
+
+
+## Student dashboard and Listening workflow — 2026-10-13
+
+Current owner scope covers the Student header/dashboard and Listening workflow.
+The owner separately approved preparing the playback-settings migration only,
+with no application to any database. HEAD remains
+`238e1189712bc7d254a8b28b223a51393e435b7f`; earlier local Login work and the
+unrelated untracked Help template are preserved. This work remains unstaged.
+
+Implemented source:
+
+- `mobile_navigation.js` tracks whether the compact header is away from the
+  top. `product/mobile-navigation.css` makes Student's top header opaque with
+  the page color, and uses glass when scrolled. Existing transform-only reveal,
+  content slot, menu/focus safeguards and other-role presentation are retained.
+- `student/dashboard.html` removes the Groups section and presents up to four
+  existing upcoming activities with type icons, status, linked titles, course,
+  deadline and accessible actions. `student/features.css` owns the new layout.
+- `student/listening/question.html` uses Quiz's question card/options/index,
+  removes Vocabulary and the Finish card, puts Time left at the physical right
+  of Back's row, and puts a compact native audio strip directly after the title.
+  The shared shell exposes a small page-actions block for that timer.
+- Listening's locked answer POST now negotiates the existing autosave JSON
+  shape, including safe stale/expired/finalized/validation/integrity responses.
+  Empty autosave selections clear a checkbox set. Role, nested ownership,
+  enrollment, locks, signed state, server deadline, option ownership and finality
+  checks remain authoritative. No final-submission/scoring operation changed.
+- `quiz_autosave.js` supports Listening without bookmarks, serializes full
+  selections and waits before Next, navigation or final submission. Retry/reload
+  and uncertain-response handling remain. A viewport submission dock appears
+  after all answers are saved. Quiz's dock is suppressed while its ordinary
+  finish action is visible. The dock retains native form association; it lives
+  outside the CSS-contained content region. Last/only Listening questions offer
+  Submit attempt; earlier ones use Next. Unanswered acknowledgement is retained.
+- `student/template/_audio_player.html` and `audio_player.js` use native audio
+  play/pause/seek and an integrated dropdown containing the authored rates.
+  Normal-only activities have no dropdown. Teacher create/edit forms, the
+  Listening model and `listening_playback.py` support optional 0.75x/1.25x/1.5x
+  extras with 1x always available. A form-presence marker rejects older open
+  forms that never showed the setting. Existing authoring freeze, version,
+  no-op, ownership, locks and rollback rules cover edits. This is UI policy,
+  not DRM. Native media collection and research definitions are unchanged.
+- Prepared revision `8e5f3b0d7124`, parent `7d4e2a9c6013`, adds only the finite
+  `playback_speed_mask` SMALLINT and its CHECK. Server default 15 retains the
+  four original rates for existing records. Downgrade refuses automatic loss
+  of authored settings. No migration was applied. Real-app Listening use of
+  this source requires the upgrade before integration/runtime acceptance.
+- Arabic translations, anonymous utility help, asset versions, contract,
+  plan and decisions reflect the requested workflow.
+
+Checks actually executed:
+
+- JavaScript syntax passed for `quiz_autosave.js`, `mobile_navigation.js` and
+  `audio_player.js`. Python AST parsing passed for six affected/new source and
+  migration files. Parsed all 232 HTML templates with the real OwnedUIExtension
+  and compiled 11 affected/consuming templates. Arabic JSON duplicate-key review
+  found 3,523 unique entries.
+- Alembic source graph has one prepared head, `8e5f3b0d7124`. Compiled only its
+  upgrade to MySQL SQL through offline MigrationContext/Operations: one ADD
+  COLUMN with default 15 and one ADD CHECK. SQL is ignored under
+  `instance/student_listening_20261013/prepared_upgrade.sql`. No connection to
+  a MySQL server or application-factory/database startup was used.
+- Bounded manual browser review used real templates/styles/clients and
+  fictional presentation fixtures, with synthetic save/submission responses
+  held only in process memory. Reviewed English/light and Arabic/light/dark,
+  phone sizes 320x640 and 390x844, and desktop 1440x900. No horizontal page
+  overflow appeared in inspected views. Dashboard Groups were absent; four
+  upcoming rows and the empty state rendered correctly.
+- Verified Listening answer selection, Next waiting for the pending save,
+  all-complete dock visibility and native submission reaching the fixture
+  boundary with the three saved selections. Verified the last/only-question
+  Submit action, a normal-speed-only player without a selector, the configured
+  dropdown changing actual native playbackRate to 1.25, rapid multiple-choice
+  changes, clearing all choices and progress returning to zero.
+- A deliberately injected 503 save failure displayed Retry/Reload; retry and
+  subsequent submission retained the selected answer. Reviewed the Teacher
+  creation form's optional speed checkboxes. Quiz bookmark success, autosave,
+  progress and desktop/mobile submission shortcut behavior remained functional
+  in the fixture. No unexpected script errors were observed.
+- Verified header hidden on downward scroll, glass on upward reveal away from
+  the top (24px blur), and opaque page color/no blur at scrollTop 0. Timer and
+  Back shared the same row with the timer on the right, including Arabic.
+  Reviewed no-JavaScript fallback markup; an actual JavaScript-disabled browser
+  session was not exercised. Native fallback includes manual saving and deadline.
+- Source diff/whitespace review passed with CR-at-EOL handling for existing
+  CRLF files. Ignored fixture/screenshots are under
+  `instance/student_listening_20261013/`. The owned review tab/server were closed
+  and temporary browser sizing reset after review.
+
+No automated tests were created or executed. No real-MySQL authentication,
+teacher save, answer/finality/concurrency gate, migration execution, business
+data change, scheduler change, Git staging/commit/push or deployment occurred.
+These static/offline/manual checks do not establish integrated database-backed
+regression acceptance. Stop point: local implementation and prepared migration;
+apply/verify that migration only under separate execution authorization.
+
+## Login cleanup and placement entry — 2026-10-13
+
+The owner requests the bounded Login presentation changes below. The preceding
+activity/mobile/Messages release completed at
+`238e1189712bc7d254a8b28b223a51393e435b7f`, verified on both existing GitHub
+branches and Railway deployment `a208ef88-3b4f-472c-9f24-1d634fe41d90` (SUCCESS).
+This new follow-up remains local and unstaged. The unrelated untracked
+`app/templates/workspace/help.html` is preserved.
+
+Implemented:
+
+- `auth/login.html`: removed Help/Display entry buttons, welcome heading,
+  subtitle and branded footer. Reused the transparent light/dark logo assets.
+  Added Find your level left and Sign in right; the selected card body contains
+  either the original credential form or Start test. Existing credential help,
+  field names, autocomplete, CSRF/errors and submit behavior remain intact.
+- `login_entry.js`: enhances native mode-selection links into accessible tabs
+  with arrow/Home/End/Space handling. Switching preserves current DOM inputs
+  without browser storage or requests. POST errors always return to Sign in;
+  native links also select the correct server-rendered panel without JavaScript.
+- `login.css`: transparent logo presentation, themed tab/placeholder layout and
+  autofill paint/text/caret overrides matching the empty field's raised surface.
+  `ar.json` supplies six new UI translations, including "حدد مستواك".
+- `auth/routes.py` and `auth/placement.html`: a public GET-only empty placement
+  interface with a title and Back link. It has no questions, attempt creation,
+  submission or grading. Existing login safe-return validation is unchanged.
+- Contract, implementation plan and decisions record this bounded scope.
+
+Checks executed:
+
+- `node --check app/static/js/login_entry.js`: passed. Python AST parsing of
+  the affected route file passed. All 232 HTML templates parsed with the real
+  OwnedUIExtension; five affected/consuming templates compiled. Arabic JSON
+  parsed with duplicate-key rejection: 3,515 unique entries.
+- Bounded manual browser review used real templates, styles, LoginForm and the
+  actual new placement route in a database-free presentation app. English/light
+  and Arabic/dark/light views were reviewed at 390x844, 320x640 and 1440x900.
+  Inspected layouts had no horizontal overflow; mobile inputs retained 16px
+  text and placement stayed left of Sign in in both languages.
+- Verified tab clicks and keyboard selection, the Start test / empty interface
+  / Back flow, native server-rendered link fallback, preserved fictional email
+  input across switches, and preserved next-path links. A CSRF-protected empty
+  form POST in the presentation fixture rendered both required-field errors
+  and selected Sign in even when the URL selected placement. No database-backed
+  authentication or successful login was attempted.
+- Logos rendered without a background in both themes; unwanted buttons/copy
+  were absent. Browser console errors captured: zero. Autofill CSS was reviewed;
+  an actual saved-credential password-manager autofill was not exercised.
+- Final source diff and whitespace checks passed with CR-at-EOL handling for
+  existing CRLF files. Manual fixture/screenshots are ignored under
+  `instance/login_entry_20261013/`; the owned tab/server were closed after review.
+
+No automated tests were created or executed. No database, migration, scheduler,
+authentication-policy, Git commit/push or deployment operation occurred in this
+follow-up. This is bounded presentation/static evidence, not full authentication
+or cross-browser regression acceptance. The placement interface is deliberately
+empty as requested.
+
 ## Activity/mobile/Messages release authorized — 2026-10-13
 
 The owner requests upload and explicitly confirms GitHub plus the Railway website

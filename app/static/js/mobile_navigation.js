@@ -79,6 +79,7 @@
     showHeader();
     measureHeader();
     var root = document.scrollingElement;
+    body.dataset.headerScrolled = String(Boolean(root && root.scrollTop > 12));
     if (root) positions.set(root, {position:root.scrollTop, anchor:root.scrollTop, direction:0});
   }
   document.addEventListener('scroll', function (event) {
@@ -86,6 +87,7 @@
     var target = event.target === document ? document.scrollingElement : event.target;
     if (!target || (target !== document.scrollingElement && !target.matches('.messenger-sidebar__list,.messenger-timeline,.messenger-welcome,.messenger-greeting'))) return;
     var position = Math.max(0, Math.min(target.scrollTop, target.scrollHeight - target.clientHeight));
+    body.dataset.headerScrolled = String(position > 12);
     var state = positions.get(target) || {position:0, anchor:0, direction:0};
     var delta = position - state.position;
     var direction = Math.sign(delta);

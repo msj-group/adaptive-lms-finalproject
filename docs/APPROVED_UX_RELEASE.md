@@ -1,5 +1,36 @@
 # Approved UX release — 2026-10-11
 
+## Login and Student/Listening migration release — 2026-10-13
+
+The owner explicitly requests applying the prepared migration, push and deploy.
+Publish the reviewed Login/placement entry and Student header/dashboard/Listening
+work, including the prepared 8e5f3b0d7124 migration and the necessary expected-head
+update in the existing Railway predeploy script. This supersedes preparation-only
+and local-only limits for this release. No automated tests, reset or research
+policy change. The unrelated untracked Help template remains local.
+
+Verified GitHub follow-up/release heads and the existing live web source pin:
+238e1189712bc7d254a8b28b223a51393e435b7f. Railway is successful with no staged
+changes. Use the same project/environment/web service and branches below.
+Create one commit from the explicit 34-file allowlist in PROJECT_STATUS, push
+normally to both branches, verify the exact remote SHA, then stage only that
+commit pin and inspect the Railway patch before accepting deployment.
+
+Local execution completed on 2026-10-15 after the owner requested creation of a
+separate migration account through the configured local administrative connection.
+Its credentials are only in ignored environment/private artifacts; runtime
+privileges are unchanged. Current private snapshots were verified, the exact
+parent-to-target upgrade applied, all 75 table counts preserved and model/schema
+agreement confirmed. Production already has separate migration credentials.
+The readiness endpoint, read-only diagnostics and manifest revision also advance
+to the approved target; leaving the parent there would refuse the migrated app.
+The owner-authorized web predeploy may apply only the
+parent 7d4e2a9c6013 -> 8e5f3b0d7124 transition (or confirm an already-current
+target), preserving existing Listening records/default rates and checking the
+complete model/schema agreement. No MySQL-service, volume, variable or domain
+configuration change is included. Actual migration/build/startup/public evidence
+will be recorded in ignored instance/login_student_release_20261013/.
+
 ## Activity, mobile header and Messages release — 2026-10-13
 
 The owner requests upload and explicitly confirms GitHub plus updating the

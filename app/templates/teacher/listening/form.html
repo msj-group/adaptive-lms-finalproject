@@ -12,7 +12,7 @@
 
 {#- Phase 4 / M05. `activity` is None on create and a plain presentation dict
     on edit. The form carries ONLY the title, the instructions, the transcript,
-    the transcript setting, the vocabulary notes and -- on create only -- the
+    the transcript setting, vocabulary notes, playback choices and -- on create only -- the
     one audio file. There is no status, publication, timing, attempt-limit,
     question, option, answer-key, score, group-id, quiz-id, audio-file-id,
     storage-key or version control here, and none exists server-side either, so
@@ -78,6 +78,14 @@
       <span class="ds-section__desc" style="display:block; margin-top: var(--space-1)">Plain text; line breaks preserved. Up to {{ form.INSTRUCTIONS_MAX }} characters.</span>
       {% for error in form.instructions.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
+
+    <fieldset class="field" style="border:0; padding:0; max-width:none">
+      <legend class="field__label">{{ form.playback_speeds.label.text }}</legend>
+      <p class="ds-section__desc">Normal speed (1×) is always available. Select extra speeds, or leave all unchecked to hide speed selection.</p>
+      {% for option in form.playback_speeds %}<label style="display:inline-flex; align-items:center; gap:8px; margin-inline-end:20px; min-height:44px">{{ option() }} <span dir="ltr">{{ option.label.text }}</span></label>{% endfor %}
+      {% for error in form.playback_speeds.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+      {% for error in form.playback_config_version.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    </fieldset>
 
     <div class="field" style="max-width:none; ">
       {{ form.vocabulary_notes.label(class_="field__label") }}

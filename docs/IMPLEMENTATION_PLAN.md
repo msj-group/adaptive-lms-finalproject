@@ -1,5 +1,38 @@
 # Repair implementation plan
 
+> Owner continuation, 2026-10-15: complete local and hosted release. The requested
+> separate local migration account was created/configured privately; runtime
+> privileges remain unchanged. Exact local upgrade and schema/count verification
+> completed. Commit the reviewed allowlist, push both existing branches and deploy
+> that SHA through the existing Railway web predeploy. Credentials and recovery
+> artifacts stay ignored. Record final hosting/public evidence after execution.
+
+> Latest execution/release authority, 2026-10-13: the owner now explicitly asks
+> to apply the prepared migration, push and deploy the reviewed Login and Student
+> changes. Verify 7d4e2a9c6013, snapshot privately, apply only 8e5f3b0d7124 and
+> inspect actual local schema/data preservation. Create one bounded reviewed
+> commit, push the existing branches and deploy its exact SHA on Railway with
+> the expected-parent/target predeploy check. Preserve unrelated Help, data,
+> files, variables, volumes and research policy. No automated tests or reset.
+> Actual execution and release evidence: PROJECT_STATUS and the ignored release report.
+
+> Latest Student follow-up, 2026-10-13: implement the requested header/dashboard
+> presentation and Listening question/audio/timer/autosave/Next/Submit flow.
+> Add teacher-authored playback choices with the separately approved prepared
+> migration only. Preserve earlier Login work and all authorization, locking,
+> deadline, finality, answer-key and research contracts. Do not apply migrations,
+> mutate databases, run automated tests, commit/push or deploy. Static/offline SQL
+> compilation and bounded manual fixture review are allowed; actual MySQL
+> execution and runtime acceptance remain pending. Evidence: PROJECT_STATUS.md.
+
+> Latest owner follow-up, 2026-10-13: implement the requested Login cleanup and
+> two entry choices, with Sign in right and Find your level left. The placement
+> choice replaces the credentials with Start test and opens an empty public
+> interface. Retain native links, keyboard access, localization and the existing
+> authentication contract. Verify source/templates and bounded manual browser
+> presentation; no automated tests, database/migration or new delivery request.
+> Evidence and limitations: PROJECT_STATUS.md.
+
 > Latest release authority, 2026-10-13: the owner now explicitly requests GitHub
 > upload and Railway website update of the reviewed activity/mobile/Messages
 > changes. Create one reviewed allowlisted commit; push fast-forward-compatible

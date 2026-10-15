@@ -1,10 +1,10 @@
-/* Ordinary Quiz: serialized answer saves, own-attempt review flags and navigation.
+/* Quiz and Listening: serialized answer saves and protected navigation.
  * No browser storage of answers. Never abort an in-flight write on a new choice.
  * CSRF, signed state, selection ownership and expiry are enforced by the server.
  */
 (function () {
   "use strict";
-  var root = document.querySelector("[data-quiz-workspace]");
+  var root = document.querySelector("[data-quiz-workspace],[data-listening-workspace]");
   if (!root || !window.fetch || !window.FormData) return;
   var t = window.aelmsUI.t;
   var form = root.querySelector("[data-quiz-autosave]");
@@ -15,7 +15,7 @@
   var links = Array.from(root.querySelectorAll("[data-quiz-question]"));
   var currentLink = links.find(function (link) { return link.dataset.quizQuestion === root.dataset.questionId; });
   var bookmarkForm = root.querySelector("[data-quiz-bookmark-form]");
-  var bookmarkButton = bookmarkForm.querySelector("button");
+  var bookmarkButton = bookmarkForm && bookmarkForm.querySelector("button");
   var bookmarkStatus = root.querySelector("[data-bookmark-status]");
   var worker = null;
   var bookmarkWorker = null;
@@ -24,6 +24,23 @@
   var terminal = false;
   var leaving = false;
   var approved = new WeakSet();
+  var completeDocks = Array.from(root.querySelectorAll("[data-complete-submit]"));
+  var allAnswered = links.length > 0 && links.every(function (link) { return link.dataset.answered === "true"; });
+  var inlineSubmitVisible = false;
+  function renderDocks() { completeDocks.forEach(function (dock) { dock.hidden = !allAnswered || inlineSubmitVisible; }); }
+  // The content container uses CSS containment; move the dock out so fixed
+  // positioning follows the viewport while its native form association stays.
+  completeDocks.forEach(function (dock) { document.body.appendChild(dock); });
+  // Quiz already has a finish action in its sidebar. Reveal the shortcut only
+  // when that action is outside the viewport; Listening uses the dock directly.
+  var inlineSubmit = root.querySelector(".quiz-finish-submit");
+  if (inlineSubmit && window.IntersectionObserver) {
+    new IntersectionObserver(function (entries) {
+      inlineSubmitVisible = entries[0].intersectionRatio >= 0.99;
+      renderDocks();
+    }, {threshold:[0,0.99,1],rootMargin:"0px 0px -100px 0px"}).observe(inlineSubmit);
+  }
+  renderDocks();
 
   function selection() {
     return Array.from(form.querySelectorAll("input[name='option']:checked"), function (input) { return input.value; });
@@ -110,6 +127,9 @@
     // A changed count requires a fresh acknowledgement, never a remembered one.
     if (previousCount !== count) checkbox.checked = false;
     root.querySelector("[data-quiz-confirm-text]").textContent = t(unanswered === 1 ? "Submit with %(count)d unanswered question" : "Submit with %(count)d unanswered questions", {count:unanswered});
+    allAnswered = !unanswered;
+    renderDocks();
+    root.querySelectorAll("[data-incomplete-submit]").forEach(function (button) { button.hidden = !unanswered; });
   }
   function safeTarget(value) {
     var url = new URL(value, location.href);
@@ -175,7 +195,7 @@
   retry.addEventListener("click", ensureSaved);
 
   function toggleBookmark() {
-    if (bookmarkWorker || terminal) return bookmarkWorker || Promise.resolve(false);
+    if (!bookmarkForm || bookmarkWorker || terminal) return bookmarkWorker || Promise.resolve(false);
     var marked = bookmarkButton.getAttribute("aria-pressed") !== "true";
     var body = new FormData(bookmarkForm);
     body.set("bookmark", marked ? "yes" : "no");
@@ -253,8 +273,8 @@
       if (!ready) { if (!terminal) leaving = false; return; }
       leaving = false;
       if (target === form) {
-        var next = root.querySelector("[data-research-id='quiz_next']");
-        if (next) { leaving = true; navigate(safeTarget(next.href)); }
+        var next = root.querySelector("[data-answer-next],[data-research-id='quiz_next']");
+        if (next) { leaving = true; navigate(safeTarget(next.dataset.nextUrl || next.href)); }
       } else {
         approved.add(target);
         // The collector saw the original native submission intention. This

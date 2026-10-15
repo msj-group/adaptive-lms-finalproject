@@ -1,5 +1,101 @@
 # Project Decisions
 
+## 2026-10-15 — Separate local migration account and completed local upgrade
+
+- The owner reconfirms both local and hosting operation, explicitly asks the
+  agent to add the local migration account/configuration and provide its data,
+  then requests continuation. Use the existing configured local administrative
+  connection without disclosing its credential. Generate a separate local-only
+  account, granting SELECT on the application schema, ALTER on Listening and
+  version-table DML only. Keep the application's runtime account unchanged.
+- Put generated credentials in ignored .env migration variables and a private
+  user-delivery file. No credential or backup belongs in Git or Railway changes.
+- Apply only 7d4e2a9c6013 -> 8e5f3b0d7124 using the separate account after a
+  current private snapshot. Actual local inspection confirms 75 table counts
+  preserved, five existing Listening rows at default mask 15 and no model/schema
+  delta. Continue the previously approved exact-SHA GitHub/Railway release.
+- Advance the fixed revision in HTTP readiness, read-only diagnostics and release
+  metadata together with predeploy. The local post-migration HTTP probe exposed
+  the old parent comparison; a successfully migrated database must become ready.
+
+## 2026-10-13 — Apply and release Login/Student/Listening work
+
+- The owner's explicit "apply the migration, push and deploy" request advances
+  the prepared 8e5f3b0d7124 migration and reviewed Login/Student source to release.
+  Verify the exact local parent and private recovery snapshots, apply only this
+  revision, inspect default/CHECK/model agreement and preserve existing records
+  and private file bytes. Keep the unrelated untracked Help template local.
+- The existing Railway predeploy must be updated from its old expected head.
+  Under its existing advisory lock, verify the source head and accept only
+  7d4e2a9c6013 or already-current 8e5f3b0d7124. Upgrade to the explicit target,
+  check preserved Listening row count/default rates and model/schema agreement.
+  Keep redacted failures and the existing deployment commands/credentials.
+- Create one reviewed allowlisted commit and ordinary compatible pushes to
+  ui/platform-unification-20261009 and preserve/st2-20261008. Advance only the
+  production web source pin after remote SHA verification. Preserve all other
+  Railway configuration/services/volumes/variables and research semantics.
+- Static/manual evidence is bounded; no automated tests are authorized. Record
+  actual local and production migration evidence, exact deployed SHA, build/
+  startup/readiness and public Login/placement/assets after execution.
+
+## 2026-10-13 — Student dashboard and Listening workflow
+
+- At the top, Student's compact header matches the opaque page background.
+  Scrolling adds glass; the existing transform-only hide/reveal retains its
+  stable content slot. Other roles retain their current header presentation.
+- Remove the dashboard's Groups section; render up to four existing upcoming
+  activities as typed icon/title/course/deadline rows. Reuse authorized queries
+  and destinations without altering activity ranking or lifecycle policy.
+- Listening questions reuse Quiz's card/options/index layout and serialized
+  autosave client, without bookmarks. Show only the current prompt/options and
+  bounded navigation/progress identifiers. Vocabulary remains on overview/results.
+  The physical right timer shares Back's row; the compact native audio strip
+  follows the page title, with one integrated speed dropdown when configured.
+- Listening's existing locked answer POST negotiates JSON for autosave. Keep
+  CSRF, role/nested ownership, signed stale state, locked active option checks,
+  deadline/finality and safe rollback. Permit empty autosave sets for clearing
+  checkboxes, as Quiz already does. Serialize full-set replacements; wait for
+  the latest confirmed save before navigation/submission. Failures keep work
+  available for retry/reload. No answer data enters browser storage.
+- Next saves/advances while a next question exists. The last or only question
+  offers Submit attempt. Keep unanswered acknowledgement and server rechecks,
+  remove Listening's Finish card, and expose a viewport submission dock after
+  every question is saved. Quiz shows that dock when its ordinary finish action
+  is outside the viewport. Final submission remains an explicit native POST.
+- Teacher create/edit forms choose extra rates 0.75x, 1.25x and 1.5x; 1x is
+  always present. No extras means no speed selector. A finite SMALLINT mask
+  belongs to ListeningActivity, with CHECK/model/form validation, default 15
+  preserving existing rates, and existing Quiz.version/freeze/lock rules.
+  A hidden form-presence marker rejects old forms that never showed playback
+  choices, instead of interpreting an omitted field as an intentional empty set.
+  This is a playback UI setting, not DRM. Media collection remains on the native
+  element; no collector, event dictionary, sampling or session definition changes.
+- The owner explicitly approves preparation only of revision 8e5f3b0d7124,
+  parent 7d4e2a9c6013. Compile its MySQL DDL offline; do not apply it anywhere.
+  Automatic downgrade refuses to discard authored playback settings. Runtime
+  code depending on the new field requires this upgrade before real-app use.
+- Preserve the preceding uncommitted Login changes, unrelated Help and local
+  data. No automated tests, real-database writes, Git mutation or deployment.
+
+## 2026-10-13 — Login cleanup and placement entry placeholder
+
+- The owner explicitly permits Login presentation changes, superseding its
+  earlier visual freeze. Remove Help/Display entry buttons, Welcome back,
+  Your learning space awaits and the branded footer. Keep credential assistance.
+- Reuse the existing transparent light/dark logo assets and remove the login
+  logo's CSS background. Scope all new styling to Login; match autofill paint,
+  text and caret to the existing themed input colors.
+- Put Find your level (Arabic: "حدد مستواك") left and Sign in right in both
+  languages. Native GET links select the same server-rendered panels; a small
+  client enhances them to keyboard-accessible tabs and retains entered values
+  in the current DOM only. POST validation always renders the Sign in panel.
+- Start test opens GET /auth/placement, a public empty presentation shell with
+  Back navigation. It creates no attempt and defines no assessment/scoring rules.
+  Keep the existing login return target across navigation; the existing safe
+  redirect validation remains authoritative when authentication succeeds.
+- No authentication policy, schema, business data, research collection, new
+  automated test package or Git/deployment operation is included in this follow-up.
+
 ## 2026-10-13 — Release the reviewed activity/mobile/Messages changes
 
 - The owner requests upload and explicitly selects GitHub plus Railway website

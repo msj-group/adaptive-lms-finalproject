@@ -3507,5 +3507,19 @@
   "Saved draft on this browser": "المسودة المحفوظة على هذا المتصفح",
   "This is a local draft, not a submitted answer.": "هذه مسودة محلية وليست إجابة مُسلّمة.",
   "Submitted. The saved draft could not be removed from this browser.": "تم التسليم. تعذّر حذف المسودة المحفوظة من هذا المتصفح.",
-  "Turn on JavaScript to save a draft on this browser. Your answer is only submitted when you select Submit Final Answer.": "فعّل JavaScript لحفظ المسودة على هذا المتصفح. لا تُسلّم إجابتك إلا عند اختيار تسليم الإجابة النهائية."
+  "Turn on JavaScript to save a draft on this browser. Your answer is only submitted when you select Submit Final Answer.": "فعّل JavaScript لحفظ المسودة على هذا المتصفح. لا تُسلّم إجابتك إلا عند اختيار تسليم الإجابة النهائية.",
+  "Find your level": "حدد مستواك",
+  "Start test": "ابدأ الاختبار",
+  "Placement test": "اختبار تحديد المستوى",
+  "Placement test · Youth Centre": "اختبار تحديد المستوى · Youth Centre",
+  "Account access": "تسجيل الدخول أو تحديد المستوى",
+  "Test questions": "أسئلة الاختبار",
+  "Reload the page to review playback settings.": "أعد تحميل الصفحة لمراجعة إعدادات التشغيل.",
+  "All questions answered": "تمت الإجابة عن جميع الأسئلة",
+  "Playback speed": "سرعة التشغيل",
+  "Available playback speeds": "سرعات التشغيل المتاحة",
+  "Normal speed (1×) is always available. Select extra speeds, or leave all unchecked to hide speed selection.": "السرعة العادية (1×) متاحة دائمًا. اختر سرعات إضافية أو اترك الخيارات دون تحديد لإخفاء تغيير السرعة.",
+  "Automatic saving requires JavaScript. Save your selection before submitting.": "يتطلب الحفظ التلقائي تفعيل JavaScript. احفظ اختيارك قبل تسليم المحاولة.",
+  "Save selection": "حفظ الاختيار",
+  "Quiz and Listening answers save automatically when changed. If saving fails, use Retry or Reload page before leaving. Save other edited forms before leaving.": "تُحفظ إجابات الاختبار والاستماع تلقائيًا عند تعديلها. إذا تعذّر الحفظ، أعد المحاولة أو حمّل الصفحة قبل المغادرة. احفظ النماذج الأخرى المعدّلة قبل المغادرة."
 }

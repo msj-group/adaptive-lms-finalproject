@@ -2,137 +2,65 @@
 {% set activity_kind = 'listening' %}
 {% set activity_phase = 'question' %}
 {% block title %}Question {{ position }} — {{ activity.title }}{% endblock %}
-{% block portal_nav %}
-  {% include "student/_portal_nav.html" %}
+{% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block workspace_page_actions %}
+<span class="workspace-page-actions badge badge--neutral listening-timer" dir="auto" data-quiz-timer data-deadline="{{ attempt.deadline_iso }}">Time left: <span data-timer-remaining dir="ltr">&mdash;</span></span>
 {% endblock %}
 {% block portal_content %}
-<div class="activity-surface">
-
-{#- Phase 4 / M05. One question at a time, beside the recording. The page
-    carries only this question, its active options, this attempt's saved
-    selections for it and the two neighbour identifiers -- never the whole
-    activity and never another question's options.
-
-    The option rows carry NO correctness information: the query behind them does
-    not select `is_correct`, so the answer key cannot leak through this page,
-    its form values, its URLs or its tokens.
-
-    `transcript` is None here unless the teacher chose "available at any time".
-    The template never decides that and never receives a transcript it may not
-    show.
-
-    The countdown and the audio controls are both display only. The server
-    compares its own clock against the stored deadline under locks, and decides
-    every authorization, attempt state, completion and grade; nothing on this
-    page can make an attempt live longer, end sooner, or count as finished. -#}
-<div class="ds-row" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
-
-  <span class="ds-row" style="gap: var(--space-3); align-items: center">
-    <span class="ds-section__desc" style="margin:0">Question {{ position }} of {{ total }}</span>
-    <span class="badge badge--neutral" data-quiz-timer data-deadline="{{ attempt.deadline_iso }}">
-      Time left: <span data-timer-remaining>&mdash;</span>
-    </span>
-  </span>
-</div>
-<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
-  Attempt {{ attempt.attempt_number }} &middot; closes {{ attempt.deadline_local.strftime("%Y-%m-%d %H:%M") }}
-  &middot; {{ answered_count }} of {{ total }} answered
-</p>
-
+<div class="activity-surface listening-question-surface" data-listening-workspace data-question-id="{{ question.public_id }}">
+{# Only this question's prompt/options and bounded authorized navigation flags.
+   Never render another question's options, correctness or a hidden transcript. #}
+{% with audio_compact=true %}{% include "student/template/_audio_player.html" %}{% endwith %}
 {% with messages = get_flashed_messages(with_categories=true) %}
-  {% for category, message in messages %}
-  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
-  {% endfor %}
+  {% for category, message in messages %}{% if message not in ('Answer saved.', _('Answer saved.')) %}<div class="alert alert--{{ category }}">{{ message }}</div>{% endif %}{% endfor %}
 {% endwith %}
-
-<div class="st-listening-layout">
-<aside class="activity-listening-desk">
-<h2>Listen and explore</h2>{% include "student/template/_audio_player.html" %}
-
-{% if vocabulary %}
-<section class="st-panel" style="margin-bottom: var(--space-4)">
-  <div class="card__title" style="margin-bottom: var(--space-2)">Vocabulary</div>
-  <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ vocabulary }}</div>
-</section>
-{% endif %}
-
-{% if transcript %}
-<section class="st-panel" style="margin-bottom: var(--space-4)">
-  <div class="card__title" style="margin-bottom: var(--space-2)">Transcript</div>
-  {% if transcript_note %}<p class="ds-section__desc" style="margin-top:0">{{ transcript_note }}</p>{% endif %}
-  <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ transcript }}</div>
-</section>
-{% endif %}
-
-</aside>
-<div class="activity-question-main">{{ activity_ui.progress(answered_count,total) }}<div class="alert alert--info" style="margin-bottom: var(--space-4)">{% if question.is_multiple %}Select the exact correct set; no partial credit.{% else %}Select one answer.{% endif %} Use Save to keep the answer. Changes are allowed until final submission or expiry.</div>
-
-<form method="post" data-answer-form data-research-form="listening_save"
-      action="{{ url_for('student.listening_answer', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=attempt.public_id, question_public_id=question.public_id) }}">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <input type="hidden" name="answer_state" value="{{ answer_token }}">
-
-  <div class="activity-question-paper" style="margin-bottom: var(--space-4)">
-    {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe. #}
-    <div class="activity-question-prompt" id="activity-question-prompt" dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ question.prompt }}</div>
-
-    <div class="activity-choice-grid" role="group" aria-labelledby="activity-question-prompt">
-    {% for option in question.options %}
-    <label class="activity-choice">
-      <input type="{{ 'checkbox' if question.is_multiple else 'radio' }}"
-             name="option" value="{{ option.public_id }}" data-research-id="listening_option"
-             {% if option.selected %}checked{% endif %}>
-      <span dir="auto">{{ option.text }}</span>
-    </label>
-    {% endfor %}
+<div class="st-question-layout quiz-question-layout">
+  <div class="activity-question-main">
+    <div class="activity-question-paper quiz-question-card">
+      <form id="listening-answer" method="post" data-answer-form data-quiz-autosave data-research-form="listening_save" action="{{ url_for('student.listening_answer', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=attempt.public_id, question_public_id=question.public_id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="answer_state" value="{{ answer_token }}">
+        <div class="quiz-question-body">
+          <div class="quiz-question-toolbar listening-question-meta"><span>Question {{ position }} of {{ total }}</span><span>Attempt {{ attempt.attempt_number }}</span></div>
+          <p class="quiz-answer-hint">{% if question.is_multiple %}Select all answers that apply. There is no partial credit.{% else %}Select one answer.{% endif %}</p>
+          <div class="activity-question-prompt" id="activity-question-prompt" dir="auto" style="white-space:pre-wrap; overflow-wrap:anywhere">{{ question.prompt }}</div>
+          <div class="activity-choice-grid" role="group" aria-labelledby="activity-question-prompt">
+            {% for option in question.options %}<label class="activity-choice">
+              <input type="{{ 'checkbox' if question.is_multiple else 'radio' }}" name="option" value="{{ option.public_id }}" data-research-id="listening_option" {% if option.selected %}checked{% endif %}>
+              <span dir="auto">{{ option.text }}</span>
+            </label>{% endfor %}
+          </div>
+          <div class="quiz-save-feedback" data-quiz-save-feedback data-form-ui hidden>
+            <p data-quiz-save-status role="alert" hidden></p><button type="button" class="btn btn--secondary" data-quiz-save-retry hidden>Retry</button>
+            <a href="{{ url_for('student.listening_question', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=attempt.public_id, question_public_id=question.public_id) }}" data-quiz-reload hidden>Reload page</a>
+          </div>
+          <noscript><p class="alert alert--warning">Automatic saving requires JavaScript. Save your selection before submitting.</p><p>Deadline: <time dir="ltr" datetime="{{ attempt.deadline_iso }}">{{ attempt.deadline_local.strftime('%Y-%m-%d %H:%M') }}</time></p><button type="submit" class="btn btn--secondary">Save selection</button></noscript>
+        </div>
+      </form>
     </div>
+    <nav class="workspace-pager quiz-question-toolbar listening-question-actions" aria-label="Question navigation">
+      {% if previous_public_id %}<a class="btn btn--secondary" data-research-id="listening_previous" href="{{ url_for('student.listening_question', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=attempt.public_id, question_public_id=previous_public_id) }}">Previous</a>{% endif %}
+      {% if next_public_id %}<button type="submit" class="btn btn--primary" form="listening-answer" name="go" value="next" data-research-id="listening_save_next" data-answer-next data-next-url="{{ url_for('student.listening_question', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=attempt.public_id, question_public_id=next_public_id) }}">Next</button>
+      {% else %}<button type="submit" class="btn btn--primary" form="listening-final-submit" data-research-id="listening_submit" data-incomplete-submit {% if not unanswered_count %}hidden{% endif %}>Submit attempt</button>{% endif %}
+    </nav>
+    <form id="listening-final-submit" method="post" data-quiz-submit data-research-form="listening_submit" action="{{ url_for('student.listening_submit', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=attempt.public_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="submit_state" value="{{ submit_token }}"><input type="hidden" name="from_question" value="{{ question.public_id }}">
+      <p class="ds-section__desc" data-quiz-unanswered-note {% if not unanswered_count %}hidden{% endif %}>Unanswered questions are marked incorrect. Tick the box below to submit anyway.</p>
+      <p class="ds-section__desc" data-quiz-complete-note {% if unanswered_count %}hidden{% endif %}>You have answered every question. Submitting is final — you cannot change your answers afterwards.</p>
+      <label class="quiz-unanswered-confirm" data-quiz-unanswered-confirm {% if not unanswered_count %}hidden{% endif %}><input type="checkbox" name="confirm_unanswered" value="yes" data-research-id="listening_submit_confirm" {% if not unanswered_count %}disabled{% endif %}><span data-quiz-confirm-text>{{ _n('Submit with %(count)d unanswered question', 'Submit with %(count)d unanswered questions', unanswered_count) }}</span></label>
+    </form>
+    {% if transcript %}<section class="st-panel listening-transcript"><h2>Transcript</h2>{% if transcript_note %}<p>{{ transcript_note }}</p>{% endif %}<div dir="auto" style="white-space:pre-wrap; overflow-wrap:anywhere">{{ transcript }}</div></section>{% endif %}
   </div>
-
-  <div class="ds-row" style="gap: var(--space-2); margin-bottom: var(--space-6)">
-    <button type="submit" class="btn btn--primary" data-research-id="listening_save">Save answer</button>
-    {% if next_public_id %}
-    <button type="submit" name="go" value="next" class="btn btn--secondary" data-research-id="listening_save_next">Save and next</button>
-    {% endif %}
-  </div>
-</form>
-
-<nav class="ds-row workspace-pager" style="gap: var(--space-2); margin-bottom: var(--space-6)" aria-label="Question navigation">
-  {% if previous_public_id %}
-  <a class="btn btn--secondary" href="{{ url_for('student.listening_question', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=attempt.public_id, question_public_id=previous_public_id) }}">Previous</a>
-  {% endif %}
-  {% if next_public_id %}
-  <a class="btn btn--secondary" href="{{ url_for('student.listening_question', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=attempt.public_id, question_public_id=next_public_id) }}">Next</a>
-  {% endif %}
-</nav>
-
-<section class="st-panel">
-  <div class="card__title" style="margin-bottom: var(--space-2)">Finish this attempt</div>
-  {% if unanswered_count %}
-  <p class="ds-section__desc">
-    {{ _n('You have not answered %(count)d question.', 'You have not answered %(count)d questions.', unanswered_count) }}
-    Unanswered questions are marked incorrect. Tick the box below to submit anyway.
-  </p>
-  {% else %}
-  <p class="ds-section__desc">You have answered every question. Submitting is final — you cannot change your answers afterwards.</p>
-  {% endif %}
-  <form method="post"
-        action="{{ url_for('student.listening_submit', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=attempt.public_id) }}" data-research-form="listening_submit">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="submit_state" value="{{ submit_token }}">
-    <input type="hidden" name="from_question" value="{{ question.public_id }}">
-    {% if unanswered_count %}
-    <label style="display:block; margin-bottom: var(--space-2)">
-      <input type="checkbox" name="confirm_unanswered" value="yes" data-research-id="listening_submit_confirm">
-      {{ _n('Submit with %(count)d unanswered question', 'Submit with %(count)d unanswered questions', unanswered_count) }}
-    </label>
-    {% endif %}
-    <button type="submit" class="btn btn--primary" data-research-id="listening_submit">Submit attempt</button>
-  </form>
-</section>
+  <aside class="quiz-question-sidebar">
+    <section class="activity-progress quiz-question-index"><h2>Questions</h2><p data-quiz-progress-label>{{ _('%(answered)s of %(total)s answered', answered=answered_count, total=total) }}</p><progress data-quiz-progress value="{{ answered_count }}" max="{{ total }}" aria-label="Answered questions"></progress>
+      <nav class="quiz-question-grid" aria-label="All questions">
+        {% for item in question_links %}<a class="quiz-question-link" href="{{ url_for('student.listening_question', group_public_id=group_public_id, listening_public_id=activity.public_id, attempt_public_id=attempt.public_id, question_public_id=item.public_id) }}" data-research-id="listening_next" data-quiz-question="{{ item.public_id }}" data-answered="{{ 'true' if item.answered else 'false' }}" {% if item.public_id == question.public_id %}aria-current="step"{% endif %}><span class="quiz-question-number"><span class="sr-only">Question </span>{{ item.position }}</span><span class="quiz-question-state">{% if item.answered %}Answered{% else %}Not answered{% endif %}</span></a>{% endfor %}
+      </nav>
+    </section>
+  </aside>
 </div>
-</div>
-<script src="{{ url_for('static', filename='js/quiz_timer.js') }}" defer>
-</script>
-
+<div class="activity-submit-dock" data-complete-submit {% if unanswered_count %}hidden{% endif %}><span>All questions answered</span><button type="submit" class="btn btn--primary" form="listening-final-submit" data-research-id="listening_submit">Submit attempt</button></div>
+<script src="{{ url_for('static', filename='js/quiz_autosave.js', v='listening-flow-20261013') }}" defer></script>
+<script src="{{ url_for('static', filename='js/quiz_timer.js') }}" defer></script>
 </div>
 {% endblock %}

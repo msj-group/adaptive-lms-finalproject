@@ -4,7 +4,6 @@
 {% block body_class %}figma-login{% endblock %}
 {% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/figma.css') }}">{% endblock %}
 {% block content %}
-<div class="appearance-public">{{ ui.navigation_tools() }}</div>
 <div class="figma-login-scene" aria-hidden="true">
   <div class="figma-login-glow figma-login-glow--one"></div><div class="figma-login-glow figma-login-glow--two"></div><div class="figma-login-glow figma-login-glow--three"></div>
   {% for letter in ['A','g','R','e','B','w','Y','t','Q','m','L','f'] %}<span class="figma-letter figma-letter--{{ loop.index }}">{{ letter }}</span>{% endfor %}
@@ -12,9 +11,15 @@
   <span class="figma-login-word figma-login-word--three" data-learning-word>Confidence</span><span class="figma-login-word figma-login-word--four" data-learning-word>Grow</span>
 </div>
 <div class="figma-login-container">
-  <section class="figma-login-card" aria-labelledby="login-title">
-    <img class="figma-login-logo" src="{{ url_for('static', filename='images/figma_logo.png') }}" alt="Youth Centre">
-    <header class="figma-login-heading"><h1 id="login-title">Welcome back<span>.</span></h1><p>Your learning space awaits.</p></header>
+  {% set placement_selected = request.method == 'GET' and request.args.get('view') == 'placement' %}
+  <section class="figma-login-card login-entry" aria-label="Account access">
+    <div class="figma-login-logo">{{ ui.brand_logo(alt='Youth Centre', width=175, height=145) }}</div>
+    <nav class="login-entry-tabs" aria-label="Account access" data-entry-tabs>
+      <a id="placement-tab" class="login-entry-tab" href="{{ url_for('auth.login', view='placement', next=request.args.get('next')) }}" data-entry-tab="placement-panel"{% if placement_selected %} aria-current="page"{% endif %}>Find your level</a>
+      <a id="sign-in-tab" class="login-entry-tab" href="{{ url_for('auth.login', next=request.args.get('next')) }}" data-entry-tab="sign-in-panel"{% if not placement_selected %} aria-current="page"{% endif %}>Sign in</a>
+    </nav>
+    <div class="login-entry-panels">
+    <section id="sign-in-panel" class="login-entry-panel" aria-labelledby="sign-in-tab"{% if placement_selected %} hidden{% endif %}>
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for category, message in messages %}<div class="alert alert--{{ category }}" role="alert">{{ message }}</div>{% endfor %}
     {% endwith %}
@@ -34,10 +39,14 @@
       <button class="figma-sign-in" type="submit" name="{{ form.submit.name }}" data-login-submit><span data-login-label>Sign in</span>{{ ui.icon('arrow', 18) }}<span class="figma-spinner" data-login-spinner hidden></span></button>
     </form>
     <p class="figma-login-help">Need an account or password help?<br>Contact your centre administrator.</p>
+    </section>
+    <section id="placement-panel" class="login-entry-panel login-entry-placement" aria-labelledby="placement-tab"{% if not placement_selected %} hidden{% endif %}>
+      <a class="figma-sign-in login-start-test" href="{{ url_for('auth.placement', next=request.args.get('next')) }}">Start test{{ ui.icon('arrow', 18) }}</a>
+    </section>
+    </div>
   </section>
-  <p class="figma-login-footer">Youth Centre · A space to learn and grow.</p>
 </div>
 {% endblock %}
-{% block body_scripts %}<script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script><script src="{{ url_for('static', filename='js/login_entry.js', v='placement-entry-20261013') }}" defer></script>{% endblock %}
 
-{% block protected_styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">{% endblock %}
+{% block protected_styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css', v='placement-entry-20261013') }}">{% endblock %}

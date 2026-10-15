@@ -42,6 +42,7 @@
             <li>{% if crumb.url %}<a href="{{ crumb.url }}" dir="auto">{{ _(crumb.label) if crumb.owned else crumb.label }}</a>{% else %}<span aria-current="page" dir="auto">{{ crumb.label }}</span>{% endif %}</li>
           {% endfor %}</ol>
         </nav>
+        {% if role in ['student','teacher'] %}{{ portal_blocks.workspace_page_actions() }}{% endif %}
       </div>
       {% endif %}
       {% set page_content %}{% if role in ['student','teacher'] %}{{ portal_blocks.portal_content() }}{% elif role == 'administrator' %}{{ portal_blocks.admin_content() }}{% else %}{{ portal_blocks.research_content() }}{% endif %}{% endset %}

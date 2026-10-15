@@ -26,7 +26,7 @@ def main():
                 row = connection.execute(text("SELECT version_number,is_collecting,collection_starts_at,collection_ends_at FROM research_configurations WHERE current_marker=1")).first()
                 result["active_configuration"] = None if not row else {
                     "version": row[0], "enabled": bool(row[1]), "period_start": row[2].isoformat(), "period_end": row[3].isoformat()}
-                result["database_ready"] = result["migration"] == "7d4e2a9c6013"
+                result["database_ready"] = result["migration"] == "8e5f3b0d7124"
         except Exception:
             result["database_ready"] = False
     storage = app.extensions["material_config"].storage_root

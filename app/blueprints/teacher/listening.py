@@ -160,6 +160,7 @@ from app.services.listening_queries import (
     teacher_listening,
     teacher_listening_page,
 )
+from app.services.listening_playback import playback_rates
 from app.services.material_config import current_material_config
 from app.services.material_serving import serve_uploaded_file
 from app.services.quiz_attempts import (
@@ -1093,6 +1094,7 @@ def listening_create(group_public_id):
             transcript=transcript,
             transcript_visibility=visibility,
             vocabulary_notes=vocabulary,
+            playback_speed_mask=form.normalized_playback_speed_mask(),
             creation_nonce=nonce,
             created_at=now_utc,
             updated_at=now_utc,
@@ -1194,6 +1196,7 @@ def _render_edit_page(
                 "transcript": activity.transcript,
                 "transcript_visibility": activity.transcript_visibility,
                 "vocabulary_notes": activity.vocabulary_notes,
+                "playback_speeds": [rate for rate in playback_rates(activity.playback_speed_mask) if rate != "1"],
             },
             group_id=group.id,
             quiz_id=quiz.id,
@@ -1327,6 +1330,7 @@ def listening_edit(group_public_id, listening_public_id):
         and activity.transcript == transcript
         and activity.transcript_visibility == visibility
         and activity.vocabulary_notes == vocabulary
+        and activity.playback_speed_mask == form.normalized_playback_speed_mask()
     ):
         db.session.rollback()
         flash("This listening activity is unchanged, so nothing was saved.", "info")
@@ -1354,6 +1358,7 @@ def listening_edit(group_public_id, listening_public_id):
     activity.transcript = transcript
     activity.transcript_visibility = visibility
     activity.vocabulary_notes = vocabulary
+    activity.playback_speed_mask = form.normalized_playback_speed_mask()
     activity.updated_at = now_utc
     try:
         db.session.commit()

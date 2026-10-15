@@ -61,6 +61,12 @@ def login():
     return render_template("auth/login.html", form=form)
 
 
+@auth_bp.get("/placement")
+def placement():
+    """Public presentation placeholder; no attempt, scoring or stored data."""
+    return render_template("auth/placement.html")
+
+
 @auth_bp.get("/opening")
 @login_required
 def opening():

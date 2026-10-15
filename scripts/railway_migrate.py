@@ -7,7 +7,8 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
-EXPECTED_HEAD = "7d4e2a9c6013"
+PARENT_HEAD = "7d4e2a9c6013"
+EXPECTED_HEAD = "8e5f3b0d7124"
 
 
 def main():
@@ -32,14 +33,30 @@ def main():
             if acquired != 1:
                 raise ValueError("The schema migration lock is unavailable")
             try:
-                print("Applying existing forward migrations", flush=True)
                 migration_config = application.extensions["migrate"].migrate.get_config(str(ROOT / "migrations"))
+                from alembic.script import ScriptDirectory
+                if ScriptDirectory.from_config(migration_config).get_heads() != [EXPECTED_HEAD]:
+                    raise ValueError("Unexpected source migration head")
+                with db.engine.connect() as connection:
+                    current_heads = MigrationContext.configure(connection).get_current_heads()
+                    if current_heads not in ((PARENT_HEAD,), (EXPECTED_HEAD,)):
+                        raise ValueError("Unexpected parent migration head")
+                    before_count = connection.execute(text("SELECT COUNT(*) FROM listening_activities")).scalar_one()
+                print("Applying approved forward migration: " + current_heads[0] + " -> " + EXPECTED_HEAD, flush=True)
                 # The Flask-Migrate CLI decorator prints raw driver errors.
                 # Use its same Alembic configuration with our redacted boundary.
-                command.upgrade(migration_config, "head")
+                command.upgrade(migration_config, EXPECTED_HEAD)
                 with db.engine.connect() as connection:
                     if MigrationContext.configure(connection).get_current_heads() != (EXPECTED_HEAD,):
                         raise ValueError("Unexpected migration head")
+                    after_count = connection.execute(text("SELECT COUNT(*) FROM listening_activities")).scalar_one()
+                    if after_count < before_count:
+                        raise ValueError("Listening record count decreased")
+                    if current_heads == (PARENT_HEAD,):
+                        changed_rates = connection.execute(text("SELECT COUNT(*) FROM listening_activities WHERE playback_speed_mask <> 15")).scalar_one()
+                        if changed_rates:
+                            raise ValueError("Existing playback choices were not preserved")
+                print("Listening records preserved; playback schema verified", flush=True)
                 command.check(migration_config)
             finally:
                 lock_connection.execute(text("SELECT RELEASE_LOCK('aelms_schema_migration')"))

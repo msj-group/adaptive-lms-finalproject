@@ -51,7 +51,7 @@ def main():
     runtime_digest = hashlib.sha256(json.dumps(runtime, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     if runtime != baseline['runtime_files'] or runtime_digest != baseline['runtime_sha256']:
         raise ValueError('Runtime source differs from the frozen baseline; record and review the change first')
-    manifest = {'format': 'youth-centre-release.v1', 'migration_head': '7d4e2a9c6013',
+    manifest = {'format': 'youth-centre-release.v1', 'migration_head': '8e5f3b0d7124',
                 'baseline_identifier': baseline['baseline_identifier'],
                 'runtime_sha256': runtime_digest,
                 'design_system': 'Direction D.1 / D-MOTION.1',

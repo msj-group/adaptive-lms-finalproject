@@ -6,8 +6,8 @@ readable on its own and the M04 quiz forms are not enlarged. Nothing here
 is imported by any existing form, and no existing form is changed.
 
 :class:`ListeningContentForm` owns what a Listening activity *says* --
-its title, instructions, transcript, transcript policy and vocabulary
-notes. :class:`ListeningCreateForm` is that same content plus the one
+its title, instructions, transcript, transcript policy, vocabulary notes
+and playback choices. :class:`ListeningCreateForm` is that content plus the one
 required recording, which exists only on the create page because the
 audio is immutable afterwards.
 
@@ -19,8 +19,9 @@ fields and the same timezone conversion.
 
 from app.i18n import LocalizedFlaskForm as FlaskForm
 from flask_wtf.file import FileField, FileRequired
-from wtforms import RadioField, StringField, SubmitField, TextAreaField
-from wtforms.validators import DataRequired, Length, Optional, ValidationError
+from wtforms import HiddenField, RadioField, SelectMultipleField, StringField, SubmitField, TextAreaField
+from wtforms.widgets import CheckboxInput, ListWidget
+from wtforms.validators import AnyOf, DataRequired, InputRequired, Length, Optional, ValidationError
 
 from app.models import (
     QUIZ_INSTRUCTIONS_MAX_LENGTH,
@@ -30,6 +31,7 @@ from app.models import (
     TranscriptVisibility,
 )
 from app.services.quiz_queries import duplicate_title_exists
+from app.services.listening_playback import PLAYBACK_SPEEDS, playback_mask
 
 #: The two audio formats a Listening activity accepts, named once so the
 #: form's help text, the Teacher template and the create route cannot
@@ -128,6 +130,23 @@ class _ListeningContentFields(FlaskForm):
         "Vocabulary support (optional)",
         validators=[Optional(), Length(max=VOCABULARY_MAX)],
     )
+    playback_speeds = SelectMultipleField(
+        "Available playback speeds",
+        choices=[(rate, rate + "×") for rate, flag in PLAYBACK_SPEEDS if rate != "1"],
+        default=["0.75", "1.25", "1.5"],
+        widget=ListWidget(prefix_label=False), option_widget=CheckboxInput(),
+    )
+    # Distinguish an intentionally unchecked set from an older open form that
+    # never presented playback settings. Existing signed-state checks still apply.
+    playback_config_version = HiddenField(
+        default="1", validators=[
+            InputRequired(message="Reload the page to review playback settings."),
+            AnyOf(["1"], message="Reload the page to review playback settings."),
+        ],
+    )
+
+    def normalized_playback_speed_mask(self):
+        return playback_mask(self.playback_speeds.data or [])
 
     def __init__(self, *args, group_id=None, quiz_id=None, **kwargs):
         super().__init__(*args, **kwargs)

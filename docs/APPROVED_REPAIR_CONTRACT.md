@@ -7,6 +7,51 @@ has already been implemented or verified.
 
 ## Authority and current checkpoint
 
+- Owner continuation, 2026-10-15: complete both local and hosted execution.
+  The owner explicitly requests creating/configuring the local migration account
+  and delivering its credentials privately. Use the configured local administrative
+  connection, keep the runtime account unchanged, and store the new credentials
+  only in ignored local environment/private artifacts. The exact local migration
+  is now applied and verified. Continue the already-authorized reviewed GitHub
+  push and Railway web deployment, preserving data and all other hosting config.
+
+- Latest execution/release authority, 2026-10-13: the owner explicitly requests
+  applying the prepared migration, GitHub push and Railway deploy. This
+  supersedes preparation/local-only boundaries for the reviewed Login and
+  Student/Listening work. Verify the exact local parent 7d4e2a9c6013, preserve
+  private recovery snapshots, apply only 8e5f3b0d7124, inspect schema/row counts,
+  then create one reviewed allowlisted commit and normal pushes to the existing
+  follow-up/release branches. Deploy that exact SHA to the existing web service;
+  its serialized predeploy must allow only the parent-to-target transition or
+  an already-current target. Preserve data, private files, variables, volumes,
+  all other services and research policy. No automated tests, data reset,
+  additional migration, scheduler change or unrelated Help upload.
+
+- Latest Student follow-up, 2026-10-13: use a solid page-colored mobile header
+  at the top and glass only when scrolled; remove dashboard Groups and improve
+  Next activities. Align Listening questions with Quiz, place the timer beside
+  Back at the physical right and a compact audio strip under the title, omit
+  Vocabulary during questions, and autosave choices before Next/final submission.
+  Next becomes Submit attempt on the last/only question; completed answers expose
+  a visible submission shortcut. Remove Listening's Finish this attempt card.
+  The owner separately approves preparing a migration for per-activity playback
+  choices, without applying it to any database. Preserve existing authored rates
+  for old activities, authentication, authorization, locks, deadlines, finality,
+  answer-key protection and research definitions. Preserve the local Login work.
+  Source/static/manual review only; no automated tests, database mutation,
+  migration application, Git mutation or deployment in this follow-up.
+
+- Latest owner follow-up, 2026-10-13: simplify the shared Login page. Remove its
+  Help/Display entry buttons, welcome heading/subtitle and branded footer; show
+  the existing logo without its background and match autofilled field colors to
+  empty fields. Replace the heading area with Sign in on the physical right and
+  Find your level on the left (Arabic label: "حدد مستواك"). The latter swaps the
+  card body to Start test, leading to an empty public placement-test interface.
+  This supersedes Login's presentation freeze for this bounded source change.
+  Preserve authentication, CSRF, role redirects and existing data. No questions,
+  attempts, grading, database/migration or automated tests are authorized. The
+  preceding activity release is complete; this follow-up has no new delivery request.
+
 - Latest release authority, 2026-10-13: the owner requests upload of the reviewed
   activity/mobile/Messages changes and explicitly confirms GitHub plus updating
   the Railway website. This supersedes the paused-delivery boundary for this

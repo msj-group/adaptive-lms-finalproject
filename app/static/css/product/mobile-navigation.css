@@ -21,6 +21,8 @@
     transition:transform 180ms ease;
   }
   .yc-workspace[data-header-hidden='true'] .st-header { transform:translateY(-100%); pointer-events:none; }
+  .figma-student[data-scroll-header='true'] .st-header { background:var(--ui-page); border-bottom-color:transparent; backdrop-filter:none; -webkit-backdrop-filter:none; }
+  .figma-student[data-header-scrolled='true'] .st-header { background:var(--st-glass); border-bottom-color:var(--st-border); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); }
   .yc-workspace .workspace-desktop-more { display:none; }
   .figma-workspace[data-ui-ready='true'] #workspace-navigation { visibility:hidden; pointer-events:none; }
   .figma-workspace:has([data-more-panel]) .figma-menu-toggle { display:none!important; }

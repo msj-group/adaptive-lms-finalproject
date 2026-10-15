@@ -1,0 +1,17 @@
+{% extends "layouts/base.html" %}
+{% import "_figma_ui.html" as ui %}
+{% block title %}Placement test · Youth Centre{% endblock %}
+{% block body_class %}figma-login{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/figma.css') }}">{% endblock %}
+{% block protected_styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css', v='placement-entry-20261013') }}">{% endblock %}
+{% block content %}
+<div class="placement-container">
+  <section class="placement-shell" aria-labelledby="placement-title">
+    <header class="placement-header">
+      <a class="placement-back" href="{{ url_for('auth.login', view='placement', next=request.args.get('next')) }}">{{ ui.icon('arrow', 18) }}<span>Back</span></a>
+      <h1 id="placement-title">Placement test</h1>
+    </header>
+    <div class="placement-canvas" aria-label="Test questions"></div>
+  </section>
+</div>
+{% endblock %}

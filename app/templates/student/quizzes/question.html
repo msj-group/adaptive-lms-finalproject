@@ -92,7 +92,7 @@
       </div>
       <p class="ds-section__desc" data-quiz-unanswered-note {% if not unanswered_count %}hidden{% endif %}>Unanswered questions are marked incorrect. Tick the box below to submit anyway.</p>
       <p class="ds-section__desc" data-quiz-complete-note {% if unanswered_count %}hidden{% endif %}>You have answered every question. Submitting is final — you cannot change your answers afterwards.</p>
-      <form method="post" data-quiz-submit data-research-form="quiz_submit" action="{{ url_for('student.quiz_submit', group_public_id=group_public_id, quiz_public_id=quiz.public_id, attempt_public_id=attempt.public_id) }}">
+      <form id="quiz-final-submit" method="post" data-quiz-submit data-research-form="quiz_submit" action="{{ url_for('student.quiz_submit', group_public_id=group_public_id, quiz_public_id=quiz.public_id, attempt_public_id=attempt.public_id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="submit_state" value="{{ submit_token }}">
         <input type="hidden" name="from_question" value="{{ question.public_id }}">
@@ -105,7 +105,10 @@
     </section>
   </aside>
 </div>
-<script src="{{ url_for('static', filename='js/quiz_autosave.js') }}" defer></script>
+<div class="activity-submit-dock" data-complete-submit {% if unanswered_count %}hidden{% endif %}>
+  <span>All questions answered</span><button type="submit" class="btn btn--primary" form="quiz-final-submit" data-research-id="quiz_submit">Submit attempt</button>
+</div>
+<script src="{{ url_for('static', filename='js/quiz_autosave.js', v='listening-flow-20261013') }}" defer></script>
 <script src="{{ url_for('static', filename='js/quiz_timer.js') }}" defer></script>
 </div>
 {% endblock %}

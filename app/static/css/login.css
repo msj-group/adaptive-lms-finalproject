@@ -1,5 +1,5 @@
-/* Protected Login: frozen pre-D visual roles. Its composition/artwork remain
-   in figma.css. These roles are owned here, independent of product tokens. */
+/* Login owns its visual roles independently of authenticated product tokens.
+   Base scene artwork remains in figma.css. */
 .figma-login {
   --font-family-base: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
   --font-size-base: 1rem; --line-height-normal: 1.65;
@@ -86,3 +86,50 @@
 } }
 .figma-login[data-page-hidden='true'] :is(.figma-login-glow,.figma-letter,.figma-login-word)::after,
 .figma-login[data-page-hidden='true'] :is(.figma-login-glow,.figma-letter,.figma-login-word) { animation-play-state: paused; }
+
+.figma-login .login-entry { margin-top: 0; }
+.figma-login .figma-login-logo { background: transparent; border-radius: 0; padding: 0; filter: none; }
+.figma-login-logo .workspace-theme-logo,
+.figma-login-logo img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.figma-login-logo .workspace-logo--dark { display: none; }
+:root[data-theme='dark'] .figma-login-logo .workspace-logo--light { display: none; }
+:root[data-theme='dark'] .figma-login-logo .workspace-logo--dark { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='system'] .figma-login-logo .workspace-logo--light { display: none; }
+  :root[data-theme='system'] .figma-login-logo .workspace-logo--dark { display: block; }
+}
+.login-entry-tabs { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); direction: ltr; gap: 4px; margin-bottom: 26px; padding: 5px; border: 1px solid var(--ui-line); border-radius: 16px; background: var(--ui-soft); }
+.login-entry-tab { display: grid; place-items: center; min-height: 48px; padding: 9px 8px; border: 1px solid transparent; border-radius: 11px; color: var(--ui-muted); font-size: 15px; font-weight: 600; text-align: center; text-decoration: none; }
+html[dir='rtl'] .login-entry-tab { direction: rtl; }
+.login-entry-tab:hover { color: var(--ui-link); }
+.login-entry-tab:is([aria-current='page'],[aria-selected='true']) { border-color: var(--ui-line); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow-sm); }
+.login-entry-tab:focus-visible, .login-start-test:focus-visible, .placement-back:focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 3px; }
+.login-entry-panels { display: grid; min-height: 316px; }
+.login-entry-panel { grid-area: 1 / 1; min-width: 0; }
+.login-entry-panel[hidden] { display: none; }
+.login-entry-placement { display: flex; align-items: center; }
+.figma-login .login-start-test { color: #fff; text-decoration: none; }
+.figma-login .figma-login-input .field__input:is(:autofill,:-webkit-autofill) {
+  -webkit-box-shadow: 0 0 0 1000px var(--ui-raised) inset;
+  box-shadow: 0 0 0 1000px var(--ui-raised) inset;
+  -webkit-text-fill-color: var(--ui-text);
+  caret-color: var(--ui-text);
+  color: var(--ui-text);
+}
+.placement-container { min-height: 100svh; padding: 40px 20px; }
+.placement-shell { width: 100%; max-width: 1040px; min-height: calc(100svh - 80px); margin: 0 auto; border: 1px solid var(--ui-line); border-radius: 28px; background: var(--ui-surface); box-shadow: var(--ui-shadow); }
+.placement-header { display: flex; align-items: center; gap: 24px; padding: 20px 24px; border-bottom: 1px solid var(--ui-line); }
+.placement-header h1 { margin: 0; font-size: clamp(20px,3vw,26px); }
+.placement-back { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--ui-line); border-radius: 12px; color: var(--ui-link); text-decoration: none; }
+.placement-back .figma-icon { transform: scaleX(-1); }
+html[dir='rtl'] .placement-back .figma-icon { transform: none; }
+.placement-canvas { min-height: 360px; }
+@media (max-width: 480px) {
+  .figma-login-container { padding: 24px 16px; }
+  .figma-login .login-entry { padding: 26px 20px; }
+  .login-entry-tabs { margin-bottom: 22px; }
+  .login-entry-tab { font-size: 14px; }
+  .placement-container { padding: 16px; }
+  .placement-shell { min-height: calc(100svh - 32px); border-radius: 20px; }
+  .placement-header { gap: 16px; padding: 16px; }
+}

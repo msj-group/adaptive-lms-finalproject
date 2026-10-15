@@ -6,6 +6,7 @@ from sqlalchemy.orm import validates
 from app.extensions import db
 from app.models.enums import TranscriptVisibility
 from app.models.submission_feedback import whole_second_utc
+from app.services.listening_playback import DEFAULT_SPEED_MASK, SPEED_MASK_CHECK, VALID_SPEED_MASKS
 
 #: The finite input boundary for the unbounded ``transcript`` Text column
 #: (Phase 4 / M05). Mirrored by
@@ -46,8 +47,8 @@ class ListeningActivity(db.Model):
     :class:`~app.models.quiz_answer.QuizAnswerSelection`, the M04D
     lifecycle columns, the exact-set grading rule, the attempt limit and
     the deadline arithmetic unchanged. What this table adds is exactly the
-    four things a Listening activity has and an ordinary Quiz does not: a
-    recording, a transcript, a transcript policy, and vocabulary support.
+    Listening-specific recording, transcript, transcript policy, vocabulary
+    support and teacher-authored playback choices.
 
     **The presence of this row is what makes a Quiz a Listening
     activity.** There is no ``kind`` column on ``quizzes`` and no
@@ -127,7 +128,7 @@ class ListeningActivity(db.Model):
     **There is no ``version`` column here, on purpose.** ``Quiz.version``
     already represents the complete authored activity -- title,
     instructions, settings, questions, options and, since M05, the
-    transcript, its policy and the vocabulary notes -- and every M05 edit
+    transcript, its policy, vocabulary notes and playback choices -- and every edit
     increments it exactly once. A second counter could disagree with the
     first, and the signed stale-form tokens would then have to decide
     which one to believe.
@@ -168,6 +169,7 @@ class ListeningActivity(db.Model):
 
     __tablename__ = "listening_activities"
     __table_args__ = (
+        db.CheckConstraint(SPEED_MASK_CHECK, name="ck_listening_playback_speed_mask"),
         db.CheckConstraint(
             _VISIBILITY_CHECK_SQL,
             name="ck_listening_activities_transcript_visibility_valid",
@@ -205,6 +207,9 @@ class ListeningActivity(db.Model):
     #: Optional plain authored vocabulary support, shown to eligible
     #: Students before and during an attempt. Empty string means none.
     vocabulary_notes = db.Column(db.Text, nullable=False, default="")
+    # One finite configuration, not a second identity or version. Existing
+    # recordings retain every previously available speed after the upgrade.
+    playback_speed_mask = db.Column(db.SmallInteger, nullable=False, default=DEFAULT_SPEED_MASK, server_default="15")
     #: The random per-request value carried by the signed create token.
     #: UNIQUE, so an ordinary or concurrent replay of the create request
     #: resolves to the single already-created activity instead of
@@ -224,4 +229,10 @@ class ListeningActivity(db.Model):
     def validate_transcript_visibility(self, _key, value):
         if value not in set(_VISIBILITY_VALUES):
             raise ValueError(f"Invalid transcript visibility: {value}")
+        return value
+
+    @validates("playback_speed_mask")
+    def validate_playback_speed_mask(self, _key, value):
+        if type(value) is not int or value not in VALID_SPEED_MASKS:
+            raise ValueError("Invalid playback speed configuration")
         return value
