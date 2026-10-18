@@ -1,6 +1,8 @@
 {% extends "layouts/activity_base.html" %}
 {% set activity_kind = 'quiz' %}
 {% set activity_phase = 'author' %}
+{% from 'teacher/activities/_authoring.html' import introduction %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/activities.css', v='simple-activities-20261017') }}">{% endblock %}
 {% block title %}{{ 'Edit Quiz' if quiz else 'New Quiz' }} — {{ group.name }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
@@ -33,7 +35,7 @@
   {% if quiz %}
   <div class="alert alert--info" style="margin-bottom: var(--space-4)">Draft: Save does not publish. Students cannot access it. All assigned teachers can edit; a concurrent change refuses your save and shows the other version first.</div>
   {% else %}
-  <div class="alert alert--info" style="margin-bottom: var(--space-4)">New draft: hidden from students. Every assigned teacher can edit it.</div>
+  {{ introduction('quiz') }}
   {% endif %}
 
   <p class="workspace-meta" dir="auto">{{ group.name }} · {{ group.academic_term.name }}</p>
@@ -60,11 +62,11 @@
     {# No status, publication, timing or question control: none exists
        server-side either, so a forged field has nowhere to land. #}
     <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
-      {{ form.submit(class_="btn btn--primary") }}
+      {{ form.submit(class_="btn btn--primary", value=_('Save Changes' if quiz else 'Save draft')) }}
       {% if quiz %}
       <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_detail', group_public_id=group.public_id, quiz_public_id=quiz.public_id) }}">Cancel</a>
       {% else %}
-      <a class="btn btn--secondary" href="{{ url_for('teacher.group_quizzes', group_public_id=group.public_id) }}">Cancel</a>
+      <a class="btn btn--secondary" href="{{ url_for('teacher.group_activities', group_public_id=group.public_id) }}">Cancel</a>
       {% endif %}
     </div>
   </form>

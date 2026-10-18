@@ -6,6 +6,8 @@ Old photos remain private history; only the current account can read its latest
 photo. Storage has the same pre-commit crash window as other project uploads.
 """
 from io import BytesIO
+import json
+import math
 import warnings
 
 from flask import g, url_for
@@ -24,7 +26,38 @@ PHOTO_ACTION = "profile_photo"
 PHOTO_FILE_KEY = "profile_photo_file_public_id"
 
 
-def normalized_photo(file_storage):
+def _photo_crop_box(image, crop):
+    """Validate a square in EXIF-oriented pixels; missing legacy input stays centred."""
+    if crop is None or crop == "":
+        return None
+    invalid = "Choose a valid photo crop and try again."
+    try:
+        if not isinstance(crop, str) or len(crop) > 512 or not crop.lstrip().startswith("{"):
+            raise ValueError
+        # Duplicate keys are ambiguous and are not a valid crop instruction.
+        pairs = json.loads(crop, object_pairs_hook=list)
+        if not isinstance(pairs, list) or len(pairs) != 3:
+            raise ValueError
+        values = dict(pairs)
+        if set(values) != {"x", "y", "size"}:
+            raise ValueError
+        if any(type(value) not in (int, float) for value in values.values()):
+            raise ValueError
+        x, y, size = (float(values[key]) for key in ("x", "y", "size"))
+        if not all(math.isfinite(value) for value in (x, y, size)) \
+                or not 0 <= x <= 1 or not 0 <= y <= 1 or not .25 <= size <= 1:
+            raise ValueError
+        side = min(image.size) * size
+        left, top = x * image.width, y * image.height
+        right, bottom = left + side, top + side
+        if right > image.width + 1e-6 or bottom > image.height + 1e-6:
+            raise ValueError
+        return left, top, min(right, image.width), min(bottom, image.height)
+    except (TypeError, ValueError, OverflowError):
+        raise FileValidationError(invalid) from None
+
+
+def normalized_photo(file_storage, *, crop=None):
     """Bounded real decoding, EXIF orientation and metadata-free PNG output."""
     source = file_storage.stream.read(PROFILE_PHOTO_MAX_BYTES + 1)
     if len(source) > PROFILE_PHOTO_MAX_BYTES:
@@ -41,8 +74,11 @@ def normalized_photo(file_storage):
                     raise FileValidationError("Choose a still photo rather than an animated image.")
                 image.load()
                 oriented = ImageOps.exif_transpose(image)
-                cropped = ImageOps.fit(oriented, (PROFILE_PHOTO_SIZE, PROFILE_PHOTO_SIZE),
-                                       method=Image.Resampling.LANCZOS).convert("RGBA")
+                box = _photo_crop_box(oriented, crop)
+                cropped = (oriented.resize((PROFILE_PHOTO_SIZE, PROFILE_PHOTO_SIZE),
+                                          resample=Image.Resampling.LANCZOS, box=box)
+                           if box else ImageOps.fit(oriented, (PROFILE_PHOTO_SIZE, PROFILE_PHOTO_SIZE),
+                                                    method=Image.Resampling.LANCZOS)).convert("RGBA")
                 # A new canvas drops EXIF, ICC, text and any original container data.
                 with Image.new("RGBA", cropped.size) as clean:
                     clean.paste(cropped)
@@ -50,16 +86,17 @@ def normalized_photo(file_storage):
                     clean.save(result, format="PNG")
     except FileValidationError:
         raise
-    except (UnidentifiedImageError, OSError, ValueError, SyntaxError,
-            Image.DecompressionBombWarning, Image.DecompressionBombError):
+    except (Image.DecompressionBombWarning, Image.DecompressionBombError):
+        raise FileValidationError("Choose a photo with no more than 16 million pixels.") from None
+    except (UnidentifiedImageError, OSError, ValueError, SyntaxError):
         raise FileValidationError("Choose a valid JPG, PNG or WebP photo.") from None
     result.seek(0)
     return result
 
 
-def store_profile_photo(config, file_storage):
+def store_profile_photo(config, file_storage, *, crop=None):
     """Decode and store before any write locks; filename/MIME are never trusted."""
-    with normalized_photo(file_storage) as image:
+    with normalized_photo(file_storage, crop=crop) as image:
         return stream_upload_to_storage(config, image, original_filename="profile-photo.png",
             extension="png", category="image", content_type="image/png",
             max_bytes=PROFILE_PHOTO_MAX_BYTES,

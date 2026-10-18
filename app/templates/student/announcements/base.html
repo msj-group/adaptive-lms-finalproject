@@ -1,0 +1,7 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_figma_ui.html" as ui %}
+{% import "student/template/_announcement_macros.html" as ann %}
+{% from "student/announcements/_index.html" import announcement_index %}
+{% block portal_nav %}{% set active_nav = 'announcements' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/announcements.css', v='popup-20261016') }}">{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/student_announcements.js', v='popup-20261016') }}" defer></script>{% endblock %}

@@ -1,3 +1,49 @@
-{% extends 'layouts/activity_base.html' %}
+{% extends 'layouts/portal_base.html' %}
+{% import '_figma_ui.html' as ui %}
+{% import 'activities/_ui.html' as activity_ui %}
 {% block title %}Activities{% endblock %}
-{% block portal_content %}{% include 'activities/_hub.html' %}{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/activities.css', v='teacher-desk-20261017') }}">{% endblock %}
+{% block portal_content %}
+{% set filter_count = (1 if selected_type else 0) + (1 if selected_state else 0) + (1 if selected_course else 0) + (1 if selected_group else 0) %}
+<div class="teacher-activities" data-teacher-activities>
+  <div class="ta-heading">
+    <h1 data-workspace-page-heading dir="auto">Activities<span class="figma-brand-dot">.</span></h1>
+    <details class="ta-filters" data-activity-filters>
+      <summary><span>{{ ui.icon('settings', 18) }}<span>Filters</span>{% if filter_count %}<span class="ta-filter-count">{{ filter_count }}</span>{% endif %}</span>{{ ui.icon('chevron-down', 16) }}</summary>
+      <form method="get" action="{{ url_for('teacher.activities') }}" class="ta-filter-form">
+        <div class="field ta-filter-wide"><label for="activity-course">Course</label><select id="activity-course" name="course" data-activity-course><option value="">All courses</option>{% for row in courses %}<option value="{{ row.course_public_id }}"{% if selected_course == row.course_public_id %} selected{% endif %}>{{ row.course_title }}</option>{% endfor %}</select></div>
+        <div class="field ta-filter-wide"><label for="activity-group">Group</label><select id="activity-group" name="group" data-activity-group><option value="">All groups</option>{% for row in groups %}<option value="{{ row.group_public_id }}" data-course="{{ row.course_public_id }}"{% if selected_group == row.group_public_id %} selected{% endif %}{% if selected_course and row.course_public_id != selected_course %} hidden disabled{% endif %}>{{ row.group_name }} · {{ row.term_name }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="activity-type">Activity type</label><select id="activity-type" name="type"><option value="">All types</option>{% for key,label in types.items() %}<option value="{{ key }}"{% if selected_type == key %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="activity-state">Publication</label><select id="activity-state" name="state"><option value="">All states</option>{% for key,label in states.items() %}<option value="{{ key }}"{% if selected_state == key %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</select></div>
+        <div class="ta-filter-actions"><button type="submit" class="btn btn--primary">Apply filters</button><a class="btn" href="{{ url_for('teacher.activities') }}">Clear filters</a></div>
+      </form>
+    </details>
+  </div>
+  <p class="ta-intro">Prepare tasks. Keep learning moving.</p>
+  {% with messages = get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="alert alert--{{ category }}" role="status">{{ message }}</div>{% endfor %}{% endwith %}
+  {% if filter_count %}<div class="ta-filter-context"><span>Showing</span>{% if selected_type %}<span class="badge badge--neutral">{{ _(types[selected_type]) }}</span>{% endif %}{% if selected_state %}<span class="badge badge--neutral">{{ _(states[selected_state]) }}</span>{% endif %}{% for row in courses if row.course_public_id == selected_course %}<bdi class="badge badge--neutral">{{ row.course_title }}</bdi>{% endfor %}{% for row in groups if row.group_public_id == selected_group %}<bdi class="badge badge--neutral">{{ row.group_name }}</bdi>{% endfor %}<a href="{{ url_for('teacher.activities') }}">Clear filters</a></div>{% endif %}
+  <div class="ta-desk">
+  <section class="ta-library-panel" aria-label="{{ _('Activity library') }}">
+    <div id="query-results">{% include 'teacher/activities/_results.html' %}</div>
+  </section>
+  <details class="ta-create" data-activity-create open>
+    <summary><h2><span>Create an activity</span><span class="ta-create-arrow">{{ ui.icon('chevron-down', 18) }}</span></h2></summary>
+    <div class="ta-create-body">
+      {% if creation_groups %}
+      <form method="get" action="{{ url_for('teacher.activity_start') }}">
+        <p class="ta-create-prompt">What will your students do?</p>
+        <div class="field ta-create-group"><label for="create-activity-group">Group</label><select name="group" id="create-activity-group" required><option value="">Choose a group</option>{% for row in creation_groups %}<option value="{{ row.group_public_id }}"{% if row.group_public_id == selected_group or (creation_groups|length == 1 and not selected_group) %} selected{% endif %}>{{ row.group_name }} · {{ row.course_title }} · {{ row.term_name }}</option>{% endfor %}</select>{% if groups|length >= 100 %}<a class="ta-more-groups" href="{{ url_for('workspace.teacher_groups') }}">View my groups</a>{% endif %}</div>
+        <fieldset class="ta-type-picker"><legend class="sr-only">Activity type</legend>
+          {% set actions = {'assignment':'Write or upload', 'quiz':'Answer questions', 'listening':'Listen and answer', 'speaking':'Record their voice'} %}
+          {% for kind,label in types.items() %}<label class="ta-type-choice"><input type="radio" name="type" value="{{ kind }}" required{% if selected_type == kind or (not selected_type and loop.first) %} checked{% endif %}><span class="ta-type-icon">{{ activity_ui.symbol(kind, 22) }}</span><span class="ta-type-copy"><strong>{{ _(actions[kind]) }}</strong><small>{{ _(label) }}</small></span></label>{% endfor %}
+        </fieldset>
+        <div class="ta-create-footer"><button type="submit" class="btn btn--primary">Continue {{ ui.icon('arrow', 17) }}</button><p>Next, add the details. Your work stays a draft until you publish it.</p></div>
+      </form>
+      {% else %}<p>No groups are available for a new activity.</p><a href="{{ url_for('workspace.teacher_groups') }}">View my groups</a>{% endif %}
+    </div>
+  </details>
+  </div>
+  <p class="ta-timezone">{{ _('Times shown in %(timezone)s', timezone=tz_name) }}</p>
+</div>
+{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_activities.js', v='teacher-desk-20261017') }}" defer></script>{% endblock %}

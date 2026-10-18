@@ -66,6 +66,7 @@ body:where(:not(.yc-operations)) .today-meta, body:where(:not(.yc-operations)) .
 .workspace-utility-panel label { display: block; margin-bottom: 7px; font-size: 12px; color: var(--ui-text); }
 .workspace-utility-panel select { width: 100%; min-height: 44px; padding: 10px; border: 1px solid var(--ui-line); border-radius: 11px; background: var(--ui-raised); color: var(--ui-text); font: inherit; }
 .workspace-utility-panel .appearance-settings { margin: 24px 0; }
+.workspace-preference-panel .appearance-settings { grid-template-columns: minmax(0,1fr); }
 .utility-panel-note { margin: 22px 0 0; }
 .utility-help-list { display: grid; gap: 14px; }
 .utility-help-list article { padding: 18px; border: 1px solid var(--ui-line); border-radius: 14px; background: var(--ui-raised); }

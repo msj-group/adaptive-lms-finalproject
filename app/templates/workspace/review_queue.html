@@ -1,7 +1,54 @@
 {% extends "layouts/portal_base.html" %}
+{% import "_figma_ui.html" as ui %}
 {% block title %}Review queue{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/review.css', v='review-workbench-20261017') }}">{% endblock %}
 {% block portal_content %}
-<div class="workspace-heading yc-page-intro"><div><h1 data-workspace-page-heading>Review queue</h1><p>Oldest active-group submissions first. Comments do not release grades. </p></div></div>
-<form method="get" class="workspace-filter-grid yc-filter-form"><div class="field"><label for="group">Group</label><select class="field__input" name="group" id="group"><option value="">All assigned groups</option>{% for item in groups %}<option value="{{ item.group_public_id }}" {{ 'selected' if item.group_public_id == selected_group else '' }}>{{ item.group_name }} · {{ item.course_title }}</option>{% endfor %}</select></div><div class="field"><label for="type">Type</label><select class="field__input" name="type" id="type"><option value="">All types</option>{% for key, label in [('assignment','Assignment'),('speaking','Speaking')] %}<option value="{{ key }}" {{ 'selected' if selected_type == key else '' }}>{{ label }}</option>{% endfor %}</select></div><div class="field"><label for="state">Feedback</label><select class="field__input" name="state" id="state">{% for key,label in [('pending','Awaiting comment'),('reviewed','Comment exists'),('all','All')] %}<option value="{{ key }}" {{ 'selected' if selected_state == key else '' }}>{{ label }}</option>{% endfor %}</select></div><details class="workspace-date-filters"{% if since or until %} open{% endif %}><summary>Date range · {{ since or "—" }} – {{ until or "—" }}</summary><div class="workspace-filter-grid"><div class="field"><label for="from">Submitted from</label><input class="field__input" type="date" name="from" id="from" value="{{ since }}"></div><div class="field"><label for="to">Submitted through</label><input class="field__input" type="date" name="to" id="to" value="{{ until }}"></div></div></details><div class="ds-row yc-actions"><button class="btn btn--primary">Apply filters</button><a href="{{ url_for('workspace.review_queue') }}">Reset</a></div></form>
-<div class="workspace-review-list">{% for row in rows %}<article class="card yc-panel"><div><span class="badge badge--primary">{{ row.kind|capitalize }}</span><h2><a href="{{ row.url }}">{{ row.title }}</a></h2><p>{{ row.student_name }} · {{ row.group_name }}</p><p class="workspace-meta">{{ row.local_time.strftime('%d %b %Y, %H:%M') }} · {{ 'Comment exists' if row.feedback_id else 'Awaiting comment' }}</p></div><a class="btn btn--primary" href="{{ row.feedback_url }}">Review feedback</a></article>{% else %}<div class="empty-state"><h2>No matching submissions</h2></div>{% endfor %}</div><nav class="figma-pagination" aria-label="Review queue pages">{% if page > 1 %}<a href="{{ url_for('workspace.review_queue', page=page-1, type=selected_type, state=selected_state, group=selected_group, **{'from':since,'to':until}) }}">Previous</a>{% endif %}<span>Page {{ page }} · {{ rows|length }} shown</span>{% if has_next %}<a href="{{ url_for('workspace.review_queue', page=page+1, type=selected_type, state=selected_state, group=selected_group, **{'from':since,'to':until}) }}">Next</a>{% endif %}</nav>
+<div class="teacher-review" data-review-workbench>
+  <div class="review-heading">
+    <h1 data-workspace-page-heading>Review queue<span class="figma-brand-dot">.</span></h1>
+    <details class="review-date-filter" data-review-filters{% if since or until %} open{% endif %}>
+      <summary>{{ ui.icon('settings', 18) }} Filters {{ ui.icon('chevron-down', 16) }}</summary>
+      <div class="review-date-fields">
+        <h2>Date range</h2>
+        <div class="field"><label for="review-from">Submitted from</label><input form="review-filter-form" type="date" name="from" id="review-from" value="{{ since }}"></div>
+        <div class="field"><label for="review-to">Submitted through</label><input form="review-filter-form" type="date" name="to" id="review-to" value="{{ until }}"></div>
+        <button form="review-filter-form" class="btn btn--primary" type="submit">Apply filters</button>
+      </div>
+    </details>
+  </div>
+  <p class="review-intro">Read submissions and leave written feedback.</p>
+  <form method="get" action="{{ url_for('workspace.review_queue') }}" id="review-filter-form" class="review-filter-bar">
+    <div class="field"><label for="review-group">Group</label><select name="group" id="review-group"><option value="">All assigned groups</option>{% for item in groups %}<option value="{{ item.group_public_id }}"{% if item.group_public_id == selected_group %} selected{% endif %}>{{ item.group_name }} · {{ item.course_title }}</option>{% endfor %}</select></div>
+    <div class="field"><label for="review-type">Type</label><select name="type" id="review-type"><option value="">All types</option>{% for key,label in [('assignment','Assignment'),('speaking','Speaking')] %}<option value="{{ key }}"{% if key == selected_type %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</select></div>
+    <fieldset class="review-states"><legend class="sr-only">Feedback</legend>{% for key,label in [('pending','Awaiting comment'),('reviewed','Comment exists'),('all','All')] %}<label><input type="radio" name="state" value="{{ key }}"{% if key == selected_state %} checked{% endif %}><span>{{ _(label) }}</span></label>{% endfor %}</fieldset>
+    <div class="review-filter-actions"><button type="submit" class="btn">Apply filters</button>{% if selected_group or selected_type or selected_state != 'pending' or since or until %}<a href="{{ url_for('workspace.review_queue') }}">Reset</a>{% endif %}</div>
+  </form>
+  {% if since or until %}<p class="review-date-context">{{ _('Date range') }} · <bdi>{{ since or '—' }} – {{ until or '—' }}</bdi></p>{% endif %}
+  <div class="review-workbench">
+    <section class="review-queue-panel" aria-label="{{ _('Submissions') }}">
+      <div class="review-list-heading"><h2>Submissions</h2><span>Oldest first</span></div>
+      <div class="review-list" data-review-list>
+        {% for row in rows %}
+        <article class="review-row" data-review-row>
+          <span class="review-kind-icon review-kind-icon--{{ row.kind }}">{{ ui.icon('microphone' if row.kind == 'speaking' else 'file', 22) }}</span>
+          <div class="review-row-body">
+            <div class="review-row-badges"><span class="badge badge--primary">{{ _('Speaking' if row.kind == 'speaking' else 'Assignment') }}</span><span class="review-comment-state{% if not row.feedback_id %} review-comment-state--pending{% endif %}">{{ _('Comment exists' if row.feedback_id else 'Awaiting comment') }}</span></div>
+            <h3 dir="auto"><a href="{{ row.feedback_url }}" data-review-open>{{ row.title }}</a></h3>
+            <p><bdi>{{ row.student_name }}</bdi> · <bdi>{{ row.group_name }}</bdi></p>
+            <div class="review-row-bottom"><time datetime="{{ row.local_time.isoformat() }}">{{ ui_date(row.local_time.strftime('%d %b %Y · %H:%M')) }}</time><a href="{{ row.feedback_url }}" data-review-open>Review feedback {{ ui.icon('arrow', 15) }}</a></div>
+          </div>
+        </article>
+        {% else %}<div class="review-empty"><span>{{ ui.icon('check', 24) }}</span><h3>No matching submissions</h3><p>Try a different filter or clear your selection.</p></div>{% endfor %}
+      </div>
+      <nav class="review-pagination" data-review-pagination aria-label="{{ _('Review queue pages') }}">{% if page > 1 %}<a href="{{ url_for('workspace.review_queue', page=page-1, type=selected_type, state=selected_state, group=selected_group, **{'from':since,'to':until}) }}">Previous</a>{% endif %}<span>{{ _('Page %(page)d · %(count)d shown', page=page, count=rows|length) }}</span>{% if has_next %}<a href="{{ url_for('workspace.review_queue', page=page+1, type=selected_type, state=selected_state, group=selected_group, **{'from':since,'to':until}) }}">Next</a>{% endif %}</nav>
+    </section>
+    <section class="review-detail-panel" data-review-detail aria-label="{{ _('Submission review') }}" hidden>
+      <p class="review-load-status" data-review-status role="status" aria-live="polite"></p>
+      <div data-review-content></div>
+      <a class="btn" data-review-fallback hidden>Open feedback page</a>
+    </section>
+  </div>
+  <p class="review-footnote">Written feedback does not release a grade.</p>
+</div>
 {% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_review.js', v='review-workbench-20261017-b') }}" defer></script>{% endblock %}

@@ -18,7 +18,7 @@
     if (bottomNav) document.body.style.setProperty('--mobile-nav-height', bottomNav.getBoundingClientRect().height + 'px');
   }
   function setOpen(open, restoreFocus) {
-    open = Boolean(open);
+    open = Boolean(open && compact.matches);
     if (open && panel.hidden) previousFocus = document.activeElement;
     panel.hidden = !open;
     backdrop.hidden = !open;
@@ -30,7 +30,7 @@
   function syncLayout() {
     setOpen(false, true);
     if (sidebar) sidebar.inert = compact.matches;
-    toggles.forEach(function (button) { button.hidden = false; });
+    toggles.forEach(function (button) { button.hidden = !compact.matches; });
     document.body.dataset.uiReady = 'true';
     measureNavigation();
   }

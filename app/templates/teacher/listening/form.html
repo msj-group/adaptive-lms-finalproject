@@ -2,6 +2,8 @@
 {% from '_file_input.html' import file_input %}
 {% set activity_kind = 'listening' %}
 {% set activity_phase = 'author' %}
+{% from 'teacher/activities/_authoring.html' import introduction %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/activities.css', v='simple-activities-20261017') }}">{% endblock %}
 {% block title %}{{ 'Edit Listening Activity' if activity else 'New Listening Activity' }} — {{ group.name }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
@@ -46,7 +48,7 @@
     {% if audio %}The attached recording is <strong>{{ audio.filename }}</strong> ({{ audio.format }}).{% endif %}
   </div>
   {% else %}
-  <div class="alert alert--info" style="margin-bottom: var(--space-4)">New draft: students cannot read, listen or answer until publication and opening time. All assigned teachers can edit.</div>
+  {{ introduction('listening') }}
   {% endif %}
 
   <p class="workspace-meta" dir="auto">{{ group.name }} · {{ group.academic_term.name }}</p>
@@ -79,6 +81,9 @@
       {% for error in form.instructions.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
+    <details class="ta-options"{% if form.playback_speeds.errors or form.playback_config_version.errors or form.vocabulary_notes.errors or form.transcript.errors or form.transcript_visibility.errors %} open{% endif %}>
+      <summary>Optional listening settings {{ activity_ui.symbol('listening', 18) }}</summary>
+      <div>
     <fieldset class="field" style="border:0; padding:0; max-width:none">
       <legend class="field__label">{{ form.playback_speeds.label.text }}</legend>
       <p class="ds-section__desc">Normal speed (1×) is always available. Select extra speeds, or leave all unchecked to hide speed selection.</p>
@@ -115,15 +120,17 @@
       </span>
       {% for error in form.transcript_visibility.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </fieldset>
+      </div>
+    </details>
 
     {# No status, publication, timing, question or scoring control: none exists
        server-side either, so a forged field has nowhere to land. #}
     <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
-      {{ form.submit(class_="btn btn--primary") }}
+      {{ form.submit(class_="btn btn--primary", value=_('Save Changes' if activity else 'Save draft')) }}
       {% if activity %}
       <a class="btn btn--secondary" href="{{ url_for('teacher.listening_detail', group_public_id=group.public_id, listening_public_id=activity.public_id) }}">Cancel</a>
       {% else %}
-      <a class="btn btn--secondary" href="{{ url_for('teacher.group_listening', group_public_id=group.public_id) }}">Cancel</a>
+      <a class="btn btn--secondary" href="{{ url_for('teacher.group_activities', group_public_id=group.public_id) }}">Cancel</a>
       {% endif %}
     </div>
   </form>

@@ -1,0 +1,101 @@
+{# Student-only Focus presentation. All authored content remains escaped plain text.
+   Read dictionaries carry public identifiers; the route owns access and tokens. #}
+{% import "_figma_ui.html" as ui %}
+
+{% macro flash_messages() -%}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}<div class="alert alert--{{ category }}" role="{{ 'alert' if category in ['danger', 'error'] else 'status' }}">{{ message }}</div>{% endfor %}
+{% endwith %}
+{%- endmacro %}
+
+{% macro status_badge(is_locked) -%}
+<span class="discussion-status{{ ' is-locked' if is_locked else '' }}">{{ ui.icon('lock' if is_locked else 'message', 13) }}<span>{{ _('Locked') if is_locked else _('Open for replies') }}</span></span>
+{%- endmacro %}
+
+{% macro group_picker(groups, group, truncated, group_limit) -%}
+<div class="discussion-groups{{ ' is-many' if groups|length > 3 else '' }}">
+  {% if groups|length <= 3 %}
+  <nav class="discussion-group-tabs" aria-label="Discussion groups">
+    {% for item in groups %}<a class="discussion-group-tab{{ ' is-current' if item.public_id == group.public_id else '' }}" href="{{ url_for('student.discussions_group', group_public_id=item.public_id) }}"{% if item.public_id == group.public_id %} aria-current="page"{% endif %}>
+      <span class="discussion-group-icon">{{ ui.icon('users', 18) }}</span><span class="discussion-group-copy"><strong dir="auto">{{ item.name }}</strong><small><span dir="auto">{{ item.course_title }}</span><span aria-hidden="true"> · </span>{{ _n('%(count)d topic', '%(count)d topics', item.topic_count) }}</small></span>
+    </a>{% endfor %}
+  </nav>
+  {% endif %}
+  <form method="get" action="{{ url_for('student.discussions_overview') }}" class="discussion-group-form" data-discussion-group-form>
+    <label for="discussion-group">Discussion group</label>
+    <div><select name="group" id="discussion-group" data-discussion-group>
+      {% for item in groups %}<option value="{{ item.public_id }}"{% if item.public_id == group.public_id %} selected{% endif %}>{{ item.name }} · {{ item.course_title }} · {{ item.level_name }} · {{ item.term_name }}</option>{% endfor %}
+    </select><button type="submit" class="btn" data-discussion-group-apply>View group</button></div>
+  </form>
+  {% if truncated %}<p class="discussion-page-note">{{ _('The first %(limit)d groups are shown; your current group is included.', limit=group_limit) }}</p>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro topic_list(topics, group, selected, topic_page, list_view) -%}
+<div class="discussion-topic-list">
+  {% for item in topics %}
+  <a class="discussion-topic-card{{ ' is-current' if selected and item.public_id == selected.public_id else '' }}" href="{{ url_for('student.discussions_topic', group_public_id=group.public_id, topic_public_id=item.public_id, topic_page=topic_page) }}"{% if not list_view and selected and item.public_id == selected.public_id %} aria-current="page"{% endif %}>
+    <div class="discussion-card-top"><time datetime="{{ item.created_local.isoformat() }}" class="discussion-date"><span>{{ item.created_local.strftime('%Y-%m-%d') }}</span><span>{{ item.created_local.strftime('%H:%M') }}</span></time>{{ status_badge(item.is_locked) }}</div>
+    <h3 dir="auto">{{ item.title }}</h3>
+    <p class="discussion-preview" dir="auto">{{ item.preview }}</p>
+    <div class="discussion-card-footer"><span class="discussion-card-author">{{ ui.avatar(item.author_name) }}<span><span dir="auto">{{ item.author_name }}</span><small>{{ _(item.author_role_label) }}</small></span></span><span class="discussion-reply-count">{{ ui.icon('message', 15) }}{{ _n('%(count)d reply', '%(count)d replies', item.reply_count) }}</span></div>
+  </a>
+  {% endfor %}
+</div>
+{%- endmacro %}
+
+{% macro topic_pager(group, topic, topic_page, has_prev, has_next, reply_page, list_view) -%}
+{% if has_prev or has_next %}
+<nav class="discussion-pagination" aria-label="Topic pages">
+  <p>{{ _('Topic page %(page)d', page=topic_page) }}</p>
+  <div>
+  {% for target, label in [(topic_page - 1, 'Newer topics'), (topic_page + 1, 'Older topics')] %}
+    {% if (loop.first and has_prev) or (loop.last and has_next) %}<a class="btn" href="{{ url_for('student.discussions_group', group_public_id=group.public_id, page=target) if list_view else url_for('student.discussions_topic', group_public_id=group.public_id, topic_public_id=topic.public_id, topic_page=target, page=reply_page) }}">{{ _(label) }}</a>{% endif %}
+  {% endfor %}
+  </div>
+</nav>
+{% endif %}
+{%- endmacro %}
+
+{% macro topic_header(topic, group, list_view) -%}
+<header class="discussion-topic-header">
+  <div class="discussion-reader-top"><span class="discussion-reader-label"><span class="discussion-reader-label-desktop">Discussion</span><span class="discussion-reader-label-mobile" dir="auto">{{ group.name }}</span></span>{{ status_badge(topic.is_locked) }}</div>
+  {% if list_view %}<h2 dir="auto">{{ topic.title }}</h2>{% else %}<h1 dir="auto">{{ topic.title }}</h1>{% endif %}
+  <div class="discussion-author">{{ ui.avatar(topic.author_name) }}<div><strong dir="auto">{{ topic.author_name }}</strong><span>{{ _(topic.author_role_label) }}<span aria-hidden="true"> · </span><time datetime="{{ topic.created_local.isoformat() }}">{{ topic.created_local.strftime('%Y-%m-%d %H:%M') }}</time></span></div></div>
+  <p class="discussion-timezone">Times are shown in the center timezone.</p>
+</header>
+{% if topic.is_locked %}<div class="discussion-lock-notice" role="status">{{ ui.icon('lock', 17) }}<span>{{ _('This topic is locked.') }} {% if topic.was_moderated %}{{ _('Locked since %(time)s.', time=topic.updated_local.strftime('%Y-%m-%d %H:%M')) }} {% endif %}{{ _('It stays readable, but no new replies can be added.') }}</span></div>{% endif %}
+<article class="discussion-prompt" id="topic" aria-label="Discussion prompt"><div data-topic-body dir="auto">{{ topic.body }}</div></article>
+{%- endmacro %}
+
+{% macro reply_timeline(replies, group, topic, page, has_prev, has_next, topic_page, reply_total_count) -%}
+<section class="discussion-replies" id="replies" aria-label="Replies">
+  <div class="discussion-replies-heading"><h2>Replies</h2><span>{{ _n('%(count)d reply', '%(count)d replies', reply_total_count) }}</span></div>
+  {% if has_prev %}<a class="discussion-reply-page-link" href="{{ url_for('student.discussions_topic', group_public_id=group.public_id, topic_public_id=topic.public_id, topic_page=topic_page, page=page-1, _anchor='replies') }}">Earlier replies</a>{% endif %}
+  {% if replies %}
+  <div class="discussion-reply-list">{% for reply in replies %}
+    <article class="discussion-reply{{ ' is-own' if reply.from_viewer else '' }}" id="reply-{{ reply.public_id }}">
+      {{ ui.avatar(reply.author_name) }}<div class="discussion-reply-content"><header><div><strong dir="auto">{{ reply.author_name }}</strong><span>{{ _(reply.author_role_label) }}{% if reply.from_viewer %}<span aria-hidden="true"> · </span><span>You</span>{% endif %}</span></div><time datetime="{{ reply.created_local.isoformat() }}">{{ reply.created_local.strftime('%Y-%m-%d %H:%M') }}</time></header><div data-reply-body dir="auto">{{ reply.body }}</div></div>
+    </article>
+  {% endfor %}</div>
+  {% else %}<div class="discussion-replies-empty"><h3>No replies yet</h3><p>Replies from this group's students and teachers appear here, oldest first.</p></div>{% endif %}
+  {% if has_next %}<a class="discussion-reply-page-link" href="{{ url_for('student.discussions_topic', group_public_id=group.public_id, topic_public_id=topic.public_id, topic_page=topic_page, page=page+1, _anchor='replies') }}">Later replies</a>{% endif %}
+  {% if has_prev or has_next %}<p class="discussion-page-note">{{ _('Reply page %(page)d', page=page) }}</p>{% endif %}
+</section>
+{%- endmacro %}
+
+{% macro reply_section(can_reply, action, reply_state, draft, body_error, form_error, body_max) -%}
+{% if can_reply %}
+<section class="discussion-compose" id="reply">
+  {% if form_error %}<div class="alert alert--danger" role="alert">{{ form_error }}</div>{% endif %}
+  <form method="post" action="{{ action }}" novalidate data-research-form="discussion_reply">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="reply_state" value="{{ reply_state }}">
+    <label for="reply-body">Your reply</label>
+    <textarea id="reply-body" name="body" rows="4" maxlength="{{ body_max }}" dir="auto" placeholder="Share your thoughts with the group…" aria-describedby="discussion-reply-help{{ ' discussion-reply-error' if body_error else '' }}"{% if body_error %} aria-invalid="true"{% endif %}>{{ draft }}</textarea>
+    {% if body_error %}<div class="field__error" id="discussion-reply-error" role="alert">{{ body_error }}</div>{% endif %}
+    <div class="discussion-compose-footer"><p id="discussion-reply-help">{{ _('Plain text, up to %(count)d characters. Visible to current group members; posting is final.', count=body_max) }}</p><button type="submit" class="btn btn--primary" data-research-id="discussion_reply">Post reply {{ ui.icon('arrow-up', 17) }}</button></div>
+  </form>
+</section>
+{% endif %}
+{%- endmacro %}

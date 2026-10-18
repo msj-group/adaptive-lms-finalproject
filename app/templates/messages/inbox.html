@@ -15,10 +15,9 @@
     {% endif %}
   </div>
   <section class="messenger-welcome" aria-labelledby="message-welcome-title">
-    <div class="messenger-welcome__art" aria-hidden="true"><span>{{ msg.icon('message', 54) }}</span><i>{{ msg.icon('send', 26) }}</i></div>
-    <span class="messenger-eyebrow">A LITTLE CONVERSATION GOES A LONG WAY</span>
-    <h2 id="message-welcome-title">Your conversations,<br>all in one place.</h2>
-    <p>Ask a question, share an update, or keep learning together with your {{ audience }}.</p>
+    <div class="messenger-welcome__art" aria-hidden="true">{{ msg.icon('message', 30) }}</div>
+    <h2 id="message-welcome-title">Your conversations</h2>
+    <p>Select a conversation to read your messages.</p>
     <a class="messenger-primary" href="{{ url_for('messages.new_thread') }}">{{ msg.icon('message', 18) }} Start a conversation</a>
     <div class="messenger-welcome__note">{{ msg.icon('lock', 16) }} Only the two participants can access a conversation.</div>
   </section>

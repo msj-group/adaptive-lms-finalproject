@@ -1,0 +1,71 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_figma_ui.html" as ui %}
+{% block title %}My groups{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/groups.css', v='expandable-groups-20261016') }}">{% endblock %}
+{% block portal_content %}
+<div class="teacher-groups" data-teacher-groups>
+  <div class="teacher-groups-heading">
+    <h1 data-workspace-page-heading dir="auto">My groups<span class="figma-brand-dot">.</span></h1>
+    <details class="teacher-groups-filters" data-group-filters>
+      <summary><span>{{ ui.icon('settings', 18) }}<span>Filters</span></span><span class="teacher-groups-filter-arrow">{{ ui.icon('chevron-down', 16) }}</span></summary>
+      <form method="get" action="{{ url_for('workspace.teacher_groups') }}" class="teacher-groups-filter-form" data-group-filter-form>
+        <input type="hidden" name="q" value="{{ filters.q }}" data-group-filter-query>
+        <div class="field teacher-groups-course-field"><label for="teaching-course">Course</label><select name="course" id="teaching-course"><option value="all"{% if filters.course == 'all' %} selected{% endif %}>All courses</option>{% for course in courses %}<option value="{{ course.public_id }}"{% if filters.course == course.public_id %} selected{% endif %}>{{ course.title }} · {{ course.level_name }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="teaching-term">Term</label><select name="term" id="teaching-term"><option value="all"{% if filters.term == 'all' %} selected{% endif %}>All terms</option>{% for term in terms %}<option value="{{ term.public_id }}"{% if filters.term == term.public_id %} selected{% endif %}>{{ term.name }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="teaching-context">Context</label><select name="context" id="teaching-context">{% for value,label in [('all','All contexts'),('operational','Operational'),('archived','Archived context')] %}<option value="{{ value }}"{% if filters.context == value %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</select></div>
+        <div class="field teacher-groups-period-field"><label for="teaching-period">Term timing</label><select name="period" id="teaching-period">{% for value,label in [('all','All periods'),('current','Current term'),('upcoming','Upcoming term'),('ended','Term ended')] %}<option value="{{ value }}"{% if filters.period == value %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</select></div>
+        <div class="teacher-groups-filter-actions"><button type="submit" class="btn btn--primary">Apply filters</button><a class="btn" href="{{ url_for('workspace.teacher_groups') }}">Clear filters</a></div>
+      </form>
+    </details>
+  </div>
+  <p class="teacher-groups-intro">Groups with a current teaching assignment.</p>
+  <form method="get" action="{{ url_for('workspace.teacher_groups') }}" class="teacher-groups-search">
+    {{ ui.icon('search', 18) }}<input type="search" name="q" value="{{ filters.q }}" maxlength="120" placeholder="Search groups or courses" aria-label="{{ _('Search groups or courses') }}" data-group-search>
+    {% for name in ('course', 'term', 'context', 'period') %}<input type="hidden" name="{{ name }}" value="{{ filters[name] }}">{% endfor %}
+    <button type="submit" class="btn">Search</button>
+  </form>
+  <div class="teacher-groups-context" role="status">
+    <strong>{{ _n('%(count)d group', '%(count)d groups', cards|length) }}</strong>
+    <span aria-hidden="true">·</span>
+    {% for course in courses if course.public_id == filters.course %}<bdi>{{ course.title }} · {{ course.level_name }}</bdi>{% else %}<span>All courses</span>{% endfor %}
+    <span aria-hidden="true">·</span>
+    {% for term in terms if term.public_id == filters.term %}<bdi>{{ term.name }}</bdi>{% else %}<span>All terms</span>{% endfor %}
+    {% if filters.context != 'all' %}<span class="badge badge--neutral">{{ _('Operational' if filters.context == 'operational' else 'Archived context') }}</span>{% endif %}
+    {% if filters.period != 'all' %}<span class="badge badge--neutral">{{ _({'current':'Current term','upcoming':'Upcoming term','ended':'Term ended'}[filters.period]) }}</span>{% endif %}
+    {% if filters.q %}<bdi class="badge badge--neutral">{{ filters.q }}</bdi>{% endif %}
+    {% if filters_active %}<a href="{{ url_for('workspace.teacher_groups') }}">Clear filters</a>{% endif %}
+  </div>
+  {% if cards %}
+  <section class="teacher-groups-list" aria-label="{{ _('Teaching groups') }}">
+    {% for card in cards %}
+    <details class="teacher-group"{% if loop.first %} open{% endif %}>
+      <summary>
+        <span class="teacher-group-identity"><strong class="teacher-group-name" dir="auto">{{ card.group_name }}</strong><span class="teacher-group-course"><bdi>{{ card.course_title }}</bdi> · <bdi>{{ card.level_name }}</bdi> · <bdi>{{ card.term_name }}</bdi></span></span>
+        <span class="teacher-group-state"><span class="badge badge--{{ 'success' if card.operational else 'neutral' }}">{{ _('Operational' if card.operational else 'Archived context') }}</span><span class="teacher-group-period">{{ _({'current':'Current term','upcoming':'Upcoming term','ended':'Term ended'}[card.term_period]) }}{% if card.term_period != 'current' %} · {{ ui_date((card.term_start if card.term_period == 'upcoming' else card.term_end).strftime('%d %b %Y')) }}{% endif %}</span></span>
+        <span class="teacher-group-count">{{ _n('%(count)d active student', '%(count)d active students', card.student_count) }}</span>
+        <span class="teacher-group-arrow">{{ ui.icon('chevron-down', 18) }}</span>
+      </summary>
+      <div class="teacher-group-body">
+        <dl class="teacher-group-facts">
+          <div><dt>Next class</dt><dd>{% if card.next_class %}<time datetime="{{ card.next_class.start.isoformat() }}">{{ ui_date(card.next_class.start.strftime('%a %d %b %Y · %H:%M')) }}</time>{% if card.next_class.ref.location %}<span class="teacher-group-location" dir="auto">{{ card.next_class.ref.location }}</span>{% endif %}{% else %}{{ _('No upcoming class') }}{% endif %}</dd></div>
+          <div><dt>Weekly schedule</dt><dd>{% for schedule in card.schedules %}<span class="teacher-group-slot"><span>{{ _(['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][schedule.day_of_week]) }} · <bdi>{{ schedule.start_time.strftime('%H:%M') }}–{{ schedule.end_time.strftime('%H:%M') }}</bdi></span>{% if schedule.location %}<span class="teacher-group-location" dir="auto">{{ schedule.location }}</span>{% endif %}</span>{% else %}{{ _('No active schedule') }}{% endfor %}</dd></div>
+          <div><dt>Term dates</dt><dd><time datetime="{{ card.term_start.isoformat() }}">{{ ui_date(card.term_start.strftime('%d %b %Y')) }}</time> – <time datetime="{{ card.term_end.isoformat() }}">{{ ui_date(card.term_end.strftime('%d %b %Y')) }}</time></dd></div>
+        </dl>
+        {% if not card.operational %}<p class="teacher-group-archive-note">{{ _('Archived context') }}: {% for label in card.archived_labels %}{{ _(label) }}{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+        <nav class="teacher-group-actions" aria-label="{{ _('Tools for %(group)s', group=card.group_name) }}">
+          <a class="btn btn--primary" href="{{ url_for('workspace.teacher_group', group_public_id=card.group_public_id) }}">Open workspace {{ ui.icon('arrow-up', 16) }}</a>
+          <a class="btn" href="{{ url_for('teacher.group_attendance', group_public_id=card.group_public_id) }}">{{ ui.icon('check', 16) }} Attendance</a>
+          <a class="btn" href="{{ url_for('teacher.group_gradebook', group_public_id=card.group_public_id) }}">{{ ui.icon('graduation', 16) }} Gradebook</a>
+          <a class="btn" href="{{ url_for('teacher.group_activities', group_public_id=card.group_public_id) }}">{{ ui.icon('activity', 16) }} Activities</a>
+        </nav>
+      </div>
+    </details>
+    {% endfor %}
+  </section>
+  <p class="teacher-groups-note">Ended terms remain visible while your assignment is active.</p>
+  {% else %}
+  <div class="empty-state"><h2>{{ _('No groups match your filters.' if filters_active else 'No current teaching groups') }}</h2>{% if filters_active %}<a href="{{ url_for('workspace.teacher_groups') }}">Clear filters</a>{% else %}<p>Assigned groups will appear here when the administrator adds them.</p>{% endif %}</div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_groups.js', v='expandable-groups-20261016') }}" defer></script>{% endblock %}

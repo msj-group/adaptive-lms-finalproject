@@ -1,19 +1,20 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "teacher/attendance/base.html" %}
 {% import "_attendance_macros.html" as att %}
+{% import "teacher/attendance/_presentation.html" as presentation %}
 {% block title %}{{ group.name }} — Attendance {{ session.session_date.isoformat() }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
   <a class="portal-nav__link" href="{{ url_for('teacher.attendance_overview') }}">Attendance</a>
 {% endblock %}
-{% block portal_content %}
+{% block attendance_content %}
 {#- Phase 4 / M07. READ ONLY. This page renders no form, no token and no
     marking control of any kind; the only mutating route it can even lead to is
     the separate marking page, and only while the session is a draft and the
     chain is operational. It is equally the historical detail page for a
     session whose schedule, group or academic ancestor has since been archived.
     Student names and notes are autoescaped and never rendered with `|safe`. -#}
-<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 data-workspace-page-heading style="margin:0">Attendance — {{ session.session_date.isoformat() }}</h1>
+<div class="tat-heading">
+  <h1 data-workspace-page-heading style="margin:0"><span>Attendance</span> — <bdi dir="ltr">{{ session.session_date.isoformat() }}</bdi></h1>
   {{ att.state_badge(is_finalized) }}
 </div>
 
@@ -24,17 +25,17 @@
 {% endwith %}
 
 <div class="card yc-panel" style="margin-bottom: var(--space-5)">
-  <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+  <dl class="tat-facts">
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
     <dd style="margin:0">{{ group.name }} &middot; {{ group.course.title }} &middot; {{ group.course.level.name }}</dd>
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Class</dt>
-    <dd style="margin:0">{{ att.session_when(session, tz_name, weekday) }}</dd>
+    <dd style="margin:0">{{ presentation.class_when(session, weekday) }}</dd>
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Location</dt>
     <dd style="margin:0">{{ session.location or "—" }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Marks</dt>
-    <dd style="margin:0">{{ att.count_summary(counts) }}</dd>
   </dl>
 </div>
+
+{{ presentation.marks_summary(counts, _('Class marks'), _('Saved marks for this class.') if is_finalized else _('Saved draft marks. Students cannot see them yet.'), _('Students')) }}
 
 {% if is_finalized %}
 <div class="alert alert--success" style="margin-bottom: var(--space-5)">
@@ -66,7 +67,7 @@
   <p class="ds-section__desc">Fixed roster from session opening. Staff notes are private.</p>
   {% if records %}
   <div class="dash-scroll">
-  <table class="dash-table">
+  <table class="dash-table tat-roster-table" role="table">
     <thead>
       <tr>
         <th>Student</th>
@@ -76,10 +77,10 @@
     </thead>
     <tbody>
       {% for record in records %}
-      <tr>
-        <td>{{ record.student_name }}</td>
-        <td>{{ att.status_badge(record.status, record.status_label) }}</td>
-        <td style="white-space: pre-wrap">{{ record.note or "—" }}</td>
+      <tr role="row">
+        <td role="cell"><bdi>{{ record.student_name }}</bdi></td>
+        <td role="cell">{{ att.status_badge(record.status, record.status_label) }}</td>
+        <td role="cell"><span class="tat-note-label">Private note</span><span class="tat-private-note">{{ record.note or "—" }}</span></td>
       </tr>
       {% endfor %}
     </tbody>

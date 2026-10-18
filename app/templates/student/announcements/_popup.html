@@ -1,0 +1,12 @@
+<dialog class="announcement-reader-dialog" aria-labelledby="announcement-popup-label" data-announcement-popup>
+  <header class="announcement-popup-heading">
+    <h2 id="announcement-popup-label">Announcement details</h2>
+    <button class="btn btn--secondary announcement-popup-close" type="button" data-announcement-close>{{ ui.icon('close', 17) }}<span>Close</span></button>
+  </header>
+  <p class="announcement-popup-status" role="status" data-announcement-loading>Loading announcement…</p>
+  <div data-announcement-content></div>
+  <div class="announcement-popup-error" hidden data-announcement-error>
+    <p role="alert" data-announcement-error-message></p>
+    <div><button class="btn btn--secondary" type="button" data-announcement-retry>Try again</button><a class="announcement-back" data-announcement-page>Open announcement page</a></div>
+  </div>
+</dialog>

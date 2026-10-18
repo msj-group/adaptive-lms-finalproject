@@ -1,0 +1,85 @@
+/* Student history only; shared ST2 tokens own typography, palette and density. */
+.st-workspace .record-workspace { min-width:0; }
+.record-page-heading { position:relative; display:flex; align-items:center; justify-content:space-between; direction:ltr; gap:12px; margin-bottom:var(--st-heading-gap); }
+.st-workspace .record-page-heading h1 { margin:0; min-width:0; }
+.record-filters { flex-shrink:0; }
+.st-workspace .record-filters>summary { display:flex; align-items:center; gap:8px; min-height:44px; padding:8px 10px; border-radius:var(--st-control-radius); list-style:none; cursor:pointer; color:var(--st-blue); background:var(--st-control); font-size:13px; direction:ltr; }
+.record-filters>summary::-webkit-details-marker { display:none; }
+.record-filter-heading { display:flex; align-items:center; gap:8px; font-weight:600; }
+.record-filter-arrow { display:grid; place-items:center; }
+.record-filters[open] .record-filter-arrow { transform:rotate(180deg); }
+.st-workspace .record-filter-form { position:absolute; right:0; top:calc(100% + 10px); z-index:40; width:min(760px,100%); display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; padding:var(--st-panel-pad); background:var(--st-solid); direction:ltr; box-shadow:var(--st-shadow); }
+html[dir='rtl'] .record-filter-form { direction:rtl; }
+.record-filter-form label { display:block; margin-bottom:6px; }
+.record-filter-actions,.record-filter-form noscript { grid-column:1/-1; display:flex; gap:10px; flex-wrap:wrap; }
+.st-workspace .record-summary { display:flex; align-items:center; gap:20px; margin-bottom:var(--st-section-gap); background:linear-gradient(110deg,var(--st-wash),var(--st-glass)); }
+.record-summary-icon { display:grid; place-items:center; flex-shrink:0; width:52px; height:52px; border:2px solid var(--st-blue); border-radius:50%; color:var(--st-blue); box-shadow:0 0 0 7px var(--st-wash); }
+.record-summary-count { display:flex; align-items:center; gap:14px; flex-shrink:0; }
+.record-summary-count>strong { font:600 var(--st-title-size)/1.1 var(--st-display); color:var(--st-blue); font-variant-numeric:tabular-nums; }
+.record-summary-count>span { font-size:13px; font-weight:600; }
+.record-summary-breakdown { display:flex; align-items:center; flex-wrap:wrap; gap:6px 16px; list-style:none; padding:0; margin:0; color:var(--st-muted); font-size:12px; }
+.record-summary-breakdown li { display:flex; align-items:center; gap:5px; }
+.record-expired-count { color:var(--ui-warning); }
+.record-history-heading,.record-history-heading>div { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.record-history-heading { margin:var(--st-section-gap) 0; }
+.record-history-heading .ds-section__desc { margin:0; }
+.st-workspace .record-history-heading h2 { margin:0; font-size:var(--st-subtitle-size); }
+.record-other { position:relative; font-size:12px; }
+.record-other>summary { cursor:pointer; min-height:44px; display:flex; align-items:center; gap:6px; color:var(--st-blue); }
+.record-other nav { position:absolute; inset-block-start:100%; inset-inline-end:0; z-index:5; width:260px; max-width:calc(100vw - 40px); padding:8px; border:1px solid var(--st-divider); border-radius:var(--st-control-radius); background:var(--st-solid); box-shadow:var(--st-shadow); }
+.record-other nav a { display:flex; align-items:center; min-height:44px; padding:8px 12px; border-radius:8px; text-decoration:none; }
+.record-other nav a:hover,.record-other nav a[aria-current] { background:var(--st-wash); }
+.record-timeline { list-style:none; padding:0; margin:0; }
+.record-timeline-entry { position:relative; display:grid; grid-template-columns:110px 24px minmax(0,1fr); gap:16px; align-items:start; padding-bottom:14px; }
+.record-timeline-entry::before { content:''; position:absolute; inset-inline-start:137px; top:23px; bottom:-9px; width:1px; background:var(--st-divider); }
+.record-timeline-entry:last-child::before { bottom:24px; }
+.record-date { padding-block-start:18px; color:var(--st-muted); font-size:12px; }
+.record-date--repeat time { visibility:hidden; }
+.record-timeline-marker { position:relative; z-index:1; display:grid; place-items:center; width:24px; height:24px; margin-top:16px; border:3px solid var(--ui-page); border-radius:50%; background:var(--st-blue); color:var(--st-solid); }
+.record-timeline-marker--expired { background:var(--ui-warning-bg); color:var(--ui-warning); }
+.st-workspace .record-card { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px 18px; box-shadow:none; }
+.record-card-main { min-width:0; }
+.record-card-heading { display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; }
+.st-workspace .record-card-heading h3 { margin:0; font:600 15px/1.5 var(--st-body); overflow-wrap:anywhere; }
+.record-card .record-type { gap:5px; }
+.record-type--listening,.record-type--quizzes { color:var(--st-blue); background:var(--st-wash); }
+.record-type--assignments,.record-type--speaking { color:var(--st-ink); }
+.record-card-meta { display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:6px; color:var(--st-muted); font-size:12px; }
+.record-card-meta>span { overflow-wrap:anywhere; }
+.record-card-result { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+.record-score { padding:4px 12px; border-radius:var(--st-control-radius); background:var(--st-wash); color:var(--st-blue); font:600 18px/1.5 var(--st-display); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.st-workspace .record-receipt-label { margin:6px 0 0; color:var(--st-muted); font-size:12px; }
+.record-audio,.record-receipt,.record-text,.record-corrections { grid-column:1/-1; min-width:0; }
+.record-audio { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; color:var(--st-muted); font-size:12px; }
+.record-audio audio { width:min(100%,300px); height:40px; }
+.record-audio a { display:inline-flex; align-items:center; min-height:44px; }
+.record-receipt { border-top:1px solid var(--st-divider); }
+.record-receipt summary { display:flex; align-items:center; gap:6px; min-height:44px; cursor:pointer; color:var(--st-blue); font-size:12px; }
+.record-text { white-space:pre-wrap; overflow-wrap:anywhere; }
+.record-receipt h4 { margin:12px 0 6px; font:600 13px/1.5 var(--st-body); }
+.record-corrections { display:grid; gap:10px; }
+.record-corrections dd { margin:4px 0 0; overflow-wrap:anywhere; }
+.record-enrollment-meta { margin-top:6px; color:var(--st-muted); font-size:11px; overflow-wrap:anywhere; }
+.record-pagination { display:flex; align-items:center; justify-content:flex-end; gap:12px; font-size:12px; }
+@media(max-width:1100px) { .st-workspace .record-summary { flex-wrap:wrap; } .record-summary-breakdown { flex-basis:100%; } .st-workspace .record-filter-form { grid-template-columns:1fr; } }
+@media(max-width:639px) {
+ .record-timeline-entry { grid-template-columns:24px minmax(0,1fr); gap:8px 10px; padding-bottom:16px; }
+ .record-timeline-entry::before { inset-inline-start:11px; top:32px; bottom:-16px; }
+ .record-timeline-entry:last-child::before { bottom:24px; }
+ .record-date { grid-column:2; padding:0; }
+ .record-date--repeat time { visibility:visible; }
+ .record-timeline-marker { grid-column:1; grid-row:2; margin-top:12px; }
+ .st-workspace .record-card { grid-column:2; grid-row:2; gap:10px; padding:14px; }
+ .record-card-heading { align-items:flex-start; flex-direction:column; gap:6px; }
+ .st-workspace .record-card-heading h3 { font-size:13px; }
+ .record-card-result { max-width:90px; }
+ .record-score { font-size:16px; padding:3px 8px; }
+ .st-workspace .record-summary { gap:14px; }
+ .record-summary-icon { width:40px; height:40px; }
+ .record-summary-count { flex:1; flex-wrap:wrap; gap:6px 10px; }
+ .record-summary-count>span { font-size:12px; }
+ .record-audio { flex-direction:column; align-items:flex-start; }
+ .record-audio audio { width:100%; }
+ .record-history-heading>div { width:100%; }
+}
+@media(forced-colors:active) { .record-timeline-marker,.record-summary-icon { border:1px solid CanvasText; } .record-timeline-entry::before { background:CanvasText; } }

@@ -1,9 +1,9 @@
 {% extends "layouts/research_base.html" if current_user.role == 'researcher' else "layouts/admin_base.html" if current_user.role == 'administrator' else "layouts/portal_base.html" %}
 {% import "_figma_ui.html" as account_ui %}
-{% from '_file_input.html' import file_input %}
 {% block title %}Account settings{% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
-{% block feature_styles %}{{ super() }}{% if current_user.role != 'student' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">{% endif %}{% endblock %}
+{% block feature_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/account.css', v='photo-crop-20261017') }}">{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/account.js', v='photo-crop-20261017') }}" defer></script>{% endblock %}
 
 {% macro errors(field) -%}
 {% if field.errors %}<ul class="account-errors" id="{{ field.id }}-errors" role="alert">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
@@ -15,19 +15,54 @@
 {% endif %}
 
 <div class="account-settings-grid">
-  <section class="{{ 'st-panel' if current_user.role == 'student' else 'card' }} account-section" aria-labelledby="photo-heading">
+  {% set photo_url = account_photo_url() %}
+  <section class="{{ 'st-panel' if current_user.role == 'student' else 'card' }} account-section account-photo-section" aria-labelledby="photo-heading" data-account-photo>
     <h2 id="photo-heading">Profile photo</h2>
-    <div class="account-profile">{{ account_ui.avatar(current_user.full_name, account_photo_url()) }}<div><strong dir="auto">{{ current_user.full_name }}</strong><span>{{ current_user.role|capitalize }}</span></div></div>
-    <form method="post" action="{{ url_for('account.upload_photo') }}" enctype="multipart/form-data" data-research-form="account_photo_submit" class="yc-form">
-      {{ photo_form.hidden_tag() }}{{ errors(photo_form.state) }}{{ errors(photo_form.csrf_token) }}
-      <div class="field">
-        {{ photo_form.photo.label(class_="field__label") }}
-        {{ file_input(photo_form.photo, class_="field__input account-file", accept="image/jpeg,image/png,image/webp", required=true, aria_describedby=photo_form.photo.id ~ '-hint' ~ (' ' ~ photo_form.photo.id ~ '-errors' if photo_form.photo.errors else ''), aria_invalid='true' if photo_form.photo.errors else 'false') }}
-        <p class="account-hint" id="{{ photo_form.photo.id }}-hint">JPG, PNG or WebP · up to 5 MB and 16 million pixels. Still images only. Your photo will be cropped to a square.</p>
-        {{ errors(photo_form.photo) }}
+    <div class="account-profile">
+      <details class="account-avatar-menu" data-photo-menu>
+        <summary class="account-avatar-toggle" aria-label="Profile photo options" aria-controls="account-photo-menu" title="Profile photo options">
+          {{ account_ui.avatar(current_user.full_name, photo_url) }}
+          <span class="account-avatar-edit" aria-hidden="true">{{ account_ui.icon('pen', 20) }}</span>
+        </summary>
+        <div class="account-photo-menu" id="account-photo-menu">
+          <a href="{{ photo_url or '#' }}" data-photo-view{% if not photo_url %} hidden{% endif %}>{{ account_ui.icon('eye', 18) }}<span>View photo</span></a>
+          <button type="button" class="account-photo-unavailable" disabled data-photo-empty{% if photo_url %} hidden{% endif %}>{{ account_ui.icon('eye', 18) }}<span>View photo</span></button>
+          <label for="{{ photo_form.photo.id }}" tabindex="0" role="button" data-photo-edit>{{ account_ui.icon('pen', 18) }}<span>Edit photo</span></label>
+          <button type="submit" form="account-photo-remove" class="account-photo-delete"{% if not photo_url %} disabled{% endif %}>{{ account_ui.icon('trash', 18) }}<span>Delete photo</span></button>
+        </div>
+      </details>
+      <div class="account-profile-identity"><strong dir="auto">{{ current_user.full_name }}</strong><span>{{ current_user.role|capitalize }}</span></div>
+    </div>
+    <form id="account-photo-upload" method="post" action="{{ url_for('account.upload_photo') }}" enctype="multipart/form-data" data-research-form="account_photo_submit" class="yc-form account-photo-form">
+      {{ photo_form.hidden_tag() }}
+      {{ photo_form.photo(class_="account-photo-input", accept="image/jpeg,image/png,image/webp", required=true, tabindex='-1', aria_label='Edit photo') }}
+      <div class="account-photo-actions">
+        <button type="button" class="btn btn--secondary" data-photo-recrop hidden>Adjust crop</button>
+        {{ photo_form.submit(class_="btn btn--primary account-photo-save", data_research_id="account_photo_submit", data_photo_save='', hidden=true) }}
+        <noscript><button type="submit" class="btn btn--primary">Save photo</button></noscript>
       </div>
-      {{ photo_form.submit(class_="btn btn--primary", data_research_id="account_photo_submit") }}
     </form>
+    <form id="account-photo-remove" method="post" action="{{ url_for('account.upload_photo') }}" class="account-photo-remove" data-confirm="Delete your profile photo?" data-research-form="account_photo_submit">{{ remove_photo_form.hidden_tag() }}</form>
+    <dialog class="account-photo-dialog account-photo-cropper" data-photo-cropper aria-labelledby="account-photo-crop-title" aria-describedby="account-photo-crop-help">
+      <div class="account-photo-dialog-heading"><h2 id="account-photo-crop-title">Adjust your photo</h2><button type="button" class="account-photo-close" data-photo-crop-cancel aria-label="Cancel">{{ account_ui.icon('close', 20) }}</button></div>
+      <p id="account-photo-crop-help" class="account-crop-help">Drag the photo to choose what appears in the circle. Use the zoom slider or the arrow keys in the preview to adjust it.</p>
+      <div class="account-crop-stage" tabindex="0" role="group" aria-label="Photo crop area" aria-describedby="account-photo-crop-help" data-photo-crop-stage>
+        <canvas width="512" height="512" data-photo-crop-canvas aria-hidden="true"></canvas>
+        <span class="account-crop-circle" aria-hidden="true"></span>
+      </div>
+      <div class="account-crop-zoom"><label for="account-photo-zoom">Zoom</label><output for="account-photo-zoom" data-photo-zoom-value>100%</output><input id="account-photo-zoom" type="range" min="1" max="4" step="0.01" value="1" dir="ltr" data-photo-zoom></div>
+      <div class="account-crop-actions"><button type="button" class="btn btn--secondary" data-photo-crop-reset>Reset crop</button><span></span><button type="button" class="btn btn--secondary" data-photo-crop-cancel>Cancel</button><button type="button" class="btn btn--primary" data-photo-crop-use>Use photo</button></div>
+    </dialog>
+    <dialog class="account-photo-dialog account-photo-viewer" data-photo-viewer aria-labelledby="account-photo-view-title">
+      <div class="account-photo-dialog-heading"><h2 id="account-photo-view-title">Profile photo</h2><button type="button" class="account-photo-close" data-photo-close aria-label="Close">{{ account_ui.icon('close', 20) }}</button></div>
+      <img{% if photo_url %} src="{{ photo_url }}"{% endif %} alt="Profile photo" data-photo-full{% if not photo_url %} hidden{% endif %}>
+    </dialog>
+    {% set photo_errors = photo_form.photo.errors|list + photo_form.crop.errors|list + photo_form.state.errors|list + photo_form.csrf_token.errors|list + remove_photo_form.state.errors|list + remove_photo_form.csrf_token.errors|list + remove_photo_form.operation.errors|list %}
+    <dialog class="account-photo-dialog account-photo-error" data-photo-error aria-labelledby="account-photo-error-title" aria-describedby="account-photo-error-message"{% if photo_error or photo_errors %} open data-photo-server-error{% endif %}>
+      <div class="account-photo-dialog-heading"><h2 id="account-photo-error-title">Photo update failed</h2><button type="button" class="account-photo-close" data-photo-close aria-label="Close">{{ account_ui.icon('close', 20) }}</button></div>
+      <p id="account-photo-error-message" data-photo-error-message role="alert">{{ _(photo_error or (photo_errors[0] if photo_errors else '')) }}</p>
+      <button type="button" class="btn btn--primary" data-photo-close>Close</button>
+    </dialog>
   </section>
   <section class="{{ 'st-panel' if current_user.role == 'student' else 'card' }} account-section" aria-labelledby="password-heading">
     <h2 id="password-heading">Change password</h2>

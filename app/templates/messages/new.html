@@ -20,7 +20,7 @@
     </div>
   </section>
   {% else %}
-  <section class="messenger-welcome" aria-labelledby="new-message-title"><div class="messenger-welcome__art" aria-hidden="true"><span>{{ msg.icon('message', 54) }}</span><i>{{ msg.icon('send', 26) }}</i></div><h2 id="new-message-title">Start a conversation.</h2><p>Choose one of your {{ audience }} from the list to say hello.</p>
+  <section class="messenger-welcome" aria-labelledby="new-message-title"><div class="messenger-welcome__art" aria-hidden="true">{{ msg.icon('message', 30) }}</div><h2 id="new-message-title">Start a conversation.</h2><p>Choose one of your {{ audience }} from the list to say hello.</p>
     {% if recipients|length >= recipient_limit %}<p class="messenger-page-note">Showing up to {{ recipient_limit }} contacts. Search by name to find someone else.</p>{% endif %}
   </section>
   {% endif %}

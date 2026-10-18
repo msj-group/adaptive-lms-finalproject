@@ -1,9 +1,11 @@
 {% extends "layouts/portal_base.html" %}
 {% import "_grade_macros.html" as gr %}
+{% import "_figma_ui.html" as ui %}
 {% block title %}{{ group.name }} — My grades{% endblock %}
 {% block portal_nav %}{% set active_nav = 'grades' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/grades.css', v='grades-directory-20261015') }}">{% endblock %}
 {% block portal_content %}
-<div class="st-journal">
+<div class="st-journal grade-workspace">
 {#- Phase 4 / M08. Every row on this page satisfied the whole visibility
     formula in SQL before it was fetched: this student's own record, on a
     RELEASED grade item, with the acting account's role and status re-proved in
@@ -17,9 +19,9 @@
 
     Every number is a string produced by app.services.grade_calculations and
     rounded there exactly once. This template performs no arithmetic. -#}
-<h1 data-workspace-page-heading style="margin-top: 0">{{ group.name }} — My grades</h1>
-<p class="ds-section__desc" style="margin-bottom: var(--space-4)">
-  {{ group.course_title }} &middot; {{ group.level_name }} &middot; {{ group.term_name }}
+<h1 data-workspace-page-heading dir="auto">{{ group.name }} — My grades</h1>
+<p class="ds-section__desc grade-intro">
+  <bdi>{{ group.course_title }}</bdi> &middot; <bdi>{{ group.level_name }}</bdi> &middot; <bdi>{{ group.term_name }}</bdi>
 </p>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -28,63 +30,39 @@
   {% endfor %}
 {% endwith %}
 
-<div class="st-panel" style="margin-bottom: var(--space-5)">
-  <div class="card__title" style="margin-bottom: var(--space-2)">Overall grade</div>
-  {% if overall_display %}
-  <div style="font-size: var(--font-size-xl); font-weight: 600">{{ overall_display }}%</div>
-  <p class="card__body" style="margin-top: var(--space-2)">
+<section class="grade-overall st-panel" aria-labelledby="grade-overall-heading">
+  {% if overall_display is not none %}<strong class="grade-overall-value" dir="ltr">{{ overall_display }}<span>%</span></strong>{% endif %}
+  <div><h2 id="grade-overall-heading">Overall grade</h2>
+  {% if overall_display is not none %}
+  <p>
     Calculated from every released result below, weighted by how much each part of the course
     is worth.
   </p>
   {% else %}
   <span class="badge badge--neutral">Not available yet</span>
-  <p class="card__body" style="margin-top: var(--space-2)">{{ overall_message }}</p>
+  <p>{{ _(overall_message) }}</p>
   {% endif %}
-</div>
-
-{% for category in categories %}
-<section class="dash-section" style="margin-top: 0">
-  <div class="ds-row" style="justify-content: space-between; align-items: center">
-    <h2 style="margin:0">
-      {{ category.title }}
-      <span style="color: var(--color-text-secondary); font-weight: normal">&middot; worth {{ gr.weight(category.weight_display) }} of the course</span>
-    </h2>
-    <div>{{ gr.percentage(category.percentage_display) }}</div>
   </div>
+</section>
+
+<div class="grade-categories">
+{% for category in categories %}
+<details class="grade-category st-panel"{% if loop.first %} open{% endif %}>
+  <summary><span><span class="grade-category-title" dir="auto">{{ category.title }}</span><span class="grade-category-weight">{{ _('Worth %(weight)s of the course', weight=category.weight_display ~ '%') }}</span></span><span class="grade-category-result"><strong>{{ gr.percentage(category.percentage_display) }}</strong>{{ ui.icon('chevron-down', 18) }}</span></summary>
 
   {% if not category.complete %}
-  <p class="ds-section__desc">
-    {{ _n('%(scored)d of %(count)d released item', '%(scored)d of %(count)d released items', category.released_item_count, scored=category.scored_item_count) }}
-    in this part has a result for you so far.
-  </p>
+  <p class="ds-section__desc grade-category-note">{{ _n('Result available for %(scored)d of %(count)d released item.', 'Results available for %(scored)d of %(count)d released items.', category.released_item_count, scored=category.scored_item_count) }}</p>
   {% endif %}
 
   {% if category.grade_items %}
-  <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th>Item</th>
-        <th style="width:12rem">Kind</th>
-        <th style="width:7rem">Score</th>
-        <th style="width:7rem">Out of</th>
-        <th style="width:7rem">Percent</th>
-        <th>Your teacher's comment</th>
-      </tr>
-    </thead>
-    <tbody>
+  <div class="grade-items">
       {% for item in category.grade_items %}
-      <tr>
-        <td><strong>{{ item.item_title }}</strong></td>
-        <td>{{ item.source_label }}</td>
-        <td>{{ gr.points(item.score_display) }}</td>
-        <td>{{ gr.points(item.max_points_display) }}</td>
-        <td>{{ gr.percentage(item.percentage_display) }}</td>
-        <td>{{ gr.comment_block(item.comment) }}</td>
-      </tr>
+      <article class="grade-item">
+        <div class="grade-item-heading"><h3 dir="auto">{{ item.item_title }}</h3><span class="grade-item-kind">{{ _(item.source_label) }}</span></div>
+        <dl class="grade-item-result"><div><dt>Score</dt><dd dir="ltr">{{ gr.points(item.score_display) }} <span class="grade-item-max"><span aria-label="{{ _('Out of') }}">/</span> {{ gr.points(item.max_points_display) }}</span></dd></div><div><dt>Percent</dt><dd dir="ltr">{{ gr.percentage(item.percentage_display) }}</dd></div></dl>
+        {% if item.comment %}<details class="grade-comment"><summary>{{ ui.icon('message', 15) }}<span>Your teacher's comment</span>{{ ui.icon('chevron-down', 14) }}</summary><div dir="auto">{{ gr.comment_block(item.comment) }}</div></details>{% endif %}
+      </article>
       {% endfor %}
-    </tbody>
-  </table>
   </div>
   {% else %}
   <div class="empty-state">
@@ -92,11 +70,12 @@
     <div>Results appear here as your teacher releases them.</div>
   </div>
   {% endif %}
-</section>
+</details>
 {% endfor %}
+</div>
 
-<div class="ds-row" style="margin-top: var(--space-5)">
-  <a class="btn btn--secondary" href="{{ url_for('student.grades_list') }}">Back to all grades</a>
+<div class="grade-back">
+  <a class="btn btn--secondary" href="{{ url_for('student.grades_list', **list_filters) }}">Back to all grades</a>
 </div>
 </div>
 {% endblock %}

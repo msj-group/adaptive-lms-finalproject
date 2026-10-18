@@ -24,8 +24,13 @@ def _assigned(teacher_id):
 def _groups(teacher_id):
     # Historical groups remain readable, just as in the existing Teacher GETs.
     return select(Group.public_id.label("group_public_id"), Group.name.label("group_name"),
-                  Course.public_id.label("course_public_id"), Course.title.label("course_title")).select_from(Group).join(
-        Course, Course.id == Group.course_id).where(_assigned(teacher_id))
+                  Course.public_id.label("course_public_id"), Course.title.label("course_title"),
+                  AcademicTerm.name.label("term_name"),
+                  and_(Group.status == "active", Course.status == "active",
+                       Level.status == "active", AcademicTerm.status == "active").label("operational")
+                  ).select_from(Group).join(Course, Course.id == Group.course_id).join(
+        Level, Level.id == Course.level_id).join(
+        AcademicTerm, AcademicTerm.id == Group.academic_term_id).where(_assigned(teacher_id))
 
 
 def activity_groups(teacher_id, course=""):

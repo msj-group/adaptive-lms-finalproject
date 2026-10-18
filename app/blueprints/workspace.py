@@ -78,9 +78,15 @@ def student_course(group_public_id):
 @workspace_bp.get("/teacher/groups")
 @roles_required("teacher")
 def teacher_groups():
-    data = teacher_dashboard(current_user.id, app_now(_tz()))
-    return private_page("workspace/groups.html", cards=data["cards"], teacher=True,
-                        tz_name=_tz(), today=app_now(_tz()).date(), active_nav="groups")
+    from app.services.teacher_group_directory import InvalidGroupFilter, teacher_group_directory
+    now = app_now(_tz())
+    data = teacher_dashboard(current_user.id, now)
+    try:
+        directory = teacher_group_directory(data["cards"], now.date(), request.args)
+    except InvalidGroupFilter as error:
+        abort(error.status_code)
+    return private_page("teacher/groups.html", **directory,
+                        tz_name=_tz(), today=now.date(), active_nav="groups")
 
 
 @workspace_bp.get("/teacher/groups/<group_public_id>/workspace")

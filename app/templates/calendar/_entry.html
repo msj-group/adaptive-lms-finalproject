@@ -1,0 +1,15 @@
+{# Authored content stays escaped. Destinations were attached by the role route. #}
+<article class="calendar-entry calendar-entry--{{ row.tone }}">
+  <div class="calendar-entry-top">
+    <time dir="ltr">{% if row.all_day %}{{ _('All day') }}{% elif row.end_time %}{{ row.start_time.strftime('%H:%M') }} – {{ row.end_time.strftime('%H:%M') }}{% else %}{{ row.start_time.strftime('%H:%M') }}{% endif %}</time>
+    <span class="calendar-source">{{ ui.icon(row.icon, 14) }}{{ _(row.source_label) }}</span>
+  </div>
+  <h3 dir="auto">{{ row.title }}</h3>
+  {% if row.context %}<p class="calendar-entry-context">{{ ui.icon('users', 14) }}<span dir="auto">{{ row.context }}</span></p>{% endif %}
+  <div class="calendar-entry-bottom">
+    <span class="calendar-location">{% if row.location %}{{ ui.icon('room', 14) }}<span dir="auto">{{ row.location }}</span>{% endif %}</span>
+    {% if row.url or row.details %}
+    <details class="calendar-entry-details"><summary>{{ _('Details') }}{{ ui.icon('chevron-down', 14) }}</summary><div>{% if row.details %}<p dir="auto">{{ row.details }}</p>{% endif %}{% if row.url %}<a class="calendar-entry-action" href="{{ row.url }}">{{ _(row.action_label) }}{{ ui.icon('arrow-up', 14) }}</a>{% endif %}</div></details>
+    {% endif %}
+  </div>
+</article>

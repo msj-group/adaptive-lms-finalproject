@@ -1,0 +1,10 @@
+{# The detail GET has reauthorized this published notice. Plain text only. #}
+<article class="announcement-reader" aria-labelledby="announcement-reader-title" data-announcement-reader data-announcement-id="{{ announcement.public_id }}">
+  <header>
+    <span class="announcement-scope">{{ _(announcement.scope_label) }}</span>
+    <h2 id="announcement-reader-title" dir="auto">{{ announcement.title }}</h2>
+    <p class="announcement-reader-date"><span>Published on</span>{% if announcement.published_local %}<time datetime="{{ announcement.published_local.isoformat() }}" dir="ltr">{{ announcement.published_local.strftime('%Y-%m-%d %H:%M') }}</time>{% else %}<span>Not published</span>{% endif %}</p>
+    <p class="announcement-context" dir="auto">{{ announcement.context if announcement.context else _('All students') }}</p>
+  </header>
+  <div class="announcement-reader-body" dir="auto">{{ announcement.body }}</div>
+</article>

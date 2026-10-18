@@ -15,13 +15,6 @@
     <nav class="st-navigation figma-sidebar-nav" aria-label="Primary">
       {% include 'layouts/_product_navigation.html' %}
     </nav>
-    <div class="st-sidebar-footer">
-      <button class="st-nav-link workspace-desktop-more" type="button" aria-label="More navigation" aria-controls="workspace-more-panel" aria-expanded="false" aria-haspopup="dialog" data-more-toggle data-research-id="nav_more">{{ ui.icon('menu') }}<span>More</span></button>
-      <a class="st-profile" href="{{ url_for('account.settings') }}" data-research-id="nav_account">
-        {{ ui.avatar(current_user.full_name, account_photo_url()) }}
-        <span><strong dir="auto">{{ current_user.full_name }}</strong><small>{{ role|capitalize }}</small></span>{{ ui.icon('chevron',14) }}
-      </a>
-    </div>
   </aside>
   <div class="st-body figma-body" data-workspace-body>
     <header class="st-header">
@@ -29,7 +22,7 @@
       <div class="st-header-actions">
         <a class="st-icon-button" href="{{ url_for('workspace.search') }}" data-workspace-search-open data-research-id="nav_search" aria-label="Search your workspace" aria-haspopup="dialog" aria-controls="workspace-search-dialog">{{ ui.icon('search') }}</a>
         {% if notif %}{% include 'notifications/_bell.html' %}{% endif %}
-        {{ ui.account(current_user, url_for('research.logout' if role == 'researcher' else 'auth.logout'), csrf_token(), photo_url=account_photo_url(), include_display=false) }}
+        {{ ui.account(current_user, url_for('research.logout' if role == 'researcher' else 'auth.logout'), csrf_token(), photo_url=account_photo_url()) }}
       </div>
     </header>
     <div class="st-content figma-page {{ portal_blocks.workspace_content_class() }}" id="workspace-content" tabindex="-1">

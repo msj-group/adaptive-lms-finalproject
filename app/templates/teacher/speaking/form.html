@@ -1,6 +1,8 @@
 {% extends "layouts/activity_base.html" %}
 {% set activity_kind = 'speaking' %}
 {% set activity_phase = 'author' %}
+{% from 'teacher/activities/_authoring.html' import introduction %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/activities.css', v='simple-activities-20261017') }}">{% endblock %}
 {% block title %}{{ 'Edit Speaking Activity' if activity else 'New Speaking Activity' }} — {{ group.name }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
@@ -30,7 +32,7 @@
   {% if activity %}
   <div class="alert alert--info" style="margin-bottom: var(--space-4)">Draft: Save does not publish. A submission permanently locks the task.</div>
   {% else %}
-  <div class="alert alert--info" style="margin-bottom: var(--space-4)">New draft: hidden until publication and opening time. Students record and submit once.</div>
+  {{ introduction('speaking') }}
   {% endif %}
 
   <p class="workspace-meta" dir="auto">{{ group.name }} · {{ group.academic_term.name }}</p>
@@ -59,6 +61,7 @@
     {#- step="1" on both datetime-local controls: the stored columns keep
         seconds, and the form renders them, so the control must accept a
         second-bearing value rather than round it away. -#}
+    <fieldset class="ta-form-section"><legend>When students can answer</legend>
     <div class="field" style="max-width:none; ">
       {{ form.opens_at.label(class_="field__label") }}
       {{ form.opens_at(class_="field__input", step="1") }}
@@ -79,10 +82,11 @@
       </span>
       {% for error in form.due_at.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
+    </fieldset>
 
     <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
-      {{ form.submit(class_="btn btn--primary") }}
-      <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
+      {{ form.submit(class_="btn btn--primary", value=_('Save Changes' if activity else 'Save draft')) }}
+      <a class="btn btn--secondary" href="{{ cancel_url if activity else url_for('teacher.group_activities', group_public_id=group.public_id) }}">Cancel</a>
     </div>
   </form>
 </div>

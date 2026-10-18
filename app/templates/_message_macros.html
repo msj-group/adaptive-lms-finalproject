@@ -53,7 +53,7 @@
 <aside class="messenger-sidebar" aria-label="Private conversations" data-conversation-panel data-initial-tab="{{ 'contacts' if contacts_active else 'chats' }}"{% if inbox_query is not none %} data-contacts-search-only{% endif %}>
   <div class="messenger-sidebar__heading"><{{ heading_level }}>{{ heading }}</{{ heading_level }}><a class="messenger-icon-button" href="{{ url_for('messages.new_thread') }}" aria-label="New message" title="New message">{{ icon('plus', 23) }}</a></div>
   <form class="messenger-search" method="get" action="{{ url_for('messages.new_thread') }}" data-conversation-search hidden>{{ icon('search', 19) }}<label class="messenger-sr-only" for="conversation-search">Search chats or {{ audience }}</label><input id="conversation-search" name="q" maxlength="64" type="search" value="{{ query_text }}" placeholder="Search chats or {{ audience }}" autocomplete="off" data-conversation-query><button type="submit" class="messenger-contact-search-submit" data-contact-search-submit aria-label="Search all {{ audience }}" title="Search all {{ audience }}">{{ icon('arrow', 17) }}</button></form>
-  <div class="messenger-tabs" role="tablist" aria-label="Conversations and contacts" data-chat-tabs hidden><button id="chats-tab" type="button" role="tab" aria-controls="chats-panel" data-chat-tab="chats">Chats · {{ conversations|length }} shown</button><button id="contacts-tab" type="button" role="tab" aria-controls="contacts-panel" data-chat-tab="contacts">My {{ audience }}</button></div>
+  <div class="messenger-tabs" role="tablist" aria-label="Conversations and contacts" data-chat-tabs hidden><button id="chats-tab" type="button" role="tab" aria-controls="chats-panel" data-chat-tab="chats">Chats</button><button id="contacts-tab" type="button" role="tab" aria-controls="contacts-panel" data-chat-tab="contacts">My {{ audience }}</button></div>
   <p class="messenger-search-status" role="status" data-conversation-status hidden></p>
   <div class="messenger-sidebar__list">
     <section id="chats-panel" aria-labelledby="chats-tab" data-chat-panel="chats">
@@ -74,7 +74,7 @@
   <button class="messenger-icon-button messenger-emoji-toggle" type="button" data-emoji-toggle aria-label="Choose an emoji" aria-expanded="false" aria-controls="{{ id }}-emoji" hidden>{{ icon('smile', 25) }}</button>
   <label class="messenger-sr-only" for="{{ id }}">Your message</label>
   <textarea class="field__input messenger-input" id="{{ id }}" name="body" rows="1" maxlength="{{ body_max }}" placeholder="Write a message…" dir="auto" aria-describedby="{{ id }}-help{% if error %} {{ id }}-error{% endif %}"{% if error %} aria-invalid="true"{% endif %} data-message-input>{{ value }}</textarea>
-  <button type="submit" class="messenger-send" data-research-id="message_send" aria-label="{{ send_label }}" title="{{ send_label }}">{{ icon('send', 24) }}</button>
+  <button type="submit" class="messenger-send" data-research-id="message_send" aria-label="{{ _(send_label) }}" title="{{ _(send_label) }}">{{ icon('send', 20) }}<span class="messenger-send__label">Send</span></button>
 </div>
 {% if error %}<div class="field__error" id="{{ id }}-error" role="alert">{{ error }}</div>{% endif %}
 <div id="{{ id }}-emoji" class="messenger-emoji" role="dialog" aria-label="Emoji picker" data-emoji-panel data-form-ui data-emoji-url="{{ url_for('static', filename='data/emoji-17-ar.json' if ui_language() == 'ar' else 'data/emoji-17.json') }}" hidden>

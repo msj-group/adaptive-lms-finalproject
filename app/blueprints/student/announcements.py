@@ -123,9 +123,11 @@ def announcement_detail(announcement_public_id):
     row = student_visible_announcement(current_user.id, announcement_public_id)
     if row is None:
         abort(404)
+    page = normalize_page(request.args.get("page"))
     return private_no_store(
         "student/announcements/detail.html",
         announcement=build_reader_view([row], _tz_name())[0],
         active_nav="announcements",
         tz_name=_tz_name(),
+        page=page,
     )

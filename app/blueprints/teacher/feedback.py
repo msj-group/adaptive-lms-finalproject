@@ -728,8 +728,11 @@ def _render_feedback_page(
         form = None
         state_token = None
 
-    return _private_no_store(
-        "teacher/submissions/feedback.html",
+    response = _private_no_store(
+        "teacher/review/_feedback_editor.html"
+        if request.headers.get("X-Review-Panel") == "1"
+        else "teacher/submissions/feedback.html",
+        review_kind="assignment",
         group=group,
         assignment=build_teacher_view([assignment], tz_name, utc_reference_now())[0],
         submission=build_teacher_submission_item(row, tz_name, include_answer=True),
@@ -743,6 +746,8 @@ def _render_feedback_page(
             group_public_id, assignment_public_id, submission_public_id
         ),
     )
+    response.vary.add("X-Review-Panel")
+    return response
 
 
 def _redirect_feedback(group_public_id, assignment_public_id, submission_public_id):
@@ -946,7 +951,8 @@ def submission_feedback(group_public_id, assignment_public_id, submission_public
         db.session.rollback()
         flash("This feedback is unchanged, so nothing was saved.", "info")
         return redirect(
-            _submission_detail_url(
+            (_feedback_url if request.headers.get("X-Review-Panel") == "1"
+             else _submission_detail_url)(
                 group_public_id, assignment_public_id, submission_public_id
             )
         )
@@ -1026,7 +1032,8 @@ def submission_feedback(group_public_id, assignment_public_id, submission_public
         "success",
     )
     return redirect(
-        _submission_detail_url(
+        (_feedback_url if request.headers.get("X-Review-Panel") == "1"
+         else _submission_detail_url)(
             group_public_id, assignment_public_id, submission_public_id
         )
     )

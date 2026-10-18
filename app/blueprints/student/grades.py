@@ -76,6 +76,7 @@ from app.services.grade_queries import (
     group_by_public_id,
     normalize_page,
     student_category_rows,
+    student_grade_filter_options,
     student_group_rows,
     student_released_rows,
 )
@@ -106,6 +107,18 @@ _OVERALL_MESSAGES = {
 }
 
 
+def _grade_navigation_filters():
+    """Bound and whitelist GET values, including the internal list return link."""
+    q = " ".join(request.args.get("q", "").split())
+    if len(q) > 120:
+        abort(400)
+    filters = {name: request.args.get(name, "all") or "all"
+               for name in ("course", "term", "group")}
+    if any(len(value) > 36 for value in filters.values()):
+        abort(404)
+    return dict(q=q, **filters)
+
+
 @student_bp.get("/grades")
 @roles_required(UserRole.STUDENT.value)
 def grades_list():
@@ -126,13 +139,26 @@ def grades_list():
     ``Vary: Cookie``: this is one person's grades, and a shared or reused
     cache entry must never be able to hand it to anybody else.
     """
+    courses, terms, groups = student_grade_filter_options(current_user.id)
+    filters = _grade_navigation_filters()
+    for name, options in (("course", courses), ("term", terms)):
+        if filters[name] != "all" and not any(item["public_id"] == filters[name] for item in options):
+            abort(404)
+    if filters["group"] != "all":
+        selected = next((item for item in groups if item["public_id"] == filters["group"]), None)
+        if selected is None:
+            abort(404)
+        # A native GET after changing Course/Term may carry an old owned Group.
+        if (filters["course"] == "all" or selected["course_public_id"] != filters["course"]
+                or (filters["term"] != "all" and selected["term_public_id"] != filters["term"])):
+            filters["group"] = "all"
     page = normalize_page(request.args.get("page"))
-    rows, has_next = student_group_rows(current_user.id, page)
+    rows, has_next = student_group_rows(current_user.id, page, **filters)
     if not rows and page > 1:
         # A page past the end (a stale bookmark) shows page 1 rather than
         # a confusing empty page with a "Previous" button.
         page = 1
-        rows, has_next = student_group_rows(current_user.id, page)
+        rows, has_next = student_group_rows(current_user.id, page, **filters)
 
     return private_no_store(
         "student/grades/list.html",
@@ -141,11 +167,18 @@ def grades_list():
                 "group_public_id": row.group_public_id,
                 "group_name": row.group_name,
                 "course_title": row.course_title,
+                "level_name": row.level_name,
                 "term_name": row.term_name,
                 "released_count": row.released_count,
             }
             for row in rows
         ],
+        courses=courses,
+        terms=terms,
+        filter_groups=groups,
+        filters=filters,
+        filters_active=bool(filters["q"]) or any(filters[key] != "all" for key in ("course", "term", "group")),
+        pagination_filters=filters,
         active_nav="grades",
         page=page,
         has_next=has_next,
@@ -216,4 +249,5 @@ def group_grades(group_public_id):
             else _OVERALL_MESSAGES[summary.unavailable_reason]
         ),
         active_nav="grades",
+        list_filters=dict(page=normalize_page(request.args.get("page")), **_grade_navigation_filters()),
     )

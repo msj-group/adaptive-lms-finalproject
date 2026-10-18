@@ -18,10 +18,11 @@ Design rules (Part Phase 4 / M08):
   remember to check. The Student read is keyed off ``student_id`` **and**
   ``released_at IS NOT NULL``, so no query in this module can return a
   draft or somebody else's grade.
-- **Every read is bounded.** Lists fetch :data:`PAGE_SIZE` ``+ 1`` rows
+- **Grade-history lists are bounded.** Lists fetch :data:`PAGE_SIZE` ``+ 1`` rows
   to derive a non-disclosing "there is a next page" flag **without a
   COUNT**, and every aggregate is a ``GROUP BY`` whose result set is
-  bounded by one page of parents.
+  bounded by one page of parents. Student filter metadata is a distinct,
+  own-released projection of academic names/public IDs, with no grade payloads.
 - **No N+1.** Per-item record counts for a whole gradebook are one query
   keyed by that gradebook's item ids; per-Group report figures for a
   whole page of Groups are three queries keyed by the page's Group ids.
@@ -49,7 +50,7 @@ deciding. A pre-lock call is only acceptable as a friendly preview whose
 result is re-verified after the lock.
 """
 
-from sqlalchemy import case, distinct, func
+from sqlalchemy import case, distinct, func, or_
 from sqlalchemy.orm import aliased
 
 from app.models import (
@@ -78,6 +79,7 @@ from app.models import (
 )
 from app.extensions import db
 from app.services.attendance_queries import eligible_roster_rows  # noqa: F401
+from app.services.search_terms import escape_like
 from app.services.grade_calculations import (
     format_percentage,
     format_points,
@@ -1010,7 +1012,69 @@ def _student_released_base(student_id):
     )
 
 
-def student_group_rows(student_id, page):
+def _student_grade_group_base(student_id):
+    """Reuse the released-record visibility predicate for list and selectors."""
+    return (
+        _student_released_base(student_id)
+        .join(Course, Group.course_id == Course.id)
+        .join(Level, Course.level_id == Level.id)
+        .join(AcademicTerm, Group.academic_term_id == AcademicTerm.id)
+    )
+
+
+def _student_grade_group_filters(query, q="", course="all", term="all", group="all"):
+    """Filter the owned SQL relation before grouping or pagination."""
+    if q:
+        pattern = "%" + escape_like(q, "!") + "%"
+        query = query.filter(or_(Course.title.ilike(pattern, escape="!"),
+                                 Group.name.ilike(pattern, escape="!")))
+    if course != "all":
+        query = query.filter(Course.public_id == course)
+    if term != "all":
+        query = query.filter(AcademicTerm.public_id == term)
+    if group != "all":
+        query = query.filter(Group.public_id == group)
+    return query
+
+
+def student_grade_filter_options(student_id):
+    """Distinct owned released-history metadata; no scores, comments or totals.
+
+    Like Student Attendance, selectors cover historical academic contexts,
+    independently of the current results page. Only one row per owned Group
+    is read, rather than its grade records. No active-enrollment requirement.
+    """
+    rows = (
+        _student_grade_group_base(student_id)
+        .with_entities(
+            Course.public_id.label("course_public_id"),
+            Course.title.label("course_title"),
+            Level.name.label("level_name"),
+            AcademicTerm.public_id.label("term_public_id"),
+            AcademicTerm.name.label("term_name"),
+            Group.public_id.label("group_public_id"),
+            Group.name.label("group_name"),
+        )
+        .distinct()
+        .order_by(Course.title.asc(), Course.public_id.asc(),
+                  AcademicTerm.name.asc(), AcademicTerm.public_id.asc(),
+                  Group.name.asc(), Group.public_id.asc())
+        .all()
+    )
+    courses, terms, groups = {}, {}, []
+    for row in rows:
+        courses[row.course_public_id] = dict(public_id=row.course_public_id,
+                                             title=row.course_title, level_name=row.level_name)
+        terms[row.term_public_id] = dict(public_id=row.term_public_id, name=row.term_name)
+        groups.append(dict(public_id=row.group_public_id, name=row.group_name,
+                           course_public_id=row.course_public_id,
+                           term_public_id=row.term_public_id, term_name=row.term_name))
+    return (list(courses.values()),
+            sorted(terms.values(), key=lambda item: (item["name"], item["public_id"])),
+            groups)
+
+
+def student_group_rows(student_id, page, **filters):
     """``(rows, has_next)`` -- one bounded page of the Groups whose
     gradebook this Student has something released in, newest Group first.
 
@@ -1023,29 +1087,18 @@ def student_group_rows(student_id, page):
     """
     offset, limit = (page - 1) * PAGE_SIZE, PAGE_SIZE + 1
     rows = (
-        db.session.query(
+        _student_grade_group_filters(_student_grade_group_base(student_id), **filters)
+        .with_entities(
             Group.public_id.label("group_public_id"),
             Group.name.label("group_name"),
             Course.title.label("course_title"),
+            Level.name.label("level_name"),
             AcademicTerm.name.label("term_name"),
             func.count(GradeRecord.id).label("released_count"),
             func.max(Group.id).label("group_id"),
         )
-        .select_from(GradeRecord)
-        .join(GradeItem, GradeRecord.grade_item_id == GradeItem.id)
-        .join(GradeCategory, GradeItem.category_id == GradeCategory.id)
-        .join(Group, GradeCategory.group_id == Group.id)
-        .join(Course, Group.course_id == Course.id)
-        .join(AcademicTerm, Group.academic_term_id == AcademicTerm.id)
-        .join(User, GradeRecord.student_id == User.id)
-        .filter(
-            GradeRecord.student_id == student_id,
-            User.role == _STUDENT,
-            User.status == _USER_ACTIVE,
-            GradeItem.released_at.isnot(None),
-        )
         .group_by(
-            Group.public_id, Group.name, Course.title, AcademicTerm.name
+            Group.public_id, Group.name, Course.title, Level.name, AcademicTerm.name
         )
         .order_by(func.max(Group.id).desc())
         .offset(offset)

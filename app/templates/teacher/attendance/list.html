@@ -1,19 +1,21 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "teacher/attendance/base.html" %}
 {% import "_attendance_macros.html" as att %}
+{% import "_figma_ui.html" as ui %}
+{% import "teacher/attendance/_presentation.html" as presentation %}
 {% block title %}{{ group.name }} — Attendance{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
   <a class="portal-nav__link" href="{{ url_for('teacher.attendance_overview') }}">Attendance</a>
 {% endblock %}
-{% block portal_content %}
+{% block attendance_content %}
 {#- Phase 4 / M07. `sessions` is a list of plain presentation dicts built by
     app.services.attendance_queries.build_session_list_view; the status counts
     came from ONE bounded aggregate over this page's sessions, never a stored
     counter and never a per-row lookup. No ORM row and no internal id reaches
     this template. There is deliberately no delete, reopen, duplicate, export
     or grade control anywhere on this page. -#}
-<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 data-workspace-page-heading style="margin:0">{{ group.name }} — Attendance</h1>
+<div class="tat-heading">
+  <h1 data-workspace-page-heading><bdi>{{ group.name }}</bdi> — <span>Attendance</span></h1>
   {% if operational %}<span class="badge badge--success">Operational</span>
   {% else %}<span class="badge badge--neutral">Not operational</span>{% endif %}
 </div>
@@ -26,7 +28,7 @@
 
 <small class="workspace-meta" dir="auto">{{ group.academic_term.name }}</small>
 
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">Scheduled classes only; no future dates. Opening fixes the roster and class details; students start absent. Save marks before finalizing. Finalized teacher editing ends; audited Admin corrections remain available. </div>
+<details class="tat-guidance"><summary>How attendance works</summary><p>Scheduled classes only; no future dates. Opening fixes the roster and class details; students start absent. Save marks before finalizing. Finalized teacher editing ends; audited Admin corrections remain available.</p></details>
 
 {% if not operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
@@ -44,11 +46,25 @@
   {% endif %}
 </div>
 
-<section class="dash-section yc-section" style="margin-top: 0">
-  <h2>Recorded classes</h2>
+{# Aggregate only this existing bounded page, finalized marks only. A mark is
+   one student's record for one class; this is neither unique Students nor an
+   all-history statistic. Drafts start absent and must not affect this ring. #}
+{% set finalized = sessions|selectattr('is_finalized')|list %}
+{% if finalized %}
+  {% set page_counts = [] %}
+  {% for item in finalized[0].counts %}
+    {% set tally = namespace(count=0) %}
+    {% for meeting in finalized %}{% for mark in meeting.counts if mark.status == item.status %}{% set tally.count = tally.count + mark.count %}{% endfor %}{% endfor %}
+    {% set ignored = page_counts.append({'status':item.status, 'label':item.label, 'count':tally.count}) %}
+  {% endfor %}
+  {{ presentation.marks_summary(page_counts, _('Finalized marks on this page'), _('Counts cover finalized classes on page %(page)d only. A student can appear once per class.', page=page), _('Marks')) }}
+{% endif %}
+
+<section>
+  <div class="tat-section-heading"><h2>Recorded classes</h2><span>Newest first</span></div>
   {% if sessions %}
-  <div class="dash-scroll">
-  <table class="dash-table">
+  <div class="dash-scroll tat-desktop-sessions">
+  <table class="dash-table tat-session-table">
     <thead>
       <tr>
         <th style="width:12rem">Class date</th>
@@ -78,6 +94,24 @@
     </tbody>
   </table>
   </div>
+
+  <ul class="tat-phone-sessions" aria-label="{{ _('Recorded classes') }}">
+    {% for item in sessions %}
+    <li class="tat-session-card">
+      <details>
+        <summary>
+          <span class="tat-card-top"><time datetime="{{ item.session_date.isoformat() }}">{{ ui_date(item.session_date.strftime('%d %b %Y')) }}</time>{{ att.state_badge(item.is_finalized) }}</span>
+          <span class="tat-card-meta"><span>{{ att.weekday_name(item.day_of_week) }}</span><bdi dir="ltr">{{ att.time_range(item.start_time, item.end_time) }}</bdi>{{ ui.icon('chevron-down', 14) }}</span>
+        </summary>
+        <div class="tat-card-body"><p><span>Location</span>: <bdi>{{ item.location or '—' }}</bdi></p>{{ att.count_summary(item.counts) }}</div>
+      </details>
+      <div class="tat-card-actions">
+        {% if operational and not item.is_finalized %}<a class="btn btn--primary" href="{{ url_for('teacher.attendance_mark', group_public_id=group.public_id, session_public_id=item.public_id) }}">Mark attendance</a>{% endif %}
+        <a class="btn btn--secondary" href="{{ url_for('teacher.attendance_detail', group_public_id=group.public_id, session_public_id=item.public_id) }}">Details</a>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
 
   {% if has_prev or has_next %}
   <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attendance pages">

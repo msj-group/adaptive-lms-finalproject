@@ -1694,8 +1694,11 @@ def _render_feedback_page(
         state_token = None
 
     urls = _audio_urls(group_public_id, speaking_public_id, submission_public_id)
-    return _private_no_store(
-        "teacher/speaking/feedback.html",
+    response = _private_no_store(
+        "teacher/review/_feedback_editor.html"
+        if request.headers.get("X-Review-Panel") == "1"
+        else "teacher/speaking/feedback.html",
+        review_kind="speaking",
         group=group,
         activity=build_speaking_detail(
             assignment, activity, tz_name, utc_reference_now()
@@ -1717,6 +1720,8 @@ def _render_feedback_page(
             group_public_id, speaking_public_id, submission_public_id
         ),
     )
+    response.vary.add("X-Review-Panel")
+    return response
 
 
 def _redirect_feedback(group_public_id, speaking_public_id, submission_public_id):
@@ -1884,7 +1889,8 @@ def speaking_submission_feedback(
         db.session.rollback()
         flash("This feedback is unchanged, so nothing was saved.", "info")
         return redirect(
-            _submission_url(group_public_id, speaking_public_id, submission_public_id)
+            (_feedback_url if request.headers.get("X-Review-Panel") == "1"
+             else _submission_url)(group_public_id, speaking_public_id, submission_public_id)
         )
 
     now_utc = _write_moment()
@@ -1945,7 +1951,8 @@ def speaking_submission_feedback(
         "success",
     )
     return redirect(
-        _submission_url(group_public_id, speaking_public_id, submission_public_id)
+        (_feedback_url if request.headers.get("X-Review-Panel") == "1"
+         else _submission_url)(group_public_id, speaking_public_id, submission_public_id)
     )
 
 

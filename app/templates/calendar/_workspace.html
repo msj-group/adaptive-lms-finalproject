@@ -1,0 +1,41 @@
+{% import '_figma_ui.html' as ui %}
+{% import '_calendar_macros.html' as legacy with context %}
+{# Student/Teacher presentation only. Administrator macros and SQL scope stay intact. #}
+<div class="calendar-workspace" data-calendar-workspace data-selected-date="{{ calendar.selected.isoformat() }}" data-today="{{ calendar.today.isoformat() }}" data-default-view="{{ calendar.view }}" data-explicit-view="{{ 'true' if calendar.explicit_view else 'false' }}" data-entry-singular="{{ _('%(count)d entry') }}" data-entry-plural="{{ _('%(count)d entries') }}" data-today-label="{{ _('Today') }}" data-upcoming-label="{{ _('Upcoming dates') }}" data-next-period="{{ next_url }}" data-previous-period="{{ previous_url }}">
+  <div class="calendar-page-heading"><h1 data-workspace-page-heading>Calendar</h1>
+    <details class="calendar-filters" data-cal-filters>
+      <summary>{{ ui.icon('settings', 18) }}<span>Filters</span>{% if calendar.filters_active %}<span class="calendar-filter-dot" aria-label="{{ _('Filters active') }}"></span>{% endif %}{{ ui.icon('chevron-down', 15) }}</summary>
+      <form method="get" action="{{ today_url }}" class="calendar-filter-form">
+        <input type="hidden" name="day" value="{{ calendar.selected.isoformat() }}" data-cal-day-input><input type="hidden" name="view" value="{{ calendar.view }}" data-cal-view-input>
+        <div class="field"><label for="calendar-kind">Event type</label><select id="calendar-kind" name="kind">{% for value, label in calendar.kinds %}<option value="{{ value }}"{% if calendar.kind == value %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="calendar-group">Group</label><select id="calendar-group" name="group"><option value="all"{% if calendar.group == 'all' %} selected{% endif %}>All groups</option>{% for group in calendar.groups %}<option value="{{ group.public_id }}"{% if calendar.group == group.public_id %} selected{% endif %}>{{ group.label }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="calendar-from">From date</label><input type="date" id="calendar-from" name="from" value="{{ range_start.isoformat() }}"></div><div class="field"><label for="calendar-to">To date</label><input type="date" id="calendar-to" name="to" value="{{ range_end.isoformat() }}"></div>
+        <p class="calendar-range-limit">{{ _('A calendar view covers at most %(count)d days.', count=max_range_days) }}</p>
+        <div class="calendar-filter-actions"><button type="submit" class="btn btn--primary">Apply filters</button><a href="{{ url_for(request.endpoint, **{'from':range_start.isoformat(), 'to':range_end.isoformat()}) }}">Clear filters</a></div>
+      </form>
+    </details>
+  </div>
+  {{ legacy.flash_messages() }}
+  {% if range_normalized %}<div class="alert alert--info" role="status">{{ _(range_message) }}</div>{% endif %}
+  {% if calendar.filters_normalized %}<div class="alert alert--info" role="status">Calendar filters were refreshed for this date range.</div>{% endif %}
+  {% if truncated %}<div class="alert alert--warning" role="status">This range reached the calendar's safe display limit, so some entries may be omitted. Choose a shorter range to make sure every entry is included.</div>{% endif %}
+  <div class="calendar-period-navigation"><a class="calendar-icon-control calendar-period-previous" href="{{ url_for(request.endpoint, **calendar.previous_args) }}" data-cal-previous aria-label="{{ _('Previous') }}">{{ ui.icon('chevron', 18) }}</a><strong data-cal-period-label>{{ ui_date(range_start.strftime('%B %Y')) }}{% if range_start.month != range_end.month or range_start.year != range_end.year %} – {{ ui_date(range_end.strftime('%B %Y')) }}{% endif %}</strong><a class="calendar-today" href="{{ url_for(request.endpoint, **calendar.today_args) }}" data-cal-today>Today</a><a class="calendar-icon-control" href="{{ url_for(request.endpoint, **calendar.next_args) }}" data-cal-next aria-label="{{ _('Next') }}">{{ ui.icon('chevron', 18) }}</a></div>
+  <div class="calendar-desktop-views" data-cal-view-controls aria-label="{{ _('Calendar view') }}">{% for value, label in [('month','Month'),('week','Week'),('upcoming','Upcoming')] %}<button type="button" data-cal-view="{{ value }}" aria-pressed="{{ 'true' if calendar.view == value else 'false' }}">{{ _(label) }}</button>{% endfor %}</div>
+  <div class="calendar-layout">
+    <div class="calendar-date-grid" data-cal-grid aria-label="{{ _('Choose a day') }}">
+      <div class="calendar-weekday-labels">{% for day in calendar.weeks[0] %}<span>{{ ui_date(day.date.strftime('%a')) }}</span>{% endfor %}</div>
+      {% for week in calendar.weeks %}<div class="calendar-week" data-cal-week="{{ loop.index0 }}" data-first-date="{{ week[0].iso }}" data-last-date="{{ week[-1].iso }}" data-period-label="{{ ui_date(week[3].date.strftime('%B %Y')) }}">
+        {% for cell in week %}{% if cell.in_range %}<a class="calendar-date{{ ' calendar-date--today' if cell.today else '' }}" href="{{ url_for(request.endpoint, **cell.args) }}" data-cal-date="{{ cell.iso }}" data-count="{{ cell.count }}" aria-current="{{ 'date' if cell.selected else 'false' }}" aria-label="{{ ui_date(cell.date.strftime('%A %d %B %Y')) }}">{% else %}<span class="calendar-date calendar-date--outside" aria-label="{{ _('Outside selected range') }}">{% endif %}
+          <span class="calendar-date-weekday">{{ ui_date(cell.date.strftime('%a')) }}</span><strong>{{ cell.date.day }}</strong><span class="calendar-date-dot{{ ' calendar-date-dot--empty' if not cell.count else '' }}" aria-hidden="true"></span><span class="calendar-date-entries">{% for entry in cell.entries[:2] %}<span class="calendar-mini-entry calendar-mini-entry--{{ entry.tone }}">{{ entry.title }}</span>{% endfor %}{% if cell.count > 2 %}<span class="calendar-more">+{{ cell.count - 2 }}</span>{% endif %}</span>
+        {% if cell.in_range %}</a>{% else %}</span>{% endif %}{% endfor %}
+      </div>{% endfor %}
+    </div>
+    <section class="calendar-agenda" aria-label="{{ _('Calendar entries') }}">
+      <div class="calendar-agenda-heading"><div><h2 data-cal-selected-heading>{{ _('Calendar entries') }}</h2><p data-cal-selected-count>{{ _n('%(count)d entry', '%(count)d entries', calendar.count) }}</p></div><div class="calendar-mobile-views" data-cal-view-controls aria-label="{{ _('Calendar view') }}"><button type="button" data-cal-view="day" aria-pressed="true">Day</button><button type="button" data-cal-view="upcoming" aria-pressed="false">Upcoming</button></div></div>
+      <noscript><p class="calendar-meta">{{ _('Showing all dates in this range. Choose dates and filters with the form above.') }}</p></noscript>
+      {% for day in calendar.days %}<section class="calendar-day{{ ' calendar-day--empty' if not day.count else '' }}" data-cal-day="{{ day.iso }}" data-date-label="{{ ui_date(day.date.strftime('%a %d %B')) }}" data-period-label="{{ ui_date(day.date.strftime('%B %Y')) }}" data-count="{{ day.count }}"><h3 class="calendar-day-heading">{{ ui_date(day.date.strftime('%A %d %B')) }}</h3><div class="calendar-day-entries">{% for row in day.entries %}{% include 'calendar/_entry.html' %}{% else %}<div class="calendar-empty"><strong>No calendar entries</strong><p>Choose another day or view upcoming dates.</p></div>{% endfor %}</div></section>{% endfor %}
+      <div class="calendar-empty" data-cal-upcoming-empty{% if calendar.count %} hidden{% endif %}><strong>No calendar entries</strong><p>Choose another day or view upcoming dates.</p></div>
+    </section>
+  </div>
+  <footer class="calendar-footer"><span>{{ ui.icon('globe', 13) }}<bdi>{{ tz_name }}</bdi> · {{ _('Center time') }}</span><span>{{ ui_date(range_start.strftime('%d %B %Y')) }} – {{ ui_date(range_end.strftime('%d %B %Y')) }}</span></footer><span class="calendar-sr-only" role="status" aria-live="polite" data-cal-live></span>
+</div>

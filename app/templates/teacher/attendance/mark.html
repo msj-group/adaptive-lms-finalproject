@@ -1,11 +1,12 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "teacher/attendance/base.html" %}
 {% import "_attendance_macros.html" as att %}
+{% import "teacher/attendance/_presentation.html" as presentation %}
 {% block title %}{{ group.name }} — Mark attendance {{ session.session_date.isoformat() }}{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
   <a class="portal-nav__link" href="{{ url_for('teacher.attendance_overview') }}">Attendance</a>
 {% endblock %}
-{% block portal_content %}
+{% block attendance_content %}
 {#- Phase 4 / M07, the draft marking page. Reached only while the session is a
     draft and the chain is operational.
 
@@ -20,8 +21,8 @@
     DATABASE, so a request naming an extra record, omitting one, or renaming
     one adds, removes, replaces and reorders nothing. Student names and notes
     are autoescaped and never rendered with `|safe`. -#}
-<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 data-workspace-page-heading style="margin:0">Mark attendance — {{ session.session_date.isoformat() }}</h1>
+<div class="tat-heading">
+  <h1 data-workspace-page-heading style="margin:0"><span>Mark attendance</span> — <bdi dir="ltr">{{ session.session_date.isoformat() }}</bdi></h1>
   {{ att.state_badge(false) }}
 </div>
 
@@ -32,11 +33,11 @@
 {% endwith %}
 
 <div class="card yc-panel" style="margin-bottom: var(--space-5)">
-  <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+  <dl class="tat-facts">
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
     <dd style="margin:0">{{ group.name }} &middot; {{ group.course.title }}</dd>
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Class</dt>
-    <dd style="margin:0">{{ att.session_when(session, tz_name, weekday) }}</dd>
+    <dd style="margin:0">{{ presentation.class_when(session, weekday) }}</dd>
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Location</dt>
     <dd style="margin:0">{{ session.location or "—" }}</dd>
   </dl>
@@ -56,7 +57,7 @@
       <p class="ds-section__desc" role="status" data-attendance-bulk-status></p>
     </div>{% endif %}
     <div class="dash-scroll">
-    <table class="dash-table">
+    <table class="dash-table tat-mark-table" role="table">
       <thead>
         <tr>
           <th>Student</th>
@@ -66,14 +67,14 @@
       </thead>
       <tbody>
         {% for record in records %}
-        <tr>
-          <td>{{ record.student_name }}</td>
-          <td>
-            <fieldset style="border:0; margin:0; padding:0">
+        <tr role="row">
+          <td role="cell"><bdi>{{ record.student_name }}</bdi></td>
+          <td role="cell">
+            <fieldset>
               <legend style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap">Attendance for {{ record.student_name }}</legend>
-              <div class="ds-row yc-actions" style="gap: var(--space-3); flex-wrap: wrap">
+              <div class="tat-mark-options">
                 {% for status in status_order %}
-                <label class="ds-row yc-actions" style="gap: var(--space-1); align-items:center; margin:0">
+                <label class="tat-mark-choice">
                   <input type="radio"
                          name="status__{{ record.public_id }}"
                          value="{{ status }}"
@@ -84,8 +85,9 @@
               </div>
             </fieldset>
           </td>
-          <td>
-            <textarea class="field__input"
+          <td role="cell">
+            <label class="tat-note-label" for="note-{{ record.public_id }}">Private note (optional)</label>
+            <textarea class="field__input" id="note-{{ record.public_id }}"
                       name="note__{{ record.public_id }}"
                       rows="2"
                       maxlength="{{ note_max }}"
@@ -108,7 +110,7 @@
     its own signed finalize token and an explicit confirmation the teacher must
     tick. A draft save can never finalize by accident, and a finalize can never
     carry marks. -#}
-<section class="card yc-panel" style="margin-top: var(--space-6); border-color: var(--color-danger)">
+<section class="card yc-panel tat-finalize" style="margin-top: var(--space-6)">
   <h2 style="margin-top:0">Finalize this attendance</h2>
   <p class="card__body">Finalization shows saved marks to students and ends teacher editing. It does not save this form. Admin corrections preserve history.</p>
   <form method="post" action="{{ finalize_url }}" data-finalize-attendance class="yc-form">

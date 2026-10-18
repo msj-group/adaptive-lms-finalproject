@@ -1,5 +1,203 @@
 # Repair implementation plan
 
+> Owner release request, 2026-10-18: commit, push and deploy the reviewed recent
+> application/documentation work from `491ef52`. Perform bounded static checks,
+> create one explicit allowlisted commit, fast-forward both existing release
+> branches, verify their exact GitHub SHA and advance only the existing Railway
+> web source pin. Observe build/predeploy/startup and public readiness/Login/assets.
+> Preserve local data, unrelated unused Help/design previews and all other hosting
+> resources/settings. No automated tests, new migration, reset, seed, scheduler or
+> installation. The existing predeploy validates the current schema head.
+
+> Owner Teacher Review queue follow-up, 2026-10-17: apply the approved desktop
+> list/editor and phone list/standalone-editor design with shared semantic themes
+> and Arabic/RTL. Retain existing scoped filters, oldest-first 25-row paging and
+> the protected assignment/speaking feedback endpoints. A request header selects
+> their editor fragment; ordinary full-page links/forms remain available. Use
+> memory-only fictional browser examples and static checks, preserving all local
+> work. No automated tests, actual database/seed/migration, scheduler, Git mutation,
+> installation or deployment. Current evidence and browser limits: PROJECT_STATUS.md.
+
+> Owner Teacher Activities image follow-up, 2026-10-17: apply the Teacher desk
+> image using a library/creation grid on wide workspaces. Reflow to activity
+> cards and an initially closed native creation disclosure on compact workspaces;
+> without the page script the native disclosure starts open. Explain task types
+> by what Students do, preselect Assignment when no type is selected, and retain
+> the existing Group/type GET entry and protected type-specific draft workflows.
+> Use workspace/container width for responsive layout, preserving focused creation
+> controls on reflow. Static and memory-only manual browser review only. No
+> automated tests, actual database/migration, scheduler, Git mutation or release.
+
+> Owner Teacher Attendance follow-up, 2026-10-17: transfer the compatible Student
+> ring/metrics and responsive card treatment into Teacher-owned presentation.
+> Use current-page finalized mark counts in the Group list and saved per-class
+> counts in detail, with explicit scope/units. Keep draft rows and every Teacher
+> action, one native marking control set, private notes, CSRF/signed tokens and
+> separate finalization. Retain existing bounded queries, routes, transactions
+> and Student assets. Static and bounded memory-only manual review only; no
+> automated tests, actual database/migration, scheduler, Git mutation or release.
+> Current evidence: PROJECT_STATUS.md.
+
+> Owner Teacher Dashboard selection, 2026-10-17: apply the Group Cockpit desktop
+> cards and compact next-class strip, with Groups & Feedback phone tabs and
+> compact Group tiles. Reuse scoped payloads/native links; keep the four-Group
+> preview and oldest-three feedback query, showing two feedback rows on phones
+> with the full queue link and honest count labels. Add page-owned CSS/script,
+> Arabic labels and bounded static/memory-only manual review. Preserve existing
+> local work; no automated tests, actual database/migration, scheduler, Git
+> mutation or publishing. Current evidence: PROJECT_STATUS.md.
+
+> Owner Teacher Activities follow-up, 2026-10-17: use a Teacher-owned library
+> template and assets, a closed native GET filter disclosure, readable responsive
+> activity rows and one native group/type creation entry. A role-gated GET checks
+> the assigned operational Group before redirecting to existing draft forms;
+> saving/publication remain in their original protected workflows. Group choices
+> stay bounded and include an explicitly selected assigned Group. Reorganize the
+> four authoring templates without changing their field/transaction contracts;
+> collapse optional listening fields, opening them for their validation errors.
+> Static and memory-only manual review only; no automated tests, actual database,
+> migration, scheduler, Git mutation or release. Evidence: PROJECT_STATUS.md.
+
+> Owner photo-crop follow-up, continued 2026-10-17: open an accessible crop
+> dialog after selection, with a circular display guide, pointer/keyboard panning,
+> 100–400% zoom, reset and explicit Use photo/Cancel. Preview the chosen square,
+> permit Adjust crop before Save, and preserve the previous confirmed selection
+> when that adjustment is cancelled. Keep the original file in the native POST;
+> validate normalized square coordinates server-side after EXIF orientation and
+> retain image safety checks and existing account transactions. Static and bounded
+> memory-only manual review only; no automated tests, actual database, migration,
+> scheduler, Git mutation or deployment. Current evidence: PROJECT_STATUS.md.
+
+> Owner Teacher My groups follow-up, 2026-10-16, continued 2026-10-17: apply
+> the selected Expandable list in a Teacher-owned template and page assets.
+> Filter the existing authorized card payload on the server using public Course/
+> Term identifiers, context, inclusive term timing and bounded name search.
+> Use native GET forms and details, preserving no-script links, active-assignment
+> visibility, dates, eligible Student counts and existing tool authorization.
+> Preserve Student My courses and all unrelated work. Static and bounded
+> memory-only manual review; no automated tests, actual database/migration,
+> scheduler, Git mutation or publishing. Evidence: PROJECT_STATUS.md.
+
+> Owner Account settings follow-up, 2026-10-16: replace the exposed upload
+> field with avatar-owned View/Edit/Delete controls, native photo viewing,
+> local preview and a Save photo button revealed only for a valid selection.
+> Enlarge/center the circle and reserve action space in the responsive card.
+> Move specific client/server validation errors to a localized dialog. Use the
+> existing photo POST and locked account revision service to clear the current
+> photo reference without deleting file rows/bytes or history. Preserve CSRF,
+> signed snapshots, authorization, limits and research definitions. Static and
+> bounded memory-only manual review; no automated tests, actual database,
+> migration, scheduler, Git mutation or publishing. Evidence: PROJECT_STATUS.md.
+
+> Owner Dashboard follow-up, 2026-10-16: apply the selected Agenda proposal to
+> Student Dashboard. Reuse the existing scoped query payloads and common shell;
+> render the next class above a two-column activities/continue-lesson composition,
+> stacking the same sections on phones. Limit the presentation to two upcoming
+> activities and retain actual progress labels and conservative completion states.
+> Add page-owned CSS, Arabic labels and bounded static/memory-only manual review.
+> Preserve all other local work; no automated tests, actual database, migration,
+> scheduler, Git mutation or deployment. Evidence: PROJECT_STATUS.md.
+
+> Owner navigation follow-up, 2026-10-16: remove the shared desktop sidebar
+> footer controls. Keep More mobile-only and replace its three utility entries
+> with separate Language and Dark mode options. Expose both in the shared header
+> account menu. Reuse protected preference POSTs, preserve the other preference
+> when editing one, and retain keyboard dismissal and legacy utility redirects.
+> Refresh shared assets in all role layouts. Static and bounded memory-only
+> manual review only; no automated tests, database, migration, Git or release.
+> Current evidence and limitations: PROJECT_STATUS.md.
+
+> Owner Announcements correction, 2026-10-16: supersede the earlier desktop
+> full-navigation reader with an immediate native popup in the index document.
+> Reuse the existing authorized GET-fragment mechanism, loading/close/retry and
+> normal-link fallback; abort stale loads and clear content on close. Round
+> desktop cards to 28px and fit the popup to the effective viewport at zoom/DPI
+> changes. Preserve the phone UI, list scroll/page, native phone reads and all
+> server scoping. The existing index collector remains in the same document;
+> do not synthesize detail page_view events or alter research sampling/session
+> code. Static/memory-only browser review; no automated tests, database,
+> migration, scheduler, Git mutation or release. Evidence: PROJECT_STATUS.md.
+
+> Owner follow-up, 2026-10-16: adapt the phone Attendance summary to the owner's
+> desktop reference. Show each status label/count above a prominent percentage
+> and visible bar; keep the ring beside a two-column narrow-phone grid or a
+> four-column wider-phone grid. Restrict layout rules to phone breakpoints and
+> refresh the stylesheet version. Preserve existing filters, cards and desktop.
+> Bounded static/manual review only; no automated tests, database, Git or release.
+
+> Owner follow-up, 2026-10-16: implement Student Announcements as the approved
+> Compact index with current platform typography/colors, responsive scope/title/
+> context/publication rows and retained 20-row paging. Phones and no-JavaScript
+> browsers use the ordinary authorized detail GET. Desktop index-origin detail
+> GETs retain the collector lifecycle and render one bounded authorized background
+> index plus a native side reader. Preserve all visibility/plain-text rules.
+> Static and memory-only manual review; no automated tests, actual database,
+> migration, scheduler, Git mutation or release. Evidence: PROJECT_STATUS.md.
+
+> Owner follow-up, 2026-10-16: implement Focus for Student Discussions. Open the
+> first authorized Group by default or validate the selected public Group ID.
+> Reuse existing bounded query projections and reply transactions. Wide screens
+> show topics beside the reader; phones use the topic list and ordinary detail
+> links. Keep topic-list page context separate from reply paging and retain it
+> through forms, reply redirects and All topics. Use shared platform tokens,
+> role-scoped templates, native GET/POST fallbacks and owned Arabic labels.
+> Static and bounded memory-only manual review; no automated tests, actual
+> database, migration, scheduler, Git mutation or publishing. Evidence and
+> limitations: PROJECT_STATUS.md.
+
+> Owner follow-up, 2026-10-16: implement Flow Messages with compact spacing,
+> a solid conversation sidebar, visible subject, incoming/outgoing bubbles and
+> a compact composer. Keep the existing workspace shell, phone navigation,
+> role-scoped native workflows, search/history, emoji and sender/member actions.
+> Preserve POST/CSRF/context tokens, research identifiers and data. Static and
+> bounded memory-only browser review; no automated tests, actual database,
+> migration, scheduler, Git mutation or publishing. Evidence: PROJECT_STATUS.md.
+
+> Owner follow-up, 2026-10-16: implement the approved refined Attendance ring
+> and phone cards. Keep counts/percentages tied to the existing filtered finalized
+> aggregate, show the total inside the ring, and replace the phone's wide table
+> with native Group/date/time/mark cards and collapsible Location. Retain desktop
+> table, 20-row pagination, GET fallback, filter count/context and platform tokens.
+> Static/template and bounded memory-only browser review; no automated tests,
+> real database, migration, Git mutation, scheduler or release. Evidence below
+> remains in PROJECT_STATUS.md.
+
+> Owner follow-up, 2026-10-15, continued 2026-10-16: implement Student Grades as
+> the approved Course directory with SQL name search, Course/Term/Group filters,
+> fixed 20-row paging and retained list context on detail/return links. Keep
+> filters closed and show Group after selecting Course; offer local option search
+> for long Course lists. Show unchanged overall/category/item calculations in a
+> responsive result view with native category/comment disclosures. Preserve own
+> released history, role/status SQL checks and local work. Static/MySQL-dialect
+> compilation and memory-only manual browser review; no automated tests, actual
+> database execution, migration, scheduler, Git mutation or publishing. Current
+> evidence and limits: PROJECT_STATUS.md.
+
+> Owner follow-up, 2026-10-15: implement Student Attendance filters using the
+> closed My records disclosure. Replace Your recorded classes with all four
+> status percentages and counts over the complete matching finalized history;
+> use identical Course/Group/mark/inclusive date filters for list and aggregate.
+> Group cells show names only. Preserve account scoping and withdrawn/archived
+> history. Source/static and memory-only manual browser review; no automated
+> tests, database/migration, Git mutation or delivery. Evidence: PROJECT_STATUS.md.
+
+> Latest My records follow-up, 2026-10-15: compact physical-right Filters
+> dropdown beside the title; remove introductory enrollment facts and the
+> enrollment-history section. Default all three selectors to All and page the
+> Student's own visible records across courses/episodes, with per-card provenance.
+> Preserve legacy/audio routes and release/finality boundaries. Static verification
+> and documentation remain required; no automated tests, database/Git mutation or
+> deployment. Browser review of this follow-up was blocked by approval-review
+> usage limits; do not treat the preceding screenshots as this version's evidence.
+
+> Owner follow-up, 2026-10-15: implement My records as the approved timeline,
+> adapting its scale and palette to shared platform tokens. Use closed native
+> filter disclosures, Course -> Enrollment period -> activity/record type,
+> factual scoped counts and achievement icons without encouraging prose.
+> Preserve episode history and existing record/audio visibility. Source/static
+> and bounded manual presentation review only; no automated tests, database,
+> migration, commit/push or deployment. Current evidence: PROJECT_STATUS.md.
+
 > Owner continuation, 2026-10-15: complete local and hosted release. The requested
 > separate local migration account was created/configured privately; runtime
 > privileges remain unchanged. Exact local upgrade and schema/count verification

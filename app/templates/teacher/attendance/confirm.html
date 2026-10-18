@@ -1,10 +1,10 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "teacher/attendance/base.html" %}
 {% block title %}{{ group.name }} — Confirm attendance session{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
   <a class="portal-nav__link" href="{{ url_for('teacher.attendance_overview') }}">Attendance</a>
 {% endblock %}
-{% block portal_content %}
+{% block attendance_content %}
 {#- Phase 4 / M07, step two of two. The hidden `attendance_state` value is the
     signed create token binding the teacher, the group, the chosen schedule and
     the chosen local date -- public identifiers, a date and a purpose only; no
@@ -21,7 +21,7 @@
 {% endwith %}
 
 <div class="card yc-panel" style="margin-bottom: var(--space-5)">
-  <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
+  <dl class="tat-facts">
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Class date</dt>
     <dd style="margin:0"><strong>{{ session_date.isoformat() }}</strong> ({{ weekday }})</dd>
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Time</dt>

@@ -1,41 +1,91 @@
 {% extends "layouts/portal_base.html" %}
 {% import "_dashboard_macros.html" as dash %}
 {% import "_figma_ui.html" as ui %}
-{% import "student/template/_ui.html" as s %}
-{% import "_announcement_macros.html" as ann %}
 {% block title %}Student Dashboard{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/dashboard.css', v='dashboard-agenda-20261016') }}">{% endblock %}
 {% block portal_content %}
-{% set lesson_stats = namespace(total=0, completed=0) %}
-{% for group in progress_groups %}{% set lesson_stats.total = lesson_stats.total + group.lesson_total %}{% set lesson_stats.completed = lesson_stats.completed + group.completed %}{% endfor %}
-<div class="st-dashboard">
-<header class="st-greeting"><h1>Student Dashboard</h1><p>{{ now.strftime('%A · %d %B %Y') }}</p></header>
-<div class="st-dashboard-top{% if not cards %} st-dashboard-top--single{% endif %}">
-<section class="st-panel st-continue"><div class="st-continue-inner"><span class="st-continue-icon" aria-hidden="true">{{ ui.icon('book',30) }}</span><div>
-
-  {% if continue_lesson %}
-  <h2>{{ continue_lesson.lesson_title }}</h2><p>{{ continue_lesson.unit_title }}</p>
-  {% for item in progress_groups if item.group_public_id == continue_lesson.group_public_id %}
-  <p>{{ item.completed }} of {{ item.lesson_total }} lessons marked complete</p>
-  {% if item.lesson_total %}<progress value="{{ item.completed }}" max="{{ item.lesson_total }}" aria-label="Completed lessons in {{ item.group_name }}">{{ item.completed }} of {{ item.lesson_total }}</progress>{% endif %}
-  {% endfor %}
-  <a class="btn btn--primary" href="{{ url_for('student.lesson_detail', group_public_id=continue_lesson.group_public_id, unit_public_id=continue_lesson.unit_public_id, lesson_public_id=continue_lesson.lesson_public_id) }}">{{ 'Resume lesson' if continue_lesson.resume else 'Start lesson' }} {{ ui.icon('arrow', 17) }}</a>
-  {% elif not cards %}<h2>No active enrollments</h2><a href="{{ url_for('student.records') }}">View your records</a>
-  {% elif lesson_stats.total and lesson_stats.completed == lesson_stats.total and not progress_truncated %}<h2>Available lessons completed</h2><a class="btn btn--secondary" href="{{ url_for('workspace.student_courses') }}">Open my courses</a>
-  {% else %}<h2>No lesson ready to continue</h2><a class="btn btn--secondary" href="{{ url_for('workspace.student_courses') }}">View my courses</a>{% endif %}
-  </div></div></section>
-{% if cards %}<section class="st-next-class"><header class="st-section-head"><h2>{{ 'Class in progress' if next_class and next_class.start <= now and now < next_class.end else 'Next class' }}</h2>{{ ui.icon('calendar',19) }}</header>
-{% if next_class %}<strong><time datetime="{{ next_class.start.isoformat() }}">{{ dash.weekday_name(next_class.ref.day_of_week) }} · {{ next_class.start.strftime('%d %b %Y') }}, {{ dash.time_range(next_class.start, next_class.end) }}</time></strong><p>{{ next_class.ref.location or 'Location not specified' }}</p>{% else %}<p>No upcoming class</p>{% endif %}
-<div class="st-class-footer"><a href="{{ url_for('student.calendar') }}">View calendar {{ ui.icon('arrow',14) }}</a></div></section>{% endif %}
-</div>
-<div class="st-updates">{% if cards %}<section class="st-panel"><header class="st-section-head"><h2>Next activities</h2><a href="{{ url_for('student.activities') }}">View all activities</a></header>
-{% if upcoming_deadlines %}<ol class="st-next-activities">
-{% for item in upcoming_deadlines[:4] %}<li class="st-next-activity">
-  <span class="st-next-activity-icon" aria-hidden="true">{{ ui.icon({'assignment':'file','quiz':'quiz','listening':'headphones','speaking':'microphone'}[item.kind],22) }}</span>
-  <div class="st-next-activity-copy"><div class="st-next-activity-meta"><span>{{ item.type_label }}</span><span class="badge badge--primary">{{ item.progress_label }}</span></div>
-    <h3><a href="{{ item.url }}">{{ item.title }}</a></h3>
-    {% if item.course_title %}<p dir="auto">{{ item.course_title }}</p>{% endif %}
-    <time datetime="{{ item.due_local.isoformat() }}">{{ ui.icon('clock',14) }}<span>Due {{ item.due_local.strftime('%d %b · %H:%M') }}</span></time>
-  </div><a class="st-next-activity-action" href="{{ item.url }}" aria-label="{{ _('Continue activity' if item.state == 'in_progress' else 'View activity') }}: {{ item.title }}">{{ ui.icon('arrow',19) }}</a>
-</li>{% endfor %}</ol>{% else %}<p>No upcoming unfinished activities available. Visit Activities for submitted work and results.</p>{% endif %}</section>{% endif %}<section class="st-panel"><header class="st-section-head"><h2>Latest announcements</h2><a href="{{ url_for('student.announcements_list') }}">View all</a></header><ul class="st-announcement-list">{% for item in announcements[:1] %}<li><a href="{{ url_for('student.announcement_detail',announcement_public_id=item.public_id) }}">{{ item.title }}</a><p>{{ ann.scope_badge(item) }}</p>{% if item.published_local %}<time class="ds-section__desc" datetime="{{ item.published_local.isoformat() }}">{{ item.published_local.strftime('%d %b · %H:%M') }}</time>{% endif %}</li>{% else %}<li>No announcements yet.</li>{% endfor %}</ul></section></div>
+{% set lesson_stats = namespace(total=0, completed=0, current=none) %}
+{% for group in progress_groups %}
+  {% set lesson_stats.total = lesson_stats.total + group.lesson_total %}
+  {% set lesson_stats.completed = lesson_stats.completed + group.completed %}
+  {% if continue_lesson and group.group_public_id == continue_lesson.group_public_id %}{% set lesson_stats.current = group %}{% endif %}
+{% endfor %}
+<div class="agenda-dashboard">
+  <header class="agenda-greeting">
+    <h1>{{ _('Welcome back,') }} <bdi>{{ current_user.full_name }}</bdi></h1>
+    <p><time datetime="{{ now.date().isoformat() }}">{{ now.strftime('%A, %d %B %Y') }}</time></p>
+  </header>
+  {% if cards %}
+  <section class="agenda-class" aria-labelledby="agenda-class-title">
+    <div class="agenda-class-date" aria-hidden="true">
+      {% if next_class %}<span>{{ next_class.start.strftime('%a') }}</span><strong>{{ next_class.start.strftime('%d') }}</strong>
+      {% else %}{{ ui.icon('calendar', 24) }}{% endif %}
+    </div>
+    <div class="agenda-class-copy">
+      <h2 id="agenda-class-title">{{ 'Class in progress' if next_class and next_class.start <= now and now < next_class.end else 'Next class' }}</h2>
+      {% if next_class %}
+      <h3><span dir="auto">{{ next_class.ref.course_title }}</span>{% if next_class.ref.level_name %}<span class="agenda-class-level"> · <bdi>{{ next_class.ref.level_name }}</bdi></span>{% endif %}</h3>
+      <p class="agenda-class-group" dir="auto">{{ next_class.ref.group_name }}</p>
+      <div class="agenda-class-facts">
+        <time datetime="{{ next_class.start.isoformat() }}">{{ next_class.start.strftime('%d %b %Y') }}</time>
+        <span>{{ ui.icon('clock', 15) }}<bdi>{{ dash.time_range(next_class.start, next_class.end) }}</bdi></span>
+        <span>{{ ui.icon('room', 15) }}<span dir="auto">{{ next_class.ref.location or _('Location not specified') }}</span></span>
+      </div>
+      {% else %}<p class="agenda-no-class">No upcoming class</p>{% endif %}
+    </div>
+    <a class="btn agenda-calendar-link" href="{{ url_for('student.calendar') }}" aria-label="View calendar">{{ ui.icon('calendar', 18) }}<span>View calendar</span>{{ ui.icon('arrow', 16) }}</a>
+  </section>
+  {% endif %}
+  <div class="agenda-body{% if not cards %} agenda-body--single{% endif %}">
+    {% if cards %}
+    <section class="agenda-activities agenda-panel" aria-labelledby="agenda-activities-title">
+      <header class="agenda-section-heading"><h2 id="agenda-activities-title">Coming up</h2><a href="{{ url_for('student.activities') }}">View all{{ ui.icon('arrow', 16) }}</a></header>
+      {% if upcoming_deadlines %}
+      <ol class="agenda-activity-list">
+        {% for item in upcoming_deadlines[:2] %}
+        {% set due_days = (item.due_local.date() - now.date()).days %}
+        <li>
+          <a class="agenda-activity" href="{{ item.url }}">
+            <time class="agenda-deadline" datetime="{{ item.due_local.isoformat() }}" aria-label="{{ _('Due') }} {{ ui_date(item.due_local.strftime('%d %B %Y · %H:%M')) }}">
+              <span>{{ _('Today') if due_days == 0 else _('Tomorrow') if due_days == 1 else ui_date(item.due_local.strftime('%d %b %Y')) }}</span>
+              <bdi>{{ item.due_local.strftime('%H:%M') }}</bdi>
+            </time>
+            <span class="agenda-activity-icon" aria-hidden="true">{{ ui.icon({'assignment':'file','quiz':'quiz','listening':'headphones','speaking':'microphone'}[item.kind], 22) }}</span>
+            <div class="agenda-activity-copy">
+              <p class="agenda-activity-kind">{{ _(item.type_label) }}{% if item.state == 'scheduled' %}<span class="agenda-window">{{ _(item.window_label) }}</span>{% endif %}</p>
+              <h3 dir="auto">{{ item.title }}</h3>
+              {% if item.course_title %}<p class="agenda-activity-course" dir="auto">{{ item.course_title }}</p>{% endif %}
+            </div>
+            <span class="agenda-activity-status{% if item.state == 'in_progress' %} agenda-activity-status--running{% endif %}">{{ _(item.progress_label) }}</span>
+            <span class="agenda-activity-arrow" aria-hidden="true">{{ ui.icon('arrow', 18) }}</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}<div class="agenda-activities-empty"><span aria-hidden="true">{{ ui.icon('calendar', 24) }}</span><p>No upcoming unfinished activities available. Visit Activities for submitted work and results.</p><a href="{{ url_for('student.activities') }}">View all activities{{ ui.icon('arrow', 16) }}</a></div>{% endif %}
+    </section>
+    {% endif %}
+    <section class="agenda-lesson agenda-panel" aria-labelledby="agenda-lesson-title">
+      <div class="agenda-lesson-heading"><p class="agenda-eyebrow">Continue learning</p><span class="agenda-lesson-art" aria-hidden="true">{{ ui.icon('book', 100) }}</span></div>
+      {% if continue_lesson %}
+      <p class="agenda-lesson-course" dir="auto">{{ continue_lesson.course_title }}</p>
+      <h2 id="agenda-lesson-title" dir="auto">{{ continue_lesson.lesson_title }}</h2>
+      <p class="agenda-lesson-unit" dir="auto">{{ continue_lesson.unit_title }}</p>
+      {% if lesson_stats.current %}
+      <div class="agenda-lesson-progress">
+        <p>{{ _('%(completed)s of %(total)s lessons marked complete', completed=lesson_stats.current.completed, total=lesson_stats.current.lesson_total) }}</p>
+        {% if lesson_stats.current.lesson_total %}<progress value="{{ lesson_stats.current.completed }}" max="{{ lesson_stats.current.lesson_total }}" aria-label="{{ _('Completed lessons in %(group)s', group=lesson_stats.current.group_name) }}">{{ lesson_stats.current.completed }} / {{ lesson_stats.current.lesson_total }}</progress>{% endif %}
+      </div>
+      {% endif %}
+      <a class="btn btn--primary agenda-lesson-action" href="{{ url_for('student.lesson_detail', group_public_id=continue_lesson.group_public_id, unit_public_id=continue_lesson.unit_public_id, lesson_public_id=continue_lesson.lesson_public_id) }}">{{ 'Resume lesson' if continue_lesson.resume else 'Start lesson' }}{{ ui.icon('arrow', 18) }}</a>
+      {% elif not cards %}
+      <h2 id="agenda-lesson-title">No active enrollments</h2><a class="btn agenda-lesson-action" href="{{ url_for('student.records') }}">View your records{{ ui.icon('arrow', 18) }}</a>
+      {% elif lesson_stats.total and lesson_stats.completed == lesson_stats.total and not progress_truncated %}
+      <h2 id="agenda-lesson-title">Available lessons completed</h2><a class="btn agenda-lesson-action" href="{{ url_for('workspace.student_courses') }}">Open my courses{{ ui.icon('arrow', 18) }}</a>
+      {% else %}
+      <h2 id="agenda-lesson-title">No lesson ready to continue</h2><a class="btn agenda-lesson-action" href="{{ url_for('workspace.student_courses') }}">View my courses{{ ui.icon('arrow', 18) }}</a>
+      {% endif %}
+    </section>
+  </div>
 </div>
 {% endblock %}

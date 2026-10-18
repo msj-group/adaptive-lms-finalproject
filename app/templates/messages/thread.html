@@ -9,12 +9,17 @@
       <a class="messenger-icon-button messenger-chat__back" href="{{ url_for('messages.inbox') }}" aria-label="Back to messages" title="Back to messages">{{ msg.icon('back') }}</a>
       {{ msg.avatar(other.full_name if other else 'Member', other.role_label if other else 'Member') }}
       <div class="messenger-chat__person"><h2 id="conversation-title" dir="auto">{{ other.full_name if other else 'Private conversation' }}</h2><p>{{ other.role_label if other else 'Member' }} <span aria-hidden="true">·</span> {{ 'Private conversation' if can_reply else 'Read-only conversation' }}</p></div>
-      <button class="messenger-icon-button" type="button" data-thread-search-toggle aria-label="Search messages on this page" title="Search messages" aria-expanded="false" aria-controls="thread-search" hidden>{{ msg.icon('search') }}</button>
-      <button class="messenger-icon-button" type="button" data-thread-info-toggle aria-label="Conversation details" title="Conversation details" aria-expanded="false" aria-controls="thread-info" hidden>{{ msg.icon('info') }}</button>
       <details class="messenger-header-actions"><summary class="messenger-icon-button" aria-label="Conversation actions" title="Conversation actions">{{ msg.icon('more') }}</summary><div class="messenger-action-menu">
         {% if clear_state %}<form method="post" action="{{ url_for('messages.clear_conversation', thread_public_id=thread.public_id) }}" data-confirm="Delete this conversation from your messages? The other participant keeps their history. New replies will appear again."><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="message_state" value="{{ clear_state }}"><button class="messenger-danger" type="submit">{{ msg.icon('trash', 17) }} Delete conversation</button></form>{% else %}<span class="messenger-action-note">Conversation deletion is not available yet.</span>{% endif %}
       </div></details>
     </header>
+    <div class="messenger-chat__context" aria-label="Conversation subject">
+      {{ msg.icon('message', 16) }}<strong dir="auto" title="{{ thread.subject }}">{{ thread.subject }}</strong>
+      <div class="messenger-chat__tools">
+        <button class="messenger-icon-button" type="button" data-thread-search-toggle aria-label="Search messages on this page" title="Search messages" aria-expanded="false" aria-controls="thread-search" hidden>{{ msg.icon('search') }}</button>
+        <button class="messenger-icon-button" type="button" data-thread-info-toggle aria-label="Conversation details" title="Conversation details" aria-expanded="false" aria-controls="thread-info" hidden>{{ msg.icon('info') }}</button>
+      </div>
+    </div>
     <div id="thread-info" class="messenger-chat__subject" data-thread-info hidden>{{ msg.icon('lock', 16) }}<div><strong dir="auto">{{ thread.subject }}</strong><p>Only the two participants can access this conversation.</p>{% if not can_manage %}<p>Message editing and deletion are not available yet.</p>{% endif %}</div></div>
     <div id="thread-search" class="messenger-thread-search" data-thread-search hidden><label class="messenger-sr-only" for="thread-query">Search messages on this page</label><input id="thread-query" type="search" placeholder="Search messages on this page" data-thread-query><span role="status" data-thread-search-status></span></div>
     {{ msg.flash_messages() }}

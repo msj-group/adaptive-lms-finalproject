@@ -1,8 +1,10 @@
 {% extends "layouts/portal_base.html" %}
+{% import "_figma_ui.html" as ui %}
 {% block title %}Grades{% endblock %}
 {% block portal_nav %}{% set active_nav = 'grades' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/records.css', v='records-all-20261015') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/student/grades.css', v='grades-directory-20261015') }}">{% endblock %}
 {% block portal_content %}
-<div class="st-journal">
+<div class="st-journal grade-workspace" data-grade-workspace>
 {#- Phase 4 / M08. Every row here is a group this student holds at least one
     RELEASED grade in -- the same condition the detail page applies, so this
     list can never offer a link to a page that would then turn out to be empty.
@@ -10,8 +12,23 @@
     What is not here is not hidden -- it was never fetched: no other student,
     no draft item, no teacher comment, no roster, no teacher identity and no
     internal id. -#}
-<h1 data-workspace-page-heading style="margin-top: 0">Grades</h1>
-<p class="ds-section__desc" style="margin-bottom: var(--space-4)">Released results only.</p>
+<div class="record-page-heading">
+  <h1 data-workspace-page-heading dir="auto">Grades</h1>
+  <details class="record-filters" data-grade-filters>
+    <summary><span class="record-filter-heading">{{ ui.icon('settings', 18) }}<span>Filters</span></span><span class="record-filter-arrow">{{ ui.icon('chevron-down', 16) }}</span></summary>
+    <form method="get" action="{{ url_for('student.grades_list') }}" class="record-filter-form st-panel" data-grade-filter-form>
+      <input type="hidden" name="q" value="{{ filters.q }}" data-grade-filter-query>
+      <div class="field"><label for="grade-course">Course</label>
+        <input type="search" placeholder="Find a course" aria-label="Find a course" data-grade-course-search hidden>
+        <select name="course" id="grade-course" data-grade-course><option value="all"{% if filters.course == 'all' %} selected{% endif %}>All courses</option>{% for course in courses %}<option value="{{ course.public_id }}"{% if course.public_id == filters.course %} selected{% endif %}>{{ course.title }} · {{ course.level_name }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label for="grade-term">Term</label><select name="term" id="grade-term" data-grade-term><option value="all"{% if filters.term == 'all' %} selected{% endif %}>All terms</option>{% for term in terms %}<option value="{{ term.public_id }}"{% if term.public_id == filters.term %} selected{% endif %}>{{ term.name }}</option>{% endfor %}</select></div>
+      <div class="field" data-grade-group-field{% if filters.course == 'all' %} hidden{% endif %}><label for="grade-group">Group</label><select name="group" id="grade-group" data-grade-group><option value="all"{% if filters.group == 'all' %} selected{% endif %}>All groups</option>{% for group in filter_groups %}<option value="{{ group.public_id }}" data-course="{{ group.course_public_id }}" data-term="{{ group.term_public_id }}"{% if group.public_id == filters.group %} selected{% endif %}{% if filters.course != 'all' and (group.course_public_id != filters.course or (filters.term != 'all' and group.term_public_id != filters.term)) %} hidden disabled{% endif %}>{{ group.name }} · {{ group.term_name }}</option>{% endfor %}</select></div>
+      <div class="record-filter-actions"><button type="submit" class="btn btn--primary">Apply filters</button><a class="btn" href="{{ url_for('student.grades_list') }}">Clear filters</a></div>
+    </form>
+  </details>
+</div>
+<p class="ds-section__desc grade-intro">Released results only.</p>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}
@@ -19,40 +36,50 @@
   {% endfor %}
 {% endwith %}
 
-{% if groups %}
-<div class="dash-card-list">
-  {% for item in groups %}
-  <div class="st-panel">
-    <div class="card__title" style="margin-bottom: var(--space-1)">{{ item.group_name }}</div>
-    <div class="card__body">{{ item.course_title }}</div>
-    <div class="card__body">{{ item.term_name }}</div>
-    <div class="card__body" style="margin-top: var(--space-2)">
-      {{ _n('%(count)d released result', '%(count)d released results', item.released_count) }}
-    </div>
-    <div class="ds-row" style="margin-top: var(--space-4)">
-      <a class="btn btn--primary" href="{{ url_for('student.group_grades', group_public_id=item.group_public_id) }}">See my grades</a>
-    </div>
-  </div>
-  {% endfor %}
+<form method="get" action="{{ url_for('student.grades_list') }}" class="grade-search">
+  {{ ui.icon('search', 18) }}
+  <input type="search" name="q" value="{{ filters.q }}" maxlength="120" aria-label="Search courses or groups" placeholder="Search courses or groups" data-grade-search>
+  {% for name in ('course', 'term', 'group') %}<input type="hidden" name="{{ name }}" value="{{ filters[name] }}">{% endfor %}
+  <button type="submit" class="btn">Search</button>
+</form>
+{% if filters_active %}
+<div class="grade-filter-context">
+  {% if filters.q %}<span class="badge badge--neutral"><bdi>{{ filters.q }}</bdi></span>{% endif %}
+  {% for item in courses if item.public_id == filters.course %}<span class="badge badge--neutral"><bdi>{{ item.title }} · {{ item.level_name }}</bdi></span>{% endfor %}
+  {% for item in terms if item.public_id == filters.term %}<span class="badge badge--neutral"><bdi>{{ item.name }}</bdi></span>{% endfor %}
+  {% for item in filter_groups if item.public_id == filters.group %}<span class="badge badge--neutral"><bdi>{{ item.name }}</bdi></span>{% endfor %}
+  <a href="{{ url_for('student.grades_list') }}">Clear filters</a>
 </div>
+{% endif %}
+{% if groups %}
+<section class="grade-directory st-panel" aria-label="{{ _('Released grades') }}">
+<div class="grade-directory-head" aria-hidden="true"><span>Course / Group</span><span>Term</span><span>Results</span><span></span></div>
+<ul class="grade-directory-list">
+  {% for item in groups %}
+  <li class="grade-directory-row">
+    <div class="grade-directory-course"><span class="grade-course-icon">{{ ui.icon('book', 18) }}</span><div><h2 dir="auto">{{ item.course_title }}</h2><p><bdi>{{ item.group_name }}</bdi> · <bdi>{{ item.level_name }}</bdi></p></div></div>
+    <div class="grade-directory-term"><bdi>{{ item.term_name }}</bdi></div>
+    <div class="grade-directory-count">{{ _n('%(count)d released result', '%(count)d released results', item.released_count) }}</div>
+    <a class="grade-directory-link" href="{{ url_for('student.group_grades', group_public_id=item.group_public_id, page=page, **pagination_filters) }}">See my grades {{ ui.icon('arrow-up', 16) }}</a>
+  </li>
+  {% endfor %}
+</ul>
+</section>
 
 {% if has_prev or has_next %}
-<nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Grade pages">
-  {% if has_prev %}
-  <a class="btn btn--secondary" href="{{ url_for('student.grades_list', page=page - 1) }}">Previous</a>
-  {% endif %}
-  <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
-  {% if has_next %}
-  <a class="btn btn--secondary" href="{{ url_for('student.grades_list', page=page + 1) }}">Next</a>
-  {% endif %}
+<nav class="grade-pagination" aria-label="Grade pages">
+  <span class="ds-section__desc">Page {{ page }} &middot; up to {{ page_size }} per page</span>
+  <div>{% if has_prev %}<a class="btn btn--secondary" href="{{ url_for('student.grades_list', page=page - 1, **pagination_filters) }}">Previous</a>{% endif %}{% if has_next %}<a class="btn btn--secondary" href="{{ url_for('student.grades_list', page=page + 1, **pagination_filters) }}">Next</a>{% endif %}</div>
 </nav>
 {% endif %}
 
 {% else %}
 <div class="empty-state">
-  <div class="empty-state__title">No released grades yet</div>
+  <div class="empty-state__title">{% if filters_active %}No released grades match your filters.{% else %}No released grades yet{% endif %}</div>
+  {% if filters_active %}<a href="{{ url_for('student.grades_list') }}">Clear filters</a>{% endif %}
 
 </div>
 {% endif %}
 </div>
 {% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/student_grades.js', v='grades-directory-20261015') }}" defer></script>{% endblock %}

@@ -1,9 +1,11 @@
 {% extends "layouts/portal_base.html" %}
 {% import "_attendance_macros.html" as att %}
+{% import "_figma_ui.html" as ui %}
 {% block title %}Attendance{% endblock %}
 {% block portal_nav %}{% set active_nav = 'attendance' %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/records.css', v='records-all-20261015') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/student/attendance.css', v='attendance-metrics-20261016') }}">{% endblock %}
 {% block portal_content %}
-<div class="st-journal">
+<div class="st-journal record-workspace attendance-workspace" data-attendance-workspace>
 {#- Phase 4 / M07. Every entry of `records` is a plain presentation dict whose
     row already satisfied the whole visibility formula in SQL: this student's
     own record, on a FINALIZED session, with the acting account's role and
@@ -11,11 +13,36 @@
 
     What is not here is not hidden -- it was never fetched: no other student,
     no teacher-only note, no draft session, no teacher identity, no group
-    roster and no internal id. The totals are plain counts of this student's
-    own finalized records; there is deliberately no percentage, rate or
-    attendance score anywhere. -#}
-<h1 data-workspace-page-heading style="margin-top: 0">Attendance</h1>
-<p class="ds-section__desc" style="margin-bottom: var(--space-4)">Finalized attendance only.</p>
+    roster and no internal id. Percentages describe this student's complete
+    matching finalized history, independently of pagination. -#}
+{% set active_filter_count = (1 if filters.course != 'all' else 0) + (1 if filters.group != 'all' else 0) + (1 if filters.status != 'all' else 0) + (1 if filters.date_from else 0) + (1 if filters.date_to else 0) %}
+<div class="record-page-heading">
+  <h1 data-workspace-page-heading dir="auto">Attendance</h1>
+  <details class="record-filters" data-attendance-filters>
+    <summary><span class="record-filter-heading">{{ ui.icon('settings', 18) }}<span>Filters</span></span>{% if active_filter_count %}<span class="attendance-filter-count" aria-label="{{ _n('%(count)d active filter', '%(count)d active filters', active_filter_count) }}">{{ active_filter_count }}</span>{% endif %}<span class="record-filter-arrow">{{ ui.icon('chevron-down', 16) }}</span></summary>
+    <form method="get" action="{{ url_for('student.attendance_list') }}" class="record-filter-form st-panel">
+      <div class="field"><label for="attendance-course">Course</label><select name="course" id="attendance-course" data-attendance-course><option value="all"{% if filters.course == 'all' %} selected{% endif %}>All</option>{% for course in courses %}<option value="{{ course.public_id }}"{% if course.public_id == filters.course %} selected{% endif %}>{{ course.title }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="attendance-group">Group</label><select name="group" id="attendance-group" data-attendance-group><option value="all"{% if filters.group == 'all' %} selected{% endif %}>All</option>{% for group in groups %}<option value="{{ group.public_id }}" data-course="{{ group.course_public_id }}"{% if group.public_id == filters.group %} selected{% endif %}{% if filters.course != 'all' and group.course_public_id != filters.course %} hidden disabled{% endif %}>{{ group.name }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="attendance-status">Your mark</label><select name="status" id="attendance-status"><option value="all"{% if filters.status == 'all' %} selected{% endif %}>All</option>{% for key, label in status_labels.items() %}<option value="{{ key }}"{% if filters.status == key %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="attendance-from">From date</label><input type="date" id="attendance-from" name="date_from" value="{{ filters.date_from.isoformat() if filters.date_from else '' }}"{% if filters.date_to %} max="{{ filters.date_to.isoformat() }}"{% endif %}></div>
+      <div class="field"><label for="attendance-to">To date</label><input type="date" id="attendance-to" name="date_to" value="{{ filters.date_to.isoformat() if filters.date_to else '' }}"{% if filters.date_from %} min="{{ filters.date_from.isoformat() }}"{% endif %}></div>
+      <div class="record-filter-actions"><button type="submit" class="btn btn--primary">Apply filters</button><a class="btn" href="{{ url_for('student.attendance_list') }}">Clear filters</a></div>
+    </form>
+  </details>
+</div>
+
+{% if active_filter_count %}
+<div class="attendance-filter-scope">
+  <ul aria-label="{{ _('Applied filters') }}">
+    {% for course in courses %}{% if course.public_id == filters.course %}<li dir="auto">{{ course.title }}</li>{% endif %}{% endfor %}
+    {% for group in groups %}{% if group.public_id == filters.group %}<li dir="auto">{{ group.name }}</li>{% endif %}{% endfor %}
+    {% if filters.status != 'all' %}<li>{{ _(status_labels[filters.status]) }}</li>{% endif %}
+    {% if filters.date_from %}<li>{{ _('From date') }} <bdi dir="ltr">{{ filters.date_from.isoformat() }}</bdi></li>{% endif %}
+    {% if filters.date_to %}<li>{{ _('To date') }} <bdi dir="ltr">{{ filters.date_to.isoformat() }}</bdi></li>{% endif %}
+  </ul>
+  <a href="{{ url_for('student.attendance_list') }}">Clear filters</a>
+</div>
+{% endif %}
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}
@@ -23,20 +50,35 @@
   {% endfor %}
 {% endwith %}
 
-{% if total_count %}
-<div class="st-panel" style="margin-bottom: var(--space-5)">
-  <div class="card__title" style="margin-bottom: var(--space-2)">Your recorded classes</div>
-  <div class="ds-row" style="gap: var(--space-2); flex-wrap: wrap">
-    {% for item in totals %}
-      {{ att.status_badge(item.status, _(item.label) ~ " " ~ item.count) }}
-    {% endfor %}
+<section class="attendance-summary st-panel" aria-label="{{ _('Attendance summary') }}">
+  <div class="attendance-summary-heading"><h2>Attendance summary</h2></div>
+  <div class="attendance-summary-body">
+  <div class="attendance-ring">
+    <svg class="attendance-ring-chart" viewBox="0 0 112 112" aria-hidden="true" focusable="false">
+      <circle class="attendance-ring-track" cx="56" cy="56" r="48" pathLength="100" />
+      {% set ring = namespace(offset=0) %}
+      {% for item in totals %}
+      <circle class="attendance-ring-segment attendance-stat--{{ item.status }}" cx="56" cy="56" r="48" pathLength="100" stroke-dasharray="{{ '%.6f'|format(item.percentage) }} {{ '%.6f'|format(100 - item.percentage) }}" stroke-dashoffset="{{ '%.6f'|format(-ring.offset) }}" />
+      {% set ring.offset = ring.offset + item.percentage %}
+      {% endfor %}
+    </svg>
+    <div class="attendance-ring-total" aria-label="{{ _n('%(count)d matching finalized class', '%(count)d matching finalized classes', total_count) }}"><strong>{{ total_count }}</strong><span>{{ _('Class') if total_count == 1 else _('Classes') }}</span></div>
   </div>
-  <p class="card__body" style="margin-top: var(--space-3)">{{ _n("%(count)d finalized class in total.", "%(count)d finalized classes in total.", total_count) }} Recorded counts; no score or percentage.</p>
-</div>
-{% endif %}
+  <ul class="attendance-breakdown">
+    {% for item in totals %}
+    <li class="attendance-stat attendance-stat--{{ item.status }}">
+      <span class="attendance-stat-label"><span class="attendance-stat-dot" aria-hidden="true"></span>{{ _(item.label) }}</span><span class="attendance-stat-count">{{ item.count }}</span>
+      <strong class="attendance-percentage" dir="ltr">{{ ('%.1f'|format(item.percentage)).removesuffix('.0') }}%</strong>
+      <div class="attendance-bar" aria-hidden="true"><span style="width:{{ '%.1f'|format(item.percentage) }}%"></span></div>
+    </li>
+    {% endfor %}
+  </ul>
+  </div>
+</section>
 
 {% if records %}
-<div class="dash-scroll">
+<div class="attendance-records-heading"><h2>Class records</h2><span>Newest first</span></div>
+<div class="dash-scroll attendance-desktop-records">
 <table class="dash-table">
   <thead>
     <tr>
@@ -50,34 +92,50 @@
   <tbody>
     {% for item in records %}
     <tr>
-      <td><strong>{{ item.session_date.isoformat() }}</strong></td>
-      <td>{{ item.group_name }} &middot; {{ item.course_title }}</td>
-      <td>{{ att.time_range(item.start_time, item.end_time) }}</td>
+      <td><strong><bdi dir="ltr">{{ item.session_date.isoformat() }}</bdi></strong></td>
+      <td><bdi>{{ item.group_name }}</bdi></td>
+      <td><bdi dir="ltr">{{ att.time_range(item.start_time, item.end_time) }}</bdi></td>
       <td>{{ item.location or "—" }}</td>
-      <td>{{ att.status_badge(item.status, item.status_label) }}</td>
+      <td>{{ att.status_badge(item.status, _(item.status_label)) }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
 </div>
 
+<ul class="attendance-mobile-records" aria-label="{{ _('Class records') }}">
+  {% for item in records %}
+  <li>
+    <details class="attendance-class-card">
+      <summary>
+        <span class="attendance-card-top"><span class="attendance-card-group" dir="auto">{{ item.group_name }}</span>{{ att.status_badge(item.status, _(item.status_label)) }}</span>
+        <span class="attendance-card-meta"><time datetime="{{ item.session_date.isoformat() }}">{{ ui_date(item.session_date.strftime('%d %b %Y')) }}</time><span class="attendance-card-time">{{ ui.icon('clock', 12) }}<bdi dir="ltr">{{ att.time_range(item.start_time, item.end_time) }}</bdi></span><span class="attendance-card-arrow">{{ ui.icon('chevron-down', 12) }}</span></span>
+      </summary>
+      <div class="attendance-card-location"><span>{{ ui.icon('room', 14) }}<span>Location</span></span><span dir="auto">{{ item.location or '—' }}</span></div>
+    </details>
+  </li>
+  {% endfor %}
+</ul>
+
 {% if has_prev or has_next %}
 <nav class="ds-row" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attendance pages">
   {% if has_prev %}
-  <a class="btn btn--secondary" href="{{ url_for('student.attendance_list', page=page - 1) }}">Previous</a>
+  <a class="btn btn--secondary" href="{{ url_for('student.attendance_list', page=page - 1, **pagination_filters) }}">Previous</a>
   {% endif %}
   <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
   {% if has_next %}
-  <a class="btn btn--secondary" href="{{ url_for('student.attendance_list', page=page + 1) }}">Next</a>
+  <a class="btn btn--secondary" href="{{ url_for('student.attendance_list', page=page + 1, **pagination_filters) }}">Next</a>
   {% endif %}
 </nav>
 {% endif %}
 
+<p class="attendance-records-note">{{ ui.icon('lock', 12) }}<span>Finalized attendance only.</span></p>
 {% else %}
 <div class="empty-state">
-  <div class="empty-state__title">No attendance recorded yet</div>
+  <div class="empty-state__title">{% if filters_active %}No attendance matches your filters.{% else %}No attendance recorded yet{% endif %}</div>
 
 </div>
 {% endif %}
 </div>
 {% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/student_attendance.js', v='attendance-20261015') }}" defer></script>{% endblock %}

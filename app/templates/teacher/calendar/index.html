@@ -1,51 +1,6 @@
 {% extends "layouts/portal_base.html" %}
-{% import "_calendar_macros.html" as cal with context %}
 {% block title %}Calendar{% endblock %}
-{% block portal_nav %}
-  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
-  <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.calendar') }}">Calendar</a>
-  <a class="portal-nav__link" href="{{ url_for('teacher.announcements_feed') }}">Announcements</a>
-{% endblock %}
-{% block portal_content %}
-{#- Phase 4 / M10. Every entry on this page was authorized in SQL before it was
-    built: a class occurrence of an active schedule of a group this teacher is
-    actively assigned to under a fully active academic chain, an opening or due
-    moment of a published assignment, quiz or listening activity in one of
-    those groups, or a SCHEDULED centre event.
-
-    There is deliberately NO centre-event control anywhere on this page — no
-    create, no edit, no cancel — because no teacher endpoint exists behind one.
-    Centre events are the centre's, managed by administrators, and a teacher
-    reads them. -#}
-<h1 data-workspace-page-heading style="margin-top: 0">Calendar</h1>
-
-
-{{ cal.flash_messages() }}
-
-{% if range_normalized %}
-<div class="alert alert--info" style="margin-bottom: var(--space-4)">{{ range_message }}</div>
-{% endif %}
-
-{{ cal.range_controls(previous_url, next_url, today_url, range_start, range_end, max_range_days, today_url) }}
-{{ cal.range_summary(range_start, range_end, range_days, entry_count, tz_name) }}
-
-{% if truncated %}
-<div class="alert alert--warning" style="margin-bottom: var(--space-4)">
-  This range reached the calendar's safe display limit, so some entries may be omitted.
-  Choose a shorter range to make sure every entry is included.
-</div>
-{% endif %}
-
-{% if days %}
-  {{ cal.days_view(days,range_start,range_end) }}
-{% else %}
-<div class="empty-state">
-  <div class="empty-state__title">Nothing in this range</div>
-  <div>
-    There are no classes, published activity dates, or centre events between
-    {{ range_start.strftime("%d %B %Y") }} and {{ range_end.strftime("%d %B %Y") }}.
-    Try another range.
-  </div>
-</div>
-{% endif %}
-{% endblock %}
+{% block portal_nav %}<a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a><a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.calendar') }}">Calendar</a><a class="portal-nav__link" href="{{ url_for('teacher.announcements_feed') }}">Announcements</a>{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/calendar.css', v='calendar-20261015') }}">{% endblock %}
+{% block portal_content %}{% include "calendar/_workspace.html" %}{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/calendar.js', v='calendar-20261015') }}" defer></script>{% endblock %}

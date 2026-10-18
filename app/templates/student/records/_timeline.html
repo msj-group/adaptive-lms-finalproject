@@ -1,0 +1,30 @@
+{% if items %}
+<ol class="record-timeline">
+  {% set dates = namespace(previous=none) %}
+  {% for item in items %}
+  {% set date = item.at.strftime('%d %b %Y') if item.at else (item.date_label|default(item.title) if item.kind == 'attendance' else none) %}
+  <li class="record-timeline-entry">
+    <div class="record-date{% if date == dates.previous %} record-date--repeat{% endif %}">{% if item.at %}<time datetime="{{ item.at.date().isoformat() }}">{{ ui_date(date) }}</time>{% elif date %}<span>{{ ui_date(date) }}</span>{% else %}<span class="sr-only">{{ _('Record') }}</span>{% endif %}</div>
+    <span class="record-timeline-marker{% if item.status|default('') == 'expired' %} record-timeline-marker--expired{% endif %}">{{ ui.icon('clock' if item.status|default('') == 'expired' else 'check', 14) }}</span>
+    <article class="record-card st-panel">
+      <div class="record-card-main">
+        <div class="record-card-heading"><h3 dir="auto">{{ item.title }}</h3><span class="badge record-type record-type--{{ item.kind }}">{{ ui.icon(item.icon, 14) }}{{ _(item.type_label) }}</span></div>
+        <div class="record-card-meta">{% if item.course_title|default(none) %}<span dir="auto">{{ item.course_title }}</span>{% endif %}{% if item.group %}<span dir="auto">{{ item.group }}</span>{% endif %}{% if item.attempt|default(none) %}<span>{{ _('Attempt %(number)s', number=item.attempt) }}</span>{% endif %}{% if item.at and item.has_time %}<time datetime="{{ item.at.isoformat() }}">{{ item.at.strftime('%H:%M') }}</time>{% endif %}</div>
+        {% if item.enrollment_started|default(none) %}<div class="record-enrollment-meta">{{ _('Enrollment period') }}: <bdi>{{ item.enrollment_group_name }} · {{ item.term_name }}</bdi> · <time datetime="{{ item.enrollment_started.isoformat() }}">{{ item.enrollment_started.strftime('%d %b %Y') }}</time></div>{% endif %}
+        {% if item.kind == 'speaking' %}<p class="record-receipt-label">Recording submitted</p>{% elif item.kind == 'assignments' %}<p class="record-receipt-label">{{ _('Written response submitted' if item.text else 'File submitted') }}</p>{% endif %}
+      </div>
+      <div class="record-card-result">
+        {% if item.score_text|default(none) %}<strong class="record-score" dir="ltr" aria-label="{{ _('Score') }}: {{ item.score_text }}">{{ item.score_text }}</strong>{% endif %}
+        {% if item.status|default(none) %}<span class="badge {{ 'badge--warning' if item.status == 'expired' else 'badge--success' }}">{{ _(item.status|capitalize) }}</span>{% endif %}
+      </div>
+      {% if item.changes is defined %}<dl class="record-corrections">{% for label,before,after in item.changes %}<div><dt>{{ _(label) }}</dt><dd><span dir="auto">{{ before if before is not none else _('Empty') }}</span><span aria-hidden="true"> → </span><span class="sr-only">{{ _('Changed to') }} </span><strong dir="auto">{{ after if after is not none else _('Empty') }}</strong></dd></div>{% endfor %}</dl>
+      {% elif item.kind in ['grades', 'attendance', 'progress'] %}{% if item.text %}<p class="record-text" dir="auto">{{ _(item.text) if item.kind in ['attendance', 'progress'] else item.text }}</p>{% endif %}{% if item.note %}<p class="record-text ds-section__desc" dir="auto">{{ _(item.note) if item.kind == 'progress' else item.note }}</p>{% endif %}
+      {% endif %}
+      {% if item.audio_url|default(none) %}<div class="record-audio"><span>Submitted recording</span><audio controls preload="none" aria-label="{{ _('Submitted recording') }}: {{ item.title }}" src="{{ item.audio_url }}"></audio><a href="{{ item.audio_url }}?download=yes">Download recording</a></div>{% endif %}
+      {% if item.kind in ['assignments', 'speaking'] and (item.text or item.note) %}<details class="record-receipt"><summary>Submission details {{ ui.icon('chevron-down', 15) }}</summary>{% if item.text %}<div class="record-text" dir="auto">{{ item.text }}</div>{% endif %}{% if item.note %}<h4>Teacher feedback</h4><div class="record-text" dir="auto">{{ item.note }}</div>{% endif %}</details>{% endif %}
+    </article>
+  </li>
+  {% set dates.previous = date %}
+  {% endfor %}
+</ol>
+{% else %}<div class="empty-state record-empty">{{ ui.icon('file', 24) }}<p>No available records of this type in this enrollment period.</p></div>{% endif %}

@@ -7,6 +7,225 @@ has already been implemented or verified.
 
 ## Authority and current checkpoint
 
+- Owner release request, 2026-10-18: commit, push and deploy all reviewed recent
+  application/documentation changes from checkpoint `491ef52`. This explicitly
+  advances the preceding local-only changes to release. Use one allowlisted
+  commit, ordinary fast-forward pushes to the two existing release branches,
+  and the existing Railway web service pinned to the verified GitHub commit.
+  Preserve unrelated unused Help/design-preview files, secrets, local data,
+  research classifications and all hosting services/settings except the web
+  source pin. No new migration, reset, seed, scheduler, dependency installation
+  or automated tests are authorized. Existing Railway predeploy must verify
+  the already deployed `8e5f3b0d7124` head and model/schema agreement.
+
+- Owner Teacher Review queue follow-up, 2026-10-17: implement the approved
+  desktop list/editor and phone list/standalone-editor composition. Keep ordinary
+  assigned-Group/type/comment/date filters, oldest-first bounded paging and the
+  existing shared feedback workflow. Source/localization/documentation and bounded
+  static/memory-only manual browser review are authorized. Fictional examples stay
+  in ignored presentation evidence; the application reads its actual scoped data.
+  Preserve CSRF, signed stale tokens, authorization, locking and lifecycle/research
+  meanings. No automated tests, actual database/seed/migration, scheduler, Git
+  mutation, installation or deployment is included.
+
+- Owner Teacher Activities image follow-up, 2026-10-17: apply the proposed
+  Teacher desk composition, with readable activity rows beside a simple
+  Group/task creation panel. Adapt it for phones: a compact native creation
+  disclosure above activity cards and one-column choices. Keep closed Student-
+  style Filters, English/Arabic, semantic themes and existing authoring/security
+  contracts. This replaces the preceding full-width creation presentation only.
+  Source/localization/documentation and bounded static/memory-only browser review;
+  no automated tests, actual database/migration, scheduler, Git mutation or deploy.
+
+- Owner Teacher Attendance follow-up, 2026-10-17: reuse the Student Attendance
+  visual treatment where compatible with Teacher functions. Keep the original
+  native recording, draft saving, bulk/undo, private notes and separate confirmed
+  finalization flows. Teacher-owned templates/CSS may show percentages from
+  already supplied bounded counts: finalized marks on the current list page,
+  and the saved roster of one detail page. Explicitly distinguish marks from
+  classes/unique Students and exclude drafts from the list ring. This supersedes
+  the earlier staff counts-only presentation restriction for these Teacher views.
+  Preserve routes/queries/transactions, Student UI and all unrelated local work.
+  Source/localization/documentation and bounded static/memory-only manual browser
+  review only; no automated tests, actual database/migration, scheduler, Git
+  mutation or deployment.
+
+- Owner Teacher Dashboard selection, 2026-10-17: implement Group Cockpit on
+  desktop and Groups & Feedback on phones, using the existing authorized Group,
+  next-class, feedback and Announcement payloads. Use page-owned presentation
+  assets and accessible phone tabs, with both sections available without script.
+  Retain the shared identity/navigation, Arabic/RTL, semantic themes, bounded
+  previews and existing lifecycle meanings. Source/localization/documentation
+  and bounded static/memory-only manual review only; no automated tests,
+  actual database/migration, scheduler, Git mutation or deployment.
+
+- Owner Teacher Activities follow-up, 2026-10-17: redesign the Teacher activity
+  page and reuse the closed Student Grades/Attendance/My records filter pattern.
+  Make activity creation understandable to Teachers with limited technical
+  familiarity: one group/type entry, short explanations, clearly separated task
+  details/dates, optional listening controls and explicit draft saving. Preserve
+  ordinary type-specific authoring/publication, active-assignment authorization,
+  archived reading, CSRF/stale/locking contracts, public IDs and all local work.
+  Source/localization/documentation and bounded static/memory-only manual browser
+  review; no automated tests, actual database/migration, scheduler, Git mutation
+  or deployment.
+
+- Owner photo-crop follow-up, continued 2026-10-17: let the account owner preview,
+  reposition and zoom a newly selected photo to choose the visible region before
+  saving. Require explicit Use photo confirmation in the ordinary scripted flow,
+  support adjustment/cancellation and retain the earlier avatar menu/hidden Save.
+  This supersedes automatic centre selection for that flow. Upload the original
+  image with bounded crop coordinates and validate/apply the square after server
+  orientation; retain original-file validation, private history and account guards.
+  Source/documentation, static and bounded memory-only manual review only; no
+  automated tests, actual database/migration, scheduler, Git mutation or deployment.
+
+- Owner Teacher My groups follow-up, 2026-10-16, continued 2026-10-17:
+  implement the selected Expandable list desktop/phone concept with native
+  group disclosures, dates/schedules and existing workspace/Attendance/
+  Gradebook/Activities links. Add name search and closed Course/Term/Context/
+  Term timing GET filters, within the same active Teacher-assignment scope.
+  Ended terms and archived academic contexts stay visible while assignment
+  is active; removed assignments do not become a teaching-history archive.
+  Preserve shared identity, themes, localization, research meanings and all
+  other local work. Source/documentation and bounded static/memory-only manual
+  review only; no automated tests, actual database/migration, scheduler, Git
+  mutation or deployment.
+
+- Owner Account settings follow-up, 2026-10-16: remove the separate Choose a
+  photo upload control and default photo requirements paragraph. Open View,
+  Edit and Delete photo from the enlarged circular avatar. Show Save photo
+  only after selecting a valid replacement, retaining space for it in the card.
+  Show only the relevant validation error in a localized popup. Photo removal
+  clears the current revision projection while preserving private history/files.
+  Retain native POST/CSRF, own-account authorization, signed stale snapshots,
+  canonical locks and research classifications. Source/documentation and bounded
+  static/memory-only manual review; no automated tests, actual database/migration,
+  scheduler, Git mutation or deployment.
+
+- Owner Dashboard follow-up, 2026-10-16: implement the selected Agenda image
+  proposal for Student Dashboard on desktop and phones. Show a personalized
+  greeting, a compact next-class strip, the two nearest existing upcoming
+  activities and the actual continue-learning lesson/progress card. Retain the
+  shared platform identity/navigation, semantic themes, localization, native
+  links, authorized data and existing empty/completed/truncated states. Omit the
+  dashboard announcement preview as in the selected essential-information design;
+  Announcements remains in ordinary navigation. Source/presentation,
+  localization, documentation and bounded static/memory-only manual review only;
+  no automated tests, actual database/migration, scheduler, Git mutation or deploy.
+
+- Owner navigation follow-up, 2026-10-16: remove desktop sidebar More and the
+  sidebar avatar/name card. Replace Account settings, Help and Display in phone
+  More with Language and Dark mode. Add those two preferences to the upper
+  account-avatar menu on desktop. Preserve the existing preference endpoint,
+  per-device storage, role destinations, authorization and local work. Source,
+  localization, documentation and bounded static/memory-only manual review only;
+  no automated tests, database/migration, scheduler, Git mutation or deployment.
+
+- Owner Announcements correction, 2026-10-16: preserve the approved phone UI,
+  round desktop cards and make layout respond to display scale/browser zoom.
+  Open a desktop notice immediately in an in-page popup, without document
+  navigation or reload. This explicitly supersedes the preceding desktop full-
+  navigation side-reader decision. Fetch the existing authorized detail GET
+  fragment afresh, preserve normal mobile/no-JavaScript links and private cache
+  policy, and keep the current document's collector running without inventing
+  a detail page_view for an overlay. Research definitions/sampling/session code,
+  current visibility, data, paging and all unrelated work remain preserved.
+  Static and bounded memory-only browser review only; no automated tests,
+  actual database/migration, scheduler, Git mutation or deployment.
+
+- Owner follow-up, 2026-10-16: make the phone Attendance summary resemble the
+  supplied desktop reference, with readable spacing, prominent per-status
+  percentages and visible status bars. Retain the ring alongside the metrics;
+  allow a two-column wrap on narrow phones and four columns on wider phones.
+  This supersedes the previous phone legend's four compact rows. Keep desktop,
+  records, filters, calculations and visibility unchanged. Source/static/manual
+  presentation review only; no automated tests, database/migration, Git or release.
+
+- Owner follow-up, 2026-10-16: implement the approved Compact index design for
+  Student Announcements. Use platform identity, a compact published-notice index,
+  responsive phone rows and full phone reading, with a desktop side reader and
+  retained list page. Preserve current published/scope authorization, public-ID
+  links, plain text, 20-row paging and research page/session meanings. Source,
+  localization, documentation and bounded static/memory-only manual review are
+  authorized. No automated tests, actual database/migration, scheduler, Git
+  mutation or deployment belongs to this follow-up.
+
+- Owner follow-up, 2026-10-16: implement the approved Focus Student Discussions
+  concept, including its phone presentation. Show an authorized Group's topic
+  list beside the selected discussion on wide screens; use separate list and
+  reading pages on phones. Provide normal Group selection, factual counts,
+  open/locked states, chronological replies and the existing reply form. Source,
+  localization, documentation, static checks and bounded memory-only manual
+  browser review are authorized. Preserve current active-membership visibility,
+  public identifiers, 20-topic/50-reply paging, signed stale/duplicate protection,
+  CSRF, authoritative locked transactions and research meanings. Preserve other
+  local changes. No automated tests, database/migration, scheduler, Git mutation
+  or deployment is included.
+
+- Owner follow-up, 2026-10-16: implement the approved Flow Messages design,
+  including the selected compact conversation spacing and responsive phone
+  presentation. Use existing platform typography and semantic theme colors;
+  update the Inbox, Thread, recipient picker and composer presentation while
+  retaining search, history, emoji and message-management controls. Preserve
+  Student/Teacher scoping, native POST/CSRF/context tokens, historical read-only
+  access, research identifiers and all local data. Source/presentation,
+  localization, documentation and bounded static/memory-only browser review
+  are authorized. This supersedes the previous Messages presentation freeze
+  and narrow-header avatar omission for this design. No automated tests,
+  database/migration, scheduler, Git mutation or deployment is included.
+
+- Owner follow-up, 2026-10-16: implement the approved Refined ring and cards
+  Student Attendance proposal. Use a compact status ring with matching class
+  count in its center, readable four-status counts/percentages, compact phone
+  cards showing Group/date/time/mark and native Location disclosures. Show the
+  applied filter count/context and retain the current GET filters and pagination.
+  Preserve the desktop table, existing owned-finalized visibility and all domain
+  meanings. Source/presentation, localization, documentation and bounded static/
+  memory-only manual review are authorized. No automated tests, database/migration,
+  scheduler, Git mutation or deployment belongs to this follow-up.
+
+- Owner follow-up, 2026-10-15, continued on 2026-10-16: implement the approved
+  Course directory design for Student Grades and See my grades. Add a compact
+  directory, name search, closed Course/Term/Group filters and retained paging;
+  show overall grade first, then collapsible categories and Teacher comments.
+  Use existing platform identity and responsive phone presentation. Read-only
+  source/query/presentation and documentation changes are authorized. Preserve
+  own-released visibility, historical access and the single calculation service.
+  Publishing was explicitly cancelled; no automated tests, database/migration,
+  scheduler, Git mutation or deployment belongs to this follow-up.
+
+- Owner follow-up, 2026-10-15: update Student Attendance. Replace the entire
+  Your recorded classes card with the percentage distribution of Present,
+  Absent, Late and Excused; apply the page filters to this summary as well.
+  Reuse My records' closed filter design and show only the Group name in the
+  table's Group column. Course, Group, mark and inclusive class-date filters
+  are read-only and cover the same owned finalized history in both summary
+  and table. This explicitly supersedes the historical Student counts-only
+  presentation restriction; no grading, progress or research rule changes.
+  Preserve existing local work. No automated tests, database/migration, Git
+  mutation or deployment is included in this follow-up.
+
+- Latest My records follow-up, 2026-10-15: use the owner's compact Filters
+  icon/label plus adjacent arrow at the physical upper right beside My records.
+  Keep its dropdown closed initially. Remove the introductory enrollment status,
+  start date/link and the All enrollment periods section. Default Course,
+  Enrollment period and record type to All; combine the active Student's own
+  visible historical records across the selected scope, retaining per-record
+  course/episode provenance and all publication/private-audio restrictions.
+  This supersedes the preceding newest-enrollment default and history section.
+  Source/static review only; existing no-test/database/Git/deployment limits stay.
+
+- Owner follow-up, 2026-10-15: implement the approved Student My records
+  timeline proposal using the platform's existing typography, colors and density.
+  Filters are closed by default, with their disclosure arrow at the physical
+  upper right; choose Course, Enrollment period, then activity/record type.
+  Keep achievement icons and factual submission counts; remove motivational
+  prose. Read-only source/query/presentation changes are authorized. Preserve
+  own historical records, source Group context, released/finalized boundaries,
+  private audio access and all research/domain meanings. No automated tests,
+  database/migration, Git mutation or deployment is included in this follow-up.
+
 - Owner continuation, 2026-10-15: complete both local and hosted execution.
   The owner explicitly requests creating/configuring the local migration account
   and delivering its credentials privately. Use the configured local administrative

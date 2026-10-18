@@ -7,11 +7,21 @@
   document.querySelectorAll("[data-appearance-form] select[name='theme']").forEach(function (control) {
     control.addEventListener("change", function () { window.aelmsUI.theme(control.value); });
   });
+  // Separate language/theme forms must retain the latest in-page theme preview.
+  function syncThemeFields() {
+    var preference = root.dataset.themePreference;
+    if (!["system", "light", "dark"].includes(preference)) return;
+    document.querySelectorAll("[data-appearance-form] [name='theme']").forEach(function (control) { control.value = preference; });
+  }
+  document.querySelectorAll('[data-appearance-form]').forEach(function (form) {
+    form.addEventListener('submit', syncThemeFields);
+  });
   var panels = document.querySelectorAll('[data-utility-panel]');
   panels.forEach(function (panel) {
     var nativePopover = 'showPopover' in panel;
     var previous;
     function prepareOpen() {
+      syncThemeFields();
       document.querySelectorAll('[data-account-menu]').forEach(function (account) { account.open = false; });
       var sidebar = document.getElementById('workspace-navigation');
       // Let the existing drawer release its inert/focus state first.
@@ -21,7 +31,9 @@
       }
     }
     function visible(control) {
-      return control && control.isConnected && control.getClientRects().length && !control.closest('[inert]');
+      if (!control || !control.isConnected || !control.getClientRects().length || control.closest('[inert]')) return false;
+      var closed = control.closest('details:not([open])');
+      return !closed || closed.querySelector('summary') === control;
     }
     function restoreFocus() {
       setTimeout(function () {
@@ -29,7 +41,9 @@
         var active = document.activeElement;
         // Light dismissal may already have focused another page control.
         if (active !== document.body && !panel.contains(active) && visible(active)) return;
-        var destination = visible(previous) ? previous : document.querySelector('[data-account-menu] > summary');
+        var destination = visible(previous) ? previous : null;
+        if (!destination && previous && previous.closest('[data-more-panel]')) destination = document.querySelector('.workspace-mobile-nav [data-more-toggle]');
+        if (!visible(destination)) destination = document.querySelector('[data-account-menu] > summary');
         if (!visible(destination)) destination = document.querySelector('[data-nav-toggle]');
         if (visible(destination)) destination.focus({preventScroll:true});
       }, 0);
@@ -60,8 +74,18 @@
   var locationUrl = new URL(location.href);
   var requestedPanel = locationUrl.searchParams.get('_utility');
   if (requestedPanel === 'display' || requestedPanel === 'help') {
-    var trigger = document.querySelector('[popovertarget="workspace-' + requestedPanel + '-panel"]');
+    var targetId = 'workspace-' + requestedPanel + '-panel';
+    var trigger = document.querySelector('[popovertarget="' + targetId + '"]:not([popovertargetaction="hide"])');
+    var requested = document.getElementById(targetId);
     if (trigger) trigger.click();
+    // Retain legacy utility redirects when a panel has no visible menu entry.
+    else if (requested) {
+      if ('showPopover' in requested) requested.showPopover();
+      else {
+        requested.hidden = false;
+        (requested.querySelector('[autofocus]') || requested.querySelector('select,button')).focus({preventScroll:true});
+      }
+    }
     locationUrl.searchParams.delete('_utility');
     history.replaceState(history.state, '', locationUrl.href);
   }

@@ -1,0 +1,28 @@
+{% import "_figma_ui.html" as ui %}
+{% macro announcement_index(announcements, page, has_prev, has_next, page_size) -%}
+  {% if announcements %}
+  <section class="announcement-index-intro" aria-labelledby="announcement-index-label">
+    <span class="announcement-index-symbol">{{ ui.icon('arrow-up', 22) }}</span>
+    <div><h2 id="announcement-index-label">Published updates</h2><p>Center notices and updates for your courses and groups.</p></div>
+  </section>
+  <div class="announcement-index">
+    <div class="announcement-index-head" aria-hidden="true"><span>Scope</span><span>Announcement</span><span>Published on</span><span></span></div>
+    <ul class="announcement-index-list" aria-label="Announcements">
+      {% for item in announcements %}
+      <li><a class="announcement-index-row" href="{{ url_for('student.announcement_detail', announcement_public_id=item.public_id, page=page) }}" data-announcement-open data-announcement-id="{{ item.public_id }}">
+        <span class="announcement-scope">{{ _(item.scope_label) }}</span>
+        <span class="announcement-index-copy"><span class="announcement-index-title" dir="auto">{{ item.title }}</span><span class="announcement-context" dir="auto">{{ item.context if item.context else _('All students') }}</span></span>
+        <span class="announcement-index-date">{% if item.published_local %}<time datetime="{{ item.published_local.isoformat() }}" dir="ltr">{{ item.published_local.strftime('%Y-%m-%d') }}<span>{{ item.published_local.strftime('%H:%M') }}</span></time>{% else %}<span>Not published</span>{% endif %}</span>
+        <span class="announcement-row-arrow">{{ ui.icon('arrow-up', 17) }}</span>
+      </a></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% if has_prev or has_next %}
+  <nav class="announcement-pagination" aria-label="Announcement pages">
+    <span>{{ _('Page %(page)d · up to %(count)d per page', page=page, count=page_size) }}</span>
+    <div>{% if has_prev %}<a class="btn btn--secondary" href="{{ url_for('student.announcements_list', page=page - 1) }}">Previous</a>{% endif %}{% if has_next %}<a class="btn btn--secondary" href="{{ url_for('student.announcements_list', page=page + 1) }}">Next</a>{% endif %}</div>
+  </nav>
+  {% endif %}
+  {% else %}<div class="empty-state announcement-empty"><h2>No announcements</h2></div>{% endif %}
+{%- endmacro %}

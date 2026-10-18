@@ -1,23 +1,73 @@
 {% extends "layouts/portal_base.html" %}
 {% import "_dashboard_macros.html" as dash %}
 {% import "_figma_ui.html" as ui %}
-{% import "_product_ui.html" as product %}
+{% import "_announcement_macros.html" as ann %}
 {% block title %}Teacher Dashboard{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/dashboard.css', v='group-cockpit-20261017') }}">{% endblock %}
 {% block portal_content %}
-{{ product.workspace_heading('Teacher Dashboard', now.strftime('%A · %d %B %Y')) }}
-<div class="figma-dashboard-grid today-dashboard">
-{% if cards %}
 {% set class_active = next_class and next_class.start <= now and now < next_class.end %}
-{% if class_active %}{{ dash.class_card(next_class, now, tz_name, 'teacher') }}{% endif %}
-<section class="dash-section yc-section"><div class="today-section-heading"><h2>Work to review</h2><a href="{{ url_for('workspace.review_queue') }}">View review queue</a></div>
-{% if pending_reviews %}<ul class="today-list">{% for item in pending_reviews %}<li class="today-action-row"><div><span class="badge badge--neutral">{{ item.kind|capitalize }}</span><h3>{{ item.title }}</h3><p class="today-meta">{{ item.student_name }} · {{ item.group_name }}</p><time class="today-meta" datetime="{{ item.local_time.isoformat() }}">{{ item.local_time.strftime('%d %b · %H:%M') }}</time></div><a class="btn btn--secondary" href="{{ item.feedback_url }}">Review feedback</a></li>{% endfor %}</ul><p class="today-note">{{ 'Three oldest shown; more are waiting.' if review_has_more else 'Oldest submissions first.' }} Awaiting a saved comment, not a grade.</p>{% else %}<p>No submissions awaiting comments in your active groups.</p>{% endif %}
-</section>
-{% if not class_active %}{{ dash.class_card(next_class, now, tz_name, 'teacher') }}{% endif %}
-<section class="dash-section figma-wide yc-section" id="my-groups"><div class="today-section-heading"><h2>Teaching groups</h2><a href="{{ url_for('workspace.teacher_groups') }}">View all groups</a></div>
-{% if cards %}<p class="today-note">{{ cards|length }} current teaching assignments · {{ cards|sum(attribute='student_count') }} active enrollments across groups. A student in two groups counts twice.</p><ul class="today-list">{% for card in cards[:4] %}<li class="today-action-row"><div><h3><a href="{{ url_for('workspace.teacher_group',group_public_id=card.group_public_id) }}">{{ card.group_name }}</a></h3><p class="today-meta">{{ card.course_title }} · {{ card.term_name }} · {{ card.student_count }} active enrollments</p>{{ dash.operational_badge(card.operational) }}</div><nav class="workspace-inline-links" aria-label="{{ card.group_name }}"><a href="{{ url_for('teacher.group_attendance',group_public_id=card.group_public_id) }}">Attendance</a><a href="{{ url_for('teacher.group_gradebook',group_public_id=card.group_public_id) }}">Gradebook</a><a href="{{ url_for('teacher.group_activities',group_public_id=card.group_public_id,state='draft') }}">Draft activities</a></nav></li>{% endfor %}</ul>{% else %}<p>No active teaching assignments. Your groups appear when an administrator assigns you.</p>{% endif %}
-</section>
-{% else %}<section class="dash-section figma-wide yc-section"><h2>No active teaching assignments</h2><p>Your groups appear when an administrator assigns you.</p></section>{% endif %}
-{{ dash.compact_announcements(announcements[:1], 'teacher') }}
-
+{% set review_count_label = _('At least %(count)d submissions awaiting feedback', count=pending_reviews|length) if review_has_more else _n('%(count)d submission awaiting feedback', '%(count)d submissions awaiting feedback', pending_reviews|length) %}
+<div class="teacher-cockpit" data-teacher-dashboard>
+  <header class="cockpit-heading">
+    <div class="cockpit-greeting"><h1>{{ _('Welcome back,') }} <bdi>{{ current_user.full_name }}</bdi></h1><p><time datetime="{{ now.date().isoformat() }}">{{ ui_date(now.strftime('%A, %d %B %Y')) }}</time></p></div>
+    {% if cards %}<dl class="cockpit-summary"><div><dt>{{ ui.icon('users', 20) }}<span>Teaching groups</span></dt><dd>{{ cards|length }}</dd></div><div><dt>{{ ui.icon('users', 20) }}<span>active enrollments</span></dt><dd>{{ cards|sum(attribute='student_count') }}</dd></div></dl>{% endif %}
+  </header>
+  {% if cards %}
+  <section class="cockpit-class" aria-labelledby="cockpit-class-title">
+    <span class="cockpit-class-icon" aria-hidden="true">{{ ui.icon('book', 32) }}</span>
+    <div class="cockpit-class-identity"><h2 id="cockpit-class-title">{{ 'Class in progress' if class_active else 'Next class' }}</h2>{% if next_class %}<h3 dir="auto">{{ next_class.ref.group_name }}</h3><p class="cockpit-class-course"><bdi>{{ next_class.ref.course_title }}</bdi>{% if next_class.ref.level_name %} · <bdi>{{ next_class.ref.level_name }}</bdi>{% endif %}</p>{% else %}<p>No upcoming class is scheduled for your current groups.</p>{% endif %}</div>
+    {% if next_class %}
+    <div class="cockpit-class-facts"><span>{{ ui.icon('clock', 16) }}<time datetime="{{ next_class.start.isoformat() }}" title="{{ tz_name }}">{% if next_class.start.date() == now.date() %}{{ _('Today') }}{% else %}{{ ui_date(next_class.start.strftime('%d %b %Y')) }}{% endif %} · <bdi>{{ dash.time_range(next_class.start, next_class.end) }}</bdi></time></span><span>{{ ui.icon('room', 16) }}<bdi>{{ next_class.ref.location or _('Location not specified') }}</bdi></span></div>
+    <div class="cockpit-class-actions"><a class="btn btn--primary" href="{{ url_for('teacher.group_attendance', group_public_id=next_class.ref.group_public_id) }}" aria-label="{{ _('Open attendance for %(group)s', group=next_class.ref.group_name) }}"><span class="cockpit-class-desktop-label">Open attendance</span><span class="cockpit-class-phone-label">Attendance</span></a><a class="btn cockpit-class-group" href="{{ url_for('workspace.teacher_group', group_public_id=next_class.ref.group_public_id) }}">Open group</a></div>
+    {% else %}<a class="cockpit-calendar-link" href="{{ url_for('teacher.calendar') }}">View calendar{{ ui.icon('arrow', 16) }}</a>{% endif %}
+  </section>
+  {% endif %}
+  <div class="cockpit-tabs" data-cockpit-tabs hidden aria-label="{{ _('Teacher dashboard sections') }}">
+    <button type="button" id="cockpit-groups-tab" data-cockpit-tab="groups">My groups</button>
+    <button type="button" id="cockpit-feedback-tab" data-cockpit-tab="feedback" aria-label="{{ _('Feedback') }} — {{ review_count_label }}"><span>Feedback</span><span class="cockpit-count" dir="ltr" aria-hidden="true">{{ pending_reviews|length }}{{ '+' if review_has_more else '' }}</span></button>
+  </div>
+  <div class="cockpit-content">
+    <section class="cockpit-groups" id="cockpit-groups-panel" data-cockpit-panel="groups" aria-labelledby="cockpit-groups-title">
+      <header class="cockpit-section-heading"><h2 id="cockpit-groups-title" tabindex="-1">My teaching groups</h2><a href="{{ url_for('workspace.teacher_groups') }}">View all groups{{ ui.icon('arrow', 16) }}</a></header>
+      {% if cards %}
+      <div class="cockpit-group-grid">
+        {% for card in cards[:4] %}
+        <article class="cockpit-group cockpit-group--{{ loop.index0 % 3 }}">
+          <a class="cockpit-group-link" href="{{ url_for('workspace.teacher_group', group_public_id=card.group_public_id) }}">
+            <span class="cockpit-group-icon" aria-hidden="true">{{ ui.icon('book' if loop.index0 % 3 == 0 else 'users' if loop.index0 % 3 == 1 else 'message', 26) }}</span>
+            <div class="cockpit-group-copy"><h3 dir="auto">{{ card.group_name }}</h3><p><bdi>{{ card.course_title }}</bdi>{% if card.level_name %} · <bdi>{{ card.level_name }}</bdi>{% endif %}</p><p class="cockpit-group-term" dir="auto">{{ card.term_name }}</p><p class="cockpit-enrollments">{{ ui.icon('users', 14) }}<span>{{ card.student_count }} {{ _('active enrollments') }}</span></p>{% if not card.operational %}<p class="cockpit-group-state">{{ dash.operational_badge(false) }}</p>{% endif %}<span class="cockpit-group-open">Open group{{ ui.icon('arrow', 15) }}</span></div>
+            <span class="cockpit-group-arrow" aria-hidden="true">{{ ui.icon('chevron', 18) }}</span>
+          </a>
+          <nav class="cockpit-group-actions" aria-label="{{ _('Tools for %(group)s', group=card.group_name) }}"><a href="{{ url_for('teacher.group_attendance', group_public_id=card.group_public_id) }}">{{ ui.icon('calendar', 18) }}<span>Attendance</span></a><a href="{{ url_for('teacher.group_gradebook', group_public_id=card.group_public_id) }}">{{ ui.icon('graduation', 18) }}<span>Gradebook</span></a><a href="{{ url_for('teacher.group_activities', group_public_id=card.group_public_id) }}">{{ ui.icon('activity', 18) }}<span>Activities</span></a></nav>
+        </article>
+        {% endfor %}
+      </div>
+      <p class="cockpit-group-note">{% if cards|length > 4 %}{{ _('Showing %(shown)d of %(total)d groups.', shown=4, total=cards|length) }} {% endif %}{{ _('Active enrollments across groups; a student in two groups counts twice.') }}</p>
+      <a class="cockpit-groups-all" href="{{ url_for('workspace.teacher_groups') }}">View all groups{{ ui.icon('arrow', 16) }}</a>
+      {% else %}<div class="cockpit-empty"><span aria-hidden="true">{{ ui.icon('users', 30) }}</span><h3>No active teaching assignments</h3><p>Your groups appear when an administrator assigns you.</p></div>{% endif %}
+    </section>
+    <section class="cockpit-feedback cockpit-panel" id="cockpit-feedback-panel" data-cockpit-panel="feedback" aria-labelledby="cockpit-feedback-title">
+      <header class="cockpit-section-heading"><h2 id="cockpit-feedback-title" tabindex="-1">Waiting for your feedback</h2><a href="{{ url_for('workspace.review_queue') }}">View review queue{{ ui.icon('arrow', 16) }}</a></header>
+      {% if pending_reviews %}
+      <ol class="cockpit-review-list">
+        {% for item in pending_reviews %}
+        <li class="cockpit-review{% if loop.index > 2 %} cockpit-review-extra{% endif %}">
+          <span class="cockpit-review-icon{% if item.kind == 'speaking' %} cockpit-review-icon--speaking{% endif %}" aria-hidden="true">{{ ui.icon('microphone' if item.kind == 'speaking' else 'file', 20) }}</span>
+          <div class="cockpit-review-copy"><div class="cockpit-review-caption"><span class="cockpit-kind{% if item.kind == 'speaking' %} cockpit-kind--speaking{% endif %}">{{ _('Speaking' if item.kind == 'speaking' else 'Assignment') }}</span><time datetime="{{ item.local_time.isoformat() }}">{{ ui_date(item.local_time.strftime('%d %b %Y · %H:%M')) }}</time></div><h3 dir="auto">{{ item.title }}</h3><p><bdi>{{ item.student_name }}</bdi> · <bdi>{{ item.group_name }}</bdi></p></div>
+          <a class="btn cockpit-feedback-action" href="{{ item.feedback_url }}">Add feedback<span class="cockpit-sr-only"> — <bdi>{{ item.title }}</bdi> · <bdi>{{ item.student_name }}</bdi></span></a>
+        </li>
+        {% endfor %}
+      </ol>
+      <p class="cockpit-review-note cockpit-review-note--desktop">{{ 'Three oldest shown; more are waiting.' if review_has_more else 'Oldest submissions first.' }}</p>
+      <p class="cockpit-review-note cockpit-review-note--phone">{{ _('Oldest first. More submissions are available in the review queue.') if review_has_more or pending_reviews|length > 2 else _('Oldest submissions first.') }}</p>
+      {% else %}<div class="cockpit-empty cockpit-feedback-empty"><span aria-hidden="true">{{ ui.icon('check', 28) }}</span><p>No submissions awaiting comments in your active groups.</p></div>{% endif %}
+      <p class="cockpit-feedback-meaning">Awaiting a saved comment, not a grade.</p><a class="cockpit-review-all" href="{{ url_for('workspace.review_queue') }}">Open review queue{{ ui.icon('arrow', 16) }}</a>
+    </section>
+    <section class="cockpit-announcements cockpit-panel" data-cockpit-announcements aria-labelledby="cockpit-announcements-title">
+      <header class="cockpit-section-heading"><h2 id="cockpit-announcements-title">Announcements</h2><a href="{{ url_for('teacher.announcements_feed') }}">View all{{ ui.icon('arrow', 16) }}</a></header>
+      {% for item in announcements[:1] %}<a class="cockpit-announcement" href="{{ url_for('teacher.announcement_detail', announcement_public_id=item.public_id) }}"><span class="cockpit-announcement-icon" aria-hidden="true">{{ ui.icon('megaphone', 22) }}</span><div><h3 dir="auto">{{ item.title }}</h3><p><bdi>{{ item.context }}</bdi> {{ ann.scope_badge(item) }}</p>{% if item.published_local %}<time datetime="{{ item.published_local.isoformat() }}">{{ ui_date(item.published_local.strftime('%d %b %Y · %H:%M')) }}</time>{% endif %}</div><span class="cockpit-announcement-arrow" aria-hidden="true">{{ ui.icon('chevron', 16) }}</span></a>{% else %}<p class="cockpit-announcements-empty">No announcements yet.</p>{% endfor %}
+    </section>
+  </div>
 </div>
 {% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_dashboard.js', v='groups-feedback-20261017') }}" defer></script>{% endblock %}

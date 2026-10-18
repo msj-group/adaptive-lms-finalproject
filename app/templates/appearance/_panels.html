@@ -1,4 +1,23 @@
 {% import '_figma_ui.html' as appearance_ui %}
+{% if current_user.is_authenticated %}
+{% for preference, title, symbol, close_label in [('language', 'Language', 'globe', 'Close language options'), ('theme', 'Dark mode', 'moon', 'Close dark mode options')] %}
+<section id="workspace-{{ preference }}-panel" class="workspace-utility-panel workspace-preference-panel" popover="auto" role="dialog" aria-labelledby="{{ preference }}-panel-title" data-utility-panel>
+  <header class="utility-panel-heading"><span class="utility-panel-icon">{{ appearance_ui.icon(symbol,24) }}</span><div><h2 id="{{ preference }}-panel-title">{{ _(title) }}</h2></div><button type="button" class="utility-panel-close" popovertarget="workspace-{{ preference }}-panel" popovertargetaction="hide" aria-label="{{ _(close_label) }}">{{ appearance_ui.icon('close') }}</button></header>
+  <form class="appearance-settings" method="post" action="{{ url_for('appearance.update') }}" data-appearance-form data-research-form="display_preferences_submit">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}">
+    {% if preference == 'language' %}
+    <input type="hidden" name="theme" value="{{ ui_theme() }}">
+    <div class="field"><label for="preference-language">Language</label><select id="preference-language" name="language" autofocus><option value="en" lang="en"{% if ui_language() == 'en' %} selected{% endif %}>English</option><option value="ar" lang="ar"{% if ui_language() == 'ar' %} selected{% endif %}>العربية</option></select></div>
+    {% else %}
+    <input type="hidden" name="language" value="{{ ui_language() }}">
+    <div class="field"><label for="preference-theme">Appearance</label><select id="preference-theme" name="theme" autofocus><option value="system"{% if ui_theme() == 'system' %} selected{% endif %}>Follow device setting</option><option value="light"{% if ui_theme() == 'light' %} selected{% endif %}>Light</option><option value="dark"{% if ui_theme() == 'dark' %} selected{% endif %}>Dark</option></select></div>
+    {% endif %}
+    <button class="btn btn--primary" type="submit" data-research-id="display_preferences_submit">Apply preferences</button>
+  </form>
+  <p class="utility-panel-note">Saved only on this device. No answers, messages or personal records are stored by these preferences.</p>
+</section>
+{% endfor %}
+{% endif %}
 <section id="workspace-display-panel" class="workspace-utility-panel" popover="auto" role="dialog" aria-labelledby="display-panel-title" data-utility-panel>
   <header class="utility-panel-heading"><span class="utility-panel-icon">{{ appearance_ui.icon('settings',24) }}</span><div>{% if not current_user.is_authenticated or request.blueprint == 'messages' %}<p class="utility-panel-eyebrow">YOUR PREFERENCES</p>{% endif %}<h2 id="display-panel-title">Display</h2></div><button type="button" class="utility-panel-close" popovertarget="workspace-display-panel" popovertargetaction="hide" aria-label="Close display options">{{ appearance_ui.icon('close') }}</button></header>
   {% if not current_user.is_authenticated %}<p>Choose a look and language that feel right for you.</p>{% endif %}

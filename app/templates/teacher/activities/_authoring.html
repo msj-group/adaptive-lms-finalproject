@@ -1,0 +1,8 @@
+{% import '_figma_ui.html' as ui %}
+{% macro introduction(kind) -%}
+<div class="ta-author-intro">
+  <h2>Activity details</h2>
+  <p>{{ _({'assignment':'Give the task a title, explain what to do, then choose the answer type and dates.', 'quiz':'Give the quiz a title and short instructions. After saving, add questions and set its availability.', 'listening':'Add a title, an audio file and instructions. After saving, add questions and set its availability.', 'speaking':'Give the task a title, explain what students should say, then choose the dates.'}[kind]) }}</p>
+  <div class="ta-author-note">{{ ui.icon('lock', 16) }}<span>Saving creates a draft. Students see it only after you publish it and its opening time arrives.</span></div>
+</div>
+{%- endmacro %}

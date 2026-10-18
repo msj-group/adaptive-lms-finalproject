@@ -1,0 +1,129 @@
+/* Attendance presentation only. All original native forms keep their contracts. */
+.teacher-attendance { min-width:0; container:teacher-attendance / inline-size; }
+.teacher-attendance :is(h1,h2,h3,p,dd,td,.badge,.btn) { overflow-wrap:anywhere; }
+.teacher-attendance .tat-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px; }
+.yc-workspace .teacher-attendance .tat-heading h1 { margin:0; min-width:0; }
+.teacher-attendance .tat-intro { margin:0 0 20px; font-size:13px; color:var(--st-muted); }
+.teacher-attendance .tat-guidance { margin:12px 0 18px; color:var(--st-muted); font-size:12px; }
+.teacher-attendance .tat-guidance summary { display:list-item; width:fit-content; min-height:44px; padding-block:12px; color:var(--st-blue); cursor:pointer; }
+.teacher-attendance .tat-guidance p { margin:0; max-width:90ch; line-height:1.8; }
+.teacher-attendance .tat-panel { padding:var(--st-panel-pad); border:1px solid var(--st-border); border-radius:var(--st-panel-radius); background:var(--st-glass); box-shadow:var(--st-shadow); }
+.teacher-attendance .tat-directory { display:grid; gap:12px; margin:0; padding:0; list-style:none; }
+.teacher-attendance .tat-group { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:16px; }
+.teacher-attendance .tat-group-heading { display:flex; align-items:baseline; flex-wrap:wrap; gap:10px; }
+.yc-workspace .teacher-attendance .tat-group h2 { margin:0; font:500 20px/1.4 var(--st-display); }
+.teacher-attendance .tat-group p { margin:6px 0 0; color:var(--st-muted); font-size:12px; }
+.teacher-attendance .tat-group .alert { grid-column:1/-1; margin:0; }
+.teacher-attendance .tat-summary { margin-bottom:24px; }
+.yc-workspace .teacher-attendance .tat-summary h2 { margin:0 0 20px; font:500 var(--st-subtitle-size)/1.4 var(--st-display); }
+.teacher-attendance .tat-summary-body { display:grid; grid-template-columns:112px minmax(0,1fr); align-items:center; gap:26px; }
+.teacher-attendance .tat-ring { width:112px; height:112px; position:relative; }
+.teacher-attendance .tat-ring svg { display:block; width:100%; height:100%; transform:rotate(-90deg); }
+.teacher-attendance .tat-ring circle { fill:none; stroke-width:8; stroke-linecap:butt; }
+.teacher-attendance .tat-ring-track { stroke:var(--st-divider); }
+.teacher-attendance .tat-ring-segment { stroke:var(--tat-color); }
+.teacher-attendance .tat-ring-total { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+.teacher-attendance .tat-ring-total strong { color:var(--st-ink); font:600 28px/1.2 var(--st-display); font-variant-numeric:tabular-nums; }
+.teacher-attendance .tat-ring-total span { color:var(--st-muted); font-size:11px; }
+.teacher-attendance .tat-breakdown { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:20px; list-style:none; margin:0; padding:0; }
+.teacher-attendance .tat-stat { min-width:0; }
+.teacher-attendance .tat-stat--present { --tat-color:var(--ui-success); }
+.teacher-attendance .tat-stat--absent { --tat-color:var(--st-muted); }
+.teacher-attendance .tat-stat--late { --tat-color:var(--ui-warning); }
+.teacher-attendance .tat-stat--excused { --tat-color:var(--st-blue); }
+.teacher-attendance .tat-stat-label { display:inline-flex; align-items:center; gap:6px; color:var(--st-muted); font-size:12px; }
+.teacher-attendance .tat-stat-label i { width:5px; height:5px; flex-shrink:0; border-radius:50%; background:var(--tat-color); }
+.teacher-attendance .tat-stat-count { color:var(--st-muted); font-size:12px; margin-inline-start:8px; font-variant-numeric:tabular-nums; }
+.teacher-attendance .tat-percentage { display:block; margin:10px 0; color:var(--st-ink); font:600 28px/1.2 var(--st-display); font-variant-numeric:tabular-nums; text-align:start; }
+.teacher-attendance .tat-bar { height:5px; border-radius:8px; overflow:hidden; background:var(--st-divider); }
+.teacher-attendance .tat-bar>span { display:block; height:100%; border-radius:inherit; background:var(--tat-color); }
+.yc-workspace .teacher-attendance .tat-caption { margin:16px 0 0; color:var(--st-muted); font-size:12px; line-height:1.8; }
+.teacher-attendance .tat-section-heading { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:10px; margin:24px 0 14px; }
+.yc-workspace .teacher-attendance .tat-section-heading h2 { margin:0; }
+.teacher-attendance .tat-section-heading>span { color:var(--st-muted); font-size:12px; }
+.teacher-attendance .tat-session-table { min-width:780px; }
+.teacher-attendance .tat-session-table td:first-child { white-space:nowrap; }
+.teacher-attendance .tat-session-table td:nth-child(3) { overflow-wrap:anywhere; max-width:14rem; }
+.teacher-attendance .tat-session-table td:last-child .btn { white-space:nowrap; }
+.teacher-attendance .tat-phone-sessions { display:none; }
+.teacher-attendance .tat-facts { display:grid; grid-template-columns:140px minmax(0,1fr); gap:10px 20px; margin:0; }
+.teacher-attendance .tat-facts dt { color:var(--st-muted); font-size:12px; }
+.teacher-attendance .tat-facts dd { margin:0; min-width:0; }
+.teacher-attendance .tat-roster-table { width:100%; min-width:0; table-layout:fixed; }
+.teacher-attendance .tat-roster-table th:first-child { width:24%; }
+.teacher-attendance .tat-roster-table th:nth-child(2) { width:20%; }
+.teacher-attendance .tat-roster-table td { white-space:normal; }
+.teacher-attendance .tat-roster-table td::before { content:none; display:none; }
+.teacher-attendance .tat-private-note { white-space:pre-wrap; }
+.teacher-attendance .tat-mark-table { width:100%; min-width:0; table-layout:fixed; }
+.teacher-attendance .tat-mark-table th:first-child { width:22%; }
+.teacher-attendance .tat-mark-table th:nth-child(2) { width:43%; }
+.teacher-attendance .tat-mark-table td { vertical-align:top; white-space:normal; }
+.teacher-attendance .tat-mark-table fieldset { border:0; min-width:0; margin:0; padding:0; }
+.teacher-attendance .tat-mark-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+.teacher-attendance .tat-mark-choice { display:flex; align-items:center; gap:8px; margin:0; padding:8px; min-height:44px; min-width:0; border:1px solid var(--st-border); border-radius:var(--st-control-radius); background:var(--st-control); cursor:pointer; font-size:12px; }
+.teacher-attendance .tat-mark-choice:has(input:checked) { border-color:var(--st-blue); background:var(--st-wash); }
+.teacher-attendance .tat-mark-choice:has(input:focus-visible) { outline:2px solid var(--st-blue); outline-offset:2px; }
+.teacher-attendance .tat-mark-choice input { flex:0 0 18px; width:18px; height:18px; min-width:18px; min-height:18px; margin:0; accent-color:var(--st-blue); }
+.teacher-attendance .tat-mark-table textarea { min-width:0; width:100%; resize:vertical; }
+.teacher-attendance .tat-note-label { display:block; font-size:12px; color:var(--st-muted); margin-bottom:7px; }
+.teacher-attendance .tat-finalize { border-color:var(--color-danger); }
+.teacher-attendance .tat-finalize label { align-items:flex-start!important; }
+.teacher-attendance .tat-finalize input[type=checkbox] { flex-shrink:0; margin-top:5px; }
+@container teacher-attendance (max-width:740px) {
+  .teacher-attendance .tat-desktop-sessions { display:none; }
+  .teacher-attendance .tat-phone-sessions { display:grid; gap:12px; margin:0; padding:0; list-style:none; }
+  .teacher-attendance .tat-session-card { min-width:0; overflow:hidden; border:1px solid var(--st-border); border-radius:var(--st-panel-radius); background:var(--st-glass); }
+  .teacher-attendance .tat-session-card summary { display:grid; gap:10px; padding:16px; list-style:none; cursor:pointer; }
+  .teacher-attendance .tat-session-card summary::-webkit-details-marker { display:none; }
+  .teacher-attendance .tat-card-top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .teacher-attendance .tat-card-top time { font-size:16px; color:var(--st-ink); font-weight:500; }
+  .teacher-attendance .tat-card-meta { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; color:var(--st-muted); font-size:12px; }
+  .teacher-attendance .tat-card-meta>svg { margin-inline-start:auto; flex-shrink:0; }
+  .teacher-attendance details[open] .tat-card-meta>svg { transform:rotate(180deg); }
+  .teacher-attendance .tat-card-body { padding:0 16px 16px; }
+  .teacher-attendance .tat-card-body p { margin:0 0 12px; padding-top:12px; border-top:1px solid var(--st-divider); font-size:12px; }
+  .teacher-attendance .tat-card-actions { display:flex; flex-wrap:wrap; gap:8px; padding:12px 16px; border-top:1px solid var(--st-divider); }
+  .teacher-attendance .tat-card-actions .btn { flex:1 1 auto; }
+  .teacher-attendance .tat-breakdown { grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px 20px; }
+  .teacher-attendance .tat-roster-table,.teacher-attendance .tat-mark-table { display:block; table-layout:auto; }
+  .teacher-attendance :is(.tat-roster-table,.tat-mark-table) thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  .teacher-attendance :is(.tat-roster-table,.tat-mark-table) tbody { display:grid; gap:12px; }
+  .teacher-attendance :is(.tat-roster-table,.tat-mark-table) tr { display:grid; grid-template-columns:minmax(0,1fr) auto; border:1px solid var(--st-border); border-radius:var(--st-control-radius); background:var(--st-glass); padding:14px; gap:12px; }
+  .teacher-attendance :is(.tat-roster-table,.tat-mark-table) td { display:block; border:0; padding:0; min-width:0; }
+  .teacher-attendance .tat-roster-table td:last-child { grid-column:1/-1; padding-top:12px; border-top:1px solid var(--st-divider); }
+  .teacher-attendance .tat-mark-table tr { grid-template-columns:minmax(0,1fr); }
+  .teacher-attendance .tat-mark-table td:first-child { font-weight:600; }
+  .teacher-attendance .tat-group { grid-template-columns:minmax(0,1fr); gap:14px; }
+  .teacher-attendance .tat-group>a { justify-self:start; }
+}
+@container teacher-attendance (max-width:430px) {
+  .teacher-attendance .tat-panel { padding:16px; }
+  .teacher-attendance .tat-summary-body { grid-template-columns:72px minmax(0,1fr); gap:14px; }
+  .teacher-attendance .tat-ring { width:72px; height:72px; }
+  .teacher-attendance .tat-ring-total strong { font-size:24px; }
+  .teacher-attendance .tat-breakdown { gap:15px 12px; }
+  .teacher-attendance .tat-stat { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 4px; align-items:center; }
+  .teacher-attendance .tat-stat-label { font-size:11px; gap:4px; }
+  .teacher-attendance .tat-stat-count { margin:0; font-size:11px; }
+  .teacher-attendance .tat-percentage { grid-column:1/-1; margin:0; font-size:22px; }
+  .teacher-attendance .tat-bar { grid-column:1/-1; height:4px; }
+  .teacher-attendance .tat-facts { grid-template-columns:minmax(0,1fr); gap:5px; }
+  .teacher-attendance .tat-facts dd:not(:last-child) { margin-bottom:10px; }
+}
+@container teacher-attendance (max-width:310px) {
+  .teacher-attendance .tat-summary-body { grid-template-columns:58px minmax(0,1fr); gap:10px; }
+  .teacher-attendance .tat-ring { width:58px; height:58px; }
+  .teacher-attendance .tat-ring-total strong { font-size:20px; }
+  .teacher-attendance .tat-ring-total span { font-size:9px; }
+  .teacher-attendance .tat-stat-label { font-size:10px; gap:3px; }
+  .teacher-attendance .tat-stat-label i { width:4px; height:4px; }
+  .teacher-attendance .tat-percentage { font-size:20px; }
+}
+@media(forced-colors:active) {
+  .teacher-attendance .tat-ring svg { display:none; }
+  .teacher-attendance .tat-ring { border:1px solid CanvasText; border-radius:50%; }
+  .teacher-attendance .tat-bar { border:1px solid CanvasText; }
+  .teacher-attendance .tat-bar>span { background:Highlight; }
+  .teacher-attendance .tat-mark-choice:has(input:checked) { border:2px solid Highlight; }
+}

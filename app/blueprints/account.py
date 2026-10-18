@@ -3,8 +3,9 @@ from flask import Blueprint, abort, current_app, flash, redirect, render_templat
 from flask_login import current_user, logout_user
 from flask_limiter.util import get_remote_address
 from sqlalchemy.exc import SQLAlchemyError
+from werkzeug.exceptions import RequestEntityTooLarge
 
-from app.blueprints.account_forms import ChangePasswordForm, ProfilePhotoForm
+from app.blueprints.account_forms import ChangePasswordForm, ProfilePhotoForm, RemoveProfilePhotoForm
 from app.blueprints.collector.hooks import end_session_on_logout
 from app.extensions import db, limiter
 from app.security.decorators import roles_required
@@ -18,7 +19,7 @@ from app.services.profile_photos import (
 )
 from app.services.self_service_accounts import (
     ACCOUNT_ROLES, change_own_password, change_own_photo, read_self_service_token,
-    self_service_snapshot, self_service_token,
+    remove_own_photo, self_service_snapshot, self_service_token,
 )
 
 account_bp = Blueprint("account", __name__, url_prefix="/account")
@@ -50,13 +51,16 @@ def private_response(response):
     return response
 
 
-def _settings(password_form=None, photo_form=None, status=200):
+def _settings(password_form=None, photo_form=None, remove_photo_form=None, photo_error=None, status=200):
     from app.blueprints.admin.navigation import ADMIN_NAV_SECTIONS
     password_form = password_form or ChangePasswordForm(formdata=None, prefix="password-")
     photo_form = photo_form or ProfilePhotoForm(formdata=None, prefix="photo-")
+    remove_photo_form = remove_photo_form or RemoveProfilePhotoForm(formdata=None, prefix="remove-photo-")
     password_form.state.data = self_service_token(current_user, "password")
     photo_form.state.data = self_service_token(current_user, PHOTO_ACTION)
+    remove_photo_form.state.data = self_service_token(current_user, PHOTO_ACTION)
     return render_template("workspace/account.html", password_form=password_form, photo_form=photo_form,
+        remove_photo_form=remove_photo_form, photo_error=photo_error,
         admin_nav_sections=ADMIN_NAV_SECTIONS if current_user.role == "administrator" else (),
         active_nav="account", tz_name=current_app.config.get("APP_TIMEZONE", "UTC")), status
 
@@ -123,6 +127,9 @@ def password():
 @roles_required(*ACCOUNT_ROLES)
 @limiter.limit("10 per minute", key_func=_limit_key)
 def upload_photo():
+    # Use the existing photo endpoint/page classification for both photo actions.
+    if request.form.get("remove-photo-operation") == "remove":
+        return _remove_photo()
     form = ProfilePhotoForm(prefix="photo-")
     if not form.validate_on_submit():
         return _settings(photo_form=form, status=400)
@@ -131,7 +138,7 @@ def upload_photo():
     stored, committed = None, False
     try:
         expected = _expected(form, PHOTO_ACTION)
-        stored = store_profile_photo(config, form.photo.data)
+        stored = store_profile_photo(config, form.photo.data, crop=form.crop.data)
         change_own_photo(public_id, role, actor_id, expected, stored)
         db.session.commit()
         committed = True
@@ -141,12 +148,10 @@ def upload_photo():
         return _settings(photo_form=form, status=400)
     except AccountConflict as error:
         db.session.rollback()
-        flash(str(error), "danger")
-        return _settings(photo_form=form, status=409)
+        return _settings(photo_form=form, photo_error=str(error), status=409)
     except (SQLAlchemyError, OSError, StorageContainmentError):
         db.session.rollback()
-        flash("Your photo could not be saved. Please try again.", "danger")
-        return _settings(photo_form=form, status=503)
+        return _settings(photo_form=form, photo_error="Your photo could not be saved. Please try again.", status=503)
     except BaseException:
         db.session.rollback()
         raise
@@ -155,6 +160,36 @@ def upload_photo():
             delete_stored_file(config, stored.storage_key)
     flash("Your profile photo was updated.", "success")
     return redirect(url_for("account.settings"))
+
+
+def _remove_photo():
+    form = RemoveProfilePhotoForm(prefix="remove-photo-")
+    if not form.validate_on_submit():
+        return _settings(remove_photo_form=form, status=400)
+    try:
+        expected = _expected(form, PHOTO_ACTION)
+        remove_own_photo(current_user.public_id, current_user.role, current_user.id, expected)
+        db.session.commit()
+    except AccountConflict as error:
+        db.session.rollback()
+        return _settings(remove_photo_form=form, photo_error=str(error), status=409)
+    except SQLAlchemyError:
+        db.session.rollback()
+        return _settings(remove_photo_form=form, photo_error="Your photo could not be deleted. Please try again.", status=503)
+    except BaseException:
+        db.session.rollback()
+        raise
+    flash("Your profile photo was deleted.", "success")
+    return redirect(url_for("account.settings"))
+
+
+@account_bp.errorhandler(RequestEntityTooLarge)
+def photo_too_large(error):
+    if request.endpoint != "account.upload_photo" or not current_user.is_authenticated \
+            or current_user.role not in ACCOUNT_ROLES:
+        return render_template("errors/workspace.html", code=413, reference=None), 413
+    # Fresh forms avoid re-reading a rejected multipart request during rendering.
+    return _settings(photo_error="Choose a photo no larger than 5 MB.", status=413)
 
 
 @account_bp.get("/photo")

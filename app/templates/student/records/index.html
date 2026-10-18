@@ -2,25 +2,38 @@
 {% import "_figma_ui.html" as ui %}
 {% block title %}My records{% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/records.css', v='records-all-20261015') }}">{% endblock %}
 {% block portal_content %}
-<div class="st-journal"><nav class="workspace-tabs" aria-label="My records sections"><a href="{{ url_for('student.records') }}" aria-current="page">Enrollment history</a><a href="{{ url_for('student.grades_list') }}">Released grades</a><a href="{{ url_for('student.attendance_list') }}">Finalized attendance</a></nav>
-<h1 data-workspace-page-heading>My records<span class="figma-brand-dot">.</span></h1>
-<p class="ds-section__desc">Enrollment history, including released results after withdrawal or archival.</p>
-<div class="figma-record-grid">
-{% for episode in episodes.items %}
-  <article class="st-panel">
-    <span class="badge badge--primary">{{ episode.status|capitalize }}</span>
-    <h2 style="margin-top: 16px">{{ episode.group.course.title }}</h2>
-    <p class="card__body">{{ episode.group.name }} · {{ episode.group.academic_term.name }} · Enrollment started {{ workspace_local(episode.created_at).strftime('%d %b %Y, %H:%M') }}</p>
-    <div class="ds-row">{% for kind,label in kinds.items() %}<a class="btn btn--secondary" href="{{ url_for('student.episode_records', episode_public_id=episode.public_id, kind=kind) }}">{{ label }} {{ ui.icon('arrow-up', 15) }}</a>{% endfor %}</div>
-  </article>
-{% else %}
-  <div class="empty-state"><div class="empty-state__title">Your journey starts here.</div><div>No enrollment records yet.</div></div>
-{% endfor %}
-</div>
-<nav class="figma-pagination" aria-label="Enrollment pages">
-{% if episodes.has_prev %}<a class="btn btn--secondary" href="{{ url_for('student.records', page=episodes.prev_num) }}">Previous</a>{% endif %}
-{% if episodes.has_next %}<a class="btn btn--secondary" href="{{ url_for('student.records', page=episodes.next_num) }}">Next</a>{% endif %}
-</nav>
+<div class="st-journal record-workspace" data-record-workspace>
+  <div class="record-page-heading">
+    <h1 data-workspace-page-heading dir="auto">My records<span class="figma-brand-dot">.</span></h1>
+    <details class="record-filters" data-record-filters>
+      <summary><span class="record-filter-heading">{{ ui.icon('settings', 18) }}<span>Filters</span></span><span class="record-filter-arrow">{{ ui.icon('chevron-down', 16) }}</span></summary>
+      <form method="get" action="{{ url_for('student.records') }}" class="record-filter-form st-panel" data-record-filter-form>
+        <div class="field"><label for="record-course">Course</label><select name="course" id="record-course" data-record-course><option value="all"{% if selected_course == 'all' %} selected{% endif %}>All</option>{% for course in courses %}<option value="{{ course.public_id }}"{% if course.public_id == selected_course %} selected{% endif %}>{{ course.title }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="record-enrollment">Enrollment period</label><select name="enrollment" id="record-enrollment" data-record-enrollment><option value="all"{% if selected_enrollment == 'all' %} selected{% endif %}>All</option>{% for enrollment in enrollments %}<option value="{{ enrollment.public_id }}" data-course="{{ enrollment.group.course.public_id }}"{% if enrollment.public_id == selected_enrollment %} selected{% endif %}{% if selected_course != 'all' and enrollment.group.course.public_id != selected_course %} hidden disabled{% endif %}>{{ enrollment.group.course.title }} · {{ enrollment.group.name }} · {{ enrollment.group.academic_term.name }} · {{ workspace_local(enrollment.created_at).strftime('%d %b %Y') }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="record-type">Record type</label><select name="type" id="record-type"><option value="all"{% if record_type == 'all' %} selected{% endif %}>All</option><optgroup label="{{ _('Activities') }}">{% for key,label in activity_types.items() %}{% if key != 'all' and (key != 'results' or record_type == 'results') %}<option value="{{ key }}"{% if key == record_type %} selected{% endif %}>{{ _(label) }}</option>{% endif %}{% endfor %}</optgroup><optgroup label="{{ _('Other records') }}">{% for key,label in record_types.items() %}<option value="{{ key }}"{% if key == record_type %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</optgroup></select></div>
+        <div class="record-filter-actions"><button type="submit" class="btn btn--primary">Apply filters</button><a class="btn" href="{{ url_for('student.records') }}">Clear filters</a></div>
+        <noscript><p class="ds-section__desc">After changing course, apply filters to load its enrollment periods.</p></noscript>
+      </form>
+    </details>
+  </div>
+  {% if enrollments %}
+  {% if summary is not none %}
+  <section class="record-summary st-panel" aria-label="{{ _('Submission summary') }}">
+    <span class="record-summary-icon">{{ ui.icon('check', 28) }}</span>
+    <div class="record-summary-count"><strong>{{ summary.total }}</strong><span>Recorded submissions</span></div>
+    <ul class="record-summary-breakdown" aria-label="{{ _('Submission types') }}">
+      {% set count_labels = {'quizzes': ('%(count)d quiz attempt', '%(count)d quiz attempts'), 'listening': ('%(count)d listening attempt', '%(count)d listening attempts'), 'assignments': ('%(count)d assignment submission', '%(count)d assignment submissions'), 'speaking': ('%(count)d speaking submission', '%(count)d speaking submissions')} %}
+      {% for key, count in summary.counts.items() %}{% if count or record_type == key %}<li>{{ _n(count_labels[key][0], count_labels[key][1], count) }}</li>{% endif %}{% endfor %}
+      {% if summary.expired %}<li class="record-expired-count">{{ ui.icon('clock', 14) }}{{ _n('%(count)d expired attempt', '%(count)d expired attempts', summary.expired) }}</li>{% endif %}
+    </ul>
+  </section>
+  {% endif %}
+  <div class="record-history-heading"><h2>{{ _(history_title) }}</h2><div><span class="ds-section__desc">Newest first</span><details class="record-other"><summary>Other records {{ ui.icon('chevron-down', 15) }}</summary><nav aria-label="{{ _('Other records') }}">{% for key, label in kinds.items() %}<a href="{{ url_for('student.records', course=selected_course, enrollment=selected_enrollment, type=('results' if key == 'quizzes' else key)) }}"{% if key == record_type or key == 'quizzes' and record_type == 'results' %} aria-current="page"{% endif %}>{{ _(label) }}</a>{% endfor %}</nav></details></div></div>
+  {% include "student/records/_timeline.html" %}
+  {% if page > 1 or has_next %}<nav class="figma-pagination record-pagination" aria-label="{{ _('Record pages') }}">{% if page > 1 %}<a class="btn" href="{{ url_for('student.records', course=selected_course, enrollment=selected_enrollment, type=record_type, page=page-1) }}">Previous</a>{% endif %}<span>{{ _('Page %(page)s', page=page) }}</span>{% if has_next %}<a class="btn" href="{{ url_for('student.records', course=selected_course, enrollment=selected_enrollment, type=record_type, page=page+1) }}">Next</a>{% endif %}</nav>{% endif %}
+  {% else %}<div class="empty-state">{{ ui.icon('file', 24) }}<p>No enrollment records yet.</p></div>{% endif %}
 </div>
 {% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/student_records.js', v='records-all-20261015') }}" defer></script>{% endblock %}

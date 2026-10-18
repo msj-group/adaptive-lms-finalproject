@@ -2,7 +2,7 @@
 from app.i18n import LocalizedFlaskForm as FlaskForm
 from flask_wtf.file import FileField, FileRequired
 from wtforms import HiddenField, PasswordField, SubmitField
-from wtforms.validators import DataRequired, EqualTo, Length
+from wtforms.validators import AnyOf, DataRequired, EqualTo, Length, Optional
 
 from app.security.passwords import ACCOUNT_PASSWORD_MAX_LENGTH, ACCOUNT_PASSWORD_MIN_LENGTH
 
@@ -22,5 +22,12 @@ class ChangePasswordForm(FlaskForm):
 
 class ProfilePhotoForm(FlaskForm):
     state = HiddenField(validators=[DataRequired(), Length(max=2048)])
+    crop = HiddenField(validators=[Optional(), Length(max=512, message="Choose a valid photo crop and try again.")])
     photo = FileField("Choose a photo", validators=[FileRequired("Choose a photo to upload.")])
     submit = SubmitField("Save photo")
+
+
+class RemoveProfilePhotoForm(FlaskForm):
+    state = HiddenField(validators=[DataRequired(), Length(max=2048)])
+    operation = HiddenField(default="remove", validators=[DataRequired(), AnyOf(["remove"])])
+    submit = SubmitField("Delete photo")

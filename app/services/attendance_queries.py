@@ -20,6 +20,8 @@ Design rules (Part Phase 4 / M07):
   and the two aggregates are ``GROUP BY`` queries whose result sets are
   bounded by (page size x four statuses) and by four statuses
   respectively. Nothing loads an unbounded attendance history.
+  Student filter options fetch distinct Course/Group metadata only, one row
+  per Group represented in that Student's own finalized history.
 - **No N+1.** Status counts for a whole page of sessions are one query
   keyed by the page's session ids, never one query per row.
 - **Every row this module returns is converted to a plain presentation
@@ -713,7 +715,45 @@ def _student_finalized_base(student_id):
     )
 
 
-def student_attendance_page(student_id, page):
+def _student_attendance_filters(query, course="all", group="all", status="all",
+                                date_from=None, date_to=None):
+    """Apply the same validated filters to the page and its full-scope totals."""
+    if course != "all":
+        query = query.filter(Course.public_id == course)
+    if group != "all":
+        query = query.filter(Group.public_id == group)
+    if status != "all":
+        query = query.filter(AttendanceRecord.status == status)
+    if date_from is not None:
+        query = query.filter(AttendanceSession.session_date >= date_from)
+    if date_to is not None:
+        query = query.filter(AttendanceSession.session_date <= date_to)
+    return query
+
+
+def student_attendance_filter_options(student_id):
+    """Only Course/Group metadata from this Student's own finalized history."""
+    rows = (
+        _student_finalized_base(student_id)
+        .with_entities(Course.public_id.label("course_public_id"),
+                       Course.title.label("course_title"),
+                       Group.public_id.label("group_public_id"),
+                       Group.name.label("group_name"))
+        .distinct()
+        .order_by(Course.title.asc(), Course.public_id.asc(),
+                  Group.name.asc(), Group.public_id.asc())
+        .all()
+    )
+    courses = {}
+    groups = []
+    for row in rows:
+        courses[row.course_public_id] = dict(public_id=row.course_public_id, title=row.course_title)
+        groups.append(dict(public_id=row.group_public_id, name=row.group_name,
+                           course_public_id=row.course_public_id))
+    return list(courses.values()), groups
+
+
+def student_attendance_page(student_id, page, **filters):
     """``(rows, has_next)`` -- one bounded page of this Student's own
     finalized attendance, newest session date first.
 
@@ -724,7 +764,7 @@ def student_attendance_page(student_id, page):
     """
     offset, limit = _session_page_query(page)
     rows = (
-        _student_finalized_base(student_id)
+        _student_attendance_filters(_student_finalized_base(student_id), **filters)
         .order_by(AttendanceSession.session_date.desc(), AttendanceRecord.id.desc())
         .offset(offset)
         .limit(limit)
@@ -755,7 +795,7 @@ def build_student_attendance_view(rows):
     ]
 
 
-def student_status_totals(student_id):
+def student_status_totals(student_id, **filters):
     """This Student's own finalized-record count per status, as an ordered
     list of presentation dicts plus the overall total.
 
@@ -765,25 +805,13 @@ def student_status_totals(student_id):
     above, so the totals can never describe rows the list does not show.
     Its result set is bounded to at most four rows.
 
-    **Counts only.** There is deliberately no percentage, no rate, no
-    "attendance score" and no center-wide comparison: any of those would
-    read as a grade, Grades are an undecided module, and a percentage over
-    a partially recorded term would be actively misleading.
+    Counts cover the complete filtered history, independently of pagination.
+    The Student route derives each status's percentage of this exact total;
+    it is a distribution of recorded marks, not a grade or scheduled-class rate.
     """
     rows = (
-        db.session.query(AttendanceRecord.status, func.count(AttendanceRecord.id))
-        .select_from(AttendanceRecord)
-        .join(
-            AttendanceSession,
-            AttendanceRecord.attendance_session_id == AttendanceSession.id,
-        )
-        .join(User, AttendanceRecord.student_id == User.id)
-        .filter(
-            AttendanceRecord.student_id == student_id,
-            User.role == _STUDENT,
-            User.status == _USER_ACTIVE,
-            AttendanceSession.finalized_at.isnot(None),
-        )
+        _student_attendance_filters(_student_finalized_base(student_id), **filters)
+        .with_entities(AttendanceRecord.status, func.count(AttendanceRecord.id))
         .group_by(AttendanceRecord.status)
         .all()
     )

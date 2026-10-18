@@ -92,6 +92,7 @@ from app.services.calendar_queries import (
     span_days,
 )
 from app.services.schedule_occurrences import app_now, utc_reference_now
+from app.services.calendar_presentation import prepare_calendar
 
 _RANGE_NORMALIZED_MESSAGE = (
     f"That date range could not be used as asked for, so your calendar is showing the "
@@ -188,6 +189,7 @@ def calendar():
 
     return _private_no_store(
         "teacher/calendar/index.html",
+        calendar=prepare_calendar(rows, a_range, today, "teacher", request.args),
         days=group_by_day(rows),
         entry_count=len(rows),
         truncated=truncated,

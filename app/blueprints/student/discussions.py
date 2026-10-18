@@ -109,6 +109,9 @@ def _topic_or_404(group, topic_public_id):
 
 def _topic_url(group_public_id, topic_public_id, page=1, anchor=None):
     values = {"group_public_id": group_public_id, "topic_public_id": topic_public_id}
+    topic_page = normalize_page(request.args.get("topic_page"))
+    if topic_page > 1:
+        values["topic_page"] = topic_page
     if page > 1:
         values["page"] = page
     if anchor:
@@ -124,54 +127,101 @@ def _reply_url(group_public_id, topic, reply_public_id):
 @student_bp.get("/discussions")
 @roles_required(_STUDENT)
 def discussions_overview():
-    """The Groups this Student is currently enrolled in, with topic counts."""
+    """Open the first current Group, or a server-authorized GET selection."""
     groups, truncated = member_groups(current_user.id, _STUDENT)
-    counts = topic_counts([group["id"] for group in groups])
+    selected = request.args.get("group")
+    group = _group_or_404(current_user.id, selected) if selected else (groups[0] if groups else None)
+    if group is not None:
+        return _render_group_workspace(group, groups, truncated)
     return private_no_store(
         "student/discussions/overview.html",
-        groups=build_group_cards(groups, counts),
+        groups=[],
+        group=None,
         truncated=truncated,
         group_limit=GROUP_LIMIT,
+    )
+
+
+def _workspace_context(group, topic_page, groups=None, truncated=False, list_view=False):
+    """Bounded navigation metadata; the selected Group is already authorized."""
+    if groups is None:
+        groups, truncated = member_groups(current_user.id, _STUDENT)
+    groups = list(groups)
+    # A direct link may address an owned Group beyond the overview's first 50.
+    if not any(item["public_id"] == group["public_id"] for item in groups):
+        groups.append(group)
+    cards = build_group_cards(groups, topic_counts([item["id"] for item in groups]))
+    selected = next(item for item in cards if item["public_id"] == group["public_id"])
+    rows, has_next = topics_page(group["id"], topic_page)
+    if not rows and topic_page > 1:
+        topic_page = 1
+        rows, has_next = topics_page(group["id"], topic_page)
+    topics = build_topic_list_view(rows, reply_counts([row[0] for row in rows]), _tz_name())
+    return {
+        "groups": cards,
+        "truncated": truncated,
+        "group_limit": GROUP_LIMIT,
+        "topics": topics,
+        "topic_page": topic_page,
+        "topics_has_next": has_next,
+        "topics_has_prev": topic_page > 1,
+        "topic_page_size": TOPIC_PAGE_SIZE,
+        "topic_total_count": selected["topic_count"],
+        "topic_open_count": selected["open_count"],
+        "list_view": list_view,
+    }
+
+
+def _render_group_workspace(group, groups=None, truncated=False):
+    """Desktop previews the first paged topic; phones retain the topic list."""
+    workspace = _workspace_context(
+        group, normalize_page(request.args.get("page")), groups, truncated, list_view=True
+    )
+    topic = (
+        group_topic(group["id"], workspace["topics"][0]["public_id"])
+        if workspace["topics"] else None
+    )
+    if topic is not None:
+        return _render_topic(
+            group, topic, current_user.id, current_user.public_id,
+            workspace=workspace, template="student/discussions/list.html", reply_page=1,
+        )
+    return private_no_store(
+        "student/discussions/list.html", group=public_group(group), topic=None,
+        tz_name=_tz_name(), **workspace,
     )
 
 
 @student_bp.get("/groups/<group_public_id>/discussions")
 @roles_required(_STUDENT)
 def discussions_group(group_public_id):
-    """One Group's topics, newest first, 20 per page."""
+    """One Group's Focus workspace, with the existing 20-topic page boundary."""
     group = _group_or_404(current_user.id, group_public_id)
-    tz_name = _tz_name()
-    page = normalize_page(request.args.get("page"))
-    rows, has_next = topics_page(group["id"], page)
-    if not rows and page > 1:
-        page = 1
-        rows, has_next = topics_page(group["id"], page)
-    counts = reply_counts([row[0] for row in rows])
-    return private_no_store(
-        "student/discussions/list.html",
-        group=public_group(group),
-        topics=build_topic_list_view(rows, counts, tz_name),
-        page=page,
-        has_next=has_next,
-        has_prev=page > 1,
-        page_size=TOPIC_PAGE_SIZE,
-        tz_name=tz_name,
-    )
+    return _render_group_workspace(group)
 
 
 def _render_topic(group, topic, viewer_id, viewer_public_id, draft="", nonce=None,
-                  body_error=None, form_error=None):
+                  body_error=None, form_error=None, *, workspace=None,
+                  template="student/discussions/detail.html", reply_page=None):
     """The topic page. The reply form -- and its token -- exist only while
     the topic is open."""
     tz_name = _tz_name()
-    page = normalize_page(request.args.get("page"))
+    if workspace is None:
+        workspace = _workspace_context(group, normalize_page(request.args.get("topic_page")))
+    page = reply_page if reply_page is not None else normalize_page(request.args.get("page"))
     rows, has_next = replies_page(topic["id"], page)
     if not rows and page > 1:
         page = 1
         rows, has_next = replies_page(topic["id"], page)
     can_reply = topic["status"] == _OPEN
+    reply_total = next(
+        (item["reply_count"] for item in workspace["topics"]
+         if item["public_id"] == topic["public_id"]), None
+    )
+    if reply_total is None:
+        reply_total = reply_counts([topic["id"]]).get(topic["id"], 0)
     return private_no_store(
-        "student/discussions/detail.html",
+        template,
         group=public_group(group),
         topic=public_topic(topic, tz_name),
         replies=build_reply_view(rows, viewer_id, tz_name),
@@ -191,7 +241,9 @@ def _render_topic(group, topic, viewer_id, viewer_public_id, draft="", nonce=Non
         body_error=body_error,
         form_error=form_error,
         body_max=DISCUSSION_BODY_MAX_LENGTH,
+        reply_total_count=reply_total,
         tz_name=tz_name,
+        **workspace,
     )
 
 

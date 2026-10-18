@@ -1,0 +1,40 @@
+{% import "_figma_ui.html" as review_ui %}
+{% set is_speaking = review_kind == 'speaking' %}
+{% set task = activity if is_speaking else assignment %}
+{% set feedback_url = url_for('teacher.speaking_submission_feedback', group_public_id=group.public_id, speaking_public_id=activity.public_id, submission_public_id=submission.public_id) if is_speaking else url_for('teacher.submission_feedback', group_public_id=group.public_id, assignment_public_id=assignment.public_id, submission_public_id=submission.public_id) %}
+<div class="review-editor" data-review-editor data-feedback-state="{{ feedback.state }}" data-feedback-url="{{ feedback_url }}">
+  <a class="review-back" href="{{ url_for('workspace.review_queue', group=group.public_id) }}" data-review-back>{{ review_ui.icon('arrow', 16) }} Review queue</a>
+  {% with messages = get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="alert alert--{{ category }}" role="status">{{ message }}</div>{% endfor %}{% endwith %}
+  <div class="review-editor-context"><span class="badge badge--primary">{{ _('Speaking' if is_speaking else 'Assignment') }}</span><bdi>{{ group.name }}</bdi><bdi>{{ group.academic_term.name }}</bdi><a href="{{ submission_url }}">Open submission {{ review_ui.icon('arrow-up', 15) }}</a></div>
+  <h2 tabindex="-1" data-review-title dir="auto">{{ task.title }}</h2>
+  <p class="review-editor-student"><bdi>{{ submission.student_name }}</bdi> · <time datetime="{{ submission.submitted_local.isoformat() }}">{{ ui_date(submission.submitted_local.strftime('%d %b %Y · %H:%M')) }}</time></p>
+  {% if feedback.state != 'invalid' %}<span class="review-comment-state{% if feedback.state == 'absent' %} review-comment-state--pending{% endif %}">{{ _('Comment exists' if feedback.state == 'present' else 'Awaiting comment') }}</span>{% endif %}
+  <section class="review-answer-section">
+    <h3>{{ _('Student recording' if is_speaking else 'Student answer') }}</h3>
+    {% if is_speaking %}
+    <div class="review-answer"><audio controls preload="metadata" src="{{ player.src }}" aria-label="{{ _('Audio recording for %(name)s', name=player.label) }}" data-research-media="listening_audio">Your browser cannot play audio here. <a href="{{ player.src }}">Open the recording</a>.</audio><a href="{{ download_url }}" download>Download recording</a></div>
+    {% else %}<div class="review-answer" dir="auto">{% include 'activities/_assignment_payload.html' %}</div>{% endif %}
+    <p class="review-help">{{ _('The recording is final and read only.' if is_speaking else 'The answer is final and read only.') }}</p>
+  </section>
+  <section class="review-feedback-section">
+    {% if feedback.state == 'invalid' %}
+    <h3>Current feedback</h3><div class="alert alert--danger">The saved feedback is linked to an account that is no longer a teacher. It cannot be shown or changed here. Please ask an administrator to review this record.</div>
+    {% else %}
+    {% if feedback.state == 'present' %}<p class="review-feedback-attribution">{{ _('Last changed by %(name)s on %(date)s.', name=feedback.reviewer_name, date=ui_date(feedback.updated_local.strftime('%d %b %Y · %H:%M'))) }}</p>{% endif %}
+    {% if can_write %}
+    <form method="post" action="{{ feedback_url }}" novalidate data-review-form data-form-ui>
+      {{ form.hidden_tag() }}<input type="hidden" name="feedback_state" value="{{ feedback_state_token }}">
+      <div class="review-feedback-label"><label for="feedback_text">Your feedback</label><span class="review-draft-state" data-review-draft role="status" hidden>Not saved yet</span></div>
+      {{ form.feedback_text(class_='field__input', rows='6', maxlength=form.FEEDBACK_MAX, dir='auto', aria_describedby='review-feedback-help review-feedback-errors', aria_invalid='true' if form.feedback_text.errors else 'false') }}
+      <div id="review-feedback-errors">{% for error in form.feedback_text.errors %}<p class="field__error" role="alert">{{ error }}</p>{% endfor %}{% if form.csrf_token is defined %}{% for error in form.csrf_token.errors %}<p class="field__error" role="alert">{{ error }}</p>{% endfor %}{% endif %}</div>
+      <p class="review-help" id="review-feedback-help">The student can read your saved comment whenever they can open this submission.</p>
+      <div class="review-editor-actions"><button type="submit" class="btn btn--primary">Save feedback</button><a class="btn" href="{{ submission_url }}" data-review-cancel>Cancel</a></div>
+      <details class="review-feedback-policy"><summary>About shared feedback</summary><p>Saving replaces the current comment. Every teacher actively assigned to this group can change it. Changes are preserved in academic revision history. Feedback does not mark the activity completed.</p><p>{{ _('Plain text; up to %(count)d characters.', count=form.FEEDBACK_MAX) }}</p></details>
+    </form>
+    {% else %}
+    <h3>Current feedback</h3>{% if feedback.state == 'present' %}<div class="review-answer review-saved-comment" dir="auto">{{ feedback.text }}</div>{% else %}<p>No feedback yet</p>{% endif %}
+    <div class="alert alert--info">Feedback is read only because this academic context is archived. {% for label in archived_labels %}{{ _(label) }}{% if not loop.last %} · {% endif %}{% endfor %}</div>
+    {% endif %}{% endif %}
+  </section>
+  <p class="review-editor-note">Written feedback does not release a grade.</p>
+</div>

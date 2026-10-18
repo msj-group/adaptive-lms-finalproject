@@ -1,0 +1,38 @@
+{# Teacher-only percentages of the supplied bounded marks. No database reads. #}
+{% import "_attendance_macros.html" as att %}
+{% macro class_when(session, weekday) -%}
+  <bdi dir="ltr">{{ session.session_date.isoformat() }}</bdi>{% if weekday is not none %} ({{ att.weekday_name(weekday) }}){% endif %}
+  &middot; <bdi dir="ltr">{{ att.time_range(session.start_time, session.end_time) }}</bdi>
+{%- endmacro %}
+
+{% macro marks_summary(counts, heading, caption, total_label) -%}
+{% set total = counts|sum(attribute='count') %}
+<section class="tat-summary tat-panel" aria-label="{{ heading }}">
+  <h2>{{ heading }}</h2>
+  <div class="tat-summary-body">
+    <div class="tat-ring">
+      <svg viewBox="0 0 112 112" aria-hidden="true" focusable="false">
+        <circle class="tat-ring-track" cx="56" cy="56" r="48" pathLength="100" />
+        {% set ring = namespace(offset=0) %}
+        {% for item in counts %}
+        {% set percentage = 100 * item.count / total if total else 0 %}
+        <circle class="tat-ring-segment tat-stat--{{ item.status }}" cx="56" cy="56" r="48" pathLength="100" stroke-dasharray="{{ '%.6f'|format(percentage) }} {{ '%.6f'|format(100 - percentage) }}" stroke-dashoffset="{{ '%.6f'|format(-ring.offset) }}" />
+        {% set ring.offset = ring.offset + percentage %}
+        {% endfor %}
+      </svg>
+      <div class="tat-ring-total"><strong>{{ total }}</strong><span>{{ total_label }}</span></div>
+    </div>
+    <ul class="tat-breakdown">
+      {% for item in counts %}
+      {% set percentage = 100 * item.count / total if total else 0 %}
+      <li class="tat-stat tat-stat--{{ item.status }}">
+        <span class="tat-stat-label"><i aria-hidden="true"></i>{{ _(item.label) }}</span><span class="tat-stat-count">{{ item.count }}</span>
+        <strong class="tat-percentage" dir="ltr">{{ ('%.1f'|format(percentage)).removesuffix('.0') }}%</strong>
+        <div class="tat-bar" aria-hidden="true"><span style="width:{{ '%.1f'|format(percentage) }}%"></span></div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <p class="tat-caption">{{ caption }}</p>
+</section>
+{%- endmacro %}

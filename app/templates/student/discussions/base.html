@@ -1,0 +1,46 @@
+{% extends "layouts/portal_base.html" %}
+{% import "student/discussions/_focus_macros.html" as disc %}
+{% import "_figma_ui.html" as ui %}
+{% block title %}Discussions{% endblock %}
+{% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
+{% block workspace_content_class %}discussion-content{{ ' discussion-content-topic' if not list_view|default(true) else '' }}{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/discussions.css', v='focus-20261016') }}">{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/student_discussions.js', v='focus-20261016') }}" defer></script>{% endblock %}
+{% block portal_content %}
+<div class="discussion-workspace {{ 'is-list-view' if list_view|default(true) else 'is-topic-view' }}" data-discussions-workspace>
+  <header class="discussion-heading">
+    <div>
+      <p class="discussion-eyebrow">Community</p>
+      {% if list_view|default(true) %}<h1 data-workspace-page-heading>Discussions</h1>{% else %}<p class="discussion-page-label" data-workspace-page-heading>Discussions</p>{% endif %}
+      {% if group %}<p class="discussion-context"><span dir="auto">{{ group.course_title }}</span><span aria-hidden="true"> · </span><span dir="auto">{{ group.level_name }}</span><span aria-hidden="true"> · </span><span dir="auto">{{ group.term_name }}</span></p>{% endif %}
+    </div>
+    {% if groups %}<span class="discussion-group-count">{{ ui.icon('users', 17) }}{{ _n('%(count)d active group', '%(count)d active groups', groups|length) if not truncated else _('Discussion groups') }}</span>{% endif %}
+  </header>
+  {{ disc.flash_messages() }}
+  {% if group %}
+    {{ disc.group_picker(groups, group, truncated, group_limit) }}
+    {% if topics or topic %}
+    <div class="discussion-layout">
+      <aside class="discussion-sidebar" aria-label="Discussion topics">
+        <div class="discussion-list-heading"><h2>{{ _n('%(count)d topic', '%(count)d topics', topic_total_count) }}<span aria-hidden="true"> · </span> {{ _('%(count)d open', count=topic_open_count) }}</h2><span>Newest first</span></div>
+        {{ disc.topic_list(topics, group, topic, topic_page, list_view) }}
+        {{ disc.topic_pager(group, topic, topic_page, topics_has_prev, topics_has_next, page|default(1), list_view) }}
+        {% if topic and not list_view and topic.public_id not in topics|map(attribute='public_id')|list %}<p class="discussion-page-note">The current topic is outside this topic list page.</p>{% endif %}
+      </aside>
+      {% if topic %}
+      <section class="discussion-reading" aria-label="Discussion">
+        <a class="discussion-back" href="{{ url_for('student.discussions_group', group_public_id=group.public_id, page=topic_page) }}">{{ ui.icon('arrow', 17) }}<span>All topics</span></a>
+        {{ disc.topic_header(topic, group, list_view) }}
+        {{ disc.reply_timeline(replies, group, topic, page, has_prev, has_next, topic_page, reply_total_count) }}
+        {{ disc.reply_section(can_reply, url_for('student.discussions_reply', group_public_id=group.public_id, topic_public_id=topic.public_id, topic_page=topic_page, page=page), reply_state, draft, body_error, form_error, body_max) }}
+      </section>
+      {% endif %}
+    </div>
+    {% else %}
+      <div class="discussion-empty empty-state"><h2>No topics yet</h2><p>Your teachers have not started a discussion for this group yet.</p></div>
+    {% endif %}
+  {% else %}
+    <div class="discussion-empty empty-state"><h2>No discussion groups</h2><p>Groups you are actively enrolled in appear here while their term, level, course and group are all active.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -40,6 +40,7 @@
 {% elif name == 'help' %}<circle cx="12" cy="12" r="9"/><path d="M9.5 8.5a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4M12 17h.01"/>
 {% elif name == 'info' %}<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>
 {% elif name == 'globe' %}<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a19 19 0 0 1 0 18 19 19 0 0 1 0-18Z"/>
+{% elif name == 'moon' %}<path d="M20.5 14A9 9 0 0 1 10 3.5 9 9 0 1 0 20.5 14Z"/>
 {% else %}<circle cx="12" cy="12" r="8"/>{% endif %}
 </svg>
 {%- endmacro %}
@@ -61,16 +62,16 @@
 {% macro page_heading(title) -%}
 <h1 class="figma-page-label">{{ title|striptags }}</h1>
 {%- endmacro %}
-{% macro account(user, logout_url, csrf, photo_url=none, include_display=true) -%}
+{% macro account(user, logout_url, csrf, photo_url=none) -%}
 <details class="workspace-account" data-account-menu>
   <summary class="workspace-account-toggle" aria-label="Account options for {{ user.full_name }}" aria-controls="workspace-account-card" title="Account options">{{ avatar(user.full_name, photo_url) }}<span class="workspace-account-caption"><span dir="auto">{{ user.full_name }}</span><small>{{ user.role|capitalize }} workspace</small></span><span class="workspace-account-caret">{{ icon('chevron-down', 14) }}</span></summary>
   <div class="workspace-account-card" id="workspace-account-card">
     <div class="workspace-account-identity">{{ avatar(user.full_name, photo_url) }}<div><strong dir="auto">{{ user.full_name }}</strong><span class="workspace-account-role">{{ user.role|capitalize }}</span></div></div>
     <nav class="workspace-account-links" aria-label="Account options">
-      {% for endpoint, label, description, symbol in [('account.settings', 'Account settings', 'Password and profile photo', 'user'), ('workspace.preferences', 'Display preferences', 'Theme, language and spacing', 'settings'), ('workspace.help_page', 'Help', '', 'help')] %}
-      {% if include_display or endpoint != 'workspace.preferences' %}
-      {% if endpoint == 'account.settings' %}<a href="{{ url_for(endpoint) }}" data-research-id="nav_account"{% if request.blueprint == 'account' %} aria-current="page"{% endif %}>{% else %}<button type="button" popovertarget="{{ 'workspace-display-panel' if endpoint == 'workspace.preferences' else 'workspace-help-panel' }}" data-research-id="{{ 'nav_display' if endpoint == 'workspace.preferences' else 'nav_help' }}" aria-haspopup="dialog">{% endif %}<span class="workspace-menu-icon">{{ icon(symbol, 19) }}</span><span class="workspace-menu-copy"><strong>{{ label }}</strong>{% if description %}<small>{{ description }}</small>{% endif %}</span>{{ icon('chevron', 14) }}{% if endpoint == 'account.settings' %}</a>{% else %}</button>{% endif %}
-      {% endif %}{% endfor %}
+      <a href="{{ url_for('account.settings') }}" data-research-id="nav_account"{% if request.blueprint == 'account' %} aria-current="page"{% endif %}><span class="workspace-menu-icon">{{ icon('user', 19) }}</span><span class="workspace-menu-copy"><strong>Account settings</strong><small>Password and profile photo</small></span>{{ icon('chevron', 14) }}</a>
+      {% for panel, label, symbol in [('language', 'Language', 'globe'), ('theme', 'Dark mode', 'moon'), ('help', 'Help', 'help')] %}
+      <button type="button" popovertarget="workspace-{{ panel }}-panel" data-research-id="{{ 'nav_help' if panel == 'help' else 'nav_display' }}" aria-haspopup="dialog"><span class="workspace-menu-icon">{{ icon(symbol, 19) }}</span><span class="workspace-menu-copy"><strong>{{ label }}</strong></span>{{ icon('chevron', 14) }}</button>
+      {% endfor %}
     </nav>
     <form class="workspace-account-signout" method="post" action="{{ logout_url }}" data-account-signout><input type="hidden" name="csrf_token" value="{{ csrf }}"><button type="submit" data-research-id="nav_logout">{{ icon('logout', 18) }} Sign out</button></form>
   </div>

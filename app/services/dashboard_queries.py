@@ -305,7 +305,11 @@ def teacher_dashboard(teacher_id, now):
         group_of=lambda a: a.group,
         now=now,
         schedules_by_group=schedules_by_group,
-        extra=lambda a: {"student_count": student_counts.get(a.group_id, 0)},
+        extra=lambda a: {
+            "student_count": student_counts.get(a.group_id, 0),
+            "course_public_id": a.group.course.public_id,
+            "term_public_id": a.group.academic_term.public_id,
+        },
     )
     return {
         "cards": cards,

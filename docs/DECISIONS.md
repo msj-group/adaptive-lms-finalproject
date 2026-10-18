@@ -1,5 +1,543 @@
 # Project Decisions
 
+## 2026-10-18 — Release recent Student, Teacher and Account changes
+
+- The owner's explicit commit, push and deploy request supersedes the preceding
+  local-only delivery boundary for reviewed recent application/documentation work.
+  Start at `491ef52`; create one allowlisted commit and use ordinary fast-forward
+  pushes to `ui/platform-unification-20261009` and `preserve/st2-20261008`.
+- Keep the existing Railway web service, repository, branch, build/start/predeploy
+  commands, volumes, variables and MySQL service. Advance its exact source pin
+  only after the new SHA is verified on GitHub. Preserve research meanings and
+  local data. The current source adds no migration/model/dependency changes;
+  existing predeploy checks the already deployed `8e5f3b0d7124` revision.
+- Exclude unrelated unused `workspace/help.html`, output design/manual-preview
+  files, secrets and operational evidence from Git. Static syntax/reference and
+  credential-pattern review plus public deployment probes are bounded checks,
+  not automated regression or authenticated business-workflow acceptance.
+
+## 2026-10-17 — Teacher Review queue and shared feedback editor
+
+- Use a Teacher-owned queue template, CSS and script. At 880px of actual workspace
+  width, enhance the same list with an inline editor; compact widths retain normal
+  feedback-page links. Preserve a loaded draft when the workspace becomes compact,
+  with a back-to-list control. Without the enhancer, list links and native feedback
+  forms remain usable. Use the shared shell, light/dark tokens, Arabic/RTL and
+  direction-isolated authored values.
+- Keep the queue route/query unchanged: assigned operational Groups, assignment
+  and speaking types, saved-comment state, inclusive local date filters and
+  oldest-first 25-row pages. Counts describe the displayed page; a pending comment
+  never means an unreleased grade or incomplete activity. No synthetic totals,
+  runtime examples, business seeds or new database fields are introduced.
+- The existing authorized feedback endpoints render a shared editor partial for
+  `X-Review-Panel: 1`, with private/no-store responses and Vary on that header.
+  Successful/no-op panel POSTs redirect to the same feedback GET; native POSTs
+  retain their original submission-detail redirect. Keep CSRF, the original signed
+  stale token, fresh authorization, locking/rechecks and shared revision behavior.
+  Archived contexts remain read only and an invalid reviewer fails closed.
+- The desktop client cancels obsolete GETs, verifies the expected submission,
+  submits the original form fields and refreshes the current filtered queue after
+  the server response. An uncertain POST response retains the attempted text,
+  disables its form and offers a native recovery GET; never retry the POST
+  automatically. Submission files and recordings retain their protected endpoints.
+- The page owns dirty-state protection via `data-form-ui`, so the shared generic
+  guard does not compete with it. Use the existing in-page confirmation, exclude
+  its dialog form, and retain unload protection. No history/storage or synthetic
+  collection events are added. The collector's existing Student-only gate is
+  unchanged. Static/memory-only presentation checks do not establish live-MySQL
+  persistence, concurrency or comprehensive regression acceptance.
+
+## 2026-10-17 — Teacher Activities image implementation and phone layout
+
+- Use the proposed Teacher desk composition: a bounded activity library on the
+  left and a Group/task creation panel on the right in wide English workspaces,
+  mirrored naturally for RTL. Retain shared identity, semantic light/dark tokens,
+  factual publication/due/read-only context, public-ID links and native paging.
+- At 960px of available workspace width, stack creation above the library. Its
+  native disclosure starts closed when the page script is available; the same
+  form remains open without that script. Crossing layout sizes opens the wide
+  panel and only collapses compact creation when it does not contain focus.
+  Container-sized rows become phone cards; controls remain in ordinary page
+  scroll with no additional fixed overlay above the shared phone navigation.
+- Lead choices with Write or upload, Answer questions, Listen and answer and
+  Record their voice, keeping the actual type as the secondary label. Default
+  to Assignment only when no valid type was selected. Group selection is still
+  explicit except for the existing single/selected Group defaults. Continue uses
+  the unchanged authorized GET redirect; it does not create or publish anything.
+- Preserve closed Course/Group/type/publication Filters, no-script form semantics,
+  original authoring/CSRF/stale-state/locking/upload rules and research meanings.
+  No route, query, schema, business-data or persistence change is introduced by
+  this image follow-up. Verification remains static and memory-only browser
+  presentation, distinct from live-MySQL and complete workflow acceptance.
+
+## 2026-10-17 — Teacher Attendance with the Student visual treatment
+
+- Reuse the Student ring, four status counts/percentages, semantic colors and
+  compact phone cards in Teacher-owned templates/CSS. Do not reuse Student
+  visibility or pretend the Teacher is viewing one Student's personal history.
+  This owner-authorized presentation supersedes the earlier staff counts-only
+  restriction on the Group list and class detail pages.
+- The Group list sums only finalized marks already supplied for its current
+  bounded page. Label both the page scope and the unit (marks); the same Student
+  can contribute once per finalized class. Draft default absences stay outside
+  that ring and draft classes remain visible with their original actions.
+  Class detail instead shows the saved counts of its one captured roster,
+  labelled as saved draft marks when appropriate. The editable form gets no
+  potentially stale percentage display and keeps one set of named native fields.
+- At compact workspace widths, session cards use native Location/marks
+  disclosures with actions outside the disclosure. Roster/marking tables reflow
+  into cards without duplicating or disabling any submitted controls. Keep all
+  four radio choices, optional private notes, bulk/undo, Save draft and the
+  separate finalization form/confirmation. Creation remains its original two
+  steps. Public URLs, scoped queries, role guards, CSRF, stale tokens, locking,
+  historical reading, sampling and research/session meanings are unchanged.
+- Retain the shared shell/fonts, Arabic/RTL, light/dark semantic tokens and
+  normal no-script forms/links. No new filters, all-history count queries,
+  scripts, storage or network interactions are introduced. Review is bounded
+  static and fictional memory-only browser presentation; it does not establish
+  real-MySQL persistence, concurrency or comprehensive regression acceptance.
+
+## 2026-10-17 — Teacher Dashboard: Group Cockpit and Groups & Feedback
+
+- Apply the owner's two selected image compositions in the existing Teacher
+  Dashboard only. The wide workspace has a greeting, factual assignment/enrollment
+  counts, next-class attendance access, Group tool cards and feedback/Announcement
+  panels. Compact workspaces use a two-column Group preview and Groups/Feedback
+  tabs. Keep the shared shell, fonts and semantic light/dark colors.
+- Keep the route, SQL ownership, active assignments, operational schedule
+  eligibility and the oldest-first feedback query unchanged. Four Groups remain
+  the preview limit, with ordinary access to all assigned Groups. Counts refer to
+  active enrollments, not unique Students. Feedback means no saved comment, never
+  an inferred missing grade. The phone shows the first two of the same three-row
+  payload; exact and lower-bound queue labels retain their actual meanings.
+- Tabs enhance the same server-rendered document at 740px of actual workspace
+  width. Support keyboard arrows/Home/End, selected-state/tab-panel semantics,
+  resize focus and ordinary links. Without script both sections remain available.
+  Do not fetch, persist tab state, navigate history or synthesize research events.
+  Changing tabs does not change the actual next class or any server state.
+- Retain no-assignment/no-class/no-feedback/no-Announcement and archived-context
+  presentation. Escape authored values, isolate their direction, show full years
+  for non-today dates and preserve public-ID destinations and private headers.
+- Verification is static/template review and bounded manual browser presentation
+  with memory-only query substitutes. No real database, automated test package,
+  schema/migration, scheduler, Git mutation or deployment belongs to this change.
+
+## 2026-10-17 — Simple Teacher Activities library and creation entry
+
+- Replace the Teacher's shared activity hub composition with its own responsive
+  library. Reuse the Student closed native Filters disclosure pattern, including
+  Course/Group/type/publication, applied context/count, Apply/Clear and ordinary
+  GET paging. Show actual type, publication, Course/Group and local due date;
+  do not invent grading counts, completion states or a publication action.
+- One native Create activity disclosure explains the four task types and asks
+  only for an assigned operational Group and type. Its GET destination checks
+  role, active assignment and academic context and redirects using an explicit
+  endpoint allowlist. It creates nothing. Original POST forms/services retain
+  CSRF, signed snapshots/nonces, locked reauthorization and draft publication.
+  Optional listening inputs still submit their actual values while collapsed;
+  their validation errors open the disclosure. Required fields remain visible.
+- The existing bounded assigned-Group query also projects operational status,
+  Course identity and Term name. Archived contexts remain in reading filters
+  and are omitted from creation choices. A selected authorized Group is included
+  beyond the first 100 choices; My groups offers another entry at that bound.
+  A Course change clears an incompatible prior Group on both client and server.
+  No membership, schema, lifecycle or research collection rule changes.
+- Keep Student activity templates/assets untouched. The existing Teacher GET
+  fragment allowlist points at its new matching result template. Shared shell,
+  semantic themes, Arabic localization, public URLs and all pre-existing work
+  remain intact. Verification is bounded static and fictional memory-only manual
+  browser review, not automated regression or actual MySQL workflow acceptance.
+
+## 2026-10-17 — User-selected profile-photo crop
+
+- In the ordinary scripted photo flow, open a native modal after image selection.
+  Show the square crop with a circular guide matching the account avatar. Support
+  pointer panning, arrow keys (Shift for larger steps), native 100–400% zoom and
+  reset. Require Use photo before revealing Save photo. A separate Adjust crop
+  control reopens the original selection before saving. Cancel/Escape/backdrop on
+  a new selection restores the saved photo; cancelling a later adjustment retains
+  the previously confirmed crop. Keep previews and source object URLs in memory
+  and release them on replacement/cancellation/page exit.
+- Post the original file and one bounded JSON crop field, not a browser-generated
+  replacement file. The decoder therefore still rejects oversized, invalid or
+  animated originals. Crop x/y are fractions of the EXIF-oriented width/height;
+  size is a fraction of its shorter side. Accept only the three unique numeric,
+  finite fields, x/y in [0,1], size in [.25,1], and a square wholly within the
+  oriented image. Reject malformed/duplicate/out-of-bounds instructions safely.
+  Resize the selected square to the existing metadata-free 512×512 private PNG.
+- The local preview captures the same square before encoding; later input or
+  cancellation cannot replace an in-flight selection. Native no-script/legacy
+  requests with no crop retain the existing centre-crop fallback. This explicit
+  compatibility path does not skip original-image validation or account guards.
+- Existing photo POST/CSRF, rate/body caps, signed stale snapshots, locked own-
+  account writes, file/history retention and research dictionary/session meanings
+  remain unchanged. No schema, crop-history column, external service or dependency
+  is introduced. Static and memory-only browser/decoder review is distinct from
+  real MySQL authorization/persistence/concurrency or full regression acceptance.
+
+## 2026-10-17 — Teacher My groups Expandable list
+
+- Apply the owner's explicit Expandable list selection from 2026-10-16, with
+  confirmation to continue on 2026-10-17. Use one continuous list of native
+  disclosures, first Group open initially, facts and existing tool links inside.
+  Keep the shared shell, semantic theme colors, fonts, Arabic/RTL and responsive
+  workspace-width layout. Do not change Student My courses.
+- The original Teacher dashboard SQL still selects only the acting Teacher's
+  active assignments. Add already eager-loaded Course/Term public identifiers
+  to Teacher cards only; do not broaden joins, reads or assignment lifecycle.
+  A pure presentation service filters this authorized payload by Course, Term,
+  operational/archived context, inclusive term timing and bounded name query.
+  Invalid/out-of-scope identifiers return 404; invalid enums/long queries 400.
+- Academic status and term dates are separate facts. Ended dates never remove
+  assignment access or make an otherwise operational context archived. An
+  archived ancestor can remain visible while assignment is active. Removed
+  assignments remain absent. This is not an all-time teaching archive.
+- Search and filters use ordinary GETs with private/no-store responses and
+  public-ID tool links. Native disclosures/forms/links work without JavaScript;
+  page JavaScript only synchronizes search text on Apply and dismisses Filters.
+  No collector, page-view, sampling, session or write contract is modified.
+- Review is bounded static/manual presentation using memory-only query payloads,
+  not a real authenticated MySQL acceptance run. No automated tests, migration,
+  actual database, scheduler, Git mutation or deployment belongs to this change.
+
+## 2026-10-16 — Avatar controls in Account settings
+
+- Remove the exposed file-picker card/control and default requirements copy.
+  Keep one enlarged circular avatar card, identity and reserved Save photo space.
+  Its native disclosure contains View/Edit/Delete; viewing opens a native dialog,
+  editing opens the real file chooser and previews locally. Save appears only
+  after a valid selection. View/Delete are disabled without a saved photo;
+  a pending replacement may still be viewed before saving. Native no-script
+  editing/submission remains available through the disclosure and fallback button.
+- Client checks provide immediate individual size, empty-file, supported-format
+  and dimension messages. The existing Pillow decoder remains authoritative for
+  format, animation, pixel/byte caps, orientation, square crop and metadata removal.
+  Show only the relevant error in a localized modal; retain bounded multipart
+  handling, safe generic persistence errors and private no-store responses.
+- Delete uses the existing photo POST and a separate prefixed CSRF form with
+  the same purpose-specific signed account snapshot. Reauthorize and recheck
+  under canonical account locks, increment version and append a profile_photo
+  revision whose photo reference is null. The latest-photo projection therefore
+  returns initials/404; it never resurrects an older photo. Preserve all previous
+  UploadedFile rows/bytes and revisions, consistent with private history policy.
+- Do not alter research dictionary/sampling/session logic or add a route, schema,
+  storage cleanup or scheduler. Review uses actual templates/assets/forms and
+  decoder with fictional memory-only presentation state, no application factory
+  or database engine. Real persistence/concurrency remains outside this gate.
+
+## 2026-10-16 — Agenda Student Dashboard
+
+- Apply the owner's selected Agenda desktop/phone image composition using the
+  platform's existing logo, shell, fonts and semantic light/dark color roles.
+  Show the current Student's full name in the greeting, then next class, the
+  first two already-ranked activities and the authorized continue-learning card.
+  Use a two-column body in wide workspaces and one column below 740px of actual
+  workspace width, including browser zoom/DPI changes. No additional JavaScript.
+- Keep every query, route, permission, reference clock and research contract
+  unchanged. Use actual activity progress/window labels: an unsubmitted activity
+  must not be relabeled Not started. Opening an activity remains its ordinary GET.
+  The progress bar counts marked-complete lessons in the matching Group; omit it
+  if that Group is outside the bounded progress payload rather than inventing a
+  total. Retain the original no-enrollment, no-lesson and all-complete branches,
+  with the existing truncation guard on the all-complete claim.
+- The visible page contains only the selected essential modules. Announcements
+  is available through the preserved shared navigation; its existing bounded
+  dashboard query still runs, although this page no longer renders the preview.
+  Relative Today/Tomorrow labels use the same response's center-local date;
+  other due dates and class dates include the year. Authored values remain
+  escaped and use local direction isolation. Native links remain keyboard usable.
+- Verification is static/template review and a bounded real browser against
+  actual templates/views with memory-only query substitutes, without an
+  application factory, database engine or automated test package. This does not
+  establish live-MySQL workflow, performance or full regression acceptance.
+
+## 2026-10-16 — Header and phone appearance options
+
+- Remove More and the avatar/name card from the shared desktop sidebar. Keep
+  the existing role destinations and header account identity. Phone More keeps
+  its additional destinations but replaces Account settings, Help and Display
+  with Language and Dark mode. The header account menu also exposes those two
+  options, retaining Account settings, Help and the protected Sign out action.
+- Use dedicated native preference popovers. Language offers English/Arabic;
+  Dark mode offers the existing system/light/dark choices and theme preview.
+  Reuse `/ui/preferences`, CSRF, validated values, safe return paths and existing
+  per-device cookies. Hidden counterpart fields preserve the other choice;
+  synchronize theme fields with the current preview before opening/submitting.
+- More is compact-only, closes at the desktop breakpoint and retains its
+  keyboard behavior. Utility dismissal returns focus to phone More or the
+  header account summary; never focus a child of a closed account disclosure.
+  Preserve legacy Display/Help redirect targets without adding menu entries.
+- Reuse the existing allowlisted display click/form research identifiers; no
+  collector, sampling, session, provenance or business-data policy changes.
+  Source/static and bounded memory-only manual review; no automated tests,
+  database/migration, scheduler, Git mutation or deployment.
+
+## 2026-10-16 — Announcements desktop popup and scaling correction
+
+- The owner explicitly replaces the preceding full-navigation desktop reader
+  with an immediate popup within the index. Preserve the phone's current native
+  list/detail behavior. Use 28px desktop card corners and a centered popup whose
+  width, padding and maximum height follow the effective CSS viewport. Existing
+  container queries reflow narrow index rows; no OS/browser setting is changed.
+- Add only the Student announcement detail template to the existing GET-fragment
+  allowlist. The ordinary decorated detail view rechecks the same current
+  published/scope SQL visibility before returning either the full page or reader
+  fragment. Responses retain private/no-store, Cookie and X-AELMS-Query variation.
+  Remove the prior background-feed read; direct and fragment detail use one
+  detail read. Legacy view=index URLs still render an ordinary authorized reader.
+- Show the native modal before starting its request. Fetch same-origin with
+  credentials and no-store; require the fragment response marker and matching
+  public notice identifier before importing the server-escaped article. Keep
+  native links for phones, unavailable capabilities, modified clicks and explicit
+  fallback. Closing/Escape/backdrop preserve the index URL/scroll, abort requests,
+  clear reader content and restore focus. A late response cannot reopen or fill
+  a closed/replaced reader. Every reopening performs a fresh authorized read.
+- The popup remains part of student.announcements_list: its existing collector
+  continues unchanged. Opening/closing an overlay is not a new document page_view;
+  do not invent student.announcement_detail events or restart a collector/session.
+  Ordinary direct/mobile detail navigation continues to collect that detail page
+  as before. This is the explicit new UI flow, not an assertion that the counts
+  from the superseded full-navigation design remain identical. Research event
+  definitions, sampling, windows, provenance and retention code are unchanged.
+- Verify with source/template checks and bounded real-browser presentation using
+  memory-only reads and effective scaled viewports; do not alter machine display
+  settings, execute automated tests or claim real-MySQL/research acceptance.
+
+## 2026-10-16 — Desktop-style phone Attendance metrics
+
+- The owner's supplied desktop/phone screenshots replace the compact phone
+  legend with desktop-style metric hierarchy: status/count, percentage, bar.
+  Keep the ring adjacent. Below 430px use two metric columns; at 430-639px use
+  four. Scale phone ring, type and gaps without shrinking labels below 11px.
+- Restrict the adjustment to phone media queries. Desktop selectors, data,
+  calculation, filter semantics and phone record cards are unchanged. Refresh
+  the feature stylesheet version in the existing page template.
+- Use the existing memory-only manual fixture for responsive presentation
+  checks; no actual database or automated regression acceptance is claimed.
+
+## 2026-10-16 — Compact Student announcement index and reader
+
+- The owner approves Compact index after reviewing desktop and phone proposals.
+  Use existing ST2 tokens, scope/title/course-or-group context and publication
+  date/time. Reflow rows on narrow workspaces. Show no author, unread status,
+  reaction, acknowledgement or invented priority. Body text remains escaped
+  plain text with preserved line breaks; display civil time in APP_TIMEZONE.
+- Keep the existing single-feed SQL visibility, deterministic 20+1 paging and
+  detail reauthorization unchanged. Carry only a normalized bounded page number
+  to detail/return links; accept no arbitrary return destination. URLs continue
+  to identify notices by public ID. All views retain private/no-store and Cookie
+  variation. An inaccessible notice still stops at the same ordinary 404.
+- Desktop JavaScript adds only view=index to an ordinary full detail navigation.
+  This preserves the existing collector's student.announcement_detail page and
+  session lifecycle; no asynchronous reading, client content cache or synthetic
+  research event is introduced. After reauthorization, index mode adds one
+  existing bounded feed read for the background (and its existing stale-page
+  fallback). Ordinary detail and phone links retain the single-detail read.
+- The native desktop dialog makes the authorized background inert, uses native
+  browser focus handling and returns through a native list URL on Escape, backdrop
+  click or All announcements. Narrow screens, unavailable JavaScript and dialog
+  fallback show an ordinary full reader. Research definitions and collection
+  configuration remain unchanged; actual research collection is not rehearsed.
+- Verification is static parsing/template compilation and bounded manual browser
+  presentation with actual decorated views and memory-only query substitutes.
+  It does not establish real-MySQL authorization/performance or full regression
+  acceptance. Existing unrelated source and shared-shell work is preserved.
+
+## 2026-10-16 — Student Discussions Focus workspace
+
+- The owner approves the Focus desktop and phone proposals. Keep the actual
+  Youth Centre shell and shared palette, type, account and mobile navigation.
+  Apply the proposal within the Student discussion feature only. Teacher
+  discussion templates, query services, model/schema and write transactions
+  are unchanged; no Student create/moderate/edit/delete action is introduced.
+- The overview opens the first current Group in the existing name/ID order.
+  A native GET Group selector is proved again by member_group; group/topic
+  object URLs still carry public identifiers. Metadata uses the existing
+  50-Group bound, with the already-authorized current Group appended if a
+  direct link addresses one outside that slice. A truncation notice explains
+  the bound; the UI does not claim the slice is the total active Group count.
+- Reuse the existing 20-topic and 50-reply reads and projected public view
+  dictionaries. Wide Group pages preview the first topic of the current list
+  page. On narrow screens that reader is hidden and native topic links open
+  the separate reading view. Topic details show the bounded list alongside
+  the reader on wide screens; an off-page selected topic is explicitly noted.
+- topic_page carries list context independently of the existing reply page.
+  Normalize both through the existing page normalizer and retain the topic
+  page in reply forms, redirects, timeline paging and the All topics link.
+  Empty out-of-range pages fall back to page one as before. Counts are factual
+  existing topic/reply aggregates, with one topic-scoped count fallback when
+  the selected topic is outside the current list page.
+- Reply POST, signed version/nonce binding, duplicate detection, CSRF fields,
+  authoritative role/membership/status locks, plain-text escaping, finality,
+  outcome hooks and private/no-store rendering remain native. JavaScript
+  enhances only Group GET submission; its visible Apply fallback works without
+  that enhancement. There is no AJAX reader, local reply simulation or draft
+  persistence in the application.
+- Use scoped responsive styles, logical properties, native focus and wrapped
+  authored text. On phones the contextual All topics link replaces the
+  redundant shared breadcrumb/back row for this feature's reading view.
+  Verification is source/template/locale parsing, offline MySQL compilation
+  and manual browser review with memory-only query/transaction substitutes;
+  it does not prove actual MySQL authorization, concurrency or regression
+  acceptance. No automated test package or database operation is authorized.
+
+## 2026-10-16 — Flow Messages with compact spacing
+
+- The owner selects Flow after reviewing the desktop and phone alternatives,
+  with compact conversation spacing enabled. Apply it to Inbox, Thread, picker
+  and compose using platform fonts and semantic light/dark color roles. Keep
+  the existing shared workspace shell and role-specific navigation.
+- Use a bounded solid two-column surface on desktop. Conversation rows show
+  the existing subject and preview; Chats/My contacts use quiet underline tabs.
+  Phones retain native inbox/thread navigation, with the participant avatar,
+  name, Back and conversation menu in one row. A separate compact subject row
+  retains message search and details without removing any authorized action.
+- Incoming bubbles use a solid surface; outgoing bubbles use the semantic
+  primary/on-primary pair. Dates use quiet dividers and message spacing is 11px.
+  Editing uses a neutral surface so labels and errors keep their contrast.
+  The composer retains its native textarea, limit/counter, emoji and submission
+  behavior, with a visible Send label on desktop and an accessible phone label.
+  Long read-only participant names and expanded subjects wrap within the page.
+- Keep every route/query and application JavaScript unchanged. Preserve native
+  POSTs, CSRF and signed state fields, sender-only edit/hide, member-only history
+  clear, historical read-only access and research identifiers. No presence,
+  unread, attachment, calling, delivery/read receipt or domain rule is added.
+- Verification is static/template review and a real browser against the actual
+  templates with memory-only fictional presentation data. It does not establish
+  database authorization, sending/concurrency acceptance or automated regression
+  coverage. No database, migration, scheduler, Git mutation or release.
+
+## 2026-10-16 — Refined Attendance ring and phone cards
+
+- The owner selects Refined ring and cards after reviewing the three phone
+  alternatives and the refined comparison. Use shared ST2 colors/typography.
+  The ring's center is the matching finalized-class count, never a present-only
+  percentage or attendance grade. The adjacent legend always shows all four
+  counts and percentages, including zeros. Round textual percentages to one
+  decimal and omit a trailing .0; SVG segments use the underlying percentages.
+- On phones below 640px, present each existing paged record as a compact native
+  details/summary card: Group name and mark, localized civil date and time, then
+  Location on expansion. Preserve escaped authored values and the em dash for
+  unset Location. Retain the desktop table with Group-name-only cells and the
+  existing 20-row Previous/Next links rather than changing paging semantics.
+- Render applied-filter count/context from the already-normalized server values.
+  Clear is the existing native GET link. Ring, legend, cards and table consume
+  the same authorized presentation data; no query, role, history, finalization,
+  mutation or research-policy change is included. Native filters/disclosures
+  remain usable without JavaScript. Text remains available in forced colors.
+- Verification is source/template parsing and bounded manual presentation with
+  the real attendance view and memory-only query substitutes. These checks do
+  not prove real-MySQL authorization/performance or automated regression acceptance.
+
+## 2026-10-16 — Student Grades directory and responsive results
+
+- Apply the owner's approved Course directory. Search Course/Group names in SQL
+  before grouping and the fixed 20+1 page boundary. Escape LIKE wildcards and
+  bound search text to 120 characters; retain deterministic newest-Group order.
+  Do not compute an exact history total or grades for directory cards.
+- Course/Term/Group public-ID selectors derive from one distinct projection of
+  this active Student's own released history. This metadata covers historical
+  Groups independently of the displayed page, fetching no scores, comments,
+  rosters or Teacher identities. Preserve archived/withdrawn contexts. Grade
+  payloads remain paged; selector metadata grows with owned Groups and actual
+  database performance has not been measured in this follow-up.
+- Reject foreign selectors server-side. A changed Course/Term resets an old
+  owned mismatched Group; Group is offered after Course selection. Course option
+  labels include Level, and Group option labels include Term to distinguish
+  repeated academic names. Native GET/Apply remains authoritative; JavaScript
+  only searches Course options, updates dependent Groups and closes disclosures.
+- Preserve search, selectors and page in detail and return links. No arbitrary
+  return destination is accepted. Responses retain private/no-store and Cookie
+  variation. Existing owned-released SQL authorization and calculation service
+  still determine every grade, missing result and availability decision.
+- Present the overall grade first, with unchanged exact display strings. Native
+  category disclosures open the first category initially; Teacher comments use
+  their own disclosures and escaped plain text. Responsive rows replace the wide
+  six-column grade table. Preserve maximum points, percentages and incomplete/
+  unreleased category meanings. Add localized interface labels and all existing
+  unavailable-overall messages; learner-authored names/comments remain untouched.
+- Verification is source/template parsing, MySQL-dialect compilation without
+  connections, and manual browser presentation using memory-only query results.
+  No automated regression acceptance, actual-MySQL runtime, migration or release.
+
+## 2026-10-15 — Filtered Student attendance percentages
+
+- The owner's explicit request supersedes the old counts-only Student summary.
+  Show Present, Absent, Late and Excused counts and percentages, including zeros.
+  Each percentage is its count divided by the total matching finalized records
+  across all pages, displayed to one decimal. An empty selection shows 0.0%
+  for every status. This is a recorded-mark distribution, not a grade, mastery
+  indicator or comparison with unrecorded scheduled classes. Rounded percentages
+  may differ slightly from 100% in total.
+- Reuse My records' shared filter disclosure styles. Use native GET controls for
+  Course, Group, mark and inclusive class-date bounds; filters start closed.
+  Source Course/Group options only from owned finalized attendance, including
+  withdrawn/archived history. Reject foreign identifiers and invalid mark/date
+  inputs server-side; a changed Course resets an old owned mismatched Group.
+- The page and aggregate share the existing own-active-Student/finalized SQL
+  visibility formula and one filter helper. Retain deterministic 20-row paging,
+  private/no-store responses and filter parameters in page links. Student reads
+  fetch no private staff notes or roster. No membership/lifecycle/write changes.
+- Group table cells contain only the name. Preserve readable civil dates/times
+  in RTL; let the table scroll within its container on narrow screens. The four
+  percentages become a two-column grid on phones. Verification remains static
+  and bounded manual browser presentation without actual database execution.
+
+## 2026-10-15 — Compact Filters and All record scopes
+
+- The owner's latest change supersedes the newest-enrollment default. Course,
+  Enrollment period and record type default to All. All means the current active
+  Student's own authorized records, including all eight record types; it never
+  widens access to another Student. Preserve the scoped legacy entry points.
+- Place the compact icon/Filters/arrow disclosure at the physical right of the
+  heading. Its form is a closed native details dropdown; native GET still works.
+  JavaScript resets enrollment to All on course changes and closes the dropdown
+  on Escape/outside click. Clear filters returns all three selectors to All.
+- Remove the top enrollment-status/start/link strip and the entire enrollment
+  list disclosure. The selectors retain access to earlier episodes. Each card
+  now identifies its course and enrollment period while preserving source Group.
+  Historical speaking audio uses each row's own enrollment public identifier.
+- Page a narrow UNION across finalized Quiz/Listening, Assignment/Speaking receipts,
+  released grades, finalized attendance, content progress and visible corrections.
+  Read payloads only for the displayed page and repeat release/finalization checks.
+  Keep the preceding correction field/publication restrictions; omit revisions
+  with no displayed changes as before. Submission counts exclude other record
+  types and expired attempts. No score, mastery or attendance-rate rule changes.
+- Timeline timestamps are persisted record times: submission/deadline, grading
+  time (release fallback), attendance finalization, progress activity or correction
+  time. Attendance retains the original session date in its title and does not
+  invent a session time. Earlier source/group/episode meanings remain explicit.
+- This follow-up has static/offline template verification only. Opening its real
+  browser preview was not executed: automatic approval review could not complete
+  because the account usage limit was exhausted. Do not bypass that review or
+  reuse earlier browser screenshots as evidence for the current UI.
+
+## 2026-10-15 — Student My records timeline
+
+- Implement the owner's revised third visual proposal using existing ST2 fonts,
+  semantic colors, spacing and density. Use native details/summary for filters,
+  closed on initial render, with the arrow at the physical upper right in LTR
+  and RTL. Course precedes Enrollment period and activity/record type; native
+  GET submission and all historical links remain usable without JavaScript.
+- Default to the newest owned enrollment. Course/enrollment selectors contain
+  only the active Student account's own enrollment metadata, including withdrawn
+  and archived history. Refuse foreign public IDs; a changed course may resolve
+  an old owned selection to that course's newest enrollment.
+- A read-only UNION of finalized Quiz/Listening attempts and immutable Assignment/
+  Speaking receipts supplies at most 21 timeline identities per page. Hydrate
+  answer/Teacher-feedback details only for the displayed receipts. Identify
+  Listening through its extension, not an invented Quiz kind. Keep each record's
+  original Group after a same-course transfer; no current-enrollment requirement
+  is added to historical reads. Existing private audio authorization stays intact.
+- Counts reflect the selected episode/type across all pages. Recorded submissions
+  count submitted attempts and receipts, not unique activities or proficiency.
+  Expired attempts remain visible and counted separately, with a clock marker.
+  Keep released grades, finalized attendance, progress and correction-history
+  routes and their existing publication/provenance restrictions. No analytics,
+  mastery, attendance-rate, grading, write or research-policy change is implied.
+- Verification is static and bounded manual browser presentation on memory-only
+  fixtures. No automated tests, real-MySQL mutation, migration or release action.
+
 ## 2026-10-15 — Separate local migration account and completed local upgrade
 
 - The owner reconfirms both local and hosting operation, explicitly asks the

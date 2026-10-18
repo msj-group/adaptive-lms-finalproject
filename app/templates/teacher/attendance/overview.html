@@ -1,17 +1,18 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "teacher/attendance/base.html" %}
 {% block title %}Attendance{% endblock %}
 {% block portal_nav %}
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
   <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.attendance_overview') }}">Attendance</a>
 {% endblock %}
-{% block portal_content %}
+{% block attendance_content %}
 {#- Phase 4 / M07. `cards` is a list of plain presentation dicts built by
     app.services.attendance_queries.teacher_group_cards, so no ORM row and no
     internal id reaches this template and rendering one cannot lazy-load or
     make an authorization decision. Every destination uses public ids only.
     There is deliberately no delete, reopen, export or grade control anywhere
     on this surface -- none exists server-side either. -#}
-<h1 data-workspace-page-heading style="margin-top: 0">Attendance</h1>
+<div class="tat-heading"><h1 data-workspace-page-heading>Attendance</h1></div>
+<p class="tat-intro">Choose a group to record attendance or review its classes.</p>
 
 
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -21,21 +22,20 @@
 {% endwith %}
 
 {% if cards %}
-<div class="dash-card-list">
+<ul class="tat-directory">
   {% for card in cards %}
-  <div class="card yc-panel">
-    <div class="ds-row yc-actions" style="justify-content: space-between; align-items: flex-start;">
-      <div>
-        <div class="card__title" style="margin-bottom: var(--space-1)">{{ card.group_name }}</div>
-        <div class="card__body">{{ card.course_title }} &middot; {{ card.level_name }}</div>
-        <div class="card__body">{{ card.term_name }}</div>
-      </div>
+  <li class="tat-group tat-panel">
+    <div>
+      <div class="tat-group-heading"><h2><bdi>{{ card.group_name }}</bdi></h2>
       {% if card.operational %}
       <span class="badge badge--success">Operational</span>
       {% else %}
       <span class="badge badge--neutral">Not operational</span>
       {% endif %}
+      </div>
+      <p><bdi>{{ card.course_title }}</bdi> &middot; <bdi>{{ card.level_name }}</bdi> &middot; <bdi>{{ card.term_name }}</bdi></p>
     </div>
+    <a class="btn btn--primary" href="{{ url_for('teacher.group_attendance', group_public_id=card.group_public_id) }}">Open attendance</a>
 
     {% if not card.operational %}
     <div class="alert alert--warning" style="margin-top: var(--space-3)">
@@ -45,12 +45,9 @@
     </div>
     {% endif %}
 
-    <div class="ds-row yc-actions" style="margin-top: var(--space-4)">
-      <a class="btn btn--primary" href="{{ url_for('teacher.group_attendance', group_public_id=card.group_public_id) }}">Open attendance</a>
-    </div>
-  </div>
+  </li>
   {% endfor %}
-</div>
+</ul>
 {% else %}
 <div class="empty-state">
   <div class="empty-state__title">No teaching assignments</div>

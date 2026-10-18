@@ -99,3 +99,14 @@ def change_own_photo(public_id, role, actor_id, expected, stored):
     db.session.add(photo)
     _record(account, PHOTO_ACTION, before, {PHOTO_FILE_KEY: photo.public_id})
     return account
+
+
+def remove_own_photo(public_id, role, actor_id, expected):
+    """Clear the current projection without deleting private file/history rows."""
+    account = _lock_own_account(public_id, role, actor_id, expected)
+    before = account_snapshot(account)
+    before[PHOTO_FILE_KEY] = latest_photo_reference(account.id)
+    if before[PHOTO_FILE_KEY] is None:
+        raise AccountConflict("There is no profile photo to delete.")
+    _record(account, PHOTO_ACTION, before, {PHOTO_FILE_KEY: None})
+    return account
