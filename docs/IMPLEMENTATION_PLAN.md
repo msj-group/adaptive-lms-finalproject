@@ -1,5 +1,64 @@
 # Repair implementation plan
 
+> Owner release and hosted replacement, 2026-10-18: release the reviewed current
+> application/documentation work from `752d471` through the two established
+> branches and exact-SHA Railway source pin. Prepare a verified, private local
+> SQL/attachment snapshot. Back up and verify hosted recovery before replacing
+> hosted data/files; preserve local data and non-study research meanings. The
+> request authorizes this one hosted replacement, superseding prior local-only
+> boundaries. No automated tests, new migration, scheduler, installation or
+> unrelated work. Access and execution state: HOSTED_REPLACEMENT_20261018.md.
+
+> Owner Teacher Activities consolidation, 2026-10-18: size the wide library to
+> the creation card using CSS grid/size containment; scroll its focusable result
+> region while keeping its heading fixed. Bound the same region on phones.
+> Keep only title links. Replace the four legacy category GET pages with private,
+> role-gated, assigned-Group redirects to existing Group/type filters and remove
+> their list templates. Move Assignment publication controls to its existing
+> detail page first; retain the original POST handler and every other workflow.
+> Update category return links, calendar Assignment destinations and task-only
+> navigation/breadcrumbs; retain Group lesson/material tools. Generate a separate
+> detail proposal, not a new implemented detail design. Static and memory-only
+> manual review from `752d471`; no automated tests, actual database/migration,
+> scheduler, Git mutation or deployment. Preserve all concurrent local work.
+
+> Owner Review queue interaction follow-up, 2026-10-18: use aligned, bounded
+> desktop panels with an independently scrolling list and fixed list heading/
+> pager. Pin the current selection within its loaded page, retaining server
+> order for other rows. Saved feedback renders as plain text; a native Edit GET
+> opens the existing form with fresh signed context, and Save returns to reading.
+> Retain invalid-form attempted text/original token, archived/invalid-reviewer
+> guards and current filters. Remove Cancel/separate Teacher detail navigation;
+> authorized legacy URLs redirect and shared navigation skips those parents.
+> Preserve all unrelated work, including concurrent Student/local-data changes.
+> Static and memory-only manual review only; no automated tests, actual database,
+> migration, Git mutation or deployment. Evidence: PROJECT_STATUS.md.
+
+> Owner Student Activities selection, 2026-10-18: apply the unified blue-gradient
+> header and activity list using platform theme/density tokens. Keep the shared
+> shell and unchanged Student route/query/fragment protocol. Reflow type links
+> to one native phone select in the same GET form; expand native Filters in flow.
+> Keep public overview/course links, paging, research event identities and distinct
+> availability/progress labels. Static and memory-only manual browser review from
+> `752d471`; no automated tests, actual database/migration, Git mutation or release.
+> Preserve concurrent unrelated Teacher and documentation work.
+
+> Owner local-data request, 2026-10-18: explicit one-time replacement of local
+> example/development business data with a broad fictional population; the owner
+> selected the local computer only. Completed after a private backup, preserving
+> access credentials, MySQL head and research meanings. No application feature,
+> automated tests, migration, dependency, scheduler, hosting or Git mutation.
+> Counts, recovery and actual review limits:
+> [LOCAL_EVALUATION_DATA_20261018.md](LOCAL_EVALUATION_DATA_20261018.md).
+
+> Owner Review queue heading/filter follow-up, 2026-10-18: unify the title,
+> description and existing filter controls in one card. Keep a single native GET
+> form inside a closed Filters disclosure, a non-default criteria badge and the
+> selected date context. Use three/two/one-column layouts according to available
+> workspace width. Retain the existing script, query, feedback editor and security
+> behavior. Checkpoint `752d471`; bounded static/memory-only manual review only,
+> with no automated tests, database/migration, Git mutation or publishing.
+
 > Owner release request, 2026-10-18: commit, push and deploy the reviewed recent
 > application/documentation work from `491ef52`. Perform bounded static checks,
 > create one explicit allowlisted commit, fast-forward both existing release

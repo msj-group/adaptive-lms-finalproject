@@ -28,7 +28,7 @@
 {% endwith %}
 
 <div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('teacher.group_speaking', group_public_id=group.public_id) }}">Back to Speaking</a>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.activities', group=group.public_id) }}">Back to Activities</a>
   <a class="btn btn--secondary" href="{{ submissions_url }}">Recordings</a>
   {% if operational and not frozen_message %}
   <a class="btn btn--secondary" href="{{ edit_url }}">Edit</a>

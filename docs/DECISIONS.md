@@ -1,5 +1,139 @@
 # Project Decisions
 
+## 2026-10-18 — Release current work and replace hosted evaluation data
+
+- The owner's explicit push/deploy/hosted-replacement request advances the
+  reviewed changes at `752d471` and the current local fictional dataset to the
+  existing Railway destination. Preserve the local database and files. Matching
+  private attachments belong with the copied rows; SQL/private bytes never enter
+  Git. Preserve `8e5f3b0d7124`, paused non-study research and 15-day retention.
+- Take and verify a restorable hosted database/file backup before replacement.
+  Recheck the source and exact destination; prevent hosted writes during cutover,
+  verify rows, foreign keys and attachment hashes, then reopen and inspect ordinary
+  role-scoped pages. Do not substitute a source-code archive for a database backup.
+- The connected Railway OAuth tools can deploy/configure services but redact
+  database credentials and do not provide a shell/file-transfer operation. No
+  hosted replacement is claimed until an authenticated transfer channel exists
+  and the backup/cutover/review actually execute. Current preparation is recorded
+  in HOSTED_REPLACEMENT_20261018.md. No automated tests or new migration.
+
+## 2026-10-18 — One Teacher Activities library and contained scrolling
+
+- Keep Your activities and creation aligned on wide workspaces. Size containment
+  prevents long result lists from setting the grid height; only the focusable,
+  labelled result region scrolls. Keep heading/count fixed and paging reachable
+  inside the region. On compact workspaces preserve stacked creation and a bounded
+  list. Retain keyboard focus outlines, phone title targets, themes and RTL.
+- Activity titles are the sole per-row entry link; remove the separate Open
+  column. Keep existing authorized detail destinations and actual data, ordering,
+  filtering, page size and research meanings.
+- Retire the Assignments/Quizzes/Listening/Speaking category HTML pages. Their old
+  GET endpoints remain as role-gated, assigned-Group compatibility redirects with
+  private/no-store and Cookie variance. They select the canonical Group/type and
+  start at its first page rather than carrying a page number across different
+  historical sort orders. Archived reading stays available to assigned Teachers.
+- Move the old Assignment Publish/Unpublish forms to Assignment detail, retaining
+  action URL, CSRF, confirmation, operational/frozen visibility and unchanged
+  transaction handler. Other types already own publication in detail. Keep all
+  create/edit/settings/questions/submissions/attempts/media routes and services.
+- Retired category pages are not Back/breadcrumb parents. Task pages use the
+  Activities ancestry without repeated Group workspace/type tabs; Quiz/Listening
+  object tools remain. Update explicit return links and Calendar Assignment
+  entries to existing detail URLs with public identifiers. Retain ordinary Group
+  workspace, content, lessons, materials and non-task navigation as the owner
+  explicitly confirms. Preserve concurrent Review queue/Student changes.
+- The desktop/phone Assignment detail image is a proposal only. Runtime detail
+  layout remains unchanged apart from required publication/navigation relocation.
+  Review is static and fictional memory-only browser presentation, not automated
+  regression, real MySQL authorization/persistence or publication acceptance.
+
+## 2026-10-18 — Review queue scrolling, selection and explicit feedback editing
+
+- Wide enhanced workspaces use equal-height viewport-bounded panels. The list
+  scrolls between its heading and pager; the review panel can scroll independently.
+  Compact and standalone views retain normal document flow. List focus and native
+  links remain available, without additional storage or history navigation.
+- Move the current selection to the start of the loaded server page, retaining
+  the original order of every other row. Reset the list scroll and accurately
+  label this order. Never fetch or reorder the whole queue. Refresh continues to
+  apply the actual filter: an answered row leaves Pending, while its saved comment
+  remains visible in the review panel. All/Comment exists can retain that row.
+- Existing comments render as escaped, direction-aware plain text, with Edit
+  available only where the server permits writing. Edit is a native GET with
+  `edit=1`; the desktop fetches that same authorized endpoint for a fresh form.
+  Missing comments open the original form directly. Validation POSTs retain the
+  attempted text and original signed state; success/no-op redirects return to
+  canonical read mode. Edit is a presentation choice, never a new authorization
+  rule. CSRF, stale checks, locking/rechecks, normalization and revisions remain.
+- Remove Cancel and Open submission from review. Teacher assignment/recording
+  detail URLs remain role/nested-object-checked compatibility redirects with
+  private/no-store headers. Lists and queue URL aliases use the unified feedback
+  page, and shared breadcrumbs/back links skip the retired endpoints. Preserve
+  Student receipts and protected file/audio endpoints. Unreachable old detail
+  template files are retained; no separate Teacher detail screen is rendered.
+- No model, migration, sampling/retention, collector, grade or completion rule is
+  changed. Verification is bounded static comparison and manual memory-only browser
+  presentation; it does not establish real-MySQL persistence or concurrency.
+
+## 2026-10-18 — Unified Student Activities sheet
+
+- Implement the owner's selected unified gradient/list design with platform
+  hero, surface, text, status and action tokens. Keep the shared shell/navigation
+  intact. Container width determines desktop columns versus phone rows and the
+  native type select; no device preference or preview controls enter the product.
+- One native GET form preserves type/state/course/Group parameters, the existing
+  query enhancement, normal type links and pagers. Native Filters starts closed
+  and expands in flow; a legacy details-content fallback places it on its own
+  full-width toolbar row. The badge counts selected state/Course criteria only.
+- Render the actual bounded payload. Keep availability separate from progress
+  and retain missing dates, results, receipts, submitted/closed work and page
+  context. Explicit action links go to the existing authorized overview, with
+  Continue/result/receipt labels where supplied and View activity otherwise.
+  These links never start an attempt or submit work from the hub.
+- Use Available for the open availability label/filter, leaving the `open`
+  parameter and underlying window/progress data unchanged. This distinguishes
+  availability from the generic Open action's Arabic translation.
+- Keep the Student route, query ordering/scoping, fragment mapping, shared GET
+  script, collector, models and migrations unchanged. Reuse activity_filter and
+  activity_open for equivalent phone/select and action-link interactions; do not
+  emit synthetic research events or change sampling/provenance/session meanings.
+- Local source/localization/documentation and bounded static/memory-only manual
+  review are in scope. Actual database, automated tests, Git mutation and hosting
+  remain outside this follow-up. Preserve concurrent Teacher work.
+
+## 2026-10-18 — Bounded local operational data replacement
+
+- The owner's explicit local-only reset/population request supersedes preceding
+  local preservation-only instructions for this one backed-up operation. Retain
+  five access identities/password hashes and require renewed login sessions.
+  Populate existing workflows across six English levels, with past/current/future
+  states and open work available on the primary Student accounts.
+- Keep research non-study (`demo` subjects/sessions under the `development`
+  deployment), server-scoped operational export, paused collection, 15-day
+  retention and established sampling/window/label meanings. Never fabricate
+  security submission receipts or actual sampling/collection audit evidence.
+- No application feature, schema, migration, dependency, scheduler, Railway or
+  Git mutation. Review actual local records/files and bounded role-scoped HTTP
+  rendering; no automated tests or complete browser/write acceptance claim.
+  Counts/recovery: LOCAL_EVALUATION_DATA_20261018.md.
+
+## 2026-10-18 — Unified Review queue heading and filters
+
+- Combine the page title, short description and Filters trigger in one shared-
+  token card. All existing controls now live in one initially closed native
+  details element, including the dates that previously had a separate panel.
+  Opening it expands the card in document flow. Keep the same single GET form,
+  field names/values, Reset destination and original query/feedback behavior.
+- The badge counts non-default Group/type/state and each supplied date bound;
+  default pending-comment scope contributes zero. It counts criteria, not rows,
+  and uses existing singular/plural Arabic labels. A selected date range remains
+  visible while the controls are closed.
+- Available workspace width selects three, two or one form columns. Phone
+  controls and dates stack, button targets stay at least 46px, and the title row
+  reserves both button width and height to prevent overlap. Retain RTL, themes,
+  keyboard disclosure/Escape behavior, native no-script access and the existing
+  compact-editor reflow. No JavaScript, route, query or transaction change.
+
 ## 2026-10-18 — Release recent Student, Teacher and Account changes
 
 - The owner's explicit commit, push and deploy request supersedes the preceding

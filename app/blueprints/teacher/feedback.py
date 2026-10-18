@@ -189,15 +189,6 @@ def _feedback_url(group_public_id, assignment_public_id, submission_public_id):
     )
 
 
-def _submission_detail_url(group_public_id, assignment_public_id, submission_public_id):
-    return url_for(
-        "teacher.submission_detail",
-        group_public_id=group_public_id,
-        assignment_public_id=assignment_public_id,
-        submission_public_id=submission_public_id,
-    )
-
-
 # ======================================================================
 # Signed feedback-state token (Phase 4 / M03)
 # ======================================================================
@@ -742,9 +733,6 @@ def _render_feedback_page(
         feedback_state_token=state_token,
         archived_labels=[] if operational else _archived_chain_labels(group),
         tz_name=tz_name,
-        submission_url=_submission_detail_url(
-            group_public_id, assignment_public_id, submission_public_id
-        ),
     )
     response.vary.add("X-Review-Panel")
     return response
@@ -951,8 +939,7 @@ def submission_feedback(group_public_id, assignment_public_id, submission_public
         db.session.rollback()
         flash("This feedback is unchanged, so nothing was saved.", "info")
         return redirect(
-            (_feedback_url if request.headers.get("X-Review-Panel") == "1"
-             else _submission_detail_url)(
+            _feedback_url(
                 group_public_id, assignment_public_id, submission_public_id
             )
         )
@@ -1032,8 +1019,7 @@ def submission_feedback(group_public_id, assignment_public_id, submission_public
         "success",
     )
     return redirect(
-        (_feedback_url if request.headers.get("X-Review-Panel") == "1"
-         else _submission_detail_url)(
+        _feedback_url(
             group_public_id, assignment_public_id, submission_public_id
         )
     )

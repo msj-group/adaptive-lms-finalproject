@@ -28,7 +28,7 @@
 
 <div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ submissions_url }}">Back to Recordings</a>
-  <a class="btn btn--secondary" href="{{ url_for('teacher.group_speaking', group_public_id=group.public_id) }}">Back to Speaking</a>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.activities', group=group.public_id) }}">Back to Activities</a>
 </div>
 
 <div class="card yc-panel" style="margin-bottom: var(--space-6)">

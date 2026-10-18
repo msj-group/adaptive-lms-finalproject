@@ -19,6 +19,17 @@ CREATE_ENDPOINTS = {
 }
 
 
+def legacy_activity_redirect(group_public_id, kind):
+    """Retire a category page while retaining its assigned-Group URL safely."""
+    if kind not in CREATE_ENDPOINTS:
+        abort(400)
+    group = _teacher_group_or_404(group_public_id)
+    response = redirect(url_for("teacher.activities", group=group.public_id, type=kind))
+    response.headers["Cache-Control"] = "private, no-store"
+    response.vary.add("Cookie")
+    return response
+
+
 @teacher_bp.get("/activities")
 @teacher_bp.get("/groups/<group_public_id>/activities", endpoint="group_activities")
 @roles_required("teacher")

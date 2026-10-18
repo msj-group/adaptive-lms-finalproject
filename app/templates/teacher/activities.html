@@ -2,7 +2,7 @@
 {% import '_figma_ui.html' as ui %}
 {% import 'activities/_ui.html' as activity_ui %}
 {% block title %}Activities{% endblock %}
-{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/activities.css', v='teacher-desk-20261017') }}">{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/activities.css', v='teacher-desk-scroll-20261018') }}">{% endblock %}
 {% block portal_content %}
 {% set filter_count = (1 if selected_type else 0) + (1 if selected_state else 0) + (1 if selected_course else 0) + (1 if selected_group else 0) %}
 <div class="teacher-activities" data-teacher-activities>

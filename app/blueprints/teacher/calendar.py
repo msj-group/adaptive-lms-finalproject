@@ -107,24 +107,23 @@ _RANGE_NORMALIZED_MESSAGE = (
 #: Every one is an existing, authorized, Group-nested Teacher **read**
 #: route that re-proves the active assignment on arrival. A class leads
 #: to that Group's attendance page, which is the Teacher surface that
-#: owns a class meeting; an Assignment entry leads to the Group's
-#: Assignment list, because this project has no per-Assignment Teacher
-#: read page (only an edit form and a submissions list, neither of which
-#: is where a calendar should drop somebody). ``center_event`` is
-#: deliberately absent: a Teacher has no center-event surface at all.
+#: owns a class meeting; an Assignment entry leads to that Assignment's
+#: detail page. Retired category lists are absent from ordinary navigation.
+#: ``center_event`` is absent: a Teacher has no center-event surface at all.
 _DESTINATIONS = {
     SOURCE_CLASS: "teacher.group_attendance",
-    SOURCE_ASSIGNMENT_OPENS: "teacher.group_assignments",
-    SOURCE_ASSIGNMENT_DUE: "teacher.group_assignments",
+    SOURCE_ASSIGNMENT_OPENS: "teacher.assignment_detail",
+    SOURCE_ASSIGNMENT_DUE: "teacher.assignment_detail",
     SOURCE_QUIZ_OPENS: "teacher.quiz_detail",
     SOURCE_QUIZ_DEADLINE: "teacher.quiz_detail",
     SOURCE_LISTENING_OPENS: "teacher.listening_detail",
     SOURCE_LISTENING_DEADLINE: "teacher.listening_detail",
 }
 
-#: The object-id keyword each destination takes. ``class`` and the two
-#: Assignment sources name only their Group, so they have none.
+#: The object-id keyword each destination takes. Classes name only their Group.
 _OBJECT_ARGUMENT = {
+    SOURCE_ASSIGNMENT_OPENS: "assignment_public_id",
+    SOURCE_ASSIGNMENT_DUE: "assignment_public_id",
     SOURCE_QUIZ_OPENS: "quiz_public_id",
     SOURCE_QUIZ_DEADLINE: "quiz_public_id",
     SOURCE_LISTENING_OPENS: "listening_public_id",

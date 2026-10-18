@@ -92,23 +92,17 @@ from app.services.assignment_queries import (
     build_teacher_view,
     has_speaking_extension,
     normalize_page,
-    teacher_assignments_page,
 )
 from app.services.group_transactions import lock_group_in_open_transaction
 from app.services.assignment_files import submission_uploaded_file
 from app.services.material_serving import serve_uploaded_file
 from app.services.schedule_occurrences import to_app_local, utc_reference_now
 from app.services.submission_feedback_queries import (
-    FEEDBACK_INVALID,
     attach_feedback_states,
-    build_feedback_panel,
     feedback_states_for_page,
-    teacher_feedback,
 )
 from app.services.submission_queries import (
     assignment_has_submissions,
-    assignment_ids_with_submissions,
-    build_teacher_submission_item,
     build_teacher_submission_view,
     teacher_submission,
     teacher_submissions_page,
@@ -184,7 +178,7 @@ def _assignment_for_group_or_404(group, assignment_public_id):
 
 def _redirect_assignments(group_public_id):
     return redirect(
-        url_for("teacher.group_assignments", group_public_id=group_public_id)
+        url_for("teacher.activities", group=group_public_id, type="assignment")
     )
 
 
@@ -271,36 +265,9 @@ def _operational_block(hierarchy, group, term_id, level_id, course_id):
 @teacher_bp.get("/groups/<group_public_id>/assignments")
 @roles_required(UserRole.TEACHER.value)
 def group_assignments(group_public_id):
-    group = _teacher_group_or_404(group_public_id)
-    operational = _group_is_operational(group)
-    tz_name = _tz_name()
-    reference_utc = utc_reference_now()
-    page = normalize_page(request.args.get("page"))
-
-    rows, has_next = teacher_assignments_page(group.id, page)
-    if not rows and page > 1:
-        # A page past the end (a stale bookmark) shows page 1 rather than
-        # a confusing empty page with a "Previous" button.
-        page = 1
-        rows, has_next = teacher_assignments_page(group.id, page)
-
-    # ONE extra bounded query for the whole page (Phase 4 / M02): which of
-    # these at most PAGE_SIZE Assignments already have submission history,
-    # and are therefore frozen. Asking per row would be an N+1.
-    frozen_ids = assignment_ids_with_submissions([row.id for row in rows])
-
-    return render_template(
-        "teacher/assignments/list.html",
-        group=group,
-        assignments=build_teacher_view(rows, tz_name, reference_utc, frozen_ids),
-        operational=operational,
-        archived_labels=[] if operational else _archived_chain_labels(group),
-        tz_name=tz_name,
-        page=page,
-        has_next=has_next,
-        has_prev=page > 1,
-        page_size=PAGE_SIZE,
-    )
+    """Compatibility GET; Activities owns the only category library."""
+    from app.blueprints.teacher.activities import legacy_activity_redirect
+    return legacy_activity_redirect(group_public_id, "assignment")
 
 
 # ----------------------------------------------------------------------
@@ -827,7 +794,7 @@ def assignment_submissions(group_public_id, assignment_public_id):
 )
 @roles_required(UserRole.TEACHER.value)
 def submission_detail(group_public_id, assignment_public_id, submission_public_id):
-    """One submission, read only, or a non-disclosing 404.
+    """Authorize a legacy detail URL, then open the unified review page.
 
     All three public ids must name the same nested chain: the Group must
     be one this Teacher is actively assigned to, the Assignment must
@@ -836,34 +803,17 @@ def submission_detail(group_public_id, assignment_public_id, submission_public_i
     """
     group = _teacher_group_or_404(group_public_id)
     assignment = _assignment_for_group_or_404(group, assignment_public_id)
-    tz_name = _tz_name()
-
     row = teacher_submission(assignment.id, submission_public_id)
     if row is None:
         abort(404)
 
-    # ONE extra bounded lookup (Phase 4 / M03) for this one Submission's
-    # feedback, by its own unique constraint. The Add/Edit control is
-    # offered only when a write could actually succeed -- an archived
-    # chain, or a role-inconsistent existing row, hides it -- but the
-    # editor re-proves both against locked rows regardless, so this is
-    # presentation, never authorization.
-    feedback = build_feedback_panel(
-        teacher_feedback(assignment.id, submission_public_id), tz_name
-    )
-
-    return _private_no_store(
-        "teacher/submissions/detail.html",
-        group=group,
-        assignment=build_teacher_view([assignment], tz_name, utc_reference_now())[0],
-        submission=build_teacher_submission_item(row, tz_name, include_answer=True),
-        feedback=feedback,
-        can_write_feedback=(
-            _group_is_operational(group) and feedback["state"] != FEEDBACK_INVALID
-        ),
-        tz_name=tz_name,
-        submissions_url=_submissions_url(group_public_id, assignment_public_id),
-    )
+    response = redirect(url_for(
+        "teacher.submission_feedback", group_public_id=group_public_id,
+        assignment_public_id=assignment_public_id, submission_public_id=submission_public_id,
+    ))
+    response.headers["Cache-Control"] = "private, no-store"
+    response.vary.add("Cookie")
+    return response
 
 
 @teacher_bp.get("/groups/<group_public_id>/assignments/<assignment_public_id>/submissions/<submission_public_id>/file")

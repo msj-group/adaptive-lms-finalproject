@@ -1,5 +1,291 @@
 # Repair status
 
+## Current release and hosted replacement preparation — 2026-10-18
+
+The owner explicitly requests push/deploy and replacement of hosted data with
+the local evaluation database. Starting checkpoint: `752d471`. This supersedes
+prior local-only delivery/data boundaries for this operation; local data and
+unrelated Help/design files are preserved. The reviewed source has no new schema,
+model or dependency change. All 366 application/script/migration Python sources
+parse, including the seven affected modules; all
+244 current localized templates compile and their literal template references
+resolve, locale JSON parses, both changed JavaScript files pass Node syntax, four
+publication handlers match HEAD and CRLF-aware `git diff --check` passes.
+
+Both established GitHub branches and the current successful Railway web source
+pin were independently observed at `752d471`. Existing MySQL/web services and
+volumes are present with no staged changes. The OAuth connection withholds
+variable values and has no shell/file-transfer tool; the browser dashboard did
+not expose a usable project interface. A private local SQL/file snapshot is
+prepared under ignored `instance/release_transfer_20261018/`: 75 tables, 21,503
+rows including 97 accounts, and 348 attachments (394,967,304 bytes). Gzip/archive
+integrity and every file hash passed; database fingerprints before/after match.
+Local data/files were read only and a restore was not exercised. No hosted database
+backup, write, replacement or restore has occurred at this checkpoint. The
+code release may proceed independently. Details: HOSTED_REPLACEMENT_20261018.md.
+No automated tests were created/run and no new migration/scheduler action occurs.
+
+## Teacher Activities: contained scrolling and one library — 2026-10-18
+
+Owner scope: scroll Your activities independently, align it with creation,
+remove Open links and enter through titles; remove repeated task/category
+navigation and retire category lists without losing workflows. The owner
+explicitly confirms keeping Group lessons/materials. Checkpoint: `752d471`.
+Concurrent Student/Review queue changes and all unrelated work are preserved.
+
+Implemented:
+
+- `teacher/activities.html`, `teacher/activities/_results.html` and the Teacher
+  activity stylesheet align the wide cards with CSS size containment. The fixed
+  heading/count precede a labelled, focusable scrolling result region containing
+  native pagination. Compact layouts keep stacked creation and bounded list
+  scrolling. Remove the separate Open link/column; titles retain their existing
+  authorized destinations, visible link styling and 44px phone targets.
+- The four category GETs in `teacher/assignments.py`, `quizzes.py`, `listening.py`
+  and `speaking.py` now call a shared assigned-Group compatibility redirect in
+  `teacher/activities.py`. Responses select canonical Group/type filters, start
+  at page one and carry private/no-store plus Cookie variance. Remove their
+  four obsolete list templates and list-only imports; keep existing domain query
+  helpers and every authoring, publication, question, attempt and submission URL.
+- Relocate Assignment Publish/Unpublish forms from its retired list to its
+  existing detail page with the same POST/CSRF/confirmation and operational/
+  submitted-history behavior. Update explicit Back/Cancel helpers/templates and
+  Calendar Assignment links to existing canonical library/detail destinations.
+  No publication transaction, lock, stale-state, upload or lifecycle code changes.
+- Shared task navigation/breadcrumbs omit Group workspace and category branches;
+  retired URLs and the Group directory are not task Back parents. Keep useful
+  Quiz/Listening object tools. Group workspace still owns units/lessons/materials
+  and other Group operations, with one Activities entry instead of type shortcuts.
+- A built-in ImageGen desktop/phone Assignment detail proposal is saved under
+  `output/design/teacher-activity-detail-20261018/`, with its prompt brief. It is
+  a visual proposal only; the detail layout is not otherwise redesigned here.
+
+Executed verification:
+
+- Seven changed Python modules parsed with AST. All 244 current localized HTML
+  templates compiled and literal template references resolved after removal of
+  the four lists. Locale JSON parsed. The four publication handler/function ASTs
+  match HEAD. Page JavaScript syntax and CRLF-aware `git diff --check` passed.
+  The final Back-parent correction also passed focused AST and browser review.
+- Manual browser review used actual templates/assets and decorated legacy GET
+  views with memory-only fictional query/Group substitutes. At 1440/1366px both
+  English wide cards measured 648.67px high. Pointer scrolling moved the list
+  1000px while document scroll stayed zero and both cards stayed at y=231.44px.
+  Keyboard PageDown/End reached the final rows and pager; title clicking reached
+  Assignment detail without an Open control. Arabic/dark wide cards both measured
+  628.88px. At 390/320px no horizontal document overflow was seen; phone title
+  targets were 44px and long script-like titles stayed escaped with no script node.
+- All four old category URLs reached Activities with the correct Group/type.
+  The actual role decorator rejected a fictional Student with 403; an unassigned
+  fictional Group returned 404; archived assigned reading remained available.
+  Direct task entry had Activities as its Back target and Home/Activities/title
+  ancestry. These are memory substitutes, not live-MySQL authorization evidence.
+- Phone creation opened, selected Speaking/Group and reached the actual Speaking
+  form through the existing native GET entry. With the page script withheld,
+  native creation remained open and Filters submitted Listening with nine fixture
+  rows. Published archived Assignment rendering retained Unpublish/POST/CSRF and
+  omitted Edit; submitted draft rendering retained Publish and the freeze notice.
+  No publication/save/attempt/upload/feedback POST was executed. Latest inspected
+  application-tab error log was empty.
+
+Evidence, manual fixture and static inspection script are under ignored
+`instance/teacher_activities_20261018/`. No automated tests/test package,
+application factory/database engine, actual database, migration, installation,
+scheduler, staging/commit/push or deployment was used. Live persistence,
+publication, locking/concurrency, complete authorization and full regression
+acceptance are not claimed. The temporary preview is stopped, its working tab closed
+and viewport override reset. The staged diff remains empty.
+
+## Review queue: remove repeated feedback action — 2026-10-18
+
+Owner follow-up: remove the Review feedback button from Submissions cards.
+Removed that repeated action in `workspace/review_queue.html`; the submission
+title still opens its review. No route, form, styling or database change.
+Localized template compilation and CRLF-aware diff checks passed. This small
+follow-up did not repeat browser review or run automated tests.
+
+## Review queue: independent scrolling and read/Edit feedback — 2026-10-18
+
+Owner request: independently scroll Submissions, put the selection first, display
+saved comments as read-only text with Edit, remove Cancel and retire the separate
+Teacher submission-detail screen. Checkpoint: `752d471`. Earlier heading work and
+concurrent Student/local-data/Help/design changes are preserved.
+
+Implemented:
+
+- `workspace/review_queue.html`, Teacher review CSS/JavaScript and the shared
+  feedback partial provide equal-height desktop panels, a scrolling list with
+  persistent heading/pager, selected-row promotion within the current page and
+  normal phone flow. Remaining rows retain their original server order. Pending
+  still excludes answered work after refresh; the current saved comment remains
+  readable in the review panel.
+- Saved feedback is plain text without a textarea/form. Edit fetches the existing
+  authorized `?edit=1` page and its fresh signed form; missing comments start in
+  writing mode. Validation failures keep attempted text/original state and focus
+  the field. Successful/no-op saves return to reading. Remove Cancel and Open
+  submission. Retain archived/invalid-reviewer restrictions and original write
+  fields, validation, CSRF, stale tokens, locks and academic revision behavior.
+- Teacher assignment/recording detail GETs retain role/nested-chain checks and
+  now privately redirect to unified feedback. Their lists and queue URL aliases
+  use that destination directly. Shared navigation skips retired detail parents,
+  preventing breadcrumb/back loops. File/audio endpoints are unchanged. No old
+  detail template is rendered; the unused source templates remain in place.
+
+Executed checks:
+
+- Seven localized templates compiled, five Python modules parsed with AST,
+  locale JSON parsed and Node syntax check passed. The only locale duplicate
+  remains the pre-existing Released grades pair. Added two Arabic labels.
+  CRLF-aware `git diff --check` passed (exit 0); the default check exits 2 on
+  preserved workspace CRLF line endings. Unrelated files were not normalized.
+- Static AST comparisons show both feedback write views unchanged except their
+  successful/no-op redirect target. Legacy authorization prefixes are retained,
+  and `review_page` SQL/filter/paging code is identical to HEAD. Feedback and
+  submission query modules are unchanged. This follow-up does not edit Student
+  files; their concurrent unrelated changes prevent a whole-workspace unchanged
+  assertion and are preserved.
+- Manual browser work reused actual templates/assets, decorated GETs and the
+  existing rendering helpers with memory-only query/auth substitutes. The POST
+  transaction was substituted, with actual WTForms/CSRF validation, and no
+  application factory or database engine was opened. Verified initial save,
+  read-only display/Edit, edit/save, required-field errors with the original
+  token retained, and Pending removal while saved feedback remains visible.
+  Reviewed both text and speaking workflows, native phone GET/POST presentation,
+  archived read-only and invalid-reviewer fail-closed display.
+- At 1440x1000 the two panels measured 680px high. Wheel scrolling changed the
+  left list from 0 to 2000px while right scroll stayed 0 and its top stayed
+  289.39px; outer document scroll stayed 0. Reviewed a 25-row list, pointer and
+  keyboard selection, remaining-row order, both legacy detail redirects, direct
+  list links and absence of old detail navigation. At 390px English and 320px
+  Arabic/dark, document widths were 375/305px; saved comments had no edit fields
+  until Edit. These observations are bounded presentation evidence.
+
+Ignored evidence and fixture: `instance/teacher_review_flow_20261018/`. No actual
+database read/write, schema/migration, automated tests, installation, scheduler,
+Git mutation or deployment belongs to this follow-up. Real persistence,
+concurrent/stale database saves and comprehensive regression are not claimed.
+The temporary preview server is stopped, its browser tab closed and viewport
+override reset. The last browser warning/error snapshot was empty; staging is
+empty and HEAD remains `752d471`.
+
+## Student Activities: unified gradient and responsive list — 2026-10-18
+
+Owner scope: implement the last selected design while respecting platform
+formatting/colors. Starting and final checkpoint: `752d471`; preserve unrelated
+concurrent Teacher, local-data documentation and unused Help/output work.
+
+- `student/activities.html` loads page-owned Student CSS/JavaScript. Its two
+  Student partials render one connected gradient heading, initially closed
+  native Filters and activity rows. The ordinary platform shell is retained;
+  no preview controls or fictional content enter application templates.
+- Use shared hero/surface/density/text/status/action tokens. Workspace container
+  width determines desktop columns versus phone rows, one native type select
+  and full-width activity actions. Dates are isolated for RTL and use the
+  existing localized-date helper. Ten added Arabic phrases cover new labels,
+  availability, result/receipt actions and the singular page-count phrase.
+- Retain one GET form and type/state/course/Group parameters, public overview/
+  Course links, the bounded result fragment and pagers. The tiny page script
+  only synchronizes selected-type links and the selected state/Course count;
+  the unchanged shared query script owns requests/history/recovery. Availability
+  and progress remain distinct. Continue/result/receipt actions open existing
+  authorized overviews; the hub neither starts attempts nor submits work.
+- Five localized templates compiled, three unchanged Python modules parsed
+  with AST and the new JavaScript passed `node --check` (exit 0). Locale JSON
+  parsed; only the pre-existing `Released grades` duplicate remains. Comparison
+  against HEAD preserved the Student route, activity query, fragment mapping,
+  shared GET enhancement and collector. Teacher Activities assets also matched
+  HEAD at that check; subsequent concurrent Teacher Activities edits appeared
+  during close-out and are preserved outside this Student follow-up.
+- Bounded manual browser review used actual decorated Student GETs/templates/
+  assets and fictional memory-only query values, without the application factory
+  or database engine. Reviewed 1440px English/light, 1024px long-title rendering,
+  390px English/light and 320px Arabic/dark. Document widths were respectively
+  1425/1009/375/305px, within the viewports. Phone actions measured at least 44px;
+  the expanded 320px filter fields were 249px wide, with results below them.
+- Reviewed all four types, separate availability/progress states, submitted work,
+  available results, receipt links, empty views, page-scoped counts, Group context,
+  paging, native disclosure via Space, AJAX type/state/Course changes, localized
+  two/one-filter badges and browser Back. The Continue link reached its ordinary
+  public-ID overview URL in the fixture. With both page/query enhancement scripts
+  withheld, a native Speaking/Upcoming GET form selection also rendered normally.
+  Long authored text including script-like text remained escaped and wrapped.
+- The missing-date template branch was reviewed using a memory-only view payload.
+  An initial null raw query date was invalid for the unchanged date converter;
+  corrected the fixture at the presentation boundary, without changing the service
+  or database contract. This is presentation evidence, not acceptance of null
+  application deadlines. The final browser warning/error snapshot was empty.
+- CRLF-aware `git diff --check` passed (exit 0); the index is empty. The browser
+  review tab is closed, viewport override reset and temporary server stopped.
+  The ignored manual fixture is under `instance/student_activities_flow_20261018/`.
+
+No automated tests were created or executed. No actual database read/write,
+migration, reset/seed, scheduler, dependency installation, Git mutation or hosting
+change belongs to this follow-up. Manual/static review is not comprehensive
+automated regression or authenticated live-MySQL workflow acceptance.
+
+## Local populated operational dataset — 2026-10-18
+
+Owner scope: delete old example/development business data and populate realistic
+fictional records; the owner expressly selected the local copy only. This is new,
+bounded reset authority. Checkpoint `752d471`; MySQL remains at `8e5f3b0d7124`.
+
+- Backed up the original 75-table database and available private files; retained
+  five access identities/password hashes. Replaced local business rows in one
+  transaction with FK checks enabled. Obsolete files are retained in recovery.
+- Persisted 80 Students, 12 Teachers, six A1–C2 levels, 12 Courses, 36 Groups,
+  268 enrollments/invoices, 324 Lessons, 432 ordinary activities, 1,984 attendance
+  marks, 1,032 grade records, communications/money states and 348 valid attachments.
+  Main Student accounts retain open work for the owner's manual usage.
+- Research contains 36 explicitly synthetic non-study sessions, 432 events and
+  36 prompts. The existing service created a development-scoped export with a
+  verified digest. Collection stays paused, retention 15 days, sampling/window/
+  label meanings unchanged. No Study subject/session/export was created.
+- Twenty-four local data reviews passed. Actual HTTP rendering reviewed 77 real-
+  data views: all 200. Readiness/Login: 200. Four role exclusions: 403. Used signed
+  local operator sessions; password-login/browser/write acceptance is not claimed.
+
+No application source/model, migration, automated tests, installation, scheduler,
+hosting or Git mutation belongs to this operation. Concurrent unrelated Review
+queue presentation work and existing Help/output files are preserved. These
+documentation changes are uncommitted. Full counts, recovery and honest limits:
+[LOCAL_EVALUATION_DATA_20261018.md](LOCAL_EVALUATION_DATA_20261018.md).
+
+## Review queue: unified heading and filter card — 2026-10-18
+
+Owner scope: combine and visually improve the upper section and Filters control
+for desktop and phones. Verified starting checkpoint: `752d471`; unrelated
+unused Help/design files are preserved.
+
+- `workspace/review_queue.html` combines the title/description, date context and
+  Filters trigger in one card. A single initially closed native disclosure now
+  contains Group, type, feedback state and both date fields. Preserve the normal
+  GET parameters and Reset link; the badge counts non-default criteria, not rows.
+- `css/teacher/review.css` gives the trigger a bordered 46px target, clearer
+  spacing/labels and a three/two/one-column layout at workspace breakpoints.
+  Phone fields stack and the title reserves the trigger's height and width.
+  Retain shared light/dark colors, Arabic/RTL and compact-editor reflow.
+- The localized template compiled. The unchanged route/query modules parsed
+  with AST. No JavaScript, localization, route/query, feedback form/transaction,
+  model or migration source is changed by this follow-up.
+- Manual browser presentation reused the ignored memory-only fixture, without
+  the application factory or database engine. Reviewed 1440px desktop, 1024px
+  intermediate, 390px English/light and 320px Arabic/dark. Document widths were
+  1425/1009/375/305px respectively, within those viewports. Reviewed collapsed/
+  expanded controls, all five GET criteria, a five-filter badge and two matching
+  fictional rows, Reset, Space/Escape and focus return. With the page script
+  withheld, native disclosure and a Speaking GET selection still worked.
+- Browser warning/error snapshot was empty. No comment POST or actual database
+  read/write occurred. This bounded presentation review is not automated
+  regression or live-MySQL workflow acceptance. Screenshots are under ignored
+  `instance/teacher_review_header_20261018/`; the earlier fixture is reused.
+- CRLF-aware `git diff --check` passed (exit 0). The default check exits 2
+  because it flags the preserved template CRLF line endings; unrelated files
+  were not normalized. The browser tab is closed, viewport override reset and
+  temporary memory-only preview server stopped. Staging remains empty.
+
+No automated tests, dependency installation, schema/migration, scheduler, Git
+mutation or deployment is included in this follow-up.
+
 ## Recent interface release preparation — 2026-10-18
 
 The owner explicitly requests commit, push and deploy of the latest changes.

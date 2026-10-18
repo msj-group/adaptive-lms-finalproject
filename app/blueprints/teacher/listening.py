@@ -155,10 +155,8 @@ from app.services.listening_queries import (
     audio_upload_for_activity,
     build_audio_summary,
     build_listening_detail,
-    build_teacher_listening_list_view,
     listening_publication_blockers,
     teacher_listening,
-    teacher_listening_page,
 )
 from app.services.listening_playback import playback_rates
 from app.services.material_config import current_material_config
@@ -311,7 +309,7 @@ def _authoring_block(quiz):
 
 
 def _list_url(group_public_id):
-    return url_for("teacher.group_listening", group_public_id=group_public_id)
+    return url_for("teacher.activities", group=group_public_id, type="listening")
 
 
 def _detail_url(group_public_id, listening_public_id):
@@ -672,43 +670,9 @@ def _hierarchy_context(group):
 @teacher_bp.get("/groups/<group_public_id>/listening")
 @roles_required(UserRole.TEACHER.value)
 def group_listening(group_public_id):
-    """One bounded page of a Group's Listening activities, newest first.
-
-    Fixed page size, SQL ordering (``created_at DESC, id DESC``), SQL
-    ``LIMIT PAGE_SIZE + 1`` for the has-next flag with no ``COUNT``, and
-    the same page normalization and past-the-end fallback every other
-    Teacher list uses. The rows carry no instructions, no transcript and
-    no vocabulary notes, so the page's cost does not grow with how much
-    has been written into each activity.
-
-    Stays available under an archived Group or ancestor: an eligible
-    assigned Teacher can always read back what was authored.
-    """
-    group = _teacher_group_or_404(group_public_id)
-    operational = _group_is_operational(group)
-    tz_name = _tz_name()
-    reference_utc = _write_moment()
-    page = normalize_page(request.args.get("page"))
-
-    rows, has_next = teacher_listening_page(group.id, page)
-    if not rows and page > 1:
-        # A page past the end (a stale bookmark) shows page 1 rather than
-        # a confusing empty page with a "Previous" button.
-        page = 1
-        rows, has_next = teacher_listening_page(group.id, page)
-
-    return _private_no_store(
-        "teacher/listening/list.html",
-        group=group,
-        activities=build_teacher_listening_list_view(rows, tz_name, reference_utc),
-        operational=operational,
-        archived_labels=[] if operational else _archived_chain_labels(group),
-        tz_name=tz_name,
-        page=page,
-        has_next=has_next,
-        has_prev=page > 1,
-        page_size=PAGE_SIZE,
-    )
+    """Compatibility GET; Activities owns the only category library."""
+    from app.blueprints.teacher.activities import legacy_activity_redirect
+    return legacy_activity_redirect(group_public_id, "listening")
 
 
 # ======================================================================

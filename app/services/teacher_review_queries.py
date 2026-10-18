@@ -67,12 +67,11 @@ def review_view(rows, tz_name, url_builder):
         item = dict(row)
         args = dict(group_public_id=row["group_id"], submission_public_id=row["submission_id"])
         args["speaking_public_id" if row["kind"] == "speaking" else "assignment_public_id"] = row["activity_id"]
-        item["url"] = url_builder("teacher.speaking_submission_detail" if row["kind"] == "speaking" else
-                                  "teacher.submission_detail", **args)
         # The existing editor includes the answer/recording and rechecks write
         # eligibility itself. Opening it never saves a comment or a grade.
         item["feedback_url"] = url_builder("teacher.speaking_submission_feedback" if row["kind"] == "speaking" else
                                            "teacher.submission_feedback", **args)
+        item["url"] = item["feedback_url"]
         item["local_time"] = to_app_local(tz_name, row["submitted_at"])
         items.append(item)
     return items

@@ -252,6 +252,10 @@ def _workspace_page_match(path):
         endpoint, args = current_app.url_map.bind_to_environ(request.environ).match(path, method="GET")
     except HTTPException:
         return None
+    if endpoint in {"teacher.submission_detail", "teacher.speaking_submission_detail",
+                    "teacher.group_assignments", "teacher.group_quizzes",
+                    "teacher.group_listening", "teacher.group_speaking"}:
+        return None  # Retired URLs redirect to their canonical workspace.
     if any(word in endpoint for word in ("download", "attachment", "audio", "photo", "stream", "login", "logout")):
         return None
     role = current_user.role
@@ -305,9 +309,7 @@ def workspace_breadcrumbs(context, page_title):
         ("Notifications", "notifications.inbox"), ("Account", "account.settings"), ("Search", "workspace.search")]
     labels = {target: label for label, target in destinations}
     labels.update({"student.group_units": "Lessons", "teacher.group_units": "Units & lessons",
-        "teacher.group_activities": "Activities", "teacher.group_assignments": "Assignments",
-        "teacher.group_quizzes": "Quizzes", "teacher.group_listening": "Listening",
-        "teacher.group_speaking": "Speaking", "teacher.group_attendance": "Attendance",
+        "teacher.group_activities": "Activities", "teacher.group_attendance": "Attendance",
         "teacher.group_gradebook": "Gradebook", "teacher.group_announcements": "Announcements"})
     crumbs = [dict(label="Home", url=url_for(home), owned=True)]
 
@@ -339,7 +341,11 @@ def workspace_breadcrumbs(context, page_title):
 
     args = request.view_args or {}
     group_id = args.get("group_public_id")
-    if group_id and role in ("student", "teacher"):
+    teacher_activity = role == "teacher" and (
+        nav_active("teacher.activities") or bool(group_id) and nav_active("workspace.review_queue"))
+    if teacher_activity:
+        add("Activities", "teacher.activities", **({"group": group_id} if group_id else {}))
+    elif group_id and role in ("student", "teacher"):
         add("My courses" if role == "student" else "My groups",
             "workspace.student_courses" if role == "student" else "workspace.teacher_groups")
         group_label = object_label({"group_public_id": group_id})
@@ -364,7 +370,7 @@ def workspace_breadcrumbs(context, page_title):
         if match:
             target, params = match
             label = labels.get(target) or object_label(params)
-            if label:
+            if label and not (teacher_activity and target in {"workspace.teacher_groups", "workspace.teacher_group"}):
                 parents.append((label, target, params, target in labels))
         path = path.rsplit("/", 1)[0]
     for label, target, params, owned in reversed(parents):
@@ -389,6 +395,9 @@ def workspace_back_link():
     if request.endpoint == home:
         return None
     role = current_user.role
+    teacher_activity = role == "teacher" and (
+        nav_active("teacher.activities") or bool((request.view_args or {}).get("group_public_id"))
+        and nav_active("workspace.review_queue"))
 
     try:
         previous = urlsplit(request.referrer or "")
@@ -402,10 +411,13 @@ def workspace_back_link():
         pass
     parent = request.path.rstrip("/").rsplit("/", 1)[0]
     while parent:
-        if _workspace_page_match(parent):
+        match = _workspace_page_match(parent)
+        if match and not (teacher_activity and match[0] in {"workspace.teacher_groups", "workspace.teacher_group"}):
             return parent
         parent = parent.rsplit("/", 1)[0]
     if role in ("student", "teacher") and (request.view_args or {}).get("group_public_id"):
+        if teacher_activity:
+            return url_for("teacher.activities", group=request.view_args["group_public_id"])
         return url_for("workspace.student_course" if role == "student" else "workspace.teacher_group",
                        group_public_id=request.view_args["group_public_id"])
     return url_for(home)
@@ -536,8 +548,7 @@ def navigation_context():
                 "Overview": [],
                 "Content": [("Content outline", "workspace.teacher_group", {"_anchor": "group-content"}),
                             ("Units & lessons", "teacher.group_units", {})],
-                "Activities": [("Assignments", "teacher.group_assignments", {}), ("Quizzes", "teacher.group_quizzes", {}),
-                               ("Listening", "teacher.group_listening", {}), ("Speaking", "teacher.group_speaking", {})],
+                "Activities": [],
                 "Class records": [("Attendance", "teacher.group_attendance", {}), ("Gradebook", "teacher.group_gradebook", {}),
                                   ("Progress", "teacher.group_progress", {})],
                 "Communication": [("Announcements", "teacher.group_announcements", {}), ("Discussions", "teacher.discussions_group", {})],

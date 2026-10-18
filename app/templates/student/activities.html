@@ -1,3 +1,5 @@
 {% extends 'layouts/activity_base.html' %}
 {% block title %}Activities{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/activities.css', v='student-activity-flow-20261018') }}">{% endblock %}
 {% block portal_content %}{% include 'student/template/_activities.html' %}{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/student_activities.js', v='student-activity-flow-20261018') }}" defer></script>{% endblock %}

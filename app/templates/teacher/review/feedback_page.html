@@ -1,5 +1,5 @@
 {% extends 'layouts/portal_base.html' %}
 {% block title %}Feedback — {{ submission.student_name }}{% endblock %}
-{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/review.css', v='review-workbench-20261017') }}">{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/review.css', v='review-feedback-flow-20261018') }}">{% endblock %}
 {% block portal_content %}<div class="teacher-review review-standalone">{% include 'teacher/review/_feedback_editor.html' %}</div>{% endblock %}
-{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_review.js', v='review-workbench-20261017-b') }}" defer></script>{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_review.js', v='review-feedback-flow-20261018') }}" defer></script>{% endblock %}

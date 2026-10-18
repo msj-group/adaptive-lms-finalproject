@@ -2,14 +2,15 @@
 {% import 'activities/_ui.html' as activity_ui %}
 <span hidden data-query-count="{{ items|length }}"></span>
 <div class="ta-library-heading"><h2>Your activities</h2><p>Recently updated</p><p class="ta-page-count">{{ _('Page %(page)d · %(count)d activities shown', page=page, count=items|length) }}</p></div>
+<div class="ta-library-scroll" tabindex="0" role="region" aria-label="{{ _('Your activities') }}">
 {% if items %}
   <ul class="ta-list">{% for item in items %}<li class="ta-row" data-kind="{{ item.kind }}">
     <div class="ta-identity"><span class="ta-item-icon">{{ activity_ui.symbol(item.kind, 21) }}</span><div><span class="ta-kind">{{ _(item.type_label) }}</span><h3 dir="auto"><a href="{{ item.url }}">{{ item.title }}</a></h3><p><bdi>{{ item.course_title }}</bdi><span aria-hidden="true"> · </span><bdi>{{ item.group_name }}</bdi></p></div></div>
     <div class="ta-state"><span class="badge badge--{{ 'success' if item.status == 'published' else 'neutral' }}">{{ _(item.state_label) }}</span>{% if not item.operational %}<small>Read only</small>{% endif %}</div>
     <div class="ta-due">{{ ui.icon('calendar', 16) }}<span class="sr-only">Due</span>{% if item.due_local %}<time datetime="{{ item.due_local.isoformat() }}">{{ ui_date(item.due_local.strftime('%d %b %Y')) }} <small>{{ item.due_local.strftime('%H:%M') }}</small></time>{% else %}<span>No date set</span>{% endif %}</div>
-    <a class="ta-manage" href="{{ item.url }}" aria-label="{{ _('Open %(title)s', title=item.title) }}">Open {{ ui.icon('arrow', 16) }}</a>
   </li>{% endfor %}</ul>
 {% else %}
 <div class="ta-empty">{{ ui.icon('layers', 32) }}<h3>{{ _('No activities match your filters.' if selected_type or selected_state or selected_course or selected_group else 'Your first activity starts here') }}</h3><p>{{ _('Try a different filter or clear your selection.' if selected_type or selected_state or selected_course or selected_group else 'Choose a group and task in Create an activity to get started.') }}</p>{% if selected_type or selected_state or selected_course or selected_group %}<a href="{{ url_for('teacher.activities') }}">Clear filters</a>{% endif %}</div>
 {% endif %}
 {% if page > 1 or has_next %}<nav class="ta-pagination" aria-label="{{ _('Activity pages') }}">{% if page > 1 %}<a class="btn" href="{{ url_for('teacher.activities', page=page-1, type=selected_type, state=selected_state, course=selected_course, group=selected_group) }}">Previous</a>{% endif %}<span>{{ _('Page %(page)s', page=page) }}</span>{% if has_next %}<a class="btn" href="{{ url_for('teacher.activities', page=page+1, type=selected_type, state=selected_state, course=selected_course, group=selected_group) }}">Next</a>{% endif %}</nav>{% endif %}
+</div>

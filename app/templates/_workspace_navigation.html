@@ -1,4 +1,8 @@
 {# Object tools remain reachable without a repeated introductory hierarchy. #}
+{% set activity_page = current_user.role == 'teacher' and (workspace_nav_active('teacher.activities') or workspace_nav_active('workspace.review_queue')) %}
+{% if activity_page %}
+{% include '_workspace_activity_nav.html' %}
+{% else %}
 {% set context = workspace_context() %}
 {% if context and current_user.role in ['teacher','administrator'] %}
 <nav class="workspace-tabs" aria-label="{{ context.title }} tools">
@@ -6,4 +10,5 @@
   {% for tab in context.tabs %}<a href="{{ tab.url }}"{% if tab.active %} aria-current="page"{% endif %}>{{ tab.label }}</a>{% endfor %}
 </nav>
 {% if current_user.role == 'teacher' %}{% include '_workspace_activity_nav.html' %}{% endif %}
+{% endif %}
 {% endif %}

@@ -7,6 +7,64 @@ has already been implemented or verified.
 
 ## Authority and current checkpoint
 
+- Owner release and hosted-data replacement request, 2026-10-18: push and deploy
+  the reviewed current work from `752d471`, then replace the existing Railway
+  application database with the current local evaluation database. This explicitly
+  supersedes the preceding local-only data-transfer and delivery exclusions for
+  this operation. Preserve the local source, schema head, research provenance,
+  sampling and 15-day retention. Back up hosted rows and private attachments and
+  verify recovery before replacement; transfer matching local attachments too.
+  Keep secrets, SQL snapshots and private files outside Git. No automated tests,
+  new migration, scheduler change, dependency installation or unrelated feature.
+  Preparation and any access limitation: HOSTED_REPLACEMENT_20261018.md.
+
+- Owner Teacher Activities consolidation, 2026-10-18: scroll only the activity
+  list inside Your activities and align its wide card with creation. Remove Open
+  action links; activity titles own entry. Remove repeated Group workspace/type
+  navigation from task pages and retire the four category list pages in favor of
+  the unified Activities library, without losing authoring/publication/submission
+  workflows. The owner confirms retaining the Group workspace's lessons/materials.
+  Provide a new desktop/phone task-detail image proposal separately. Source,
+  documentation and bounded static/memory-only browser review from `752d471`;
+  no automated tests, actual database/migration, scheduler, Git mutation or deploy.
+
+- Owner Review queue interaction follow-up, 2026-10-18: independently scroll
+  Submissions beside an aligned review panel, place the selected row first on
+  its current page, and show saved feedback as read-only text until Edit is
+  chosen. Remove Cancel and retire the separate Teacher submission-detail UI;
+  authorized legacy URLs redirect to the unified review page. Preserve current
+  filters, protected files/audio, CSRF, stale tokens, write transactions and
+  lifecycle/research meanings. Source/localization/documentation and bounded
+  static/memory-only browser review from `752d471`; no actual database, migration,
+  automated tests, Git mutation or deployment is included.
+
+- Owner Student Activities selection, 2026-10-18: implement the selected unified
+  blue-gradient design from checkpoint `752d471`. Keep one connected header,
+  initially closed in-flow Filters and responsive activity rows, using platform
+  tokens, English/Arabic and RTL. Keep existing scoped data, bounded paging,
+  availability/progress distinctions and ordinary type-specific overview links.
+  Student templates/assets/localization/documentation and bounded static and
+  memory-only manual browser review are authorized. Preserve concurrent Teacher
+  changes. No automated tests, actual database/seed/migration, scheduler, Git
+  mutation, dependency installation or deployment belongs to this follow-up.
+
+- Owner local-data request, 2026-10-18: replace old local development/example
+  business data with a large realistic fictional evaluation population. The owner
+  expressly selected the local copy only. This bounded reset authorization
+  supersedes earlier local preservation restrictions for this operation; back up
+  first, retain access credentials, schema/head and non-study research meanings.
+  No application feature, migration, automated tests, dependency, scheduler, hosted
+  change or Git mutation. Implemented counts and verification boundaries:
+  [LOCAL_EVALUATION_DATA_20261018.md](LOCAL_EVALUATION_DATA_20261018.md).
+
+- Owner Review queue heading/filter follow-up, 2026-10-18: combine the heading,
+  description and all existing filters in one responsive card. Group, type,
+  feedback state and dates share one initially closed native Filters disclosure
+  and the existing GET form. Show a non-default filter count, retain Arabic/RTL,
+  semantic themes and desktop/phone access. Presentation/documentation and bounded
+  static/memory-only browser review from `752d471`; no database, migration, tests,
+  Git mutation or deployment belongs to this follow-up.
+
 - Owner release request, 2026-10-18: commit, push and deploy all reviewed recent
   application/documentation changes from checkpoint `491ef52`. This explicitly
   advances the preceding local-only changes to release. Use one allowlisted

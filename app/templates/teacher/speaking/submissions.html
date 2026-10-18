@@ -55,14 +55,14 @@
 
 <div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
   <a class="btn btn--secondary" href="{{ back_url }}">Back to Activity</a>
-  <a class="btn btn--secondary" href="{{ url_for('teacher.group_speaking', group_public_id=group.public_id) }}">Back to Speaking</a>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.activities', group=group.public_id) }}">Back to Activities</a>
 </div>
 
 <section class="dash-section yc-section" style="margin-top: 0">
   <h2>Recordings</h2>
   {% if submissions %}
   <div class="dash-scroll"><table class="dash-table"><thead><tr><th scope="col">Student</th><th scope="col">Submitted</th><th scope="col">Feedback</th><th scope="col">Actions</th></tr></thead><tbody>
-  {% for item in submissions %}<tr><td>{{ item.student_name }}</td><td>{{ item.submitted_local.strftime("%Y-%m-%d %H:%M") }}</td><td>{% if item.feedback_state == "present" %}<span class="badge badge--success">Feedback provided</span>{% elif item.feedback_state == "invalid" %}<span class="badge badge--danger">Needs admin review</span>{% else %}<span class="badge badge--neutral">Awaiting feedback</span>{% endif %}</td><td><div class="ds-row yc-actions">{% if item.feedback_state != "invalid" %}<a class="btn btn--primary" href="{{ url_for('teacher.speaking_submission_feedback', group_public_id=group.public_id, speaking_public_id=activity.public_id, submission_public_id=item.public_id) }}">Review feedback</a>{% endif %}<a class="btn btn--secondary" href="{{ url_for('teacher.speaking_submission_detail', group_public_id=group.public_id, speaking_public_id=activity.public_id, submission_public_id=item.public_id) }}">Listen</a></div></td></tr>{% endfor %}
+  {% for item in submissions %}<tr><td>{{ item.student_name }}</td><td>{{ item.submitted_local.strftime("%Y-%m-%d %H:%M") }}</td><td>{% if item.feedback_state == "present" %}<span class="badge badge--success">Feedback provided</span>{% elif item.feedback_state == "invalid" %}<span class="badge badge--danger">Needs admin review</span>{% else %}<span class="badge badge--neutral">Awaiting feedback</span>{% endif %}</td><td><div class="ds-row yc-actions"><a class="btn btn--primary" href="{{ url_for('teacher.speaking_submission_feedback', group_public_id=group.public_id, speaking_public_id=activity.public_id, submission_public_id=item.public_id) }}">Review feedback</a></div></td></tr>{% endfor %}
   </tbody></table></div>
 
   {% if has_prev or has_next %}

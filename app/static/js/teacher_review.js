@@ -64,14 +64,31 @@
   function wide() { return root.getBoundingClientRect().width >= 880; }
   function pauseAudio() { content.querySelectorAll("audio").forEach(function (audio) { audio.pause(); }); }
   function markSelected() {
-    root.querySelectorAll("[data-review-row]").forEach(function (row) {
+    var list = root.querySelector("[data-review-list]");
+    var rows = Array.from(list.querySelectorAll("[data-review-row]"));
+    var chosenRow = null;
+    rows.forEach(function (row, index) {
+      if (!row.hasAttribute("data-review-order")) row.dataset.reviewOrder = String(index);
       var link = row.querySelector("[data-review-open]");
       var chosen = !!(selected && link && new URL(link.href).pathname === selected.pathname);
+      if (chosen) chosenRow = row;
       row.classList.toggle("is-selected", chosen);
       row.querySelectorAll("[data-review-open]").forEach(function (item) {
         if (chosen) item.setAttribute("aria-current", "true"); else item.removeAttribute("aria-current");
       });
     });
+    var focused = list.contains(document.activeElement) ? document.activeElement : null;
+    rows.sort(function (a, b) {
+      if (a === b) return 0;
+      if (a === chosenRow) return -1;
+      if (b === chosenRow) return 1;
+      return Number(a.dataset.reviewOrder) - Number(b.dataset.reviewOrder);
+    }).forEach(function (row, index) {
+      if (list.children[index] !== row) list.insertBefore(row, list.children[index] || null);
+    });
+    if (focused && document.activeElement !== focused) focused.focus({preventScroll:true});
+    if (chosenRow) list.scrollTop = 0;
+    root.querySelector("[data-review-order-label]").textContent = t(chosenRow ? "Selected first, then oldest" : "Oldest first");
   }
   function parsedEditor(text, expected) {
     var page = new DOMParser().parseFromString(text, "text/html");
@@ -84,7 +101,14 @@
     content.replaceChildren(document.importNode(editor, true));
     bindEditor(content.querySelector("[data-review-editor]"));
     root.dataset.reviewLoaded = "true";
-    if (focus) content.querySelector("[data-review-title]").focus({preventScroll:true});
+    detail.scrollTop = 0;
+    if (activeForm && (focus === "feedback" || forceDirty)) {
+      var field = activeForm.elements.feedback_text;
+      field.focus({preventScroll:true});
+      if (wide()) detail.scrollTop = Math.max(0, field.getBoundingClientRect().top - detail.getBoundingClientRect().top + detail.scrollTop - 56);
+      else field.scrollIntoView({block:"nearest"});
+    }
+    else if (focus) content.querySelector("[data-review-title]").focus({preventScroll:true});
   }
   async function load(url, focus) {
     if (controller) controller.abort();
@@ -133,6 +157,13 @@
     markSelected();
   }
   root.addEventListener("click", async function (event) {
+    var edit = event.target.closest("[data-review-edit]");
+    if (edit && content.contains(edit) && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.button === 0) {
+      event.preventDefault();
+      if (!await mayLeave()) return;
+      load(edit.href, "feedback");
+      return;
+    }
     var open = event.target.closest("[data-review-open]");
     if (open && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.button === 0 && wide()) {
       event.preventDefault();
@@ -142,12 +173,10 @@
       return;
     }
     var back = event.target.closest("[data-review-back]");
-    var cancel = event.target.closest("[data-review-cancel]");
-    if ((back || cancel) && content.contains(event.target)) {
+    if (back && content.contains(event.target)) {
       event.preventDefault();
       if (!await mayLeave()) return;
       forceDirty = false;
-      if (cancel) { load(selected.href, true); return; }
       if (controller) controller.abort();
       ++sequence;
       loading = false;

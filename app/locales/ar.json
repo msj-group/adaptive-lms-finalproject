@@ -3752,6 +3752,8 @@
   "%(count)d submissions awaiting feedback": "%(count)d تسليمات بانتظار الملاحظات",
   "Read submissions and leave written feedback.": "راجع تسليمات الطلاب واكتب ملاحظاتك.",
   "Oldest first": "الأقدم أولًا",
+  "Selected first, then oldest": "المختار أولًا، ثم الأقدم",
+  "Submissions list": "قائمة التسليمات",
   "Date range": "النطاق الزمني",
   "Submission review": "مراجعة التسليم",
   "Open feedback page": "فتح صفحة الملاحظات",
@@ -3784,5 +3786,15 @@
   "Class marks": "علامات حضور الحصة",
   "Saved marks for this class.": "علامات الحضور المحفوظة لهذه الحصة.",
   "Saved draft marks. Students cannot see them yet.": "علامات المسودة المحفوظة. لا يستطيع الطلاب رؤيتها بعد.",
-  "How attendance works": "كيف يُسجَّل الحضور"
+  "How attendance works": "كيف يُسجَّل الحضور",
+  "Your learning, in one place": "تعلّمك في مكان واحد",
+  "Find your next task. Keep your learning moving.": "اختر نشاطك التالي وواصل التعلّم.",
+  "Nearest deadlines first": "المواعيد الأقرب أولًا",
+  "Availability / progress": "الإتاحة / التقدّم",
+  "%(action)s: %(title)s": "%(action)s: %(title)s",
+  "Available": "متاح",
+  "Closed": "مغلق",
+  "View receipt": "عرض إيصال التسليم",
+  "View result": "عرض النتيجة",
+  "Page %(page)d · %(count)d activity shown": "الصفحة %(page)d · الأنشطة المعروضة: %(count)d"
 }

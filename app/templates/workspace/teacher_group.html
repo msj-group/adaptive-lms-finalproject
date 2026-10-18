@@ -4,7 +4,7 @@
 <div class="workspace-heading yc-page-intro"><div><h1 data-workspace-page-heading>{{ group.name }}</h1><p>{{ group.course.title }} · {{ group.academic_term.name }}</p></div><a class="btn btn--primary" href="{{ url_for('teacher.group_units', group_public_id=group.public_id) }}">Manage units</a></div>
 <section class="card yc-panel">
 <h2>Group tools</h2>
-<nav class="workspace-inline-links" aria-label="Group activities"><a href="{{ url_for('teacher.group_activities',group_public_id=group.public_id) }}">All activities</a>{% for kind,label in [('quiz','Quizzes'),('listening','Listening'),('speaking','Speaking'),('assignment','Assignments')] %}<a href="{{ url_for('teacher.group_activities',group_public_id=group.public_id,type=kind) }}">{{ _(label) }}</a>{% endfor %}</nav>
+<nav class="workspace-inline-links" aria-label="Group activities"><a href="{{ url_for('teacher.activities',group=group.public_id) }}">Activities</a></nav>
 <nav class="workspace-inline-links" aria-label="Group operations"><a href="{{ url_for('workspace.review_queue',group=group.public_id) }}">Review work</a><a href="{{ url_for('teacher.group_attendance',group_public_id=group.public_id) }}">Attendance</a><a href="{{ url_for('teacher.group_gradebook',group_public_id=group.public_id) }}">Gradebook</a><a href="{{ url_for('teacher.group_progress',group_public_id=group.public_id) }}">Lesson completion</a><a href="{{ url_for('teacher.group_announcements',group_public_id=group.public_id) }}">Announcements</a><a href="{{ url_for('teacher.discussions_group',group_public_id=group.public_id) }}">Discussions</a></nav>
 <p class="workspace-meta">Feedback is a comment; enter grades separately in the gradebook.</p>
 </section>

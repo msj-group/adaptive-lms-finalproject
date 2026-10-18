@@ -127,18 +127,15 @@ from app.services.material_serving import serve_uploaded_file
 from app.services.schedule_occurrences import to_app_local, utc_reference_now
 from app.services.speaking_queries import (
     activity_has_submissions,
-    activity_ids_with_submissions,
     attach_feedback_states,
     audio_upload_for_submission,
     build_speaking_detail,
-    build_teacher_speaking_list_view,
     build_teacher_submission_view,
     feedback_states_for_page,
     speaking_publication_blockers,
     student_name_for_submission,
     teacher_speaking,
     teacher_speaking_feedback,
-    teacher_speaking_page,
     teacher_speaking_submission,
     teacher_speaking_submissions_page,
 )
@@ -269,7 +266,7 @@ def _authoring_block(assignment, activity):
 
 
 def _list_url(group_public_id):
-    return url_for("teacher.group_speaking", group_public_id=group_public_id)
+    return url_for("teacher.activities", group=group_public_id, type="speaking")
 
 
 def _new_url(group_public_id):
@@ -297,15 +294,6 @@ def _submissions_url(group_public_id, speaking_public_id):
         "teacher.speaking_submissions",
         group_public_id=group_public_id,
         speaking_public_id=speaking_public_id,
-    )
-
-
-def _submission_url(group_public_id, speaking_public_id, submission_public_id):
-    return url_for(
-        "teacher.speaking_submission_detail",
-        group_public_id=group_public_id,
-        speaking_public_id=speaking_public_id,
-        submission_public_id=submission_public_id,
     )
 
 
@@ -842,49 +830,9 @@ def _hierarchy_context(group):
 @teacher_bp.get("/groups/<group_public_id>/speaking")
 @roles_required(UserRole.TEACHER.value)
 def group_speaking(group_public_id):
-    """One bounded page of a Group's Speaking activities, newest deadline
-    first.
-
-    Fixed page size, SQL ordering (``due_at DESC, id DESC``), SQL
-    ``LIMIT PAGE_SIZE + 1`` for the has-next flag with no ``COUNT``, and
-    the same page normalization and past-the-end fallback every other
-    Teacher list uses. The rows carry no instructions, so the page's cost
-    does not grow with how much has been written into each activity, and
-    **one** extra bounded query resolves which of the at-most-PAGE_SIZE
-    activities already have recordings -- asking per row would be an N+1.
-
-    Stays available under an archived Group or ancestor: an eligible
-    assigned Teacher can always read back what was authored.
-    """
-    group = _teacher_group_or_404(group_public_id)
-    operational = _group_is_operational(group)
-    tz_name = _tz_name()
-    reference_utc = utc_reference_now()
-    page = normalize_page(request.args.get("page"))
-
-    rows, has_next = teacher_speaking_page(group.id, page)
-    if not rows and page > 1:
-        # A page past the end (a stale bookmark) shows page 1 rather than
-        # a confusing empty page with a "Previous" button.
-        page = 1
-        rows, has_next = teacher_speaking_page(group.id, page)
-
-    frozen_ids = activity_ids_with_submissions([row.activity_id for row in rows])
-
-    return _private_no_store(
-        "teacher/speaking/list.html",
-        group=group,
-        activities=build_teacher_speaking_list_view(
-            rows, tz_name, reference_utc, frozen_ids
-        ),
-        operational=operational,
-        archived_labels=[] if operational else _archived_chain_labels(group),
-        tz_name=tz_name,
-        page=page,
-        has_next=has_next,
-        has_prev=page > 1,
-        page_size=PAGE_SIZE,
-    )
+    """Compatibility GET; Activities owns the only category library."""
+    from app.blueprints.teacher.activities import legacy_activity_redirect
+    return legacy_activity_redirect(group_public_id, "speaking")
 
 
 # ======================================================================
@@ -1565,24 +1513,20 @@ def speaking_submissions(group_public_id, speaking_public_id):
 def speaking_submission_detail(
     group_public_id, speaking_public_id, submission_public_id
 ):
-    """One recording, read only, with an authorized player -- or a
-    non-disclosing 404.
+    """Authorize a legacy recording URL, then open the unified review page.
 
     All three public ids must name the same nested chain: the Group must
     be one this Teacher is actively assigned to, the activity must belong
     to that Group, and the recording must belong to that activity. Any
     other combination produces no row and the same 404.
 
-    The player's ``src`` is this module's own authorized audio route, not
-    a static URL and not a storage key. Nothing on the page discloses the
-    storage key, the resolved path, the digest, the byte size, the
-    uploader or any internal id.
+    The destination rechecks this chain and serves its player through the
+    existing authorized audio route; this compatibility URL never renders
+    a separate recording-detail screen.
     """
     group = _teacher_group_or_404(group_public_id)
     assignment, activity = _speaking_or_404(group, speaking_public_id)
     submission = _submission_or_404(activity, submission_public_id)
-    tz_name = _tz_name()
-
     student_name = student_name_for_submission(submission)
     if student_name is None:
         # A foreign key proves the row exists, never its role. A
@@ -1595,34 +1539,10 @@ def speaking_submission_detail(
         # would offer a player that could only 404; fail closed instead.
         abort(404)
 
-    panel = build_feedback_panel(
-        teacher_speaking_feedback(activity.id, submission_public_id), tz_name
-    )
-    urls = _audio_urls(group_public_id, speaking_public_id, submission_public_id)
-
-    return _private_no_store(
-        "teacher/speaking/submission_detail.html",
-        group=group,
-        activity=build_speaking_detail(
-            assignment, activity, tz_name, utc_reference_now()
-        ),
-        submission={
-            "public_id": submission.public_id,
-            "student_name": student_name,
-            "submitted_local": to_app_local(tz_name, submission.submitted_at),
-        },
-        player={"src": urls["src"], "label": student_name},
-        download_url=urls["download"],
-        feedback=panel,
-        can_write_feedback=(
-            _group_is_operational(group) and panel["state"] != FEEDBACK_INVALID
-        ),
-        feedback_url=_feedback_url(
-            group_public_id, speaking_public_id, submission_public_id
-        ),
-        submissions_url=_submissions_url(group_public_id, speaking_public_id),
-        tz_name=tz_name,
-    )
+    response = redirect(_feedback_url(group_public_id, speaking_public_id, submission_public_id))
+    response.headers["Cache-Control"] = "private, no-store"
+    response.vary.add("Cookie")
+    return response
 
 
 # ======================================================================
@@ -1716,9 +1636,6 @@ def _render_feedback_page(
         feedback_state_token=state_token,
         archived_labels=[] if operational else _archived_chain_labels(group),
         tz_name=tz_name,
-        submission_url=_submission_url(
-            group_public_id, speaking_public_id, submission_public_id
-        ),
     )
     response.vary.add("X-Review-Panel")
     return response
@@ -1889,8 +1806,7 @@ def speaking_submission_feedback(
         db.session.rollback()
         flash("This feedback is unchanged, so nothing was saved.", "info")
         return redirect(
-            (_feedback_url if request.headers.get("X-Review-Panel") == "1"
-             else _submission_url)(group_public_id, speaking_public_id, submission_public_id)
+            _feedback_url(group_public_id, speaking_public_id, submission_public_id)
         )
 
     now_utc = _write_moment()
@@ -1951,8 +1867,7 @@ def speaking_submission_feedback(
         "success",
     )
     return redirect(
-        (_feedback_url if request.headers.get("X-Review-Panel") == "1"
-         else _submission_url)(group_public_id, speaking_public_id, submission_public_id)
+        _feedback_url(group_public_id, speaking_public_id, submission_public_id)
     )
 
 

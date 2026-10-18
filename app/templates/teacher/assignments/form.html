@@ -80,10 +80,10 @@
     </fieldset>
 
     {# No Status or Published-at control: publication is changed only via
-       Publish / Unpublish on the assignments page. #}
+       Publish / Unpublish on the assignment detail page. #}
     <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary", value=_('Save Changes' if assignment else 'Save draft')) }}
-      <a class="btn btn--secondary" href="{{ url_for('teacher.group_assignments' if assignment else 'teacher.group_activities', group_public_id=group.public_id) }}">Cancel</a>
+      <a class="btn btn--secondary" href="{{ url_for('teacher.assignment_detail', group_public_id=group.public_id, assignment_public_id=assignment.public_id) if assignment else url_for('teacher.activities', group=group.public_id) }}">Cancel</a>
     </div>
   </form>
 </div>

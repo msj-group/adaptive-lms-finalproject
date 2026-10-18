@@ -141,7 +141,6 @@ from app.services.quiz_queries import (
     build_question_editor,
     build_question_summaries,
     build_quiz_detail,
-    build_teacher_list_view,
     duplicate_title_exists,
     neighbour_question,
     next_question_display_order,
@@ -153,7 +152,6 @@ from app.services.quiz_queries import (
     teacher_question,
     teacher_questions_page,
     teacher_quiz,
-    teacher_quizzes_page,
 )
 from app.services.quiz_attempts import (
     ATTEMPT_STATUS_LABELS,
@@ -248,7 +246,7 @@ def _write_moment():
 
 
 def _quizzes_url(group_public_id):
-    return url_for("teacher.group_quizzes", group_public_id=group_public_id)
+    return url_for("teacher.activities", group=group_public_id, type="quiz")
 
 
 def _quiz_detail_url(group_public_id, quiz_public_id):
@@ -664,41 +662,9 @@ def fresh_group_authorization(actor_id, group_public_id):
 @teacher_bp.get("/groups/<group_public_id>/quizzes")
 @roles_required(UserRole.TEACHER.value)
 def group_quizzes(group_public_id):
-    """One bounded page of a Group's quiz drafts, newest first.
-
-    Fixed page size, SQL ordering (``created_at DESC, id DESC``), SQL
-    ``LIMIT PAGE_SIZE + 1`` for the has-next flag, and the same page
-    normalization and past-the-end fallback the other Teacher lists use.
-    The rows carry no ``instructions``, so the page's cost does not grow
-    with how much has been written into each draft.
-
-    Stays available under an archived Group or ancestor: an eligible
-    assigned Teacher can always read back what was authored.
-    """
-    group = _teacher_group_or_404(group_public_id)
-    operational = _group_is_operational(group)
-    tz_name = _tz_name()
-    page = normalize_page(request.args.get("page"))
-
-    rows, has_next = teacher_quizzes_page(group.id, page)
-    if not rows and page > 1:
-        # A page past the end (a stale bookmark) shows page 1 rather than
-        # a confusing empty page with a "Previous" button.
-        page = 1
-        rows, has_next = teacher_quizzes_page(group.id, page)
-
-    return _private_no_store(
-        "teacher/quizzes/list.html",
-        group=group,
-        quizzes=build_teacher_list_view(rows, tz_name),
-        operational=operational,
-        archived_labels=[] if operational else _archived_chain_labels(group),
-        tz_name=tz_name,
-        page=page,
-        has_next=has_next,
-        has_prev=page > 1,
-        page_size=PAGE_SIZE,
-    )
+    """Compatibility GET; Activities owns the only category library."""
+    from app.blueprints.teacher.activities import legacy_activity_redirect
+    return legacy_activity_redirect(group_public_id, "quiz")
 
 
 # ======================================================================
