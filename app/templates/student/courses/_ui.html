@@ -1,0 +1,28 @@
+{% import '_figma_ui.html' as ui %}
+{% macro tabs(group_public_id, course_public_id, selected='overview') -%}
+<nav class="atlas-tabs" aria-label="Course sections">
+  <a href="{{ url_for('workspace.student_course', group_public_id=group_public_id) }}"{% if selected == 'overview' %} aria-current="page"{% endif %}>Overview</a>
+  <a href="{{ url_for('student.group_units', group_public_id=group_public_id) }}" data-research-id="course_outline"{% if selected == 'outline' %} aria-current="page"{% endif %}>Units &amp; lessons</a>
+  <a href="{{ url_for('student.activities', course=course_public_id, group=group_public_id) if course_public_id else url_for('student.activities', group=group_public_id) }}"{% if selected == 'activities' %} aria-current="page"{% endif %}>Activities</a>
+</nav>
+{%- endmacro %}
+{% macro unit_block(unit, group_public_id, number, expanded=false) -%}
+{% set completed = unit.lessons|selectattr('is_completed')|list|length %}
+<details class="atlas-unit" id="unit-{{ unit.public_id }}"{% if expanded %} open{% endif %}>
+  <summary><span class="atlas-unit-number" aria-hidden="true">{{ '%02d'|format(number) }}</span><span class="atlas-unit-copy"><span class="atlas-unit-title" dir="auto">{{ unit.title }}</span><small>{{ _('%(completed)d of %(total)d lessons marked complete', completed=completed, total=unit.lessons|length) }}</small></span>{% if unit.lessons and completed == unit.lessons|length %}<span class="atlas-unit-check">{{ ui.icon('check',16) }}<span class="sr-only">Completed</span></span>{% else %}{{ ui.icon('chevron-down',16) }}{% endif %}</summary>
+  {% if unit.lessons %}<ol class="atlas-lessons">{% for lesson in unit.lessons %}<li><a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}" data-research-id="lesson_open"><span class="atlas-lesson-symbol{% if lesson.is_completed %} atlas-lesson-symbol--done{% endif %}" aria-hidden="true">{{ ui.icon('check' if lesson.is_completed else 'book',16) }}</span><span class="atlas-lesson-title" dir="auto">{{ lesson.title }}</span><span class="atlas-lesson-status{% if lesson.is_completed %} atlas-lesson-status--done{% endif %}">{{ 'Completed' if lesson.is_completed else 'Not completed' }}</span></a></li>{% endfor %}</ol>
+  {% else %}<div class="atlas-unit-empty">No lessons in this unit yet</div>{% endif %}
+</details>
+{%- endmacro %}
+{% macro course_card(card, progress=none, today=none, alternate=false) -%}
+<article class="atlas-course-card">
+  <div class="atlas-course-cover{% if alternate %} atlas-course-cover--warm{% endif %}" aria-hidden="true"><span class="atlas-cover-level{% if card.level_name|length > 7 %} atlas-cover-level--long{% endif %}" dir="auto">{{ card.level_name }}</span><span class="atlas-cover-caption">English, every day</span><i></i></div>
+  <div class="atlas-course-copy">
+    <p class="atlas-course-meta" dir="auto">{{ card.level_name }} · {{ card.term_name }}</p><h2 dir="auto">{{ card.course_title }}</h2><p class="atlas-course-meta" dir="auto">{{ card.group_name }}</p>
+    <div class="atlas-course-state"><span class="badge badge--{{ 'success' if card.operational else 'neutral' }}">{{ 'Current enrollment' if card.operational else 'Archived context' }}</span>{% if card.term_start > today %}<span class="badge badge--neutral">Upcoming term · {{ card.term_start }}</span>{% elif card.term_end < today %}<span class="badge badge--neutral">Term ended · {{ card.term_end }}</span>{% endif %}</div>
+    {% if progress %}<p class="atlas-progress-label">{{ _('%(completed)d of %(total)d lessons marked complete', completed=progress.completed, total=progress.lesson_total) }}</p>{% if progress.lesson_total %}<progress value="{{ progress.completed }}" max="{{ progress.lesson_total }}" aria-label="{{ _('Completed lessons in %(group)s', group=card.group_name) }}">{{ progress.completed }} / {{ progress.lesson_total }}</progress>{% endif %}{% else %}<p class="atlas-progress-label">No lesson progress available</p>{% endif %}
+    {% if card.next_class is defined and card.next_class %}<p class="atlas-next-class">{{ ui.icon('calendar',14) }}<span>Next class:</span> <time datetime="{{ card.next_class.start.isoformat() }}"><bdi>{{ card.next_class.start.strftime('%d %b · %H:%M') }}</bdi></time></p>{% endif %}
+    <div class="atlas-card-actions">{% if card.operational %}<a class="atlas-link" href="{{ url_for('workspace.student_course', group_public_id=card.group_public_id) }}" data-research-id="course_open">Open course {{ ui.icon('arrow-up',16) }}</a><a class="atlas-link atlas-link--quiet" href="{{ url_for('student.group_units', group_public_id=card.group_public_id) }}" data-research-id="course_outline">Open lessons {{ ui.icon('arrow',15) }}</a>{% else %}<p class="atlas-note">Content access has ended. Your enrollment records remain available.</p><a class="atlas-link" href="{{ url_for('student.records') }}">View records {{ ui.icon('arrow-up',16) }}</a>{% endif %}</div>
+  </div>
+</article>
+{%- endmacro %}

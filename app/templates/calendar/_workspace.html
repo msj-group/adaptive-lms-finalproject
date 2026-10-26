@@ -1,10 +1,12 @@
 {% import '_figma_ui.html' as ui %}
 {% import '_calendar_macros.html' as legacy with context %}
-{# Student/Teacher presentation only. Administrator macros and SQL scope stay intact. #}
+{# Shared date UI; each role retains its own authorized read and controls. #}
 <div class="calendar-workspace" data-calendar-workspace data-selected-date="{{ calendar.selected.isoformat() }}" data-today="{{ calendar.today.isoformat() }}" data-default-view="{{ calendar.view }}" data-explicit-view="{{ 'true' if calendar.explicit_view else 'false' }}" data-entry-singular="{{ _('%(count)d entry') }}" data-entry-plural="{{ _('%(count)d entries') }}" data-today-label="{{ _('Today') }}" data-upcoming-label="{{ _('Upcoming dates') }}" data-next-period="{{ next_url }}" data-previous-period="{{ previous_url }}">
-  <div class="calendar-page-heading"><h1 data-workspace-page-heading>Calendar</h1>
+  <div class="calendar-page-heading{{ ' ad-page-head' if calendar.schedule_admin|default(false) else '' }}"><h1 data-workspace-page-heading>Calendar</h1>
+    {% if calendar.schedule_admin|default(false) %}<div class="admin-calendar-actions"><a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Manage schedules</a></div>{% endif %}
     <details class="calendar-filters" data-cal-filters>
       <summary>{{ ui.icon('settings', 18) }}<span>Filters</span>{% if calendar.filters_active %}<span class="calendar-filter-dot" aria-label="{{ _('Filters active') }}"></span>{% endif %}{{ ui.icon('chevron-down', 15) }}</summary>
+      {% if calendar.schedule_admin|default(false) %}{% include 'admin/schedules/_calendar_filters.html' %}{% else %}
       <form method="get" action="{{ today_url }}" class="calendar-filter-form">
         <input type="hidden" name="day" value="{{ calendar.selected.isoformat() }}" data-cal-day-input><input type="hidden" name="view" value="{{ calendar.view }}" data-cal-view-input>
         <div class="field"><label for="calendar-kind">Event type</label><select id="calendar-kind" name="kind">{% for value, label in calendar.kinds %}<option value="{{ value }}"{% if calendar.kind == value %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</select></div>
@@ -13,8 +15,10 @@
         <p class="calendar-range-limit">{{ _('A calendar view covers at most %(count)d days.', count=max_range_days) }}</p>
         <div class="calendar-filter-actions"><button type="submit" class="btn btn--primary">Apply filters</button><a href="{{ url_for(request.endpoint, **{'from':range_start.isoformat(), 'to':range_end.isoformat()}) }}">Clear filters</a></div>
       </form>
+      {% endif %}
     </details>
   </div>
+  {% if calendar.schedule_admin|default(false) %}<p class="admin-calendar-description">Recurring teaching slots. Archived slots and inactive academic context remain marked for review.</p>{% endif %}
   {{ legacy.flash_messages() }}
   {% if range_normalized %}<div class="alert alert--info" role="status">{{ _(range_message) }}</div>{% endif %}
   {% if calendar.filters_normalized %}<div class="alert alert--info" role="status">Calendar filters were refreshed for this date range.</div>{% endif %}
@@ -26,14 +30,14 @@
       <div class="calendar-weekday-labels">{% for day in calendar.weeks[0] %}<span>{{ ui_date(day.date.strftime('%a')) }}</span>{% endfor %}</div>
       {% for week in calendar.weeks %}<div class="calendar-week" data-cal-week="{{ loop.index0 }}" data-first-date="{{ week[0].iso }}" data-last-date="{{ week[-1].iso }}" data-period-label="{{ ui_date(week[3].date.strftime('%B %Y')) }}">
         {% for cell in week %}{% if cell.in_range %}<a class="calendar-date{{ ' calendar-date--today' if cell.today else '' }}" href="{{ url_for(request.endpoint, **cell.args) }}" data-cal-date="{{ cell.iso }}" data-count="{{ cell.count }}" aria-current="{{ 'date' if cell.selected else 'false' }}" aria-label="{{ ui_date(cell.date.strftime('%A %d %B %Y')) }}">{% else %}<span class="calendar-date calendar-date--outside" aria-label="{{ _('Outside selected range') }}">{% endif %}
-          <span class="calendar-date-weekday">{{ ui_date(cell.date.strftime('%a')) }}</span><strong>{{ cell.date.day }}</strong><span class="calendar-date-dot{{ ' calendar-date-dot--empty' if not cell.count else '' }}" aria-hidden="true"></span><span class="calendar-date-entries">{% for entry in cell.entries[:2] %}<span class="calendar-mini-entry calendar-mini-entry--{{ entry.tone }}">{{ entry.title }}</span>{% endfor %}{% if cell.count > 2 %}<span class="calendar-more">+{{ cell.count - 2 }}</span>{% endif %}</span>
+          <span class="calendar-date-weekday">{{ ui_date(cell.date.strftime('%a')) }}</span><strong>{{ cell.date.day }}</strong><span class="calendar-date-dot{{ ' calendar-date-dot--empty' if not cell.count else '' }}" aria-hidden="true"></span><span class="calendar-date-entries">{% for entry in cell.entries[:2] %}<span class="calendar-mini-entry calendar-mini-entry--{{ entry.tone }}{% if calendar.schedule_admin|default(false) and (entry.schedule_status != 'active' or entry.parent_archived) %} calendar-mini-entry--historical{% endif %}">{% if calendar.schedule_admin|default(false) %}{{ entry.start_time.strftime('%H:%M') }} {{ entry.context }}{% else %}{{ entry.title }}{% endif %}</span>{% endfor %}{% if cell.count > 2 %}<span class="calendar-more">+{{ cell.count - 2 }}</span>{% endif %}</span>
         {% if cell.in_range %}</a>{% else %}</span>{% endif %}{% endfor %}
       </div>{% endfor %}
     </div>
     <section class="calendar-agenda" aria-label="{{ _('Calendar entries') }}">
       <div class="calendar-agenda-heading"><div><h2 data-cal-selected-heading>{{ _('Calendar entries') }}</h2><p data-cal-selected-count>{{ _n('%(count)d entry', '%(count)d entries', calendar.count) }}</p></div><div class="calendar-mobile-views" data-cal-view-controls aria-label="{{ _('Calendar view') }}"><button type="button" data-cal-view="day" aria-pressed="true">Day</button><button type="button" data-cal-view="upcoming" aria-pressed="false">Upcoming</button></div></div>
       <noscript><p class="calendar-meta">{{ _('Showing all dates in this range. Choose dates and filters with the form above.') }}</p></noscript>
-      {% for day in calendar.days %}<section class="calendar-day{{ ' calendar-day--empty' if not day.count else '' }}" data-cal-day="{{ day.iso }}" data-date-label="{{ ui_date(day.date.strftime('%a %d %B')) }}" data-period-label="{{ ui_date(day.date.strftime('%B %Y')) }}" data-count="{{ day.count }}"><h3 class="calendar-day-heading">{{ ui_date(day.date.strftime('%A %d %B')) }}</h3><div class="calendar-day-entries">{% for row in day.entries %}{% include 'calendar/_entry.html' %}{% else %}<div class="calendar-empty"><strong>No calendar entries</strong><p>Choose another day or view upcoming dates.</p></div>{% endfor %}</div></section>{% endfor %}
+      {% for day in calendar.days %}<section class="calendar-day{{ ' calendar-day--empty' if not day.count else '' }}" data-cal-day="{{ day.iso }}" data-date-label="{{ ui_date(day.date.strftime('%a %d %B')) }}" data-period-label="{{ ui_date(day.date.strftime('%B %Y')) }}" data-count="{{ day.count }}"><h3 class="calendar-day-heading">{{ ui_date(day.date.strftime('%A %d %B')) }}</h3><div class="calendar-day-entries">{% for row in day.entries %}{% if calendar.schedule_admin|default(false) %}{% include 'admin/schedules/_entry.html' %}{% else %}{% include 'calendar/_entry.html' %}{% endif %}{% else %}<div class="calendar-empty"><strong>No calendar entries</strong><p>Choose another day or view upcoming dates.</p></div>{% endfor %}</div></section>{% endfor %}
       <div class="calendar-empty" data-cal-upcoming-empty{% if calendar.count %} hidden{% endif %}><strong>No calendar entries</strong><p>Choose another day or view upcoming dates.</p></div>
     </section>
   </div>

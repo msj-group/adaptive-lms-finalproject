@@ -1,0 +1,60 @@
+{# Teacher Focus desk. Public view dictionaries only; all authored text is escaped. #}
+{% import "_figma_ui.html" as ui %}
+{% macro flashes() -%}
+{% with messages = get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="alert alert--{{ category }}" role="{{ 'alert' if category in ['danger','error'] else 'status' }}">{{ message }}</div>{% endfor %}{% endwith %}
+{%- endmacro %}
+
+{% macro status(locked) -%}
+<span class="tdisc-status{{ ' is-locked' if locked else '' }}">{{ ui.icon('lock' if locked else 'message', 13) }}<span>{{ _('Locked') if locked else _('Open for replies') }}</span></span>
+{%- endmacro %}
+
+{% macro group_picker(groups, group) -%}
+<div class="tdisc-group-context">
+  <form method="get" action="{{ url_for('teacher.discussions_overview') }}" class="tdisc-native-picker" data-tdisc-group-form>
+    <label for="teacher-discussion-group">Discussion group</label><div><select name="group" id="teacher-discussion-group" dir="auto" data-tdisc-group-select>{% for item in groups %}<option value="{{ item.public_id }}" dir="auto"{% if item.public_id == group.public_id %} selected{% endif %}>{{ item.name }}</option>{% endfor %}</select><button type="submit" class="btn" data-tdisc-group-apply>View group</button></div>
+  </form>
+  <details class="tdisc-picker" data-tdisc-picker hidden>
+    <summary aria-label="Discussion group">{{ ui.icon('users', 18) }}<span dir="auto">{{ group.name }}</span>{{ ui.icon('chevron-down', 16) }}</summary>
+    <div class="tdisc-group-menu"><nav class="tdisc-group-options" aria-label="Discussion groups">{% for item in groups %}<a href="{{ url_for('teacher.discussions_group', group_public_id=item.public_id) }}" data-tdisc-group-option{% if item.public_id == group.public_id %} aria-current="page"{% endif %}><span dir="auto">{{ item.name }}</span>{% if item.public_id == group.public_id %}{{ ui.icon('check', 16) }}{% endif %}</a>{% endfor %}</nav></div>
+  </details>
+</div>
+{%- endmacro %}
+
+{% macro topic_list(topics, group, selected, topic_page) -%}
+{% if topics %}
+<div class="tdisc-topic-list">{% for item in topics %}
+  <a class="tdisc-topic{{ ' is-selected' if selected and item.public_id == selected.public_id else '' }}" href="{{ url_for('teacher.discussions_topic', group_public_id=group.public_id, topic_public_id=item.public_id, topic_page=topic_page) }}"{% if selected and item.public_id == selected.public_id %} aria-current="page"{% endif %}>
+    <div class="tdisc-topic-top"><span dir="auto">{{ group.name }}</span><time datetime="{{ item.created_local.isoformat() }}">{{ item.created_local.strftime('%Y-%m-%d %H:%M') }}</time></div>
+    <h3 dir="auto">{{ item.title }}</h3><p class="tdisc-preview" dir="auto">{{ item.preview }}</p>
+    <div class="tdisc-topic-footer"><span class="tdisc-author">{{ ui.avatar(item.author_name) }}<span><strong dir="auto">{{ item.author_name }}</strong><small>{{ _(item.author_role_label) }}</small></span></span><span class="tdisc-topic-facts">{{ status(item.is_locked) }}<span class="tdisc-reply-count">{{ ui.icon('message', 14) }}{{ _n('%(count)d reply', '%(count)d replies', item.reply_count) }}</span></span></div>
+  </a>
+{% endfor %}</div>
+{% else %}<div class="tdisc-empty"><span class="tdisc-empty-icon">{{ ui.icon('message', 24) }}</span><h3>No topics yet</h3><p>Start a topic for this group with New topic. Its students and teachers can then read it and reply.</p><a class="btn btn--primary" data-tdisc-new href="{{ url_for('teacher.discussions_new', group_public_id=group.public_id) }}">New topic</a></div>{% endif %}
+{%- endmacro %}
+
+{% macro topic_pager(group, topic, topic_page, has_prev, has_next, reply_page) -%}
+{% if has_prev or has_next %}<nav class="tdisc-pagination" aria-label="Topic pages"><span>{{ _('Topic page %(page)d', page=topic_page) }}</span><div>{% for target,label in [(topic_page-1,'Newer topics'),(topic_page+1,'Older topics')] %}{% if (loop.first and has_prev) or (loop.last and has_next) %}<a class="btn" href="{{ url_for('teacher.discussions_topic', group_public_id=group.public_id, topic_public_id=topic.public_id, topic_page=target, page=reply_page) if topic else url_for('teacher.discussions_group', group_public_id=group.public_id, page=target) }}">{{ _(label) }}</a>{% endif %}{% endfor %}</div></nav>{% endif %}
+{%- endmacro %}
+
+{% macro topic_header(topic, group) -%}
+<header class="tdisc-topic-heading"><span class="tdisc-group-label" dir="auto">{{ group.name }}</span><h2 dir="auto">{{ topic.title }}</h2><div class="tdisc-author">{{ ui.avatar(topic.author_name) }}<span><strong dir="auto">{{ topic.author_name }}</strong><small>{{ _(topic.author_role_label) }}<span aria-hidden="true"> · </span><time datetime="{{ topic.created_local.isoformat() }}">{{ topic.created_local.strftime('%Y-%m-%d %H:%M') }}</time></small></span></div></header>
+{% if topic.is_locked %}<div class="tdisc-lock-notice" role="status">{{ ui.icon('lock', 17) }}<span>{{ _('This topic is locked.') }} {% if topic.was_moderated %}{{ _('Locked since %(time)s.', time=topic.updated_local.strftime('%Y-%m-%d %H:%M')) }} {% endif %}{{ _('It stays readable, but no new replies can be added.') }}</span></div>{% endif %}
+<article class="tdisc-prompt" id="topic" aria-label="Discussion prompt"><div data-topic-body dir="auto">{{ topic.body }}</div></article>
+{%- endmacro %}
+
+{% macro moderation(group, topic, action, state, topic_page, reply_page) -%}
+<details class="tdisc-moderation" id="moderation"><summary>{{ ui.icon('settings', 16) }}<span>Discussion settings</span>{{ ui.icon('chevron-down', 15) }}</summary><form method="post" action="{{ url_for('teacher.discussions_' ~ action, group_public_id=group.public_id, topic_public_id=topic.public_id, topic_page=topic_page, page=reply_page) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="moderation_state" value="{{ state }}">{% if action == 'lock' %}<p>Locking keeps the whole discussion readable and stops new replies until a teacher of this group reopens it.</p><button type="submit" class="btn">Lock topic</button>{% else %}<p>Reopening lets this group's students and teachers reply again.</p><button type="submit" class="btn btn--primary">Reopen topic</button>{% endif %}</form></details>
+{%- endmacro %}
+
+{% macro reply_timeline(replies, group, topic, page, has_prev, has_next, topic_page, total) -%}
+<section class="tdisc-replies" id="replies"><div class="tdisc-replies-heading"><h3>Replies</h3><span>{{ _n('%(count)d reply', '%(count)d replies', total) }}</span></div>
+{% if has_prev %}<a class="tdisc-reply-page" href="{{ url_for('teacher.discussions_topic', group_public_id=group.public_id, topic_public_id=topic.public_id, page=page-1, topic_page=topic_page, _anchor='replies') }}">Earlier replies</a>{% endif %}
+{% for reply in replies %}<article class="tdisc-reply{{ ' is-own' if reply.from_viewer else '' }}" id="reply-{{ reply.public_id }}">{{ ui.avatar(reply.author_name) }}<div><header><span><strong dir="auto">{{ reply.author_name }}</strong><small>{{ _(reply.author_role_label) }}{% if reply.from_viewer %}<span aria-hidden="true"> · </span><span>You</span>{% endif %}</small></span><time datetime="{{ reply.created_local.isoformat() }}">{{ reply.created_local.strftime('%Y-%m-%d %H:%M') }}</time></header><div data-reply-body dir="auto">{{ reply.body }}</div></div></article>{% else %}<div class="tdisc-replies-empty"><h4>No replies yet</h4><p>Replies from this group's students and teachers appear here, oldest first.</p></div>{% endfor %}
+{% if has_next %}<a class="tdisc-reply-page" href="{{ url_for('teacher.discussions_topic', group_public_id=group.public_id, topic_public_id=topic.public_id, page=page+1, topic_page=topic_page, _anchor='replies') }}">Later replies</a>{% endif %}
+{% if has_prev or has_next %}<p class="tdisc-page-note">{{ _('Reply page %(page)d', page=page) }}</p>{% endif %}</section>
+{%- endmacro %}
+
+{% macro reply_form(can_reply, group, topic, state, draft, body_error, form_error, body_max, topic_page, reply_page) -%}
+<section class="tdisc-compose" id="reply">{% if form_error %}<div class="alert alert--danger" role="alert">{{ form_error }}</div>{% endif %}
+{% if can_reply %}<form method="post" action="{{ url_for('teacher.discussions_reply', group_public_id=group.public_id, topic_public_id=topic.public_id, topic_page=topic_page, page=reply_page) }}" novalidate data-research-form="discussion_reply"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="reply_state" value="{{ state }}"><label for="reply-body">Your reply</label><textarea id="reply-body" name="body" rows="4" maxlength="{{ body_max }}" dir="auto" placeholder="Share your thoughts with the group…" aria-describedby="tdisc-reply-help{{ ' tdisc-reply-error' if body_error else '' }}"{% if body_error %} aria-invalid="true"{% endif %}>{{ draft }}</textarea>{% if body_error %}<div class="field__error" id="tdisc-reply-error" role="alert">{{ body_error }}</div>{% endif %}<div class="tdisc-compose-footer"><p id="tdisc-reply-help">{{ _('Plain text, up to %(count)d characters. Visible to current group members; posting is final.', count=body_max) }}</p><button type="submit" class="btn btn--primary" data-research-id="discussion_reply">Post reply {{ ui.icon('arrow-up', 16) }}</button></div></form>{% else %}<p class="tdisc-locked-copy">This topic is locked, so no new replies can be added. The discussion stays readable.</p>{% endif %}</section>
+{%- endmacro %}

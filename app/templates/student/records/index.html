@@ -1,12 +1,12 @@
-{% extends "layouts/portal_base.html" %}
+{% extends 'layouts/student_atlas_base.html' %}
 {% import "_figma_ui.html" as ui %}
 {% block title %}My records{% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/records.css', v='records-all-20261015') }}">{% endblock %}
 {% block portal_content %}
 <div class="st-journal record-workspace" data-record-workspace>
-  <div class="record-page-heading">
-    <h1 data-workspace-page-heading dir="auto">My records<span class="figma-brand-dot">.</span></h1>
+  <div class="record-page-heading atlas-record-heading">
+    <div><p class="atlas-eyebrow">Your learning journal</p><h1 data-workspace-page-heading dir="auto">My records</h1><p class="atlas-note">Your work across enrollment periods.</p></div>
     <details class="record-filters" data-record-filters>
       <summary><span class="record-filter-heading">{{ ui.icon('settings', 18) }}<span>Filters</span></span><span class="record-filter-arrow">{{ ui.icon('chevron-down', 16) }}</span></summary>
       <form method="get" action="{{ url_for('student.records') }}" class="record-filter-form st-panel" data-record-filter-form>

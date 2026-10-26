@@ -1,0 +1,38 @@
+{% import "admin/_macros.html" as macros %}
+{% import "admin/_atlas_ui.html" as atlas %}
+{% import "_figma_ui.html" as ui %}
+<article class="pf-profile" data-people-profile data-people-kind="{{ people_kind }}" data-person-id="{{ person.public_id }}" data-people-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}">
+  <header class="pf-profile-bar"><a class="pf-back" data-people-back href="{{ url_for('admin.students_list' if people_kind == 'student' else 'admin.teachers_list') }}">{{ ui.icon('arrow', 15) }} People</a><span class="ad-eyebrow pf-profile-caption">{{ _('Student profile') if people_kind == 'student' else _('Teacher profile') }}</span>{{ macros.user_status_badge(person.status) }}</header>
+  <div class="pf-identity">{{ atlas.person_avatar(person.full_name) }}<div><h2 data-people-profile-heading tabindex="-1" dir="auto">{{ person.full_name }}</h2><p dir="auto">{{ person.email }}</p></div></div>
+  <div class="pf-profile-actions"><a class="btn btn--primary" href="{{ url_for('admin.' ~ people_kind ~ '_edit', public_id=person.public_id) }}" data-people-action="edit" aria-haspopup="dialog">{{ ui.icon('pen', 15) }} Edit profile</a>{% if person.status == 'active' %}<a class="btn btn--secondary" href="{{ url_for('messages.new_thread', to=person.public_id) }}" data-people-action="message" aria-haspopup="dialog">{{ ui.icon('message', 15) }} Message</a>{% endif %}</div>
+  <dl class="pf-facts"><div><dt>Created</dt><dd>{{ person.created_at.strftime('%Y-%m-%d') }}</dd></div><div><dt>Account type</dt><dd>{{ _('Student') if people_kind == 'student' else _('Teacher') }}</dd></div></dl>
+  <p class="pf-records-label">Connected records</p>
+  <div class="pf-records">
+    {% if people_kind == 'student' %}
+    <a class="pf-record-link" href="{{ url_for('workspace.student_enrollments', student_public_id=person.public_id) }}">{{ ui.icon('book', 17) }}<span>Enrollment history</span>{{ ui.icon('chevron', 14) }}</a>
+    <a class="pf-record-link" href="{{ url_for('admin.student_financial_record', student_public_id=person.public_id) }}">{{ ui.icon('wallet', 17) }}<span>Financial account<small>{{ _('Student credit') if account_facts.balance < 0 else _('Account settled') if account_facts.balance == 0 else _('Current amount due') }} · <bdi>{{ money(account_facts.balance|abs) }} LYD</bdi></small></span>{{ ui.icon('chevron', 14) }}</a>
+    {% else %}
+    <details class="pf-expand" id="teacher-assigned-groups"><summary>{{ ui.icon('layers', 17) }}<span>Assigned groups</span>{{ ui.icon('chevron', 14) }}</summary><div class="pf-expand-body">
+      {% for row in assigned_groups %}<article class="pf-assignment"><h3><a class="ad-row-link" href="{{ url_for('admin.group_detail', public_id=row.group_public_id) }}" dir="auto">{{ row.group_name }} {{ ui.icon('arrow-up', 14) }}</a></h3><p class="ad-meta"><span dir="auto">{{ row.course_title }}</span> · <span dir="auto">{{ row.term_name }}</span></p><span class="badge {{ 'badge--success' if row.operational else 'badge--neutral' }}">{{ _('Operational') if row.operational else _('Archived context') }}</span><p class="ad-meta">{{ row.student_count }} {{ _('active students') }}</p>{% for schedule in row.schedules %}<p class="ad-meta">{{ _(['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][schedule.day_of_week]) }} {{ schedule.start_time.strftime('%H:%M') }}–{{ schedule.end_time.strftime('%H:%M') }} · {{ schedule.location or _('Location not set') }}</p>{% endfor %}</article>{% else %}<p class="ad-meta">No active group assignments.</p>{% endfor %}
+    </div></details>
+    {% endif %}
+    <a class="pf-record-link" href="{{ url_for('admin.operational_history', kind=people_kind, public_id=person.public_id) }}">{{ ui.icon('clock', 17) }}<span>Account change history</span>{{ ui.icon('chevron', 14) }}</a>
+    <details class="pf-expand" data-people-access><summary>{{ ui.icon('lock', 17) }}<span>Account access settings</span>{{ ui.icon('chevron', 14) }}</summary><div class="pf-expand-body">
+      <p class="ad-meta">Changing the login email, suspending this account or resetting its password ends existing sessions.</p>
+      <div class="ad-actions"><a class="btn btn--secondary" href="{{ url_for('admin.' ~ people_kind ~ '_reset_password', public_id=person.public_id) }}">Reset Password</a>
+        <form method="post" action="{{ url_for('admin.' ~ people_kind ~ '_toggle_status', public_id=person.public_id) }}" class="{{ people_kind }}-status-form yc-form"{% if person.status == 'active' %} data-confirm="Suspend {{ person.full_name }}? They will be signed out of any active session and unable to log in until reactivated."{% endif %}>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="account_snapshot" value="{{ account_token(person) }}">
+          {% if person.status == 'active' %}<button type="submit" class="btn btn--danger-outline">Suspend</button>{% else %}<button type="submit" class="btn btn--secondary">Reactivate</button>{% endif %}
+        </form>
+      </div>
+    </div></details>
+    {% if people_kind == 'student' %}
+    <details class="pf-expand"><summary>{{ ui.icon('book', 17) }}<span>Current learning context</span>{{ ui.icon('chevron', 14) }}</summary><div class="pf-expand-body">
+      {% for episode in current_episodes %}<article class="pf-assignment"><a class="ad-row-link" href="{{ url_for('admin.group_detail', public_id=episode.group.public_id) }}" dir="auto">{{ episode.group.name }}</a><p class="ad-meta" dir="auto">{{ episode.group.course.title }} · {{ episode.group.academic_term.name }}</p><span class="badge badge--success">Active enrollment</span></article>{% else %}<p class="ad-meta">No active enrollments.</p><a class="ad-row-link" href="{{ url_for('admin.groups_list') }}">Find a group</a>{% endfor %}{% if more_episodes %}<p class="ad-meta">Showing the five most recent active enrollments.</p>{% endif %}
+    </div></details>
+    {% endif %}
+    <details class="pf-expand"><summary>{{ ui.icon('user', 17) }}<span>Profile information</span>{{ ui.icon('chevron', 14) }}</summary><div class="pf-expand-body"><dl class="ad-definition"><dt>Full Name</dt><dd dir="auto">{{ person.full_name }}</dd><dt>Email</dt><dd dir="auto">{{ person.email }}</dd><dt>Created</dt><dd>{{ person.created_at.strftime('%Y-%m-%d %H:%M') }}</dd><dt>Last Updated</dt><dd>{{ person.updated_at.strftime('%Y-%m-%d %H:%M') }}</dd></dl></div></details>
+  </div>
+  <footer class="pf-profile-footer"><a class="ad-row-link" href="{{ url_for('admin.' ~ people_kind ~ '_detail', public_id=person.public_id) }}">Open full profile {{ ui.icon('arrow-up', 14) }}</a></footer>
+</article>

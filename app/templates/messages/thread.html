@@ -1,7 +1,7 @@
 {% extends "messages/base.html" %}
 {% import "_message_macros.html" as msg %}
 {% block title %}Messages{% endblock %}
-{% block portal_content %}
+{% block message_content %}
 <div class="messenger messenger--thread" data-messenger>
   {{ msg.sidebar(conversations, thread.public_id, recipients=recipients, audience=audience) }}
   <section class="messenger-chat" aria-labelledby="conversation-title">
@@ -49,15 +49,15 @@
       </div>
       <button class="messenger-icon-button messenger-scroll-bottom" type="button" data-scroll-bottom hidden aria-label="Scroll to bottom" title="Scroll to bottom">{{ msg.icon('arrow', 18) }}</button>
     </div>
-    <div class="messenger-composer" id="reply">
+    <div class="messenger-composer" id="reply" data-people-message-panel data-message-mode="reply" data-thread-id="{{ thread.public_id }}" data-people-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}" data-message-sent="{{ 'true' if get_flashed_messages()|select('in', ['Message sent.', 'Reply sent.', 'This message was already sent.', 'This reply was already sent.'])|list else 'false' }}" data-message-blocked="{{ 'true' if get_flashed_messages(with_categories=true)|selectattr('0', 'in', ['warning', 'danger', 'error'])|list else 'false' }}">
       {% if can_reply %}
       {% if form_error %}<div class="alert alert--danger" role="alert">{{ form_error }}</div>{% endif %}
-      <form method="post" action="{{ url_for('messages.reply', thread_public_id=thread.public_id) }}" novalidate data-research-form="message_send" data-message-form>
+      <form method="post" action="{{ url_for('messages.reply', thread_public_id=thread.public_id) }}" novalidate data-research-form="message_send" data-message-form data-people-message-form>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="message_state" value="{{ message_state }}">
         {{ msg.composer('reply-body', draft, body_max, body_error, 'Send reply') }}
       </form>
-      {% else %}<div class="messenger-readonly" role="status">{{ msg.icon('lock', 20) }}<div><strong>This conversation is read-only</strong><p>You can still read your messages. Replies are available while you and {{ other.full_name if other else 'the other participant' }} share an active group.</p></div></div>{% endif %}
+      {% else %}<div class="messenger-readonly" role="status">{{ msg.icon('lock', 20) }}<div><strong>This conversation is read-only</strong>{% if administrative_contact %}<p>Replies require two active accounts and an administrator as one participant. Your previous messages remain available.</p>{% else %}<p>You can still read your messages. Replies are available while you and {{ other.full_name if other else 'the other participant' }} share an active group.</p>{% endif %}</div></div>{% endif %}
     </div>
   </section>
 </div>

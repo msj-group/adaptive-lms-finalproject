@@ -1,0 +1,24 @@
+{% extends "admin/people/_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% import "_figma_ui.html" as ui %}
+{% block admin_content %}
+<div class="ad-page pf-page" data-people-desk data-people-kind="{{ people_kind }}" data-people-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}">
+  <header class="ad-page-head pf-heading">
+    <div><p class="ad-eyebrow">People / Directory</p><h1 data-workspace-page-heading>People</h1><p class="ad-subtitle">Profiles, account access and connected records.</p></div>
+    <div class="pf-heading-actions"><a class="btn btn--primary" href="{{ url_for('admin.' ~ people_kind ~ '_create') }}" data-people-create-open aria-haspopup="dialog" aria-controls="people-create-dialog">{{ ui.icon('users', 16) }} {{ _('New Student') if people_kind == 'student' else _('New Teacher') }}</a><button class="btn btn--secondary pf-filter-toggle" type="button" data-people-filter-toggle aria-expanded="false" aria-controls="{{ people_kind }}-filter-form" hidden>{{ ui.icon('settings', 16) }} Filters</button></div>
+  </header>
+  {{ macros.flash_messages() }}
+  <p class="pf-reader-status" data-people-action-feedback role="status" aria-live="polite" hidden></p>
+  {% include "admin/people/_tabs.html" %}
+  <form method="get" id="{{ people_kind }}-filter-form" class="yc-filter-form pf-filters" data-query-form data-query-results="{{ people_kind }}-results" data-query-min="0" data-query-history="replace" data-query-quiet-success data-query-refresh>
+    <div class="field pf-search"><label class="pf-sr-only" for="q">Search:</label><span aria-hidden="true">{{ ui.icon('search', 17) }}</span><input type="search" name="q" id="q" class="field__input" placeholder="Full name or email" value="{{ search }}" autocomplete="off"></div>
+    <div class="field pf-status-filter"><label class="pf-sr-only" for="status">Status:</label><select name="status" id="status" class="field__input"><option value="">All Statuses</option><option value="active" {{ 'selected' if selected_status == 'active' else '' }}>Active</option><option value="suspended" {{ 'selected' if selected_status == 'suspended' else '' }}>Suspended</option></select></div>
+    <button data-query-submit type="submit" class="btn btn--secondary">Filter</button>
+  </form>
+  <p class="pf-reader-status" data-people-status role="status" aria-live="polite" hidden></p>
+  <div class="pf-recovery" data-people-recovery hidden><button class="btn btn--secondary" type="button" data-people-retry>Retry</button><a class="ad-row-link" data-people-recovery-link>Open full profile {{ ui.icon('arrow-up', 14) }}</a></div>
+  <div id="{{ people_kind }}-results" data-people-results>{% include "admin/people/_results.html" %}</div>
+</div>
+{% include "admin/people/_create_dialog.html" %}
+{% include "admin/people/_action_dialog.html" %}
+{% endblock %}

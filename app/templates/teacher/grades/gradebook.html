@@ -1,170 +1,249 @@
-{% extends "layouts/portal_base.html" %}
-{% import "_grade_macros.html" as gr %}
+{% extends "teacher/grades/_base.html" %}
 {% block title %}{{ group.name }} — Gradebook{% endblock %}
-{% block portal_nav %}
-  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
-  <a class="portal-nav__link" href="{{ url_for('teacher.gradebook_overview') }}">Gradebook</a>
-{% endblock %}
-{% block portal_content %}
-{#- Phase 4 / M08. `categories`, `student_totals` and every number on this page
-    are plain presentation dicts and pre-formatted strings: the categories and
-    items come from app.services.grade_queries.build_gradebook_view, and every
-    percentage and weight was produced by app.services.grade_calculations and
-    rounded there exactly once. This template performs NO arithmetic of any
-    kind -- no sum, no division, no percentage, no comparison of two numbers.
-
-    No ORM row and no internal id reaches this template. There is deliberately
-    no delete, unrelease, reopen, duplicate, import or export control anywhere
-    on this page, and no such endpoint exists server-side either. -#}
-<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 data-workspace-page-heading style="margin:0">{{ group.name }} — Gradebook</h1>
-  {{ gr.weight_total(weight_total_display, weights_complete) }}
-</div>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for category, message in messages %}
-  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
-  {% endfor %}
-{% endwith %}
-
-<p class="workspace-meta" dir="auto">{{ group.academic_term.name }} · Unallocated weight: {{ gr.weight(weight_remaining_display) }}</p>
-
-<div class="alert alert--info" style="margin-bottom: var(--space-5)">Categories must total 100%. Each item captures a fixed roster. Students see released results; later score corrections remain visible.</div>
-
-{% if not operational %}
-<div class="alert alert--warning" style="margin-bottom: var(--space-5)">
-  This group is not operational: the {{ archived_labels | join(", ") }} {{ "is" if archived_labels|length == 1 else "are" }} archived.
-  Grades already recorded stay readable and nothing has been deleted or rewritten, but you
-  cannot add a category or item, enter a score, or release until every parent is active again.
-</div>
-{% endif %}
-
-{{ gr.messages(config_messages) }}
-
-<div class="ds-row yc-actions" style="margin-bottom: var(--space-5)">
-  <a class="btn btn--secondary" href="{{ url_for('teacher.gradebook_overview') }}">All groups</a>
-
-  {% if operational %}
-  <a class="btn btn--primary" href="{{ url_for('teacher.grade_category_create', group_public_id=group.public_id) }}">Add category</a>
-  {% if categories %}
-  <a class="btn btn--primary" href="{{ url_for('teacher.grade_item_create', group_public_id=group.public_id) }}">Add grade item</a>
-  {% endif %}
-  {% endif %}
-</div>
-
-<nav class="workspace-tabs" aria-label="Gradebook sections"><a href="#gradebook-items">Categories and items</a><a href="#gradebook-results">Released results</a></nav><div id="gradebook-items"></div>
-{% if categories %}
+{% block grade_content %}
+{% set book=namespace(items=[],drafts=[],released=[],next=none) %}
 {% for category in categories %}
-<section class="dash-section yc-section" style="margin-top: 0">
-  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center">
-    <h2 style="margin:0">
-      {{ category.title }}
-      <span style="color: var(--color-text-secondary); font-weight: normal">&middot; {{ gr.weight(category.weight_display) }}</span>
-    </h2>
-    <div class="ds-row yc-actions" style="gap: var(--space-2); align-items:center">
-      {% if category.frozen %}<span class="badge badge--neutral">Locked by a released item</span>{% endif %}
-      {% if operational and not category.frozen %}
-      <a class="btn btn--secondary" href="{{ url_for('teacher.grade_category_edit', group_public_id=group.public_id, category_public_id=category.public_id) }}">Edit category</a>
-      {% endif %}
-    </div>
-  </div>
-
-  {% if category.grade_items %}
-  <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th>Grade item</th>
-        <th style="width:16rem">What it is for</th>
-        <th style="width:7rem">Out of</th>
-        <th style="width:9rem">State</th>
-        <th style="width:12rem">Scores</th>
-        <th style="width:17rem">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in category.grade_items %}
-      <tr>
-        <td><strong>{{ item.title }}</strong></td>
-        <td>{{ gr.source_cell(item) }}</td>
-        <td>{{ gr.points(item.max_points_display) }}</td>
-        <td>{{ gr.release_badge(item.is_released) }}</td>
-        <td>{{ gr.score_progress(item) }}</td>
-        <td>
-          <div class="ds-row yc-actions">
-          {% if operational %}<a class="btn btn--primary" href="{{ url_for('teacher.grade_item_scores', group_public_id=group.public_id, item_public_id=item.public_id) }}">{{ _('Correct scores' if item.is_released else 'Enter scores') }}</a>{% endif %}
-          <a class="btn btn--secondary" href="{{ url_for('teacher.grade_item_detail', group_public_id=group.public_id, item_public_id=item.public_id) }}">Details</a>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">No grade items in this category yet</div>
-    <div>
-      A category with no released item keeps the group's overall grade unavailable, because
-      part of the weight would describe nothing that has been graded.
-    </div>
-  </div>
-  {% endif %}
-</section>
-{% endfor %}
-
-<section class="dash-section yc-section" id="gradebook-results">
-  <h2>Released student totals</h2>
-  <p class="ds-section__desc">
-    Calculated from released items only, with exact decimal arithmetic, and rounded once for
-    display. A student whose overall grade is not available is shown their category progress
-    instead — never a partial weighted total.
-  </p>
-  {% if student_totals %}
-  <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th>Student</th>
-        {% for category in categories %}
-        <th style="width:10rem">{{ category.title }}</th>
-        {% endfor %}
-        <th style="width:9rem">Overall</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in student_totals %}
-      <tr>
-        <td>{{ row.student_name }}</td>
-        {% for result in row.categories %}
-        <td>
-          {{ gr.percentage(result.percentage_display) }}
-          {%- if not result.complete %}
-          <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">{{ result.scored_item_count }} of {{ result.released_item_count }} released</div>
-          {%- endif %}
-        </td>
-        {% endfor %}
-        <td>
-          {% if row.overall_display %}<strong>{{ row.overall_display }}%</strong>
-          {% else %}<span class="badge badge--neutral">Not available</span>{% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">Nothing released yet</div>
-    <div>Student totals appear here once you release a grade item.</div>
-  </div>
-  {% endif %}
-</section>
-
+{% for item in category.grade_items %}
+{% set book.items=book.items+[item] %}
+{% if item.is_released %}
+{% set book.released=book.released+[item] %}
 {% else %}
-<div class="empty-state">
-  <div class="empty-state__title">This gradebook has no categories yet</div>
-
-</div>
+{% set book.drafts=book.drafts+[item] %}
+{% if book.next is none and not item.scores_complete %}
+{% set book.next=item %}
 {% endif %}
-{% endblock %}
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% if book.next is none and book.drafts %}
+{% set book.next=book.drafts[0] %}
+{% endif %}
+<header class="tgb-hero">
+<div class="tgb-hero-title">
+<div>
+<p class="tgb-eyebrow">
+<span class="tgb-desktop" dir="auto">{{ group.course.title }}</span>
+<span class="tgb-phone">Teacher workspace</span>
+</p>
+<h1 data-workspace-page-heading>
+<span class="tgb-desktop">{{ _('%(group)s gradebook',group=group.name) }}</span>
+<span class="tgb-phone">Gradebook</span>
+</h1>
+<p class="tgb-meta">
+<span class="tgb-desktop">A clear path from the first task to the final result.</span>
+<span class="tgb-phone" dir="auto">{{ group.course.title }} · {{ _('%(count)d captured students',count=student_matrix|length) }}</span>
+</p>
+</div>{% if operational and categories %}<a class="btn btn--primary tgb-new-item" href="{{ url_for('teacher.grade_item_create',group_public_id=group.public_id) }}" aria-label="New grade item">{{ gb.plus(21) }}<span class="tgb-desktop">New grade item</span>
+</a>{% endif %}</div>
+<div class="tgb-summary">
+<span>
+<strong>{{ book.items|length }}</strong> grade items</span>
+<span>
+<strong>{{ student_matrix|length }}</strong> captured students</span>
+<span>
+<strong>{{ gr.weight(weight_total_display) }}</strong> allocated</span>
+<span>
+<strong>{{ book.drafts|length }}</strong> drafts</span>
+</div>
+</header>
+{% if not operational %}<div class="tgb-notice tgb-notice--warning">{{ _('Archived: %(parents)s. Existing results remain readable; grading and release are unavailable.',parents=archived_labels|join(', ')) }}</div>{% endif %}
+<div data-tgb-sections>
+<nav class="tgb-stages" aria-label="Grading workflow">{% for id,icon,title,desc in [('grade-plan','settings','Plan','Categories & weights'),('grade-tasks','activity','Grade','Tasks & scores'),('grade-students','check','Review','Released results')] %}<a href="#{{ id }}" data-tgb-tab>{{ ui.icon(icon,21) }}<strong>{{ _(title) }}</strong>
+<small>{{ _(desc) }}</small>
+</a>{% endfor %}</nav>
+<nav class="tgb-tabs" aria-label="Gradebook sections">
+<a href="#grade-tasks" data-tgb-tab>Tasks</a>
+<a href="#grade-students" data-tgb-tab>
+<span class="tgb-desktop">Scores</span>
+<span class="tgb-phone">Students</span>
+</a>
+<a href="#grade-plan" data-tgb-tab>
+<span class="tgb-desktop">Grading plan</span>
+<span class="tgb-phone">Plan</span>
+</a>
+</nav>
+<section id="grade-tasks" data-tgb-section aria-label="Grade items">
+<div class="tgb-filters" data-task-filters hidden aria-label="Grade item visibility">
+<button type="button" data-task-filter="draft" aria-pressed="true">{{ _('To grade · %(count)d',count=book.drafts|length) }}</button>
+<button type="button" data-task-filter="released" aria-pressed="false">{{ _('Released · %(count)d',count=book.released|length) }}</button>
+</div>
+{% if book.next and operational %}<article class="tgb-pickup tgb-phone" data-pickup data-task-state="draft">
+<p class="tgb-eyebrow">Pick up where you left off</p>
+<h2 dir="auto">{{ book.next.title }}</h2>
+<p>{{ _('%(count)d scores to go · %(points)s points',count=book.next.captured_count-book.next.scored_count,points=book.next.max_points_display) }}</p>{{ gb.progress(book.next.scored_count,book.next.captured_count) }}<a class="btn" href="{{ url_for('teacher.grade_item_scores',group_public_id=group.public_id,item_public_id=book.next.public_id) if not book.next.scores_complete else url_for('teacher.grade_item_detail',group_public_id=group.public_id,item_public_id=book.next.public_id,_anchor='grade-release') }}">{{ _('Continue grading' if not book.next.scores_complete else 'Review & release') }}</a>
+</article>{% endif %}
+<div class="tgb-workspace-grid">
+<section class="tgb-card tgb-task-panel">
+<div class="tgb-section-title tgb-desktop">
+<h2>Your grade items</h2>
+<span class="tgb-meta">{{ _('%(items)d items · %(released)d released',items=book.items|length,released=book.released|length) }}</span>
+</div>
+<div class="tgb-task-list" data-task-list>{% for category in categories %}
+{% for item in category.grade_items %}<article class="tgb-task" data-task-state="{{ 'released' if item.is_released else 'draft' }}" {% if operational and book.next and item.public_id==book.next.public_id %}data-pickup-row{% endif %}>
+<span class="tgb-taskicon">{{ ui.icon({'assignment':'file','quiz':'headphones','speaking':'microphone','activity':'users','manual':'pen'}.get(item.source_kind,'activity'),19) }}</span>
+<span class="tgb-type tgb-phone">{{ gb.kind_label(item.source_kind) }}</span>
+<div class="tgb-task-main">
+<h3 dir="auto">
+<a href="{{ url_for('teacher.grade_item_detail',group_public_id=group.public_id,item_public_id=item.public_id) }}">{{ item.title }}</a>
+</h3>
+<p class="tgb-meta" dir="auto">{{ category.title }} · {{ gr.points(item.max_points_display) }} {{ _('points') }}</p>
+</div>
+<div class="tgb-task-status">{% if operational and not item.is_released and item.scores_complete and not item.release_blockers %}<span class="badge badge--info">Ready</span>{% else %}{{ gr.release_badge(item.is_released) }}{% endif %}<small>{{ _('%(scored)d of %(total)d graded',scored=item.scored_count,total=item.captured_count) }}</small>
+</div>
+<div class="tgb-task-foot">
+<span class="tgb-meta tgb-phone">{{ _('%(scored)d of %(total)d graded',scored=item.scored_count,total=item.captured_count) }}</span>
+<a href="{{ url_for('teacher.grade_item_detail',group_public_id=group.public_id,item_public_id=item.public_id,_anchor='grade-release') if item.scores_complete or item.is_released or not operational else url_for('teacher.grade_item_scores',group_public_id=group.public_id,item_public_id=item.public_id) }}">{{ _('View results' if item.is_released or not operational else ('Review' if item.scores_complete else 'Enter scores')) }} {{ ui.icon('arrow',15) }}</a>
+</div>
+</article>{% endfor %}
+{% endfor %}</div>
+{% if not book.items %}
+{% call gb.empty('Make room for your first result.','Complete the grading plan, then add a task or link an existing activity.') %}
+{% if operational %}<a class="btn btn--primary" href="{{ url_for('teacher.grade_item_create' if categories else 'teacher.grade_category_create',group_public_id=group.public_id) }}">{{ _('New grade item' if categories else 'Add category') }}</a>{% endif %}
+{% endcall %}
+{% endif %}<p class="tgb-notice" data-filter-empty hidden>No items in this view.</p>
+</section>
+<aside class="tgb-side tgb-desktop">{% if book.next and operational %}<section class="tgb-card tgb-next">
+<span class="badge badge--info">Your next step</span>
+<h3>{{ _('Finish %(count)d remaining scores',count=book.next.captured_count-book.next.scored_count) if not book.next.scores_complete else _('Ready for a final look') }}</h3>
+<p class="tgb-meta" dir="auto">{{ book.next.title }}</p>{{ gb.progress(book.next.scored_count,book.next.captured_count) }}<a class="btn btn--primary" href="{{ url_for('teacher.grade_item_scores',group_public_id=group.public_id,item_public_id=book.next.public_id) if not book.next.scores_complete else url_for('teacher.grade_item_detail',group_public_id=group.public_id,item_public_id=book.next.public_id,_anchor='grade-release') }}">{{ _('Continue grading' if not book.next.scores_complete else 'Review & release') }}</a>
+</section>{% endif %}<section class="tgb-card">
+<div class="tgb-section-title">
+<h3>Grading plan</h3>
+<a href="#grade-plan" data-tgb-jump>View</a>
+</div>
+<dl class="tgb-facts">{% for category in categories %}<dt dir="auto">{{ category.title }}</dt>
+<dd>{{ gr.weight(category.weight_display) }}</dd>{% endfor %}</dl>
+<div class="tgb-total">
+<span>Total allocated</span>
+<strong>{{ gr.weight(weight_total_display) }}</strong>
+</div>
+</section>
+<p class="tgb-caption">{{ ui.icon('eye',15) }} Draft scores stay private until you release the item.</p>
+</aside>
+</div>
+<p class="tgb-caption tgb-phone tgb-center">Drafts stay private until you release them.</p>
+</section>
+<section id="grade-students" data-tgb-section aria-label="Student score matrix">
+<div class="tgb-section-title tgb-desktop">
+<div>
+<h2>Every student. One clear view.</h2>
+<p class="tgb-meta">Released results count toward totals. Select a draft score to keep grading.</p>
+</div>
+</div>
+<div class="tgb-phone">{{ gb.heading(_('Students, at a glance.'),'Your group',group) }}<div class="tgb-notice">{{ ui.icon('eye',18) }} Overall results include released items only.</div>
+</div>{% if student_matrix %}<div class="tgb-card tgb-results-desktop">
+<div class="tgb-table-scroll">
+<table class="tgb-table">
+<thead>
+<tr>
+<th>Student</th>{% for item in book.items %}<th>
+<span dir="auto">{{ item.title }}</span>
+<small>{{ _('Out of %(points)s',points=item.max_points_display) }} · {{ _('Released' if item.is_released else 'Draft') }}</small>
+</th>{% endfor %}<th>Overall</th>
+</tr>
+</thead>
+<tbody>{% for row in student_matrix %}<tr>
+<td>
+<a href="#student-{{ row.public_id }}" data-tgb-jump>{{ gb.person(row.student_name) }}</a>
+</td>{% for item in book.items %}
+{% set record=row.records.get(item.public_id) %}<td>{% if record %}
+{% if operational and not item.is_released %}<a class="tgb-draft-score" href="{{ url_for('teacher.grade_item_scores',group_public_id=group.public_id,item_public_id=item.public_id,focus=record.public_id) }}">{{ gr.points(record.score_display) }}</a>{% else %}{{ gr.points(record.score_display) }}{% endif %}
+{% else %}<small>No record</small>{% endif %}</td>{% endfor %}<td>{{ gr.percentage(row.overall_display) }}</td>
+</tr>{% endfor %}</tbody>
+</table>
+</div>
+</div>
+<div class="tgb-student-list tgb-card">{% for row in student_matrix %}<a class="tgb-student" href="#student-{{ row.public_id }}" data-tgb-jump>{{ gb.person(row.student_name) }}<strong>{{ gr.percentage(row.overall_display) }}</strong>{{ ui.icon('chevron',16) }}</a>{% endfor %}</div>{% else %}{{ gb.empty('No captured students','Students appear when the first grade item captures its roster.') }}{% endif %}</section>
+<section id="grade-plan" data-tgb-section aria-label="Category weights">
+<div class="tgb-phone">{{ gb.heading(_('Give every skill its place.'),'Grading plan',group) }}<section class="tgb-card tgb-phone-plan-total">
+<span class="badge {{ 'badge--success' if weights_complete else 'badge--warning' }}">{{ _('Plan complete' if weights_complete else 'Setup in progress') }}</span>
+<div class="tgb-total">
+<span>Total allocated</span>
+<strong class="tgb-weight">{{ gr.weight(weight_total_display) }}</strong>
+</div>{{ gb.planbar(categories) }}<p class="tgb-caption">{{ _('%(weight)s%% available',weight=weight_remaining_display) }}</p>
+</section>
+</div>
+<div class="tgb-workspace-grid tgb-plan-grid">
+<section class="tgb-card">
+<div class="tgb-section-title tgb-desktop">
+<div>
+<h2>Give every category its place.</h2>
+<p class="tgb-meta">Set the balance once. Keep the calculation clear.</p>
+</div>{% if operational and not weights_complete %}<a class="btn" href="{{ url_for('teacher.grade_category_create',group_public_id=group.public_id) }}">{{ gb.plus(16) }} Add category</a>{% endif %}</div>{% for category in categories %}<article class="tgb-plan-row">
+<span class="tgb-taskicon">{{ ui.icon('layers',19) }}</span>
+<div>
+<h3 dir="auto">{{ category.title }}</h3>
+<p class="tgb-meta">{{ category.item_count }} {{ _('grade items') }} · {{ _('Locked after release' if category.frozen else 'Editable before release') }}</p>
+</div>
+<strong class="tgb-weight">{{ gr.weight(category.weight_display) }}</strong>{% if category.frozen %}<span class="tgb-lock">{{ ui.icon('lock',16) }}<span class="tgb-desktop">Locked</span>
+</span>{% elif operational %}<a href="{{ url_for('teacher.grade_category_edit',group_public_id=group.public_id,category_public_id=category.public_id) }}">Edit</a>{% endif %}</article>{% endfor %}<div class="tgb-desktop">
+<div class="tgb-total">
+<strong>Total weight</strong>
+<strong class="tgb-weight">{{ gr.weight(weight_total_display) }}</strong>
+</div>{{ gb.planbar(categories) }}<p class="tgb-caption">{{ _('%(weight)s%% available',weight=weight_remaining_display) }}</p>
+</div>
+</section>
+<aside class="tgb-card tgb-side tgb-desktop">
+<span class="badge {{ 'badge--success' if weights_complete else 'badge--warning' }}">{{ _('Plan complete' if weights_complete else 'Setup in progress') }}</span>
+<h3>A weight is not a point limit.</h3>
+<p>Each task has its own maximum points. The category weight controls its contribution to the overall result.</p>
+<hr>
+<p class="tgb-caption">After a category’s first release, its name and weight are locked. Scores can still be corrected.</p>{{ gr.messages(config_messages) }}</aside>
+</div>
+<div class="tgb-phone">{% if operational and not weights_complete %}<a class="btn btn--primary tgb-full" href="{{ url_for('teacher.grade_category_create',group_public_id=group.public_id) }}">{{ gb.plus(16) }} Add category</a>{% endif %}<p class="tgb-caption">Once a category has a released item, its name and weight are locked.</p>
+</div>
+</section>
+{% for row in student_matrix %}<section id="student-{{ row.public_id }}" data-tgb-section>
+<a class="tgb-back" href="#grade-students" data-tgb-jump>&larr; {{ _('All students') }}</a>{{ gb.heading(row.student_name,'Student record',group) }}<div class="tgb-workspace-grid tgb-student-detail">
+<section class="tgb-card tgb-desktop">
+<h2>Grade items</h2>
+<table class="tgb-table">
+<thead>
+<tr>
+<th>Task</th>
+<th>Result</th>
+<th>Visibility</th>
+</tr>
+</thead>
+<tbody>{% for category in categories %}
+{% for item in category.grade_items %}
+{% set record=row.records.get(item.public_id) %}<tr>
+<td>
+<a href="{{ url_for('teacher.grade_item_detail',group_public_id=group.public_id,item_public_id=item.public_id) }}" dir="auto">{{ item.title }}</a>
+<small dir="auto">{{ category.title }}</small>
+</td>
+<td>{{ gr.points(record.score_display if record else none) }} / {{ item.max_points_display }}</td>
+<td>{{ gr.release_badge(item.is_released) }}{% if not record %}<small>No record</small>{% endif %}</td>
+</tr>{% endfor %}
+{% endfor %}</tbody>
+</table>
+</section>
+<aside class="tgb-card">
+<p class="tgb-eyebrow">Released overall</p>
+<div class="tgb-preview-score">{{ gr.percentage(row.overall_display) }}</div>
+<p class="tgb-caption">Only released items count. Incomplete overall results are shown as unavailable.</p>
+<dl class="tgb-facts">{% for category in row.categories %}<dt dir="auto">{{ category.title }}</dt>
+<dd>{{ gr.percentage(category.percentage_display) }}</dd>{% endfor %}</dl>
+</aside>
+<div class="tgb-phone tgb-student-tasks">
+<div class="tgb-section-title">
+<h2>Grade items</h2>
+<span class="tgb-meta">{{ book.items|length }} {{ _('items') }}</span>
+</div>{% for category in categories %}
+{% for item in category.grade_items %}
+{% set record=row.records.get(item.public_id) %}<article class="tgb-card">
+<div class="tgb-row">{{ gr.release_badge(item.is_released) }}<span class="tgb-caption" dir="auto">{{ category.title }}</span>
+</div>
+<h3>
+<a href="{{ url_for('teacher.grade_item_detail',group_public_id=group.public_id,item_public_id=item.public_id) }}" dir="auto">{{ item.title }}</a>
+</h3>
+<div class="tgb-row">
+<span class="tgb-caption">Result</span>
+<strong>{% if record %}{{ gr.points(record.score_display) }} / {{ item.max_points_display }}{% else %}{{ _('No record') }}{% endif %}</strong>
+</div>
+</article>{% endfor %}
+{% endfor %}<p class="tgb-caption">“No record” means this student was not on the item’s captured roster. It is not zero.</p>
+</div>
+</div>
+</section>{% endfor %}
+</div>{% endblock %}

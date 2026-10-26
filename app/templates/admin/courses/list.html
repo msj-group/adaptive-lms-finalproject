@@ -1,22 +1,19 @@
-{% extends "layouts/admin_base.html" %}
+{% extends "admin/academics/_base.html" %}
 {% import "admin/_macros.html" as macros %}
+{% import "_figma_ui.html" as ui %}
 {% block title %}Courses{% endblock %}
-{% block admin_content %}
-<div class="ds-page yc-surface">
-  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
-    <h1 data-workspace-page-heading style="margin:0">Courses</h1>
-    <a class="btn btn--primary" href="{{ url_for('admin.course_create', level_id=selected_level_id) if selected_level_id else url_for('admin.course_create') }}">New Course</a>
-  </div>
-
-  {{ macros.flash_messages() }}
-
-  <form method="get" class="ds-row yc-actions yc-filter-form" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2)" data-query-form data-query-results="query-results" data-query-min="0">
-    <label class="field__label" for="level_id" style="margin:0">Filter by level:</label>
-    <select name="level_id" id="level_id" class="field__input" style="width:auto">
+{% set academic_section = 'courses' %}
+{% block academic_actions %}<a class="btn btn--primary" data-academic-editor-open href="{{ url_for('admin.course_create', level_id=selected_level_id) if selected_level_id else url_for('admin.course_create') }}"><span class="ah-add" aria-hidden="true">+</span> New Course</a>{% endblock %}
+{% block academic_directory %}
+  <header class="ah-directory-head"><div><h2 id="academic-directory-heading">Courses</h2><p>Course identity, learning level and current enrollment price.</p></div>
+  <form method="get" class="ad-toolbar yc-filter-form" data-query-form data-query-results="query-results" data-query-min="0">
+    <div class="field"><label class="field__label" for="level_id">Filter by level:</label>
+    <select name="level_id" id="level_id" class="field__input">
       <option value="">All Levels</option>
       {% for level in levels %}
         <option value="{{ level.id }}" {{ "selected" if selected_level_id == level.id else "" }}>{{ level.name }}</option>
       {% endfor %}
-    </select>
-  <button class="btn btn--secondary" type="submit" data-query-submit>Filter</button></form><div id="query-results">{% include "admin/courses/_query_results.html" %}</div></div>
+    </select></div>
+  <button class="btn btn--secondary" type="submit" data-query-submit>Filter</button></form></header>
+  <div id="query-results">{% include "admin/courses/_query_results.html" %}</div>
 {% endblock %}

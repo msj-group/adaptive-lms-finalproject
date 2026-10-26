@@ -1,4 +1,4 @@
-{% extends "layouts/portal_base.html" %}
+{% extends "layouts/admin_base.html" if current_user.role == 'administrator' else "layouts/research_base.html" if current_user.role == 'researcher' else "layouts/portal_base.html" %}
 {% import "_notification_macros.html" as notice %}
 {% import "_figma_ui.html" as ui %}
 {% block title %}Notifications{% endblock %}
@@ -26,3 +26,5 @@
   </section>
   </div>
 {% endblock %}
+{% block admin_content %}{{ self.portal_content() }}{% endblock %}
+{% block research_content %}{{ self.portal_content() }}{% endblock %}

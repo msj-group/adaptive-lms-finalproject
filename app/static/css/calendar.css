@@ -1,4 +1,4 @@
-/* Student/Teacher calendar only; no shared shell, Grades or Admin selectors. */
+/* Shared calendar presentation; role-specific adapters own their controls. */
 .calendar-workspace { min-width:0; --cal-surface:var(--st-solid,var(--ui-surface)); }
 .calendar-workspace [hidden] { display:none!important; }
 .calendar-page-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; direction:ltr; }

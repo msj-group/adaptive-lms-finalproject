@@ -1,68 +1,9 @@
-{% extends "layouts/admin_base.html" %}
-{% import "admin/_macros.html" as macros %}
-{% import "_attendance_macros.html" as att %}
+{% extends 'admin/learning/_base.html' %}
+{% import 'admin/learning/_ui.html' as lens with context %}
 {% block title %}{{ group.name }} — Attendance{% endblock %}
-{% block admin_content %}
-<div class="ds-page yc-surface">
-  {#- Phase 4 / M07. READ ONLY, scoped in SQL to this group. -#}
-  <h1 data-workspace-page-heading style="margin-top:0">{{ group.name }} — Attendance</h1>
-  <small class="workspace-meta" dir="auto">{{ group.term_name }} · Read-only</small>
-
-  {{ macros.flash_messages() }}
-
-  <div class="ds-row yc-actions" style="margin-bottom: var(--space-4)">
-    <a class="btn btn--secondary" href="{{ url_for('admin.attendance_overview') }}">All attendance</a>
-    <a class="btn btn--secondary" href="{{ url_for('admin.group_detail', public_id=group.public_id) }}">Group details</a>
-  </div>
-
-  {% if sessions %}
-  <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th style="width:11rem">Class date</th>
-        <th style="width:11rem">Day &amp; time</th>
-        <th>Location</th>
-        <th style="width:8rem">State</th>
-        <th>Marks</th>
-        <th style="width:7rem"></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in sessions %}
-      <tr>
-        <td><strong>{{ item.session_date.isoformat() }}</strong></td>
-        <td>{{ att.weekday_name(item.day_of_week) }} &middot; {{ att.time_range(item.start_time, item.end_time) }}</td>
-        <td>{{ item.location or "—" }}</td>
-        <td>{{ att.state_badge(item.is_finalized) }}</td>
-        <td>{{ att.count_summary(item.counts) }}</td>
-        <td>
-          <a class="btn btn--secondary"
-             href="{{ url_for('admin.attendance_session_detail', group_public_id=group.public_id, session_public_id=item.public_id) }}">View</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  </div>
-
-  {% if has_prev or has_next %}
-  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attendance pages">
-    {% if has_prev %}
-    <a class="btn btn--secondary" href="{{ url_for('admin.group_attendance', group_public_id=group.public_id, page=page - 1) }}">Previous</a>
-    {% endif %}
-    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
-    {% if has_next %}
-    <a class="btn btn--secondary" href="{{ url_for('admin.group_attendance', group_public_id=group.public_id, page=page + 1) }}">Next</a>
-    {% endif %}
-  </nav>
-  {% endif %}
-
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">No attendance recorded</div>
-    <div>This group has no attendance sessions yet.</div>
-  </div>
-  {% endif %}
-</div>
+{% block learning_content %}
+<header class="al-reader-heading"><h2 dir="auto">{{ group.name }} — Attendance</h2><p dir="auto">{{ group.term_name }} · Read-only</p></header>
+<div data-learning-native-only>{% include 'admin/groups/_atlas_tabs.html' %}</div>
+<div class="al-actions" data-learning-native-only><a class="btn" href="{{ url_for('admin.attendance_overview') }}">All attendance</a></div>
+{% if sessions %}{{ lens.attendance_summary(sessions) }}{{ lens.session_list(sessions) }}{{ lens.attendance_pager(group.public_id) }}{% else %}<div class="al-panel al-empty"><h3>No attendance recorded</h3><p>This group has no attendance sessions yet.</p></div>{% endif %}
 {% endblock %}

@@ -2,7 +2,7 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ "Edit centre event" if event else "New centre event" }}{% endblock %}
 {% block admin_content %}
-<div class="ds-page yc-surface">
+<div class="ad-page" data-planner-event-editor data-planner-mode="{{ 'edit' if event else 'create' }}" data-planner-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}">
   {#- Phase 4 / M10. The hidden `event_state` value is the signed token for this
       exact purpose. On a CREATE it binds only the acting account -- there is no
       row yet, and binding the values a blank form happens to show would be
@@ -15,18 +15,18 @@
       There is no audience, scope, recurrence, reminder, attachment, link or
       status field on this form, and no placeholder for one. A centre event is
       addressed to the whole centre, happens on one date, and is plain text. -#}
-  <h1 data-workspace-page-heading style="margin-top: 0">{{ "Edit centre event" if event else "New centre event" }}</h1>
+  <header class="ad-page-head"><div><p class="ad-eyebrow">Calendar</p><h1 data-workspace-page-heading>{{ "Edit centre event" if event else "New centre event" }}</h1></div></header>
   <p class="ds-section__desc" style="margin-bottom: var(--space-4)">Visible to all active students and teachers.</p>
 
-  {{ macros.flash_messages() }}
+  <div data-planner-messages>{{ macros.flash_messages() }}</div>
 
-  <div class="alert alert--info" style="margin-bottom: var(--space-6)">
+  <div class="alert alert--info" data-planner-event-hint style="margin-bottom: var(--space-6)">
     Times are entered and shown in the centre timezone.
     Leave both times empty for an all-day event. Cancelling an event later is permanent —
     it can never be edited or restored afterwards.
   </div>
 
-  <form method="post" class="card yc-panel yc-form" novalidate>
+  <div class="ad-form-layout"><form method="post" class="card yc-panel yc-form" data-planner-native-form novalidate>
     {{ form.hidden_tag() }}
     <input type="hidden" name="event_state" value="{{ event_state }}">
 
@@ -96,6 +96,6 @@
       <button type="submit" class="btn btn--primary">{{ form.submit.label.text }}</button>
       <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
     </div>
-  </form>
+  </form><aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Event visibility</h2></div><p class="ad-meta">A centre event is visible to active students and teachers. It takes place on one date in the centre timezone.</p></section><section class="ad-card"><div class="ad-card-top"><h2>Times &amp; cancellation</h2></div><p class="ad-meta">Leave both times empty for an all-day event. Cancelling a saved event is permanent; cancelled records remain available to administration.</p></section></aside></div>
 </div>
 {% endblock %}

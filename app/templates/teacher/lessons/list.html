@@ -1,22 +1,7 @@
-{% extends "layouts/portal_base.html" %}
-{% import "_dashboard_macros.html" as dash %}
+{% extends "teacher/studio/_base.html" %}
 {% block title %}{{ unit.title }} — Lessons{% endblock %}
-{% block portal_nav %}
-  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
-{% endblock %}
-{% block portal_content %}
-<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 data-workspace-page-heading style="margin:0">{{ unit.title }} — Lessons</h1>
-  {{ dash.operational_badge(operational and unit_active) }}
-</div>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for category, message in messages %}
-  <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
-  {% endfor %}
-{% endwith %}
-
-<small class="workspace-meta" dir="auto">{{ group.name }} · {{ group.academic_term.name }}</small>
+{% block studio_heading %}{% call studio.heading(unit.title,group.name ~ ' · ' ~ group.academic_term.name) %}{% if can_manage %}<a class="btn btn--primary" href="{{ url_for('teacher.lesson_create',group_public_id=group.public_id,unit_public_id=unit.public_id) }}">Add Lesson</a>{% endif %}{% endcall %}{% endblock %}
+{% block studio_content %}
 
 {% if not operational %}
 <div class="alert alert--warning" style="margin-bottom: var(--space-6)">
@@ -35,50 +20,8 @@
 <div class="alert alert--info" style="margin-bottom: var(--space-6)">Students see published lessons in active units and groups. Drafts are private; editing preserves status and order.</div>
 {% endif %}
 
-<div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('teacher.group_units', group_public_id=group.public_id) }}">Back to Units</a>
-  {% if can_manage %}
-  <a class="btn btn--primary" href="{{ url_for('teacher.lesson_create', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Add Lesson</a>
-  {% endif %}
-</div>
-
-<section class="dash-section yc-section" style="margin-top: 0">
-  <h2>Lessons <span class="badge badge--neutral">{{ lessons|length }}</span></h2>
-  {% if lessons %}
-  <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th style="width:3rem">#</th>
-        <th>Title</th>
-        <th style="width:8rem">Status</th>
-        <th style="width:14rem">Student visibility</th>
-        <th style="width:20rem">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for lesson in lessons %}
-      <tr>
-        <td>{{ loop.index }}</td>
-        <td><strong>{{ lesson.title }}</strong></td>
-        <td>
-          {% if lesson.status == "published" %}
-          <span class="badge badge--success">Published</span>
-          {% else %}
-          <span class="badge badge--neutral">Draft</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if lesson.status == "published" and can_manage %}
-          <span class="badge badge--success">Visible to students</span>
-          {% elif lesson.status == "published" %}
-          <span class="badge badge--warning">Hidden (parent archived)</span>
-          {% else %}
-          <span class="badge badge--neutral">Not visible (draft)</span>
-          {% endif %}
-        </td>
-        <td>
-          <div class="ds-row yc-actions" style="gap: var(--space-2)">
+<div class="cs-section-head"><h2>Lessons</h2><span class="cs-meta">{{ _n('%(count)d lesson','%(count)d lessons',lessons|length) }}</span></div>
+<section class="cs-panel cs-lessons-list">{% for lesson in lessons %}<article class="cs-lesson-card"><span class="cs-number">{{ '%02d'|format(loop.index) }}</span><div><h2 dir="auto">{{ lesson.title }}</h2>{{ studio.status(lesson.status) }}<p class="cs-meta">{% if lesson.status=='published' and can_manage %}Visible to students{% elif lesson.status=='published' %}Hidden (parent archived){% else %}Not visible (draft){% endif %}</p><a class="cs-text-link" href="{{ url_for('workspace.lesson_preview',group_public_id=group.public_id,unit_public_id=unit.public_id,lesson_public_id=lesson.public_id) }}">{{ ui.icon('eye',15) }} Student preview</a></div><div class="cs-actions">
             <a class="btn btn--secondary" href="{{ url_for('teacher.lesson_materials', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">Manage Materials</a>
             {% if can_manage %}
             <a class="btn btn--secondary" href="{{ url_for('teacher.lesson_edit', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">Edit</a>
@@ -107,20 +50,7 @@
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--primary">Publish</button>
             </form>
-            {% endif %}
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">No lessons yet</div>
-  </div>
-  {% endif %}
-</section>
+            {% endif %}</div></article>{% else %}<div class="empty-state"><h2>No lessons yet</h2></div>{% endfor %}</section>
 <script>
   document.querySelectorAll("form[data-confirm]").forEach(function (form) {
     form.addEventListener("submit", function (event) {

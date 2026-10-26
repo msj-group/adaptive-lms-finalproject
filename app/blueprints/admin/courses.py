@@ -1,3 +1,4 @@
+from app.services.academic_status_presentation import accept_status_selection
 from app.services.query_presentation import render_query_page
 from flask import abort, current_app, flash, redirect, render_template, request, url_for
 from itsdangerous import BadSignature, URLSafeSerializer
@@ -424,6 +425,9 @@ def course_toggle_status(public_id):
             "This course was changed by someone else. Please reload the courses list and try again.",
             "danger",
         )
+        return redirect(url_for("admin.courses_list"))
+
+    if not accept_status_selection(course.status):
         return redirect(url_for("admin.courses_list"))
 
     if course.status == AcademicStatus.ACTIVE.value:

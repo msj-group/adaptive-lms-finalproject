@@ -1,98 +1,77 @@
-{% extends "layouts/portal_base.html" %}
-{% import "_grade_macros.html" as gr %}
-{% block title %}{{ "Correct scores" if is_released else "Enter scores" }} — {{ item.title }} — {{ group.name }}{% endblock %}
-{% block portal_nav %}
-  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
-  <a class="portal-nav__link" href="{{ url_for('teacher.gradebook_overview') }}">Gradebook</a>
-{% endblock %}
-{% block portal_content %}
-{#- Phase 4 / M08, the score sheet.
-
-    Each control is named after the record's OWN public id -- never an internal
-    database id and never a row index, which a reordered page could silently
-    re-point at another student. The hidden `grade_state` value is the signed
-    scores token binding the teacher, the group, the item, the item's current
-    version and every captured record's public id and version; it carries no
-    student name, no score and no comment.
-
-    The submitted field set is matched against the roster READ FROM THE
-    DATABASE, so a request naming an extra record, omitting one, or renaming
-    one adds, removes, replaces and reorders nothing. Validation runs before
-    any lock and before any write, and ONE bad value rejects the whole sheet --
-    a failed save never leaves a partial grade change behind. Student names and
-    comments are autoescaped and never rendered with `|safe`. -#}
-<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 data-workspace-page-heading style="margin:0">{{ "Correct scores" if is_released else "Enter scores" }} — {{ item.title }}</h1>
-  {{ gr.release_badge(is_released) }}
+{% extends "teacher/grades/_base.html" %}
+{% block title %}{{ "Correct scores" if is_released else "Enter scores" }} — {{ item.title }}{% endblock %}
+{% block grade_content %}
+{{ gb.back(detail_url, 'Back to grade item') }}
+<header class="tgb-heading tgb-score-heading">
+<div>
+<p class="tgb-eyebrow">{{ _('Correct score' if is_released else 'Focus grading') }}</p>
+<h1 data-workspace-page-heading dir="auto">{{ item.title }}</h1>
+<p class="tgb-meta">{{ gb.kind_label(item.source_kind) }} · {{ max_points_display }} {{ _('points') }}</p>
 </div>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for message_category, message in messages %}
-  <div class="alert alert--{{ message_category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
-  {% endfor %}
-{% endwith %}
-
-<div class="card yc-panel" style="margin-bottom: var(--space-5)">
-  <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
-    <dd style="margin:0">{{ group.name }} &middot; {{ group.course.title }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Out of</dt>
-    <dd style="margin:0">{{ max_points_display }} points</dd>
-  </dl>
+<span class="tgb-desktop">{{ gr.release_badge(is_released) }}</span>
+</header>
+<div class="tgb-notice tgb-desktop {{ 'tgb-notice--warning' if is_released else '' }}">{{ ui.icon('eye' if is_released else 'lock',18) }}<div>{% if is_released %}<strong>Corrections are immediately visible to students.</strong>
+<p>A released score cannot be cleared. Previous values remain preserved.</p>{% else %}<strong>Work privately. Release after review.</strong>
+<p>Blank means ungraded, never zero. Feedback is private to that student.</p>{% endif %}</div>
 </div>
-
-{% if is_released %}
-<div class="alert alert--warning" style="margin-bottom: var(--space-5)">Released results: corrections are immediately visible. A released score cannot be cleared.</div>
-{% else %}
-<div class="alert alert--info" style="margin-bottom: var(--space-5)">Draft: hidden from students. Blank means ungraded; all students need a score before release. Comments are private to that student.</div>
-{% endif %}
-
-<form method="post" class="yc-form">
+{# One authoritative whole-roster POST. Focus mode hides presentation rows only;
+   every public-id score/comment input remains enabled in the same signed form. #}
+<form method="post" class="tgb-score-form" data-score-form data-focus="{{ request.args.get('focus','') }}" data-max="{{ max_points_display }}" data-released="{{ 'true' if is_released else 'false' }}" data-msg-score="{{ _('Check the highlighted score. Use 0 up to the maximum, with up to two decimal places.') }}" data-msg-blank="{{ _('A released score cannot be cleared.') }}" data-msg-feedback="{{ _('Feedback is too long.') }}" data-label-position="{{ _('Student %(number)d of %(total)d') }}" data-label-next="{{ _('Save & next') }}" data-label-review="{{ _('Save & review') }}" data-label-graded="{{ _('graded') }}" data-label-focus="{{ _('Focus grading') }}" data-label-all="{{ _('All students') }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <input type="hidden" name="grade_state" value="{{ grade_state }}">
-
-  <section class="dash-section yc-section" style="margin-top: 0">
-    <h2>Students ({{ records | length }})</h2>
-    <div class="dash-scroll">
-    <table class="dash-table">
-      <thead>
-        <tr>
-          <th>Student</th>
-          <th style="width:10rem">Score (out of {{ max_points_display }})</th>
-          <th>Comment to this student (optional)</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for record in records %}
-        <tr>
-          <td>{{ record.student_name }}</td>
-          <td>
-            <input type="text"
-                   class="field__input"
-                   name="score__{{ record.public_id }}"
-                   value="{{ record.score_display if record.score_display is not none else '' }}"
-                   inputmode="decimal"
-                   autocomplete="off"
-                   aria-label="Score for {{ record.student_name }}">
-          </td>
-          <td>
-            <textarea class="field__input"
-                      name="comment__{{ record.public_id }}"
-                      rows="2"
-                      maxlength="{{ comment_max }}"
-                      aria-label="Comment for {{ record.student_name }}">{{ record.comment or "" }}</textarea>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    </div>
-
-    <div class="ds-row yc-actions" style="margin-top: var(--space-5)">
-      <button type="submit" class="btn btn--primary">{{ "Save corrections" if is_released else "Save scores" }}</button>
-      <a class="btn btn--secondary" href="{{ detail_url }}">Back to grade item</a>
-      <a class="btn btn--secondary" href="{{ gradebook_url }}">Back to gradebook</a>
-    </div>
-  </section>
+<input type="hidden" name="grade_state" value="{{ grade_state }}">
+<input type="hidden" name="next_record" value="" data-next-record>
+  <div class="tgb-section-title tgb-score-toolbar">
+<h2 data-score-position>{{ _('Students (%(count)d)', count=records|length) }}</h2>
+<label class="tgb-ungraded tgb-desktop">
+<input type="checkbox" data-ungraded-only> Show ungraded only</label>
+<button class="tgb-text-button" type="button" data-score-mode hidden>All students</button>
+</div>
+  <div class="tgb-score-roster" data-score-roster hidden>{% for record in records %}<button type="button" data-roster-pick="{{ record.public_id }}">{{ gb.person(record.student_name) }}<span>{{ gr.points(record.score_display) }} / {{ max_points_display }} {{ ui.icon('chevron',14) }}</span>
+</button>{% endfor %}</div>
+<div class="tgb-score-table">
+<div class="tgb-score-columns" aria-hidden="true">
+<span>Student</span>
+<span>{{ _('Score / %(points)s', points=max_points_display) }}</span>
+<span>Private feedback</span>
+</div>
+  {% for record in records %}<section class="tgb-score-row" data-score-row data-record="{{ record.public_id }}">
+    <div class="tgb-score-person">
+<span class="tgb-avatar" aria-hidden="true">{{ record.student_name.split()|map('first')|join('')|truncate(2,true,'') }}</span>
+<div>
+<h3 dir="auto">{{ record.student_name }}</h3>
+<span class="tgb-meta">{{ group.name }} · {{ _('Graded' if record.is_graded else 'Not graded yet') }}</span>
+</div>
+</div>
+    <div class="tgb-score-value">
+<label class="tgb-score-label" for="score-{{ record.public_id }}">{{ _('Score for %(name)s', name=record.student_name) }}</label>
+<div class="tgb-score-number">
+<input id="score-{{ record.public_id }}" type="text" name="score__{{ record.public_id }}" value="{{ record.score_display if record.score_display is not none else '' }}" inputmode="decimal" autocomplete="off" data-score-input aria-describedby="error-{{ record.public_id }}" placeholder="—">
+<span>/ {{ max_points_display }}</span>
+</div>
+<p class="tgb-score-hint tgb-phone">{{ _('Corrections are immediately visible to students.' if is_released else 'Blank means ungraded, never zero.') }}</p>
+<p class="field__error" id="error-{{ record.public_id }}" data-score-error>
+</p>
+</div>
+    <details class="tgb-score-feedback" open>
+<summary>Feedback (optional)</summary>
+<label class="tgb-score-label" for="comment-{{ record.public_id }}">{{ _('Feedback for %(name)s', name=record.student_name) }}</label>
+<textarea id="comment-{{ record.public_id }}" name="comment__{{ record.public_id }}" rows="2" maxlength="{{ comment_max }}" data-score-comment>{{ record.comment or '' }}</textarea>
+</details>
+  </section>{% endfor %}</div>
+  <nav class="tgb-score-picker" data-score-picker hidden aria-label="Choose student">{% for record in records %}<button type="button" data-score-pick="{{ record.public_id }}" aria-label="{{ record.student_name }}" aria-pressed="false">{{ loop.index }}</button>{% endfor %}</nav>
+  <div class="tgb-score-focus-actions" data-score-focus-actions hidden>
+<button class="btn" type="button" data-score-previous aria-label="Previous student">&larr;</button>
+<button type="submit" class="btn btn--primary" name="score_destination" value="next" data-score-next>Save & next</button>
+</div>
+<div class="tgb-score-actions">
+<span class="tgb-meta" data-score-status aria-live="polite">All scores save together.</span>
+<button class="tgb-text-button tgb-phone" type="submit" name="score_destination" value="close" data-score-close>Save & close</button>
+<div class="tgb-actions tgb-score-desktop-actions">
+<a class="btn" href="{{ detail_url }}">Back</a>
+<button type="submit" class="btn" name="score_destination" value="stay">{{ _('Save corrections' if is_released else 'Save draft') }}</button>
+<button type="submit" class="btn btn--primary" name="score_destination" value="review" data-score-review>{{ _('Save corrections & review' if is_released else 'Save & review') }}</button>
+</div>
+</div>
 </form>
+<p class="tgb-caption tgb-roster-note tgb-desktop">Tab moves to the next field. All scores save together.</p>
 {% endblock %}

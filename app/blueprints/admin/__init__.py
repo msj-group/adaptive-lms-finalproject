@@ -9,7 +9,9 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 def inject_admin_nav():
     from app.services.account_tokens import account_token
     from app.services.money import format_amount
-    return {"admin_nav_sections": ADMIN_NAV_SECTIONS, "account_token": account_token, "money": format_amount}
+    from app.services.academic_setup_queries import academic_setup_totals
+    return {"admin_nav_sections": ADMIN_NAV_SECTIONS, "account_token": account_token, "money": format_amount,
+            "academic_setup_totals": academic_setup_totals}
 
 
 from app.blueprints.admin import routes  # noqa: E402,F401

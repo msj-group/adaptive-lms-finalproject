@@ -1,13 +1,15 @@
 {% extends "layouts/admin_base.html" %}
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ 'Edit Student' if student else 'New Student' }}{% endblock %}
+{% import "admin/_atlas_ui.html" as atlas %}
+{% import "_figma_ui.html" as ui %}
 {% block admin_content %}
-<div class="ds-page yc-surface" style="max-width: 480px">
-  <h1 data-workspace-page-heading>{{ 'Edit Student' if student else 'New Student' }}</h1>
-
+<div class="ad-page">
+  <header class="ad-page-head"><div><div class="ad-eyebrow">People / Student account</div><h1 data-workspace-page-heading>{{ 'Edit Student' if student else 'New Student' }}</h1></div><a class="btn btn--secondary" href="{{ url_for('admin.students_list') }}">Back</a></header>
   {{ macros.flash_messages() }}
+  <form method="post" novalidate class="yc-form ad-form-workspace" data-people-kind="student" data-people-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}"{% if student %} data-people-edit-form data-person-id="{{ student.public_id }}"{% else %} data-people-create-form{% endif %}>
+    <section class="ad-card ad-field-panel"><div class="ax-form-section"><span>{{ ui.icon('user', 18) }}</span><div><h2>Account details</h2><p class="ad-meta">Complete the details below.</p></div></div><div class="ad-form-grid">
 
-  <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     {% if student %}<input type="hidden" name="account_snapshot" value="{{ snapshot_token }}">{% endif %}
     <div class="field">
@@ -15,28 +17,33 @@
       {{ form.full_name(class_="field__input") }}
       {% for error in form.full_name.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="">
+    <div class="field">
       {{ form.email.label(class_="field__label") }}
       {{ form.email(class_="field__input", autocomplete="email") }}
       {% for error in form.email.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
     {% if not student %}
-    <div class="field" style="">
+    <div class="field">
       {{ form.password.label(class_="field__label") }}
       {{ form.password(class_="field__input") }}
       {% for error in form.password.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="">
+    <div class="field">
       {{ form.confirm_password.label(class_="field__label") }}
       {{ form.confirm_password(class_="field__input") }}
       {% for error in form.confirm_password.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
     <p class="ds-section__desc" style="margin-top: var(--space-4)">At least 15 characters; no required character mix.</p>
     {% endif %}
-    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
+
+    </div></section>
+    <aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Account role</h2>{{ ui.icon('info', 18) }}</div><p class="ad-meta">The account is created for the Student role. Group membership is managed separately.</p>{% if student %}<div class="ad-notice">Changing the login email ends existing sessions.</div>{% endif %}</section></aside>
+    <section class="ad-card ad-save-panel"><div class="ad-form-foot"><span class="ad-meta">Review the details before saving.</span><div class="ad-actions">
+
       {{ form.submit(class_="btn btn--primary", id="student-form-submit") }}
-      <a class="btn btn--secondary" href="{{ url_for('admin.students_list') }}">Cancel</a>
-    </div>
+      <a class="btn btn--secondary" href="{{ url_for('admin.students_list') }}"{% if student %} data-people-action-cancel{% else %} data-people-create-cancel{% endif %}>Cancel</a>
+
+    </div></div></section>
   </form>
 </div>
 <script>

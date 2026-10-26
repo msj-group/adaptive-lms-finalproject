@@ -1,0 +1,3 @@
+{% extends "layouts/admin_base.html" %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin/announcements.css', v='inline-20261026') }}">{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/admin_communication.js', v='inline-20261026') }}" defer></script>{% endblock %}

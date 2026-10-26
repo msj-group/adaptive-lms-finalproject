@@ -805,7 +805,7 @@ def notify_message_received(message_id):
             .filter(
                 MessageThreadMember.thread_id == thread_id,
                 User.id != sender_id,
-                User.role.in_((_STUDENT, _TEACHER)),
+                User.role.in_((_STUDENT, _TEACHER, UserRole.ADMINISTRATOR.value, UserRole.RESEARCHER.value)),
                 User.status == _USER_ACTIVE,
             )
             .order_by(User.id)

@@ -1,0 +1,16 @@
+<div class="fp-agenda-row">
+  <time class="fp-time" dir="ltr">{% if row.all_day %}{{ _('All day') }}{% else %}{{ row.start_time.strftime('%H:%M') }}{% endif %}</time>
+  <details class="fp-entry fp-entry--{{ 'class' if row.source == 'class' else 'center' if row.source == 'center_event' else 'activity' }}" data-fp-entry{% if entry_first %} open{% endif %}>
+    <summary>
+      <div class="fp-caption"><span class="fp-source">{{ _(row.source_label) }}</span>{% if row.cancelled %}<span class="badge badge--danger">Cancelled</span>{% endif %}<span dir="ltr">{% if row.all_day %}{{ _('All day') }}{% else %}{{ row.start_time.strftime('%H:%M') }}{% if row.end_time %} – {{ row.end_time.strftime('%H:%M') }}{% endif %}{% endif %}</span></div>
+      <h3 dir="auto">{{ row.title }}</h3>
+      {% if row.context %}<p class="fp-context">{{ planner_ui.icon('users',14) }}<span dir="auto">{{ row.context }}</span></p>{% elif row.location %}<p class="fp-context">{{ planner_ui.icon('room',14) }}<span dir="auto">{{ row.location }}</span></p>{% endif %}
+      <span class="fp-entry-chevron">{{ planner_ui.icon('chevron-down',15) }}</span>
+    </summary>
+    <div class="fp-entry-body">
+      <dl class="fp-facts"><div><dt>Time</dt><dd><bdi>{% if row.all_day %}{{ _('All day') }}{% else %}{{ row.start_time.strftime('%H:%M') }}{% if row.end_time %} – {{ row.end_time.strftime('%H:%M') }}{% endif %}{% endif %}</bdi></dd></div>{% if row.location %}<div><dt>Location</dt><dd dir="auto">{{ row.location }}</dd></div>{% endif %}</dl>
+      {% if row.details %}<p class="fp-authored" dir="auto">{{ row.details }}</p>{% endif %}
+      <div class="fp-entry-footer">{% if row.status_label %}<span class="badge{{ ' badge--danger' if row.cancelled else ' badge--success' }}">{{ _(row.status_label) }}</span>{% else %}<span class="fp-meta">{{ _('Recurring weekly') if row.source == 'class' else _('Published activity date') }}</span>{% endif %}{% if row.url and row.action_label %}<a class="fp-link"{% if row.source == 'class' %} data-planner-open-group data-group-public-id="{{ row.group_public_id }}"{% endif %} href="{{ row.url }}">{{ _(row.action_label) }}{{ planner_ui.icon('arrow-up',14) }}</a>{% endif %}</div>
+    </div>
+  </details>
+</div>

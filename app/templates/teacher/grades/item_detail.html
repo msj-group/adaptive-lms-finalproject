@@ -1,138 +1,157 @@
-{% extends "layouts/portal_base.html" %}
-{% import "_grade_macros.html" as gr %}
+{% extends "teacher/grades/_base.html" %}
 {% block title %}{{ group.name }} — {{ item.title }}{% endblock %}
-{% block portal_nav %}
-  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
-  <a class="portal-nav__link" href="{{ url_for('teacher.gradebook_overview') }}">Gradebook</a>
-{% endblock %}
-{% block portal_content %}
-{#- Phase 4 / M08, read only. This page renders the release form ONLY when the
-    item is still a draft, the chain is operational, and every release rule
-    already passes -- and the release token is minted only in that same case,
-    from freshly read persisted state. Every rule is enforced again server-side
-    against the LOCKED rows, so a page that somehow rendered a button it should
-    not have would still be refused.
-
-    The readiness panel lists EVERY remaining blocker rather than the first, so
-    a teacher fixing one is not sent back for the next. Both the panel and the
-    release route call the same release_blockers() function.
-
-    There is deliberately no delete, unrelease, reopen or duplicate control
-    anywhere on this page -- no such endpoint exists. -#}
-<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-  <h1 data-workspace-page-heading style="margin:0">{{ item.title }}</h1>
-  {{ gr.release_badge(item.is_released) }}
+{% block grade_content %}{{ gb.back(gradebook_url) }}
+<header class="tgb-heading">
+<div>
+<p class="tgb-eyebrow" dir="auto">{{ category.title }} · {{ item.max_points_display }} {{ _('points') }}</p>
+<h1 data-workspace-page-heading dir="auto">{{ item.title }}</h1>
+<p class="tgb-meta" dir="auto">
+<span class="tgb-desktop">{{ gb.kind_label(item.source_kind) }} · {{ group.name }}</span>
+<span class="tgb-phone">{{ group.name }} · {{ item.max_points_display }} {{ _('points') }}</span>
+</p>
 </div>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for message_category, message in messages %}
-  <div class="alert alert--{{ message_category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
-  {% endfor %}
-{% endwith %}
-
-<div class="card yc-panel" style="margin-bottom: var(--space-5)">
-  <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
-    <dd style="margin:0">{{ group.name }} &middot; {{ group.course.title }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Category</dt>
-    <dd style="margin:0">{{ category.title }} &middot; {{ gr.weight(category.weight_display) }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">What it is for</dt>
-    <dd style="margin:0">{{ gr.source_cell(item) }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Out of</dt>
-    <dd style="margin:0">{{ gr.points(item.max_points_display) }} points</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Students captured</dt>
-    <dd style="margin:0">{{ item.captured_count }}</dd>
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Scores entered</dt>
-    <dd style="margin:0">{{ gr.score_progress(item) }}</dd>
-    {% if item.is_released %}
-    <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Released</dt>
-    <dd style="margin:0">{{ item.released_at.isoformat(sep=" ", timespec="seconds") }} UTC</dd>
-    {% endif %}
-  </dl>
+<span class="tgb-desktop">{{ gr.release_badge(item.is_released) }}</span>
+</header>
+{% if not operational %}<div class="tgb-notice tgb-notice--warning">{{ _('Archived: %(parents)s. Existing results remain readable; grading and release are unavailable.',parents=archived_labels|join(', ')) }}</div>{% endif %}
+<div data-tgb-sections data-default-section="grade-overview">
+<nav class="tgb-tabs" aria-label="Grade item sections">
+<a href="#grade-overview" data-tgb-tab>Overview</a>{% if operational %}<a href="{{ scores_url }}">{{ _('Correct scores' if item.is_released else 'Enter scores') }}</a>{% endif %}<a href="#grade-history" data-tgb-tab>History</a>
+</nav>
+<section id="grade-overview" data-tgb-section>
+<div class="tgb-workspace-grid">
+<section class="tgb-card tgb-results-panel tgb-desktop">
+<div class="tgb-section-title">
+<h2>Student results</h2>
+<span class="tgb-meta">{{ _('%(scored)d of %(total)d graded',scored=item.scored_count,total=item.captured_count) }}</span>
 </div>
-
-{% if not operational %}
-<div class="alert alert--warning" style="margin-bottom: var(--space-5)">
-  This group is not operational: the {{ archived_labels | join(", ") }} {{ "is" if archived_labels|length == 1 else "are" }} archived.
-  Everything here stays readable and nothing has been deleted, but no score can be changed and
-  nothing can be released until every parent is active again.
+<div class="tgb-table-scroll tgb-desktop">
+<table class="tgb-table">
+<thead>
+<tr>
+<th>Student</th>
+<th>{{ _('Score / %(points)s',points=item.max_points_display) }}</th>
+<th>Feedback</th>
+</tr>
+</thead>
+<tbody>{% for record in records %}<tr>
+<td>{% if operational %}<a href="{{ url_for('teacher.grade_item_scores',group_public_id=group.public_id,item_public_id=item.public_id,focus=record.public_id) }}">{{ gb.person(record.student_name) }}</a>{% else %}{{ gb.person(record.student_name) }}{% endif %}</td>
+<td>{{ gr.points(record.score_display) }}</td>
+<td>
+<details class="tgb-feedback-read">
+<summary>View feedback</summary>{{ gr.comment_block(record.comment) }}{% if record.graded_at %}<small>{{ _('Last graded') }}: {{ record.graded_at.isoformat(sep=' ',timespec='seconds') }} UTC · {{ record.grader_name or '' }}</small>{% endif %}</details>
+</td>
+</tr>{% endfor %}</tbody>
+</table>
 </div>
-{% endif %}
-
-{% if item.is_released %}
-<div class="alert alert--success" style="margin-bottom: var(--space-5)">Released: each listed student sees only their own score, maximum, percentage and comment. Category, name, kind, linked item and maximum points are permanent. Score and comment corrections are visible immediately.</div>
-{% endif %}
-
-<div class="ds-row yc-actions" style="margin-bottom: var(--space-5)">
-  <a class="btn btn--secondary" href="{{ gradebook_url }}">Back to gradebook</a>
-  {% if operational %}
-  <a class="btn btn--primary" href="{{ scores_url }}">{{ "Correct scores" if item.is_released else "Enter scores" }}</a>
-  {% endif %}
-  {% if edit_url %}
-  <a class="btn btn--secondary" href="{{ edit_url }}">Edit item</a>
-  {% endif %}
+{% if not records %}{{ gb.empty('No captured students','This item has no captured roster and cannot be released.') }}{% endif %}</section>
+<aside class="tgb-side">
+<section class="tgb-card tgb-next tgb-detail-next">
+<div class="tgb-phone">
+<div class="tgb-section-title">
+<h3>Grading progress</h3>{{ gr.release_badge(item.is_released) }}</div>
+<div class="tgb-preview-score">{{ item.scored_count }} <small>/ {{ item.captured_count }} {{ _('students') }}</small>
 </div>
-
-<section class="dash-section yc-section" style="margin-top: 0">
-  <h2>Students ({{ records | length }})</h2>
-  <p class="ds-section__desc">
-    This list was captured when the item was created and never changes. A student who enrolled
-    later is not on it, and a student who has withdrawn keeps their place.
-  </p>
-  {% if records %}
-  <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th>Student</th>
-        <th style="width:8rem">Score</th>
-        <th>Comment</th>
-        <th style="width:14rem">Last graded</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for record in records %}
-      <tr>
-        <td>{{ record.student_name }}</td>
-        <td>{{ gr.points(record.score_display) }}</td>
-        <td>{{ gr.comment_block(record.comment) }}</td>
-        <td>
-          {%- if record.graded_at %}
-          {{ record.graded_at.isoformat(sep=" ", timespec="seconds") }} UTC
-          {%- if record.grader_name %}<div style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">{{ record.grader_name }}</div>{% endif %}
-          {%- else %}<span style="color: var(--color-text-secondary)">—</span>{% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">No students on this item</div>
-    <div>Nothing has been deleted — this item was created without a roster and cannot be released.</div>
-  </div>
-  {% endif %}
+</div>
+<h3 class="tgb-desktop">{{ _('Results are shared.' if item.is_released else 'Ready for the next step?') }}</h3>
+<p class="tgb-meta">{{ _('%(count)d students still need a score.',count=item.captured_count-item.scored_count) if not item.scores_complete else _('All captured students have a score.') }}</p>{{ gb.progress(item.scored_count,item.captured_count) }}<div class="tgb-actions">{% if operational %}<a class="btn btn--primary" href="{{ scores_url if not item.scores_complete or item.is_released else '#grade-release' }}" {% if item.scores_complete and not item.is_released %}data-tgb-jump{% endif %}>{{ _('Correct scores' if item.is_released else ('Review & release' if item.scores_complete else 'Enter scores')) }}</a>{% endif %}
+{% if edit_url %}<a class="tgb-desktop" href="{{ edit_url }}">Edit details</a>{% endif %}</div>
+<a class="btn tgb-phone" href="#grade-roster" data-tgb-jump>All students & scores</a>
 </section>
-
-{% if not item.is_released %}
-<section class="card yc-panel" style="margin-top: var(--space-5); border-color: var(--color-danger)">
-  <h2 style="margin-top:0">Release this grade item</h2>
-  <p class="card__body">Release shows each listed student their own score and comment. Category, name, kind, linked item and maximum points become permanent; release cannot be undone and the item cannot be reopened or deleted. Scores remain correctable.</p>
-  {{ gr.messages(blocker_messages) }}
-  {% if releasable %}
-  <form method="post" action="{{ release_url }}" class="yc-form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="grade_state" value="{{ release_token }}">
-    <label class="ds-row yc-actions" style="gap: var(--space-2); align-items:center; margin: var(--space-3) 0">
-      <input type="checkbox" name="confirm_release" value="yes">
-      <span>I have checked these scores and I understand that releasing cannot be undone.</span>
-    </label>
-    <button type="submit" class="btn btn--danger-outline">Release grade item</button>
-  </form>
-  {% elif operational %}
-  <p class="card__body">Fix the points above, then come back to release this item.</p>
-  {% endif %}
+<section class="tgb-card tgb-context">
+<h3>Task context</h3>
+<dl class="tgb-facts">
+<dt class="tgb-phone">Category</dt>
+<dd class="tgb-phone" dir="auto">{{ category.title }}</dd>
+<dt>Category weight</dt>
+<dd>{{ gr.weight(category.weight_display) }}</dd>
+<dt>Maximum</dt>
+<dd>{{ item.max_points_display }} {{ _('points') }}</dd>
+<dt>Captured roster</dt>
+<dd>{{ _('%(count)d students',count=item.captured_count) }}</dd>
+</dl>
+<p class="tgb-caption">{{ gr.source_cell(item) }}</p>
+<p class="tgb-caption">The captured roster stays with this item.</p>
+</section>{% if edit_url %}<a class="tgb-text-link tgb-phone" href="{{ edit_url }}">Edit task details</a>{% endif %}<a class="tgb-text-link tgb-phone" href="#grade-history" data-tgb-jump>View history {{ ui.icon('arrow',15) }}</a>
+</aside>
+</div>
 </section>
-{% endif %}
-{% endblock %}
+<section id="grade-roster" data-tgb-section>
+<a class="tgb-back" href="#grade-overview" data-tgb-jump>&larr; {{ _('Task overview') }}</a>
+<div class="tgb-section-title">
+<h2>All students & scores</h2>
+</div>
+<div class="tgb-card">
+<div class="tgb-record-list">{% for record in records %}<details class="tgb-record">
+<summary>{{ gb.person(record.student_name) }}<strong>{{ gr.points(record.score_display) }} <small>/ {{ item.max_points_display }}</small>
+</strong>{{ ui.icon('chevron',15) }}</summary>
+<div class="tgb-record-body">{{ gr.comment_block(record.comment) }}{% if operational %}<a class="tgb-text-link" href="{{ url_for('teacher.grade_item_scores',group_public_id=group.public_id,item_public_id=item.public_id,focus=record.public_id) }}">{{ _('View or edit' if record.is_graded else 'Enter score') }} {{ ui.icon('arrow',15) }}</a>{% endif %}</div>
+</details>{% endfor %}</div>
+</div>
+</section>
+<section id="grade-release" data-tgb-section>
+<div class="tgb-section-title">
+<div>
+<p class="tgb-eyebrow">Final review</p>
+<h2>{{ _('Results are shared.' if item.is_released else 'One clear check before release.') }}</h2>
+<p class="tgb-meta">Each student sees only their own score and feedback.</p>
+</div>
+</div>
+<div class="tgb-workspace-grid">
+<section class="tgb-card">
+<h3>Release checklist</h3>
+<div class="tgb-checklist">{% set labels={'no_roster':'A captured student roster','missing_scores':'Every captured student has a score','weights_incomplete':'Category weights total 100%','source_missing':'The linked activity belongs to this group','source_draft':'The linked activity is published'} %}
+{% for check in release_checks if check.code not in ['source_missing','source_draft'] or item.source_kind in ['assignment','quiz','speaking'] %}<div class="tgb-check {{ 'is-complete' if check.passed else '' }}">{{ ui.icon('check' if check.passed else 'clock',19) }}<div>
+<strong>{{ _(labels[check.code]) }}</strong>{% if not check.passed %}<p class="tgb-meta">{{ _(check.message) }}</p>{% endif %}</div>
+</div>{% endfor %}</div>
+<div class="tgb-notice tgb-notice--warning">{{ ui.icon('lock',18) }}<div>
+<strong>Release cannot be undone.</strong>
+<p>Category, name, kind, source and maximum points become permanent. Scores remain correctable.</p>
+</div>
+</div>{% if releasable %}<form method="post" action="{{ release_url }}" class="tgb-release-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="hidden" name="grade_state" value="{{ release_token }}">
+<label class="tgb-confirm">
+<input type="checkbox" name="confirm_release" value="yes" required>
+<span>I have checked these scores and understand that release cannot be undone.</span>
+</label>
+<div class="tgb-form-actions">
+<a class="btn" href="{{ scores_url }}">Back to scores</a>
+<button type="submit" class="btn btn--primary">Release results {{ ui.icon('check',16) }}</button>
+</div>
+</form>{% elif operational %}<a class="btn btn--primary" href="{{ scores_url }}">{{ _('Correct scores' if item.is_released else 'Continue grading') }}</a>{% endif %}</section>
+<aside class="tgb-card tgb-preview">
+<p class="tgb-eyebrow">Student preview</p>
+<label for="student-preview" class="tgb-caption">Choose a captured student</label>
+<select id="student-preview" data-preview-choice>{% for record in records %}<option value="{{ record.public_id }}">{{ record.student_name }}</option>{% endfor %}</select>{% for record in records %}<article data-preview-record="{{ record.public_id }}">
+<h3 dir="auto">{{ item.title }}</h3>
+<p class="tgb-meta" dir="auto">{{ record.student_name }}</p>
+<div class="tgb-preview-score">{{ gr.points(record.score_display) }} <small>/ {{ item.max_points_display }}</small>
+</div>
+<strong class="tgb-preview-percent">{{ gr.percentage(record.percentage_display) }}</strong>
+<p class="tgb-caption">{{ _('Released' if item.is_released else 'Preview before release') }}</p>
+<hr>
+<h3>Teacher feedback</h3>{{ gr.comment_block(record.comment) }}</article>{% endfor %}<p class="tgb-caption">Students see their own result only.</p>
+</aside>
+</div>
+</section>
+<section id="grade-history" data-tgb-section>
+<a class="tgb-back tgb-phone" href="#grade-overview" data-tgb-jump>&larr; {{ _('Task overview') }}</a>
+<div class="tgb-section-title">
+<div>
+<h2>A clear record of changes.</h2>
+<p class="tgb-meta">Recorded score and feedback corrections for this item.</p>
+</div>
+</div>
+<div class="tgb-card tgb-history">{% for revision in revisions %}<article>
+<span class="tgb-taskicon">{{ ui.icon('clock',19) }}</span>
+<div>
+<h3 dir="auto">{{ revision.student_name }}</h3>
+<p class="tgb-meta" dir="auto">{{ revision.actor_name }} · {{ revision.created_at.isoformat(sep=' ',timespec='seconds') }} UTC</p>{% for label,before,after in revision.changes %}<p>
+<strong>{{ _(label) }}</strong>: <del>{{ before if before is not none else '—' }}</del> → <span>{{ after if after is not none else '—' }}</span>
+</p>{% endfor %}
+{% if not revision.changes %}<p class="tgb-meta">Grading metadata updated.</p>{% endif %}</div>
+</article>{% else %}{{ gb.empty('No recorded corrections','Score and feedback corrections will appear here after a saved change.') }}{% endfor %}<div class="tgb-actions">{% if history_page>1 %}<a class="btn" href="{{ url_for('teacher.grade_item_detail',group_public_id=group.public_id,item_public_id=item.public_id,history_page=history_page-1,_anchor='grade-history') }}">Previous</a>{% endif %}
+{% if history_has_next %}<a class="btn" href="{{ url_for('teacher.grade_item_detail',group_public_id=group.public_id,item_public_id=item.public_id,history_page=history_page+1,_anchor='grade-history') }}">Next</a>{% endif %}</div>
+</div>
+</section>
+</div>{% endblock %}

@@ -121,6 +121,8 @@ from app.services.grade_calculations import (
     OVERALL_WEIGHTS_INCOMPLETE,
     configuration_blockers,
     format_points,
+    format_percentage,
+    category_percentage,
     format_weight,
     remaining_weight,
     total_weight,
@@ -137,7 +139,10 @@ from app.services.grade_queries import (
     assignment_for_group,
     build_gradebook_view,
     build_record_view,
-    build_student_totals,
+    build_teacher_matrix,
+    teacher_score_rows,
+    teacher_item_history,
+    normalize_page,
     calculation_categories,
     captured_record_ids,
     captured_student_ids,
@@ -153,7 +158,6 @@ from app.services.grade_queries import (
     quiz_for_group,
     record_counts_for_items,
     release_blockers,
-    released_scores_for_group,
     source_choices,
     speaking_activity_for_group,
     teacher_group_cards,
@@ -794,9 +798,9 @@ def gradebook_overview():
     Groups are deliberately listed: reading a gradebook is historical,
     and this is the page that reaches it.
     """
-    return _private_no_store(
+    return _grade_page(
         "teacher/grades/overview.html",
-        cards=teacher_group_cards(current_user.id),
+        cards=teacher_group_cards(current_user.id, with_summary=True),
     )
 
 
@@ -805,16 +809,22 @@ def gradebook_overview():
 # ======================================================================
 
 
+def _grade_page(template, **context):
+    """Feature-only assigned-Group switcher for the six Gradebook pages."""
+    context["gradebook_groups"] = context["cards"] if "cards" in context else teacher_group_cards(current_user.id)
+    return _private_no_store(template, **context)
+
+
 def _gradebook_context(group):
-    """Everything the gradebook page renders, in **five** bounded reads
+    """Everything the gradebook page renders, in bounded Group-scoped reads
     no matter how large the gradebook is.
 
     One query for the categories, one for their items (with each linked
     source's title and publication status resolved by ``LEFT JOIN``), one
     aggregate for every item's captured / scored counts, and one for
-    every score on every released item -- which the per-Student totals
-    are then grouped out of in Python. Nothing is asked per category, per
-    item, per record or per Student.
+    all captured scores in this Group. Released-only totals use the existing
+    calculator. The assigned-Group switcher is one additional read; nothing
+    is asked per category, item, record or Student.
     """
     categories = category_rows(group.id)
     items = item_rows(group.id)
@@ -830,6 +840,7 @@ def _gradebook_context(group):
             ]
     return {
         "categories": view,
+        "student_matrix": build_teacher_matrix(view, teacher_score_rows(group.id)),
         "weight_total": weight_total,
         "weight_total_display": format_weight(weight_total),
         "weight_remaining_display": format_weight(remaining_weight(weights)),
@@ -838,9 +849,6 @@ def _gradebook_context(group):
             _OVERALL_MESSAGES[code]
             for code in configuration_blockers(calculation_categories(view))
         ],
-        "student_totals": build_student_totals(
-            view, released_scores_for_group(group.id)
-        ),
     }
 
 
@@ -859,7 +867,7 @@ def group_gradebook(group_public_id):
     """
     group = _teacher_group_or_404(group_public_id)
     operational = _group_is_operational(group)
-    return _private_no_store(
+    return _grade_page(
         "teacher/grades/gradebook.html",
         group=group,
         operational=operational,
@@ -908,7 +916,7 @@ def _render_category_form(
     }
     if category is not None:
         payload["category_public_id"] = category.public_id
-    return _private_no_store(
+    return _grade_page(
         "teacher/grades/category_form.html",
         group=group,
         form=form,
@@ -1190,7 +1198,7 @@ def _render_item_form(group, form, item=None, message=None, level="danger"):
     state**, with a freshly minted token."""
     if message is not None:
         flash(message, level)
-    return _private_no_store(
+    return _grade_page(
         "teacher/grades/item_form.html",
         group=group,
         form=form,
@@ -1198,6 +1206,7 @@ def _render_item_form(group, form, item=None, message=None, level="danger"):
         title_max=GRADE_ITEM_TITLE_MAX_LENGTH,
         source_labels=SOURCE_KIND_LABELS,
         linked_kinds=sorted(LINKED_SOURCE_COLUMNS),
+        eligible_count=len(eligible_roster_rows(group.id)),
         cancel_url=(
             _gradebook_url(group.public_id)
             if item is None
@@ -1425,8 +1434,14 @@ def grade_item_detail(group_public_id, item_public_id):
     operational = _group_is_operational(group)
     blockers = item_release_blockers(item_view, weight_total)
     records = item_records(item.id)
+    record_view = build_record_view(records)
+    for record in record_view:
+        record["percentage_display"] = (format_percentage(category_percentage(record["score"], item.max_points))
+                                        if record["score"] is not None else None)
     releasable = operational and not item_view["is_released"] and not blockers
-    return _private_no_store(
+    history_page = normalize_page(request.args.get("history_page"))
+    revisions, history_has_next = teacher_item_history(group.id, item.id, history_page)
+    return _grade_page(
         "teacher/grades/item_detail.html",
         group=group,
         item=item_view,
@@ -1435,8 +1450,11 @@ def grade_item_detail(group_public_id, item_public_id):
         archived_labels=[] if operational else _archived_chain_labels(group),
         tz_name=_tz_name(),
         blocker_messages=[_RELEASE_MESSAGES[code] for code in blockers],
+        release_checks=[{"code": code, "message": message, "passed": code not in blockers}
+                        for code, message in _RELEASE_MESSAGES.items()],
+        revisions=revisions, history_page=history_page, history_has_next=history_has_next,
         releasable=releasable,
-        records=build_record_view(records),
+        records=record_view,
         gradebook_url=_gradebook_url(group_public_id),
         scores_url=_scores_url(group_public_id, item_public_id),
         edit_url=(
@@ -1665,7 +1683,7 @@ def _render_scores_page(group, item, submitted=None, messages=(), level="danger"
                 raw_score, raw_comment = submitted[record["public_id"]]
                 record["score_display"] = raw_score
                 record["comment"] = raw_comment
-    return _private_no_store(
+    return _grade_page(
         "teacher/grades/scores.html",
         group=group,
         item=item,
@@ -1685,6 +1703,28 @@ def _render_scores_page(group, item, submitted=None, messages=(), level="danger"
             records=_state((row.public_id, row.version) for row in rows),
         ),
     )
+
+
+def _score_save_destination(group_public_id, item_public_id, records):
+    """Choose only a local presentation destination after a successful save.
+
+    Focus is an existing captured record's public id, never an authorization
+    input. Every destination GET rechecks the ordinary Group/item scope.
+    """
+    destination = request.form.get("score_destination")
+    if destination == "close":
+        return _item_url(group_public_id, item_public_id)
+    if destination == "review":
+        return _item_url(group_public_id, item_public_id) + "#grade-release"
+    focus = request.form.get("next_record", "")
+    if destination == "next" and focus in {row["public_id"] for row in records}:
+        return url_for(
+            "teacher.grade_item_scores",
+            group_public_id=group_public_id,
+            item_public_id=item_public_id,
+            focus=focus,
+        )
+    return _scores_url(group_public_id, item_public_id)
 
 
 @teacher_bp.route(
@@ -1852,7 +1892,9 @@ def grade_item_scores(group_public_id, item_public_id):
     if not changed:
         db.session.rollback()
         flash(_NO_CHANGES_MESSAGE, "info")
-        return redirect(scores_url)
+        return redirect(
+            _score_save_destination(group_public_id, item_public_id, preview_records)
+        )
 
     locked_item.version = locked_item.version + 1
     locked_item.updated_at = moment
@@ -1867,7 +1909,9 @@ def grade_item_scores(group_public_id, item_public_id):
         _SCORES_SAVED_RELEASED_MESSAGE if released_now else _SCORES_SAVED_MESSAGE,
         "success",
     )
-    return redirect(scores_url)
+    return redirect(
+        _score_save_destination(group_public_id, item_public_id, preview_records)
+    )
 
 
 # ======================================================================

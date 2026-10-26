@@ -1,0 +1,77 @@
+/* Selected Daily Desk home and native enrollment modal. */
+.admin-atlas .dd-dashboard { gap:20px; }
+.admin-atlas .dd-hero { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:27px; border-radius:20px; background:var(--ad-tint); }
+.admin-atlas .dd-hero .ad-eyebrow { margin-block-end:10px; letter-spacing:.08em; }
+.admin-atlas .dd-hero h1 { font:500 32px/1.2 var(--st-display); letter-spacing:-.035em; }
+.admin-atlas .dd-desktop-copy { margin:12px 0 0; color:var(--ad-muted); font-size:12px; }
+.admin-atlas .dd-phone-heading { display:none; }
+.admin-atlas .dd-enrollment-action { display:grid; gap:10px; flex-shrink:0; }
+.admin-atlas .dd-enrollment-action .btn { border-radius:10px; min-height:42px; }
+.admin-atlas .dd-enrollment-action small { color:var(--ad-muted); font-size:11px; }
+.admin-atlas .dd-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.admin-atlas .dd-stat { display:flex; align-items:center; gap:13px; padding:19px; border:1px solid var(--ad-line); border-radius:20px; background:var(--ad-panel); min-width:0; }
+.admin-atlas .dd-stat-icon { display:grid; place-items:center; padding:10px; border-radius:12px; background:var(--ad-soft); color:var(--ad-accent); }
+.admin-atlas .dd-stat strong { display:block; font-size:28px; font-weight:500; line-height:1.25; font-variant-numeric:tabular-nums; }
+.admin-atlas .dd-stat span:not(.dd-stat-icon) { display:block; margin-block-start:4px; font-size:11px; color:var(--ad-muted); }
+.admin-atlas .dd-workboard { grid-template-columns:minmax(0,1.3fr) minmax(0,.85fr); gap:20px; }
+.admin-atlas .dd-agenda-note { margin:0; padding:15px 25px 0; }
+.admin-atlas .dd-attention-item { padding-block:19px; border-block-start:1px solid var(--ad-line); }
+.admin-atlas .dd-attention-item:last-child { padding-block-end:0; }
+.admin-atlas .dd-attention-item h3 { margin:0; }
+.admin-atlas .dd-attention-item p { margin:6px 0 10px; color:var(--ad-muted); font-size:12px; }
+.admin-atlas .dd-shortcuts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.admin-atlas .dd-shortcuts a { display:flex; align-items:center; gap:11px; padding:17px; border:1px solid var(--ad-line); border-radius:14px; background:var(--ad-panel); color:var(--ad-ink); font-size:12px; text-decoration:none; min-width:0; }
+.admin-atlas .dd-shortcuts .figma-icon { color:var(--ad-accent); flex-shrink:0; }
+.admin-atlas .dd-shortcuts a:hover { background:var(--ad-tint); }
+.admin-atlas[data-enrollment-open='true'] { overflow:hidden; }
+.admin-atlas dialog.dd-enrollment-dialog { position:fixed; inset:0; margin:auto; padding:25px; width:min(520px,calc(100% - 40px)); max-width:none; max-height:calc(100dvh - 48px); overflow:auto; border:1px solid var(--ad-line); border-radius:20px; color:var(--ad-ink); background:var(--ad-panel); box-shadow:var(--ui-shadow-lg); }
+.admin-atlas dialog.dd-enrollment-dialog[data-phase='details'] { width:min(760px,calc(100% - 40px)); }
+.admin-atlas dialog.dd-enrollment-dialog::backdrop { background:color-mix(in srgb,var(--ui-nav,#142842) 68%,transparent); }
+.admin-atlas .dd-dialog-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-block-end:18px; }
+.admin-atlas .dd-dialog-head h2 { margin:0; font-size:21px; }
+.admin-atlas [data-enrollment-status]:empty { display:none; }
+.admin-atlas .dd-dialog-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-block-start:20px; padding-block-start:16px; border-block-start:1px solid var(--ad-line); }
+.admin-atlas .dd-enrollment-dialog [data-enrollment-page-heading],.admin-atlas .dd-enrollment-dialog [data-enrollment-panel]>.ad-page-head { display:none; }
+.admin-atlas .dd-enrollment-dialog .ad-form-layout { grid-template-columns:minmax(0,1fr); }
+.admin-atlas .dd-enrollment-dialog .ad-field-panel { box-shadow:none; padding:18px; }
+.admin-atlas .dd-enrollment-dialog .ad-stepper { flex-wrap:wrap; }
+.admin-atlas .dd-enrollment-dialog .ad-page { gap:18px; }
+.admin-atlas .ad-enrollment-picker { display:grid; gap:18px; }
+.admin-atlas .ad-enrollment-picker .field { display:grid; gap:8px; margin:0; }
+.admin-atlas .ad-enrollment-picker .ad-meta { margin:0; }
+.admin-atlas .ad-enrollment-search { padding-block-end:17px; border-block-end:1px solid var(--ad-line); }
+.admin-atlas .ad-enrollment-search summary { color:var(--ad-muted); font-size:12px; cursor:pointer; }
+.admin-atlas .ad-enrollment-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-block:16px; }
+.admin-atlas .ad-enrollment-picker-foot { display:flex; justify-content:space-between; align-items:center; gap:15px; flex-wrap:wrap; }
+.admin-atlas .ad-enrollment-picker select { width:100%; }
+@media(max-width:767px) {
+ .admin-atlas .dd-workboard { display:grid; grid-template-columns:minmax(0,1fr); }
+ .admin-atlas .dd-workboard .ax-agenda { order:0; }
+ .admin-atlas .dd-workboard .ax-queue { order:1; }
+ .admin-atlas .dd-dashboard { gap:16px; }
+ .admin-atlas .dd-hero { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px 10px; padding:0; background:transparent; border-radius:0; }
+ .admin-atlas .dd-hero-copy { grid-column:1/-1; }
+ .admin-atlas .dd-hero .ad-eyebrow { margin:0; font-size:11px; }
+ .admin-atlas .dd-hero :is(.dd-desktop-heading,.dd-desktop-copy) { display:none; }
+ .admin-atlas .dd-hero .dd-phone-heading { display:block; margin:0; font-size:25px; }
+ .admin-atlas .dd-enrollment-action { display:block; }
+ .admin-atlas .dd-enrollment-action small { display:none; }
+ .admin-atlas .dd-enrollment-action .btn { min-height:44px; padding:11px 12px; font-size:12px; border-radius:12px; white-space:nowrap; }
+ .admin-atlas .dd-stats { gap:8px; }
+ .admin-atlas .dd-stat { display:block; padding:15px 11px; }
+ .admin-atlas .dd-stat-icon { display:none; }
+ .admin-atlas .dd-stat strong { font-size:26px; }
+ .admin-atlas .dd-stat span:not(.dd-stat-icon) { font-size:11px; }
+ .admin-atlas .dd-agenda-note { padding-inline:20px; font-size:11px; }
+ .admin-atlas .dd-dashboard .ax-week-strip>div { min-width:0; }
+ .admin-atlas .dd-dashboard .ax-week-strip>div>span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+ .admin-atlas .dd-shortcuts { gap:8px; }
+ .admin-atlas .dd-shortcuts a { display:grid; gap:10px; padding:15px 11px; font-size:11px; }
+ .admin-atlas dialog.dd-enrollment-dialog,.admin-atlas dialog.dd-enrollment-dialog[data-phase='details'] { width:calc(100% - 24px); max-height:calc(100dvh - 28px); padding:20px; }
+ .admin-atlas .dd-enrollment-dialog .ad-field-panel>.yc-form { grid-template-columns:minmax(0,1fr); }
+ .admin-atlas .ad-enrollment-fields { grid-template-columns:minmax(0,1fr); }
+ .admin-atlas .dd-enrollment-dialog .ad-definition { grid-template-columns:minmax(80px,.8fr) minmax(0,1.2fr); }
+ .admin-atlas .ad-enrollment-picker-foot { gap:14px; }
+ .admin-atlas .ad-enrollment-picker-foot .btn { margin-inline-start:auto; }
+}
+@media(pointer:coarse) { .admin-atlas .dd-enrollment-dialog :is(.btn,.st-icon-button) { min-height:44px; min-width:44px; } }

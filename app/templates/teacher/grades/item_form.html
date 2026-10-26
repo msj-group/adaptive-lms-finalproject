@@ -1,112 +1,105 @@
-{% extends "layouts/portal_base.html" %}
-{% block title %}{{ group.name }} — {{ "Edit grade item" if item else "New grade item" }}{% endblock %}
-{% block portal_nav %}
-  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
-  <a class="portal-nav__link" href="{{ url_for('teacher.gradebook_overview') }}">Gradebook</a>
-{% endblock %}
-{% block portal_content %}
-{#- Phase 4 / M08. Every select on this page offers this group's own rows and
-    nothing else -- the choices are built by Group-scoped queries in
-    app.services.grade_queries, so another group's assignment, quiz or speaking
-    activity is not merely hidden here, it is not in the list at all, and
-    submitting its public id resolves to nothing in the write path for exactly
-    the same reason. Values are public ids; no internal database id appears in
-    any field, label or URL.
-
-    The three linked-source selects are shown together and the server decides
-    which one applies from `source_kind`. That is deliberate: the source-kind
-    rule is enforced server-side in the form's validate(), again against the
-    locked rows, and finally by ck_grade_items_source_link -- never by hiding a
-    control. A request that names a quiz while claiming to be a manual grade is
-    rejected with a sentence, not silently trimmed.
-
-    There is deliberately no release control here: release is a separate
-    POST-only route with its own confirmation and its own signed token, so a
-    forged released_at field in this body has nowhere to land. -#}
-<h1 data-workspace-page-heading style="margin-top: 0">{{ "Edit grade item" if item else "New grade item" }}</h1>
-
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for message_category, message in messages %}
-  <div class="alert alert--{{ message_category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
-  {% endfor %}
-{% endwith %}
-
-<div class="alert alert--info" style="margin-bottom: var(--space-5)">
-  {% if item %}
-  This item is still a draft, so everything below can be changed. Once you release it, its
-  category, name, kind, linked item and maximum points are locked permanently — you will still
-  be able to correct a student's score.
-  {% else %}
-  Creating this item captures the students who are actively enrolled in this group
-  <strong>right now</strong>, and that list never changes afterwards: a student who enrolls
-  later does not appear on it, and a student who withdraws keeps their result. Nothing is
-  copied from the linked item — quiz attempts keep their own results, and the grade here is the
-  number you enter.
-  {% endif %}
+{% extends "teacher/grades/_base.html" %}
+{% block title %}{{ group.name }} — {{ 'Edit grade item' if item else 'New grade item' }}{% endblock %}
+{% block grade_content %}{{ gb.back(cancel_url,'Back to grade item' if item else 'Back to gradebook') }}
+{% if not item %}<button class="tgb-back tgb-phone" type="button" data-wizard-phone-back hidden>&larr; {{ _('Previous step') }}</button>{% endif %}<div class="tgb-create-intro">
+<header class="tgb-heading">
+<div>
+<p class="tgb-eyebrow">
+<span class="tgb-desktop">{{ _('Draft item' if item else 'Quick create') }}</span>
+<span class="tgb-phone" data-create-kicker data-template="{{ _('New grade item · %(number)d of 3') }}">{{ _('Edit draft' if item else 'New grade item') }}</span>
+</p>
+<h1 data-workspace-page-heading>
+<span class="tgb-desktop">{{ _('Edit grade item' if item else 'A new grade, without the detour.') }}</span>
+<span class="tgb-phone" data-create-title data-title-one="{{ _('What are you grading?') }}" data-title-two="{{ _('A few simple details.') }}" data-title-three="{{ _('Ready to start.') }}">{{ _('Make it clear.' if item else 'What are you grading?') }}</span>
+</h1>
+<p class="tgb-meta">
+<span class="tgb-desktop">{{ _('Update the task details while results are still private.' if item else 'Three short steps. Your group stays selected.') }}</span>
+<span class="tgb-phone" dir="auto">{{ group.name }} · {{ group.course.title }}</span>
+</p>
 </div>
-
-<p class="workspace-meta" dir="auto">{{ group.name }} · {{ group.academic_term.name }}</p>
-<form method="post" class="card yc-panel yc-form" novalidate>
-  {{ form.hidden_tag() }}
-  <input type="hidden" name="grade_state" value="{{ grade_state }}">
-
-  <div class="field">
-    <label class="field__label" for="{{ form.category.id }}">{{ form.category.label.text }}</label>
-    {{ form.category(class="field__input") }}
-    {% for error in form.category.errors %}
-    <div class="field__error">{{ error }}</div>
-    {% endfor %}
-  </div>
-
-  <div class="field" style="margin-top: var(--space-4)">
-    <label class="field__label" for="{{ form.title.id }}">{{ form.title.label.text }}</label>
-    {{ form.title(class="field__input", maxlength=title_max, autocomplete="off") }}
-    {% for error in form.title.errors %}
-    <div class="field__error">{{ error }}</div>
-    {% endfor %}
-  </div>
-
-  <div class="field" style="margin-top: var(--space-4)">
-    <label class="field__label" for="{{ form.source_kind.id }}">{{ form.source_kind.label.text }}</label>
-    {{ form.source_kind(class="field__input") }}
-    {% for error in form.source_kind.errors %}
-    <div class="field__error">{{ error }}</div>
-    {% endfor %}
-    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
-      A listening activity is graded as a <strong>quiz</strong> — it is backed by one. A class
-      activity or a manual grade is not linked to anything, so leave the lists below empty for
-      those.
-    </div>
-  </div>
-
-  {% for kind in linked_kinds %}
-  {% set field = form.source_field(kind) %}
-  <div class="field" style="margin-top: var(--space-4)">
-    <label class="field__label" for="{{ field.id }}">{{ field.label.text }}</label>
-    {{ field(class="field__input") }}
-    {% for error in field.errors %}
-    <div class="field__error">{{ error }}</div>
-    {% endfor %}
-    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
-      Only used when the kind above is “{{ source_labels[kind] }}”. A draft can be linked, but
-      the grade item cannot be released until it is published.
-    </div>
-  </div>
-  {% endfor %}
-
-  <div class="field" style="margin-top: var(--space-4)">
-    <label class="field__label" for="{{ form.max_points.id }}">{{ form.max_points.label.text }}</label>
-    {{ form.max_points(class="field__input", inputmode="decimal", autocomplete="off") }}
-    {% for error in form.max_points.errors %}
-    <div class="field__error">{{ error }}</div>
-    {% endfor %}
-    <div class="ds-section__desc" style="margin: var(--space-1) 0 0">Up to two decimal places; stored exactly.</div>
-  </div>
-
-  <div class="ds-row yc-actions" style="margin-top: var(--space-5)">
-    <button type="submit" class="btn btn--primary">{{ form.submit.label.text }}</button>
-    <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
-  </div>
+<span class="badge badge--neutral tgb-desktop">{{ _('Draft' if item else 'Private until released') }}</span>
+</header>
+{% if not item %}<nav class="tgb-wizard-nav" aria-label="New grade item steps" data-wizard-nav hidden>{% for label in ['Choose task','Set grading','Review'] %}<button type="button" data-wizard-step="{{ loop.index }}">
+<span>{{ loop.index }}</span>{{ _(label) }}</button>{% endfor %}</nav>{% endif %}</div>
+<div class="tgb-workspace-grid tgb-form-grid tgb-create-grid">
+<form method="post" class="tgb-card tgb-form" novalidate data-item-form data-editing="{{ 'true' if item else 'false' }}" data-msg-required="{{ _('Complete the required fields before continuing.') }}" data-msg-points="{{ _('Enter maximum points from 0.01 to 99999.99, with up to two decimal places.') }}">
+{{ form.hidden_tag() }}<input type="hidden" name="grade_state" value="{{ grade_state }}">
+<fieldset class="tgb-step" data-item-step="1">
+<legend>What are you grading?</legend>
+<div class="field" data-kind-fallback>
+<label for="{{ form.source_kind.id }}">{{ form.source_kind.label.text }}</label>{{ form.source_kind(class='field__input',data_source_kind='true') }}{% for error in form.source_kind.errors %}<div class="field__error">{{ error }}</div>{% endfor %}</div>
+<div class="tgb-kind-choices" data-kind-choices hidden>{% for value,label in form.source_kind.choices %}
+{% if value %}<button type="button" data-kind-choice="{{ value }}" aria-pressed="false">
+<span class="tgb-taskicon">{{ ui.icon({'assignment':'file','quiz':'headphones','speaking':'microphone','activity':'users','manual':'pen'}.get(value,'activity'),21) }}</span>
+<span>
+<strong>{{ gb.kind_label(value) }}</strong>
+<small>{{ _('No linked activity needed' if value in ['activity','manual'] else 'Link an existing group activity') }}</small>
+</span>
+<span class="tgb-choice-check" aria-hidden="true">{{ ui.icon('check',16) }}</span>
+</button>{% endif %}
+{% endfor %}</div>
+</fieldset>
+<fieldset class="tgb-step" data-item-step="2">
+<legend>Set the grading details</legend>
+<div class="field">
+<label for="{{ form.title.id }}">{{ form.title.label.text }}</label>{{ form.title(class='field__input',maxlength=title_max,autocomplete='off',data_item_name='true') }}{% for error in form.title.errors %}<div class="field__error">{{ error }}</div>{% endfor %}</div>
+<div class="tgb-field-pair">
+<div class="field">
+<label for="{{ form.category.id }}">{{ form.category.label.text }}</label>{{ form.category(class='field__input',data_item_category='true') }}{% for error in form.category.errors %}<div class="field__error">{{ error }}</div>{% endfor %}</div>
+<div class="field">
+<label for="{{ form.max_points.id }}">{{ form.max_points.label.text }}</label>{{ form.max_points(class='field__input',inputmode='decimal',autocomplete='off',data_item_max='true') }}{% for error in form.max_points.errors %}<div class="field__error">{{ error }}</div>{% endfor %}</div>
+</div>
+{% for kind in linked_kinds %}
+{% set field=form.source_field(kind) %}<div class="field" data-source-field="{{ kind }}">
+<label for="{{ field.id }}">{{ field.label.text }}</label>{{ field(class='field__input') }}{% for error in field.errors %}<div class="field__error">{{ error }}</div>{% endfor %}<small>The linked activity must be published before release.</small>
+</div>{% endfor %}<p class="tgb-caption">Blank scores are ungraded. You can release results after the final review.</p>
+</fieldset>
+{% if not item %}<section class="tgb-step" data-item-step="3" data-wizard-review hidden>
+<span class="badge badge--info">Ready to create</span>
+<h2 data-item-summary-title>
+</h2>
+<dl class="tgb-facts">
+<dt>Task type</dt>
+<dd data-item-summary-kind>
+</dd>
+<dt>Category</dt>
+<dd data-item-summary-category>
+</dd>
+<dt>Maximum</dt>
+<dd data-item-summary-max>
+</dd>
+<dt>Captured students</dt>
+<dd>{{ _('%(count)d eligible students',count=eligible_count) }}</dd>
+<dt>Visibility</dt>
+<dd>Teacher only</dd>
+</dl>
+<div class="tgb-notice">{{ ui.icon('users',18) }} The roster is captured when you create this item.</div>
+</section>{% endif %}<p class="field__error" data-wizard-error role="alert">
+</p>
+<div class="tgb-form-actions">
+<a class="btn" href="{{ cancel_url }}" data-wizard-cancel>Back to gradebook</a>
+<button class="btn" type="button" data-wizard-back hidden>Previous</button>
+<button class="btn btn--primary" type="button" data-wizard-next hidden>Continue {{ ui.icon('arrow',16) }}</button>
+<button type="submit" class="btn btn--primary" data-item-submit>{{ _('Save changes' if item else 'Create & enter scores') }} {{ ui.icon('arrow',16) }}</button>
+</div>
 </form>
-{% endblock %}
+<aside class="tgb-card tgb-live-summary">
+<p class="tgb-eyebrow">Live summary</p>
+<h3 data-live-title>{{ item.title if item else _('Your new grade item') }}</h3>
+<dl class="tgb-facts">
+<dt>Group</dt>
+<dd dir="auto">{{ group.name }}</dd>
+<dt>Students</dt>
+<dd>{{ eligible_count }}</dd>
+<dt>Category</dt>
+<dd data-live-category>
+</dd>
+<dt>Points</dt>
+<dd data-live-max>
+</dd>
+</dl>
+<hr>
+<p class="tgb-caption">Create → Enter scores → Review → Release</p>
+<p class="tgb-caption">{{ ui.icon('eye',16) }} Creating a grade item does not publish results.</p>
+</aside>
+</div>{% endblock %}

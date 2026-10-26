@@ -1,53 +1,41 @@
-{% import "admin/_macros.html" as macros %}
-{% import "_grade_macros.html" as gr %}
+{% import "_announcement_macros.html" as ann %}
+{% import "_figma_ui.html" as ui %}
+{% set scopes = [('', 'All announcements', 'All scopes', 'layers'), ('center', 'Centre announcements', 'Everybody at the centre', 'megaphone'), ('course', 'Course announcements', 'Course audience', 'book'), ('group', 'Group announcements', 'Group members', 'users')] %}
 <span hidden data-query-count="{{ announcements|length }}"></span>
-
-
-  {% if announcements %}
-  <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th>Title</th>
-        <th style="width:9rem">Scope</th>
-        <th>Addressed to</th>
-        <th style="width:9rem">Status</th>
-        <th style="width:12rem">Author</th>
-        <th style="width:12rem">Created</th>
-        <th style="width:7rem">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
+<div class="aan-workspace">
+  <aside class="aan-scopes" aria-label="{{ _('Announcement scopes') }}">
+    <div class="aan-scope-heading"><h2>Audience</h2><span>Selected scope first</span></div>
+    <nav class="aan-scope-list" aria-label="{{ _('Choose an announcement scope') }}" tabindex="0">
+      {# Keep selection first, including after a native/live GET filter response. #}
+      {% for selected in [true, false] %}{% for value, label, description, symbol in scopes %}{% if (filter_scope == value) == selected %}
+      <a class="aan-scope" data-query-page data-query-key="scope-{{ value or 'all' }}" href="{{ url_for('admin.announcements_overview', scope=value or None, status=filter_status or None) }}"{% if filter_scope == value %} aria-current="page"{% endif %}>
+        <span class="aan-scope-icon">{{ ui.icon(symbol, 21) }}</span><strong>{{ _(label) }}</strong><span>{{ _(description) }}</span>{% if filter_scope == value %}<span class="aan-selected">{{ ui.icon('check', 14) }}<span>Selected</span></span>{% endif %}
+      </a>
+      {% endif %}{% endfor %}{% endfor %}
+    </nav>
+  </aside>
+  <section class="aan-board" data-query-motion-panel aria-label="{{ _('Announcement list') }}">
+    <header class="aan-board-heading">
+      <div class="aan-board-top"><span class="aan-board-kicker">{{ _(scope_labels[filter_scope]) if filter_scope else _('All scopes') }}</span><a class="btn btn--primary" href="{{ url_for('admin.announcement_create') }}"><span aria-hidden="true">+</span><span>New announcement</span></a></div>
+      <h2>{{ _('Centre announcements' if filter_scope == 'center' else 'Course announcements' if filter_scope == 'course' else 'Group announcements' if filter_scope == 'group' else 'All announcements') }}</h2>
+      <p>Drafts are private. Publishing notifies the current audience; withdrawal is permanent.</p>
+      {% if filter_status %}<div class="aan-filter-context"><span>{{ _('Status') }}:</span><span class="badge badge--neutral">{{ _(status_labels[filter_status]) }}</span><a data-query-page href="{{ url_for('admin.announcements_overview', scope=filter_scope or None) }}">Clear status</a></div>{% endif %}
+    </header>
+    <div class="aan-list" role="region" tabindex="0" aria-label="{{ _('Announcement list') }}">
       {% for item in announcements %}
-      <tr>
-        <td><strong>{{ item.title }}</strong></td>
-        <td>{{ ann.scope_badge(item) }}</td>
-        <td>{{ item.context or "Everybody at the centre" }}</td>
-        <td>{{ ann.status_badge(item) }}</td>
-        <td>{{ item.author_name }}</td>
-        <td>{{ item.created_local.strftime("%Y-%m-%d %H:%M") }}</td>
-        <td><a class="btn btn--secondary" href="{{ url_for('admin.announcement_detail', announcement_public_id=item.public_id) }}">Open</a></td>
-      </tr>
+      <article class="aan-row">
+        <div class="aan-row-top"><div class="aan-badges">{{ ann.status_badge(item) }}{{ ann.scope_badge(item) }}</div><time datetime="{{ item.created_local.isoformat() }}">{{ ui_date(item.created_local.strftime('%d %b %Y · %H:%M')) }}</time></div>
+        <h3 dir="auto"><a href="{{ url_for('admin.announcement_detail', announcement_public_id=item.public_id) }}">{{ item.title }}</a></h3>
+        <p class="aan-preview" dir="auto">{{ item.body|replace('\n', ' ')|truncate(180, true, '…') }}</p>
+        <p class="aan-context" dir="auto">{{ item.context or _('Everybody at the centre') }}</p>
+        <div class="aan-row-bottom"><span dir="auto">{{ _('Written by %(author)s', author=item.author_name) }}</span><a href="{{ url_for('admin.announcement_detail', announcement_public_id=item.public_id) }}">{{ _('Review draft' if item.status == 'draft' else 'View announcement') }}{{ ui.icon('arrow', 15) }}</a></div>
+      </article>
+      {% else %}
+      <div class="aan-empty">{{ ui.icon('megaphone', 30) }}<h3>{{ _('No matching announcements' if filter_scope or filter_status else 'No announcements yet') }}</h3><p>{{ _('Try a different filter or clear your selection.' if filter_scope or filter_status else 'Create a draft when your centre needs an update.') }}</p>{% if filter_scope or filter_status %}<a class="btn btn--secondary" data-query-page href="{{ url_for('admin.announcements_overview') }}">Clear filters</a>{% endif %}</div>
       {% endfor %}
-    </tbody>
-  </table>
-  </div>
-
-  {% if has_prev or has_next %}
-  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Announcement pages">
-    {% if has_prev %}
-    <a class="btn btn--secondary" href="{{ url_for('admin.announcements_overview', page=page - 1, scope=filter_scope or None, status=filter_status or None) }}">Previous</a>
-    {% endif %}
-    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page </span>
-    {% if has_next %}
-    <a class="btn btn--secondary" href="{{ url_for('admin.announcements_overview', page=page + 1, scope=filter_scope or None, status=filter_status or None) }}">Next</a>
-    {% endif %}
-  </nav>
-  {% endif %}
-
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">No announcements</div>
-    <div></div>
-  </div>
-  {% endif %}
+    </div>
+    <nav class="aan-pagination" aria-label="{{ _('Announcement pages') }}">
+      {% if has_prev %}<a data-query-page href="{{ url_for('admin.announcements_overview', page=page-1, scope=filter_scope or None, status=filter_status or None) }}">Previous</a>{% endif %}<span>{{ _('Page %(page)d · %(count)d shown', page=page, count=announcements|length) }}</span>{% if has_next %}<a data-query-page href="{{ url_for('admin.announcements_overview', page=page+1, scope=filter_scope or None, status=filter_status or None) }}">Next</a>{% endif %}
+    </nav>
+  </section>
+</div>

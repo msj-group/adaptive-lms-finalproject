@@ -31,7 +31,9 @@ def _lock_member(actor_id, thread_id):
     # with no academic locks because historical ownership is sufficient.
     db.session.rollback()
     actor = db.session.query(User).filter_by(id=actor_id).with_for_update().first()
-    if actor is None or actor.status != UserStatus.ACTIVE.value or actor.role not in (UserRole.STUDENT.value, UserRole.TEACHER.value):
+    if actor is None or actor.status != UserStatus.ACTIVE.value or actor.role not in (
+        UserRole.STUDENT.value, UserRole.TEACHER.value, UserRole.ADMINISTRATOR.value, UserRole.RESEARCHER.value
+    ):
         return None
     thread = db.session.query(MessageThread).filter_by(id=thread_id).with_for_update().first()
     if thread is None:

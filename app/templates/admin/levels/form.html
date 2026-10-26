@@ -1,20 +1,22 @@
 {% extends "layouts/admin_base.html" %}
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ 'Edit Level' if level else 'New Level' }}{% endblock %}
+{% import "admin/_atlas_ui.html" as atlas %}
+{% import "_figma_ui.html" as ui %}
 {% block admin_content %}
-<div class="ds-page yc-surface" style="max-width: 480px">
-  <h1 data-workspace-page-heading>{{ 'Edit Level' if level else 'New Level' }}</h1>
+<div class="ad-page">
+  <header class="ad-page-head"><div><div class="ad-eyebrow">Academic setup / Levels</div><h1 data-workspace-page-heading>{{ 'Edit Level' if level else 'New Level' }}</h1></div><a class="btn btn--secondary" href="{{ url_for('admin.levels_list') }}">Back</a></header>
+  <div data-academic-messages>{{ macros.flash_messages() }}</div>
+  <form data-academic-form data-academic-kind="levels" data-academic-record="{{ level.public_id if level else '' }}" data-academic-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}" method="post" novalidate class="yc-form ad-form-workspace">
+    <section class="ad-card ad-field-panel"><div class="ax-form-section"><span>{{ ui.icon('layers', 18) }}</span><div><h2>Level details</h2><p class="ad-meta">Complete the details below.</p></div></div><div class="ad-form-grid">
 
-  {{ macros.flash_messages() }}
-
-  <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     <div class="field">
       {{ form.name.label(class_="field__label") }}
       {{ form.name(class_="field__input") }}
       {% for error in form.name.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="">
+    <div class="field">
       {{ form.code.label(class_="field__label") }}
       {{ form.code(class_="field__input") }}
       {% for error in form.code.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
@@ -22,10 +24,15 @@
     {% if level %}
 
     {% endif %}
-    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
+
+    </div></section>
+    <aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Learning structure</h2>{{ ui.icon('info', 18) }}</div><p class="ad-meta">Courses are organized under a level. Use a clear name and an optional code.</p>{% if level %}<dl class="ad-definition"><dt>Name</dt><dd dir="auto">{{ level.name }}</dd><dt>Status</dt><dd>{{ macros.status_badge(level.status) }}</dd></dl>{% endif %}</section></aside>
+    <section class="ad-card ad-save-panel"><div class="ad-form-foot"><span class="ad-meta">Review the details before saving.</span><div class="ad-actions">
+
       {{ form.submit(class_="btn btn--primary") }}
-      <a class="btn btn--secondary" href="{{ url_for('admin.levels_list') }}">Cancel</a>
-    </div>
+      <a class="btn btn--secondary" href="{{ url_for('admin.levels_list') }}" data-academic-editor-cancel>Cancel</a>
+
+    </div></div></section>
   </form>
 </div>
 {% endblock %}

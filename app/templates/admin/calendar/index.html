@@ -1,56 +1,31 @@
-{% extends "layouts/admin_base.html" %}
-{% import "_calendar_macros.html" as cal with context %}
-{% block title %}Calendar{% endblock %}
-{% block admin_content %}
-<div class="ds-page yc-surface">
-{#- Phase 4 / M10. The centre's whole calendar for one bounded date range,
-    assembled from the EXISTING sources -- active schedules expanded by the
-    canonical occurrence arithmetic, published assignment / quiz / listening
-    dates -- plus the centre's own events. Rendering this page writes nothing
-    and can change no source record.
-
-    This is the ONE calendar surface that shows cancelled centre events, and
-    they are clearly marked. A student's and a teacher's calendar filter
-    `status = 'scheduled'` in SQL, so a cancelled event can never reach either.
-
-    What is deliberately NOT on this page: any individual student's enrollment,
-    quiz attempt, submission, grade, attendance record or notification. None of
-    them is a calendar entry, and no query behind this page fetches one. -#}
-  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: flex-start">
-    <div>
-      <h1 data-workspace-page-heading style="margin-top: 0">Calendar</h1>
-
-    </div>
-    <a class="btn btn--primary" href="{{ new_event_url }}">New centre event</a>
+{% extends 'admin/planner/_base.html' %}
+{% block planner_content %}
+<div data-admin-focus-planner data-selected-date="{{ calendar.selected.isoformat() }}" data-today="{{ calendar.today.isoformat() }}" data-view="{{ calendar.view }}" data-entry-singular="{{ _('%(count)d entry') }}" data-entry-plural="{{ _('%(count)d entries') }}" data-today-label="{{ _('Today') }}" data-upcoming-label="{{ _('Upcoming dates') }}">
+  {% if range_normalized %}<div class="alert alert--info" role="status">{{ _(range_message) }}</div>{% endif %}
+  {% if calendar.filters_normalized %}<div class="alert alert--info" role="status">Calendar filters were refreshed for this date range.</div>{% endif %}
+  {% if truncated %}<div class="alert alert--warning" role="status">This range reached the calendar's safe display limit, so some entries may be omitted. Choose a shorter range to make sure every entry is included.</div>{% endif %}
+  <div class="fp-toolbar">
+    <div class="fp-period"><strong>{{ ui_date(range_start.strftime('%B %Y')) }}{% if range_start.month != range_end.month or range_start.year != range_end.year %} – {{ ui_date(range_end.strftime('%B %Y')) }}{% endif %}</strong><a class="fp-icon-link fp-previous" data-fp-previous href="{{ url_for('admin.calendar',**calendar.previous_args) }}" aria-label="Previous">{{ planner_ui.icon('chevron',16) }}</a><a class="fp-icon-link" data-fp-next href="{{ url_for('admin.calendar',**calendar.next_args) }}" aria-label="Next">{{ planner_ui.icon('chevron',16) }}</a></div>
+    <a class="fp-link fp-today" data-fp-today href="{{ url_for('admin.calendar',**calendar.today_args) }}">Today</a>
+    <details class="fp-filters" data-fp-filters><summary>{{ planner_ui.icon('settings',16) }} Filters{% if calendar.filters_active %}<span class="fp-filter-dot" aria-label="Filters active"></span>{% endif %}</summary>{% include 'admin/planner/_calendar_filters.html' %}</details>
   </div>
-
-  {{ cal.flash_messages() }}
-
-  {% if range_normalized %}
-  <div class="alert alert--info" style="margin-bottom: var(--space-4)">{{ range_message }}</div>
-  {% endif %}
-
-  {{ cal.range_controls(previous_url, next_url, today_url, range_start, range_end, max_range_days, today_url) }}
-  {{ cal.range_summary(range_start, range_end, range_days, entry_count, tz_name) }}
-
-  {% if truncated %}
-  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
-    This range reached the calendar's safe display limit, so some entries may be omitted.
-    Choose a shorter range to make sure every entry is included.
+  <div class="fp-mobile-weeks" aria-label="Choose a day">
+    {% for week in calendar.weeks %}<div class="fp-week" data-fp-week data-first-date="{{ week[0].iso }}" data-last-date="{{ week[-1].iso }}">{% for cell in week %}{% if cell.in_range %}<a class="fp-week-date" href="{{ url_for('admin.calendar',**cell.args) }}" data-fp-date="{{ cell.iso }}" aria-current="{{ 'date' if cell.selected else 'false' }}" aria-label="{{ ui_date(cell.date.strftime('%A %d %B %Y')) }}"><span>{{ _(cell.date.strftime('%a') ~ '.') }}</span><strong>{{ cell.date.day }}</strong><i class="fp-day-dot{{ ' fp-day-dot--empty' if not cell.count else '' }}" aria-hidden="true"></i></a>{% else %}<span class="fp-week-date fp-outside"><span>{{ _(cell.date.strftime('%a') ~ '.') }}</span><strong>{{ cell.date.day }}</strong></span>{% endif %}{% endfor %}</div>{% endfor %}
   </div>
-  {% endif %}
-
-  {% if days %}
-  {{ cal.days_view(days,range_start,range_end) }}
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">Nothing in this range</div>
-    <div>
-      There are no classes, activity dates or centre events between
-      {{ range_start.strftime("%d %B %Y") }} and {{ range_end.strftime("%d %B %Y") }}.
-      Try another range, or create a centre event.
-    </div>
+  <div class="fp-focus-layout">
+    <aside class="fp-months" aria-label="Choose a day">
+      {% for month in calendar.months %}<section class="fp-month"><div class="fp-month-heading"><h2>{{ ui_date(month.date.strftime('%B %Y')) }}</h2>{{ planner_ui.icon('calendar',15) }}</div><div class="fp-weekdays">{% for day in month.weeks[0] %}<span>{{ _(day.date.strftime('%a') ~ '.') }}</span>{% endfor %}</div><div class="fp-month-grid">{% for week in month.weeks %}{% for cell in week %}{% if cell.in_range %}<a class="fp-date{{ ' fp-date--today' if cell.today else '' }}" data-fp-date="{{ cell.iso }}" href="{{ url_for('admin.calendar',**cell.args) }}" aria-current="{{ 'date' if cell.selected else 'false' }}" aria-label="{{ ui_date(cell.date.strftime('%A %d %B %Y')) }}"><span>{{ cell.date.day }}</span><i class="fp-day-dot{{ ' fp-day-dot--empty' if not cell.count else '' }}" aria-hidden="true"></i></a>{% else %}<span class="fp-date fp-outside">{{ cell.date.day }}</span>{% endif %}{% endfor %}{% endfor %}</div></section>{% endfor %}
+      <div class="fp-legend"><span><i class="fp-dot--class"></i>Classes</span><span><i class="fp-dot--activity"></i>Activity dates</span><span><i></i>Center events</span></div>
+      <p class="fp-side-note"><strong>One calendar. Clear context.</strong>Choose a day to see every class, deadline and center event.</p>
+    </aside>
+    <section class="fp-agenda" aria-label="Calendar entries">
+      <div class="fp-agenda-heading"><span class="fp-day-number" data-fp-day-number>{{ calendar.selected.day }}</span><div><h2 data-fp-heading>Calendar entries</h2><p data-fp-heading-meta>{{ ui_date(calendar.selected.strftime('%B %Y')) }}</p></div><div class="fp-agenda-controls" aria-label="Calendar view"><button type="button" data-fp-view="day" aria-pressed="true">Day</button><button type="button" data-fp-view="upcoming" aria-pressed="false">Upcoming</button></div></div>
+      <p class="fp-agenda-count" data-fp-count>{{ _n('%(count)d entry','%(count)d entries',calendar.count) }}</p>
+      {% for day in calendar.days %}<section class="fp-day{{ ' fp-day--empty' if not day.count else '' }}" data-fp-day="{{ day.iso }}" data-count="{{ day.count }}" data-weekday="{{ ui_date(day.date.strftime('%A')) }}" data-month="{{ ui_date(day.date.strftime('%B %Y')) }}" data-day-number="{{ day.date.day }}"><h3 class="fp-day-label">{{ ui_date(day.date.strftime('%A %d %B')) }}</h3><div class="fp-entry-list">{% for row in day.entries %}{% set entry_first = loop.first %}{% include 'admin/planner/_entry.html' %}{% else %}<div class="fp-empty"><strong>No calendar entries</strong><p>Choose another day or view upcoming dates.</p></div>{% endfor %}</div></section>{% endfor %}
+      <div class="fp-empty" data-fp-upcoming-empty{% if calendar.count %} hidden{% endif %}><strong>No calendar entries</strong><p>Choose another day or view upcoming dates.</p></div>
+    </section>
   </div>
-  {% endif %}
+  <footer class="fp-range-footer"><span>{{ planner_ui.icon('globe',14) }}<bdi>{{ tz_name }}</bdi> · {{ _('Center time') }}</span><span>{{ ui_date(range_start.strftime('%d %B %Y')) }} – {{ ui_date(range_end.strftime('%d %B %Y')) }}</span></footer>
+  <span class="fp-sr-only" role="status" aria-live="polite" data-fp-live></span>
 </div>
 {% endblock %}

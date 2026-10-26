@@ -1,4 +1,4 @@
-{% extends "layouts/portal_base.html" %}
+{% extends 'layouts/student_atlas_base.html' %}
 {% import "_attendance_macros.html" as att %}
 {% import "_figma_ui.html" as ui %}
 {% block title %}Attendance{% endblock %}
@@ -16,8 +16,8 @@
     roster and no internal id. Percentages describe this student's complete
     matching finalized history, independently of pagination. -#}
 {% set active_filter_count = (1 if filters.course != 'all' else 0) + (1 if filters.group != 'all' else 0) + (1 if filters.status != 'all' else 0) + (1 if filters.date_from else 0) + (1 if filters.date_to else 0) %}
-<div class="record-page-heading">
-  <h1 data-workspace-page-heading dir="auto">Attendance</h1>
+<div class="record-page-heading atlas-record-heading">
+  <div><p class="atlas-eyebrow">Your class records</p><h1 data-workspace-page-heading dir="auto">Attendance</h1><p class="atlas-note">Only your finalized attendance is shown.</p></div>
   <details class="record-filters" data-attendance-filters>
     <summary><span class="record-filter-heading">{{ ui.icon('settings', 18) }}<span>Filters</span></span>{% if active_filter_count %}<span class="attendance-filter-count" aria-label="{{ _n('%(count)d active filter', '%(count)d active filters', active_filter_count) }}">{{ active_filter_count }}</span>{% endif %}<span class="record-filter-arrow">{{ ui.icon('chevron-down', 16) }}</span></summary>
     <form method="get" action="{{ url_for('student.attendance_list') }}" class="record-filter-form st-panel">

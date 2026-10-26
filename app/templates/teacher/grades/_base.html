@@ -1,0 +1,8 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_figma_ui.html" as ui %}
+{% import "_grade_macros.html" as gr %}
+{% import "teacher/grades/_ui.html" as gb with context %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/gradebook.css', v='guided-workspace-20261022') }}">{% endblock %}
+{% block workspace_content_class %}tgb-workspace{% endblock %}
+{% block portal_content %}<div class="tgb" data-gradebook>{{ gb.context(group|default(none),gradebook_groups) }}{{ gb.flashes() }}{% block grade_content %}{% endblock %}</div>{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_gradebook.js', v='guided-workspace-20261022') }}" defer></script>{% endblock %}

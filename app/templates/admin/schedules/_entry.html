@@ -1,0 +1,18 @@
+{% import 'admin/_macros.html' as schedule_ui %}
+<article class="calendar-entry calendar-entry--class{{ ' calendar-entry--historical' if row.schedule_status != 'active' or row.parent_archived else '' }}">
+  <div class="calendar-entry-top">
+    <time dir="ltr">{{ row.start_time.strftime('%H:%M') }} – {{ row.end_time.strftime('%H:%M') }}</time>
+    {{ schedule_ui.status_badge(row.schedule_status) }}
+  </div>
+  <h3 dir="auto">{{ row.title }}</h3>
+  <p class="calendar-entry-context">{{ ui.icon('users',14) }}<span dir="auto">{{ row.context }}</span></p>
+  {% if row.schedule_status == 'active' and row.parent_archived %}<span class="badge badge--warning">Not operational</span>{% endif %}
+  <div class="calendar-entry-bottom">
+    <span class="calendar-location">{% if row.location %}{{ ui.icon('room',14) }}<span dir="auto">{{ row.location }}</span>{% endif %}</span>
+    <a class="calendar-entry-action" href="{{ url_for('admin.group_schedules',group_public_id=row.group_public_id) }}">Open schedules {{ ui.icon('arrow-up',14) }}</a>
+    <details class="calendar-entry-details"><summary>{{ _('Details') }}{{ ui.icon('chevron-down',14) }}</summary><div>
+      <p dir="auto">{{ row.term_name }} · {{ row.level_name }}</p>
+      <p><span>{{ _('Effective dates') }}</span><br><bdi>{{ row.effective_start.isoformat() }} → {{ row.effective_end.isoformat() }}</bdi></p>
+    </div></details>
+  </div>
+</article>

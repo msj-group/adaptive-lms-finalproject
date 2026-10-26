@@ -1,0 +1,5 @@
+<dialog class="pf-create-dialog" id="people-create-dialog" data-people-create-dialog data-people-kind="{{ people_kind }}" data-people-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}" data-create-url="{{ url_for('admin.' ~ people_kind ~ '_create') }}" aria-labelledby="people-create-title">
+  <header class="pf-create-head"><div><p class="ad-eyebrow">People</p><h2 id="people-create-title">{{ _('New Student') if people_kind == 'student' else _('New Teacher') }}</h2></div><button class="btn btn--ghost" type="button" data-people-create-close aria-label="Close">{{ ui.icon('close', 19) }}</button></header>
+  <div class="pf-create-body"><p class="pf-create-status" data-people-create-status role="status" aria-live="polite"></p><div data-people-create-content></div></div>
+  <footer class="pf-create-recovery" data-people-create-recovery hidden><button class="btn btn--secondary" type="button" data-people-create-retry>Retry</button><a class="ad-row-link" href="{{ url_for('admin.' ~ people_kind ~ '_create') }}" data-people-create-fallback>Open full page {{ ui.icon('arrow-up', 14) }}</a></footer>
+</dialog>

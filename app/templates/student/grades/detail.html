@@ -1,4 +1,4 @@
-{% extends "layouts/portal_base.html" %}
+{% extends 'layouts/student_atlas_base.html' %}
 {% import "_grade_macros.html" as gr %}
 {% import "_figma_ui.html" as ui %}
 {% block title %}{{ group.name }} — My grades{% endblock %}
@@ -19,7 +19,7 @@
 
     Every number is a string produced by app.services.grade_calculations and
     rounded there exactly once. This template performs no arithmetic. -#}
-<h1 data-workspace-page-heading dir="auto">{{ group.name }} — My grades</h1>
+<header class="atlas-heading"><div><p class="atlas-eyebrow">Your released results</p><h1 data-workspace-page-heading dir="auto">{{ group.name }} — My grades</h1></div></header>
 <p class="ds-section__desc grade-intro">
   <bdi>{{ group.course_title }}</bdi> &middot; <bdi>{{ group.level_name }}</bdi> &middot; <bdi>{{ group.term_name }}</bdi>
 </p>

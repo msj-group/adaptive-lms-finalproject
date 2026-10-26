@@ -1,104 +1,18 @@
-{% extends "layouts/admin_base.html" %}
-{% import "admin/_macros.html" as macros %}
-{% import "_attendance_macros.html" as att %}
+{% extends 'admin/learning/_base.html' %}
+{% import 'admin/learning/_ui.html' as lens with context %}
 {% block title %}Attendance{% endblock %}
-{% block admin_content %}
-<div class="ds-page yc-surface">
-  {#- Phase 4 / M07. READ ONLY. There is no create, edit, mark, finalize,
-      reopen, delete, export, bulk or grade control on this page, and none
-      behind it: no such administrator endpoint exists. Attendance is recorded
-      by the teacher who taught the class. -#}
-  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-    <h1 data-workspace-page-heading style="margin:0">Attendance</h1>
-  </div>
-  <p class="ds-section__desc">Read-only attendance. The original class details are retained.</p>
-
-  {{ macros.flash_messages() }}
-
-  <form method="get" class="ds-row yc-actions yc-filter-form" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;">
-    <label class="field__label" for="group">Group:</label><select name="group" id="group" class="field__input"><option value="">All groups</option>{% set choices = workspace_group_choices() %}{% set found = namespace(value=false) %}{% for row in choices %}{% if filter_group == row.public_id %}{% set found.value=true %}{% endif %}<option value="{{ row.public_id }}" {{ 'selected' if filter_group == row.public_id else '' }}>{{ row.name }} · {{ row.title }} · {{ row.term_name }}</option>{% endfor %}{% if filter_group and not found.value %}<option value="{{ filter_group }}" selected>Selected group (outside the first 500 choices)</option>{% endif %}</select>
-
-    <label class="field__label" for="session_date" style="margin:0">Class date:</label>
-    <input type="date" name="session_date" id="session_date" class="field__input" style="width:auto"
-           value="{{ filter_date.isoformat() if filter_date else '' }}">
-
-    <label class="field__label" for="state" style="margin:0">State:</label>
-    <select name="state" id="state" class="field__input" style="width:auto">
-      <option value="">Final and draft</option>
-      <option value="final" {{ "selected" if filter_state == "final" else "" }}>Finalized only</option>
-      <option value="draft" {{ "selected" if filter_state == "draft" else "" }}>Drafts only</option>
-    </select>
-
-    <button type="submit" class="btn btn--secondary">Filter</button>
-    {% if filter_group or filter_date or filter_state %}
-    <a class="btn btn--secondary" href="{{ url_for('admin.attendance_overview') }}">Clear</a>
-    {% endif %}
-  </form>
-
-  {% if filter_group_unknown %}
-  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
-    No group has that public ID, so nothing is listed.
-  </div>
-  {% elif filter_group_row %}
-  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
-    Showing attendance for <strong>{{ filter_group_row.name }}</strong> &middot;
-    {{ filter_group_row.course_title }} &middot; {{ filter_group_row.level_name }} &middot;
-    {{ filter_group_row.term_name }}.
-  </div>
-  {% endif %}
-
-  {% if sessions %}
-  <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th style="width:11rem">Class date</th>
-        <th>Group</th>
-        <th style="width:11rem">Day &amp; time</th>
-        <th>Location</th>
-        <th style="width:8rem">State</th>
-        <th>Marks</th>
-        <th style="width:7rem"></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in sessions %}
-      <tr>
-        <td><strong>{{ item.session_date.isoformat() }}</strong></td>
-        <td>{{ item.group_name }}<br>
-          <span class="ds-section__desc">{{ item.course_title }} &middot; {{ item.level_name }} &middot; {{ item.term_name }}</span>
-        </td>
-        <td>{{ att.weekday_name(item.day_of_week) }} &middot; {{ att.time_range(item.start_time, item.end_time) }}</td>
-        <td>{{ item.location or "—" }}</td>
-        <td>{{ att.state_badge(item.is_finalized) }}</td>
-        <td>{{ att.count_summary(item.counts) }}</td>
-        <td>
-          <a class="btn btn--secondary"
-             href="{{ url_for('admin.attendance_session_detail', group_public_id=item.group_public_id, session_public_id=item.public_id) }}">View</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  </div>
-
-  {% if has_prev or has_next %}
-  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Attendance pages">
-    {% if has_prev %}
-    <a class="btn btn--secondary" href="{{ url_for('admin.attendance_overview', page=page - 1, group=filter_group, session_date=filter_date.isoformat() if filter_date else None, state=filter_state or None) }}">Previous</a>
-    {% endif %}
-    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
-    {% if has_next %}
-    <a class="btn btn--secondary" href="{{ url_for('admin.attendance_overview', page=page + 1, group=filter_group, session_date=filter_date.isoformat() if filter_date else None, state=filter_state or None) }}">Next</a>
-    {% endif %}
-  </nav>
-  {% endif %}
-
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">No attendance to review</div>
-    <div></div>
-  </div>
-  {% endif %}
+{% block learning_content %}
+<div class="al-tools"><header><h2>Attendance</h2><p>Review recorded class sessions.</p></header>
+  <details class="al-filters"{% if filter_group or filter_date or filter_state %} open{% endif %}><summary>{{ learning_ui.icon('settings',16) }} Filters</summary>
+    <form method="get" class="al-filter-form">
+      <div class="field"><label for="group">Group</label><select name="group" id="group" class="field__input"><option value="">All groups</option>{% set choices = workspace_group_choices() %}{% set found = namespace(value=false) %}{% for row in choices %}{% if filter_group == row.public_id %}{% set found.value=true %}{% endif %}<option value="{{ row.public_id }}" {{ 'selected' if filter_group == row.public_id else '' }}>{{ row.name }} · {{ row.title }} · {{ row.term_name }}</option>{% endfor %}{% if filter_group and not found.value %}<option value="{{ filter_group }}" selected>Selected group (outside the first 500 choices)</option>{% endif %}</select></div>
+      <div class="field"><label for="session_date">Class date</label><input type="date" name="session_date" id="session_date" class="field__input" value="{{ filter_date.isoformat() if filter_date else '' }}"></div>
+      <div class="field"><label for="state">State</label><select name="state" id="state" class="field__input"><option value="">Final and draft</option><option value="final" {{ 'selected' if filter_state == 'final' else '' }}>Finalized only</option><option value="draft" {{ 'selected' if filter_state == 'draft' else '' }}>Drafts only</option></select></div>
+      <div class="al-filter-actions"><button type="submit" class="btn btn--primary">Filter</button>{% if filter_group or filter_date or filter_state %}<a class="btn" href="{{ url_for('admin.attendance_overview') }}">Clear</a>{% endif %}</div>
+    </form>
+  </details>
 </div>
+{% if filter_group_unknown %}<div class="alert alert--warning">No group has that public ID, so nothing is listed.</div>{% elif filter_group_row %}<p class="al-filter-context"><bdi>{{ filter_group_row.name }} · {{ filter_group_row.course_title }} · {{ filter_group_row.level_name }} · {{ filter_group_row.term_name }}</bdi></p>{% endif %}
+{% if sessions %}{{ lens.attendance_summary(sessions) }}{{ lens.session_list(sessions) }}{{ lens.attendance_pager() }}{% else %}<div class="al-panel al-empty"><h3>No attendance to review</h3></div>{% endif %}
+<p class="al-note">{{ learning_ui.icon('lock',14) }}<span>Read-only attendance. The original class details are retained.</span></p>
 {% endblock %}

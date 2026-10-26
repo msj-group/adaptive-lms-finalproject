@@ -1,0 +1,23 @@
+{% extends 'layouts/admin_base.html' %}
+{% import '_figma_ui.html' as planner_ui %}
+{% import 'admin/_macros.html' as planner_messages %}
+{% block title %}Calendar{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static',filename='css/admin/focus_planner.css',v='planner-slot-20261025') }}">{% endblock %}
+{% block admin_content %}
+<div class="fp-page{{ ' fp-page--schedules' if request.endpoint == 'admin.schedules_overview' else '' }}" data-planner-workspace data-planner-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}" data-planner-create-url="{{ url_for('admin.calendar_event_create') }}" data-planner-event-url="{{ url_for('admin.calendar_event_detail',event_public_id='__event__') }}" data-planner-group-url="{{ url_for('admin.group_schedules',group_public_id='__group__') }}" data-planner-slot-create-url="{{ url_for('admin.group_schedule_create',group_public_id='__group__') }}">
+  <header class="fp-heading ad-page-head">
+    <div><p class="fp-eyebrow">Your planning space</p><h1 data-workspace-page-heading>Calendar</h1></div>
+    <div class="fp-heading-actions">{% if request.endpoint == 'admin.calendar' %}<a class="btn btn--primary" data-planner-new-event href="{{ new_event_url }}">{{ planner_ui.icon('calendar',16) }} New centre event</a>{% else %}<a class="btn btn--primary" data-planner-choose-group href="{{ url_for('admin.groups_list') }}">{{ planner_ui.icon('book',16) }} Choose a group</a><button type="button" class="fp-mobile-filter" data-fp-mobile-filters aria-controls="focus-schedule-filters" aria-expanded="false" hidden>{{ planner_ui.icon('settings',16) }} Filters{% if has_filters %}<span class="fp-filter-dot" aria-label="Filters active"></span>{% endif %}</button>{% endif %}</div>
+  </header>
+  <div class="fp-mobile-filter-host" data-fp-mobile-filter-host></div>
+  <nav class="fp-tabs ad-tabs" aria-label="Calendar workspace">
+    <a href="{{ url_for('admin.calendar') }}"{% if request.endpoint == 'admin.calendar' %} aria-current="page"{% endif %}>{{ planner_ui.icon('calendar',17) }} Center calendar</a>
+    <a href="{{ url_for('admin.schedules_overview') }}"{% if request.endpoint == 'admin.schedules_overview' %} aria-current="page"{% endif %}>{{ planner_ui.icon('clock',17) }} Teaching schedules</a>
+  </nav>
+  <p class="fp-description">{% if request.endpoint == 'admin.calendar' %}Classes, activity dates and center events, together.{% else %}Recurring weekly slots, effective dates and lifecycle status.{% endif %}</p>
+  <div data-planner-messages>{{ planner_messages.flash_messages() }}</div>
+  {% block planner_content %}{% endblock %}
+  {% include 'admin/planner/_dialog.html' %}
+</div>
+{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static',filename='js/admin_focus_planner.js',v='planner-actions-20261025') }}" defer></script><script src="{{ url_for('static',filename='js/admin_planner_dialog.js',v='planner-slot-20261025') }}" defer></script>{% endblock %}

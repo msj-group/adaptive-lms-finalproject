@@ -6,10 +6,11 @@
 {% block title %}{{ assignment.title }}{% endblock %}
 {% block portal_nav %}{% set active_nav = 'assignments' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-<div class="activity-surface" data-assignment-draft-scope
+<div class="activity-surface atlas-activity-detail" data-assignment-draft-scope
      data-draft-student="{{ current_user.public_id }}" data-draft-group="{{ assignment.group_public_id }}"
      data-draft-assignment="{{ assignment.public_id }}" data-draft-context="{{ assignment_draft_context }}"
      data-draft-submitted="{{ 'true' if submission else 'false' }}">
+<div class="atlas-activity-main">
 
 {#- Phase 4 / M01 + M02 + M03. `assignment`, `submission` and `feedback` are
     plain presentation dicts; the rows behind them already satisfied the whole
@@ -166,7 +167,7 @@
 <p class="assignment-draft-status" data-draft-receipt-status role="status" hidden></p>
 </div>
 
-<div class="st-facts" style="margin-bottom: var(--space-6)">
+</div><div class="st-facts" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Opened</dt>

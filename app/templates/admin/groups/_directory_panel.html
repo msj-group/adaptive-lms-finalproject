@@ -1,0 +1,31 @@
+<section class="agroups-panel" data-group-panel id="group-info-{{ group.public_id }}" aria-labelledby="group-name-{{ group.public_id }}">
+  <div class="agroups-panel-top"><span class="ad-tag" dir="auto">{{ group.course.level.name }}</span>{{ macros.status_badge(group.status) }}</div>
+  <h2 id="group-name-{{ group.public_id }}" tabindex="-1">{{ group.name }}</h2>
+  <p class="ad-meta"><bdi>{{ group.course.title }}</bdi> · <bdi>{{ group.academic_term.name }}</bdi></p>
+  {% if group.status == "active" and ancestor_archived %}<p class="ad-notice agroups-notice"><span class="badge badge--warning">Parent archived</span> An academic parent is archived; this group is not operational.</p>{% endif %}
+  <dl class="agroups-definition">
+    <dt>Group code</dt><dd dir="auto">{{ group.code or "—" }}</dd>
+    <dt>Academic Term</dt><dd>{{ group.academic_term.name }}{% if group.academic_term.status != 'active' %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
+    <dt>Course</dt><dd>{{ group.course.title }}{% if group.course.status != 'active' %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
+    <dt>Level</dt><dd>{{ group.course.level.name }}{% if group.course.level.status != 'active' %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
+    <dt>Capacity</dt><dd>{{ group.capacity }} students</dd>
+    <dt>Created</dt><dd>{{ group.created_at.strftime("%Y-%m-%d") }}</dd>
+  </dl>
+  <div class="agroups-panel-tools"><a class="btn btn--secondary" href="{{ url_for('admin.group_members', group_public_id=group.public_id) }}">{{ ui.icon('users',15) }} Members</a><a class="btn btn--secondary" href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">{{ ui.icon('calendar',15) }} Schedule</a></div>
+  <div class="agroups-panel-actions"><a class="btn btn--ghost" href="{{ url_for('admin.group_edit', public_id=group.public_id) }}" data-group-edit-open data-group-public-id="{{ group.public_id }}">{{ ui.icon('pen',15) }} Edit</a>
+      <form
+              method="post"
+              action="{{ url_for('admin.group_toggle_status', public_id=group.public_id) }}"
+              class="group-status-form yc-form"
+              {% if group.status == "active" %}data-confirm="Deactivate {{ group.name }}? It will no longer appear as an active group."{% endif %}
+            >
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              {% if group.status == "active" %}
+                <button type="submit" class="btn btn--danger-outline">Deactivate</button>
+              {% else %}
+                <button type="submit" class="btn btn--secondary">Activate</button>
+              {% endif %}
+            </form>
+  </div>
+  <a class="ad-row-link agroups-full-details" href="{{ url_for('admin.group_detail', public_id=group.public_id) }}">Group details {{ ui.icon('arrow',14) }}</a>
+</section>

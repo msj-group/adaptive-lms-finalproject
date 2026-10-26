@@ -1,0 +1,31 @@
+{% extends 'layouts/admin_base.html' %}
+{% import '_figma_ui.html' as ui %}
+{% block title %}Overview{% endblock %}
+{% block admin_content %}
+<div class="ad-page dd-dashboard">
+  <header class="dd-hero">
+    <div class="dd-hero-copy"><time class="ad-eyebrow" datetime="{{ now.date().isoformat() }}">{{ _(now.strftime('%A')) }}, {{ now.day }} {{ _(now.strftime('%B')) }} {{ now.year }}</time><h1 class="dd-desktop-heading" data-workspace-page-heading>A clear start<br>to your day.</h1><p class="dd-desktop-copy">Your students, groups and next classes.</p></div>
+    <h1 class="dd-phone-heading">Overview</h1>
+    <div class="dd-enrollment-action"><a class="btn btn--primary" href="{{ url_for('admin.enrollment_start') }}" data-enrollment-open aria-haspopup="dialog" aria-controls="admin-enrollment-dialog">{{ ui.icon('users',18) }} New enrollment</a><small>Choose student → Choose group</small></div>
+  </header>
+  <section class="dd-stats" aria-label="Centre overview">
+    {% for value,label,symbol in [(stats.students.active,'Active students','users'),(stats.groups_active,'Active groups','book'),(stats.teachers.active,'Active teachers','graduation')] %}<div class="dd-stat"><span class="dd-stat-icon">{{ ui.icon(symbol,19) }}</span><div><strong>{{ value }}</strong><span>{{ _(label) }}</span></div></div>{% endfor %}
+  </section>
+  <div class="ax-workboard dd-workboard">
+    <section class="ad-card ax-agenda"><div class="ad-card-top"><h2>The teaching day</h2><a class="ad-row-link" href="{{ url_for('admin.calendar') }}">Calendar {{ ui.icon('arrow-up',14) }}</a></div><div class="ax-week-strip" aria-label="Current week">{% for day in week_days %}<div{% if day.today %} class="today" aria-current="date"{% endif %}><span>{{ _(day.label) }}</span><strong>{{ day.date.day }}</strong></div>{% endfor %}</div><p class="dd-agenda-note ad-meta">Current and upcoming classes · {{ tz_name }}</p>
+    {% for occ in operational_classes[:3] %}<article class="ax-schedule-row"><div class="ad-time"><strong>{{ occ.start.strftime('%H:%M') }}</strong><span>{{ occ.end.strftime('%H:%M') }}</span></div><div><a class="ad-name" href="{{ url_for('admin.group_schedules',group_public_id=occ.ref.group_public_id) }}" dir="auto">{{ occ.ref.group_name }}</a><div class="ax-schedule-meta"><span>{{ occ.start.strftime('%d %b') }} · {{ occ.ref.course_title }}</span><span>{{ ui.icon('room',13) }} {{ occ.ref.location or _('Location not specified') }}</span></div></div><a class="ad-row-link" href="{{ url_for('admin.group_schedules',group_public_id=occ.ref.group_public_id) }}" aria-label="{{ _('Open schedules for %(group)s',group=occ.ref.group_name) }}">{{ ui.icon('arrow-up',16) }}</a></article>{% else %}<div class="ad-empty">{{ ui.icon('calendar',24) }}<h2>No upcoming classes</h2><p>No classes in the next 7 days</p><a class="btn" href="{{ url_for('admin.schedules_overview') }}">Review schedules</a></div>{% endfor %}</section>
+    <section class="ad-card ax-queue"><div class="ad-card-top"><h2>Needs attention</h2><span class="ad-tag orange">{{ setup.missing_teacher|length + setup.missing_schedule|length }}</span></div>
+    {% if not setup.operational_group_count %}<div class="ad-empty"><h3>No operational groups yet</h3><p>Create a group under an active academic term, level and course.</p><a class="ad-row-link" href="{{ url_for('admin.group_create') }}">Create group {{ ui.icon('arrow-up',14) }}</a></div>{% elif not setup.missing_teacher and not setup.missing_schedule %}<div class="ad-empty">{{ ui.icon('check',24) }}<h3>Everything is ready</h3><p>Every operational group has an active eligible teacher and an active schedule.</p></div>{% else %}
+    {% for item in setup.missing_teacher[:3] %}<article class="dd-attention-item"><h3 dir="auto">{{ item.name }}</h3><p>No active teacher assigned.</p><a class="ad-row-link" href="{{ url_for('admin.group_members',group_public_id=item.public_id) }}">Assign teacher {{ ui.icon('arrow-up',14) }}</a></article>{% endfor %}
+    {% for item in setup.missing_schedule[:3] %}<article class="dd-attention-item"><h3 dir="auto">{{ item.name }}</h3><p>No recurring schedule added.</p><a class="ad-row-link" href="{{ url_for('admin.group_schedules',group_public_id=item.public_id) }}">Add schedule {{ ui.icon('arrow-up',14) }}</a></article>{% endfor %}{% if setup.missing_teacher|length > 3 or setup.missing_schedule|length > 3 %}<p class="ad-meta">Showing up to three groups per setup condition.</p><a class="ad-row-link" href="{{ url_for('admin.groups_list') }}">Review all groups</a>{% endif %}{% endif %}</section>
+  </div>
+  <nav class="dd-shortcuts" aria-label="Quick actions">{% for label,target,symbol in [('Add student','admin.student_create','users'),('Create group','admin.group_create','book'),('Student accounts','admin.student_accounts','wallet')] %}<a href="{{ url_for(target) }}">{{ ui.icon(symbol,19) }}<span>{{ _(label) }}</span></a>{% endfor %}</nav>
+</div>
+<dialog class="dd-enrollment-dialog" id="admin-enrollment-dialog" aria-labelledby="admin-enrollment-title" data-enrollment-dialog data-entry-url="{{ url_for('admin.enrollment_start') }}" data-actor="{{ current_user.public_id }}">
+  <header class="dd-dialog-head"><h2 id="admin-enrollment-title">New enrollment</h2><button class="st-icon-button" type="button" data-enrollment-close aria-label="Close enrollment">{{ ui.icon('close',19) }}</button></header>
+  <p class="ad-meta" role="status" data-enrollment-status></p>
+  <div data-enrollment-content></div>
+  <footer class="dd-dialog-foot"><button class="btn btn--ghost" type="button" data-enrollment-close>Cancel</button><a class="ad-row-link" href="{{ url_for('admin.enrollment_start') }}" data-enrollment-fallback>Open full page {{ ui.icon('arrow-up',14) }}</a></footer>
+</dialog>
+{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static',filename='js/admin_daily_desk.js',v='daily-desk-20261023') }}" defer></script>{% endblock %}

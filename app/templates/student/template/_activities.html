@@ -1,5 +1,7 @@
 {% import '_figma_ui.html' as ui %}
+{% import 'student/courses/_ui.html' as atlas %}
 {% set active_filter_count = (1 if selected_state else 0) + (1 if selected_course else 0) %}
+{% if hub_group %}{{ atlas.tabs(hub_group.public_id, selected_course, 'activities') }}{% endif %}
 <section class="student-activities" aria-labelledby="student-activities-title" data-student-activities>
   <div class="student-activity-sheet">
     <header class="student-activity-hero">

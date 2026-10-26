@@ -62,9 +62,9 @@
         var target = new URL(link.href); target.searchParams.set("q",url.searchParams.get("q") || ""); link.href = target.href;
       });
     }
-    async function load(url, mode) {
+    async function load(url, mode, force) {
       var mine = revision;
-      if (url.href === committed && mode !== "pop" && retry.hidden) {
+      if (!force && url.href === committed && mode !== "pop" && retry.hidden) {
         region.removeAttribute("aria-busy"); status.hidden = true; return;
       }
       var request = new AbortController(); controller = request; pending(); retry.hidden = true;
@@ -82,7 +82,30 @@
         if (mine !== revision) return;
         var template = document.createElement("template"); template.innerHTML = html;
         if (template.content.querySelector("script,html,body,[data-login-form]")) throw new Error("Unexpected content");
+        // Optional keyed motion keeps selected-first cards continuous across GETs.
+        var moving = form.hasAttribute("data-query-motion");
+        var positions = new Map();
+        var focused = moving && document.activeElement.closest("[data-query-key]");
+        var focusKey = focused && focused.dataset.queryKey;
+        if (moving) region.querySelectorAll("[data-query-key]").forEach(function (node) {
+          positions.set(node.dataset.queryKey, node.getBoundingClientRect());
+        });
         region.replaceChildren(template.content);
+        if (moving) {
+          inputs.forEach(function (e) { if (e.type !== "submit") e.value = url.searchParams.has(e.name) ? url.searchParams.get(e.name) : defaults[e.name]; });
+          var reduce = document.body.dataset.uiMotion === "reduce" || window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+          region.querySelectorAll("[data-query-key]").forEach(function (node) {
+            var before = positions.get(node.dataset.queryKey);
+            if (focusKey === node.dataset.queryKey) node.focus({preventScroll:true});
+            if (!before || reduce || !node.animate) return;
+            var after = node.getBoundingClientRect();
+            var transform = getComputedStyle(node).transform;
+            if (transform === "none") transform = "";
+            node.animate([{transform:"translate(" + (before.left - after.left) + "px," + (before.top - after.top) + "px) " + transform}, {transform:transform || "none"}], {duration:360, easing:"cubic-bezier(.22,1,.36,1)"});
+          });
+          var panel = region.querySelector("[data-query-motion-panel]");
+          if (panel && panel.animate && !reduce) panel.animate([{opacity:.4, transform:"translateY(8px)"},{opacity:1, transform:"translateY(0)"}], {duration:240, easing:"ease-out"});
+        }
         if (window.aelmsEnhanceTables) window.aelmsEnhanceTables(region);
         syncLinks(url);
         if (mode !== "pop" && url.href !== location.href) {
@@ -129,7 +152,18 @@
       event.preventDefault(); invalidate(); load(urlForForm(),"push");
     });
     retry.addEventListener("click", function () { invalidate(); if (validQuery()) load(urlForForm(),"push"); });
-    region.addEventListener("click", function (event) {
+    // Opt-in refresh after an existing write completes in an in-page form.
+    // The ordinary query owner still cancels old reads and preserves filters.
+    if (form.hasAttribute("data-query-refresh")) {
+      form.addEventListener("aelms:query-refresh", function (event) {
+        if (event.target !== form) return;
+        event.preventDefault(); invalidate();
+        if (!composing && validQuery()) load(form.hasAttribute("data-query-motion") ? new URL(committed) : urlForForm(),"replace",true);
+      });
+      form.dataset.queryRefreshReady = "true";
+    }
+    var linkRoot = form.hasAttribute("data-query-workspace-links") ? form.closest("[data-query-workspace]") : region;
+    (linkRoot || region).addEventListener("click", function (event) {
       var link = event.target.closest(".activity-hub-pager a,.figma-pagination a,.pagination a,[data-query-page]");
       if (!link || event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       var url = new URL(link.href); if (url.origin !== base.origin || url.pathname !== base.pathname) return;

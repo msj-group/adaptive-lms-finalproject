@@ -268,8 +268,8 @@ def header_badge(user):
 
     ``None`` -- meaning "render no Notifications link and no badge at
     all" -- for anonymous users and for every role without an inbox
-    (Administrator, Researcher, anything unrecognised), and those cases
-    cost **no** query. For a Student or Teacher this issues exactly one
+    (anything outside the supported messaging roles), and those cases
+    cost **no** query. For a supported messaging role this issues exactly one
     bounded, indexed count per request, however many templates that
     request renders.
 
@@ -281,7 +281,8 @@ def header_badge(user):
     """
     if user is None or not getattr(user, "is_authenticated", False):
         return None
-    if getattr(user, "role", None) not in (UserRole.STUDENT.value, UserRole.TEACHER.value):
+    if getattr(user, "role", None) not in (UserRole.STUDENT.value, UserRole.TEACHER.value,
+                                          UserRole.ADMINISTRATOR.value, UserRole.RESEARCHER.value):
         return None
 
     holder = request._get_current_object() if has_request_context() else None

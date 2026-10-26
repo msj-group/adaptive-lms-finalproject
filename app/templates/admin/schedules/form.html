@@ -2,15 +2,15 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ 'Edit Schedule' if schedule else 'New Schedule' }} — {{ group.name }}{% endblock %}
 {% block admin_content %}
-<div class="ds-page yc-surface" style="max-width: 560px">
-  <h1 data-workspace-page-heading>{{ 'Edit Schedule Slot' if schedule else 'New Schedule Slot' }}</h1>
-  <p class="ds-section__desc">
+<div class="ad-page" data-planner-slot-editor data-planner-mode="{{ 'edit' if schedule else 'create' }}" data-group-public-id="{{ group.public_id }}" data-planner-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}">
+  <header class="ad-page-head"><div><p class="ad-eyebrow">Schedules</p><h1 data-workspace-page-heading>{{ 'Edit Schedule Slot' if schedule else 'New Schedule Slot' }}</h1></div></header>
+  <p class="ds-section__desc" data-planner-slot-context>
     {{ group.name }} — {{ group.course.title }} ({{ group.course.level.name }}) — {{ group.academic_term.name }}
   </p>
 
-  {{ macros.flash_messages() }}
+  <div data-planner-messages>{{ macros.flash_messages() }}</div>
 
-  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+  <div class="alert alert--info" data-planner-slot-hint style="margin-bottom: var(--space-4)">
     Times are local wall-clock values in the center timezone. Weekly slots are not converted between timezones.
     {% if schedule and schedule.status != "active" %}
     <br>This slot is currently <strong>archived</strong>. Saving keeps it archived — use the
@@ -18,7 +18,7 @@
     {% endif %}
   </div>
 
-  <form method="post" novalidate class="yc-form">
+  <div class="ad-form-layout"><section class="ad-card ad-field-panel"><div class="ax-form-section"><h2>Record details</h2></div><form method="post" novalidate class="yc-form"{% if not schedule %} data-planner-slot-form{% endif %}>
     {{ form.hidden_tag() }}
     {% if schedule %}
     <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
@@ -75,6 +75,6 @@
       {{ form.submit(class_="btn btn--primary") }}
       <a class="btn btn--secondary" href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">Cancel</a>
     </div>
-  </form>
+  </form></section><aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Group context</h2></div><dl class="ad-definition"><dt>Group</dt><dd>{{ group.name }}</dd><dt>Course</dt><dd>{{ group.course.title }}</dd><dt>Academic Term</dt><dd>{{ group.academic_term.name }}</dd></dl></section><section class="ad-card"><div class="ad-card-top"><h2>Recurring schedule</h2></div><p class="ad-meta">Choose a weekday, teaching time and effective dates within this academic term. Room, teacher and group conflicts are checked before saving.</p></section></aside></div>
 </div>
 {% endblock %}

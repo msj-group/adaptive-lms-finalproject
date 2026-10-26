@@ -1,0 +1,110 @@
+/* Owner-selected Setup Hub. The shared platform shell and phone dock stay in charge. */
+.admin-atlas[data-academic-editor-open='true'] { overflow:hidden; }
+.admin-atlas .ah-editor { position:fixed; inset:0; margin:auto; width:min(940px,calc(100% - 40px)); max-width:none; max-height:calc(100dvh - 40px); overflow:auto; padding:24px; border:1px solid var(--ad-line); border-radius:20px; background:var(--ad-panel); color:var(--ad-ink); box-shadow:var(--ui-shadow-lg); }
+.admin-atlas .ah-editor::backdrop { background:color-mix(in srgb,var(--ui-nav) 68%,transparent); backdrop-filter:blur(5px); }
+.admin-atlas .ah-editor-head { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-block-end:20px; }
+.admin-atlas .ah-editor-head h2 { margin:0; font-size:21px; }
+.admin-atlas .ah-editor [data-academic-editor-status] { margin-block:12px; }
+.admin-atlas .ah-editor .ad-form-workspace { margin:0; grid-template-columns:minmax(0,1fr) 240px; gap:16px; }
+.admin-atlas .ah-editor .ad-save-panel { grid-column:1 / -1; }
+.admin-atlas .ah-editor .ad-field-panel { padding:20px; }
+.admin-atlas .ah-editor .ad-form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.admin-atlas .ah-editor .ad-form-grid>.field:has(textarea),.admin-atlas .ah-editor .ad-form-grid>.alert { grid-column:1 / -1; }
+.admin-atlas .ax-academics-page .ah-status-form { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin:0; min-width:120px; }
+.admin-atlas .ax-academics-page .ah-status-select { width:auto; max-width:100%; min-height:38px; padding:7px 30px 7px 10px; font-size:12px; color:var(--ad-ink); background-color:var(--ad-panel); }
+.admin-atlas .ax-academics-page .ah-status-form .workspace-unsaved { display:none; }
+.admin-atlas .ax-academics-page .ah-order-actions { display:flex; gap:5px; margin-block-start:8px; }
+.admin-atlas .ax-academics-page .ah-order-actions .yc-form { margin:0; }
+.admin-atlas .ax-academics-page .ah-order-actions .btn { min-height:30px; padding:3px 9px; }
+@media(max-width:767px) {
+ .admin-atlas .ah-editor { width:calc(100% - 24px); max-height:calc(100dvh - 24px); padding:18px; }
+ .admin-atlas .ah-editor .ad-form-workspace { grid-template-columns:minmax(0,1fr); }
+ .admin-atlas .ah-editor .ad-form-grid { grid-template-columns:minmax(0,1fr); }
+ .admin-atlas .ah-editor .ad-form-workspace>aside { display:none; }
+ .admin-atlas .ah-editor .ad-field-panel { padding:16px; }
+ .admin-atlas .ax-academics-page .ah-status-select { min-height:44px; font-size:16px; width:100%; }
+ .admin-atlas .ax-academics-page .ah-order-actions .btn { min-width:44px; min-height:44px; }
+ .admin-atlas .ax-academics-page .ah-tools-cell>.ad-row-link { min-height:44px; }
+}
+.admin-atlas .ax-academics-page { gap:24px; }
+.admin-atlas .ax-academics-page .ah-page-head { margin:0; }
+.admin-atlas .ax-academics-page .ah-add { font-size:22px; line-height:1; font-weight:400; }
+.admin-atlas .ax-academics-page .ah-hub { min-width:0; }
+.admin-atlas .ax-academics-page .ah-track { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+.admin-atlas .ax-academics-page .ah-area { position:relative; display:flex; flex-direction:column; justify-content:space-between; gap:23px; min-width:0; min-height:154px; padding:23px; border:1px solid var(--ad-line); border-radius:20px; background:var(--ad-panel); color:var(--ad-ink); box-shadow:var(--ui-shadow-sm); text-decoration:none; }
+.admin-atlas .ax-academics-page .ah-area-top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.admin-atlas .ax-academics-page .ah-area-icon { display:inline-flex; color:var(--ad-accent); }
+.admin-atlas .ax-academics-page .ah-total { font:600 30px/1.2 var(--st-body); letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+.admin-atlas .ax-academics-page .ah-area-copy { display:grid; gap:4px; padding-inline-end:16px; }
+.admin-atlas .ax-academics-page .ah-area-copy strong { font-size:13px; font-weight:600; }
+.admin-atlas .ax-academics-page .ah-area-copy>span { color:var(--ad-muted); font-size:11px; }
+.admin-atlas .ax-academics-page .ah-area-arrow { position:absolute; inset-inline-end:20px; inset-block-end:24px; display:flex; color:var(--ad-accent); }
+.admin-atlas .ax-academics-page .ah-area[aria-current='page'] { background:var(--ad-tint); border-color:var(--ad-accent); }
+.admin-atlas .ax-academics-page .ah-area:hover { border-color:var(--ad-accent); }
+.admin-atlas .ax-academics-page .ah-deck-caption { display:none; }
+.admin-atlas .ax-academics-page .ah-directory-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px; padding:23px; border-bottom:1px solid var(--ad-line); }
+.admin-atlas .ax-academics-page .ah-directory-head h2 { margin:0; font-size:17px; }
+.admin-atlas .ax-academics-page .ah-directory-head p { color:var(--ad-muted); font-size:12px; margin:5px 0 0; }
+.admin-atlas .ax-academics-page .ah-directory-head .ad-toolbar { margin:0; align-items:center; gap:9px; }
+.admin-atlas .ax-academics-page .ah-directory-head .field { min-width:145px; }
+.admin-atlas .ax-academics-page .ah-directory-head .field__label { font-size:11px; }
+.admin-atlas .ax-academics-page .ah-directory-head .field__input { min-width:0; }
+.admin-atlas .ax-academics-page .ah-directory-head .btn { align-self:flex-end; }
+.admin-atlas .ax-academics-page .ax-viewbar { padding:12px 23px; }
+.admin-atlas .ax-academics-page .ah-record-identity { display:flex; align-items:center; gap:14px; min-width:0; }
+.admin-atlas .ax-academics-page .ah-record-icon { flex-shrink:0; width:35px; height:35px; display:grid; place-items:center; border-radius:10px; background:var(--ad-tint); color:var(--ad-accent); }
+.admin-atlas .ax-academics-page .ah-record-copy { display:grid; gap:4px; min-width:0; }
+.admin-atlas .ax-academics-page .ah-record-copy strong { font-size:13px; font-weight:600; }
+.admin-atlas .ax-academics-page .ah-record-copy small { color:var(--ad-muted); font-size:11px; }
+.admin-atlas .ax-academics-page .ah-record-tools { min-width:90px; }
+.admin-atlas .ax-academics-page .ah-record-tools>summary { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 9px; border-radius:8px; color:var(--ad-accent); font-size:12px; cursor:pointer; list-style:none; }
+.admin-atlas .ax-academics-page .ah-record-tools>summary::-webkit-details-marker { display:none; }
+.admin-atlas .ax-academics-page .ah-record-tools>summary::after { content:'+'; font-size:18px; line-height:1; }
+.admin-atlas .ax-academics-page .ah-record-tools[open]>summary { background:var(--ad-tint); }
+.admin-atlas .ax-academics-page .ah-record-tools[open]>summary::after { content:'−'; }
+.admin-atlas .ax-academics-page .ah-record-tools .ad-actions { display:flex; gap:6px; flex-wrap:wrap; padding-block-start:10px; }
+.admin-atlas .ax-academics-page .ah-record-tools .yc-form { margin:0; }
+.admin-atlas .ax-academics-page .ah-directory .ad-table td { padding:21px 20px; }
+.admin-atlas .ax-academics-page .ah-directory .ad-table th { padding:12px 20px; }
+.admin-atlas .ax-academics-page .ah-money { white-space:nowrap; font-variant-numeric:tabular-nums; }
+.admin-atlas .ax-academics-page .ah-directory>.workspace-meta { margin:10px 23px; }
+html[dir='rtl'] .admin-atlas .ax-academics-page .ah-area-arrow { transform:rotate(180deg); }
+@media(max-width:1199px) {
+ .admin-atlas .ax-academics-page .ah-track { gap:12px; }
+ .admin-atlas .ax-academics-page .ah-area { padding:19px; }
+ .admin-atlas .ax-academics-page .ah-directory .ad-table td { padding:18px 13px; }
+ .admin-atlas .ax-academics-page .ah-directory .ad-table th { padding-inline:13px; }
+}
+@media(max-width:767px) {
+ .admin-atlas .ax-academics-page { gap:20px; }
+ .admin-atlas .ax-academics-page .ah-page-head>.ad-actions { width:100%; }
+ .admin-atlas .ax-academics-page .ah-page-head>.ad-actions>.btn { width:100%; min-height:44px; }
+ .admin-atlas .ax-academics-page .ah-track { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+ .admin-atlas .ax-academics-page .ah-area { padding:20px; min-height:145px; }
+ .admin-atlas .ax-academics-page .ah-hub[data-enhanced='true'] { margin-block-start:-5px; }
+ .admin-atlas .ax-academics-page .ah-hub[data-enhanced='true'] .ah-track { display:flex; gap:0; padding:17px 27px 28px; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scroll-padding-inline:27px; overscroll-behavior-x:contain; scrollbar-width:none; isolation:isolate; }
+ .admin-atlas .ax-academics-page .ah-hub[data-enhanced='true'] .ah-track::-webkit-scrollbar { display:none; }
+ .admin-atlas .ax-academics-page .ah-hub[data-enhanced='true'] .ah-area { flex:0 0 100%; min-height:163px; padding:24px; margin-inline-end:-15px; scroll-snap-align:center; scroll-snap-stop:always; transform:translateY(12px) scale(.9); opacity:.65; z-index:1; transition:transform .24s ease,opacity .24s ease,box-shadow .24s ease; }
+ .admin-atlas .ax-academics-page .ah-hub[data-enhanced='true'] .ah-area:last-child { margin-inline-end:0; }
+ .admin-atlas .ax-academics-page .ah-hub[data-enhanced='true'] .ah-area.is-front { transform:translateY(0) scale(1); opacity:1; z-index:3; box-shadow:var(--ui-shadow-md); }
+ .admin-atlas .ax-academics-page .ah-hub[data-enhanced='true'] .ah-deck-caption { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-inline:27px; margin-block-start:-9px; color:var(--ad-muted); font-size:11px; }
+ .admin-atlas .ax-academics-page .ah-deck-position { color:var(--ad-accent); font-variant-numeric:tabular-nums; white-space:nowrap; }
+ .admin-atlas .ax-academics-page .ah-directory-head { padding:20px; gap:17px; }
+ .admin-atlas .ax-academics-page .ah-directory-head>.ad-toolbar { width:100%; }
+ .admin-atlas .ax-academics-page .ah-directory-head .field { flex:1; }
+ .admin-atlas .ax-academics-page .ah-directory .ad-table.ax-mobile-records tr { margin-inline:19px; padding-block:20px; gap:14px 16px; }
+ .admin-atlas .ax-academics-page .ah-directory .ad-table.ax-mobile-records td { padding:0; }
+ .admin-atlas .ax-academics-page .ah-directory .ad-table.ax-mobile-records td.ah-tools-cell { grid-column:1 / -1; padding-block-start:3px; }
+ .admin-atlas .ax-academics-page .ah-directory .ad-table.ax-mobile-records td.ah-tools-cell::before { display:none; }
+ .admin-atlas .ax-academics-page .ah-record-tools>summary { min-height:44px; border:1px solid var(--ad-line); padding:10px 13px; }
+ .admin-atlas .ax-academics-page .ah-record-tools .ad-actions { padding-block-start:12px; }
+ .admin-atlas .ax-academics-page .ah-record-tools .btn { min-height:44px; }
+ .admin-atlas .ax-academics-page .ah-record-copy strong { font-size:14px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .admin-atlas .ax-academics-page .ah-area { transition:none!important; }
+}
+@media print {
+ .admin-atlas .ax-academics-page .ah-hub { display:none; }
+ .admin-atlas .ax-academics-page .ah-record-tools { display:none; }
+}

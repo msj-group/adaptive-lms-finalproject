@@ -1,41 +1,18 @@
-{% extends "layouts/portal_base.html" %}
+{% extends 'layouts/student_atlas_base.html' %}
+{% import '_figma_ui.html' as ui %}
+{% import 'student/courses/_ui.html' as atlas %}
 {% block title %}{{ group_name }} — Lessons{% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-<h1 data-workspace-page-heading>{{ group_name }} — Lessons</h1>
-<p class="workspace-meta" dir="auto">{{ term_name }}</p>
+{% set counts = namespace(total=0, completed=0, current=none) %}{% for unit in units %}{% for lesson in unit.lessons %}{% set counts.total = counts.total + 1 %}{% if lesson.is_completed %}{% set counts.completed = counts.completed + 1 %}{% elif counts.current is none %}{% set counts.current = unit.public_id %}{% endif %}{% endfor %}{% endfor %}
+<header class="atlas-heading"><div><p class="atlas-eyebrow" dir="auto">{{ course_title }}</p><h1 data-workspace-page-heading>Units &amp; lessons</h1><p dir="auto">{{ group_name }} · {{ level_name }} · {{ term_name }}</p></div><span class="badge badge--{{ 'success' if counts.total else 'neutral' }}">{{ _('%(completed)d of %(total)d lessons marked complete', completed=counts.completed, total=counts.total) }}</span></header>
+{{ atlas.tabs(group_public_id, none, 'outline') }}
 
 
 
 {% if not units %}
-<div class="empty-state">
-  <div class="empty-state__title">No lessons available yet</div>
-
-</div>
+<section class="atlas-empty"><span class="atlas-empty-icon" aria-hidden="true">{{ ui.icon('layers',28) }}</span><h2>No lessons available yet</h2><p>Published lessons will appear here when they are available.</p></section>
 {% else %}
-{% for unit in units %}
-<section id="unit-{{ unit.public_id }}" class="st-unit">
-  <header class="st-unit-heading"><span class="st-unit-number" aria-hidden="true">{{ "%02d"|format(loop.index) }}</span><h2>{{ unit.title }}</h2></header>
-  {% if unit.lessons %}
-  <ul class="workspace-lesson-list">
-    {% for lesson in unit.lessons %}
-    <li>
-      <a class="st-lesson-row"
-         href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}" data-research-id="lesson_open">
-        <span class="st-unit-number" aria-hidden="true">{{ "%02d"|format(loop.index) }}</span><span class="st-lesson-copy">{{ lesson.title }}</span>
-        {#- Phase 4 / M13: this student's own completion mark in this group. -#}
-        {% if lesson.is_completed %}<span class="badge badge--success">Completed</span>{% endif %}
-      </a>
-    </li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">No lessons in this unit yet</div>
-
-  </div>
-  {% endif %}
-</section>
-{% endfor %}
+<div class="atlas-outline-layout"><nav class="atlas-unit-index" aria-label="Unit shortcuts">{% for unit in units %}<a href="#unit-{{ unit.public_id }}"><span aria-hidden="true">{{ '%02d'|format(loop.index) }}</span><span dir="auto">{{ unit.title }}</span></a>{% endfor %}</nav><div class="atlas-unit-list">{% for unit in units %}{{ atlas.unit_block(unit, group_public_id, loop.index, counts.current == unit.public_id or (not counts.current and loop.first)) }}{% endfor %}</div></div>
 {% endif %}
 {% endblock %}

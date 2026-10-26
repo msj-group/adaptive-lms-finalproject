@@ -71,8 +71,9 @@
     }
     var url = new URL(event.currentTarget.href);
     var filters = new FormData(root.querySelector(".calendar-filter-form"));
-    url.searchParams.set("kind", filters.get("kind"));
-    url.searchParams.set("group", filters.get("group"));
+    filters.forEach(function (value, name) {
+      if (["from", "to", "day", "view"].indexOf(name) === -1) url.searchParams.set(name, value);
+    });
     url.searchParams.set("view", view);
     var boundary = url.searchParams.get(delta > 0 ? "from" : "to");
     if (boundary) url.searchParams.set("day", boundary);

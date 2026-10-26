@@ -1,64 +1,18 @@
-{% extends "layouts/admin_base.html" %}
+{% extends "admin/announcements/_base.html" %}
 {% import "admin/_macros.html" as macros %}
 {% import "_announcement_macros.html" as ann %}
 {% block title %}{{ announcement.title }}{% endblock %}
 {% block admin_content %}
-<div class="ds-page yc-surface">
-  {#- Phase 4 / M09. One announcement in full, with whichever of the two
-      lifecycle controls its current state allows:
-        draft      -> Edit, Publish
-        published  -> Withdraw
-        withdrawn  -> nothing at all, permanently
-
-      Each hidden `announcement_state` value is a signed token minted by the
-      server a moment ago against the CURRENT row; the publish token also binds
-      the target's lifecycle, so a form opened while the course or group was
-      active cannot publish into one that has since been archived.
-
-      No recipient list and no notification row appears here, in any state. -#}
-  <div class="ds-row yc-actions" style="margin-bottom: var(--space-3)">
-    <a class="btn btn--secondary" href="{{ overview_url }}">← All announcements</a>
-  </div>
-
-  {{ macros.flash_messages() }}
-
-  <div class="card yc-panel">
-    <div class="ds-row yc-actions" style="justify-content: space-between; align-items: flex-start;">
-      <div>
-        <h1 data-workspace-page-heading style="margin: 0 0 var(--space-1)">{{ announcement.title }}</h1>
-        <div class="card__body">{{ announcement.context or "Everybody at the centre" }}</div>
-        <div class="card__body">Written by {{ announcement.author_name }}</div>
-      </div>
-      <div>
-        {{ ann.status_badge(announcement) }}
-        {{ ann.scope_badge(announcement) }}
-      </div>
-    </div>
-
-    {{ ann.body_block(announcement) }}
-
-    <dl style="display:grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: var(--space-4) 0 0;">
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>
-      <dd style="margin:0">{{ announcement.created_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Last changed</dt>
-      <dd style="margin:0">{{ announcement.updated_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Published</dt>
-      <dd style="margin:0">
-        {%- if announcement.published_local -%}
-          {{ announcement.published_local.strftime("%Y-%m-%d %H:%M") }}
-        {%- else -%}—{%- endif -%}
-      </dd>
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Withdrawn</dt>
-      <dd style="margin:0">
-        {%- if announcement.withdrawn_local -%}
-          {{ announcement.withdrawn_local.strftime("%Y-%m-%d %H:%M") }}
-        {%- else -%}—{%- endif -%}
-      </dd>
-    </dl>
-  </div>
-
+<div class="ad-page aan-page aan-detail" data-announcement-view="detail" data-announcement-id="{{ announcement.public_id }}" data-communication-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}">
+<header class="ad-page-head"><div><p class="ad-eyebrow">Communication / Announcement</p><h1 data-workspace-page-heading>{{ announcement.title }}</h1><p class="ad-subtitle">{{ announcement.context or "Everybody at the centre" }} · Written by {{ announcement.author_name }}</p></div><div class="ad-actions">{{ ann.status_badge(announcement) }}{{ ann.scope_badge(announcement) }}</div></header>
+{{ macros.flash_messages() }}
+<div class="ad-grid"><section class="ad-card"><div class="ad-card-top"><h2>Message</h2></div>{{ ann.body_block(announcement) }}</section>
+<aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Publication details</h2></div><dl class="ad-definition">
+<dt>State</dt><dd>{{ ann.status_badge(announcement) }}</dd><dt>Audience</dt><dd>{{ announcement.context or "Everybody at the centre" }}</dd><dt>Author</dt><dd>{{ announcement.author_name }}</dd>
+<dt>Created</dt><dd>{{ announcement.created_local.strftime("%Y-%m-%d %H:%M") }}</dd><dt>Last changed</dt><dd>{{ announcement.updated_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+<dt>Published</dt><dd>{{ announcement.published_local.strftime("%Y-%m-%d %H:%M") if announcement.published_local else '—' }}</dd><dt>Withdrawn</dt><dd>{{ announcement.withdrawn_local.strftime("%Y-%m-%d %H:%M") if announcement.withdrawn_local else '—' }}</dd></dl></section>
   {% if announcement.status == 'draft' %}
-  <div class="card yc-panel" style="margin-top: var(--space-4)">
+  <div class="card yc-panel ad-card" style="margin-top: var(--space-4)">
     <div class="card__title">This is a draft</div>
     <div class="card__body" style="margin-top: var(--space-2)">
       Nobody can see it yet. Publishing makes it readable by everyone its scope currently
@@ -84,7 +38,7 @@
     </div>
   </div>
   {% elif announcement.status == 'published' %}
-  <div class="card yc-panel" style="margin-top: var(--space-4)">
+  <div class="card yc-panel ad-card" style="margin-top: var(--space-4)">
     <div class="card__title">Withdraw this announcement</div>
     <div class="card__body" style="margin-top: var(--space-2)">
       Withdrawing hides it from everyone immediately. It is permanent: a withdrawn
@@ -111,5 +65,5 @@
     and when it was taken down.
   </div>
   {% endif %}
-</div>
-{% endblock %}
+</aside></div><div class="ad-actions"><a class="btn btn--secondary" href="{{ overview_url }}">All announcements</a></div>
+</div>{% endblock %}

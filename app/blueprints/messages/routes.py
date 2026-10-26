@@ -1,44 +1,11 @@
-"""Private Teacher-Student messaging (Phase 4 / M11).
+"""Private two-participant correspondence.
 
-One shared blueprint under ``/messages`` for both roles::
-
-    GET   /messages                                   the private inbox
-    GET   /messages/new                               recipient picker / compose
-    POST  /messages/new                               create a thread
-    GET   /messages/threads/<thread_public_id>        one conversation
-    POST  /messages/threads/<thread_public_id>/reply  append one reply
-
-Original messages remain immutable. Sender-only display edits and hides, and
-member-only history clearing, use separate append-only records.
-
-**Authorization.** ``roles_required(STUDENT, TEACHER)`` gives the
-project's standard behaviour -- anonymous users follow the login redirect,
-and Administrator / Researcher receive 403 and can never list, open or
-search a private message. Reading a thread requires a membership row for
-the acting user in the same query that finds the thread, so a malformed,
-unknown or somebody else's thread id is the same non-disclosing 404.
-Sending requires, on every POST, the current academic relationship proved
-against locked rows by ``app/services/message_transactions.py``. Nothing
-about the sender, the roles, the membership or the relationship is read
-from the request; the only client values are the recipient or thread
-public id, the text, and the signed state token.
-
-**Historical access versus sending.** A member keeps reading a thread
-after the shared Group ends; the page then shows it as read-only and the
-reply route refuses a POST regardless of what the page showed.
-
-**Duplicate submissions.** Each compose and reply form carries a signed,
-expiring token (``app/services/message_tokens.py``) binding the actor, the
-recipient or thread, and a nonce that becomes the UNIQUE
-``creation_nonce``. A replay of an already-used nonce leads back to the
-thread instead of writing again, and every successful POST redirects
-(POST/Redirect/GET) to a page that mints a fresh token.
-
-**Notifications** are delivered after the domain commit, best-effort, to
-the other member only (``notify_message_received``).
-
-**Every page carries ``Cache-Control: private, no-store`` and
-``Vary: Cookie``**: the content is one person's correspondence.
+Student/Teacher academic contacts keep their operational-Group authorization
+and existing transaction chain. Active Administrators may contact other active
+platform accounts; other roles may contact active Administrators. Administrative
+sends use a separate locked current-role proof. Every read stays membership-scoped,
+with signed actor/recipient/thread tokens and nonce idempotency on native POSTs.
+No Administrator can inspect a conversation they do not participate in.
 """
 
 from flask import (
@@ -57,8 +24,9 @@ from app.blueprints.collector.hooks import note_outcome
 from app.blueprints.messages import messages_bp
 from app.models import MESSAGE_BODY_MAX_LENGTH, MESSAGE_SUBJECT_MAX_LENGTH, UserRole
 from app.security.decorators import roles_required
-from app.services import message_transactions, message_management
+from app.services import message_transactions, message_management, administrative_messages
 from app.services.message_queries import (
+    MESSAGE_ROLES, AdministrativeRelationship, administrative_pair,
     CONVERSATION_PAGE_SIZE,
     PAGE_SIZE,
     RECIPIENT_LIMIT,
@@ -97,7 +65,7 @@ from app.services.message_tokens import (
 )
 from app.services.notification_delivery import notify_message_received
 
-_MEMBER_ROLES = (UserRole.STUDENT.value, UserRole.TEACHER.value)
+_MEMBER_ROLES = MESSAGE_ROLES
 
 _SUBJECT_ERRORS = {
     MISSING: "Enter a subject.",
@@ -112,16 +80,15 @@ _BODY_ERRORS = {
 }
 
 _RECIPIENT_UNAVAILABLE = (
-    "That person is not available to message right now. You can message a teacher or "
-    "student you currently share an active group with."
+    "That person is not available to message right now. Choose an available contact."
 )
 _FORM_UNVERIFIED = (
     "This form could not be verified. It may have expired or been opened for a different "
     "conversation. Review your message and send it again."
 )
 _READ_ONLY = (
-    "You can no longer reply in this conversation because you no longer share an active "
-    "group. You can still read it."
+    "Replies are unavailable because a participant is inactive or the required relationship has ended. "
+    "You can still read your conversation."
 )
 _CONFLICT = "Your message could not be sent because of a conflicting change. Please try again."
 
@@ -143,7 +110,12 @@ def _private(template, **context):
 
 def _audience_label(role):
     """How the acting role names the people it can message."""
-    return "teachers" if role == UserRole.STUDENT.value else "students"
+    return {
+        UserRole.STUDENT.value: "teachers and administrators",
+        UserRole.TEACHER.value: "students and administrators",
+        UserRole.ADMINISTRATOR.value: "platform contacts",
+        UserRole.RESEARCHER.value: "administrators",
+    }.get(role, "contacts")
 
 
 # ----------------------------------------------------------------------
@@ -302,13 +274,18 @@ def create_thread():
             nonce=payload["nonce"], errors=errors,
         )
 
-    pair = orient_pair(actor_id, actor_role, recipient["id"], recipient["role"])
-    if pair is None:  # pragma: no cover -- the recipient query only yields the opposite role
-        return _to_picker()
-    student_id, teacher_id = pair
-    outcome = message_transactions.send_new_thread(
-        actor_id, recipient["id"], student_id, teacher_id, subject, body, payload["nonce"]
-    )
+    direct = administrative_pair(actor_id, actor_role, recipient["id"], recipient["role"])
+    if direct is not None:
+        outcome = administrative_messages.send_new_thread(
+            actor_id, recipient["id"], subject, body, payload["nonce"])
+    else:
+        pair = orient_pair(actor_id, actor_role, recipient["id"], recipient["role"])
+        if pair is None:
+            return _to_picker()
+        student_id, teacher_id = pair
+        outcome = message_transactions.send_new_thread(
+            actor_id, recipient["id"], student_id, teacher_id, subject, body, payload["nonce"]
+        )
 
     if outcome.status == message_transactions.SENT:
         if actor_role == _STUDENT_ROLE:
@@ -385,6 +362,9 @@ def _render_thread(thread, viewer_id, viewer_public_id, draft="", nonce=None,
         has_newer=page > 1,
         page_size=CONVERSATION_PAGE_SIZE,
         can_reply=can_reply,
+        administrative_contact=isinstance(state.relationship, AdministrativeRelationship) or
+            current_user.role in (UserRole.ADMINISTRATOR.value, UserRole.RESEARCHER.value) or
+            bool(state.other and state.other["role"] == UserRole.ADMINISTRATOR.value),
         message_state=(
             make_token(PURPOSE_REPLY, viewer_public_id, thread["public_id"], nonce)
             if can_reply
@@ -444,10 +424,14 @@ def reply(thread_public_id):
             body_error=_BODY_ERRORS[body_error],
         )
 
-    outcome = message_transactions.send_reply(
-        actor_id, state.other["user_id"], state.student_id, state.teacher_id,
-        found["id"], body, payload["nonce"],
-    )
+    if isinstance(state.relationship, AdministrativeRelationship):
+        outcome = administrative_messages.send_reply(
+            actor_id, state.other["user_id"], found["id"], body, payload["nonce"])
+    else:
+        outcome = message_transactions.send_reply(
+            actor_id, state.other["user_id"], state.student_id, state.teacher_id,
+            found["id"], body, payload["nonce"],
+        )
     if outcome.status == message_transactions.SENT:
         if actor_role == _STUDENT_ROLE:
             note_outcome("message_send", "sent")
@@ -466,7 +450,7 @@ def reply(thread_public_id):
 
 
 # Sender-owned display operations remain available for historical conversations.
-# Sending still uses the existing academic authorization/locking chain.
+# Sending separately re-proves the applicable academic or administrative policy.
 @messages_bp.post("/threads/<thread_public_id>/messages/<message_public_id>/edit")
 @roles_required(*_MEMBER_ROLES)
 def edit_message(thread_public_id, message_public_id):

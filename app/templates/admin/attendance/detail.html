@@ -1,82 +1,14 @@
-{% extends "layouts/admin_base.html" %}
-{% import "admin/_macros.html" as macros %}
-{% import "_attendance_macros.html" as att %}
+{% extends 'admin/learning/_base.html' %}
+{% import '_attendance_macros.html' as att %}
 {% block title %}Attendance {{ session.session_date.isoformat() }} — {{ group.name }}{% endblock %}
-{% block admin_content %}
-<div class="ds-page yc-surface">
-  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-    <h1 data-workspace-page-heading style="margin:0">Attendance — {{ session.session_date.isoformat() }}</h1>
-    {{ att.state_badge(is_finalized) }}
-  </div>
-
-  {{ macros.flash_messages() }}
-
-  <div class="card yc-panel" style="margin-bottom: var(--space-5)">
-    <dl style="display:grid; grid-template-columns: 180px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group</dt>
-      <dd style="margin:0">{{ group.name }} &middot; {{ group.course_title }} &middot; {{ group.level_name }} &middot; {{ group.term_name }}</dd>
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Class</dt>
-      <dd style="margin:0">{{ att.session_when(session, tz_name, weekday) }}</dd>
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Location</dt>
-      <dd style="margin:0">{{ session.location or "—" }}</dd>
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Marks</dt>
-      <dd style="margin:0">{{ att.count_summary(counts) }}</dd>
-    </dl>
-  </div>
-
-  {% if is_finalized %}
-  <div class="alert alert--success" style="margin-bottom: var(--space-5)">
-    This attendance was finalized by the group's teaching staff. Its roster and class stay
-    fixed. Administrators can correct a mark while preserving its previous values and operator.
-  </div>
-  {% else %}
-  <div class="alert alert--warning" style="margin-bottom: var(--space-5)">
-    This attendance is still a <strong>draft</strong>: the teacher has not finalized it, so
-    students cannot see it yet and any student not yet marked still counts as absent.
-  </div>
-  {% endif %}
-
-  <div class="ds-row yc-actions" style="margin-bottom: var(--space-5)">
-    <a class="btn btn--secondary" href="{{ url_for('admin.group_attendance', group_public_id=group.public_id) }}">This group's attendance</a>
-    <a class="btn btn--secondary" href="{{ url_for('admin.attendance_overview') }}">All attendance</a>
-  </div>
-
-  <section class="dash-section yc-section" style="margin-top: 0">
-    <h2>Students</h2>
-    <p class="ds-section__desc">
-      The students who were actively enrolled when this session was opened. The list is fixed:
-      it does not change with later enrolments or withdrawals. Notes were written by the
-      teaching staff and are never shown to students.
-    </p>
-    {% if records %}
-    <div class="dash-scroll">
-    <table class="dash-table">
-      <thead>
-        <tr>
-          <th>Student</th>
-          <th style="width:9rem">Mark</th>
-          <th>Private note</th>
-          {% if is_finalized %}<th>Correction</th>{% endif %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for record in records %}
-        <tr>
-          <td>{{ record.student_name }}</td>
-          <td>{{ att.status_badge(record.status, record.status_label) }}</td>
-          <td style="white-space: pre-wrap">{{ record.note or "—" }}</td>
-          {% if is_finalized %}<td><a href="{{ url_for('admin.attendance_record_correct', group_public_id=group.public_id, session_public_id=session.public_id, record_public_id=record.public_id) }}">Correct / history</a></td>{% endif %}
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    </div>
-    {% else %}
-    <div class="empty-state">
-      <div class="empty-state__title">No students captured</div>
-      <div>This session has no student records. Nothing has been deleted.</div>
-    </div>
-    {% endif %}
-  </section>
-</div>
+{% block learning_content %}
+<div class="al-actions"><a class="btn" data-learning-open="group" data-learning-group="{{ group.public_id }}" href="{{ url_for('admin.group_attendance',group_public_id=group.public_id) }}">This group's attendance</a></div>
+<section class="al-panel al-class-record">
+  <header class="al-record-heading"><div class="al-record-top"><span>Class record</span>{{ att.state_badge(is_finalized) }}</div><h2 dir="auto">{{ group.name }}</h2><p dir="auto">{{ group.course_title }} · {{ group.level_name }} · {{ group.term_name }}</p><div class="al-class-meta"><span>{{ learning_ui.icon('calendar',14) }} {{ att.session_when(session,tz_name,weekday) }}</span><span>{{ learning_ui.icon('room',14) }} <bdi>{{ session.location or '—' }}</bdi></span></div></header>
+  <div class="al-record-counts" aria-label="Attendance counts">{% for mark in counts %}<div class="al-status--{{ mark.status }}"><strong>{{ mark.count }}</strong><span>{{ _(mark.label) }}</span></div>{% endfor %}</div>
+  {% if is_finalized %}<p class="al-record-notice">This attendance was finalized by the group's teaching staff. Its roster and class stay fixed. Administrators can correct a mark while preserving its previous values and operator.</p>{% else %}<p class="al-record-notice al-record-notice--draft">This attendance is still a draft: the teacher has not finalized it, so students cannot see it yet and any student not yet marked still counts as absent.</p>{% endif %}
+  <div class="al-roster-heading"><h3>Captured students</h3><span>{{ learning_ui.icon('lock',13) }} Private notes</span></div>
+  <p class="al-roster-context">The students who were actively enrolled when this session was opened. The list is fixed: it does not change with later enrolments or withdrawals. Notes were written by the teaching staff and are never shown to students.</p>
+  {% if records %}<div class="al-roster">{% for record in records %}<article class="al-student">{{ learning_ui.avatar(record.student_name) }}<div class="al-student-main"><h3 dir="auto">{{ record.student_name }}</h3><p class="al-private-note" dir="auto">{{ record.note or '—' }}</p>{% if is_finalized %}<a class="al-link al-correction" href="{{ url_for('admin.attendance_record_correct',group_public_id=group.public_id,session_public_id=session.public_id,record_public_id=record.public_id) }}">Correct / history {{ learning_ui.icon('arrow-up',13) }}</a>{% endif %}</div><div class="al-student-mark">{{ att.status_badge(record.status,record.status_label) }}</div></article>{% endfor %}</div>{% else %}<div class="al-empty"><h3>No students captured</h3><p>This session has no student records. Nothing has been deleted.</p></div>{% endif %}
+</section>
 {% endblock %}

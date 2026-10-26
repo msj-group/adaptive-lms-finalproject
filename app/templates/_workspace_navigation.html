@@ -5,10 +5,11 @@
 {% else %}
 {% set context = workspace_context() %}
 {% if context and current_user.role in ['teacher','administrator'] %}
+{% if current_user.role == 'administrator' %}
 <nav class="workspace-tabs" aria-label="{{ context.title }} tools">
-  {% if current_user.role == 'teacher' %}<a href="{{ url_for('workspace.teacher_group', group_public_id=context.group_public_id) }}">Group workspace</a>{% endif %}
   {% for tab in context.tabs %}<a href="{{ tab.url }}"{% if tab.active %} aria-current="page"{% endif %}>{{ tab.label }}</a>{% endfor %}
 </nav>
+{% endif %}
 {% if current_user.role == 'teacher' %}{% include '_workspace_activity_nav.html' %}{% endif %}
 {% endif %}
 {% endif %}

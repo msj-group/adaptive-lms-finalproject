@@ -1,0 +1,13 @@
+{% set active_endpoint = request.endpoint %}
+<nav class="ad-tabs" aria-label="Group workspace">
+  {% for endpoint, label, key in [
+    ('admin.group_detail', 'Overview', 'public_id'),
+    ('admin.group_members', 'Members', 'group_public_id'),
+    ('admin.group_schedules', 'Schedule', 'group_public_id'),
+    ('admin.group_attendance', 'Attendance', 'group_public_id'),
+    ('admin.group_gradebook', 'Gradebook setup', 'group_public_id')
+  ] %}
+  {% set target = url_for(endpoint, public_id=group.public_id) if key == 'public_id' else url_for(endpoint, group_public_id=group.public_id) %}
+  <a href="{{ target }}"{% if active_endpoint == endpoint %} aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>

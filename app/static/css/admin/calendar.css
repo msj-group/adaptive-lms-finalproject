@@ -1,0 +1,35 @@
+/* Admin-only adaptation of the shared calendar; keep the shared shell/dock. */
+.admin-schedule-calendar { min-width:0; --st-control-radius:10px; }
+.admin-schedule-calendar .calendar-page-heading { direction:inherit; flex-wrap:wrap; gap:12px; }
+.admin-schedule-calendar .calendar-page-heading h1 { margin-inline-end:auto; }
+.admin-schedule-calendar .admin-calendar-actions { display:flex; gap:8px; }
+.admin-schedule-calendar .calendar-page-heading .calendar-filters { margin-inline-start:0; }
+.admin-schedule-calendar .calendar-filter-form { inset-inline-end:0; inset-inline-start:auto; max-height:min(72svh,650px); overflow-y:auto; border-radius:20px; }
+.admin-schedule-calendar .calendar-filter-form .field__input { width:100%; }
+.admin-schedule-calendar .calendar-filter-actions { flex-wrap:wrap; }
+.admin-schedule-calendar .calendar-workspace>.ax-section-tabs { margin-block:0 18px; }
+.admin-schedule-calendar .admin-calendar-description { color:var(--st-muted); margin:-5px 0 20px; font-size:12px; }
+.admin-schedule-calendar :is(.calendar-entry,.calendar-empty,.calendar-date-grid,.admin-calendar-register) { border-radius:20px; }
+.admin-schedule-calendar .calendar-mini-entry--historical { background:var(--ui-raised); color:var(--st-muted); }
+.admin-schedule-calendar .calendar-entry--historical { border-style:dashed; }
+.admin-schedule-calendar .calendar-entry-details { flex-basis:100%; }
+.admin-schedule-calendar .calendar-entry-details>summary { justify-content:flex-start; }
+.admin-schedule-calendar .calendar-entry-action { margin-inline-start:auto; }
+.admin-schedule-calendar .calendar-entry>.badge { margin-block-start:10px; }
+.admin-schedule-calendar .admin-calendar-register { margin-block-start:24px; border:1px solid var(--st-divider); padding:18px; background:var(--ui-surface); }
+.admin-schedule-calendar .admin-calendar-register>summary { cursor:pointer; color:var(--st-ink); min-height:32px; overflow-wrap:anywhere; }
+.admin-schedule-calendar .admin-calendar-register>summary span { color:var(--st-muted); margin-inline-start:8px; }
+.admin-schedule-calendar .admin-calendar-register[open]>summary { margin-block-end:14px; }
+.admin-schedule-calendar .admin-calendar-register .ax-schedule-row>div { min-width:0; overflow-wrap:anywhere; }
+.admin-schedule-calendar :is(button,a,summary,input,select):focus-visible { outline:2px solid var(--ui-primary); outline-offset:3px; }
+@media(max-width:767px) {
+  .admin-schedule-calendar .calendar-page-heading { column-gap:8px; }
+  .admin-schedule-calendar .calendar-page-heading h1 { flex:1 0 50%; }
+  .admin-schedule-calendar .admin-calendar-actions { order:3; flex-basis:100%; }
+  .admin-schedule-calendar .admin-calendar-actions .btn { min-height:40px; }
+  .admin-schedule-calendar .calendar-date-grid { border-radius:0; }
+  .admin-schedule-calendar .admin-calendar-register { padding:14px; }
+  .admin-schedule-calendar .admin-calendar-register .ad-card { padding:14px; }
+  .admin-schedule-calendar .admin-calendar-register .ax-schedule-row { grid-template-columns:48px minmax(0,1fr); gap:10px; }
+  .admin-schedule-calendar .admin-calendar-register .ax-schedule-row>.ad-stack { grid-column:2; display:flex; justify-content:space-between; gap:10px; }
+}

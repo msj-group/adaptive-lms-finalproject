@@ -23,6 +23,14 @@
 .yc-workspace .messenger-sidebar__heading :is(h1,h2) { margin:0; font:600 14px/1.4 var(--st-body); }
 .messenger-search { display:flex; align-items:center; gap:9px; margin:0 18px 14px; padding:0 10px; min-height:44px; border:1px solid var(--message-line); border-radius:12px; background:var(--message-canvas); color:var(--message-muted); }
 .messenger-search:focus-within,.messenger-composer__row:focus-within { outline:2px solid var(--ui-focus); outline-offset:2px; }
+/* Communication uses the same quiet typing boundary in each requested role. */
+:is(.admin-atlas,.yc-messages) .messenger-composer__row:focus-within { outline:0; }
+:is(.admin-atlas,.yc-messages) .messenger-composer textarea.messenger-input:is(:focus,:focus-visible) { outline:0; box-shadow:none; border:0; }
+[data-communication-content] { min-width:0; }
+:is(.admin-atlas,.yc-messages) .ac-status { margin:0 0 12px; color:var(--ui-muted); font-size:13px; }
+:is(.admin-atlas,.yc-messages) .ac-recovery { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+:is(.admin-atlas,.yc-messages) .ac-recovery[hidden] { display:none; }
+[data-communication-content][aria-busy=true] { opacity:.65; }
 .yc-workspace .messenger-search input { width:100%; min-width:0; min-height:44px; border:0; padding:10px 0; background:transparent; color:var(--message-ink); font:inherit; font-size:14px; outline:0; }
 .messenger-search input::placeholder { color:var(--message-muted); opacity:1; }
 .messenger-search-status { margin:0 18px 12px; color:var(--message-muted); font-size:12px; line-height:1.6; }
@@ -195,6 +203,26 @@
 .messenger-header-actions[open] .messenger-action-menu,.messenger-message-actions[open] .messenger-action-menu { animation:message-menu-arrive 120ms var(--motion-easing-standard); }
 @keyframes message-menu-arrive { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
 @keyframes message-sheet-arrive { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+/* Match the Admin Communication tab inside the Student/Teacher shell. */
+.yc-messages .messenger { grid-template-columns:260px minmax(0,1fr); border-color:var(--ui-line); border-radius:20px; }
+.yc-messages .messenger-sidebar { background:var(--ui-raised); }
+.yc-messages :is(.messenger-chat,.messenger-welcome) { background:var(--ui-surface); }
+.yc-messages .messenger-conversation { border:0; border-bottom:1px solid var(--ui-line); margin:0; padding:20px 18px; border-radius:0; align-items:flex-start; min-height:96px; }
+.yc-messages .messenger-conversation--active { box-shadow:inset 3px 0 var(--ui-primary); background:var(--ui-surface); }
+html[dir=rtl] .yc-messages .messenger-conversation--active { box-shadow:inset -3px 0 var(--ui-primary); }
+.yc-messages .messenger-avatar { border-radius:50%; background:var(--ui-soft); border:0; font-weight:500; }
+.yc-messages .messenger-chat__header { padding:21px 24px; }
+.yc-messages .messenger-chat__context { margin-inline:24px; padding-inline:0; }
+.yc-messages .messenger-composer { padding:20px 24px; border-top:1px solid var(--ui-line); background:var(--ui-surface); }
+.yc-messages .messenger-composer__row { border-radius:12px; background:var(--ui-surface); }
+html[dir] .yc-messages .messenger-bubble { border-radius:20px; box-shadow:none; background:var(--ui-message-incoming); }
+.yc-messages .messenger-bubble--outgoing { border-color:var(--ui-line); }
+html[dir] .yc-messages .messenger-bubble--outgoing { background:var(--ui-message-outgoing); }
+.yc-messages .messenger-bubble--outgoing :is(.messenger-bubble__body,.messenger-message-actions>summary) { color:var(--ui-ink); }
+.yc-messages .messenger-bubble--outgoing :is(.messenger-bubble__meta,.messenger-bubble__meta>span,.messenger-bubble__meta time) { color:var(--ui-muted); }
+.yc-messages .messenger-search input { border:0; background:transparent; padding:8px 0; min-height:42px; box-shadow:none; }
+.yc-messages .messenger-composer textarea.messenger-input { border:0; background:transparent; min-height:45px; box-shadow:none; }
+.yc-messages :is(.messenger-welcome__art,.messenger-action-menu,.messenger-action-sheet,.messenger-emoji) { border-radius:20px; }
 /* The shared header and navigation frame a bounded, internally scrolling inbox.
    The composer stays inside the viewport; the page canvas is unchanged. */
 @media screen {
@@ -202,11 +230,13 @@
  .yc-messages .st-body { height:100dvh; min-height:0; display:flex; flex-direction:column; }
  .yc-messages .st-header { flex-shrink:0; width:100%; }
  .yc-messages .st-content { display:flex; flex:1; flex-direction:column; min-height:0; width:100%; padding-bottom:24px; }
+ .yc-messages :is(.message-workspace,[data-communication-content]) { display:flex; flex:1; flex-direction:column; min-height:0; }
+ .yc-messages .message-workspace { min-width:0; }
  .yc-messages .st-page-heading { flex-shrink:0; margin-bottom:12px; }
  .yc-messages .st-page-heading h1 { font-size:26px; }
  .yc-messages .st-page-heading .st-eyebrow { margin-bottom:6px; font-size:9px; }
  .yc-messages .workspace-page-navigation { flex-shrink:0; margin-bottom:6px; }
- .yc-messages .st-content > .messenger-notices { flex-shrink:0; max-height:25%; overflow-y:auto; }
+ .yc-messages [data-communication-content] > .messenger-notices { flex-shrink:0; max-height:25%; overflow-y:auto; }
  .yc-messages .messenger { flex:1; min-height:0; height:auto; }
 }
 @media screen and (max-width:1023px) {
@@ -224,8 +254,12 @@
  .yc-messages .st-page-heading .st-eyebrow { margin-bottom:6px; }
  .messenger-chat__back { display:inline-flex; }
  .messenger-chat__header { display:grid; grid-template-columns:44px 36px minmax(0,1fr) 44px; padding:10px 8px; gap:7px; }
+ .yc-messages .messenger-chat__header { padding:10px 8px; }
+ .yc-messages .messenger-chat__context { margin-inline:12px 8px; }
+ .yc-messages .messenger-composer { padding:12px 10px 8px; }
  .messenger-chat__header > .messenger-chat__back { grid-column:1; grid-row:1; }
  .messenger-chat__header > .messenger-avatar { grid-column:2; grid-row:1; width:36px; height:36px; font-size:11px; border-radius:12px; }
+ .yc-messages .messenger-chat__header > .messenger-avatar { border-radius:50%; }
  .messenger-chat__header > .messenger-chat__person { grid-column:3; grid-row:1; }
  .messenger-chat__header > .messenger-header-actions,.messenger-chat__header > a:last-child:not(.messenger-chat__back) { grid-column:4; grid-row:1; }
  .yc-workspace .messenger-chat__person :is(h1,h2) { font-size:14px; }

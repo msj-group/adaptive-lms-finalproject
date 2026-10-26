@@ -1,0 +1,31 @@
+{% import '_figma_ui.html' as atlas_ui %}
+{% set destinations = [
+  ('home','Overview','Home','admin.dashboard','dashboard'),
+  ('people','People','People','admin.students_list','users'),
+  ('academics','Academic setup','Academics','admin.courses_list','layers'),
+  ('groups','Groups & enrollment','Groups','admin.groups_list','book'),
+  ('calendar','Schedules & calendar','Calendar','admin.schedules_overview','calendar'),
+  ('learning','Attendance & grades','Learning','admin.attendance_overview','activity'),
+  ('communication','Communication','Inbox','messages.inbox','message'),
+  ('finance','Finance','Finance','admin.student_accounts','wallet'),
+  ('reports','Financial reports','Reports','admin.financial_reports_index','chart')
+] %}
+{% macro rail(section) -%}
+{% for heading,links in [
+ ('Workspace',[('Overview','admin.dashboard','dashboard'),('People','admin.students_list','users'),('Groups','admin.groups_list','book'),('Calendar','admin.schedules_overview','calendar')]),
+ ('Management',[('Academic setup','admin.courses_list','layers'),('Attendance & grades','admin.attendance_overview','activity'),('Communication','messages.inbox','message'),('Finance','admin.student_accounts','wallet'),('Financial reports','admin.financial_reports_index','chart')])] %}
+<p class="ax-nav-heading">{{ _(heading) }}</p>
+{% for label,target,symbol in links %}{% set section_target={'admin.students_list':'people','admin.courses_list':'academics','admin.attendance_overview':'learning','messages.inbox':'communication','admin.student_accounts':'finance','admin.financial_reports_index':'reports','admin.schedules_overview':'calendar','admin.groups_list':'groups'}.get(target) %}<a href="{{ url_for(target) }}" class="ax-rail-link"{% if workspace_nav_active(target) or (section_target and section == section_target) %} aria-current="page"{% endif %}>{{ atlas_ui.icon(symbol,19) }}<span>{{ _(label) }}</span></a>{% endfor %}
+{% endfor %}
+{%- endmacro %}
+{% macro section_tabs(section) -%}
+{% set links = {
+ 'people':[('Students','admin.students_list'),('Teachers','admin.teachers_list')],
+ 'academics':[('Courses','admin.courses_list'),('Academic terms','admin.academic_terms_list'),('Levels','admin.levels_list'),('Rooms','admin.rooms_list')],
+ 'calendar':[('Schedules','admin.schedules_overview'),('Calendar','admin.calendar')],
+ 'communication':[('Announcements','admin.announcements_overview'),('Messages','messages.inbox'),('Notifications','notifications.inbox')],
+ 'learning':[('Attendance','admin.attendance_overview'),('Gradebook setup','admin.gradebook_overview')],
+ 'finance':[('Student accounts','admin.student_accounts'),('Invoices','admin.invoice_register'),('Collections & payouts','admin.payments_overview'),('Deleted records','admin.deleted_financial_records')]
+}.get(section,[]) %}
+{% if links %}<nav class="ad-tabs ax-section-tabs" aria-label="Workspace section">{% for label,target in links %}<a href="{{ url_for(target) }}"{% if workspace_nav_active(target) %} aria-current="page"{% endif %}>{{ _(label) }}</a>{% endfor %}</nav>{% endif %}
+{%- endmacro %}

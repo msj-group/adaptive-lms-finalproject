@@ -1,0 +1,10 @@
+<form method="get" action="{{ today_url }}" class="fp-filter-form">
+  <input type="hidden" name="day" value="{{ calendar.selected.isoformat() }}" data-fp-day-input>
+  <input type="hidden" name="view" value="{{ calendar.view }}" data-fp-view-input>
+  <label class="fp-field" for="fp-kind"><span>Event type</span><select id="fp-kind" name="kind">{% for value,label in calendar.kinds %}<option value="{{ value }}"{% if calendar.kind == value %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</select></label>
+  <label class="fp-field" for="fp-group"><span>Group</span><select id="fp-group" name="group"><option value="all">All groups</option>{% for group in calendar.groups %}<option value="{{ group.public_id }}"{% if calendar.group == group.public_id %} selected{% endif %}>{{ group.label }}</option>{% endfor %}</select></label>
+  <label class="fp-field" for="fp-from"><span>From date</span><input type="date" id="fp-from" name="from" value="{{ range_start.isoformat() }}"></label>
+  <label class="fp-field" for="fp-to"><span>To date</span><input type="date" id="fp-to" name="to" value="{{ range_end.isoformat() }}"></label>
+  <p class="fp-meta fp-field-wide">{{ _('A calendar view covers at most %(count)d days.',count=max_range_days) }}</p>
+  <div class="fp-filter-actions fp-field-wide"><button type="submit" class="btn btn--primary">Apply filters</button><a class="fp-link" href="{{ url_for('admin.calendar',**{'from':range_start.isoformat(),'to':range_end.isoformat(),'day':calendar.selected.isoformat()}) }}">Clear filters</a></div>
+</form>

@@ -1,0 +1,6 @@
+{% extends 'layouts/portal_base.html' %}
+{% block body_class %}{{ super() }} student-atlas{% endblock %}
+{% block workspace_content_class %}{{ super() }} atlas-page{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/courses.css', v='atlas-20261020') }}">{% endblock %}
+{% block workspace_page_label %}<div class="atlas-heading atlas-heading--activity"><p class="atlas-eyebrow">Your learning space</p><h1>{{ self.title() }}</h1></div>{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/student_courses.js', v='atlas-20261020') }}" defer></script>{% endblock %}

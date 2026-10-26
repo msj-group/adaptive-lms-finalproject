@@ -1,0 +1,26 @@
+{% extends 'layouts/admin_base.html' %}
+{% import '_figma_ui.html' as learning_ui %}
+{% import 'admin/_macros.html' as learning_messages %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin/learning_lens.css', v='learning-summary-20261026') }}">{% endblock %}
+{% block admin_content %}
+{% set grade_tab = request.endpoint in ['admin.gradebook_overview', 'admin.group_gradebook'] %}
+{% set reader_kind = {'admin.attendance_overview':'attendance','admin.gradebook_overview':'grades','admin.group_attendance':'group','admin.attendance_session_detail':'session','admin.group_gradebook':'gradebook'}.get(request.endpoint, '') %}
+<div class="al-page" data-learning-workspace data-learning-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}" data-learning-group-url="{{ url_for('admin.group_attendance',group_public_id='__group__') }}" data-learning-session-url="{{ url_for('admin.attendance_session_detail',group_public_id='__group__',session_public_id='__session__') }}" data-learning-gradebook-url="{{ url_for('admin.group_gradebook',group_public_id='__group__') }}">
+  <header class="al-heading ad-page-head"><div><p class="ad-eyebrow">Administration / Learning</p><h1 data-workspace-page-heading>Attendance &amp; grades<span class="al-heading-dot" aria-hidden="true">.</span></h1><p class="al-description">A clearer view of every class and gradebook.</p></div></header>
+  <nav class="al-tabs ad-tabs" aria-label="Learning workspace">
+    <a href="{{ url_for('admin.attendance_overview') }}"{% if not grade_tab %} aria-current="page"{% endif %}>{{ learning_ui.icon('activity',17) }} Attendance</a>
+    <a href="{{ url_for('admin.gradebook_overview') }}"{% if grade_tab %} aria-current="page"{% endif %}>{{ learning_ui.icon('book',17) }} Gradebook setup</a>
+  </nav>
+  {{ learning_messages.flash_messages() }}
+  <div class="al-content" data-learning-content data-learning-kind="{{ reader_kind }}" data-learning-group="{{ group.public_id if group is defined else '' }}" data-learning-session="{{ session.public_id if reader_kind == 'session' else '' }}">
+    {% block learning_content %}{% endblock %}
+  </div>
+  <section class="al-reader" data-learning-reader hidden aria-label="Learning details">
+    <div class="al-reader-toolbar"><button class="btn" type="button" data-learning-back>Back</button><span>Read-only review</span></div>
+    <div class="al-content" data-learning-slot></div>
+  </section>
+  <p class="al-reader-status" data-learning-status role="status" aria-live="polite" hidden></p>
+  <div class="al-actions" data-learning-recovery hidden><button class="btn" type="button" data-learning-retry>Retry</button><a class="btn" data-learning-recovery-link>Open full page</a></div>
+</div>
+{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static',filename='js/admin_learning_lens.js',v='learning-reader-20261026') }}" defer></script>{% endblock %}

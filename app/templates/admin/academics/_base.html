@@ -1,0 +1,28 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% import "_figma_ui.html" as ui %}
+{% block feature_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin/academics.css', v='inline-editor-20261026') }}">{% endblock %}
+{% block workspace_content_class %}ax-academics{% endblock %}
+{% block admin_content %}
+<div class="ad-page ax-academics-page" data-academic-workspace data-academic-kind="{{ academic_section }}" data-academic-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}">
+  <header class="ad-page-head ah-page-head">
+    <div><p class="ad-eyebrow">Academic setup</p><h1 data-workspace-page-heading>Academics</h1><p class="ad-subtitle">Your centre's academic building blocks.</p></div>
+    <div class="ad-actions">{% block academic_actions %}{% endblock %}</div>
+  </header>
+  <div data-academic-messages>{{ macros.flash_messages() }}</div>
+  <p class="ad-meta" data-academic-notice role="status" hidden></p>
+  <a class="ad-row-link" href="{{ request.full_path }}" data-academic-reload hidden>Reload page</a>
+  {% include "admin/academics/_hub.html" %}
+  <section class="ad-card ax-roster ah-directory" aria-labelledby="academic-directory-heading">
+    {% block academic_directory %}{% endblock %}
+  </section>
+</div>
+<dialog class="ah-editor" data-academic-editor aria-labelledby="academic-editor-title">
+  <header class="ah-editor-head"><h2 id="academic-editor-title">Academic record</h2><button type="button" class="btn btn--secondary" data-academic-editor-close aria-label="Close">{{ ui.icon('close',18) }}</button></header>
+  <p class="ad-meta" data-academic-editor-status role="status" hidden></p>
+  <div data-academic-editor-messages></div>
+  <div data-academic-editor-content></div>
+  <div class="ad-actions" data-academic-editor-recovery hidden><button type="button" class="btn btn--secondary" data-academic-editor-retry>Retry</button><a class="ad-row-link" href="{{ request.full_path }}">Reload page</a></div>
+</dialog>
+{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/admin_academics.js', v='setup-hub-20261023') }}" defer></script><script src="{{ url_for('static', filename='js/admin_academic_editor.js', v='inline-editor-20261026') }}" defer></script>{% endblock %}

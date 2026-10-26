@@ -1,0 +1,4 @@
+<nav class="ad-tabs pf-role-tabs" aria-label="People role">
+  <a href="{{ url_for('admin.students_list') }}"{% if people_kind == 'student' %} aria-current="page"{% endif %}>Students</a>
+  <a href="{{ url_for('admin.teachers_list') }}"{% if people_kind == 'teacher' %} aria-current="page"{% endif %}>Teachers</a>
+</nav>

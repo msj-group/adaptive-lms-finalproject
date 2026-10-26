@@ -13,7 +13,7 @@
     could manage this announcement manages it from its own group's page, so this
     template carries no form, no token and no lifecycle data. -#}
 <div class="ds-row yc-actions" style="margin-bottom: var(--space-3)">
-  <a class="btn btn--secondary" href="{{ url_for('teacher.announcements_feed') }}">← All announcements</a>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.announcements_feed', view='received') }}">← Received announcements</a>
 </div>
 
 {{ ann.flash_messages() }}

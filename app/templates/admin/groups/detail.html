@@ -1,65 +1,42 @@
 {% extends "layouts/admin_base.html" %}
 {% import "admin/_macros.html" as macros %}
+{% import "_figma_ui.html" as ui %}
 {% block title %}{{ group.name }}{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin/groups.css', v='edit-dialog-20261025') }}">{% endblock %}
 {% block admin_content %}
-<div class="ds-page yc-surface" style="max-width: 640px">
-  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
-    <h1 data-workspace-page-heading style="margin:0">{{ group.name }}</h1>
-    {{ macros.status_badge(group.status) }}
+<div class="ad-page" data-admin-group-workspace data-group-actor="{{ current_user.public_id }}" data-group-public-id="{{ group.public_id }}" data-group-list-url="{{ url_for('admin.groups_list') }}">
+  <div data-group-messages>{{ macros.flash_messages() }}</div>
+  <div class="ad-stack" data-group-workspace-content>
+  <header class="ad-page-head"><div><p class="ad-eyebrow">Group workspace</p><h1 data-workspace-page-heading>{{ group.name }}</h1><p class="ad-subtitle">{{ group.course.title }} · {{ group.academic_term.name }}</p></div><div class="ad-actions">{{ macros.status_badge(group.status) }}<a class="btn btn--secondary" href="{{ url_for('admin.group_edit', public_id=group.public_id) }}" data-group-edit-open data-group-public-id="{{ group.public_id }}">Edit Group</a></div></header>
+  {% include "admin/groups/_atlas_tabs.html" %}
+  {% set ancestor_archived = group.academic_term.status != "active" or group.course.status != "active" or group.course.level.status != "active" %}
+  {% if group.status == "active" and ancestor_archived %}<div class="alert alert--warning">This group is active, but one of its academic parents (Academic Term, Course, or Level) is archived. Guarded-lifecycle rules will not let it be reactivated once archived until every parent is active again.</div>{% endif %}
+  <div class="ad-stats">
+    <div class="ad-stat"><span>Active students</span><strong>{{ active_student_count }} / {{ group.capacity }}</strong><small>Current group memberships</small></div>
+    <div class="ad-stat"><span>Eligible teachers</span><strong>{{ eligible_teacher_names|length }}</strong><small>Active teacher accounts</small></div>
+    <div class="ad-stat"><span>Available places</span><strong>{{ group.capacity - active_student_count if group.capacity > active_student_count else 0 }}</strong><small>Within the configured capacity</small></div>
   </div>
-
-  {{ macros.flash_messages() }}
-
-  {% set ancestor_archived = group.academic_term.status != "active"
-        or group.course.status != "active"
-        or group.course.level.status != "active" %}
-  {% if group.status == "active" and ancestor_archived %}
-  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
-    This group is active, but one of its academic parents (Academic Term, Course, or Level) is
-    archived. Guarded-lifecycle rules will not let it be reactivated once archived until every
-    parent is active again.
+  <div class="ad-grid">
+    <div class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Group information</h2></div><dl class="ad-definition">
+      <dt>Group code</dt><dd>{{ group.code or "—" }}</dd>
+      <dt>Academic Term</dt><dd>{{ group.academic_term.name }}{% if group.academic_term.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
+      <dt>Course</dt><dd>{{ group.course.title }}{% if group.course.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
+      <dt>Level</dt><dd>{{ group.course.level.name }}{% if group.course.level.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
+      <dt>Capacity</dt><dd>{{ group.capacity }} students</dd>
+      <dt>Created</dt><dd>{{ group.created_at.strftime("%Y-%m-%d %H:%M") }}</dd>
+      <dt>Last Updated</dt><dd>{{ group.updated_at.strftime("%Y-%m-%d %H:%M") }}</dd>
+    </dl></section></div>
+    <aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Teaching setup</h2></div><div class="ad-list">
+      <div class="ad-list-row"><div><h3>Teacher assignment</h3><p class="ad-meta">{% if eligible_teacher_names %}{{ eligible_teacher_names|join(', ') }}{% else %}No active teacher assigned{% endif %}</p></div><a class="ad-row-link" href="{{ url_for('admin.group_members', group_public_id=group.public_id) }}">Members <span aria-hidden="true">↗</span></a></div>
+      <div class="ad-list-row"><div><h3>Recurring schedule</h3><p class="ad-meta">Teaching times, rooms and effective dates.</p></div><a class="ad-row-link" href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">Schedule <span aria-hidden="true">↗</span></a></div>
+    </div></section>
+    <section class="ad-card"><div class="ad-card-top"><h2>Continue working</h2></div><div class="ad-list"><div class="ad-list-row"><a class="ad-row-link" href="{{ url_for('admin.group_attendance', group_public_id=group.public_id) }}">Attendance sessions <span aria-hidden="true">↗</span></a></div><div class="ad-list-row"><a class="ad-row-link" href="{{ url_for('admin.group_gradebook', group_public_id=group.public_id) }}">Gradebook setup <span aria-hidden="true">↗</span></a></div></div></section></aside>
   </div>
-  {% endif %}
-
-  <div class="card yc-panel">
-    <dl style="display: grid; grid-template-columns: 160px 1fr; row-gap: var(--space-3); column-gap: var(--space-4); margin: 0;">
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Group Code</dt>
-      <dd style="margin:0">{{ group.code or "--" }}</dd>
-
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Active Students</dt>
-      <dd style="margin:0">{{ active_student_count }}/{{ group.capacity }}</dd>
-
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Active Teachers</dt>
-      <dd style="margin:0">
-        {%- if eligible_teacher_names -%}
-          {{ eligible_teacher_names | join(", ") }}
-        {%- else -%}
-          <span class="badge badge--warning">No active teacher assigned</span>
-        {%- endif -%}
-      </dd>
-
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Academic Term</dt>
-      <dd style="margin:0">{{ group.academic_term.name }}{% if group.academic_term.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
-
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Course</dt>
-      <dd style="margin:0">{{ group.course.title }}{% if group.course.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
-
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Level</dt>
-      <dd style="margin:0">{{ group.course.level.name }}{% if group.course.level.status != "active" %} <span class="badge badge--neutral">Archived</span>{% endif %}</dd>
-
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>
-      <dd style="margin:0">{{ group.created_at.strftime("%Y-%m-%d %H:%M") }}</dd>
-
-      <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Last Updated</dt>
-      <dd style="margin:0">{{ group.updated_at.strftime("%Y-%m-%d %H:%M") }}</dd>
-    </dl>
+  <div class="ad-actions"><a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Back to Groups</a></div>
   </div>
-
-  <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
-    <a class="btn btn--primary" href="{{ url_for('admin.group_edit', public_id=group.public_id) }}">Edit Group</a>
-    <a class="btn btn--primary" href="{{ url_for('admin.group_members', group_public_id=group.public_id) }}">Manage Members</a>
-    <a class="btn btn--primary" href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">Manage Schedule</a>
-    <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Back to Groups</a>
-  </div>
+  <p class="agroups-create-status" data-group-workspace-status role="status" hidden></p>
+  <a class="ad-row-link" data-group-workspace-reload href="{{ url_for('admin.group_detail', public_id=group.public_id) }}" hidden>Reload page</a>
+  {% include 'admin/groups/_editor_dialog.html' %}
 </div>
 {% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/admin_group_create.js', v='edit-dialog-20261025') }}" defer></script>{% endblock %}

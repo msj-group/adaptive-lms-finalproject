@@ -1,0 +1,11 @@
+{% extends "admin/people/_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ person.full_name }}{% endblock %}
+{% block admin_content %}
+<div class="ad-page pf-page pf-profile-page">
+  <header class="ad-page-head pf-heading"><div><p class="ad-eyebrow">People / Directory</p><h1 data-workspace-page-heading>People</h1></div></header>
+  {{ macros.flash_messages() }}
+  {% include "admin/people/_tabs.html" %}
+  <section class="pf-standalone">{% include "admin/people/_profile.html" %}</section>
+</div>
+{% endblock %}

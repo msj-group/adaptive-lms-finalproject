@@ -5,7 +5,7 @@
 {% block title %}{{ activity.title }}{% endblock %}
 {% block portal_nav %}{% set active_nav = 'speaking' %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
-<div class="activity-surface">
+<div class="activity-surface atlas-activity-detail"><div class="atlas-activity-main">
 
 {#- Phase 4 / M06. `activity` and `submission` are plain presentation dicts;
     the row behind them already satisfied the whole visibility formula in SQL,
@@ -62,7 +62,7 @@
 
 </div>
 
-<div class="st-facts" style="margin-bottom: var(--space-6)">
+</div><div class="st-facts" style="margin-bottom: var(--space-6)">
   <dl style="display:grid; grid-template-columns: 140px 1fr; row-gap: var(--space-2); column-gap: var(--space-4); margin:0;">
     <div class="activity-fact">
 <dt>Group</dt><dd dir="auto">{{ activity.group_name }} · {{ activity.term_name }}</dd>

@@ -2,12 +2,12 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ 'Edit Group' if group else 'New Group' }}{% endblock %}
 {% block admin_content %}
-<div class="ds-page yc-surface" style="max-width: 560px">
-  <h1 data-workspace-page-heading>{{ 'Edit Group' if group else 'New Group' }}</h1>
+<div class="ad-page" data-group-editor data-group-actor="{{ current_user.public_id }}" data-group-mode="{{ 'edit' if group else 'create' }}"{% if group %} data-group-public-id="{{ group.public_id }}"{% endif %}>
+  <header class="ad-page-head"><div><p class="ad-eyebrow">Groups & enrollment</p><h1 data-workspace-page-heading>{{ 'Edit Group' if group else 'New Group' }}</h1></div></header>
 
-  {{ macros.flash_messages() }}
+  <div data-group-messages>{{ macros.flash_messages() }}</div>
 
-  <form method="post" novalidate class="yc-form">
+  <div class="ad-form-layout"><section class="ad-card ad-field-panel" data-group-form-card><div class="ax-form-section"><h2>Record details</h2></div><form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     <div class="field">
       {{ form.study_starts_at.label(class_="field__label") }}
@@ -52,7 +52,7 @@
     </div>
     <div class="field" style="">
       <label class="field__label" for="course-level-display">Level</label>
-      <div id="course-level-display" class="field__input" role="status" aria-live="polite" style="background: var(--color-bg-subtle); color: var(--color-text-secondary);">&mdash;</div>
+      <div id="course-level-display" data-group-level-display class="field__input" role="status" aria-live="polite" style="background: var(--color-bg-subtle); color: var(--color-text-secondary);">&mdash;</div>
     </div>
     {% endif %}
     <div class="field" style="">
@@ -75,9 +75,9 @@
        pages (the `group_toggle_status` route). #}
     <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary", id="group-form-submit") }}
-      <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}">Cancel</a>
+      <a class="btn btn--secondary" href="{{ url_for('admin.groups_list') }}" data-group-create-cancel>Cancel</a>
     </div>
-  </form>
+  </form></section><aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Academic context</h2></div>{% if group %}<dl class="ad-definition"><dt>Group</dt><dd>{{ group.name }}</dd><dt>Course</dt><dd>{{ group.course.title }}</dd><dt>Academic Term</dt><dd>{{ group.academic_term.name }}</dd></dl>{% else %}<p class="ad-meta">Choose an active academic term and course. Teacher assignments and recurring schedules are managed from the group workspace.</p>{% endif %}</section><section class="ad-card"><div class="ad-card-top"><h2>Identity &amp; history</h2></div><p class="ad-meta">Academic identity can be locked by existing history. Previous memberships and learning records keep their original context.</p></section></aside></div>
 </div>
 <script>
   (function () {

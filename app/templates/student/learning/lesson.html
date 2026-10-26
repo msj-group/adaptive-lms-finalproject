@@ -1,4 +1,5 @@
-{% extends "layouts/portal_base.html" %}
+{% extends 'layouts/student_atlas_base.html' %}
+{% import '_figma_ui.html' as ui %}
 {% block title %}{{ lesson_title }} — {{ group_name }}{% endblock %}
 {% block extra_head %}
   {{ super() }}
@@ -9,10 +10,7 @@
 
 
 
-<div class="st-studio"><header class="st-studio-heading"><h1 data-workspace-page-heading>{{ lesson_title }}</h1><small dir="auto">{{ group_name }} · {{ term_name }} · {{ unit_title }}</small></header><aside class="st-studio-map"><h2>Your course map</h2>
-<details class="workspace-reading-nav"><summary>Course outline · {{ lesson_links|length }} published lessons</summary><ol>{% for item in lesson_links %}<li><a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.public_id) }}"{% if item.public_id == lesson_public_id %} aria-current="page"{% endif %}><span class="st-lesson-number" aria-hidden="true">{{ "%02d"|format(loop.index) }}</span><span>{{ item.title }}</span></a> {{ '· Completed' if item.is_completed else '' }}</li>{% endfor %}</ol></details>
-{% if materials|length > 1 %}<nav class="workspace-inline-links" aria-label="In this lesson">{% for item in materials %}<a href="#material-{{ item.public_id }}">{{ item.title }}</a>{% endfor %}</nav>{% endif %}
-</aside><div class="st-studio-body">
+<div class="atlas-reader" data-atlas-reader><aside class="atlas-reader-map"><details data-atlas-outline><summary>{{ ui.icon('book',18) }}<span>Course outline</span>{{ ui.icon('chevron-down',15) }}</summary><p class="atlas-note">{{ _n('%(count)d published lesson', '%(count)d published lessons', lesson_links|length) }}</p><ol>{% for item in lesson_links %}<li><a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.public_id) }}"{% if item.public_id == lesson_public_id %} aria-current="page"{% endif %} data-research-id="lesson_open"><span class="atlas-reader-number" aria-hidden="true">{{ ui.icon('check',13) if item.is_completed else '%02d'|format(loop.index) }}</span><span dir="auto">{{ item.title }}{% if item.is_completed %}<small>Completed</small>{% endif %}</span></a></li>{% endfor %}</ol></details><a class="atlas-link" href="{{ url_for('student.group_units', group_public_id=group_public_id) }}" data-research-id="course_outline">All units {{ ui.icon('arrow-up',15) }}</a></aside><article class="atlas-reader-paper"><header class="atlas-reader-heading"><p class="atlas-eyebrow" dir="auto">{{ course_title }} · {{ unit_title }}</p><h1 data-workspace-page-heading dir="auto">{{ lesson_title }}</h1><p class="atlas-note" dir="auto">{{ group_name }} · {{ term_name }}</p><span class="badge badge--{{ 'success' if progress.is_completed else 'neutral' }}">{{ 'Completed' if progress.is_completed else 'Not completed' }}</span></header>
 
 {%- with messages = get_flashed_messages(with_categories=true) -%}
   {%- for category, message in messages %}
@@ -25,7 +23,8 @@
   <div style="white-space: pre-wrap; word-break: break-word;">{{ lesson_description }}</div>
 </div>{% endif %}
 
-<section>
+<div class="atlas-material-toolbar" data-atlas-material-toolbar hidden><nav aria-label="Material type">{% for key,label in [('all','All materials'),('text','Text'),('audio','Audio'),('video','Video'),('image','Images'),('files','Files'),('link','Links')] %}<button type="button" data-atlas-filter="{{ key }}" aria-pressed="{{ 'true' if key == 'all' else 'false' }}">{{ _(label) }}</button>{% endfor %}</nav><p class="atlas-note" role="status" data-atlas-material-status data-single="{{ _('One material shown') }}" data-plural="{{ _('%(count)s materials shown', count='{count}') }}"></p></div>
+<section class="atlas-materials">
   <h2>Materials</h2>
   {% if not materials %}
   <div class="empty-state">
@@ -34,7 +33,7 @@
   </div>
   {% else %}
   {% for material in materials %}
-  <div id="material-{{ material.public_id }}" class="material-block st-material">
+  <div id="material-{{ material.public_id }}" class="material-block atlas-material" data-atlas-material="{{ 'text' if material.kind == 'rich_text' else 'link' if material.kind == 'external_link' else material.category if material.category in ['image','audio','video'] else 'files' }}">
     <div class="material-block__title">{{ material.title }}</div>
 
     {% if material.kind == "rich_text" %}
@@ -109,5 +108,6 @@
   </div>
 </div>
 
-</div></div>
+<a class="atlas-link" href="{{ url_for('student.group_units', group_public_id=group_public_id) }}" data-research-id="course_outline">{{ ui.icon('book',16) }}Back to course outline</a>
+</article></div>
 {% endblock %}

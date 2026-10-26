@@ -1,0 +1,6 @@
+<template data-planner-group-choices>
+  <div class="fp-group-choices"><label class="fp-choice-search">Find a group<input type="search" maxlength="100" data-planner-group-search autocomplete="off"></label>
+    <div class="fp-choice-list">{% for group in groups %}<a class="fp-choice" data-planner-open-group data-group-public-id="{{ group.public_id }}" href="{{ url_for('admin.group_schedules',group_public_id=group.public_id) }}"><span dir="auto" data-planner-group-name>{{ group.name }}</span><span class="fp-choice-status">{{ planner_messages.status_badge(group.status) }}{{ planner_ui.icon('chevron',15) }}</span></a>{% endfor %}</div>
+    <p class="fp-meta" data-planner-choice-empty{% if groups %} hidden{% endif %}>No matching groups</p>
+  </div>
+</template>

@@ -50,34 +50,45 @@
   window.aelmsConfirm = confirmAction;
 
   var dirtyForms = new Set();
+  var trackedForms = new WeakSet();
   function formValue(form) {
     return Array.from(form.querySelectorAll("input:not([type='hidden']):not([type='submit']),textarea,select,[contenteditable='true']")).filter(function (field) { return !field.closest("[data-form-ui]"); }).map(function (field) {
       if (field.matches("[contenteditable]")) return field.innerHTML;
       return field.type === "checkbox" || field.type === "radio" ? field.checked : field.value;
     }).join("\u001f");
   }
-  document.querySelectorAll("form").forEach(function (form) {
-    if ((form.getAttribute("method") || "get").toLowerCase() !== "post" || form.matches("[data-login-form],[data-appearance-form],[data-form-ui],[data-quiz-submit]") || !form.querySelector("textarea,select,input:not([type='hidden']):not([type='submit']),[contenteditable]")) return;
-    var baseline = formValue(form);
-    var status = document.createElement("p");
-    status.className = "workspace-unsaved";
-    status.setAttribute("role", "status");
-    status.hidden = true;
-    form.prepend(status);
-    function changed() {
-      var dirty = baseline !== formValue(form);
-      if (dirty) dirtyForms.add(form); else dirtyForms.delete(form);
-      // The autosave client owns its visible status; retain unload protection.
-      status.hidden = !dirty || form.matches("[data-quiz-autosave],[data-assignment-draft]");
-      status.textContent = form.matches("[data-answer-form]") ? t("Unsaved answer — use Save answer or Save and next.") : t("Unsaved changes — save before leaving this page.");
-    }
-    form.addEventListener("input", changed);
-    form.addEventListener("change", changed);
-    form.addEventListener("workspace:saved", function () { baseline = formValue(form); dirtyForms.delete(form); status.hidden = true; });
-    form.addEventListener("submit", function (event) {
-      queueMicrotask(function () { if (!event.defaultPrevented) dirtyForms.delete(form); });
+  function registerForms(root) {
+    var forms = root.matches && root.matches("form") ? [root] : Array.from(root.querySelectorAll("form"));
+    forms.forEach(function (form) {
+      if (trackedForms.has(form)) return;
+      if ((form.getAttribute("method") || "get").toLowerCase() !== "post" || form.matches("[data-login-form],[data-appearance-form],[data-form-ui],[data-quiz-submit]") || !form.querySelector("textarea,select,input:not([type='hidden']):not([type='submit']),[contenteditable]")) return;
+      trackedForms.add(form);
+      var baseline = formValue(form);
+      var status = document.createElement("p");
+      status.className = "workspace-unsaved";
+      status.setAttribute("role", "status");
+      status.hidden = true;
+      form.prepend(status);
+      function changed() {
+        var dirty = baseline !== formValue(form);
+        if (dirty) dirtyForms.add(form); else dirtyForms.delete(form);
+        // The autosave client owns its visible status; retain unload protection.
+        status.hidden = !dirty || form.matches("[data-quiz-autosave],[data-assignment-draft]");
+        status.textContent = form.matches("[data-answer-form]") ? t("Unsaved answer — use Save answer or Save and next.") : t("Unsaved changes — save before leaving this page.");
+      }
+      form.addEventListener("input", changed);
+      form.addEventListener("change", changed);
+      form.addEventListener("workspace:saved", function () { baseline = formValue(form); dirtyForms.delete(form); status.hidden = true; });
+      form.addEventListener("submit", function (event) {
+        queueMicrotask(function () { if (!event.defaultPrevented) dirtyForms.delete(form); });
+      });
     });
-  });
+  }
+  window.aelmsRegisterForms = registerForms;
+  window.aelmsFormHasChanges = function (root) {
+    return Array.from(dirtyForms).some(function (form) { return form === root || root.contains(form); });
+  };
+  registerForms(document);
   var approvedForms = new WeakSet();
   function recordingPending() {
     var recorder = document.querySelector("[data-speaking-recorder]");
@@ -191,7 +202,12 @@
     navigator.clipboard.writeText(button.dataset.copy).then(function () { button.textContent = t("Copied"); }, function () { button.textContent = t("Select the value below to copy"); });
   }); });
   document.querySelectorAll("[data-print]").forEach(function (button) { button.addEventListener("click", function () { window.print(); }); });
-  document.querySelectorAll("[data-finance-form]").forEach(function (form) {
+  var financeForms = new WeakSet();
+  function registerFinanceForms(root) {
+  var forms = root.matches && root.matches("[data-finance-form]") ? [root] : Array.from(root.querySelectorAll("[data-finance-form]"));
+  forms.forEach(function (form) {
+    if (financeForms.has(form)) return;
+    financeForms.add(form);
     function fields() {
       var method = form.querySelector("[name='method']");
       var initialMethod = form.querySelector("[name='initial_method']");
@@ -217,6 +233,9 @@
       finally { button.disabled = false; }
     });
   });
+  }
+  window.aelmsRegisterFinanceForms = registerFinanceForms;
+  registerFinanceForms(document);
   document.querySelectorAll("[data-material-preview]").forEach(function (button) { button.addEventListener("click", async function () {
     var form = button.closest("form"); var output = form.querySelector("[data-material-preview-output]"); output.hidden = false; output.textContent = t("Preparing preview…"); button.disabled = true;
     try { var data = new FormData(); data.set("csrf_token", form.querySelector("[name='csrf_token']").value); data.set("content_html", form.querySelector(".rte-editor").innerHTML);

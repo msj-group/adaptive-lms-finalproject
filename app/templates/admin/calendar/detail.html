@@ -1,60 +1,11 @@
 {% extends "layouts/admin_base.html" %}
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ event.title }}{% endblock %}
-{% block admin_content %}
-<div class="ds-page yc-surface">
-  {#- Phase 4 / M10. One centre event in full, with whichever control its state
-      allows. A SCHEDULED event offers editing and cancellation; a CANCELLED one
-      offers neither and no token is minted for it -- the page is a record.
-
-      There is no delete, restore, un-cancel, re-schedule, duplicate, publish,
-      export or recurrence control here, and no endpoint exists server-side for
-      one. Correcting a cancelled event means creating a new one.
-
-      `details` is plain text rendered inside a pre-wrap block: Jinja's
-      autoescaping is what makes it safe, and nothing on this surface is ever
-      marked safe. -#}
-  <div class="ds-row yc-actions" style="margin-bottom: var(--space-3)">
-    <a class="btn btn--secondary" href="{{ calendar_url }}">&larr; Calendar</a>
-  </div>
-
-  {{ macros.flash_messages() }}
-
-  <div class="card yc-panel">
-    <div class="ds-row yc-actions" style="justify-content: space-between; align-items: flex-start">
-      <div>
-        <h1 data-workspace-page-heading style="margin: 0 0 var(--space-1)">{{ event.title }}</h1>
-        <div class="card__body">
-          {{ event.event_date.strftime("%A %d %B %Y") }} &middot;
-          {%- if event.all_day %} All day
-          {%- else %} {{ event.start_time.strftime("%H:%M") }}&ndash;{{ event.end_time.strftime("%H:%M") }}
-          {%- endif %}
-        </div>
-        {% if event.location %}
-        <div class="card__body" style="color: var(--color-text-secondary)">{{ event.location }}</div>
-        {% endif %}
-      </div>
-      {% if event.cancelled %}
-      <span class="badge badge--danger">{{ event.status_label }}</span>
-      {% else %}
-      <span class="badge badge--success">{{ event.status_label }}</span>
-      {% endif %}
-    </div>
-
-    {% if event.details %}
-    <div class="card__body" style="white-space: pre-wrap; margin-top: var(--space-3)">{{ event.details }}</div>
-    {% endif %}
-
-    <div class="card__body" style="margin-top: var(--space-4); color: var(--color-text-secondary)">
-      Created by {{ event.created_by_name }} on
-      {{ event.created_local.strftime("%Y-%m-%d %H:%M") }} &middot;
-      last changed {{ event.updated_local.strftime("%Y-%m-%d %H:%M") }} &middot;
-      version {{ event.version }}
-      {%- if event.cancelled_local %} &middot; cancelled
-      {{ event.cancelled_local.strftime("%Y-%m-%d %H:%M") }}{% endif %}
-    </div>
-  </div>
-
+{% block admin_content %}<div class="ad-page" data-planner-event-detail data-planner-event-id="{{ event.public_id }}" data-planner-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}">
+<header class="ad-page-head"><div><p class="ad-eyebrow">Calendar / Centre event</p><h1 data-workspace-page-heading>{{ event.title }}</h1><p class="ad-subtitle">{{ event.event_date.strftime("%A %d %B %Y") }} · {% if event.all_day %}All day{% else %}{{ event.start_time.strftime("%H:%M") }}–{{ event.end_time.strftime("%H:%M") }}{% endif %}</p></div><div class="ad-actions"><span class="badge {{ 'badge--danger' if event.cancelled else 'badge--success' }}">{{ event.status_label }}</span></div></header>
+<div data-planner-messages>{{ macros.flash_messages() }}</div>
+<div class="ad-grid"><section class="ad-card" data-planner-event-summary><div class="ad-card-top"><h2>Event details</h2></div><dl class="ad-definition"><dt>Date</dt><dd>{{ event.event_date.strftime("%d %B %Y") }}</dd><dt>Time</dt><dd>{% if event.all_day %}All day{% else %}{{ event.start_time.strftime("%H:%M") }}–{{ event.end_time.strftime("%H:%M") }}{% endif %}</dd><dt>Location</dt><dd>{{ event.location or '—' }}</dd><dt>Audience</dt><dd>Active students and teachers</dd></dl>{% if event.details %}<div class="ad-reading" style="white-space:pre-wrap">{{ event.details }}</div>{% endif %}</section>
+<aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Record details</h2></div><dl class="ad-definition"><dt>Created by</dt><dd>{{ event.created_by_name }}</dd><dt>Created</dt><dd>{{ event.created_local.strftime("%Y-%m-%d %H:%M") }}</dd><dt>Last changed</dt><dd>{{ event.updated_local.strftime("%Y-%m-%d %H:%M") }}</dd><dt>Version</dt><dd>{{ event.version }}</dd>{% if event.cancelled_local %}<dt>Cancelled</dt><dd>{{ event.cancelled_local.strftime("%Y-%m-%d %H:%M") }}</dd>{% endif %}</dl></section>
   {% if event.cancelled %}
   <div class="alert alert--warning" style="margin-top: var(--space-4)">
     This event was cancelled. It has disappeared from every student's and teacher's
@@ -66,7 +17,7 @@
     <a class="btn btn--secondary" href="{{ edit_url }}">Edit event</a>
   </div>
 
-  <div class="card yc-panel" style="margin-top: var(--space-4)">
+  <div class="card yc-panel ad-card" style="margin-top: var(--space-4)">
     <div class="card__title">Cancel this event</div>
     <div class="card__body">
       Cancelling hides the event from every student's and teacher's calendar immediately
@@ -88,5 +39,4 @@
     </form>
   </div>
   {% endif %}
-</div>
-{% endblock %}
+</aside></div><div class="ad-actions"><a class="btn btn--secondary" href="{{ calendar_url }}">Calendar</a></div></div>{% endblock %}

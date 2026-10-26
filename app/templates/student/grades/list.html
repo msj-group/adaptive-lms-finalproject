@@ -1,4 +1,4 @@
-{% extends "layouts/portal_base.html" %}
+{% extends 'layouts/student_atlas_base.html' %}
 {% import "_figma_ui.html" as ui %}
 {% block title %}Grades{% endblock %}
 {% block portal_nav %}{% set active_nav = 'grades' %}{% include "student/_portal_nav.html" %}{% endblock %}
@@ -12,8 +12,8 @@
     What is not here is not hidden -- it was never fetched: no other student,
     no draft item, no teacher comment, no roster, no teacher identity and no
     internal id. -#}
-<div class="record-page-heading">
-  <h1 data-workspace-page-heading dir="auto">Grades</h1>
+<div class="record-page-heading atlas-record-heading">
+  <div><p class="atlas-eyebrow">Your released results</p><h1 data-workspace-page-heading dir="auto">Grades</h1><p class="atlas-note">Only results released to you are shown here.</p></div>
   <details class="record-filters" data-grade-filters>
     <summary><span class="record-filter-heading">{{ ui.icon('settings', 18) }}<span>Filters</span></span><span class="record-filter-arrow">{{ ui.icon('chevron-down', 16) }}</span></summary>
     <form method="get" action="{{ url_for('student.grades_list') }}" class="record-filter-form st-panel" data-grade-filter-form>

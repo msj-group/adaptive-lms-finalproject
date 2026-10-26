@@ -1,10 +1,22 @@
 {% extends "layouts/admin_base.html" %}
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ 'Edit room' if room else 'New room' }}{% endblock %}
+{% import "admin/_atlas_ui.html" as atlas %}
+{% import "_figma_ui.html" as ui %}
 {% block admin_content %}
-<div class="ds-page yc-surface" style="max-width:560px"><h1 data-workspace-page-heading>{{ 'Edit room' if room else 'New room' }}</h1>
-{{ macros.flash_messages() }}
-<form method="post" class="yc-form">{{ form.hidden_tag() }}<input type="hidden" name="snapshot" value="{{ snapshot }}">
+<div class="ad-page">
+  <header class="ad-page-head"><div><div class="ad-eyebrow">Academic setup / Rooms</div><h1 data-workspace-page-heading>{{ 'Edit room' if room else 'New room' }}</h1></div><a class="btn btn--secondary" href="{{ url_for('admin.rooms_list') }}">Back</a></header>
+  <div data-academic-messages>{{ macros.flash_messages() }}</div>
+  <form data-academic-form data-academic-kind="rooms" data-academic-record="{{ room.public_id if room else '' }}" data-academic-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}" method="post" class="yc-form ad-form-workspace">
+    <section class="ad-card ad-field-panel"><div class="ax-form-section"><span>{{ ui.icon('room', 18) }}</span><div><h2>Room details</h2><p class="ad-meta">Complete the details below.</p></div></div><div class="ad-form-grid">
+{{ form.hidden_tag() }}<input type="hidden" name="snapshot" value="{{ snapshot }}">
 {% for field in [form.name, form.capacity] %}<div class="field">{{ field.label(class_='field__label') }}{{ field(class_='field__input') }}{% for error in field.errors %}<span class="field__error">{{ error }}</span>{% endfor %}</div>{% endfor %}
-{{ form.submit(class_='btn btn--primary') }} <a href="{{ url_for('admin.rooms_list') }}">Cancel</a></form></div>
+
+    </div></section>
+    <aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Teaching space</h2>{{ ui.icon('info', 18) }}</div><p class="ad-meta">Rooms are selected when creating recurring teaching schedules.</p>{% if room %}<dl class="ad-definition"><dt>Name</dt><dd dir="auto">{{ room.name }}</dd><dt>Status</dt><dd>{{ macros.status_badge(room.status) }}</dd></dl>{% endif %}</section></aside>
+    <section class="ad-card ad-save-panel"><div class="ad-form-foot"><span class="ad-meta">Review the details before saving.</span><div class="ad-actions">
+{{ form.submit(class_='btn btn--primary') }} <a href="{{ url_for('admin.rooms_list') }}" data-academic-editor-cancel>Cancel</a>
+    </div></div></section>
+  </form>
+</div>
 {% endblock %}

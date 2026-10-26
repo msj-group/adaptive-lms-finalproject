@@ -1,4 +1,5 @@
 """Room management with signed snapshots and locked scheduling guards."""
+from app.services.academic_status_presentation import accept_status_selection
 from flask import current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 from app.i18n import LocalizedFlaskForm as FlaskForm
@@ -96,6 +97,8 @@ def room_toggle_status(public_id):
     if not _matches(room):
         db.session.rollback()
         flash("This room changed. Reload before changing its status.", "danger")
+    elif not accept_status_selection(room.status):
+        pass
     elif room.status == "active" and _active_room_slots(room.id).first() is not None:
         db.session.rollback()
         flash("Reassign or archive the room's active schedules before archiving it.", "danger")

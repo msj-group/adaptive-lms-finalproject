@@ -1,69 +1,7 @@
-{% extends "layouts/admin_base.html" %}
-{% import "admin/_macros.html" as macros %}
-{% block title %}Schedules{% endblock %}
-{% block admin_content %}
-<div class="ds-page yc-surface">
-  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-    <h1 data-workspace-page-heading style="margin:0">Schedules</h1>
-  </div>
-  <p class="ds-section__desc">Recurring schedules.</p>
-
-  {{ macros.flash_messages() }}
-
-  <form method="get" class="ds-row yc-actions yc-filter-form" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;" data-query-form data-query-results="query-results" data-query-min="0">
-    <label class="field__label" for="q" style="margin:0">Location:</label>
-    <input type="search" name="q" id="q" class="field__input" style="width:auto" placeholder="Location" value="{{ search }}" maxlength="100">
-
-    <label class="field__label" for="term_id" style="margin:0">Term:</label>
-    <select name="term_id" id="term_id" class="field__input" style="width:auto">
-      <option value="">All Terms</option>
-      {% for term in terms %}
-        <option value="{{ term.id }}" {{ "selected" if selected_term_id == term.id else "" }}>{{ term.name }}</option>
-      {% endfor %}
-    </select>
-
-    <label class="field__label" for="level_id" style="margin:0">Level:</label>
-    <select name="level_id" id="level_id" class="field__input" style="width:auto">
-      <option value="">All Levels</option>
-      {% for level in levels %}
-        <option value="{{ level.id }}" {{ "selected" if selected_level_id == level.id else "" }}>{{ level.name }}</option>
-      {% endfor %}
-    </select>
-
-    <label class="field__label" for="course_id" style="margin:0">Course:</label>
-    <select name="course_id" id="course_id" class="field__input" style="width:auto">
-      <option value="">All Courses</option>
-      {% for course in courses %}
-        <option value="{{ course.id }}" {{ "selected" if selected_course_id == course.id else "" }}>{{ course.title }} ({{ course.level.name }})</option>
-      {% endfor %}
-    </select>
-
-    <label class="field__label" for="group_id" style="margin:0">Group:</label>
-    <select name="group_id" id="group_id" class="field__input" style="width:auto">
-      <option value="">All Groups</option>
-      {% for group in groups %}
-        <option value="{{ group.id }}" {{ "selected" if selected_group_id == group.id else "" }}>{{ group.name }}</option>
-      {% endfor %}
-    </select>
-
-    <label class="field__label" for="day_of_week" style="margin:0">Day:</label>
-    <select name="day_of_week" id="day_of_week" class="field__input" style="width:auto">
-      <option value="">All Days</option>
-      {% for value, name in weekday_choices %}
-        <option value="{{ value }}" {{ "selected" if selected_day_of_week == value else "" }}>{{ name }}</option>
-      {% endfor %}
-    </select>
-
-    <label class="field__label" for="status" style="margin:0">Status:</label>
-    <select name="status" id="status" class="field__input" style="width:auto">
-      <option value="">All Statuses</option>
-      <option value="active" {{ "selected" if selected_status == "active" else "" }}>Active</option>
-      <option value="archived" {{ "selected" if selected_status == "archived" else "" }}>Archived</option>
-    </select>
-
-    <button data-query-submit type="submit" class="btn btn--secondary">Filter</button>
-
-      <a class="btn btn--secondary" href="{{ url_for('admin.schedules_overview') }}">Clear</a>
-
-  </form><div id="query-results">{% include "admin/schedules/_query_results.html" %}</div></div>
+{% extends 'admin/planner/_base.html' %}
+{% block planner_content %}
+<div class="fp-schedule-heading"><div><h2>Recurring schedule records</h2><p class="fp-meta">Each record keeps its own weekday, time and status.</p></div><span class="fp-record-count">{{ _n('%(count)d record','%(count)d records',schedules|length) }}</span><details class="fp-filters" id="focus-schedule-filters"><summary>{{ planner_ui.icon('settings',16) }} Filters{% if has_filters %}<span class="fp-filter-dot" aria-label="Filters active"></span>{% endif %}</summary>{% include 'admin/planner/_schedule_filters.html' %}</details></div>
+{% include 'admin/planner/_group_choices.html' %}
+<div id="query-results">{% include 'admin/schedules/_query_results.html' %}</div>
+<footer class="fp-range-footer"><span>{{ planner_ui.icon('globe',14) }}<bdi>{{ app_timezone }}</bdi> · {{ _('Center time') }}</span><span>All matching records, including archived slots.</span></footer>
 {% endblock %}

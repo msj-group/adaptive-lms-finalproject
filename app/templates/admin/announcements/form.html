@@ -1,8 +1,8 @@
-{% extends "layouts/admin_base.html" %}
+{% extends "admin/announcements/_base.html" %}
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ "Edit announcement" if announcement else "New announcement" }}{% endblock %}
 {% block admin_content %}
-<div class="ds-page yc-surface">
+<div class="ad-page aan-page aan-compose" data-announcement-view="{{ 'edit' if announcement else 'create' }}" data-announcement-id="{{ announcement.public_id if announcement else '' }}" data-communication-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}">
   {#- Phase 4 / M09. The hidden `announcement_state` value is the signed token
       binding the author, the announcement's public id, its version, and the
       scope and target the STORED row currently has -- not whatever this form
@@ -19,7 +19,7 @@
       The form refuses every other combination before any lock, and
       `ck_announcements_scope_target` refuses the same shapes in the database as
       the final defense. -#}
-  <h1 data-workspace-page-heading style="margin-top: 0">{{ "Edit announcement" if announcement else "New announcement" }}</h1>
+  <header class="ad-page-head"><div><p class="ad-eyebrow">Communication</p><h1 data-workspace-page-heading>{{ "Edit announcement" if announcement else "New announcement" }}</h1></div></header>
 
 
   {{ macros.flash_messages() }}
@@ -29,7 +29,7 @@
     its title, text, scope and target can never be changed — only withdrawn.
   </div>
 
-  <form method="post" class="card yc-panel yc-form" novalidate>
+  <div class="ad-form-layout"><form method="post" class="card yc-panel yc-form aan-draft-form" novalidate>
     {{ form.hidden_tag() }}
     <input type="hidden" name="announcement_state" value="{{ announcement_state }}">
 
@@ -87,6 +87,6 @@
       <button type="submit" class="btn btn--primary">{{ form.submit.label.text }}</button>
       <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
     </div>
-  </form>
+  </form><aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Publication</h2></div><p class="ad-meta">This announcement is saved as a draft first. Publishing is a separate action. Published title, text, scope and target cannot be edited.</p></section><section class="ad-card"><div class="ad-card-top"><h2>Audience</h2></div><p class="ad-meta">The selected scope determines the required course or group. A centre notice needs neither target.</p></section></aside></div>
 </div>
 {% endblock %}

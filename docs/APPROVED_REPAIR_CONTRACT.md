@@ -7,6 +7,316 @@ has already been implemented or verified.
 
 ## Authority and current checkpoint
 
+- Owner release request, 2026-10-26: commit and push the latest reviewed
+  application/documentation changes and deploy the existing Railway web
+  service. This supersedes the earlier local-only Git/deployment boundary
+  for this release. Preserve databases, private files, research meanings,
+  retention, dependencies and scheduler settings. No automated tests, new
+  migration, reset, seed or hosted-data replacement. Current destination,
+  static evidence and execution boundary: RELEASE_20261026.md.
+
+- Owner role Messages request, 2026-10-26: apply the Admin Communication
+  Messages tab to the existing Teacher and Student Messages pages. Share its
+  presentation, inline native-route navigation and quiet composer while
+  retaining each role's shell, scoped contacts, signed forms and server
+  authority. Source/docs and bounded static/fictional-memory manual review
+  only; no automated tests, actual database, real delivery, migration,
+  scheduler, dependency, Git mutation or deployment. Evidence and limits:
+  ROLE_MESSAGES_COMMUNICATION.md.
+
+- Owner Admin Communication correction, 2026-10-26: animate Audience selection
+  through native filtered GETs; open announcement creation, reading and draft
+  review/editing within the current page. Keep message picker/contact/thread
+  transitions inside Messages and remove the blue chat-input outline. Reuse
+  native signed forms, validation and server guards, with draft protection and
+  native recovery. Source/docs and bounded static/fictional-memory manual review
+  only; no automated tests, actual database, real delivery, migration, scheduler,
+  dependency, Git mutation or deployment. Evidence: ADMIN_COMMUNICATION_INLINE.md.
+
+- Owner Learning lens reader correction, 2026-10-26: Review, This group's
+  attendance and Gradebook Open must show their authorized native GET content
+  within the current tab. Remove All attendance from the session reader and
+  Group details from Group attendance. Improve desktop/phone typography, retain
+  the horizontal phone status row and restore the existing list/filter state
+  on return. This supersedes the initial native-only reader presentation.
+  Source/localization/docs and bounded static/fictional-memory browser review
+  remain authorized; the existing no-tests/database/Git/deployment boundary
+  remains. Evidence: ADMIN_LEARNING_LENS.md.
+
+- Owner Learning lens selection, continued 2026-10-26: apply the selected
+  Attendance & grades composition to both native Admin tabs and their readers.
+  On phones keep Present, Absent, Late and Excused in one horizontal row.
+  Summaries describe only already-returned current-page records; finalized
+  attendance excludes drafts. Retain native GET filters/paging, query fragments,
+  public links, signed correction workflow, formatted grade configuration and
+  individual-results privacy. Preserve current shell/dock, themes, RTL and 20px
+  panels. Source/localization/docs and bounded static/fictional-memory browser
+  review only; no automated tests, actual database, migration, scheduler,
+  dependency, Git mutation or deployment. Evidence: ADMIN_LEARNING_LENS.md.
+
+- Owner Add Schedule Slot correction, 2026-10-25: this entry must open the
+  native slot form inside the current planner/Group schedules workspace.
+  Retain field validation/drafts, nested public Group binding, original POST,
+  lifecycle rejection behavior and native recovery. Show the returned Group
+  reader in the same dialog and refresh the current planner after confirmed
+  creation without losing its URL/filters. Preserve phone/themes/RTL and all
+  query/write policies. Source/localization/docs and bounded static/fictional-
+  memory manual review only; no automated tests, actual database, business
+  write, migration, scheduler, dependency, Git mutation or deployment.
+  Evidence and limits: ADMIN_FOCUS_PLANNER.md.
+
+- Owner Focus planner correction, 2026-10-25: New centre event, Choose a group
+  and Open group schedules must open within the selected planner, matching the
+  proposed dialog interaction. Reuse native actor-bound event forms and public
+  Group schedule GETs; retain validation, drafts and native recovery. On phones
+  only remove Your planning space and align Choose a group/Filters with Calendar.
+  Preserve desktop placement, native queries/write guards, themes, RTL, 20px
+  corners and current shell/dock. Source/localization/docs and bounded static/
+  fictional-memory manual review only; no automated tests, actual database,
+  business write, migration, scheduler, dependency, Git mutation or deployment.
+  Evidence and limitations: ADMIN_FOCUS_PLANNER.md.
+
+- Owner Focus planner selection, 2026-10-25: apply the selected full Calendar
+  concept to the existing Admin Calendar and Schedules pages. This supersedes
+  the earlier Admin date-grid presentation. Use compact month/phone week
+  selection and a focused daily agenda for Center calendar; keep Teaching
+  schedules as complete native filtered recurring records. Preserve source
+  reads, lifecycle warnings, public management URLs, native signed writes,
+  semantic themes, RTL, 20px corners and current shell/dock. Source/localization/
+  docs and bounded static/fictional-memory manual review only; no automated
+  tests, actual database, migration, reset/seed, scheduler, installation, Git
+  mutation or deployment. Evidence and limits: ADMIN_FOCUS_PLANNER.md.
+
+- Owner Groups edit correction, 2026-10-25: Edit/Edit Group must use the
+  selected centered dialog presentation within the current Groups listing or
+  Group details page. Reuse the native editor GET/POST, locked academic fields,
+  original signed edit snapshot, validation and stale-edit redirect semantics.
+  Preserve drafts, current filters, native recovery and existing write guards.
+  Source/localization/docs and bounded static/fictional-memory manual review
+  only; no automated tests, actual database, migration, scheduler, dependency,
+  Git mutation or deployment. Evidence: ADMIN_GROUPS_DIRECTORY_FOCUS.md.
+
+- Owner People refinement, 2026-10-25: place phone Filters beside New Student/
+  New Teacher, separate desktop cards, and show Edit profile/Message within
+  People as in Focus Desk. Reuse native signed edit, compose and reply forms,
+  preserve validation/drafts, exact actor/person/thread binding and native
+  completion proofs. Native routes retain server authority and recovery.
+  Source/localization/docs and bounded static/fictional-memory manual review
+  only; no automated tests, actual database, message delivery, migration,
+  scheduler, dependency, Git mutation or deployment. See ADMIN_PEOPLE_FOCUS_DESK.md.
+
+- Owner Groups creation correction, 2026-10-25: New Group must open a centered
+  dialog within the current Groups page. Enhance the existing native creation
+  GET/form/POST, retain validation errors and draft protection in the dialog,
+  and refresh the current filtered listing after a confirmed native list
+  response. Keep the ordinary standalone route as recovery/no-script fallback.
+  No Group write handler, validation, authorization or transaction policy is
+  changed. Source/localization/docs and bounded static/fictional-memory manual
+  review only; no automated tests, actual database, migration, scheduler,
+  dependency, Git mutation or deployment. Evidence: ADMIN_GROUPS_DIRECTORY_FOCUS.md.
+
+- Owner Admin Announcements request, 2026-10-23: new desktop/phone concepts or
+  the Teacher page's composition are authorized. Apply the Teacher-style
+  scope-first board to the existing Admin Communication tab, retaining native
+  Scope/Status GETs, detail/editor and signed lifecycle actions. Preserve
+  platform themes, 20px feature corners, English/Arabic/RTL, current shell/dock
+  and existing work. Source/localization/documentation and bounded static/
+  fictional-memory manual review only; no automated tests, actual database,
+  migration, scheduler, installation, Git mutation or deployment. Evidence:
+  ADMIN_ANNOUNCEMENTS_SCOPE_BOARD.md.
+
+- Owner Admin Calendar request, 2026-10-23: apply the Student/Teacher date-grid
+  and agenda presentation to the existing `/admin/schedules` page. Preserve
+  native administrative filters, the complete recurring-slot register, public
+  Group management URLs, lifecycle warnings, shared shell/dock, semantic themes,
+  English/Arabic/RTL and 20px feature cards. Expand only already-fetched slots;
+  keep calendar-event management and every query/write policy with their current
+  owners. Source/localization/docs and bounded static/fictional-memory manual
+  review only; no automated tests, actual database, migrations, reset/seed,
+  scheduler, installation, Git mutation or deployment. See ADMIN_SCHEDULE_CALENDAR.md.
+
+- Owner Groups selection, 2026-10-23: apply Directory to the existing Admin
+  Groups listing on desktop and Focus workspace on phones. This supersedes
+  the earlier Atlas card listing for this page only. Use current shell/dock,
+  platform colors, 20px feature corners, English/Arabic/RTL and native search,
+  filters, group links and status forms. Reorganize already-available group
+  information without new reads or write-policy changes. Source/localization/
+  documentation and bounded static/fictional-memory manual review only; no
+  automated tests, actual database, migrations, scheduler, installations, Git
+  mutation or deployment. See ADMIN_GROUPS_DIRECTORY_FOCUS.md for evidence.
+
+- Owner People Focus Desk selection, 2026-10-23: apply the selected desktop
+  list/profile split and phone list-to-profile reader to existing Student and
+  Teacher directories and profiles. The owner's subsequent sidebar correction
+  requires one People destination, with Students and Teachers as internal tabs;
+  separate Student/Teacher sidebar shortcuts are superseded. New Student and
+  New Teacher must open centered dialogs in the same People page, retaining
+  native forms/POSTs, validation inside the dialog, draft protection and native
+  no-script recovery. Preserve native filters, public object
+  URLs, account/record actions, signed forms, shared navigation/dock, semantic
+  themes, English/Arabic/RTL and 20px feature corners. Reuse authorized native
+  GET detail pages with actor/person/kind binding; no new business module or
+  query/write policy. Source/localization/documentation and bounded static/
+  fictional-memory browser review only; no automated tests, actual database,
+  migration, reset/seed, scheduler, dependencies, Git mutation or deployment.
+  Evidence and limits: ADMIN_PEOPLE_FOCUS_DESK.md.
+
+- Owner Daily Desk selection and refinements, 2026-10-23: replace the Admin
+  home composition with Daily Desk and use a labelled icon/text Admin sidebar.
+  On phones omit the desktop greeting and place New enrollment beside Overview
+  below the date. On desktop centre the native enrollment dialog and shade the
+  surrounding page. Direct Student/Group selection may add bounded, private,
+  Administrator-only GETs; reuse the original signed enrollment form, financial
+  preview and native save. Preserve all transaction, role, history and research
+  policy, existing child-page work and the single shared phone dock. Source,
+  localization/docs and static/fictional-memory manual browser review only;
+  no actual database, migration, automated tests, scheduler, dependencies, Git
+  mutation or deployment. This supersedes the thin rail/home arrangement of
+  Atlas only. See ADMIN_DAILY_DESK_IMPLEMENTATION.md for current evidence.
+
+- Owner Academics Setup Hub selection, 2026-10-23: apply the selected desktop
+  and phone concept to Courses, Academic terms, Levels and Rooms. Desktop uses
+  four directory cards above the selected records. On phones, centre and raise
+  the current card, lower the neighbours and navigate by horizontal swipe or
+  native links. Centre-wide totals include every status and remain independent
+  of the Course level filter and Room paging. Preserve public object URLs,
+  native signed actions, all lifecycle/order/price meanings, platform themes,
+  English/Arabic/RTL, 20px feature cards and the sole platform phone dock.
+  Source/localization/documentation and static/fictional-memory browser review
+  only; no automated tests, actual database, migrations, resets/seeds, scheduler,
+  dependency installation, Git mutation or deployment.
+
+- Owner Admin Atlas selection, continued 2026-10-23: implement the selected
+  desktop/phone composition across existing Admin pages and child workflows,
+  using platform semantic blue/red colors and exactly 20px card corners.
+  The owner separately authorized appropriate private correspondence between
+  Administrators and other platform users. Active Administrators may contact
+  other active accounts; other roles may contact active Administrators, while
+  existing Student/Teacher academic permission remains. Every conversation is
+  private to its two members; no supervisory reading permission is introduced.
+  Message notifications for these correspondents are included. Preserve
+  native signed forms, role/object scoping, financial and academic meanings,
+  research boundaries and concurrent work. Source/localization/documentation
+  and static/fictional-memory browser review only; no automated tests, actual
+  database, migrations, resets/seeds, scheduler, dependencies, Git mutation or
+  deployment. See ADMIN_ATLAS_IMPLEMENTATION.md for implementation and limits.
+
+- Owner Eclipse Login selection, 2026-10-22: apply the approved simplified
+  desktop/phone Eclipse design with the original Youth Centre logo, local glass
+  artwork, red/blue gradients, translucent card and reduced-motion support.
+  Remove the listed motivational copy and Adaptive English tagline. Replace
+  the inner credential focus rectangle with an animated red shell; a valid
+  email-format hint becomes green. Link Placement test to the existing public
+  empty interface. Preserve native shared authentication, CSRF, errors, session
+  policy, role/next redirects and account help through the centre administrator.
+  Source/localization/docs and bounded static/database-free manual browser
+  review only; no new recovery or remember-me policy, assessment logic, actual
+  database, migration, automated tests, Git mutation or deployment.
+
+- Owner Teacher Course Studio selection, 2026-10-22: implement the selected
+  Course Studio concept for My groups' internal workspace, units, lessons,
+  materials and authoring forms, Teacher Student-view preview and read-only
+  lesson completion. Exclude primary-navigation destinations from redesign.
+  Use the shared shell, semantic themes, English/Arabic/RTL, 20px feature cards
+  and existing native workflows. A freshly sanitized rich-text projection for
+  the already-authorized material reader is included. Preserve signed forms,
+  publication/archive/order meanings, file policies, enrollment progress and
+  all write/authorization/transaction guards. Source/localization/docs and
+  bounded static/fictional-memory manual browser review only; no automated
+  tests, actual database, migration, scheduler, installation, Git mutation or
+  deployment. Preserve concurrent Teacher, Student, shared-navigation, login
+  and release work.
+
+- Owner Teacher Discussions interaction correction, 2026-10-22: New topic opens
+  a centered native dialog with a shaded background; validation stays there.
+  Desktop Group selection moves beside New topic, shows names only and removes
+  search. Desktop topic selection reveals an animated reader in the same
+  document. This supersedes the preceding search/full-navigation presentation.
+  Fetch only existing scoped HTML and submit the original signed creation form;
+  preserve native reply/moderation writes and no-script entry points. Add the
+  bounded shared form-registration hook needed to guard dynamically inserted
+  drafts, with its script cache-version update. Keep actor/Group response
+  binding, cancellation, draft retention and reduced motion. Source/docs and
+  static/memory-only manual review only; no automated tests, actual database,
+  migration, scheduler, dependencies, Git mutation or deployment.
+
+- Owner Gradebook correction, 2026-10-22: implement the selected **Guided
+  Workspace** desktop composition and the separate phone concept literally.
+  Restore the phone top-right Group dropdown. Exceptions are platform theme
+  colors, 20px feature-card corners and local navigation above content so the
+  existing platform phone dock remains the only shortcut dock. Include guided
+  stages, compact task rows, type-card creation, focus grading, actual score
+  matrix/student records, grading plan and review/history presentation. Read-only
+  Group-scoped projections for captured scores and bounded actual correction
+  history are included; do not fabricate history or change grading rules.
+  Preserve protected native writes, complete captured rosters, authorization,
+  calculations and unrelated/concurrent work. Static and fictional-memory browser
+  review only; no automated tests, actual database, migration, scheduler,
+  installation, Git mutation or deployment.
+
+- Owner Teacher Discussions selection, 2026-10-22: implement revised Focus desk
+  on desktop and phones from `10e5003` plus existing local work. Enter with the
+  Group topic card at full content width; show the reading/reply card only after
+  a native topic selection. Keep a Group dropdown with search over bounded
+  authorized choices and native selection without JavaScript. Preserve creation,
+  immutable content, Open/Locked moderation, reply paging, CSRF/state tokens,
+  locks/nonces and role/Group scoping. Retain shared shell/mobile dock, semantic
+  themes/density and English/Arabic/RTL. Source/localization/docs and bounded
+  static/memory-only manual browser review only; no automated tests, actual
+  database/migration, scheduler, installation, Git mutation or deployment.
+  Preserve unrelated and concurrent work.
+
+- Owner Gradebook selection, 2026-10-21: apply the approved phone concept and
+  desktop workspace to the current Teacher Gradebook and its existing forms.
+  Move local Tasks/Students/Grading plan navigation above content because the
+  platform already owns the phone shortcut dock. Use platform theme colors and
+  exactly 20px feature-card corners. Source, localization, documentation and
+  bounded static/memory-only manual browser review are authorized. Preserve
+  whole captured rosters, calculations, protected writes, publication and
+  historical reading. Save-and-next may select a validated local presentation
+  destination after the existing score operation. No automated tests, actual
+  database, schema/migration, scheduler, Git mutation or deployment. Preserve
+  unrelated Announcements, Student Atlas, Help and release work.
+
+- Owner Student Atlas selection, 2026-10-20, continued 2026-10-21: implement
+  the selected Atlas desktop/phone concept for My courses, course overview,
+  units/lessons and reading/materials, with the connected Student activity,
+  result/receipt, released-grade, finalized-attendance and enrollment-record
+  screens. Start from `10e5003` and preserve all concurrent Teacher/local work.
+  Use actual scoped presentation data and the shared Youth Centre shell,
+  semantic appearance/density tokens, English/Arabic and RTL. Keep native
+  routes, GET/fragment filters, media/download policies, protected forms,
+  completion meanings and research identities. Source/localization/docs and
+  bounded static/memory-only manual browser review are authorized. No automated
+  tests, actual database, migration, seed/reset, scheduler, installation,
+  Git mutation, release or deployment belongs to this selection.
+
+- Owner Teacher Announcements follow-up, 2026-10-20: open received notices
+  inside the existing list, remove the introductory sentence and align Filters
+  with Announcements on phones too. Use a raised, nearly full-width phone Group
+  card with neighbouring cards behind it and a hidden horizontal scrollbar.
+  Presentation-only source/documentation and bounded static/memory-only browser
+  review; preserve current query/write/research meanings and unrelated work.
+  No automated tests, actual database, migration, Git mutation or deployment.
+
+- Owner Teacher Announcements selection, 2026-10-20: implement Group first on
+  desktop and phones from `10e5003`. Use tabs for assigned-Group management and
+  received notices, closed status/date Filters, an independently scrolling notice
+  list, selected Group first, and horizontal Group scrolling on phones. Status
+  filters apply only to management; received notices retain published visibility.
+  Preserve existing authoring, publication, withdrawal, role/assignment scoping,
+  bounded paging and research meanings. Source/localization/documentation and
+  bounded static/memory-only browser review are authorized; no automated tests,
+  actual database, migration, scheduler, Git mutation or deployment. Preserve
+  unrelated existing work, including the Teacher navigation-strip change.
+
+- Owner hosted-replacement follow-up, 2026-10-18: explicitly proceed with the
+  replacement and approve creating/registering one temporary personal-account SSH
+  key with inherited account permissions, used only for this project's backup,
+  transfer and review, then revoke it and delete its local files on completion
+  or stopping. Verified execution is complete; no schema/research rule changed.
+  Current evidence and boundaries: HOSTED_REPLACEMENT_20261018.md.
+
 - Owner release and hosted-data replacement request, 2026-10-18: push and deploy
   the reviewed current work from `752d471`, then replace the existing Railway
   application database with the current local evaluation database. This explicitly

@@ -1,87 +1,20 @@
-{% import "admin/_macros.html" as macros %}
-{% import "_grade_macros.html" as gr %}
+{% import '_figma_ui.html' as ui %}
+{% import 'admin/learning/_ui.html' as lens with context %}
+{% import '_grade_macros.html' as gr %}
 <span hidden data-query-count="{{ groups|length }}"></span>
-
-
-  {% if filter_group_unknown %}
-  <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
-    No group has that public ID, so nothing is listed.
-  </div>
-  {% elif filter_group_row %}
-  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
-    Showing the gradebook for <strong>{{ filter_group_row.name }}</strong> &middot;
-    {{ filter_group_row.course_title }} &middot; {{ filter_group_row.level_name }} &middot;
-    {{ filter_group_row.term_name }}.
-  </div>
-  {% endif %}
-
-  {% if groups %}
-  <div class="dash-scroll">
-  <table class="dash-table">
-    <thead>
-      <tr>
-        <th>Group</th>
-        <th>Course &amp; term</th>
-        <th style="width:7rem">Students</th>
-        <th style="width:8rem">Categories</th>
-        <th style="width:11rem">Configured weight</th>
-        <th style="width:10rem">Grade items</th>
-        <th style="width:11rem">Overall grade</th>
-        <th style="width:7rem">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in groups %}
-      <tr>
-        <td>
-          <strong>{{ item.group_name }}</strong>
-          {% if item.group_status != "active" %}<div><span class="badge badge--neutral">Archived</span></div>{% endif %}
-        </td>
-        <td>
-          {{ item.course_title }} &middot; {{ item.level_name }}
-          <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">{{ item.term_name }}</div>
-        </td>
-        <td>{{ item.student_count }}</td>
-        <td>{{ item.category_count }}</td>
-        <td>{{ gr.weight_total(item.weight_total_display, item.weights_complete) }}</td>
-        <td>
-          {{ item.released_item_count }} released
-          <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">{{ item.draft_item_count }} draft</div>
-        </td>
-        <td>
-          {% if item.overall_available %}
-          <span class="badge badge--success">Can be calculated</span>
-          {% else %}
-          <span class="badge badge--warning">Not available yet</span>
-          {% endif %}
-        </td>
-        <td>
-          <a class="btn btn--secondary" href="{{ url_for('admin.group_gradebook', group_public_id=item.group_public_id) }}">Open</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  </div>
-
-  {% if has_prev or has_next %}
-  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Gradebook pages">
-    {% if has_prev %}
-    <a class="btn btn--secondary" href="{{ url_for('admin.gradebook_overview', page=page - 1, group=filter_group or None, term=filter_term or None, configured=filter_configured or None) }}">Previous</a>
-    {% endif %}
-    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
-    {% if has_next %}
-    <a class="btn btn--secondary" href="{{ url_for('admin.gradebook_overview', page=page + 1, group=filter_group or None, term=filter_term or None, configured=filter_configured or None) }}">Next</a>
-    {% endif %}
-  </nav>
-  {% endif %}
-
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">No gradebooks to show</div>
-    <div>
-      A group appears here once one of its teachers adds a grade category. Nothing has been
-      deleted or hidden.
-    </div>
-  </div>
-  {% endif %}
+{% if filter_group_unknown %}<div class="alert alert--warning">No group has that public ID, so nothing is listed.</div>{% elif filter_group_row %}<p class="al-filter-context"><bdi>{{ filter_group_row.name }} · {{ filter_group_row.course_title }} · {{ filter_group_row.level_name }} · {{ filter_group_row.term_name }}</bdi></p>{% endif %}
+{% if groups %}
+{{ lens.grade_summary(groups) }}
+<div class="al-section-heading"><h3>Group gradebooks</h3><span>Groups on this page</span></div>
+<div class="al-panel al-grade-directory">
+  <div class="al-directory-heading" aria-hidden="true"><span>Course / Group</span><span>Configured weight</span><span>Grade items</span><span></span></div>
+  {% for item in groups %}<article class="al-directory-row">
+    <div class="al-course"><span class="al-course-icon">{{ ui.icon('book',19) }}</span><div><h3 dir="auto">{{ item.group_name }}</h3><p dir="auto">{{ item.course_title }} · {{ item.level_name }}</p><p dir="auto">{{ item.term_name }}</p><p>{{ _n('%(count)d active student','%(count)d active students',item.student_count) }}</p>{% if item.group_status != 'active' %}<span class="badge badge--neutral">Archived</span>{% endif %}</div></div>
+    <div class="al-weight{% if not item.weights_complete %} al-weight--incomplete{% endif %}"><strong><bdi dir="ltr">{{ gr.weight(item.weight_total_display) }}</bdi></strong><span>{{ _n('%(count)d category','%(count)d categories',item.category_count) }}</span></div>
+    <div class="al-gradebook-progress"><span>{{ _n('%(count)d released item','%(count)d released items',item.released_item_count) }}</span><span>{{ _n('%(count)d draft item','%(count)d draft items',item.draft_item_count) }}</span><small>Overall grade</small>{% if item.overall_available %}<span class="badge badge--success">Can be calculated</span>{% else %}<span class="badge badge--warning">Not available yet</span>{% endif %}</div>
+    <a class="al-link" data-learning-open="gradebook" data-learning-group="{{ item.group_public_id }}" href="{{ url_for('admin.group_gradebook',group_public_id=item.group_public_id) }}">Open {{ ui.icon('arrow-up',15) }}</a>
+  </article>{% endfor %}
+</div>
+{% if has_prev or has_next %}<nav class="al-pager" aria-label="Gradebook pages"><span>{{ _('Page %(page)d · up to %(size)d per page',page=page,size=page_size) }}</span><div>{% if has_prev %}<a class="btn" href="{{ url_for('admin.gradebook_overview',page=page-1,group=filter_group or none,term=filter_term or none,configured=filter_configured or none) }}">Previous</a>{% endif %}{% if has_next %}<a class="btn" href="{{ url_for('admin.gradebook_overview',page=page+1,group=filter_group or none,term=filter_term or none,configured=filter_configured or none) }}">Next</a>{% endif %}</div></nav>{% endif %}
+{% else %}<div class="al-panel al-empty"><h3>No gradebooks to show</h3><p>A group appears here once one of its teachers adds a grade category. Nothing has been deleted or hidden.</p></div>{% endif %}
+<p class="al-note">{{ ui.icon('lock',14) }}<span>Gradebook setup only. Individual student results and comments are private.</span></p>

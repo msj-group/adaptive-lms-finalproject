@@ -1,0 +1,13 @@
+{% macro status_control(kind, record) -%}
+{% set endpoint = {'courses':'course','terms':'academic_term','levels':'level','rooms':'room'}[kind] %}
+<form method="post" action="{{ url_for('admin.' ~ endpoint ~ '_toggle_status', public_id=record.public_id) }}" class="yc-form ah-status-form" data-academic-status-form>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="current_status" value="{{ record.status }}">
+  {% if kind == 'rooms' %}<input type="hidden" name="snapshot" value="{{ room_token(record) }}">{% endif %}
+  <select name="status" class="field__input ah-status-select" aria-label="{{ _('Status') }}: {{ record.title if kind == 'courses' else record.name }}">
+    <option value="active" {{ 'selected' if record.status == 'active' }}>Active</option>
+    <option value="archived" {{ 'selected' if record.status == 'archived' }}>Archived</option>
+  </select>
+  <button type="submit" class="btn btn--secondary" data-academic-status-apply>Apply</button>
+</form>
+{%- endmacro %}

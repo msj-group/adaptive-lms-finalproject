@@ -1,9 +1,10 @@
-{% extends "layouts/admin_base.html" %}
+{% extends "admin/announcements/_base.html" %}
 {% import "admin/_macros.html" as macros %}
 {% import "_announcement_macros.html" as ann %}
+{% import "_figma_ui.html" as ui %}
 {% block title %}Announcements{% endblock %}
 {% block admin_content %}
-<div class="ds-page yc-surface">
+<div class="ad-page aan-page" data-query-workspace data-communication-announcements data-communication-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}" data-announcements-url="{{ url_for('admin.announcements_overview') }}" data-announcement-new-url="{{ url_for('admin.announcement_create') }}">
   {#- Phase 4 / M09. The centre's announcements in all three scopes, newest
       first, with the two filters an administrator may apply. Both filters are
       normalised to a known value or dropped before they reach SQL.
@@ -16,34 +17,25 @@
       **Nothing here names a recipient.** Who was notified is not announcement
       administration, and no query behind this page fetches a notification
       row. -#}
-  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-4)">
-    <h1 data-workspace-page-heading style="margin:0">Announcements</h1>
-    <a class="btn btn--primary" href="{{ url_for('admin.announcement_create') }}">New announcement</a>
-  </div>
-  <p class="ds-section__desc">Drafts are private. Publishing notifies the current audience; withdrawal is permanent.</p>
-
+  <header class="aan-heading">
+    <div class="aan-title"><p class="ad-eyebrow">Communication</p><h1 data-workspace-page-heading>Announcements<span class="figma-brand-dot">.</span></h1></div>
+    <details class="aan-filters">
+      <summary>{{ ui.icon('settings', 18) }}<span>Filters</span>{{ ui.icon('chevron-down', 16) }}</summary>
+      <form method="get" action="{{ url_for('admin.announcements_overview') }}" class="aan-filter-form" data-query-form data-query-results="query-results" data-query-min="0" data-query-motion data-query-workspace-links data-query-refresh data-query-quiet-success>
+        <div class="field"><label class="field__label" for="scope">Scope</label><select name="scope" id="scope" class="field__input"><option value="">All scopes</option>{% for value, label in scope_choices %}<option value="{{ value }}"{% if filter_scope == value %} selected{% endif %}>{{ _(scope_labels[value]) }}</option>{% endfor %}</select></div>
+        <div class="field"><label class="field__label" for="status">Status</label><select name="status" id="status" class="field__input"><option value="">Any status</option>{% for value, label in status_labels.items() %}<option value="{{ value }}"{% if filter_status == value %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</select></div>
+        <div class="aan-filter-actions"><button data-query-submit type="submit" class="btn btn--primary">Apply filters</button><a class="btn btn--secondary" data-query-page href="{{ url_for('admin.announcements_overview') }}">Clear filters</a></div>
+      </form>
+    </details>
+  </header>
   {{ macros.flash_messages() }}
-
-  <form method="get" class="ds-row yc-actions yc-filter-form" style="margin-bottom: var(--space-4); align-items:center; gap: var(--space-2); flex-wrap: wrap;" data-query-form data-query-results="query-results" data-query-min="0">
-    <label class="field__label" for="scope" style="margin:0">Scope:</label>
-    <select name="scope" id="scope" class="field__input" style="width:auto">
-      <option value="">All scopes</option>
-      {% for value, label in scope_choices %}
-      <option value="{{ value }}" {{ "selected" if filter_scope == value else "" }}>{{ scope_labels[value] }}</option>
-      {% endfor %}
-    </select>
-
-    <label class="field__label" for="status" style="margin:0">Status:</label>
-    <select name="status" id="status" class="field__input" style="width:auto">
-      <option value="">Any status</option>
-      {% for value, label in status_labels.items() %}
-      <option value="{{ value }}" {{ "selected" if filter_status == value else "" }}>{{ label }}</option>
-      {% endfor %}
-    </select>
-
-    <button data-query-submit type="submit" class="btn btn--secondary">Filter</button>
-
-    <a class="btn btn--secondary" href="{{ url_for('admin.announcements_overview') }}">Clear</a>
-
-  </form><div id="query-results">{% include "admin/announcements/_query_results.html" %}</div></div>
+  <div id="query-results">{% include "admin/announcements/_query_results.html" %}</div>
+  <p class="aan-timezone">{{ _('Times shown in %(timezone)s', timezone=tz_name) }}</p>
+</div>
+<dialog class="ac-announcement-dialog" data-announcement-dialog aria-labelledby="announcement-dialog-title">
+  <header class="ac-dialog-heading"><h2 id="announcement-dialog-title">Announcement</h2><button class="btn btn--secondary" type="button" data-communication-close aria-label="{{ _('Close') }}">{{ ui.icon('close', 20) }}</button></header>
+  <p class="ac-status" data-communication-status role="status" hidden></p>
+  <div class="ac-recovery" data-communication-recovery hidden><button type="button" class="btn btn--secondary" data-communication-retry>Retry</button><a class="btn btn--secondary" data-communication-fallback>Open full page</a></div>
+  <div data-communication-content></div>
+</dialog>
 {% endblock %}

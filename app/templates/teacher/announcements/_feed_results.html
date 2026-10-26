@@ -1,104 +1,63 @@
 {% import "_announcement_macros.html" as ann %}
+{% import "_figma_ui.html" as ui %}
+{% set filter_count = (1 if selected_status else 0) + (1 if since else 0) + (1 if until else 0) + (1 if q else 0) %}
 <span hidden data-query-count="{{ announcements|length }}"></span>
-
-
-{% if too_short %}
-<div class="alert alert--warning" style="margin-bottom: var(--space-4)">
-  Enter at least {{ min_query_length }} characters to search. Showing everything addressed to you.
-</div>
-{% endif %}
-
-<div class="dash-section yc-section">
-  <h2>Addressed to you</h2>
-  {% if announcements %}
-  <div class="dash-card-list">
-    {% for item in announcements %}
-    <div class="card yc-panel">
-      <div class="ds-row yc-actions" style="justify-content: space-between; align-items: flex-start;">
-        <div>
-          <div class="card__title" style="margin-bottom: var(--space-1)">
-            <a href="{{ url_for('teacher.announcement_detail', announcement_public_id=item.public_id) }}">{{ item.title }}</a>
-          </div>
-          {{ ann.context_line(item) }}
-        </div>
-        {{ ann.scope_badge(item) }}
-      </div>
-      {{ ann.body_preview(item) }}
-      <div class="card__body" style="margin-top: var(--space-3); color: var(--color-text-secondary)">
-        {{ ann.published_line(item, tz_name) }}
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-
-  {% if has_prev or has_next %}
-  <nav class="ds-row yc-actions" style="margin-top: var(--space-4); align-items: center; gap: var(--space-3)" aria-label="Announcement pages">
-    {% if has_prev %}
-    <a class="btn btn--secondary" href="{{ url_for('teacher.announcements_feed', page=page - 1, q=raw_q or None) }}">Previous</a>
-    {% endif %}
-    <span class="ds-section__desc" style="margin:0">Page {{ page }} &middot; up to {{ page_size }} per page</span>
-    {% if has_next %}
-    <a class="btn btn--secondary" href="{{ url_for('teacher.announcements_feed', page=page + 1, q=raw_q or None) }}">Next</a>
-    {% endif %}
-  </nav>
+{% if filter_error %}<div class="alert alert--danger" role="alert">{{ _(filter_error) }}</div>{% endif %}
+{% if too_short %}<div class="alert alert--warning" role="status">{{ _('Enter at least %(count)s characters to search.', count=min_query_length) }}</div>{% endif %}
+{% if filter_count %}<div class="tan-filter-context" aria-label="{{ _('Applied announcement filters') }}">{% if selected_status %}<span class="badge badge--neutral">{{ _(statuses[selected_status]) }}</span>{% endif %}{% if q %}<span>{{ _('Search: %(query)s', query=q) }}</span>{% endif %}{% if since or until %}<span>{{ _('Publication date' if view == 'received' else 'Last updated date') }} · <bdi dir="ltr">{{ since or '—' }} – {{ until or '—' }}</bdi></span>{% endif %}</div>{% endif %}
+<div class="tan-workspace{% if view == 'received' %} tan-workspace--received{% endif %}">
+  {% if view == 'sent' %}
+  <aside class="tan-group-panel" aria-label="{{ _('Your groups') }}">
+    <div class="tan-group-heading"><h2>Your groups</h2><span>{{ _('Selected group first') }}</span></div>
+    <nav class="tan-group-list" aria-label="{{ _('Choose a group') }}" tabindex="0">
+      {% for card in cards %}
+      <a class="tan-group" href="{{ url_for('teacher.announcements_feed', view='sent', group=card.group_public_id, q=raw_q or None, status=selected_status or None, **{'from':since or None,'to':until or None}) }}"{% if card.group_public_id == selected_group %} aria-current="true"{% endif %}>
+        <h3 dir="auto">{{ card.group_name }}</h3><p dir="auto">{{ card.course_title }} · {{ card.level_name }}</p><small dir="auto">{{ card.term_name }}</small>
+        <div class="tan-group-counts"><span>{{ _('%(count)d published', count=card.published_count) }}</span><span>{{ _n('%(count)d draft', '%(count)d drafts', card.draft_count) }}</span></div>
+        {% if not card.operational %}<span class="badge badge--neutral">Archived context</span>{% endif %}
+      </a>
+      {% else %}<div class="tan-group-empty"><p>No teaching assignments</p><a href="{{ url_for('workspace.teacher_groups') }}">View my groups</a></div>{% endfor %}
+    </nav>
+  </aside>
   {% endif %}
-
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">{{ "No matching announcements" if searching else "No announcements" }}</div>
-    <div>
-      {% if searching %}
-      Nothing addressed to you matches “{{ q }}”. Try a different word or clear the search.
+  <section class="tan-board" aria-label="{{ _('Received announcements' if view == 'received' else 'Group announcements') }}">
+    <header class="tan-board-heading">
+      {% if view == 'sent' and selected_card %}
+      <div class="tan-board-actions"><span class="badge badge--{{ 'success' if selected_card.operational else 'neutral' }}">{{ _('Operational' if selected_card.operational else 'Archived context') }}</span>{% if selected_card.operational %}<a class="btn btn--primary" href="{{ url_for('teacher.announcement_create', group_public_id=selected_group) }}"><span aria-hidden="true">+</span><span>New announcement</span></a>{% endif %}</div>
+      <h2 dir="auto">{{ selected_card.group_name }}</h2><p dir="auto">{{ selected_card.course_title }} · {{ selected_card.term_name }}</p>
+      <div class="tan-counts" aria-label="{{ _('All announcements in this group') }}"><span>{{ _('All announcements') }}:</span><span>{{ _('%(count)d published', count=selected_card.published_count) }}</span><span>{{ _n('%(count)d draft', '%(count)d drafts', selected_card.draft_count) }}</span><span>{{ _('%(count)d withdrawn', count=selected_card.withdrawn_count) }}</span></div>
+      {% if not selected_card.operational %}<p class="tan-archive-note">This context is archived. Existing announcements remain readable and published notices can still be withdrawn.</p>{% endif %}
+      {% else %}<h2>{{ _('Received announcements' if view == 'received' else 'Group announcements') }}</h2><p>{{ _('Published notices addressed to you.' if view == 'received' else 'Choose an assigned group to manage its announcements.') }}</p>{% endif %}
+    </header>
+    <div class="tan-list" role="region" tabindex="0" aria-label="{{ _('Announcement list') }}">
+      {% for item in announcements %}
+      {% if view == 'received' %}
+      <details class="tan-row tan-received-row" name="teacher-received-announcement">
+        <summary>
+          <span class="tan-row-top">{{ ann.scope_badge(item) }}{% if item.published_local %}<time datetime="{{ item.published_local.isoformat() }}">{{ ui_date(item.published_local.strftime('%d %b %Y · %H:%M')) }}</time>{% endif %}</span>
+          <span class="tan-received-title"><strong dir="auto">{{ item.title }}</strong>{{ ui.icon('chevron-down', 18) }}</span>
+          <span class="tan-preview" dir="auto">{{ item.body|replace('\n',' ')|truncate(180, true, '…') }}</span>
+          <span class="tan-row-bottom" dir="auto">{{ item.context }}</span>
+        </summary>
+        <div class="tan-received-body" dir="auto">{{ item.body }}</div>
+      </details>
       {% else %}
-
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
-</div>
-
-<div class="dash-section yc-section">
-  <h2>Your groups</h2>
-  {% if cards %}
-  <div class="dash-card-list">
-    {% for card in cards %}
-    <div class="card yc-panel">
-      <div class="ds-row yc-actions" style="justify-content: space-between; align-items: flex-start;">
-        <div>
-          <div class="card__title" style="margin-bottom: var(--space-1)">{{ card.group_name }}</div>
-          <div class="card__body">{{ card.course_title }} &middot; {{ card.level_name }}</div>
-          <div class="card__body">{{ card.term_name }}</div>
+      <article class="tan-row">
+        <div class="tan-row-top">{% if view == 'received' %}{{ ann.scope_badge(item) }}{% else %}{{ ann.status_badge(item) }}{% endif %}
+          {% set moment = item.published_local if view == 'received' else item.updated_local %}
+          {% if moment %}<time datetime="{{ moment.isoformat() }}">{{ ui_date(moment.strftime('%d %b %Y · %H:%M')) }}</time>{% endif %}
         </div>
-        {% if card.operational %}
-        <span class="badge badge--success">Operational</span>
-        {% else %}
-        <span class="badge badge--neutral">Not operational</span>
-        {% endif %}
-      </div>
-
-      {% if not card.operational %}
-      <div class="alert alert--warning" style="margin-top: var(--space-3)">
-        Not operational: {{ card.archived_labels | join(", ") }} archived. Existing announcements
-        stay readable here and a published one can still be withdrawn, but no new announcement can
-        be written or published until every parent is active again.
-      </div>
+        <h3 dir="auto"><a href="{{ url_for('teacher.announcement_detail', announcement_public_id=item.public_id) if view == 'received' else url_for('teacher.group_announcement_detail', group_public_id=selected_group, announcement_public_id=item.public_id) }}">{{ item.title }}</a></h3>
+        <p class="tan-preview" dir="auto">{{ item.body|replace('\n',' ')|truncate(180, true, '…') }}</p>
+        <div class="tan-row-bottom">{% if view == 'received' %}<span dir="auto">{{ item.context }}</span>{% else %}<span>{{ _('Written by %(author)s', author=item.author_name) }}</span>{% if item.status == 'draft' and selected_card.operational %}<a href="{{ url_for('teacher.announcement_edit', group_public_id=selected_group, announcement_public_id=item.public_id) }}">Edit draft {{ ui.icon('arrow', 15) }}</a>{% endif %}{% endif %}</div>
+      </article>
       {% endif %}
-
-      <div class="card__body" style="margin-top: var(--space-3)">
-        {{ card.published_count }} published &middot; {{ card.draft_count }} draft &middot;
-        {{ card.withdrawn_count }} withdrawn
-      </div>
-
-      <div class="ds-row yc-actions" style="margin-top: var(--space-4)">
-        <a class="btn btn--primary" href="{{ url_for('teacher.group_announcements', group_public_id=card.group_public_id) }}">Manage announcements</a>
-      </div>
+      {% else %}<div class="tan-empty">{{ ui.icon('megaphone', 28) }}<h3>{{ _('No announcements' if view == 'received' and not filter_count else 'No announcements yet' if view == 'sent' and not filter_count else 'No matching announcements') }}</h3><p>{{ _('Choose an assigned group to manage its announcements.' if view == 'sent' and not selected_card else 'Try a different filter or clear your selection.' if filter_count else 'Published notices addressed to you will appear here.' if view == 'received' else 'Create a draft when your group needs an update.') }}</p></div>{% endfor %}
     </div>
-    {% endfor %}
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state__title">No teaching assignments</div>
-    <div></div>
-  </div>
-  {% endif %}
+    <nav class="tan-pagination" aria-label="{{ _('Announcement pages') }}">
+      {% if has_prev %}<a href="{{ url_for('teacher.announcements_feed', view=view, group=selected_group or None, page=page-1, q=raw_q or None, status=selected_status or None, **{'from':since or None,'to':until or None}) }}">Previous</a>{% endif %}
+      <span>{{ _('Page %(page)d · %(count)d shown', page=page, count=announcements|length) }}</span>
+      {% if has_next %}<a href="{{ url_for('teacher.announcements_feed', view=view, group=selected_group or None, page=page+1, q=raw_q or None, status=selected_status or None, **{'from':since or None,'to':until or None}) }}">Next</a>{% endif %}
+    </nav>
+  </section>
 </div>

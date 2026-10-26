@@ -1,0 +1,7 @@
+<dialog class="agroups-create-dialog" data-group-create-dialog aria-labelledby="group-editor-heading">
+  <header class="agroups-create-header"><div><p class="ad-eyebrow">Groups & enrollment</p><h2 id="group-editor-heading" data-group-editor-heading>New Group</h2></div><button type="button" class="btn btn--secondary" data-group-create-close aria-label="Close">{{ ui.icon('close',16) }}</button></header>
+  <p class="agroups-create-status" data-group-create-status role="status" aria-live="polite" hidden></p>
+  <div data-group-create-messages></div><div data-group-create-content></div>
+  <div class="agroups-create-recovery" data-group-create-recovery hidden><button type="button" class="btn btn--secondary" data-group-create-retry>Try again</button><a class="btn btn--secondary" data-group-create-native href="{{ url_for('admin.group_create') }}">Open form</a></div>
+  <a class="ad-row-link agroups-create-check" href="{{ url_for('admin.groups_list') }}" data-group-create-check hidden>Check group list</a>
+</dialog>

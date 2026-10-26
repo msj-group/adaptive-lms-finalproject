@@ -1,6 +1,6 @@
 {% extends "layouts/base.html" %}
 {% import "_figma_ui.html" as ui %}
-{% block body_class %}figma-workspace figma-admin yc-workspace yc-operations yc-admin{% endblock %}
+{% block body_class %}figma-workspace figma-admin yc-workspace yc-operations yc-admin admin-atlas{% endblock %}
 {% block extra_head %}{% endblock %}
 {% block product_styles %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/community.css') }}">
@@ -10,13 +10,15 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/operations.css', v='st2-density-20261010') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/mobile-navigation.css', v='navigation-preferences-20261016') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/search.css', v='st2-density-20261010') }}">
+  <link rel="stylesheet" href="{{ url_for('static',filename='css/product/notifications.css',v='admin-correspondence-20261023') }}">
 {% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static',filename='css/admin_atlas.css',v='daily-desk-20261023') }}"><link rel="stylesheet" href="{{ url_for('static',filename='css/admin_daily_desk.css',v='daily-desk-20261023') }}">{% endblock %}
 {% block content %}
-{% set notif = none %}
+{% set notif = notification_header() %}
 {% set portal_blocks = self %}
-{% include 'layouts/_product_shell.html' %}
+{% include 'admin/_atlas_shell.html' %}
 {% endblock %}
 {% block workspace_page_label %}{{ ui.page_heading(self.title()) }}{% endblock %}
 {% block workspace_content_class %}{% endblock %}
 {% block admin_content %}{% endblock %}
-{% block body_scripts %}<script src="{{ url_for('static', filename='js/query_filters.js', v='quiet-success-20261011') }}" defer></script><script src="{{ url_for('static', filename='js/mobile_navigation.js', v='navigation-preferences-20261016') }}" defer></script><script src="{{ url_for('static', filename='js/workspace_search.js') }}" defer></script><script src="{{ url_for('static', filename='js/live_query.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js', v='platform-navigation-20261011') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static',filename='js/notifications.js') }}" defer></script><script src="{{ url_for('static',filename='js/admin_atlas.js',v='atlas-20261023') }}" defer></script><script src="{{ url_for('static', filename='js/query_filters.js', v='communication-motion-20261026') }}" defer></script><script src="{{ url_for('static', filename='js/mobile_navigation.js', v='navigation-preferences-20261016') }}" defer></script><script src="{{ url_for('static', filename='js/workspace_search.js') }}" defer></script><script src="{{ url_for('static', filename='js/live_query.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js', v='daily-desk-20261023') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}

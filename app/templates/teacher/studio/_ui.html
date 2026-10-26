@@ -1,0 +1,13 @@
+{% import "_figma_ui.html" as ui %}
+{% macro tabs(gp,selected='curriculum') -%}
+<nav class="cs-tabs" aria-label="Group pages">
+{% for key,label,endpoint,icon in [('overview','Workspace','workspace.teacher_group','dashboard'),('curriculum','Curriculum','teacher.group_units','layers'),('completion','Completion','teacher.group_progress','check')] %}<a href="{{ url_for(endpoint,group_public_id=gp) }}"{% if selected==key %} aria-current="page"{% endif %}>{{ ui.icon(icon,16) }}{{ _(label) }}</a>{% endfor %}
+</nav>
+{%- endmacro %}
+{% macro heading(title,subtitle='') -%}<header class="cs-heading"><div><h1 data-workspace-page-heading dir="auto">{{ title }}<span class="figma-brand-dot">.</span></h1>{% if subtitle %}<p class="cs-meta" dir="auto">{{ subtitle }}</p>{% endif %}</div>{% if caller is defined %}<div class="cs-actions">{{ caller() }}</div>{% endif %}</header>{%- endmacro %}
+{% macro status(value) -%}<span class="badge badge--{{ 'success' if value in ['active','published'] else 'neutral' }}">{{ _(value|capitalize) }}</span>{%- endmacro %}
+{% macro material_body(material,gp,up,lp) -%}
+{% if material.kind=='rich_text' %}<div class="material-rich-text cs-rich-text">{{ material.content_html|safe }}</div>
+{% elif material.kind=='external_link' %}<div class="cs-resource"><span class="cs-resource-icon">{{ ui.icon('globe',28) }}</span><h3>External resource</h3><p class="cs-meta">This resource opens as an external link.</p><a href="{{ material.external_url }}" target="_blank" rel="noopener noreferrer nofollow" class="cs-resource-url">{{ material.external_url }}</a></div>
+{% else %}<div class="cs-resource"><span class="cs-resource-icon">{{ ui.icon('file',28) }}</span><h3 dir="auto">{{ material.original_filename }}</h3><p class="cs-meta">{{ material.extension|upper }} · {{ workspace_size(material.byte_size) }}</p></div>{% endif %}
+{%- endmacro %}

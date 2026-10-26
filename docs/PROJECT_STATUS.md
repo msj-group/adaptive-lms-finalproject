@@ -1,5 +1,1125 @@
 # Repair status
 
+## Release preparation — 2026-10-26
+
+The owner now authorizes commit, push and deployment of the accumulated source
+and documentation. Baseline `10e5003` matches the live Railway source and the
+only current GitHub branch, `master`; the old remote UI/preservation branches
+are absent. Static inspection passes for 371 Python sources, 283 localized
+templates, 529 literal template references, 23 changed JavaScript files and
+Arabic JSON. CRLF-aware diff checking passes; ordinary checking reports the
+existing mixed line endings. Migration/deployment/dependency sources are
+unchanged. No automated tests or database-backed workflows were executed.
+
+This section records preparation, not completed publication. The release will
+use a normal fast-forward push to `master` and update only the existing web
+service's source branch and exact commit pin. Operational execution/public GET
+evidence belongs to ignored `instance/release_20261026/`. Preserve local/hosted
+data, private files, research classifications, retention and all other hosting
+settings. Scope and acceptance boundary: [RELEASE_20261026.md](RELEASE_20261026.md).
+
+## Student and Teacher Communication Messages — 2026-10-26
+
+Implemented the owner's request locally from `10e5003`, preserving pre-existing
+work. Student/Teacher Messages now use the Admin tab's conversation rows,
+circular avatars, semantic bubbles, 20px surfaces and quiet composer, plus
+its existing inline picker/contact/thread/search navigation. One shared
+template boundary retains role shells/mobile docks and native scoped routes,
+signed forms, draft confirmation, validation and uncertain-send protection.
+No server permission, query, relationship, delivery or history policy changed.
+
+Executed: nine localized StrictUndefined templates compile; both JavaScript
+syntax checks pass; all seventeen protected hashes and three native-form/content
+comparisons match the before-state. Manual real-browser review with fictional
+memory covered Student English/light and Teacher Arabic/RTL/dark, desktop
+1280px and phone frames 390/320px, inline entries, validation, draft retention,
+fictional completion, search/Back, emoji and phone action-sheet availability.
+Client/scroll widths match at every measured size; phone composer bottom is
+799px, above the 822px dock. The corrected phone avatar radius is 50%; final
+browser warning/error log is empty. Admin inbox also renders one shared
+workspace with its original shell and tabs. Ordinary diff check exits 2 on
+CR-at-EOL in this mixed-ending checkout; CRLF-aware diff check exits 0.
+Task-file trailing-whitespace review passes. HEAD remains `10e5003`, staging
+is empty and Git configuration is unchanged. Evidence/limits:
+[ROLE_MESSAGES_COMMUNICATION.md](ROLE_MESSAGES_COMMUNICATION.md).
+
+No automated tests, pytest collection, actual database, real message delivery,
+business write, migration, reset/seed, scheduler, dependency installation, Git
+mutation or deployment occurred. Fictional completion is presentation evidence,
+not live persistence/authorization or comprehensive regression acceptance.
+Stop point: requested presentation is implemented; the owned temporary browser
+and fictional renderer are closed after review.
+
+## Admin Communication inline interaction — 2026-10-26
+
+Implemented the owner's correction locally from `10e5003`, preserving extensive
+pre-existing work. Audience links use the original filtered GET owner with
+selected-first card motion. New announcement, Review draft and announcement
+titles open the native reader/editor within the current page. Messages keeps
+its picker, contacts and conversation transitions in place; native send/reply
+validation and completion remain server-owned. The Admin chat-input/composer
+blue outline is removed. Draft guards, actor/object binding, uncertain-send
+protection, native recovery, semantic themes, RTL and the shared dock remain.
+
+Executed: ten localized templates compile; three JavaScript syntax checks pass;
+all fourteen protected hashes, both native announcement POST form comparisons
+and existing locale bytes match the captured before-state. Manual real-browser
+review over fictional memory covered desktop 1440px and phones 390/320px,
+English/light and Arabic/RTL/dark, requested entry controls, preserved Status,
+inline validation/drafts, fictional completion, Back, inbox search, emoji and
+retained native management controls. Measured document/dialog widths do not
+overflow; textarea/composer outline styles are `none` while typing. A refused
+read leaves Retry/current content; an uncertain POST keeps text and disables
+Send. Final normal-flow warning/error log is empty. Ordinary diff check exits 2
+on CR-at-EOL in this mixed-ending checkout; CRLF-aware diff check exits 0.
+New source/document whitespace inspection passes. HEAD remains `10e5003` and
+staging is empty; no Git configuration was changed.
+
+No automated tests, actual database, real message delivery, business write,
+migration, reset/seed, scheduler, dependency installation, Git mutation or
+deployment occurred. Fictional response rehearsal is not live persistence,
+transaction/authorization execution or comprehensive regression acceptance.
+Native no-script execution and other-role browser regression remain unperformed.
+Evidence and exact limits: [ADMIN_COMMUNICATION_INLINE.md](ADMIN_COMMUNICATION_INLINE.md).
+Stop point: requested interactions are implemented locally; the temporary
+manual renderer/browser are closed after review.
+
+## Phone Gradebook summary spacing — 2026-10-26
+
+Corrected the owner's overlapping 20/20 phone capture with a larger ring,
+smaller single-line ratio and separate, spaced label/count columns. Changes
+are confined to mobile Learning lens CSS and its stylesheet version, plus
+documentation. Native values, desktop declarations and Attendance's horizontal
+four-status row are unchanged. Manually reviewed memory-only 20/20, 0/20 and
+9/20 samples at 320/390/464px, including Arabic/RTL/dark: no horizontal overflow,
+ratio contained inside the ring, 10px label/count gaps and empty browser logs.
+Static CSS and CRLF-aware diff checks pass. No automated tests, actual database,
+migration, staging/commit/push or deployment. Evidence: ADMIN_LEARNING_LENS.md.
+
+## Learning lens inline reader correction — 2026-10-26
+
+Implemented the owner's follow-up from `10e5003`, preserving existing work:
+Review, This group's attendance and Gradebook Open now read within the current
+tab, preserving its URL and restoring prior readers/list filters on Back or
+Escape. Removed the requested All attendance and Group details links from
+their respective readers. Improved scoped desktop/phone typography while
+retaining four horizontal phone status metrics, canonical weights and privacy.
+
+Executed: eight localized templates compile with StrictUndefined; 22 of 23
+protected source hashes and all four native-filter comparisons match this
+correction's baseline. The shared query client changed concurrently outside
+this task; its optional additions were inspected and the current Gradebook
+filter/Open/Back flow rechecked successfully. It was preserved without edits.
+Existing Arabic values/duplicate counts remain; four labels added.
+JavaScript syntax and CRLF-aware diff checks pass. Manual production-template
+review over fictional memory covered 1440/768/390/320px, both nested Attendance
+reads, Gradebook Open, Back/Escape, retained Attendance and Gradebook filters,
+category expansion, native script-free fallback, Arabic/RTL/dark and escaped
+notes. Measured views do not overflow; horizontal metrics share a coordinate;
+final warning/error logs are empty. Evidence: [ADMIN_LEARNING_LENS.md](ADMIN_LEARNING_LENS.md).
+
+No automated tests, actual database, real correction write, migration, seed,
+scheduler, installation, Git staging/commit/push or deployment occurred.
+
+## Administrator Learning lens — 2026-10-26
+
+Implemented the owner's selected concept across Attendance and Gradebook setup,
+including native read-only readers, from `10e5003` with existing work preserved.
+Phone Present/Absent/Late/Excused metrics share one horizontal row. Current-page
+finalized Attendance counts exclude drafts; Gradebook setup retains canonical
+weight formatting and availability, counts and individual-results privacy.
+Native filter/paging and result-fragment owners, public links, correction form,
+shared shell/dock, semantic themes, RTL and 20px panels remain.
+
+Executed: eight localized templates compile with StrictUndefined; all 23
+protected source hashes and four native filter-control comparisons match.
+Existing Arabic values/duplicate counts remain, with 25 new labels. Actual
+templates/assets were manually reviewed over fictional memory data at
+1440/768/390/320px, including Arabic/RTL/dark, horizontal metric coordinates,
+filter/clear, draft zero totals, private note escaping, public reader links,
+Gradebook fragments and native category expansion. Measured pages do not
+overflow horizontally; final browser warning/error logs are empty. CRLF-aware
+diff check passes. Evidence and exact limits: [ADMIN_LEARNING_LENS.md](ADMIN_LEARNING_LENS.md).
+
+No automated tests, actual database, real correction write, migration,
+reset/seed, scheduler, installation, Git mutation or deployment occurred.
+Live-MySQL authorization/transaction and comprehensive regression acceptance
+remain unperformed. Stop point: the selected layout and phone refinement are
+implemented locally; the temporary manual renderer/browser are closed.
+
+## Add Schedule Slot within the planner — 2026-10-25
+
+Implemented the owner's requested correction locally from `10e5003`. Add
+Schedule Slot switches the current Group reader to its native form in the same
+dialog, retaining validation errors and dirty drafts. Cancel/Back returns to
+the Group reader. Native redirected create/rejection responses are shown there;
+only the native success marker confirms creation. Closing refreshes the current
+planner after confirmed creation with its URL/filters retained. Direct Group
+schedules and empty-state Add entries use the same enhancement. No query,
+business validation, locking, history or notification handler was changed.
+
+Executed: thirteen localized templates compile, JavaScript syntax passes,
+fifteen protected hashes and both native POST form comparisons match. Original
+locale values/duplicate counts remain. Fictional-memory manual browser review
+covered desktop 1440px, phones 390/320px, English/light and Arabic/RTL/dark,
+inline validation/draft guards, direct-page Cancel, same-dialog completion,
+rejection/uncertain responses, mismatched Group refusal and the existing event
+form. Measured document/dialog widths do not overflow; final warning/error log
+is empty. CRLF-aware diff check passes, staging is empty and HEAD is `10e5003`.
+
+No automated tests, actual database, real Schedule creation, migration,
+reset/seed, scheduler, dependency, Git mutation or deployment. MySQL conflict,
+locking and notification execution remain unperformed. Evidence and stop point:
+[ADMIN_FOCUS_PLANNER.md](ADMIN_FOCUS_PLANNER.md).
+
+## Focus planner dialog and phone correction — 2026-10-25
+
+Implemented the owner's correction from `10e5003`, retaining existing and
+concurrent work. New centre event now opens the native form within Calendar;
+Choose a group opens an in-page chooser and Open group schedules opens the
+native Group schedule reader. Validation/drafts remain in the event dialog,
+uncertain saves block repeat submission, and only a bound native detail
+redirect confirms completion. Source queries/write guards are unchanged.
+Phones hide Your planning space and align Choose a group/Filters with Calendar;
+the one original filter disclosure returns to its desktop position on resize.
+
+Executed: twelve localized templates compile, both feature scripts pass syntax
+checks, thirteen protected hashes and three native POST form comparisons match
+the before-correction baseline. Existing locale values/duplicate counts remain.
+Fictional-memory browser review covered 1440/768/390/320px, English/light and
+Arabic/RTL/dark, all three dialogs, chooser search/back, phone filters, inline
+validation, draft guards, escaped text, no-script structure, failed reads,
+actor mismatch rejection and uncertain/completion presentation responses.
+Measured pages/dialogs have no horizontal overflow; final warning/error log is
+empty. CRLF-aware diff check passes, staging is empty and HEAD is `10e5003`.
+
+No automated tests, actual database, business creation/status change, migration,
+reset/seed, scheduler, installation, Git mutation or deployment. Database-backed
+creation and comprehensive regression acceptance remain unperformed. Evidence
+and stop point: [ADMIN_FOCUS_PLANNER.md](ADMIN_FOCUS_PLANNER.md).
+
+## People phone controls and profile dialogs — 2026-10-25
+
+Implemented the owner's refinement locally from `10e5003`, preserving existing
+and concurrent work. Phone Filters now sits beside New Student/New Teacher;
+the same search/status form is revealed below. Desktop directory/profile cards
+have a 20px gap and person cards a 10px gap. Edit profile and Message now open
+centered native dialogs inside People, reusing existing signed edit/compose/
+reply forms. Validation and draft protection remain in place; native success
+proof gates completion. Edit refresh retains filters and the selected profile
+when still included. Native standalone routes remain recovery.
+
+Executed: eight localized templates compile; native control comparisons match
+for both account families and message compose/reply; ten protected backend/
+shared-client hashes and the creation client match the captured before-state.
+Prior locale values/duplicate counts are preserved. Real-browser fictional-memory
+review covered desktop validation/save, new/existing conversation forms and
+completion, draft discard/stay, measured card spacing, and Arabic/RTL/dark phone
+filters/edit/message at 320px. Direct 320x740 review confirmed bounded modal
+scrolling without horizontal overflow. Browser warning/error logs were empty.
+Files, evidence and limits: [ADMIN_PEOPLE_FOCUS_DESK.md](ADMIN_PEOPLE_FOCUS_DESK.md).
+
+No automated tests, actual database, real message/notification delivery,
+migration, reset/seed, scheduler, dependency, Git mutation or deployment occurred.
+Live transaction and delivery acceptance remain unperformed. Stop point: the
+requested People refinements are implemented locally.
+
+## Administrator Focus planner — 2026-10-25
+
+Implemented the owner's selected concept locally from `10e5003`, preserving
+existing/concurrent work. Center calendar now has compact months, a phone
+week selector and daily/Upcoming agenda with native details. Teaching schedules
+shows complete recurring-record cards with original filters, effective dates,
+status and public Group links. This supersedes the previous Admin date grid.
+Current shell/dock, semantic themes, RTL and 20px corners remain. No source
+query, authorization or write policy changes.
+
+Executed: three Python sources parse, seven localized templates compile and
+feature JavaScript passes syntax checking. Static comparisons preserve 42
+other route functions, native read/filter contexts, 13 protected file hashes
+and original locale values/duplicate counts. Fictional-memory manual browser
+review covered 1440/768/390/320px, English/light and Arabic/RTL/dark, day/week
+navigation, partial/multi-month periods, Day/Upcoming, native filters/clear,
+empty results, archived/future records, cancelled/all-day events, escaped
+authored text and no-script fallback. Phone filter clipping was corrected and
+rechecked. Final browser warning/error log is empty. CRLF-aware diff check
+passes; staging is empty and HEAD remains `10e5003`.
+
+No automated tests, actual database, migration, reset/seed, business write,
+scheduler, installation, Git mutation or deployment. Live database-backed and
+comprehensive regression acceptance remain unperformed. Details and stop point:
+[ADMIN_FOCUS_PLANNER.md](ADMIN_FOCUS_PLANNER.md).
+
+## Edit Group centered dialog correction — 2026-10-25
+
+Implemented the owner's edit correction from `10e5003`, preserving existing
+and concurrent work. Edit in Directory/Focus and Edit Group on Group details
+now open the native form in one centered dialog on the same page. The desktop
+information dialog is suspended during editing, then restored on cancellation.
+Native locked identity, signed snapshot, validation/stale responses and draft
+protection remain. Confirmed responses refresh the same filtered list or Group
+detail content. Group routes, form definitions and transaction services did not
+change. Source/files/evidence: [ADMIN_GROUPS_DIRECTORY_FOCUS.md](ADMIN_GROUPS_DIRECTORY_FOCUS.md).
+
+Executed: six localized templates compile, both scoped JavaScript files pass
+syntax checks, seven supporting hashes match, native form/status contracts and
+existing locale values/duplicate counts are retained. Manual fictional-memory
+browser review covered desktop/320px Arabic/RTL/dark, locked/unlocked identity,
+inline errors with original snapshot, draft cancellation, native stale-response
+presentation, filter preservation, detail-content refresh, one visible feature
+dialog and responsive return/focus. Final browser warning/error log is empty.
+CRLF-aware diff check passes; staging is empty and HEAD remains `10e5003`.
+
+No automated tests, actual database, migration, reset/seed, scheduler, dependency,
+Git mutation or deployment occurred. Successful fixture responses explicitly
+state that no Group was updated; real database-backed editing and comprehensive
+regression acceptance remain unperformed. Stop point: the requested local edit
+presentation is implemented.
+
+## New Group centered dialog correction — 2026-10-25
+
+Implemented the owner's correction locally from `10e5003`, retaining existing
+and concurrent work. New Group now opens the native creation form in a centered
+dialog within Groups. Validation stays in the dialog, drafts are protected,
+and a verified native list response refreshes the current filters. Standalone
+recovery remains. No Group backend, schema or transaction policy changed.
+
+Executed: four localized templates compile; both affected JavaScript files pass
+syntax checks. Static source comparisons preserve the native form contract,
+eight supporting files, the shared query owner outside its explicit opt-in
+refresh hook, and existing locale values/duplicate counts. Fictional-memory
+manual browser review covered desktop, 320px Arabic/RTL/dark, inline errors,
+discard cancellation and a presentation-only completion response with filters
+retained. No group was created. Browser warning/error log was empty.
+CRLF-aware diff check passes; staging is empty and HEAD remains `10e5003`.
+Files, evidence and limits: [ADMIN_GROUPS_DIRECTORY_FOCUS.md](ADMIN_GROUPS_DIRECTORY_FOCUS.md).
+
+No automated tests, actual database, migration, reset/seed, scheduler, dependency,
+Git mutation or deployment occurred. Real database-backed creation and
+comprehensive regression acceptance remain unperformed. Stop point: the
+requested creation presentation is implemented locally.
+
+## Admin Announcements scope board — 2026-10-23
+
+Implemented the owner's authorized Teacher-style option in the existing
+Communication / Announcements tab, from `10e5003` with existing local work
+preserved. Desktop now uses a scope rail and announcement board; phones have
+horizontal audience cards. Native Scope/Status filters, detail/editor, signed
+publication/withdrawal forms, current shell/dock, themes, RTL and 20px feature
+corners remain. No route, query or write-policy change is introduced.
+
+Executed: five localized templates compile; static form-source comparison and
+five domain-file hashes match the before-task baseline; JSON retains all prior
+values with 12 new labels and no added duplicate keys. Real-browser manual
+fictional-memory review covered 1440/768/390/320px, RTL/dark, live filters,
+selected-first updates, native GET fallback, empty results, escaped content and
+draft/detail editor navigation. Measured views have no document overflow.
+Evidence and limits: [ADMIN_ANNOUNCEMENTS_SCOPE_BOARD.md](ADMIN_ANNOUNCEMENTS_SCOPE_BOARD.md).
+
+Ordinary diff-check exits 2 for CR-at-EOL in this checkout; read-only CRLF-aware
+diff-check exits 0. New files have no trailing whitespace. HEAD remains
+`10e5003`, staging is empty, and the temporary presentation server/tab are closed.
+
+No automated tests, actual database, migration, business write, scheduler,
+installation, Git mutation or deployment occurred. Database-backed workflows
+and comprehensive regression acceptance are not claimed. Stop point: this
+presentation is implemented locally.
+
+## Administrator schedule calendar — 2026-10-23
+
+Implemented the owner's request to apply the Student/Teacher calendar
+presentation to `/admin/schedules`: Month/Week/Upcoming, phone Day selection,
+native Admin filters, Arabic/RTL/dark support and 20px feature cards. The original
+filtered register remains available, including slots outside the selected dates;
+archived/non-operational slots stay marked. Query scope, all schedule writes and
+the separate aggregate Calendar/event-management workflows are unchanged.
+
+Executed: two Python files parse, nine localized templates compile, JavaScript
+syntax exits 0, original query/26 other route functions and eight supporting
+files retain their baseline source, and locale values/duplicates are preserved.
+Actual browser manual review with fictional memory objects covered desktop,
+390px/320px phones, date/view navigation, filters across periods and readable
+native records with scripts removed. No horizontal phone overflow was measured;
+browser warning/error log is empty. CRLF-aware diff check exits 0.
+Evidence, files and verification limits: [ADMIN_SCHEDULE_CALENDAR.md](ADMIN_SCHEDULE_CALENDAR.md).
+
+No automated tests, actual database, migrations, resets/seeds, scheduler,
+installation, staging, commit, push or deployment occurred. Live-MySQL workflow
+and comprehensive regression acceptance remain unperformed. Stop point:
+requested local calendar presentation implemented.
+
+## Admin Groups Directory / Focus — 2026-10-23
+
+Owner selected Directory on desktop and Focus workspace on phones. Implemented
+locally from `10e5003` plus preserved pre-existing/concurrent work. The Groups
+listing now has a compact table, a phone selector/reader with All groups, scoped
+assets and two Arabic labels. The current shell/dock, 20px corners, native
+filters/links, lifecycle warnings and original status-form source remain.
+No route, query, model or write-policy change is introduced.
+
+Executed: three localized templates compile; JavaScript syntax exits 0; static
+receipts confirm the native form/control contracts and five unchanged source
+hashes. Locale JSON retains baseline values and duplicate counts. Actual
+templates/assets were manually reviewed with fictional memory data at desktop,
+390px and 320px widths, including RTL/dark, search/filter replacement, focus/back,
+confirmation cancellation and script-free native fallback. Reviewed layouts have
+no horizontal overflow. CRLF-aware diff check exits 0; HEAD is `10e5003`, staging
+is empty. Evidence and exact limits: [ADMIN_GROUPS_DIRECTORY_FOCUS.md](ADMIN_GROUPS_DIRECTORY_FOCUS.md).
+
+No automated tests, actual database, migration, reset/seed, scheduler, dependency,
+Git mutation or deployment occurred. The temporary review server/browser are
+closed at close-out. Live-MySQL workflow/regression acceptance is not claimed.
+Stop point: the selected Groups layouts are implemented locally.
+
+## People Focus Desk — 2026-10-23
+
+Owner creation-dialog correction is implemented locally: New Student and New
+Teacher open centered dialogs over People, reuse their native forms and POSTs,
+keep validation inside, protect entered drafts and refresh the same filtered
+directory only after a matching authorized success redirect. Unconfirmed writes
+retain details and require directory review before another submission.
+Five affected templates compile; script syntax passes; all four create/edit
+control comparisons and server/form/shared-workspace hashes match the captured
+before-state. Manual fictional-memory review covered opening, validation,
+discard/stay, successful return, 320px RTL/dark fit and Escape. No actual database
+or automated tests were used. Evidence: `instance/people_create_dialog/` and
+ADMIN_PEOPLE_FOCUS_DESK.md. No migration, Git mutation or deployment occurred.
+
+Owner sidebar correction: one People destination now replaces the separate
+Student/Teacher sidebar shortcuts. Students and Teachers remain internal tabs;
+the People sidebar entry stays active for both directories and child pages.
+
+Owner selected Focus Desk for desktop and phones. Implemented locally for the
+existing Student/Teacher directories and full profiles: filtered person list,
+selected-profile pane, phone reader/back, connected records and native account
+actions. Former row management shortcuts now live in the selected profile.
+Creation/edit/password and messaging keep their original native entry points;
+no Python view/query/write or schema change was made for this selection.
+
+The read-only enhancement validates native response URL, actor/auth-version/role,
+person and kind; cancels superseded reads and preserves full-page recovery.
+Semantic platform themes, 20px corners, RTL, reduced motion, shared navigation
+and the sole phone dock remain. Pre-existing/concurrent work is preserved.
+
+Executed checks: 267 current templates compiled with the real localization
+extension; new JavaScript syntax passed; rendered status-form control sequences
+match before/after for all four Student/Teacher active/suspended combinations.
+Final CRLF-aware whitespace and JavaScript syntax checks returned exit 0;
+HEAD stayed `10e5003` and staging stayed empty.
+Real-browser fictional-memory review covered desktop selection, filters, empty
+results, Teacher groups, 375px phone profile/back, 320px Arabic/RTL dark list and
+profile without horizontal overflow, and a script-free native profile.
+
+No automated tests, actual database, migration, business-data reset/seed,
+scheduler, dependencies, staging/commit/push or deployment was performed.
+Live transaction/concurrency and end-to-end acceptance are not claimed.
+See [ADMIN_PEOPLE_FOCUS_DESK.md](ADMIN_PEOPLE_FOCUS_DESK.md); ignored evidence:
+`instance/people_focus_20261023/`. Stop point: local presentation implemented.
+
+## Daily Desk Admin home — 2026-10-23
+
+Owner scope: apply the refined Daily Desk desktop/phone home and labelled Admin
+sidebar. Checkpoint: `10e5003` plus existing/concurrent work, preserved in place.
+Implemented: factual overview, agenda/attention/shortcuts, compact phone heading
+with New enrollment, and a centered native dialog with a shaded backdrop.
+
+New private Administrator-only GET selection searches active Students and
+advisory available Groups, using public IDs and bounded escaped searches.
+It loads the existing signed enrollment details into the dialog; native save,
+financial preview, lock/recheck, CSRF, nonce, rollback and history policy retain
+their original owners. Shared financial initialization is idempotently exposed
+for dynamic forms. Draft discard protection and native full-page fallback stay.
+
+Verified: 268 templates compile, changed Python parses, two scripts pass Node
+syntax checks, and two SELECTs compile with the MySQL dialect without an engine
+or execution. Original enrollment route definitions/native form, financial
+handler body and five integrity sources match the captured before-state.
+Manual browser review covered desktop dialog/selection/bank controls/discard,
+English phone and Arabic/RTL dark 320px phone without reviewed horizontal overflow.
+29 owned Arabic additions preserve existing values and concurrent additions.
+
+No automated tests, actual database, migration, reset/seed, scheduler, dependency,
+Git mutation or deployment was performed. This is bounded source/presentation
+verification, not actual MySQL write/financial/concurrency/regression acceptance.
+See ADMIN_DAILY_DESK_IMPLEMENTATION.md and ignored evidence in
+`instance/admin_daily_desk_20261023/`. Stop point: local source implementation.
+
+## Academics Setup Hub — 2026-10-23
+
+Owner selection: apply Setup Hub to Courses, Academic terms, Levels and Rooms
+on desktop and phones, with the selected phone card raised above its neighbours
+and horizontal swipe navigation. Checkpoint: `10e5003` plus pre-existing and
+concurrent work, preserved without Git mutation.
+
+Implemented locally: shared academic heading/cards, centre-wide all-status
+totals, compact record identities and native management disclosures. The phone
+deck centres the selected route, lowers neighbouring cards and follows the
+nearest native GET destination after a deliberate horizontal gesture settles.
+Keyboard focus, resize, vertical gestures and initial positioning do not select
+another route. Without JavaScript the four links use a two-column grid and the
+records/actions remain usable. Existing signed forms, price/order/archive
+meanings, Course filtering, Room paging, theme/RTL and the sole shared dock remain.
+
+Executed verification: 268 actual HTML templates compile with OwnedUIExtension;
+two affected Python sources parse; JavaScript syntax passes. Nine original form
+blocks across five templates retain identical normalized source. The four domain
+route modules, their models, authoring forms and captured transaction/lifecycle
+services retain their bytes. The MySQL count SELECT compiles without an engine
+or SQL execution. Locale JSON parses with no introduced duplicate or changed
+pre-existing value. Concurrent enrollment/shared-shell changes were preserved.
+
+Actual-browser fictional-memory review covers all four desktop directories,
+390px phone and 320px Arabic/RTL/dark, 1024px layout, filtering/global counts,
+Room page 2, management controls, touch swipes in both directions, horizontal
+wheel selection, keyboard selection, history, resize, vertical scrolling, empty
+results, reduced motion and no-script fallback. Reviewed widths have no page
+overflow; the selected phone card is centred. Browser script errors: zero.
+Evidence and the verification boundary: [ACADEMICS_SETUP_HUB.md](ACADEMICS_SETUP_HUB.md).
+
+No automated tests, real database reads/writes, migrations, reset/seed, scheduler,
+dependency installation, staging, commit, push or deployment was performed.
+Stop point: source implementation and bounded presentation review are complete;
+live-database and comprehensive regression acceptance are not claimed.
+
+## Admin Atlas and administrative correspondence — 2026-10-23
+
+Owner scope: implement the selected desktop/phone Atlas design across existing
+Admin pages, with platform colors and 20px feature cards. The owner explicitly
+authorized suitable private Admin correspondence. Checkpoint: `10e5003` plus
+pre-existing/concurrent changes, preserved without Git mutation.
+
+Implemented locally: an Admin-owned rail/shell and overview; people dossiers and
+forms; academic setup; Group/enrollment workflows; schedules/events; attendance
+and read-only gradebook; announcements; finance accounts, registers, documents,
+receipts, corrections/history and reports. Cards use semantic blue/red platform
+tokens, logical RTL layouts and exactly 20px corners. Simple tables become
+labelled phone records; native filtering/paging and all signed write controls
+remain. Student dossiers add only bounded actual enrollment/balance reads.
+
+Private correspondence now supports active Admin-to-platform-account pairs,
+with reciprocal Admin contacts for other roles. Academic Student/Teacher
+permission remains. Reading is participant-owned; sending rechecks current
+activity/roles and exact membership under locks. A separate administrative
+transaction service preserves the unchanged academic lock chain. Native CSRF,
+signed tokens, nonces, safe rollback and sender-owned history operations remain.
+Admin/Researcher message notifications admit only canonical private-thread
+targets; no academic or raw-research access is granted.
+
+Executed verification:
+
+- 258 actual localized HTML templates compile; twelve affected Python sources
+  parse; `node --check app/static/js/admin_atlas.js` passes.
+- Recipient SELECT construction compiles with the MySQL dialect for all four
+  roles, using an unbound Session without a database engine or execution.
+- All 39 form-bearing Admin templates retain their original native control
+  sequences, including action/method, named values, hidden controls/widgets and
+  confirmation attributes. Academic message transactions, Message and
+  Notification model hashes match the captured before-state.
+- English/Arabic/RTL and light/dark presentation was manually inspected in a
+  real browser using production templates/assets with fictional memory data.
+  Reviewed desktop overview, list/profile, Group cards, native Student form,
+  finance record, Messages and Researcher correspondence. Reviewed 320px phone
+  layouts, validation copy, message contrast, Notifications and preview. Checked
+  no horizontal page overflow on the reviewed phone compositions. Without
+  JavaScript, the native Student form retains six controls and Cancel returns
+  to the original Student list; the notification fallback link remains.
+- Locale JSON parses with no missing owned literal labels in the reviewed
+  Admin/message templates. The pre-existing duplicate Released grades key is
+  retained; no additional duplicated key is introduced.
+- CRLF-aware `git diff --check` passes, HEAD remains `10e5003` and staging is
+  empty. Existing unrelated and concurrent modifications remain in place.
+
+See [ADMIN_ATLAS_IMPLEMENTATION.md](ADMIN_ATLAS_IMPLEMENTATION.md) for coverage,
+policy and limits. Ignored evidence is in `instance/admin_atlas_20261022/`.
+The manual presentation fixture intercepts every production view, rejects
+unlisted reads and blocks writes; it creates no application factory or engine.
+No automated tests, actual database read/write, migration, reset/seed, scheduler,
+dependency installation, staging, commit, push or deployment was performed.
+The review browser/server are stopped at close-out. Live-MySQL authorization,
+sends/delivery, contention and end-to-end regression acceptance are not claimed.
+Stop point: the authorized design and correspondence source are implemented
+locally, with database execution outside this selection's verification scope.
+
+## Eclipse shared Login implementation — 2026-10-22
+
+Owner scope: apply the selected refined Eclipse desktop/phone preview locally.
+Inspected checkpoint: `10e5003`; retain all pre-existing and concurrent Teacher,
+Student, shared-shell, localization and documentation work.
+
+Implemented:
+
+- `auth/login.html`, scoped `login_eclipse.css` and `login_entry.js` reproduce
+  the simplified glass entry, original light/dark Youth Centre logos, local
+  red/blue gradients and approved glass artwork. Fonts are existing local Inter,
+  Manrope and Noto Sans Arabic assets. Removed the old tabs, decorative letters,
+  motivational copy and Adaptive English tagline from this page.
+- Native Placement test navigation opens the existing empty public route and
+  retains next. The field shell animates red on focus and green for a plausible
+  email format, with a check and accessible format-only status. The inner input
+  focus rectangle is replaced; server validation stays authoritative. Autofill
+  uses the same themed field surface. Respect device appearance, RTL, reduced
+  motion and hidden-page animation pausing.
+- Native LoginForm POST, CSRF, autocomplete, server field/flash errors and the
+  existing sign-in loading state remain. Password visibility stays local. The
+  help dialog explains existing administrator assistance, with native details
+  without JavaScript. The preview's inert Remember me checkbox and simulated
+  recovery/success are not shipped: session/recovery/authentication policy is
+  unchanged. No questions, attempts or assessment logic are added.
+- Added the selected transparent 740x740 RGBA WebP art (96,368 bytes), twelve
+  missing Arabic interface labels and current authority/design documentation.
+
+Executed verification:
+
+- Node --check passes for login_entry.js (exit 0). Six actual consuming templates
+  compile through the real OwnedUIExtension. The artwork decodes/verifies.
+  Locale JSON parses to 4,162 unique entries, with every baseline value retained
+  and no introduced duplicate. The identical pre-existing Released grades key
+  remains duplicated; unrelated localization content was not normalized.
+- SHA-256 comparisons confirm byte-identical auth routes/forms, shared base,
+  figma_ui.js, login.css and the placement/opening templates. The inspected
+  authentication/session/limiter/role/next policies therefore have no source
+  changes in this selection.
+- Real browser review rendered the actual templates/assets and LoginForm in an
+  ignored, CSRF-enabled presentation fixture. It has no application factory,
+  SQLAlchemy extension/engine or account lookup. Desktop (1280x720), English
+  phone (390px frame) and Arabic/RTL phone (320x640) were inspected. Credential
+  controls and both actions fit the reviewed widths; light/dark switching works.
+- Observed red empty-email focus, green fictional email plus red password focus,
+  and a native CSRF-enabled POST returning the actual required-password message.
+  The native help dialog blurs the background, closes with Escape and restores
+  focus. Placement navigation reaches its actual empty interface with a Back
+  URL retaining next. With scripts removed, the signed form and Placement link
+  remain and native details exposes administrator help. No successful account
+  authentication was attempted or simulated in production source.
+- Ordinary git diff --check returns 2 for existing worktree CRLF whitespace;
+  the explicit CRLF-aware full check passes (exit 0). HEAD remains `10e5003`
+  and staging is empty. New scoped source has no trailing-space findings.
+
+Ignored evidence: `instance/login_eclipse_20261022/` contains the before-state,
+static receipt, manual-only fixture and desktop/phone screenshots. The owned
+review tab and server are stopped at close-out. No automated tests were created
+or executed; no actual database read/write, migration, reset/seed, scheduler,
+dependency installation, staging, commit, push or deployment occurred. Browser
+presentation and source integrity are verified within this boundary; live-MySQL
+authentication/regression acceptance and a functioning placement assessment are
+not claimed. Stop point: selected Login design implemented locally.
+
+## Teacher Course Studio — 2026-10-22
+
+Owner scope: implement the selected Course Studio for My groups' internal
+pages, excluding primary-navigation destinations. Checkpoint: `10e5003` plus
+existing work. Preserve concurrent Gradebook, Discussions, Announcements,
+Student Atlas, navigation, login, Help and release changes.
+
+Implemented locally:
+
+- Twelve existing templates now share `teacher/studio/_base.html`/`_ui.html`,
+  `teacher/course_studio.css` and `teacher_course_studio.js`. The workspace has
+  the course header, unit outline and selected-unit lessons. Units/lessons use
+  cards; materials use a selectable list and reading panel. Six existing form
+  templates, saved Student-view preview and completion use the same design.
+- Preserve native form blocks and conditions, protected routes, signed state,
+  confirmations, publication/archive/order, file immutability and paging.
+  `_teacher_material_row` adds freshly sanitized rich text to its existing
+  authorized public projection; its SQL reads and six other functions are
+  unchanged. No write handler or research configuration changed.
+- Use shared semantic colors, 20px feature cards, English/Arabic/RTL and the
+  existing sole phone dock. Add 35 missing Arabic labels without replacing
+  existing entries. Local selection has native fragment/no-script fallback;
+  external resources are not fetched or embedded.
+
+Executed verification:
+
+- All 253 current localized templates compile. Literal template references
+  resolve, material-query Python AST and locale JSON parse, and the feature
+  script passes Node --check. Nine templates' complete native form blocks
+  are byte-identical to the captured pre-change source. Only the intended
+  material projection function changes among seven functions in that service.
+- Manual browser review used actual templates/assets, existing decorated list
+  GETs and fictional memory substitutes without an app factory or SQLAlchemy
+  engine. Reviewed workspace selection, units/lessons, three material types,
+  all six authoring templates including creation/editing, validation display,
+  saved Student preview and completion. File editing retains one signed
+  snapshot and no upload field. The saved preview contains no script element
+  from the deliberately hostile fictional material; the reader projection
+  uses the same sanitizer before safe rendering.
+- Desktop 1440px and phones at 390/320px were reviewed. Measured reviewed pages
+  fit without horizontal document overflow, feature corners compute to 20px,
+  and local fixed controls count is zero. Arabic/RTL/dark workspace/completion
+  render correctly. Removed duplicate mobile table labels and kept both saved
+  completion/open dates. Archived Group units retain reading/Archive cleanup
+  but expose no Add/Edit/reorder/reactivation controls. The empty workspace is
+  actionable. With scripts absent, all four unit and three material panels
+  remain visible through native fragment links.
+- Static comparison also detected concurrent `auth/login.html` and
+  `login_entry.js` changes after this task's baseline; they were not edited by
+  this task and remain present. Own reviewed source has no trailing-space
+  findings. This review does not establish real-database authorization,
+  persistence/concurrency or comprehensive automated regression acceptance.
+
+Evidence is ignored under `instance/course_studio_20261022/`, including source
+copies/hash receipt and desktop/phone images. No automated test package or
+execution, actual database access, migration, reset/seed, scheduler, dependency
+installation, staging, commit, push or deployment is included. Stop point:
+requested local Course Studio implementation complete. Final inspection keeps
+HEAD at `10e5003` and staging empty. Ordinary git diff --check returns 2 on
+pre-existing CRLF whitespace; the CRLF-aware check returns 0. The owned browser
+and memory-only server are stopped and the viewport override is reset.
+
+## Teacher Discussions interaction correction — 2026-10-22
+
+Owner scope: centered New topic dialog, a redesigned names-only desktop Group
+dropdown beside New topic with no search, and animated desktop reading within
+the same document. Checkpoint remains `10e5003`; preserve concurrent work. This
+record supersedes the earlier Focus desk search/native-navigation presentation.
+
+Implemented locally:
+
+- `_base.html`, `_ui.html`, `new.html`, teacher/discussions.css and
+  teacher_discussions.js provide the shaded native dialog, compact Group menu,
+  responsive scrolling and same-document reader. Existing signed creation forms
+  load from their original authorized GET and submit to their unchanged POST.
+  Validation remains inside the dialog; success displays the reader and actual
+  server notices. Native no-script entry points and phone topic links remain.
+- Confirm before discarding topic/reply drafts, restore focus on dialog close,
+  cancel superseded GETs and ignore late responses. Scope imported HTML to the
+  current public actor/Group and requested topic. A failed request retains the
+  draft; an uncertain POST never triggers an automatic retry. The original nonce
+  handles an intentional retry. Reduced-motion preferences disable animation.
+- workspace.js adds idempotent dynamic-form registration and a scoped dirty-form
+  query. The existing registration callback and surrounding navigation/submit
+  guards retain their behavior; portal_base.html updates the shared script cache
+  version. Added Arabic interaction/error labels without replacing prior entries.
+  No Python handler, discussion service, model or migration changed in this
+  follow-up.
+
+Executed verification:
+
+- Both JavaScript files pass Node --check (exit 0); locale JSON parses. Static
+  comparison of 747 captured sources finds only the intended interface, locale,
+  shared registration/cache and authority/design-document changes before this
+  status entry. The Teacher discussion route is byte-identical to its follow-up
+  baseline. Shared registration callback comparison passes after removing only
+  the new idempotency checks/indentation; surrounding source matches exactly.
+  Own changed source has zero trailing-space findings.
+- Real Chrome reviewed the actual six localized templates/assets and existing
+  decorated routes using fictional memory substitutes, with no app factory or
+  SQLAlchemy engine. Desktop Group choices contain names only and zero search
+  inputs; Group selection and New topic share a header row. The centered dialog
+  shades the background and retains title/body validation. Creation, reader
+  switching, All topics and duplicate-safe manual creation retry retain the same
+  document. The dynamically loaded reply form also posts through its native route.
+- Draft confirmation accepts/cancels correctly; failed reader GET preserves the
+  draft/guard. Controlled delayed GETs retain the latest choice. A mismatched
+  actor response is refused. An aborted creation response keeps the draft/token,
+  sends no automatic retry and produces only one topic after intentional retry.
+  No page JavaScript errors were observed. These checks do not prove real-MySQL
+  authorization, persistence or concurrent transaction behavior.
+- At 1440px the dialog is centered and 620px wide. At 390 and 320px it fits the
+  viewport without document horizontal overflow; its body scrolls at small
+  heights. Arabic/RTL/dark validation focuses the invalid field, preserves text
+  and imports the Arabic success notice. No-script Group selection and signed
+  creation fallback remain usable; reduced motion computes no reader animation.
+- Ordinary git diff --check reports native CRLF whitespace (exit 2), including
+  pre-existing work. The explicit CRLF-aware full check passes (exit 0). HEAD is
+  `10e5003`, and staging remains empty.
+
+Ignored evidence: `instance/teacher_discussions_followup_20261022/`. The owned
+Chrome and memory-only server are stopped. No automated tests were created or
+executed; no actual database access, migration, reset/seed, scheduler, dependency
+installation, staging, commit, push or deployment occurred. Broad regression or
+real-database acceptance is not claimed. Stop point: requested local interaction
+correction complete; unrelated and concurrent work is preserved.
+
+## Teacher Discussions Focus desk — 2026-10-22
+
+Owner scope: implement revised Focus desk for desktop and phones. Inspected
+checkpoint: `10e5003`; preserve pre-existing/concurrent Gradebook, Announcements,
+Student Atlas, shared navigation, Help and release work.
+
+Implemented locally:
+
+- Six Teacher discussion templates share `_base.html`/`_ui.html`, scoped
+  teacher/discussions.css and teacher_discussions.js. Overview selects the
+  first current Group or reauthorizes an explicit public Group choice. Lists
+  occupy full content width with no preselected topic/reply read. Native topic
+  GETs add the reader on desktop and open separate phone reading. All topics
+  restores the same list page. Feature card corners are 20px; shared shell and
+  the existing phone dock are retained.
+- Desktop Group search filters only rendered authorized choices. Native GET
+  selection remains available without script and on phones. Keep the existing
+  50-Group bound, append an authorized current Group beyond that slice and show
+  truncation. Open/Locked states and counts are actual existing query values;
+  no pin, unread, unanswered or student-proficiency classification is added.
+- Compose existing bounded reads for 20 topics and 50 replies. topic_page is
+  independent of reply page and survives links/forms/redirects. Creation stays
+  on its native signed form. Reply and moderation keep their original protected
+  handlers, immutable text, version/nonce checks and transaction services.
+- Add ten Arabic labels without replacing existing entries. Keep logical
+  layouts, RTL, semantic themes/density and authored text escaping. Long names
+  wrap, and native Group labels use automatic authored-text direction.
+
+Executed verification:
+
+- All six localized templates compile; changed Python AST, locale JSON and
+  JavaScript syntax parse. Static comparison against the clean Teacher route
+  baseline finds four changed read/navigation/render functions, two added
+  presentation helpers and the other 12 existing functions unchanged. All five
+  native write handlers are identical by AST. All 78 captured protected sources
+  (discussion services/models, migrations, Student discussion files, shared
+  layouts/navigation) retain their baseline hashes. Own source trailing-space
+  count is zero.
+- Real Chrome reviewed actual templates/assets and decorated routes with owned
+  fictional memory substitutes, with no app factory or SQLAlchemy engine.
+  Desktop entry has zero readers and the topic board exactly spans its layout.
+  Group search/selection, no-match, Escape, native no-script navigation and
+  English/light/Arabic/RTL/dark were reviewed. At 1440, 390 and 320px the reviewed
+  list/reader layouts fit without horizontal document overflow, including long
+  literal authored text. Shared mobile dock count is one; fixed feature nav is
+  zero. No page JavaScript errors were observed.
+- Memory-only ordinary forms create a topic, append an escaped literal reply,
+  lock/reopen and retain attempted creation/reply text after invalid input.
+  Replaying a pre-moderation reply state shows the original stale-form refusal
+  and retains the draft. Real CSRF middleware rejects a tokenless fixture POST
+  with 400; real role decorators reject a fictional Student with 403; the scoped
+  fixture Group lookup returns 404 for an unknown choice. These substitutes do
+  not prove actual-MySQL authorization, persistence or concurrent transactions.
+- Manual paging shows 20 then 3 topics and 50 then 5 replies, preserving the
+  independent topic page and return link. Empty Group/topic views are actionable.
+  A direct current Group outside the first slice has 51 bounded choices; an
+  off-page selected topic is identified, and out-of-range pages fall back to one.
+- Ordinary git diff --check reports native CRLF whitespace (exit 2), including
+  pre-existing work. The explicit CRLF-aware full check passes (exit 0), with no
+  substantive trailing-space report. HEAD is `10e5003`; staging remains empty.
+
+Ignored evidence: `instance/teacher_discussions_20261022/`. The owned Chrome and
+memory-only server are stopped. No automated tests were created/executed, and no
+actual database access, migration, seed/reset, scheduler, dependency installation,
+staging, commit, push or deployment occurred. Broad regression/real-database
+acceptance is not claimed. Stop point: local Teacher Discussions implementation
+complete; existing and concurrent work is preserved.
+
+## Teacher Gradebook literal Guided Workspace correction — 2026-10-22
+
+Authorization/checkpoint: owner explicitly selected Guided Workspace on desktop
+and the separate phone concept, with the top-right dropdown restored. Verified
+HEAD remains 10e5003. Preserve existing and concurrent Announcements, Discussions,
+Student Atlas, navigation, Help and release work.
+
+Implemented locally:
+
+- Gradebook templates/assets now follow the selected desktop and phone
+  compositions: stages and underline tabs, compact rows, next-step/plan column,
+  one phone continuation card, assigned-Group controls, type-card wizard/live
+  summary, phone focus/roster, task progress, review, plan and student records.
+  Cards use 20px; colors use platform tokens. The shared shortcut dock is intact.
+- Added Group-scoped captured-score matrix and released-only totals via the
+  existing calculator. Added a Group/item-scoped, 20-entry actual-correction
+  history projection and bounded overview counts. No new write or grade rule.
+- Added missing Arabic labels, including dynamic headings, type cards and release
+  checklist. English/Arabic, RTL and dark/light appearance retain platform roles.
+  Save-and-close returns to the existing task overview; whole-roster saves remain
+  authoritative and native.
+
+Executed verification:
+
+- Eight localized templates, two Python ASTs, locale JSON and feature JavaScript
+  parse. Static comparison against the pre-correction copy: 38/46 Gradebook
+  functions unchanged, including all six mutation handlers; 45/46 existing query
+  helpers unchanged. Changes are read/render helpers and local save destination.
+- Calculation, transaction, form-parser and shared mobile-dock files match their
+  recorded pre-implementation SHA-256 hashes. CRLF-aware git diff --check passes;
+  staged file list is empty. HEAD is unchanged.
+- Manual Chromium review with actual templates/assets and decorated GETs using
+  fictional in-memory query values: desktop stages/tasks/matrix/plan/groups,
+  phone dropdown/filter/creation/back/focus/roster/student/review, Arabic dark
+  mode and a 320px phone with no document overflow. Computed continuation-card
+  radius is 20px and the shared dock count is one.
+- Native creation reaches scores. A range error is blocked; server validation
+  retains an attempted invalid number. ASCII and Arabic-digit decimal saves
+  work in the memory substitute, posting all 8 score and 8 comment fields;
+  next-student and close destinations work. Without JavaScript the creation
+  select/fields/submit and all 8 score inputs remain usable. The memory fixture
+  returns 403 for Student role, 404 for unknown Group and 400 without CSRF.
+
+Boundary/stop point: this is source/template and fictional-memory browser
+verification, not automated regression or real database acceptance. New SQL
+projections were statically reviewed, not executed against MySQL. No actual
+DB read/write, migration/reset/seed, automated tests, scheduler, installation,
+staging/commit/push or deployment. Ignored manual evidence is under
+instance/teacher_gradebook_20261022; no runtime demonstration option was added.
+
+
+## Teacher Gradebook responsive workspace — 2026-10-21
+
+Owner scope: implement the selected phone concept and desktop workspace, avoid
+conflicting bottom navigation, use platform colors and 20px feature cards.
+Inspected checkpoint: `10e5003`; preserve pre-existing Announcements, Student
+Atlas, shared navigation, Help, release documentation and design work.
+
+Implemented locally:
+
+- Six existing Teacher Gradebook templates share `_base.html`/`_ui.html`,
+  `teacher/gradebook.css` and `teacher_gradebook.js`. Desktop has tasks, next step,
+  grading plan and released-student results. Phone has cards, expandable results
+  and one-student score entry. Local navigation stays above content; the one
+  platform shortcut dock is unchanged. All feature colors use semantic roles.
+- Creation has three optional steps over the native form. Categories, source
+  lists, captured rosters, editing, student preview and guarded release use
+  current server values. No grade arithmetic or automatic result import was
+  added to templates/script. Added 115 missing Arabic labels without replacing
+  existing locale entries, including concurrent Student Atlas additions.
+- Focus entry retains every captured public-id input. After success/no-op, a
+  small allowlisted helper selects the next captured record or item review.
+  Other callers keep the old destination. Invalid/stale/authorization failure
+  and transaction handling retain their established behavior.
+
+Executed verification:
+
+- Eight localized Gradebook templates compile; changed Python AST, locale JSON
+  and JavaScript syntax parse. All five literal template references resolve.
+- Static AST comparison: 44 of 45 existing Gradebook functions are identical.
+  Normalizing only two score-save navigation returns makes that handler's AST
+  identical to baseline. Queries, calculations, transaction helpers, form parser
+  and the shared mobile dock match recorded baseline hashes.
+- Manual browser review uses actual templates/assets and decorated GETs with
+  owned fictional memory substitutes, not the app factory/database. Reviewed
+  1440, 390 and 320px layouts fit without page horizontal overflow, including
+  English/light and Arabic/RTL/dark. Fixed local navigation count is zero,
+  shared dock count is one, and inspected card corners compute to exactly 20px.
+- Phone save-and-next submitted eight score and eight comment fields, advanced
+  to the next public record and sent the final student to review. Client range
+  validation blocks invalid scores. Preview shows one selected student's escaped
+  feedback; literal markup does not become a new element. Arabic-digit input is
+  accepted by the original server parser (18.50 in presentation memory), while
+  an Arabic-digit value above the maximum gets the localized client hint. No
+  page JS errors.
+- Without JavaScript, three native gradebook sections remain reachable and
+  whole-roster/creation forms work. Real parsers reject excessive precision,
+  preserve attempted names/scores and leave fictional stored scores unchanged
+  on failure. Native creation returns eight score fields. Category setup reaches
+  100%; released categories expose no Edit link. Archived groups retain six read
+  destinations and no create/score controls. Empty setup is actionable. The
+  memory-only release requires confirmation and removes draft Edit afterward.
+- Real role decorators return 403 for a fictional Student, unknown scoped Group
+  lookup returns 404 and CSRF middleware rejects a tokenless fixture POST with
+  400. These substitutes do not prove actual-MySQL authorization or transactions.
+
+Final closeout: scoped source/whitespace and complete tracked/staged state were
+inspected. HEAD remains `10e5003`, staging is empty and unrelated concurrent
+Student/Announcements/Help/release changes remain present. Ordinary git diff
+--check reports native CRLF endings (exit 2); the explicit CRLF-aware whitespace
+check passes (exit 0), with no substantive trailing-space report. The owned
+browser and temporary presentation server are stopped.
+
+Ignored evidence: `instance/teacher_gradebook_20261021/`. No actual database
+access, migration, reset/seed, scheduler, dependency installation, automated test
+creation/execution, staging, commit, push or deployment. Broad automated
+regression and real-database acceptance are not claimed. Stop point: local
+Gradebook implementation complete, with unrelated work preserved.
+
+## Student Atlas implementation — 2026-10-21
+
+Owner authorization: apply the selected Atlas proposal, continued on 2026-10-21.
+Checkpoint: `10e5003`, preserving concurrent Teacher Announcements/dashboard,
+navigation, locale, release-documentation, Help and earlier design work.
+
+Implemented locally:
+
+- New Student-only Atlas base, course macros/library and courses.css/
+  student_courses.js. My courses now uses the new template with its original
+  card/progress/recent payload. Use a real recent lesson for Continue/Revisit,
+  native course/outline links, timing/archival labels and an honest empty state.
+- Recompose course overview and units/lessons with a blue course header, completion
+  counts, native unit disclosures, a first-unfinished-lesson action and existing
+  activity/results/attendance/records destinations. No additional query or route.
+- Recompose the lesson as a wide outline/reading layout and compact phone reader.
+  Optional material-type filters use only already-rendered authorized materials.
+  Keep original media/download URLs, the sole sanitized rich-text rendering,
+  native completion/undo forms, signed state and previous/next navigation.
+- Apply Atlas to connected Student activity instructions, attempts, results and
+  receipts through role-conditional inheritance. Keep Teacher inheritance and
+  every protected form. Assignment/Listening/Speaking detail facts become a wide
+  side panel and normal phone content; Quiz retains its existing details region.
+- Align released Grades/detail, finalized Attendance and My records with Atlas.
+  Their existing native Filters expand in flow. Add 36 missing Arabic labels,
+  preserving concurrent additions and the pre-existing duplicate Released grades
+  key. Native workflows, business/research meanings and retention are unchanged.
+
+Verification executed:
+
+- All 249 current localized templates compile and literal references resolve
+  (including concurrent templates added during this work).
+  The sole workspace Python change is its Student course-list template name.
+  Fourteen relevant route/service sources match HEAD; eight affected templates'
+  complete form blocks match HEAD after whitespace normalization. Arabic JSON
+  parses, and the new page script passes Node syntax inspection.
+- Bounded manual browser review used actual templates/assets, decorated course/
+  outline/lesson GETs and existing fictional activity/record fixtures, with no
+  application factory, database engine or real business write. Eighteen page
+  destinations were viewed at 1440, 390 and 320px without horizontal document
+  overflow. This includes the four learning pages, activity library, four activity
+  overviews, Quiz/Listening questions and results, Speaking receipt, Grades/detail,
+  Attendance and My records.
+- Eight representative destinations also fit at 390px in Arabic/RTL dark theme.
+  Open record Filters remain in flow and inside the phone viewport. Reviewed
+  single/multiple material filtering, native PDF download destinations, unit
+  shortcut opening and the existing completion POST action without submitting it.
+- Empty courses, no recent lessons, ended access, all-complete lessons and long
+  script-like titles render honestly and escaped. With all page scripts withheld,
+  all seven sample materials remain visible, filters stay hidden and the native
+  completion form remains POST. Latest inspected browser error log was empty.
+- The final inheritance correction carries atlas-page into Student activity
+  pages so the same token-based controls apply there; Teacher inheritance stays
+  on the original base. Six representative activity/attempt destinations were
+  rechecked at 320px with the intended 10px button corners and no horizontal
+  overflow. CRLF-aware git diff --check passes; the staged diff remains empty.
+
+Evidence and temporary manual/static helpers are ignored under
+`instance/student_atlas_20261020/`. No automated tests/package, actual database,
+migration, reset/seed, scheduler, dependency installation, staging/commit/push or
+deployment was performed. This does not claim real-MySQL authorization,
+persistence/locking, production media playback or full regression acceptance.
+Stop point: local Atlas presentation implemented; no release is authorized.
+
+## Teacher Announcements inline reader and phone deck — 2026-10-20
+
+Owner follow-up to Group first: keep received reading inside the announcement
+list; show a raised phone Group card with adjacent cards behind it and no visible
+horizontal scrollbar; remove the introductory sentence and align Filters with
+the title. Checkpoint remains `10e5003` plus the previous local implementation.
+
+Changes are confined to feed/results templates, Teacher announcements.css and
+the new optional teacher_announcements.js, plus these authority/decision records.
+Received rows use native exclusive details with escaped, line-preserving full
+text. The original recipient detail URLs still work for notification entry.
+Phone cards use native snap scrolling and a CSS predecessor; script centres the
+selected card after layout, handles resize/RTL/focus and marks the nearest card
+as frontmost. Tiny fractional centring deltas are ignored to avoid an unintended
+mandatory-snap step. Actual Group selection remains an ordinary GET; no data or
+stored ordering changes. Filters retains its accessible label beside the title.
+
+Verification performed:
+
+- Node syntax check passes. All six localized announcement templates compile
+  and their literal references resolve. No Python, SQL/query, model, write-handler
+  or localization change was needed for this follow-up.
+- Bounded manual browser review used the existing ignored memory-only fixture
+  and actual GET/templates/assets. At 1440, 390 and 320px there is no page
+  horizontal overflow. Phone title/Filters centres align; opened 320px Filters
+  fit. The selected card is frontmost in English and Arabic/RTL dark appearance;
+  horizontal scrollbar is hidden on phones and desktop remains unchanged.
+- Received click keeps the URL and displays the full body inside the list.
+  Opening another notice leaves one disclosure open. Native reading also works
+  with JavaScript disabled. Phone wheel scrolling advances the front card, and
+  selecting it updates both the selected card and the Group board correctly.
+  No JavaScript page errors were observed.
+- Final tracked/staged inspection is complete: staging remains empty and the
+  CRLF-aware git diff --check passes. Native CRLF endings may still be flagged
+  by ordinary git diff --check in previously touched tracked files.
+
+Presentation evidence is ignored under instance/teacher_announcements_20261020.
+The owned browser and temporary memory-only server are stopped.
+No actual database access, application factory, migration, reset/seed, scheduler,
+automated test creation/execution, dependency installation, Git mutation or
+deployment. This is not real-MySQL or comprehensive regression acceptance.
+Stop point: local presentation follow-up complete; no release is authorized.
+
+## Teacher Announcements Group first — 2026-10-20
+
+Owner authorization: implement the selected desktop/phone concept with contained
+notice scrolling, status/date Filters, selected Group first, sent/received tabs
+and horizontal phone Group scrolling. Inspected checkpoint: `10e5003`. Preserve
+pre-existing modified release documentation, the Teacher navigation-strip change,
+untracked Help and all earlier design outputs.
+
+Implemented:
+
+- The Announcements workspace now opens assigned-Group management, with Received
+  announcements as the second ordinary GET tab. The old nested Group list entry
+  renders the same workspace and retains active-assignment/historical guards.
+- Status (Draft, Published, Withdrawn), search and inclusive local dates apply
+  server-side before the unchanged 20-row paging. Management dates use last
+  updated time; receiving uses publication time and stays published-only.
+  Invalid dates show an error with no results. Group totals remain visibly
+  labelled as all announcements, independent of active filters.
+- The selected Group renders first; Group selection retains current criteria
+  and starts at page one. Desktop rails and notice lists scroll independently;
+  phones use a horizontal Group rail and a bounded vertical notice list. Native
+  Filters start closed. Shared themes, Arabic/RTL and no-script GET operation
+  remain available. No new client-side script or storage was introduced.
+- The dashboard's announcement View all and the recipient detail return link
+  target the received tab. Existing draft/edit/detail destinations and all
+  publication/withdrawal forms keep their original handlers and guards.
+- Changed sources: Teacher announcement routes and feed/results/recipient detail,
+  Teacher-owned announcements.css, shared announcement read queries, one Teacher
+  dashboard link, 27 missing Arabic phrases and these authority/decision records.
+
+Actual checks:
+
+- Two changed Python modules parse. All 244 localized application templates
+  compile and literal template references resolve. Arabic JSON parses. AST
+  comparison confirms the four announcement write handlers plus original
+  Teacher visibility/membership and paging/order helpers match HEAD.
+- Both filtered query shapes compile for MySQL without creating an engine or
+  executing SQL: management retains Group/status/escaped search and updated-at
+  bounds; receiving retains published/current-assignment visibility, search and
+  publication bounds. For 1–20 October in Africa/Tripoli, inspected bounds are
+  30 September 22:00 UTC through 20 October 22:00 UTC, exclusive. Four invalid,
+  inverted or overflowing date examples are rejected.
+- Manual browser presentation used the actual decorated GETs, templates and
+  static assets with fictional memory-only query/authorization substitutes.
+  Reviewed 1440/1366 desktops, 1024/768 compact views, 390/320 phones and Arabic
+  dark 320px, with no page horizontal overflow. Notice wheel scrolling changed
+  its scrollTop from 0 to 500 while page scroll stayed 0; phone horizontal wheel
+  scrolling moved the Group rail by 403px. No JavaScript page errors observed.
+- Manually inspected draft/date combination (five matching notices), all three
+  status selections, selected-first Group navigation with preserved criteria,
+  received date range (three notices), page two (20 rows), empty/archived states,
+  invalid range, and operation with JavaScript disabled (15 draft rows/two tabs).
+  An unknown Group returns 404 and non-Teacher fixture role returns 403. These
+  use substituted data; they are not actual database authorization acceptance.
+- Ordinary git diff --check flags native CRLF endings in DECISIONS and the
+  changed dashboard line; the CRLF-aware check passes. Final tracked and staged
+  state is inspected separately; no staging, commit or push is performed.
+
+Evidence is ignored under `instance/teacher_announcements_20261020/` (manual
+fixture, desktop/phone PNGs and compiled SQL). The owned browser and temporary
+memory-only server stopped. No automated tests/package, pytest collection,
+application factory, actual MySQL access, reset/seed, migration, scheduler,
+dependency installation, Git mutation or deployment was used. Actual persistence,
+real-MySQL execution and full regression acceptance are not claimed.
+
+Stop point: local implementation complete; no release is authorized by this task.
+
+## Hosted local-snapshot replacement completed — 2026-10-18
+
+Following the owner's explicit replacement and temporary-SSH-key approvals, the
+existing Railway `production` database and private attachments now contain the
+verified local evaluation snapshot. Code remains the successfully pushed/deployed
+`10e5003`; no second code commit or deployment was required for this operation.
+
+At 20:23:35 UTC, all 75 tables / 21,503 rows (97 accounts) match the source
+fingerprints, all 167 FKs pass with enforcement enabled, and all 348 independent
+private files (394,967,304 bytes) match size/SHA-256. The prior 1,525 hosted rows
+and 20 files have a preserved private backup with an actually verified isolated
+MySQL/file restore. The owned recovery process stopped and final local application
+database fingerprints are unchanged. Head stays `8e5f3b0d7124`; no new migration,
+dependency, scheduler, research-semantic or unrelated hosting-setting change.
+
+Post-copy review: 18 actual role-scoped HTTP pages return 200, four role guards
+return 403 and protected Listening range audio returns 206 with correct bytes.
+Public readiness/Login/placement and five changed assets pass. Signed operator
+sessions were used; password login, interactive forms and automated regression
+acceptance are not claimed. No automated tests were created or executed.
+
+Remote staging/old private copies were cleaned after verified recovery and review.
+The temporary key was revoked at 20:25:48 UTC, absence confirmed, local key files
+deleted and the SSH session closed. Research is paused/non-study with 15-day
+retention. Completion/recovery details: HOSTED_REPLACEMENT_20261018.md. This
+operational closeout documentation remains a local post-release update; unrelated
+untracked Help/output files are preserved and no further Git mutation occurs.
+
 ## Current release and hosted replacement preparation — 2026-10-18
 
 The owner explicitly requests push/deploy and replacement of hosted data with

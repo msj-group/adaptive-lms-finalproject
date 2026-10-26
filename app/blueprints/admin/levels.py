@@ -1,3 +1,4 @@
+from app.services.academic_status_presentation import accept_status_selection
 from flask import abort, flash, redirect, render_template, url_for
 
 from app.blueprints.admin import admin_bp
@@ -65,6 +66,9 @@ def level_toggle_status(public_id):
     level = lock_level_for_write(public_id)
     if level is None:
         abort(404)
+
+    if not accept_status_selection(level.status):
+        return redirect(url_for("admin.levels_list"))
 
     if level.status == AcademicStatus.ACTIVE.value:
         # Both Level archive blockers: an active Course directly under

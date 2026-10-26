@@ -1,13 +1,15 @@
 {% extends "layouts/admin_base.html" %}
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ 'Edit Course' if course else 'New Course' }}{% endblock %}
+{% import "admin/_atlas_ui.html" as atlas %}
+{% import "_figma_ui.html" as ui %}
 {% block admin_content %}
-<div class="ds-page yc-surface" style="max-width: 560px">
-  <h1 data-workspace-page-heading>{{ 'Edit Course' if course else 'New Course' }}</h1>
+<div class="ad-page">
+  <header class="ad-page-head"><div><div class="ad-eyebrow">Academic setup / Courses</div><h1 data-workspace-page-heading>{{ 'Edit Course' if course else 'New Course' }}</h1></div><a class="btn btn--secondary" href="{{ url_for('admin.courses_list') }}">Back</a></header>
+  <div data-academic-messages>{{ macros.flash_messages() }}</div>
+  <form data-academic-form data-academic-kind="courses" data-academic-record="{{ course.public_id if course else '' }}" data-academic-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}" method="post" novalidate class="yc-form ad-form-workspace">
+    <section class="ad-card ad-field-panel"><div class="ax-form-section"><span>{{ ui.icon('book', 18) }}</span><div><h2>Course details</h2><p class="ad-meta">Complete the details below.</p></div></div><div class="ad-form-grid">
 
-  {{ macros.flash_messages() }}
-
-  <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     {% if course %}
     <input type="hidden" name="edit_snapshot" value="{{ edit_snapshot_token }}">
@@ -32,17 +34,17 @@
       {% for error in form.level_id.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
     {% endif %}
-    <div class="field" style="">
+    <div class="field">
       {{ form.title.label(class_="field__label") }}
       {{ form.title(class_="field__input") }}
       {% for error in form.title.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="">
+    <div class="field">
       {{ form.code.label(class_="field__label") }}
       {{ form.code(class_="field__input") }}
       {% for error in form.code.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="">
+    <div class="field">
       {{ form.description.label(class_="field__label") }}
       {{ form.description(class_="field__input", rows="4") }}
       {% for error in form.description.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
@@ -50,16 +52,21 @@
     {% if course %}
 
     {% endif %}
-    <div class="field" style="">
+    <div class="field">
       {{ form.price.label(class_="field__label") }}
       {{ form.price(class_="field__input", inputmode="decimal") }}
       {% for error in form.price.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
       <p>New enrollments use this price. Previously issued invoices retain their recorded price.</p>
     </div>
-    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
+
+    </div></section>
+    <aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Course context</h2>{{ ui.icon('info', 18) }}</div><p class="ad-meta">Manage the course identity and the price used for new enrollments.</p>{% if course %}<dl class="ad-definition"><dt>Course</dt><dd dir="auto">{{ course.title }}</dd><dt>Level</dt><dd dir="auto">{{ course.level.name }}</dd><dt>Status</dt><dd>{{ macros.status_badge(course.status) }}</dd></dl>{% endif %}</section></aside>
+    <section class="ad-card ad-save-panel"><div class="ad-form-foot"><span class="ad-meta">Review the details before saving.</span><div class="ad-actions">
+
       {{ form.submit(class_="btn btn--primary") }}
-      <a class="btn btn--secondary" href="{{ url_for('admin.courses_list') }}">Cancel</a>
-    </div>
+      <a class="btn btn--secondary" href="{{ url_for('admin.courses_list') }}" data-academic-editor-cancel>Cancel</a>
+
+    </div></div></section>
   </form>
 </div>
 {% endblock %}

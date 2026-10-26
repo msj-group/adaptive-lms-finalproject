@@ -1,10 +1,15 @@
 {% import "admin/_macros.html" as macros %}
+{% import "_figma_ui.html" as ui %}
 {% import "_grade_macros.html" as gr %}
 <span hidden data-query-count="{{ page.items|length }}"></span>
-
-<div style="overflow-x:auto"><table class="table"><thead><tr><th>Student</th><th>Obligations (LYD)</th><th>Collections</th><th>Payouts</th><th>Balance</th></tr></thead><tbody>
-{% for student in page.items %}{% set facts = balances[student.id] %}<tr><td><a href="{{ url_for('admin.student_financial_record', student_public_id=student.public_id) }}">{{ student.full_name }}</a></td>
-{% for key in ['obligations','collections','payouts','balance'] %}<td>{{ money(facts[key]) }}</td>{% endfor %}</tr>{% else %}<tr><td colspan="5">No matching records.</td></tr>{% endfor %}</tbody></table></div>
-<p>A positive balance is due from the student. A negative balance is credit owed to the student.</p>
-{% if page.has_prev %}<a href="{{ url_for('admin.student_accounts', page=page.prev_num, q=search) }}">Previous</a>{% endif %}
-{% if page.has_next %}<a href="{{ url_for('admin.student_accounts', page=page.next_num, q=search) }}">Next</a>{% endif %}
+<div class="ad-table-wrap"><table class="table ad-table"><thead><tr><th>Student</th><th>Balance · LYD</th><th>Account position</th><th>Account</th></tr></thead><tbody>
+{% for student in page.items %}{% set facts = balances[student.id] %}
+<tr>
+  <td data-label="Student"><a class="ad-name" href="{{ url_for('admin.student_financial_record', student_public_id=student.public_id) }}">{{ ui.avatar(student.full_name) }}<span>{{ student.full_name }}<small>{{ student.email }}</small></span></a></td>
+  <td data-label="Balance · LYD"><strong class="ax-ledger-amount">{{ money(facts.balance) }}</strong></td>
+  <td data-label="Account position"><span class="ad-tag {{ 'purple' if facts.balance < 0 else 'green' if facts.balance == 0 else 'orange' }}">{{ _('Student credit') if facts.balance < 0 else _('Settled') if facts.balance == 0 else _('Amount due') }}</span></td>
+  <td data-label="Account"><a class="ad-row-link" href="{{ url_for('admin.student_financial_record', student_public_id=student.public_id) }}">View ledger {{ ui.icon('arrow-up', 14) }}</a><details class="ax-account-totals"><summary>Account totals</summary><dl class="ad-definition"><dt>Obligations (LYD)</dt><dd>{{ money(facts.obligations) }}</dd><dt>Collections</dt><dd>{{ money(facts.collections) }}</dd><dt>Payouts</dt><dd>{{ money(facts.payouts) }}</dd></dl></details></td>
+</tr>
+{% else %}<tr><td colspan="4"><div class="ad-empty">{{ ui.icon('wallet', 24) }}<h2>No matching accounts</h2><p>Try another name or email.</p></div></td></tr>{% endfor %}
+</tbody></table></div>
+<div class="ad-pager"><span>{{ page.total }} accounts</span><nav aria-label="Student account pages">{% if page.has_prev %}<a href="{{ url_for('admin.student_accounts', page=page.prev_num, q=search) }}">Previous</a>{% endif %}{% if page.has_next %}<a href="{{ url_for('admin.student_accounts', page=page.next_num, q=search) }}">Next</a>{% endif %}</nav></div>

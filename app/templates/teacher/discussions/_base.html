@@ -1,0 +1,51 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_figma_ui.html" as ui %}
+{% import "teacher/discussions/_ui.html" as disc with context %}
+{% block title %}Discussions{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/discussions.css', v='dialogs-inline-20261022') }}">{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_discussions.js', v='dialogs-inline-20261022') }}" defer></script>{% endblock %}
+{% block workspace_content_class %}tdisc-content{{ ' tdisc-content-reading' if topic|default(none) else '' }}{% endblock %}
+{% block portal_content %}
+<div class="tdisc" data-teacher-discussions data-tdisc-actor="{{ current_user.public_id }}"{% if group %} data-tdisc-group="{{ group.public_id }}" data-tdisc-group-url="{{ url_for('teacher.discussions_group', group_public_id=group.public_id) }}" data-tdisc-new-url="{{ url_for('teacher.discussions_new', group_public_id=group.public_id) }}"{% endif %}{% if topic|default(none) %} data-tdisc-topic="{{ topic.public_id }}"{% endif %}>
+  <header class="tdisc-heading">
+    <div><p class="tdisc-eyebrow">{{ ui.icon('message', 16) }}<span>A space to connect</span></p><h1 data-workspace-page-heading>{% block discussion_heading %}Discussions<span class="figma-brand-dot">.</span>{% endblock %}</h1><p class="tdisc-subtitle">{% block discussion_subtitle %}Good questions. Better conversations.{% endblock %}</p></div>
+    {% block discussion_action %}{% if group %}<div class="tdisc-heading-controls">{% if groups|default([]) %}{{ disc.group_picker(groups, group) }}{% endif %}<a class="btn btn--primary tdisc-new" data-tdisc-new href="{{ url_for('teacher.discussions_new', group_public_id=group.public_id) }}"><span class="tdisc-plus" aria-hidden="true">+</span><span>New topic</span></a></div>{% endif %}{% endblock %}
+  </header>
+  <div class="tdisc-notices" data-tdisc-notices>{{ disc.flashes() }}</div>
+  {% if truncated|default(false) %}<p class="tdisc-page-note">{{ _('The first %(limit)d groups are shown; your current group is included.', limit=group_limit) }}</p>{% endif %}
+  <p class="tdisc-request-status" data-tdisc-reader-status role="status" hidden></p>
+  {% block discussion_content %}
+  {% if group %}
+    <div class="tdisc-layout{{ ' has-topic' if topic|default(none) else '' }}">
+      <section class="tdisc-board" aria-label="Discussion topics">
+        <header class="tdisc-board-heading"><div><h2>Group conversations</h2><span>{{ _n('%(count)d topic', '%(count)d topics', topic_total_count) }}</span></div><p><span>All topics</span><span>{{ _('%(count)d open', count=topic_open_count) }}</span><span>Newest first</span></p></header>
+        {{ disc.topic_list(topics, group, topic|default(none), topic_page) }}
+        {{ disc.topic_pager(group, topic|default(none), topic_page, topics_has_prev, topics_has_next, page|default(1)) }}
+        {% if topic|default(none) and topic.public_id not in topics|map(attribute='public_id')|list %}<p class="tdisc-page-note">The current topic is outside this topic list page.</p>{% endif %}
+      </section>
+      {% if topic|default(none) %}
+      <section class="tdisc-reader" aria-label="Discussion">
+        <div class="tdisc-reader-bar"><a href="{{ url_for('teacher.discussions_group', group_public_id=group.public_id, page=topic_page) }}" class="tdisc-back">{{ ui.icon('arrow', 16) }}<span>All topics</span></a>{{ disc.status(topic.is_locked) }}</div>
+        {{ disc.topic_header(topic, group) }}
+        {{ disc.moderation(group, topic, moderation_action, moderation_state, topic_page, page) }}
+        {{ disc.reply_timeline(replies, group, topic, page, has_prev, has_next, topic_page, reply_total_count) }}
+        {{ disc.reply_form(can_reply, group, topic, reply_state, draft, body_error, form_error, body_max, topic_page, page) }}
+      </section>
+      {% endif %}
+    </div>
+    <p class="tdisc-footnote">{{ ui.icon('lock', 14) }}<span>A shared space for you and your group.</span></p>
+    <p class="tdisc-timezone">{{ _('Times shown in %(timezone)s', timezone=tz_name) }}</p>
+  {% else %}
+    <section class="tdisc-empty tdisc-card"><span class="tdisc-empty-icon">{{ ui.icon('message', 24) }}</span><h2>No discussion groups</h2><p>Groups you are actively assigned to teach appear here while their term, level, course and group are all active.</p></section>
+  {% endif %}
+  {% endblock %}
+  {% if groups|default([]) %}
+  <dialog class="tdisc-dialog" data-tdisc-dialog aria-labelledby="tdisc-create-title">
+    <header class="tdisc-dialog-header"><h2 class="tdisc-dialog-title" id="tdisc-create-title">New topic</h2><button type="button" class="tdisc-dialog-close" data-tdisc-close aria-label="Close">{{ ui.icon('close', 20) }}</button></header>
+    <p class="tdisc-request-status" data-tdisc-dialog-status role="status" hidden></p>
+    <div class="tdisc-dialog-content" data-tdisc-dialog-content></div>
+    <div class="tdisc-dialog-recovery" data-tdisc-dialog-recovery hidden><button type="button" class="btn" data-tdisc-retry>Try again</button><a class="btn" href="{{ url_for('teacher.discussions_new', group_public_id=group.public_id) }}">Open form</a></div>
+  </dialog>
+  {% endif %}
+</div>
+{% endblock %}

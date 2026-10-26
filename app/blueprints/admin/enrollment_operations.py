@@ -7,19 +7,89 @@ from flask import abort, current_app, flash, jsonify, redirect, render_template,
 from flask_login import current_user
 from app.i18n import LocalizedFlaskForm as FlaskForm
 from itsdangerous import BadSignature, URLSafeSerializer
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import aliased, joinedload
 from wtforms import BooleanField, DateField, HiddenField, SelectField, StringField, SubmitField, TextAreaField
 from wtforms.validators import InputRequired, Length, Optional
 from app.blueprints.admin import admin_bp
 from app.extensions import db
-from app.models import Course, Enrollment, EnrollmentEvent, EnrollmentMembership, Group, Invoice, User
+from app.models import AcademicTerm, Course, Enrollment, EnrollmentEvent, EnrollmentMembership, Group, GroupTeacherAssignment, Invoice, Level, User
 from app.security.decorators import roles_required
 from app.services.enrollment_operations import change_enrollment, enrollment_preview, study_has_started
 from app.services.general_finance import account_totals
 from app.services.money import calculate_discount, format_amount, validate_amount, validate_course_price
 from app.blueprints.admin.finance_registers import local_moment
 from app.blueprints.admin.financial_http import _financial_response
+from app.services.search_terms import escape_like
+
+
+def _entry_groups(student=None):
+    """Advisory choices only; the existing signed write rechecks under locks."""
+    occupied = db.session.query(func.count(Enrollment.id)).join(
+        User, Enrollment.student_id == User.id
+    ).filter(Enrollment.group_id == Group.id, Enrollment.status == "active",
+             User.role == "student").correlate(Group).scalar_subquery()
+    teacher = db.session.query(GroupTeacherAssignment.id).join(
+        User, GroupTeacherAssignment.teacher_id == User.id
+    ).filter(GroupTeacherAssignment.group_id == Group.id,
+             GroupTeacherAssignment.status == "active", User.role == "teacher",
+             User.status == "active").correlate(Group).exists()
+    query = Group.query.join(Course).join(Level).join(
+        AcademicTerm, Group.academic_term_id == AcademicTerm.id
+    ).options(joinedload(Group.course).joinedload(Course.level), joinedload(Group.academic_term)).filter(
+        Group.status == "active", Course.status == "active", Level.status == "active",
+        AcademicTerm.status == "active", Group.study_starts_at.isnot(None),
+        Course.price.isnot(None), occupied < Group.capacity, teacher)
+    if student is not None:
+        other = aliased(Group)
+        conflict = db.session.query(Enrollment.id).join(
+            other, Enrollment.group_id == other.id
+        ).filter(Enrollment.student_id == student.id, Enrollment.status == "active",
+                 other.status == "active", other.course_id == Group.course_id,
+                 other.academic_term_id == Group.academic_term_id).correlate(Group).exists()
+        query = query.filter(~conflict)
+    return query
+
+
+@admin_bp.get("/enrollments/new")
+@_financial_response
+@roles_required("administrator")
+def enrollment_start():
+    """Direct, bounded Student/Group selection; never writes business data."""
+    student_id = request.args.get("student", "").strip()[:36]
+    group_id = request.args.get("group", "").strip()[:36]
+    student_search = request.args.get("student_search", "").strip()[:100]
+    group_search = request.args.get("group_search", "").strip()[:100]
+    student = User.query.filter_by(public_id=student_id, role="student", status="active").first() if student_id else None
+    query = User.query.filter_by(role="student", status="active")
+    if student_search:
+        term = "%" + escape_like(student_search) + "%"
+        query = query.filter(or_(User.full_name.ilike(term, escape="\\"), User.email.ilike(term, escape="\\")))
+    students = query.order_by(User.full_name, User.id).limit(51).all()
+    more_students, students = len(students) > 50, students[:50]
+    if student is not None and all(row.public_id != student.public_id for row in students):
+        students.insert(0, student)
+    groups_query = _entry_groups(student)
+    group = groups_query.filter(Group.public_id == group_id).first() if group_id else None
+    if group_search:
+        term = "%" + escape_like(group_search) + "%"
+        groups_query = groups_query.filter(or_(Group.name.ilike(term, escape="\\"),
+            Group.code.ilike(term, escape="\\"), Course.title.ilike(term, escape="\\")))
+    groups = groups_query.order_by(Group.name, Group.id).limit(51).all()
+    more_groups, groups = len(groups) > 50, groups[:50]
+    if group is not None and all(row.public_id != group.public_id for row in groups):
+        groups.insert(0, group)
+    error = None
+    if request.args.get("step") == "details":
+        if student is None or group is None:
+            error = "Choose an active student and an available group. Search again if the selection changed."
+        else:
+            return redirect(url_for("admin.enrollment_operation", group_public_id=group.public_id,
+                                    action="enroll", student=student.public_id))
+    return render_template("admin/groups/enrollment_start.html", students=students, groups=groups,
+        selected_student=student, selected_group=group, student_search=student_search,
+        group_search=group_search, more_students=more_students, more_groups=more_groups, error=error)
 
 
 class EnrollmentOperationForm(FlaskForm):

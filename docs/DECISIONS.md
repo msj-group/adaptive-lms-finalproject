@@ -1,5 +1,642 @@
 # Project Decisions
 
+## 2026-10-26 — Share Communication Messages with Student and Teacher
+
+- Apply the owner's Admin Messages reference to the existing Teacher/Student
+  pages. Use one template workspace/content boundary and the existing
+  progressive Communication client. Preserve each role's shell/navigation
+  and current native scoped routes, signed forms and server permissions.
+- Match the conversation rows, circular avatars, semantic bubbles and quiet
+  composer using scoped shared CSS. Retain viewport-bounded internal scrolling,
+  phone dock clearance, themes, RTL, action focus and reduced motion.
+- Keep message content/form markup unchanged except its Jinja block owner.
+  Reuse actor/object validation, draft guards and uncertain-send handling;
+  do not change query, delivery, relationship, history or research policy.
+  Researcher navigation stays native. See ROLE_MESSAGES_COMMUNICATION.md
+  for bounded static/fictional-memory evidence and verification limits.
+
+## 2026-10-26 — Admin Communication within the current workspace
+
+- The owner corrected native navigation for Audience, announcement creation/
+  reading/review and message picker/contact/thread entries. Enhance existing
+  authorized GETs; preserve ordinary URLs as recovery. Do not add query,
+  relationship, delivery, publication or research policy.
+- Key Audience cards by their existing scope, animate their returned selected-
+  first positions and synchronize native filters. Honor reduced motion and
+  retain the committed filtered URL/page on a board refresh.
+- Reuse native announcement forms in one dialog and native correspondence
+  content within Messages. Bind responses to actor/auth version/role and their
+  endpoint/public object; preserve signed FormData, validation and stale-form
+  semantics. Protect drafts, reject stale reads, and block repeated uncertain
+  sends. Only native sent markers establish confirmed message completion.
+- Dispose/reinitialize the existing message presentation tools after swaps.
+  Keep edit/hide/clear with their native owners. Remove only Admin chat typing
+  outlines; keep keyboard focus on actions, themes, RTL and the existing dock.
+- Static and fictional-memory browser review is bounded evidence. No actual
+  database, real delivery or automated regression acceptance is claimed. See
+  ADMIN_COMMUNICATION_INLINE.md.
+
+## 2026-10-26 — Learning lens readers within the current tab
+
+- The owner corrected Review, This group's attendance and Gradebook Open to
+  show content inside the current Learning lens tab, preserving the page URL
+  and existing list/filter state. Back/Escape restore the prior reader or list.
+  All attendance is removed from session details; Group details is removed from
+  Group attendance. Direct native pages retain their other context navigation;
+  the inline reader omits that context bar.
+- A feature-only optional client requests the same authorized GETs with
+  same-origin credentials and no-store. Import only the explicit content region
+  after matching the exact URL, actor/auth version/role, view kind and nested
+  public Group/session identifiers. Reject redirects, unexpected markup and
+  active/form content. Native URLs, Retry and full-page recovery remain.
+- Abort obsolete reads on subsequent selection, filtering, result replacement,
+  return and page exit. Keep a bounded in-memory return trail; do not persist
+  private reader content. Re-authorize a browser-restored page. The existing
+  Gradebook fragment owner remains unchanged. Correction/history remains native.
+- Scope typography to Learning lens: clearer body-sized text, stronger list and
+  item headings, calmer category/weight sizing, tabular numerals, RTL tracking
+  and visible phone return controls. Preserve shared fonts/themes and four
+  horizontal Attendance statuses, including zeros.
+- Verification remains static and bounded manual fictional-memory presentation
+  review. No automated tests, actual database or write workflow is exercised.
+  Exact evidence and limits: ADMIN_LEARNING_LENS.md.
+
+## 2026-10-26 — Administrator Learning lens
+
+- Apply the owner's selected composition to both Attendance & grades tabs,
+  with the requested four-status horizontal row on phones. Keep current
+  navigation/dock, semantic colors, RTL, 20px panels and native route ownership.
+- Attendance summarizes only finalized sessions already on the bounded current
+  page, with explicit scope, all four counts including zeros and draft exclusion.
+  Ring/bar geometry describes these counts; it does not introduce a numerical
+  attendance percentage, grade, penalty, stored total or center-wide query.
+- Gradebook summaries count existing weights_complete flags on the current
+  page. Category weights and availability stay with their existing services;
+  never calculate Student grades in templates or fetch individual results or
+  teacher comments for this administrative display.
+- Reuse original GET filter controls, options, paging parameters and the
+  Gradebook fragment owner. Keep public class/group links and finalized-record
+  correction/history links; the signed correction form and server guards remain
+  unchanged. Native disclosures provide filters/categories without a new script.
+- Verification is static compilation/hash/form inspection and bounded manual
+  rendering with fictional memory, not actual database or automated regression
+  acceptance. Evidence and boundaries: ADMIN_LEARNING_LENS.md.
+
+## 2026-10-25 — Add a slot within the current schedule workspace
+
+- The owner extended the planner interaction correction to Add Schedule Slot.
+  Reuse one dialog to switch Group reader/create form, including on directly
+  opened Group schedules and empty-state entry points. Native recovery remains.
+- Preserve native field names/choices, CSRF and nested GET/POST owners. Bind
+  responses to actor/auth version/role, exact Group public ID, create mode and
+  the native nested paths. Keep errors/drafts in place and require confirmation
+  before discarding. Back/Cancel returns to the reader without changing pages.
+- The native create route can redirect to Group schedules for both success and
+  lifecycle rejection. Mark its existing create-success flash in that response;
+  do not infer success merely from a redirect. Preserve actual rejection
+  messages and block repeat submission after an uncertain response. On confirmed
+  creation, closing the reader refreshes the underlying current URL/filters.
+- Keep all query, transaction, lifecycle, history and delivery code unchanged.
+  Use scoped compact desktop form spacing and stack 320px time/date fields.
+  Static and fictional-memory manual review is bounded evidence, not MySQL or
+  automated regression acceptance. See ADMIN_FOCUS_PLANNER.md.
+
+## 2026-10-25 — Focus planner entry dialogs and phone header
+
+- The owner's correction supersedes enhanced standalone navigation for New
+  centre event, Choose a group and Open group schedules. Open native content
+  in centered dialogs, preserving original URLs as recovery/no-script paths.
+- Render chooser options from the native Group collection already returned to
+  Schedules. Read the selected public Group schedules URL with exact path,
+  actor/auth-version/role and public Group ID binding; preserve lifecycle
+  warnings and native subsequent slot controls. No new SQL or endpoint.
+- Reuse the signed native event form and POST with inline validation and draft
+  guards. Confirm completion only through the native redirected event detail
+  response bound to the same actor and actual returned event URL. Keep its
+  messages/summary; closing refreshes the current Calendar. An uncertain save
+  retains the draft, blocks repeats and offers native calendar review.
+- Phone-only changes hide the eyebrow and place Choose a group/Filters beside
+  Calendar. Move the existing disclosure rather than duplicating filter forms;
+  restore desktop placement on resize. Keep semantic themes, RTL, 20px corners,
+  current shell and shared dock. Static and fictional-memory manual evidence
+  does not imply actual database creation or automated regression acceptance.
+  See ADMIN_FOCUS_PLANNER.md.
+
+## 2026-10-25 — Administrator Focus planner
+
+- The owner's selected concept supersedes the earlier Admin date-grid UI.
+  Keep two explicit native tabs: Center calendar for bounded dated entries,
+  Teaching schedules for full recurring records and lifecycle status.
+- Adapt already-authorized capped Calendar rows without queries or recurrence
+  changes. Preserve range normalization/truncation, native class/event URLs
+  and cancelled-event visibility. Compact months and phone weeks select a
+  daily agenda; optional Upcoming is a local presentation over the same rows.
+- Show one recurring card per actual Schedule row, with one weekday and its
+  own time/effective dates/status. Preserve original Schedule filters and
+  archived-parent warnings. Retire only the superseded UI date projection;
+  the native Schedule query never filtered by those dates.
+- Reuse native GET filters and management pages. Keep authored content escaped,
+  public identity URLs, all signed write guards, current shell/dock, semantic
+  themes, RTL and 20px feature corners. Phone filters expand in page flow to
+  avoid clipped controls and overlap with fixed navigation. Compact weekday
+  initials retain full date/weekday context through accessible names/titles.
+- Static and fictional-memory manual evidence is bounded; no actual database
+  or automated regression acceptance is implied. See ADMIN_FOCUS_PLANNER.md.
+
+## 2026-10-25 — Edit Group in the current workspace
+
+- The owner corrected the remaining native edit navigation. Share the existing
+  creation dialog with Edit/Edit Group from Directory/Focus and Group details.
+  Render the dialog once through `_editor_dialog.html`; preserve native links
+  for unsupported/no-script recovery. Suspend the desktop information dialog
+  during editing, then restore its panel/focus on cancellation. Defer reader
+  breakpoint transfers until editing ends so another modal cannot cover it.
+- Bind fetched edit HTML to the exact original endpoint, actor, edit mode and
+  Group public ID. Preserve original FormData/CSRF and require the existing
+  signed edit snapshot. Locked identity controls remain native hidden values
+  with their explanatory display; do not construct replacement selects.
+- A validation response retains the original snapshot and entered values.
+  A native stale-edit redirect instead supplies current persisted values and
+  its correctly paired fresh snapshot; never merge attempted values into it.
+  All server validation, lock order and authorization remain authoritative.
+- Reuse the current query owner for filtered list refresh. On Group details,
+  refresh only existing detail content through its ordinary GET, checking its
+  path, actor and public Group ID; preserve actual POST response messages and
+  show native reload recovery if detail refresh fails. No new endpoint, SQL,
+  business mutation or domain policy is introduced. Evidence and boundaries:
+  ADMIN_GROUPS_DIRECTORY_FOCUS.md.
+
+## 2026-10-25 — People filters, spacing and in-page profile actions
+
+- The owner corrected the desktop and phone Focus Desk implementation: phone
+  Filters shares a row with New Student/New Teacher, desktop cards are spaced,
+  and Edit profile/Message opens inside People. This supersedes the earlier
+  enhanced standalone links for those two actions; native recovery remains.
+- Reuse signed native forms rather than adding write endpoints. Bind edits to
+  actor/kind/public person and correspondence to actor/recipient or the thread
+  reached by the exact authorized recipient GET. Keep errors/drafts in the
+  dialog and require native completion proof before reporting success.
+- Preserve CSRF, snapshots, nonces, authorization, query/write policy and all
+  research meanings. No real database or message delivery is used for review.
+  Evidence and boundary: ADMIN_PEOPLE_FOCUS_DESK.md.
+
+## 2026-10-25 — New Group within the Groups page
+
+- The owner's creation correction supersedes native page navigation for the
+  enhanced New Group entry. Show a centered native dialog at desktop and phone
+  widths, with the original standalone create route retained for recovery.
+- Fetch the existing creation page, bind its exact create path and actor, and
+  transplant only the native form card. Keep CSRF, field names/values, native
+  POST and server validation; namespace DOM IDs to avoid list-filter collisions.
+  No replacement business form or backend policy is introduced.
+- Keep errors and entered values in the dialog. Use the existing shared draft
+  confirmation, including after validation rebinds. A verified list response
+  supplies its actual flash messages and triggers an explicit opt-in refresh
+  through the shared query owner, retaining current filters. An uncertain POST
+  retains the draft, blocks repeat submission and offers the native list link.
+- Scoped styles preserve semantic themes, Arabic/RTL, 20px corners and current
+  shell/dock. Four-template compilation, source comparisons, JavaScript syntax
+  and fictional-memory manual browser review are bounded evidence; no actual
+  Group creation or MySQL regression acceptance is claimed. See
+  ADMIN_GROUPS_DIRECTORY_FOCUS.md.
+
+## 2026-10-23 — Admin Announcements scope-first board
+
+- Apply the owner's authorized Teacher-style option to the existing Admin
+  Announcements tab. Adapt the Teacher Group rail to the Administrator's
+  existing Center/Course/Group scopes, with All announcements and current
+  selection first. Preserve the status filter on scope changes and both filters
+  on paging. No aggregate counts or new query capabilities are introduced.
+- Desktop uses an audience rail and scrolling board; compact widths use native
+  horizontal snapping. Existing server fields supply row status, creation time,
+  text preview, audience and author. Show only the returned page count.
+- Use scoped styles/base and 12 Arabic labels; preserve themes, RTL, 20px feature
+  corners, current section tabs and the sole platform phone dock. Existing
+  query-filter enhancement remains optional; no feature script is needed.
+- All object navigation and creation/edit/publication/withdrawal retain native
+  URLs, methods, CSRF, signed state, confirmation and server-owned guards.
+  Static checks and fictional-memory browser review do not imply actual MySQL
+  execution or automated regression acceptance. See ADMIN_ANNOUNCEMENTS_SCOPE_BOARD.md.
+
+## 2026-10-23 — Administrator schedule calendar presentation
+
+- The owner requested the Student/Teacher calendar UI for `/admin/schedules`.
+  Reuse its bounded civil dates, Month/Week/Upcoming and phone Day selector,
+  while retaining the original Admin Schedule filters and complete register.
+- Expand only the already-filtered/eager-loaded Schedule collection through
+  canonical recurrence; cap date entries at 600 with an explicit warning.
+  Keep archived and non-operational administrative slots marked as such;
+  no attendance, activity, event source, database query or write rule is added.
+- Shared template additions are Admin-conditional. Native GET filters preserve
+  their normalized values through date navigation; original public Group links,
+  separate aggregate Calendar/event management, shell/dock and signed writes
+  retain their owners. Use semantic themes, RTL and 20px feature cards.
+- Evidence is bounded static compilation/source comparison and fictional-memory
+  manual browser review. No automated tests or real database acceptance is
+  claimed. Implementation and limits: ADMIN_SCHEDULE_CALENDAR.md.
+
+## 2026-10-23 — Groups Directory desktop and Focus phone
+
+- The owner selected Directory at desktop widths and Focus workspace for
+  phones. Scope is the existing Admin Groups listing. Keep the current shell,
+  single phone dock, semantic themes, English/Arabic/RTL and 20px feature corners.
+- Use only the original listing's group/academic fields. Capacity is configured
+  capacity; no enrollment/occupancy read or derived operational metric is added.
+  Preserve Active/Archived and the existing archived-parent warning condition.
+- Render one information panel/status form per group. Move that same DOM section
+  into a desktop native dialog or in-flow phone reader; never clone forms.
+  Query pending/replacement closes the reader. Escape/Close/back restore focus;
+  breakpoint transfer distinguishes an old dialog-close event from the phone
+  reader. Native disclosures and GET filters remain usable without scripts.
+- All native methods, CSRF, public-id URLs and server-side transaction, lifecycle
+  and authorization guards retain their owners. No new SQL, endpoint or schema
+  change is needed. Static/manual presentation evidence is bounded as documented
+  in ADMIN_GROUPS_DIRECTORY_FOCUS.md; live-MySQL regression is not claimed.
+
+## 2026-10-23 — People Focus Desk
+
+- New Student/New Teacher open the original creation form in a centered native
+  dialog, as reconfirmed by the owner. Bind its exact URL, kind and actor; keep
+  native CSRF/fields/POST validation, inline errors and shared draft protection.
+  A matching authorized success redirect triggers a refresh of the same People
+  address. Unconfirmed results retain details and block automatic resubmission.
+  No backend validator, account write handler or schema policy is changed.
+- The owner reconfirmed one People sidebar destination. Students and Teachers
+  are internal tabs, and People is active for both account families. Separate
+  Student/Teacher sidebar shortcuts are superseded by this correction.
+- The owner selected a desktop directory/profile split and phone profile reader
+  for the existing Administrator Student/Teacher pages. Use one shared profile
+  projection and feature-scoped assets; retain current shell/navigation/dock,
+  semantic colors, RTL, reduced motion and 20px feature corners.
+- Filter counts describe only the returned collection. Profile reads reuse the
+  existing authorized native detail pages without changing query definitions,
+  role/object checks or domain meanings. GET enhancement binds exact response
+  URL, actor/auth-version/role, kind and public person ID; reject redirects and
+  mismatches, invalidate obsolete requests, and retain native URL recovery.
+- Creation, editing, messages, record navigation and password reset remain
+  native workflows. Consolidate per-row management in the selected profile,
+  preserving original detail status POST/CSRF/snapshot/confirmation controls.
+  No new account lifecycle or client-side write authority is introduced.
+- Verification is bounded static and fictional-memory browser review only.
+  No automated tests, real database, migration, scheduler, dependency install,
+  Git mutation or deployment is authorized by this selection.
+
+## 2026-10-23 — Daily Desk home and direct enrollment entry
+
+- Replace the Admin home/rail arrangement with the owner's refined Daily Desk.
+  The desktop greeting, three factual counts, agenda, setup attention and three
+  shortcuts use existing data meanings. Phone has a date and Overview/action
+  row, without the greeting panel. Keep semantic themes, 20px feature cards,
+  existing logos, English/Arabic/RTL and the single shared phone dock.
+- A labelled Admin sidebar uses existing destinations and section ownership.
+  Existing child pages keep their feature composition, including concurrent
+  Academics Setup Hub work. No additional role or module is introduced.
+- Direct enrollment selection is a private Administrator-only GET, capped at
+  50 search matches plus a selected record, with escaped literal search and
+  public identifiers. Advisory Group choices require active academic parents,
+  a configured start/price, an eligible active Teacher and remaining capacity.
+  Selected Students must be active Students; exclude their existing active
+  same-course/term membership. Saving still rechecks everything under the
+  original locks and signed snapshot. A late study start remains informational.
+- Progressive GET loading is bound to the current public actor, known entry
+  and selected Group operation paths, and selected Student/Group form values.
+  Abort superseded reads and reject login/unexpected redirects. Retain drafts
+  on failure, confirm discard on close/change, and keep native full-page links.
+  The existing form's implicit action is resolved to its original loaded URL.
+- Expose the unchanged financial preview initializer as an idempotent function
+  for dynamically loaded forms. Preserve native CSRF, nonce/snapshot fields,
+  discount/bank inputs and native POST save; no asynchronous business write or
+  automatic POST retry is added. Existing write/service functions are unchanged.
+- Verification is bounded static/SQL-construction review and a real-browser
+  fictional-memory rehearsal. It is not automated regression, actual MySQL
+  eligibility/write/concurrency or successful financial persistence acceptance.
+
+## 2026-10-23 — Academics Setup Hub and phone section deck
+
+- The four existing Administrator directories share the selected Setup Hub.
+  Card totals are centre-wide counts of all persisted statuses, independent
+  of Course filtering and Room paging. A lazy, request-cached, Administrator-
+  gated scalar SELECT supplies them only when a full directory renders.
+  Existing result fragments do not render the hub or request these counts.
+- Cards are ordinary links to the four existing authorized GET routes. Desktop
+  shows all four. The enhanced phone track centres the current section, raises
+  the nearest card and lowers its neighbours; a completed deliberate horizontal
+  gesture may follow the centred native link. Initial positioning, resize,
+  keyboard focus, vertical scrolling and history restoration do not navigate.
+  Without JavaScript, all four links remain visible in a two-column phone grid.
+- Native details disclosures collect each record's existing management controls.
+  Preserve signed forms, CSRF, snapshots, public identifiers, ordering, archival,
+  pricing and pagination. The shared shell/dock stays in charge; feature styling
+  uses semantic platform tokens, logical RTL layout and 20px feature corners.
+- The verification boundary is static source review and a fictional-memory
+  browser rehearsal. No automated tests or actual database execution is included.
+
+## 2026-10-23 — Admin Atlas and private administrative correspondence
+
+- Use the approved Atlas composition through an Admin-owned shell and scoped
+  stylesheet. Keep the platform semantic blue/red palette, exact 20px feature
+  cards, native shared appearance/account/search controls and single phone dock.
+  Apply this treatment to existing child pages, forms, histories and readers;
+  conceptual placeholder features are not new business modules.
+- Dashboard setup counts retain their original meaning. Student dossiers add
+  a bounded six-row active-enrollment read (five displayed) and the existing
+  signed balance calculation. Finance retains independent invoice/movement
+  paging and original correction/receipt semantics; no merged ledger or
+  invented occupancy, attendance, score or current-term metric is introduced.
+- The owner explicitly authorized Admin correspondence. Active Administrators
+  may privately contact other active Students, Teachers, Administrators and
+  Researchers. Other roles can contact Administrators, alongside their existing
+  permitted academic contacts. A Researcher gains no Student/Teacher contact
+  path and an Administrator gains no access to other people's conversations.
+- Reading remains membership-scoped. Sending requires exactly two members and
+  rechecks current roles/activity under locks. The administrative path locks
+  Users in ascending internal-id order, then Thread/Members on reply. Keep the
+  original academic transaction service unchanged. Preserve signed actor and
+  destination tokens, nonce replay handling, CSRF and atomic writes. Historical
+  sender-owned edit/hide and member-owned clearing retain their existing policy.
+- Only the exact canonical shared message-thread notification target is enabled
+  for Admin/Researcher; academic namespaces and announcement audiences stay
+  unchanged. Researcher authentication, raw research data, sampling and retention
+  policy receive no new permission. Existing Student outcome hooks stay Student
+  gated, including when a Student sends an administrative message.
+- No schema change is needed: existing generic User memberships/messages and
+  recipient-owned notifications support this policy. Static/manual presentation
+  evidence does not establish live-MySQL transaction or concurrency acceptance.
+
+## 2026-10-22 — Eclipse shared Login
+
+- Apply the owner's refined Eclipse design to the existing shared sign-in entry.
+  Remove motivational text and Adaptive English tagline; retain functional labels,
+  the original light/dark Youth Centre logos, local red/blue glass artwork and
+  matching gradients. Scope the new stylesheet to Login and reuse device theme,
+  local fonts, English/Arabic/RTL and reduced-motion preferences.
+- The outer field shell replaces only the inner input focus rectangle. Focus is
+  red; a plausible email format is green with a check and accessible format-only
+  status. These hints never authorize an account or replace server validation.
+- Submit the original LoginForm with native POST, CSRF and server errors. Keep
+  authentication, rate limit, role homes, safe next paths and opening transition
+  unchanged. Add neither a remember-me cookie policy nor self-service recovery;
+  password/account/privacy help explains the existing administrator workflow in
+  a native dialog, with a readable details fallback without JavaScript.
+- Placement test links directly to the existing public empty presentation route,
+  preserving next. Earlier `view=placement` login links still reach the shared
+  entry with this always-visible placement action; obsolete tab geometry is
+  superseded. No questions, attempts, grading or assessment workflow is added.
+- Verification is static and database-free manual browser review. No automated
+  tests, actual database, migrations, scheduler, dependency installation, Git
+  mutation or deployment; preserve unrelated and concurrent source changes.
+
+## 2026-10-22 — Teacher Course Studio
+
+- Apply the owner's Course Studio selection to existing Group workspace,
+  units/lessons, materials, six authoring templates, saved Student-view
+  preview and lesson completion. Sidebar destinations are not redesigned.
+  Keep the shared shell and its sole phone dock, semantic appearance/density,
+  20px feature cards, English/Arabic and logical RTL layout.
+- Workspace derives its outline and counts from the already-authorized units
+  and lessons. All existing archival states remain visible and explicit.
+  Curriculum and lesson lists use cards while keeping the original native
+  action forms and their conditions, methods, CSRF and confirmation text.
+  Authoring keeps every field, signed edit snapshot/create token, validation,
+  multipart encoding and immutable-file rule unchanged.
+- The material list receives freshly sanitized rich text through its existing
+  eager-loaded public projection. No new SQL query, raw storage path or numeric
+  object identity enters the reader. Only that sanitized value is rendered as
+  safe HTML. Links/files retain their authorized native destinations and open/
+  download policies; no external content is fetched or embedded.
+- A feature-only script selects among already-rendered unit/material panels;
+  it never fetches, saves, persists preferences or changes publication/order.
+  Native fragment links expose every panel without script. Material-type
+  choices are native links; Escape/outside click closes their disclosure.
+- Completion remains read-only self-marked work with its original current
+  denominator, roster paging, last-opened/completed dates and source disclosure.
+  Teacher preview retains its explicit non-Student-session boundary and never
+  exposes a completion control. No grade/proficiency classification is added.
+- Verification is bounded static review and an actual-browser fictional-memory
+  presentation rehearsal, not automated regression or real-MySQL acceptance.
+  No database, migration, scheduler, dependency, Git or deployment action is
+  included in this selection.
+
+## 2026-10-22 — Teacher Discussions dialog and in-place reading correction
+
+- New topic uses a centered native modal dialog with an inert shaded background,
+  Escape/close/cancel, focus restoration and draft-discard confirmation. Load
+  the existing authorized new-form GET; send its original CSRF/state/nonce form
+  to the unchanged creation POST. Render validation back inside the dialog.
+  A failed/uncertain response keeps the draft/token and never retries a POST
+  automatically. An intentional retry retains existing nonce duplicate handling.
+- Desktop Group selection sits beside New topic, showing Group names only.
+  Remove search and supporting course/level/term text. Bound/scoped Group reads
+  and native GET selection remain unchanged; truncation is still explained.
+- Desktop topic/list/reply-page links progressively fetch their existing HTML,
+  replace only the scoped feature layout and display an animated reader. Keep
+  native reply/moderation POSTs and native/no-script links. replaceState preserves
+  the current public deep link without adding a history entry for every topic.
+  Import no shell, scripts, collector config or cross-account/Group response.
+- Bind responses to the current public actor/Group and requested topic, reject
+  unexpected redirects, cancel superseded GETs and discard stale responses.
+  Confirm a changed reply draft before replacement, including edits made during
+  a pending GET. Preserve the draft and its guard on load failure.
+- The shared workspace form guard exposes idempotent registration and a scoped
+  pending-change query. Existing initial-form tracking and navigation/submit
+  guard bodies keep their policy. Dynamic forms use the same guard and release
+  removed forms through its existing workspace:saved event after successful
+  replacement or explicit discard. The portal script cache version is updated.
+- Use native top-layer focus/scroll containment, semantic colors, 20px cards,
+  RTL and platform/OS reduced-motion preferences. Verification remains bounded
+  static/memory-only manual review, not automated or actual-MySQL acceptance.
+
+## 2026-10-22 — Literal Gradebook Guided Workspace correction
+
+- The owner rejected the prior composition. Guided Workspace is the desktop
+  reference; the separate phone concept owns phone layouts. The only requested
+  visual exceptions are semantic platform colors, 20px feature cards and moving
+  local navigation above content to avoid a second phone shortcut dock.
+- Restore a native assigned-Group disclosure at the phone top right, with a
+  native select on desktop and actual authorized destinations. Escape/outside
+  click closes the disclosure; all links remain available without script.
+- Desktop uses Plan/Grade/Review stages, underline tabs, compact task rows and a
+  245px next-step/plan column. Phone uses a single continuation card, two filters,
+  type cards, changing wizard headings/step bars, focus grading, a separate
+  student roster, a top weight summary and per-student task cards.
+- Score matrix rows represent captured history, including draft-only students,
+  rather than claiming current enrollment. The new query is scoped through
+  category to the authorized Group; only public identities and displayed score
+  fields reach the view. Draft values never enter overall/category calculations.
+  The existing Decimal summarize service owns all totals and missing states.
+- Correction history reads actual AcademicRevision rows through the authorized
+  Group and item, projects only score/comment changes and names/times, and pages
+  by 20 plus one. No internal snapshot identity or invented event reaches HTML.
+  Overview figures use bounded grouped reads only when summaries are requested.
+- Keep every captured score/comment field enabled. Save-and-next and Save-and-close
+  select only local destinations after the existing successful/no-op operation;
+  all authorization, CSRF, stale-state, lock, validation and transaction handling
+  stay in their original routes. Native forms remain usable without script.
+- Verification remains static and a fictional-memory manual browser rehearsal.
+  Actual SQL execution, database persistence/concurrency and automated regression
+  acceptance are outside this correction. No schema, database, scheduler, Git,
+  dependency or deployment operation is included.
+
+
+## 2026-10-22 — Teacher Discussions Focus desk
+
+- The revised desktop opens a full-width topic list, with no automatic topic
+  or reply preview. A native authorized topic GET adds the reader on wide
+  workspaces and opens a separate reading view on phones. All topics returns
+  to the same list page. Shared shell and phone navigation remain authoritative.
+- Overview selects the first current Group, or proves an explicit public Group
+  selection again. Reuse bounded 50-Group/20-topic/50-reply reads and public
+  dictionaries. Include an already-authorized current Group outside the Group
+  slice and explain truncation. Dropdown search narrows rendered choices only;
+  native GET form/links retain navigation and no-script operation.
+- topic_page is independent of reply page and survives links, protected forms
+  and the existing redirect helper. Keep empty-page fallback and identify an
+  off-page selected topic. No new SQL service/schema or classification is added.
+- Display actual Open/Locked states and counts. Illustrative pin/unread/needs-
+  a-reply labels do not add business policy. Creation/reply/moderation remain
+  signed, CSRF-protected native forms with unchanged write handlers, version/
+  nonce checks, locks and immutable plain text. Escape every authored value.
+- Scope styles/scripts to Teacher Discussions with semantic theme/density
+  tokens and 20px feature cards. Verification is bounded static and memory-only
+  manual browser review, not actual-MySQL concurrency or automated acceptance.
+
+## 2026-10-21 — Teacher Gradebook phone and desktop workspace
+
+- The owner selected the phone concept and desktop workspace, with 20px cards
+  and platform colors. Keep the shared phone shortcut dock unchanged. Local
+  Tasks, Students and Grading plan links sit above content. Native anchors expose
+  all sections without script; script selects sections and filters loaded items.
+- Point-entry hints accept Arabic/Persian digits without rewriting submitted
+  values, and defer other Unicode forms to the existing authoritative parser.
+  They do not introduce a second grade calculation or rounding rule.
+- Scope new CSS/script/helpers to Teacher Gradebook. Keep the shared shell,
+  navigation, density and Arabic/RTL/light/dark appearance authority. The six
+  existing pages share feature helpers; card corners are exactly 20px.
+- Creation keeps the signed native form beneath three optional steps. Source
+  choices stay Group-scoped. Clear inactive choices only on an explicit kind
+  change; expose attempted contradictory values/server errors after failure.
+  Preview uses textContent/escaped output, with no grade arithmetic or import.
+- Phone focus grading keeps every captured score/comment input enabled in one
+  form. Selecting a student changes visibility only. Save-and-next posts the
+  entire roster, then uses a fresh GET and state token. A next record must belong
+  to the already-validated captured public-record set. Destinations are only the
+  local scores route or existing item review; unknown intents keep the old URL.
+- The score handler changes only at its two success/no-op redirect returns.
+  Static AST comparison proves the validation, locking, authoritative rechecks,
+  revision handling, rollback and commit body is otherwise identical. Other 44
+  existing helpers/handlers, queries/calculations/transactions/form parsers and
+  shared mobile navigation remain unchanged.
+- Student totals still describe released records from the existing query, not
+  an invented active-class roster. Calculated and missing-result states remain
+  service-owned. Phone disclosures show category progress; item details keep
+  actual last-grader metadata and escaped feedback. No fabricated correction
+  timeline, new deletion/import action or publication rule is introduced.
+- Verification is static inspection and an ignored memory-only presentation
+  server using actual templates/assets, decorated GETs, CSRF and form parsers.
+  Its POST substitutes change fictional memory only. This is not real-database
+  persistence/concurrency or automated regression acceptance. No automated tests,
+  database/schema operation, scheduler, installation, Git mutation or deployment.
+
+## 2026-10-21 — Student Atlas course and connected-workspace presentation
+
+- Implement the owner's selected Atlas composition inside the existing shared
+  Youth Centre shell. A Student-only base owns the opaque panels, blue learning
+  hero, course cards and responsive course/reader layouts. Keep appearance and
+  density semantics; do not rebrand the application or change Teacher layouts.
+- My courses selects the new Student template using the unchanged card/progress/
+  recent payloads. The continuation hero names an already-authorized recent
+  unfinished lesson, otherwise offers revisiting an authorized recent lesson or
+  exploring the course list. It adds no database query. Preserve progress caps,
+  timing/archival context and the absence of content links after access ends.
+- Course overview chooses the first unfinished lesson from its already-visible
+  ordered outline. Counts mean marked-complete published lessons, never language
+  proficiency. Native unit disclosures include every existing published lesson;
+  there is no new unit route, sequencing gate or content-unlocking rule.
+- The reader retains the existing completion POST, signed state, CSRF, previous/
+  next destinations and sanitized-content boundary. Optional type buttons filter
+  only already-rendered materials, pause hidden media and preserve deep links.
+  With the page script omitted, all materials and native controls remain usable.
+  PDFs still download through their existing protected attachment endpoints.
+- Student activity templates inherit Atlas conditionally through activity_base;
+  Teacher templates retain portal_base. Detail facts move beside unchanged forms
+  on wide workspaces and below them on phones. Retain attempt timing, playback,
+  recording, answer saving, final submission and feedback visibility contracts.
+- Grades, attendance and records keep their original scoped filters, calculation/
+  release/finalization rules, paging and scripts. Their Filters disclosures expand
+  in flow. No query, transaction, schema, research or retention policy changes.
+- Verification is bounded static source/template inspection plus manual browsing
+  with owned in-memory fictional substitutions. It does not establish actual-MySQL
+  persistence, concurrency, complete authorization or automated regression acceptance.
+
+## 2026-10-20 — Received inline reading and phone Group deck
+
+- Received notices use native details/summary inside the existing bounded list,
+  displaying the full already-authorized plain-text body with normal escaping
+  and preserved line breaks. Opening a notice does not navigate, fetch or alter
+  the URL. Legacy recipient detail URLs remain available for notifications.
+- Remove the introduction. Keep the Filters summary level with the title at
+  compact widths; its visible icon retains its accessible Filters text.
+- On phones, use nearly full-width raised Group cards, neighbouring peeks and
+  native horizontal snapping with a hidden scrollbar. A small page-owned script
+  centres the selected card after layout and marks the nearest card as frontmost
+  while scrolling. Tapping retains the ordinary authorized GET selection.
+- A visual predecessor before the centred selection is a CSS ordering detail;
+  the selected-first DOM/desktop order remains unchanged. Keyboard focus centres
+  its actual card. Normal Group links and scrolling remain available without the
+  enhancement. No client storage, new requests, history rewriting or research
+  events are introduced. No routes, query scopes or write handlers change.
+- Review is limited to static/template/JavaScript syntax and manual presentation
+  with memory-only fictional data, including native reading without JavaScript.
+  No actual database, migration, automated tests, Git mutation or deployment.
+
+## 2026-10-20 — Teacher Announcements Group first workspace
+
+- The owner selected Group first for desktop and phones. The default tab manages
+  assigned-Group announcements; Received announcements preserves the existing
+  published/current-visibility feed. Management includes co-teacher announcements,
+  as before, and does not imply that the acting Teacher authored every notice.
+- Reuse the nested Group GET entry in the same workspace. Recheck its active
+  assignment using the existing guard, including explicit Group query values.
+  Put the selected Group first in the rendered list, preserving the relative
+  order of other Groups. This is presentation ordering, never a database update.
+- Status/search/date filters narrow the existing SQL scope before fixed paging.
+  Management dates mean last updated; received dates mean publication. Interpret
+  inclusive local dates as a half-open UTC interval in APP_TIMEZONE. Invalid or
+  inverted dates show a safe error and no results. Receiving ignores lifecycle
+  filter input and never exposes drafts or withdrawn notices.
+- Keep Filters initially closed in flow, ordinary GET tab/Group/filter links,
+  public identifiers, native no-script operation and fixed heading/paging around
+  a focusable scrolling announcement list. Phones have a horizontal Group rail;
+  desktop has a vertical rail. Group totals are explicitly unfiltered totals.
+- Preserve draft creation/editing, separate publication, permanent withdrawal,
+  CSRF, signed state tokens, lock chains, notification delivery and research
+  meanings. The four write handlers and four visibility/paging helpers match HEAD
+  by AST inspection. No new client script, storage, schema or migration is needed.
+- Verification is static compilation/SQL inspection and bounded manual browser
+  presentation with memory-only substitutes. It does not prove real-MySQL filter
+  execution, persistence, concurrent writes or complete regression acceptance.
+
+## 2026-10-18 — Verified hosted replacement and temporary access closeout
+
+- Apply the owner's explicit whole-database/file replacement to the existing
+  Railway target only. Preserve local source rows, schema/head and research
+  meanings. Verify the prior backup through an owned isolated MySQL/file restore
+  before the data transaction; preserve normalized rows and enforce all FKs.
+- The owner explicitly approved a temporary personal SSH key with inherited
+  account permissions, used only for this project and revoked/deleted afterward.
+  That lifecycle is complete. CLI authentication/temporary helpers did not change
+  application secrets, dependencies, schedulers or unrelated hosting settings.
+- Content deduplication is a transport optimization only: verify seven distinct
+  contents, reconstruct 348 independent original files and compare every size/
+  digest. Do not introduce shared hard links or change application storage keys.
+- Existing code provisions ordinary subject identities as `study` even on a
+  development deployment; session provenance/export scope determines collected
+  data provenance. All 15 prior sessions were `development`, not Study sessions.
+  Keep original classifications in the backup; copy local `demo` fixtures exactly
+  without relabelling or changing collection/sampling/export policy.
+- Completion evidence and actual HTTP/password/browser verification limits are
+  in HOSTED_REPLACEMENT_20261018.md. No automated tests or additional code release.
+
 ## 2026-10-18 — Release current work and replace hosted evaluation data
 
 - The owner's explicit push/deploy/hosted-replacement request advances the

@@ -1,30 +1,9 @@
-"""The shared Student / Teacher notification inbox (M14).
+"""Member-owned notifications for platform correspondence and academic updates.
 
-One blueprint under ``/notifications`` serving both roles -- the rows are
-already per-recipient, so there is nothing role-specific to separate.
-
-**Authorization.** ``roles_required(STUDENT, TEACHER)`` gives the project's
-standard behaviour: anonymous users follow the normal login redirect, and
-Administrator / Researcher get **403** (they have no inbox in M14 and no
-notification is ever addressed to them). On top of that, *every*
-per-notification lookup is scoped with ``recipient_id == current_user.id``
-in the ``WHERE`` clause, so a missing ``public_id`` and another
-recipient's ``public_id`` produce the identical non-disclosing **404**.
-
-**Reads never write.** The inbox is GET-only and never changes
-``read_at``; the three state changes (open-and-read, read one, read all)
-are POST-only, CSRF-protected, and idempotent -- replaying any of them
-changes nothing further.
-
-**Targets are never links.** A stored ``target_path`` is not rendered in
-the page at all. Opening a notification POSTs here; this route marks the
-row read, re-validates the stored path against the *current* recipient's
-role namespace (``app/services/notification_targets.py``), and redirects.
-A stored value that is unsafe -- corrupted, hand-edited, or written by a
-future bug -- falls back to the inbox with a generic message rather than
-being followed. Passing validation is not authorization: the destination
-route enforces its own current rules, so an old notification can never
-be used as proof of access to content the recipient has since lost.
+Students and Teachers retain their existing academic notifications. Administrators
+and Researchers receive private-message notifications only from the corresponding
+producer. Every row remains recipient-scoped; Open is a CSRF-protected POST and
+canonical thread destinations re-prove membership. Other role namespaces stay closed.
 """
 
 from app.services.query_presentation import render_query_page
@@ -61,7 +40,8 @@ from app.services.notification_queries import (
 )
 from app.services.notification_targets import validate_notification_target
 
-_RECIPIENT_ROLES = (UserRole.STUDENT.value, UserRole.TEACHER.value)
+_RECIPIENT_ROLES = (UserRole.STUDENT.value, UserRole.TEACHER.value,
+                    UserRole.ADMINISTRATOR.value, UserRole.RESEARCHER.value)
 
 
 def _redirect_to_inbox():

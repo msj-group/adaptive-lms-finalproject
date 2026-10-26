@@ -1,3 +1,4 @@
+from app.services.academic_status_presentation import accept_status_selection
 from flask import abort, flash, redirect, render_template, url_for
 
 from app.blueprints.admin import admin_bp
@@ -102,6 +103,9 @@ def academic_term_toggle_status(public_id):
     term = lock_academic_term_for_write(public_id)
     if term is None:
         abort(404)
+
+    if not accept_status_selection(term.status):
+        return redirect(url_for("admin.academic_terms_list"))
 
     if term.status == AcademicStatus.ACTIVE.value:
         if academic_term_has_active_group(term.id):

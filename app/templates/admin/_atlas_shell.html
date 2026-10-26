@@ -1,0 +1,57 @@
+{% import '_figma_ui.html' as ui %}
+{% import 'admin/_atlas_navigation.html' as atlas_nav with context %}
+{% set endpoint = request.endpoint or '' %}
+{% set atlas = namespace(section='personal', label='My workspace') %}
+{% if request.blueprint in ['messages','notifications'] %}{% set atlas.section = 'communication' %}
+{% elif endpoint == 'admin.dashboard' %}{% set atlas.section = 'home' %}
+{% elif endpoint.startswith('admin.financial_report') %}{% set atlas.section = 'reports' %}
+{% elif workspace_nav_active('admin.student_accounts') or endpoint in ['admin.invoice_register','admin.payments_overview','admin.deleted_financial_records'] %}{% set atlas.section = 'finance' %}
+{% elif workspace_nav_active('admin.students_list') or workspace_nav_active('admin.teachers_list') %}{% set atlas.section = 'people' %}
+{% elif workspace_nav_active('admin.courses_list') or workspace_nav_active('admin.academic_terms_list') or workspace_nav_active('admin.levels_list') or workspace_nav_active('admin.rooms_list') %}{% set atlas.section = 'academics' %}
+{% elif 'schedule' in endpoint or endpoint in ['admin.calendar','admin.centre_event_detail','admin.centre_event_create','admin.centre_event_edit'] %}{% set atlas.section = 'calendar' %}
+{% elif 'attendance' in endpoint or 'gradebook' in endpoint %}{% set atlas.section = 'learning' %}
+{% elif 'announcement' in endpoint %}{% set atlas.section = 'communication' %}
+{% elif 'group' in endpoint or 'enrollment' in endpoint %}{% set atlas.section = 'groups' %}
+{% endif %}
+{% for key,label,short,target,symbol in atlas_nav.destinations %}{% if atlas.section == key %}{% set atlas.label=label %}{% endif %}{% endfor %}
+<a class="figma-skip-link" href="#workspace-content">Skip to content</a>
+<div class="st-shell ax-shell">
+  <aside class="st-sidebar ax-rail" id="workspace-navigation" aria-label="Administrator navigation" data-nav-scope="administrator">
+    <a class="ax-rail-brand" href="{{ url_for('admin.dashboard') }}" aria-label="Youth Centre home">{{ ui.brand_logo('Youth Centre',40,40) }}<span class="ax-brand-copy"><strong lang="en" dir="ltr" translate="no">Youth Centre<span>.</span></strong><small>Administration</small></span></a>
+    <nav class="ax-rail-primary" aria-label="Primary">{{ atlas_nav.rail(atlas.section) }}</nav>
+    <nav class="ax-rail-bottom" aria-label="Personal workspace">
+      <a class="ax-rail-link" href="{{ url_for('workspace.help_page') }}" title="Help">{{ ui.icon('help',19) }}<span>Help</span></a>
+      <button class="ax-rail-link" type="button" popovertarget="workspace-display-panel" aria-haspopup="dialog" title="Preferences">{{ ui.icon('settings',19) }}<span>Settings</span></button>
+      <a class="ax-rail-link" href="{{ url_for('account.settings') }}">{{ ui.avatar(current_user.full_name, account_photo_url()) }}<span>My account</span></a>
+    </nav>
+  </aside>
+  <div class="st-body ax-body" data-workspace-body>
+    <header class="st-header ax-topbar">
+      <div class="ax-centre-name"><a href="{{ url_for('admin.dashboard') }}" lang="en" dir="ltr" translate="no">Youth Centre</a><small>{{ _('Administration') }} / {{ _(atlas.label) }}</small></div>
+      <div class="ax-mobile-title"><a class="ax-mobile-logo" href="{{ url_for('admin.dashboard') }}" aria-label="Youth Centre home">{{ ui.brand_logo('Youth Centre',30,30) }}</a><span>{{ _('Administration') if endpoint == 'admin.dashboard' else _(atlas.label) }}</span></div>
+      <div class="st-header-actions ax-top-actions">
+        <a class="ax-global-search" href="{{ url_for('workspace.search') }}" data-workspace-search-open aria-label="Search workspace" aria-haspopup="dialog" aria-controls="workspace-search-dialog">{{ ui.icon('search',16) }}<span>Find a page or record</span><kbd>/</kbd></a>
+        <button class="st-icon-button ax-theme-button" type="button" popovertarget="workspace-theme-panel" aria-haspopup="dialog" aria-label="Appearance">{{ ui.icon('moon',18) }}</button>
+        {% if notif %}{% include 'notifications/_bell.html' %}{% endif %}
+        <button class="st-icon-button ax-more-button" type="button" data-more-toggle aria-label="Open navigation" aria-controls="workspace-more-panel" aria-expanded="false" hidden>{{ ui.icon('menu',19) }}</button>
+        {{ ui.account(current_user,url_for('auth.logout'),csrf_token(),photo_url=account_photo_url()) }}
+      </div>
+    </header>
+    {% set page_content = portal_blocks.admin_content() %}
+    <div class="st-content ax-content {{ portal_blocks.workspace_content_class() }}" id="workspace-content" tabindex="-1">
+      {% set back=workspace_back() %}
+      {% if back %}<nav class="workspace-page-navigation ax-breadcrumb" aria-label="Breadcrumb"><a class="workspace-page-back" href="{{ back }}">{{ ui.icon('arrow',14) }} Back</a><ol class="workspace-page-trail">{% for crumb in workspace_breadcrumbs(portal_blocks.title()|striptags) %}<li>{% if crumb.url %}<a href="{{ crumb.url }}" dir="auto">{{ _(crumb.label) if crumb.owned else crumb.label }}</a>{% else %}<span aria-current="page" dir="auto">{{ crumb.label }}</span>{% endif %}</li>{% endfor %}</ol></nav>{% endif %}
+      {% if endpoint != 'admin.dashboard' and 'data-workspace-page-heading' not in page_content %}<header class="ad-page-head"><div><p class="ad-eyebrow">{{ _(atlas.label) }}</p>{{ portal_blocks.workspace_page_label() }}</div></header>{% endif %}
+      {% include '_workspace_context.html' %}
+      {% if 'ad-tabs' not in page_content and 'data-academic-hub' not in page_content %}
+        {% set context=workspace_context() %}
+        {% if context and context.tabs %}<nav class="ad-tabs ax-context-tabs" aria-label="{{ context.title }} tools">{% for tab in context.tabs %}<a href="{{ tab.url }}"{% if tab.active %} aria-current="page"{% endif %}>{{ _(tab.label) }}</a>{% endfor %}</nav>
+        {% else %}{{ atlas_nav.section_tabs(atlas.section) }}{% endif %}
+      {% endif %}
+      {{ page_content }}
+    </div>
+    <footer class="st-footer ax-footer"><span>Youth Centre · Administration</span><a href="{{ url_for('workspace.help_page') }}">Workspace help</a></footer>
+  </div>
+</div>
+{% include 'layouts/_mobile_navigation.html' %}
+{% include 'layouts/_workspace_search.html' %}

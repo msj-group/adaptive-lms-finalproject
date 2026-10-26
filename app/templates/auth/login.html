@@ -1,52 +1,55 @@
 {% extends "layouts/base.html" %}
 {% import "_figma_ui.html" as ui %}
 {% block title %}Sign in · Youth Centre{% endblock %}
-{% block body_class %}figma-login{% endblock %}
-{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/figma.css') }}">{% endblock %}
+{% block body_class %}figma-login eclipse-login{% endblock %}
+{% block protected_styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css', v='placement-entry-20261013') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login_eclipse.css', v='eclipse-20261022') }}">
+{% endblock %}
 {% block content %}
-<div class="figma-login-scene" aria-hidden="true">
-  <div class="figma-login-glow figma-login-glow--one"></div><div class="figma-login-glow figma-login-glow--two"></div><div class="figma-login-glow figma-login-glow--three"></div>
-  {% for letter in ['A','g','R','e','B','w','Y','t','Q','m','L','f'] %}<span class="figma-letter figma-letter--{{ loop.index }}">{{ letter }}</span>{% endfor %}
-  <span class="figma-login-word figma-login-word--one" data-learning-word>Hello</span><span class="figma-login-word figma-login-word--two" data-learning-word>Discover</span>
-  <span class="figma-login-word figma-login-word--three" data-learning-word>Confidence</span><span class="figma-login-word figma-login-word--four" data-learning-word>Grow</span>
-</div>
-<div class="figma-login-container">
-  {% set placement_selected = request.method == 'GET' and request.args.get('view') == 'placement' %}
-  <section class="figma-login-card login-entry" aria-label="Account access">
-    <div class="figma-login-logo">{{ ui.brand_logo(alt='Youth Centre', width=175, height=145) }}</div>
-    <nav class="login-entry-tabs" aria-label="Account access" data-entry-tabs>
-      <a id="placement-tab" class="login-entry-tab" href="{{ url_for('auth.login', view='placement', next=request.args.get('next')) }}" data-entry-tab="placement-panel"{% if placement_selected %} aria-current="page"{% endif %}>Find your level</a>
-      <a id="sign-in-tab" class="login-entry-tab" href="{{ url_for('auth.login', next=request.args.get('next')) }}" data-entry-tab="sign-in-panel"{% if not placement_selected %} aria-current="page"{% endif %}>Sign in</a>
-    </nav>
-    <div class="login-entry-panels">
-    <section id="sign-in-panel" class="login-entry-panel" aria-labelledby="sign-in-tab"{% if placement_selected %} hidden{% endif %}>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% for category, message in messages %}<div class="alert alert--{{ category }}" role="alert">{{ message }}</div>{% endfor %}
-    {% endwith %}
-    <form method="post" novalidate data-login-form>
-      {{ form.hidden_tag() }}
-      {% for error in form.csrf_token.errors %}<p class="field__error" role="alert">{{ error }}</p>{% endfor %}
-      <div class="figma-login-field">
-        <label class="field__label" for="{{ form.email.id }}">Email address</label>
-        <div class="figma-login-input{{ ' figma-login-input--error' if form.email.errors else '' }}">{{ ui.icon('mail', 21) }}{{ form.email(class_="field__input", type="email", autocomplete="username", placeholder="Your email address", aria_describedby="email-errors", aria_invalid='true' if form.email.errors else 'false') }}</div>
-        <div id="email-errors">{% for error in form.email.errors %}<span class="field__error">{{ error }}</span>{% endfor %}</div>
-      </div>
-      <div class="figma-login-field">
-        {{ form.password.label(class_="field__label") }}
-        <div class="figma-login-input{{ ' figma-login-input--error' if form.password.errors else '' }}">{{ ui.icon('lock', 21) }}{{ form.password(class_="field__input", autocomplete="current-password", placeholder="Your password", aria_describedby="password-errors", aria_invalid='true' if form.password.errors else 'false') }}<button class="figma-password-toggle" type="button" aria-label="Show password" aria-pressed="false" aria-controls="{{ form.password.id }}" data-password-toggle hidden>{{ ui.icon('eye') }}</button></div>
-        <div id="password-errors">{% for error in form.password.errors %}<span class="field__error">{{ error }}</span>{% endfor %}</div>
-      </div>
-      <button class="figma-sign-in" type="submit" name="{{ form.submit.name }}" data-login-submit><span data-login-label>Sign in</span>{{ ui.icon('arrow', 18) }}<span class="figma-spinner" data-login-spinner hidden></span></button>
-    </form>
-    <p class="figma-login-help">Need an account or password help?<br>Contact your centre administrator.</p>
+<div class="ec-page" data-eclipse-login>
+  <div class="ec-backdrop" aria-hidden="true"></div>
+  <header class="ec-header">
+    <div class="ec-brand">{{ ui.brand_logo(alt='Youth Centre logo', width=43, height=46) }}<span>Youth Centre</span></div>
+    <button class="ec-theme" type="button" data-login-theme aria-label="Switch appearance" hidden>{{ ui.icon('moon', 18) }}</button>
+  </header>
+  <div class="ec-main">
+    <div class="ec-orbit" aria-hidden="true"></div>
+    <div class="ec-art" aria-hidden="true"><img src="{{ url_for('static', filename='images/login_eclipse_glass.webp') }}" alt="" width="740" height="740" decoding="async" fetchpriority="high"></div>
+    <section class="ec-card" aria-labelledby="login-title">
+      <div class="ec-title-row"><h1 id="login-title">Sign in</h1><span class="ec-title-icon">{{ ui.icon('lock', 18) }}</span></div>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}<div class="ec-notice ec-notice--{{ category }}" role="alert">{{ message }}</div>{% endfor %}
+      {% endwith %}
+      <form method="post" novalidate data-login-form>
+        {{ form.hidden_tag() }}
+        {% for error in form.csrf_token.errors %}<p class="ec-error ec-form-error" role="alert">{{ error }}</p>{% endfor %}
+        <div class="ec-field" data-email-field{% if form.email.errors %} data-error="true"{% endif %}>
+          <label class="ec-label" for="{{ form.email.id }}">Email address</label>
+          <div class="ec-shell">{{ ui.icon('mail', 18) }}{{ form.email(class_='ec-input', type='email', autocomplete='username', placeholder='you@example.com', dir='ltr', spellcheck='false', aria_describedby='email-errors email-format-status', aria_invalid='true' if form.email.errors else 'false') }}<span class="ec-email-status" aria-hidden="true">{{ ui.icon('check', 16) }}</span></div>
+          <div id="email-errors" data-field-errors>{% for error in form.email.errors %}<p class="ec-error" role="alert">{{ error }}</p>{% endfor %}</div>
+        </div>
+        <div class="ec-field"{% if form.password.errors %} data-error="true"{% endif %}>
+          {{ form.password.label(class_='ec-label') }}
+          <div class="ec-shell">{{ ui.icon('lock', 18) }}{{ form.password(class_='ec-input', autocomplete='current-password', placeholder='Enter your password', dir='ltr', aria_describedby='password-errors', aria_invalid='true' if form.password.errors else 'false') }}<button class="ec-eye" type="button" data-password-toggle aria-label="Show password" aria-pressed="false" aria-controls="{{ form.password.id }}" hidden>{{ ui.icon('eye', 17) }}</button></div>
+          <div id="password-errors" data-field-errors>{% for error in form.password.errors %}<p class="ec-error" role="alert">{{ error }}</p>{% endfor %}</div>
+        </div>
+        <div class="ec-options"><details id="login-account-help" class="ec-help-inline"><summary class="ec-link" data-login-help>Forgot password?</summary><p>Contact your centre administrator for account or password help.</p></details></div>
+        <button class="ec-action ec-primary" type="submit" name="{{ form.submit.name }}" data-login-submit><span data-login-label>Sign in</span><span class="ec-arrow">{{ ui.icon('arrow', 18) }}</span><span class="ec-loading" data-login-spinner hidden></span></button>
+        <a class="ec-action ec-secondary" href="{{ url_for('auth.placement', next=request.args.get('next')) }}">{{ ui.icon('activity', 18) }}<span>Placement test</span></a>
+      </form>
+      <p id="email-format-status" class="sr-only" role="status" aria-live="polite" data-email-status></p>
+      <p class="sr-only" role="status" aria-live="polite" data-login-status></p>
     </section>
-    <section id="placement-panel" class="login-entry-panel login-entry-placement" aria-labelledby="placement-tab"{% if not placement_selected %} hidden{% endif %}>
-      <a class="figma-sign-in login-start-test" href="{{ url_for('auth.placement', next=request.args.get('next')) }}">Start test{{ ui.icon('arrow', 18) }}</a>
-    </section>
-    </div>
-  </section>
+  </div>
+  <footer class="ec-footer"><span>© Youth Centre</span><div class="ec-footer-links"><a class="ec-link" href="#login-account-help" data-login-help>Support</a><a class="ec-link" href="#login-account-help" data-login-help>Privacy</a></div></footer>
+  <dialog class="ec-dialog" data-login-help-dialog aria-labelledby="account-help-title" aria-describedby="account-help-copy">
+    <button class="ec-close" type="button" data-login-help-close aria-label="Close account help">{{ ui.icon('close', 18) }}</button>
+    <div class="ec-title-icon">{{ ui.icon('help', 22) }}</div>
+    <h2 id="account-help-title">Account help</h2>
+    <p id="account-help-copy">For account access, password or privacy questions, contact your centre administrator.</p>
+    <button class="ec-action ec-primary" type="button" data-login-help-close autofocus>Close</button>
+  </dialog>
 </div>
 {% endblock %}
-{% block body_scripts %}<script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script><script src="{{ url_for('static', filename='js/login_entry.js', v='placement-entry-20261013') }}" defer></script>{% endblock %}
-
-{% block protected_styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css', v='placement-entry-20261013') }}">{% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/login_entry.js', v='eclipse-20261022') }}" defer></script>{% endblock %}

@@ -78,7 +78,10 @@ def _teacher_material_row(material):
         "kind": material.kind,
         "status": material.status,
     }
-    if material.kind == _EXTERNAL_LINK:
+    if material.kind == _RICH_TEXT:
+        # The Course Studio reader receives only freshly sanitized display HTML.
+        row["content_html"] = sanitize_rich_text_html(material.content_html) or ""
+    elif material.kind == _EXTERNAL_LINK:
         row["external_url"] = material.external_url
     elif material.kind == _FILE:
         uploaded = material.uploaded_file

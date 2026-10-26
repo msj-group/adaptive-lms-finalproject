@@ -23,10 +23,10 @@ Center or Course announcement -- not disabled in a template, not refused
 by a permission check somebody could later relax: no such endpoint
 exists, so a POST aimed at one returns 404 or 405.
 
-The two flat routes are reads, and only reads. The feed is what a Teacher
-sees *as a recipient* -- the Center, Course and Group announcements
-currently addressed to them -- and the flat detail page is the authorized
-destination a notification about one sends them to.
+The two flat routes are reads, and only reads. The workspace separates
+assigned-Group management from received published notices using GET tabs.
+The flat detail page remains the authorized recipient destination for a
+notification. Management data always requires the active Group assignment.
 
 **Authorization.** ``roles_required(TEACHER)`` handles anonymous (login
 redirect) and non-Teacher (403). Object authorization is then server-side
@@ -101,11 +101,14 @@ from app.models import (
 from app.security.decorators import roles_required
 from app.services.announcement_queries import (
     PAGE_SIZE,
+    STATUS_LABELS,
+    announcement_date_bounds,
     build_management_view,
     build_reader_view,
     group_announcement,
     group_announcements_page,
     normalize_page,
+    normalize_status_filter,
     teacher_feed_page,
     teacher_group_cards,
     teacher_is_actively_assigned,
@@ -399,37 +402,67 @@ def _lifecycle_block(status):
 @teacher_bp.get("/announcements")
 @roles_required(UserRole.TEACHER.value)
 def announcements_feed():
-    """Every published announcement this Teacher may currently read --
-    Center, Course and their assigned Groups -- newest publication first,
-    plus the way in to each assigned Group's management page.
+    """Group-first workspace; receiving and management keep separate scopes."""
+    return _render_announcements_workspace()
 
-    One bounded page, deterministic ordering, ``LIMIT PAGE_SIZE + 1`` for
-    the has-next flag and **no** ``COUNT``. The optional ``q`` filter
-    narrows the same authorized rows through exactly the normalisation and
-    escaping M13's search already uses; it can never widen them, because
-    it is applied on top of the visibility clause rather than instead of
-    it.
 
-    Drafts and withdrawn announcements never appear here, including this
-    Teacher's own: this page is the board, not the workshop. Their own
-    group's drafts are on the group management page.
+def _render_announcements_workspace(group_public_id=None):
+    """Render one bounded, authorized list, never a merged lifecycle feed.
+
+    Nested Group entry points select management. The received tab applies
+    the unchanged published/current-visibility rule. Neither tab writes data.
     """
+    view = "received" if not group_public_id and request.args.get("view") == "received" else "sent"
+    cards = teacher_group_cards(current_user.id)
+    selected_group = group_public_id or request.args.get("group", "").strip()
+    if not selected_group and view == "sent" and cards:
+        selected_group = cards[0]["group_public_id"]
+    group = _teacher_group_or_404(selected_group) if selected_group else None
+    selected_card = next((card for card in cards if card["group_public_id"] == selected_group), None)
+    if selected_group and selected_card is None:
+        abort(404)
+    # Stable selected-first ordering also works without JavaScript and in RTL.
+    cards = sorted(cards, key=lambda card: card["group_public_id"] != selected_group)
     page = normalize_page(request.args.get("page"))
     raw_q = request.args.get("q", "")
     query_norm = normalize_query(raw_q)
     tokens = query_norm.tokens if query_norm.is_searchable else ()
+    selected_status = normalize_status_filter(request.args.get("status")) if view == "sent" else None
+    since = request.args.get("from", "").strip()
+    until = request.args.get("to", "").strip()
+    filter_error = None
+    try:
+        lower, upper = announcement_date_bounds(since, until, _tz_name())
+    except (ValueError, OverflowError):
+        filter_error = "Enter a valid date range. The start date must not be after the end date."
+        lower, upper = None, None
 
-    rows, has_next = teacher_feed_page(current_user.id, page, tokens)
+    def load(selected_page):
+        if filter_error or (view == "sent" and group is None):
+            return [], False
+        if view == "received":
+            return teacher_feed_page(current_user.id, selected_page, tokens, lower=lower, upper=upper)
+        return group_announcements_page(
+            group.id, selected_page, status=selected_status, tokens=tokens, lower=lower, upper=upper
+        )
+
+    rows, has_next = load(page)
     if not rows and page > 1:
-        # A page past the end (a stale bookmark) shows page 1 rather than a
-        # confusing empty page with a "Previous" button.
         page = 1
-        rows, has_next = teacher_feed_page(current_user.id, page, tokens)
+        rows, has_next = load(page)
 
     return render_query_page(
         "teacher/announcements/feed.html",
-        announcements=build_reader_view(rows, _tz_name()),
-        cards=teacher_group_cards(current_user.id),
+        announcements=(build_reader_view if view == "received" else build_management_view)(rows, _tz_name()),
+        cards=cards,
+        view=view,
+        selected_group=selected_group,
+        selected_card=selected_card,
+        selected_status=selected_status or "",
+        statuses=STATUS_LABELS,
+        since=since,
+        until=until,
+        filter_error=filter_error,
         q=query_norm.text,
         raw_q=raw_q,
         searching=bool(tokens),
@@ -475,33 +508,8 @@ def announcement_detail(announcement_public_id):
 @teacher_bp.get("/groups/<group_public_id>/announcements")
 @roles_required(UserRole.TEACHER.value)
 def group_announcements(group_public_id):
-    """One bounded page of **every** announcement this Group owns --
-    drafts, published and withdrawn alike -- newest first.
-
-    Stays available under an archived Group or ancestor: an actively
-    assigned Teacher can always read back what was posted, and can always
-    withdraw something that should no longer be standing.
-    """
-    group = _teacher_group_or_404(group_public_id)
-    page = normalize_page(request.args.get("page"))
-    rows, has_next = group_announcements_page(group.id, page)
-    if not rows and page > 1:
-        page = 1
-        rows, has_next = group_announcements_page(group.id, page)
-
-    operational = _group_is_operational(group)
-    return _private_no_store(
-        "teacher/announcements/group_list.html",
-        group=group,
-        announcements=build_management_view(rows, _tz_name()),
-        operational=operational,
-        archived_labels=[] if operational else _archived_chain_labels(group),
-        tz_name=_tz_name(),
-        page=page,
-        has_next=has_next,
-        has_prev=page > 1,
-        page_size=PAGE_SIZE,
-    )
+    """Existing nested entry, with the same assignment and historical scope."""
+    return _render_announcements_workspace(group_public_id)
 
 
 @teacher_bp.get("/groups/<group_public_id>/announcements/<announcement_public_id>")

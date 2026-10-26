@@ -1,0 +1,4 @@
+{% extends "layouts/admin_base.html" %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_people.css', v='people-actions') }}">{% endblock %}
+{% block workspace_content_class %}pf-content{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/admin_people.js', v='people-actions') }}" defer></script><script src="{{ url_for('static', filename='js/admin_people_create.js', v='people-create-dialog') }}" defer></script><script src="{{ url_for('static', filename='js/admin_people_actions.js', v='people-actions') }}" defer></script>{% endblock %}

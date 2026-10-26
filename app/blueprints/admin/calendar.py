@@ -112,6 +112,7 @@ from app.services.calendar_transactions import (
     lock_calendar_event_chain,
 )
 from app.services.schedule_occurrences import app_now, utc_reference_now
+from app.services.admin_calendar_presentation import prepare_focus_calendar
 
 _SCHEDULED = CalendarEventStatus.SCHEDULED.value
 _CANCELLED = CalendarEventStatus.CANCELLED.value
@@ -323,6 +324,7 @@ def calendar():
 
     return _private_no_store(
         "admin/calendar/index.html",
+        calendar=prepare_focus_calendar(rows, a_range, today, request.args),
         days=group_by_day(rows),
         entry_count=len(rows),
         truncated=truncated,

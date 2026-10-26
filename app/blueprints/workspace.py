@@ -57,7 +57,7 @@ def student_courses():
     progress, truncated = student_group_progress(current_user.id) if data["cards"] else ([], False)
     recent = build_recent_view(recently_opened(current_user.id,
         group_public_ids=[card["group_public_id"] for card in data["cards"]]), _tz()) if data["cards"] else []
-    return private_page("workspace/groups.html", cards=data["cards"], teacher=False,
+    return private_page("student/courses/index.html", cards=data["cards"], teacher=False,
                         progress_groups=progress, progress_truncated=truncated,
                         progress_group_cap=DASHBOARD_GROUP_LIMIT,
                         recent_lessons=recent, recent_cap=RECENTLY_OPENED_LIMIT,
@@ -218,8 +218,8 @@ def mobile_shortcuts():
             ("Attendance", "teacher.attendance_overview", "activity", None)],
         "administrator": [("Home", "admin.dashboard", "dashboard", None),
             ("Groups", "admin.groups_list", "book", None),
-            ("Schedules", "admin.schedules_overview", "calendar", None),
-            ("Finance", "admin.student_accounts", "wallet", None)],
+            ("Finance", "admin.student_accounts", "wallet", None),
+            ("Messages", "messages.inbox", "message", None)],
         "researcher": [("Home", "research.dashboard", "dashboard", None),
             ("Sessions", "research.sessions", "activity", None),
             ("Exports", "research.exports", "file", None),
@@ -266,7 +266,7 @@ def _workspace_page_match(path):
         "administrator": {"workspace.student_enrollments"},
     }
     allowed = endpoint.startswith(own_blueprint + ".") or endpoint in {"account.settings", "workspace.search"} \
-        or endpoint.startswith("messages.") and role in ("student", "teacher") \
+        or endpoint.startswith("messages.") and role in ("student", "teacher", "administrator", "researcher") \
         or endpoint in shared.get(role, set())
     return (endpoint, args) if allowed else None
 

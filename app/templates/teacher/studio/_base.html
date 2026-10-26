@@ -1,0 +1,28 @@
+{% extends "layouts/portal_base.html" %}
+{% import "_figma_ui.html" as ui %}
+{% import "teacher/studio/_ui.html" as studio with context %}
+{% set studio_page = studio_page|default('curriculum') %}
+{% set studio_form = studio_form|default(false) %}
+{% set studio_gp = group.public_id if group is defined else ctx.group_public_id %}
+{% set studio_name = group.name if group is defined else ctx.group_name %}
+{% set studio_term = (group.term_name if group is mapping else group.academic_term.name) if group is defined else ctx.term_name %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/course_studio.css', v='course-studio-20261022') }}">{% endblock %}
+{% block workspace_content_class %}cs-workspace{% endblock %}
+{% block portal_content %}
+<div class="cs" data-course-studio>
+  {% block studio_heading %}{% endblock %}
+  {{ studio.tabs(studio_gp,studio_page) }}
+  {% with messages = get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="alert alert--{{ category }}" role="{{ 'alert' if category == 'danger' else 'status' }}">{{ message }}</div>{% endfor %}{% endwith %}
+  <div{% if studio_form %} class="cs-form-layout"{% endif %}>
+    <div class="cs-content">{% block studio_content %}{% endblock %}</div>
+    {% if studio_form %}<aside class="cs-panel cs-form-context">
+      <p class="cs-eyebrow">Content context</p><h2 dir="auto">{{ studio_name }}</h2><p class="cs-meta" dir="auto">{{ studio_term }}</p>
+      {% if unit is defined and unit %}<hr><p class="cs-eyebrow">Unit</p><h3 dir="auto">{{ unit.title }}</h3>{% endif %}
+      {% if lesson is defined and lesson %}<hr><p class="cs-eyebrow">Lesson</p><h3 dir="auto">{{ lesson.title }}</h3>{{ studio.status(lesson.status) }}{% endif %}
+      <hr><p class="cs-meta">Teaching order and publication are managed separately. Saving an edit preserves the current status.</p>
+      <a class="cs-text-link" href="{{ url_for('workspace.teacher_group', group_public_id=studio_gp) }}">Course workspace {{ ui.icon('arrow-up',15) }}</a>
+    </aside>{% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_course_studio.js', v='course-studio-20261022') }}" defer></script>{% endblock %}

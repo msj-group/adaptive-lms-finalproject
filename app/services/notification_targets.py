@@ -30,7 +30,7 @@ notification is never proof of current access.
 
 **The one role-neutral exception (Phase 4 / M11).** A private message
 thread lives at the shared ``/messages/threads/<thread_public_id>`` route,
-used by both Students and Teachers, so it cannot be role-namespaced. It is
+used by authorized platform correspondents, so it cannot be role-namespaced. It is
 not admitted by widening a namespace: :func:`validate_message_thread_target`
 accepts that **exact** shape and nothing else -- a lower-case canonical
 UUID as the one final segment, with no query string, no fragment, no
@@ -68,6 +68,8 @@ ROLE_NAMESPACES = {
     UserRole.STUDENT.value: "/student/",
     UserRole.TEACHER.value: "/teacher/",
 }
+MESSAGE_ROLES = (UserRole.STUDENT.value, UserRole.TEACHER.value,
+                 UserRole.ADMINISTRATOR.value, UserRole.RESEARCHER.value)
 
 #: Characters allowed in an optional fragment (``#material-<public_id>``).
 #: Anything else -- including ``/``, ``?``, ``%`` and ``\`` -- is rejected
@@ -123,7 +125,7 @@ def validate_message_thread_target(role, candidate):
     malformed id and any control character. Not an authorization decision:
     the thread route re-checks membership.
     """
-    if role not in ROLE_NAMESPACES:
+    if role not in MESSAGE_ROLES:
         return None
     if not isinstance(candidate, str) or not candidate.startswith(MESSAGE_THREAD_PREFIX):
         return None
@@ -143,9 +145,8 @@ def validate_notification_target(role, candidate):
 
     Rejected -- with no attempt to sanitise or "fix" the value:
 
-    - a role that has no namespace at all (Administrator / Researcher /
-      anything unknown), so a notification can never be opened by a role
-      that is not supposed to have an inbox;
+    - an unknown role, or an Administrator/Researcher destination other than
+      the exact private-message-thread shape;
     - absolute (``https://evil.example``) and protocol-relative
       (``//evil.example/x``) URLs, and anything ``urlparse`` reads as
       carrying a scheme or a network location;
@@ -159,15 +160,15 @@ def validate_notification_target(role, candidate):
     - anything outside the recipient role's namespace, including the
       namespace name used as a bare prefix (``/studentx/...``).
     """
-    namespace = ROLE_NAMESPACES.get(role)
-    if namespace is None:
-        return None
     if not candidate or not isinstance(candidate, str):
         return None
     if candidate.startswith(MESSAGE_THREAD_PREFIX):
         # Phase 4 / M11: the one exact-shape shared target -- see the
         # module docstring. Never falls through to the namespace rule.
         return validate_message_thread_target(role, candidate)
+    namespace = ROLE_NAMESPACES.get(role)
+    if namespace is None:
+        return None
     if DISCUSSION_MARKER in candidate:
         # Phase 4 / M12: the one exact-shape discussion target -- see the
         # module docstring. Never falls through to the namespace rule.
@@ -328,12 +329,12 @@ def teacher_announcement_target(announcement_public_id):
 
 def role_announcement_target(role, announcement_public_id):
     """The announcement detail target for `role`, or ``None`` for a role
-    without an inbox.
+    outside the academic announcement audience.
 
     Used by the announcement producer, whose recipients are a mix of
     Students and Teachers -- each is sent into **their own** role
-    namespace, and an Administrator (who has no inbox in this project and
-    is never a recipient) gets ``None`` rather than somebody else's path.
+    namespace. Administrators and Researchers are not academic announcement
+    recipients and receive ``None`` rather than somebody else's path.
     """
     if role == UserRole.STUDENT.value:
         return student_announcement_target(announcement_public_id)
@@ -344,7 +345,7 @@ def role_announcement_target(role, announcement_public_id):
 
 def message_thread_target(role, thread_public_id):
     """The canonical private conversation page for one thread
-    (Phase 4 / M11), for a Student or Teacher recipient.
+    (Phase 4 / M11), for a supported messaging recipient.
 
     Resolved through the URL map and validated by the exact-shape rule
     before it can be stored; anything else -- a role without an inbox, or

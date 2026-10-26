@@ -1,5 +1,4 @@
-"""Read-only, bounded queries for private Teacher-Student messaging
-(Phase 4 / M11).
+"""Read-only, bounded queries for private two-person messaging.
 
 Flask-independent: no ``request``, ``flash`` or template here.
 
@@ -10,13 +9,15 @@ Flask-independent: no ``request``, ``flash`` or template here.
   acting user in the same SQL ``WHERE`` clause, so a missing thread and
   another pair's thread are indistinguishable. Historical access survives
   the end of the academic relationship on purpose.
-- *May these two users exchange a new message right now?* -- the current
+- *May these two users exchange a new message right now?* -- either an
+  active administrative pair (at least one Administrator), or the current
   academic relationship: both accounts active with the expected roles,
   an active Enrollment of the Student and an active GroupTeacherAssignment
   of the Teacher in one shared Group whose Group, Course, Level and
-  AcademicTerm are all active. That is answered by
-  :func:`shared_relationship`, and re-proved against locked rows by
-  ``app/services/message_transactions.py`` before any insert.
+  AcademicTerm are all active. Academic permission is answered by
+  :func:`shared_relationship` and re-proved by ``message_transactions``;
+  administrative permission is re-proved by ``administrative_messages``
+  against locked current accounts before any insert.
 
 **Every query is bounded.** The inbox reads ``PAGE_SIZE + 1`` rows, the
 conversation ``CONVERSATION_PAGE_SIZE + 1``, the recipient list at most
@@ -81,11 +82,14 @@ _ASSIGNMENT_ACTIVE = GroupTeacherAssignmentStatus.ACTIVE.value
 _USER_ACTIVE = UserStatus.ACTIVE.value
 _STUDENT = UserRole.STUDENT.value
 _TEACHER = UserRole.TEACHER.value
+_ADMIN = UserRole.ADMINISTRATOR.value
+_RESEARCHER = UserRole.RESEARCHER.value
+MESSAGE_ROLES = (_STUDENT, _TEACHER, _ADMIN, _RESEARCHER)
 
-#: The only roles that take part in messaging, and each one's counterpart.
+#: The original academic counterparts. Administrative contacts are separate.
 OPPOSITE_ROLE = {_STUDENT: _TEACHER, _TEACHER: _STUDENT}
 
-ROLE_LABELS = {_STUDENT: "Student", _TEACHER: "Teacher"}
+ROLE_LABELS = {_STUDENT: "Student", _TEACHER: "Teacher", _ADMIN: "Administrator", _RESEARCHER: "Researcher"}
 
 _PUBLIC_ID_PATTERN = re.compile(
     r"\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\Z"
@@ -100,6 +104,9 @@ Relationship = namedtuple(
 
 #: What the conversation page and the reply route know about replying.
 ReplyState = namedtuple("ReplyState", "other student_id teacher_id relationship")
+
+#: A direct administrative pair has no fabricated academic identity.
+AdministrativeRelationship = namedtuple("AdministrativeRelationship", "first_id second_id")
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +142,23 @@ def orient_pair(first_id, first_role, second_id, second_role):
     if first_role == _TEACHER and second_role == _STUDENT:
         return second_id, first_id
     return None
+
+
+def administrative_pair(first_id, first_role, second_id, second_role):
+    """An explicit administrative pair, or ``None``.
+
+    This classifies current roles only. Account activity and these same roles
+    are rechecked from locked User rows before any send. A pair always has
+    two different platform accounts and at least one Administrator; a
+    Researcher consequently has no Student/Teacher correspondence path.
+    """
+    if first_id is None or second_id is None or first_id == second_id:
+        return None
+    if first_role not in MESSAGE_ROLES or second_role not in MESSAGE_ROLES:
+        return None
+    if _ADMIN not in (first_role, second_role):
+        return None
+    return AdministrativeRelationship(*sorted((first_id, second_id)))
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +272,51 @@ def _recipient_query(actor_id, actor_role):
     return query, recipient
 
 
+def _administrative_recipient_query(actor_id, actor_role):
+    """Active Administrator contacts, independently of academic membership."""
+    if actor_role not in MESSAGE_ROLES:
+        return None, None
+    actor = aliased(User)
+    recipient = aliased(User)
+    query = (
+        db.session.query(recipient.id, recipient.public_id, recipient.full_name, recipient.role)
+        .select_from(actor)
+        .join(recipient, recipient.id != actor.id)
+        .filter(actor.id == actor_id, actor.role == actor_role,
+                actor.status == _USER_ACTIVE, recipient.status == _USER_ACTIVE,
+                recipient.role.in_(MESSAGE_ROLES))
+    )
+    if actor_role != _ADMIN:
+        query = query.filter(recipient.role == _ADMIN)
+    return query, recipient
+
+
+def _contact_query(actor_id, actor_role):
+    """One column-projected union of the unchanged academic rule and admins.
+
+    Search, deterministic ordering and the recipient limit are applied to
+    this union in SQL, rather than fetching and merging account lists.
+    """
+    branches = []
+    for query, recipient in (
+        _recipient_query(actor_id, actor_role),
+        _administrative_recipient_query(actor_id, actor_role),
+    ):
+        if query is not None:
+            branches.append(query.with_entities(
+                recipient.id.label("recipient_id"),
+                recipient.public_id.label("public_id"),
+                recipient.full_name.label("full_name"),
+                recipient.role.label("role"),
+            ))
+    if not branches:
+        return None, None
+    combined = branches[0].union(*branches[1:]) if len(branches) > 1 else branches[0]
+    contacts = combined.subquery()
+    return db.session.query(contacts.c.recipient_id, contacts.c.public_id,
+                            contacts.c.full_name, contacts.c.role), contacts.c
+
+
 def permitted_recipients(actor_id, actor_role, search_text=""):
     """At most :data:`RECIPIENT_LIMIT` distinct permitted recipients,
     ordered by display name then internal id.
@@ -257,7 +326,7 @@ def permitted_recipients(actor_id, actor_role, search_text=""):
     literally -- ``%`` and ``_`` are escaped. Returns plain dicts carrying
     the public id and display name only.
     """
-    query, recipient = _recipient_query(actor_id, actor_role)
+    query, recipient = _contact_query(actor_id, actor_role)
     if query is None:
         return []
     if search_text:
@@ -266,7 +335,7 @@ def permitted_recipients(actor_id, actor_role, search_text=""):
         )
     rows = (
         query.distinct()
-        .order_by(recipient.full_name, recipient.id)
+        .order_by(recipient.full_name, recipient.recipient_id)
         .limit(RECIPIENT_LIMIT)
         .all()
     )
@@ -279,12 +348,12 @@ def permitted_recipients(actor_id, actor_role, search_text=""):
 def permitted_recipient(actor_id, actor_role, recipient_public_id):
     """``{id, public_id, full_name, role}`` for one currently permitted
     recipient, else ``None`` -- identical for an unknown public id, a
-    same-role user, a suspended account and a user who shares no
-    operational Group, so nothing is disclosed about which it was."""
+    inactive account and an account outside the acting user's permitted
+    contacts, so nothing is disclosed about which it was."""
     public_id = canonical_public_id(recipient_public_id)
     if public_id is None:
         return None
-    query, recipient = _recipient_query(actor_id, actor_role)
+    query, recipient = _contact_query(actor_id, actor_role)
     if query is None:
         return None
     row = query.filter(recipient.public_id == public_id).first()
@@ -363,9 +432,9 @@ def reply_state(thread_id, viewer_id):
     """Whether `viewer_id` may add a reply to this thread right now.
 
     Returns a :class:`ReplyState`. ``other`` is the other member (or
-    ``None`` for a thread that is not exactly one Student plus one Teacher
-    including the viewer); ``relationship`` is the current shared
-    operational Group, or ``None`` -- which makes the conversation
+    ``None`` for a malformed thread or a missing viewer); ``relationship``
+    is a current academic proof or AdministrativeRelationship, or ``None``
+    -- which makes the conversation
     read-only. This is a preview for the page; the reply route re-proves
     it under locks.
     """
@@ -374,6 +443,10 @@ def reply_state(thread_id, viewer_id):
         return ReplyState(None, None, None, None)
     viewer = next(m for m in members if m["user_id"] == viewer_id)
     other = next(m for m in members if m["user_id"] != viewer_id)
+    direct = administrative_pair(viewer["user_id"], viewer["role"], other["user_id"], other["role"])
+    if direct is not None:
+        allowed = viewer["status"] == _USER_ACTIVE and other["status"] == _USER_ACTIVE
+        return ReplyState(other, None, None, direct if allowed else None)
     pair = orient_pair(viewer["user_id"], viewer["role"], other["user_id"], other["role"])
     if pair is None:
         return ReplyState(other, None, None, None)

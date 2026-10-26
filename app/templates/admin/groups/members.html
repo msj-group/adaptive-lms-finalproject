@@ -2,13 +2,14 @@
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ group.name }} — Members{% endblock %}
 {% block admin_content %}
-<div class="ds-page yc-surface">
+<div class="ad-page">
   <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
-    <h1 data-workspace-page-heading style="margin:0">{{ group.name }} — Manage Members</h1>
+    <header class="ad-page-head"><div><p class="ad-eyebrow">Groups & enrollment</p><h1 data-workspace-page-heading>{{ group.name }} — Manage Members</h1></div></header>
     {{ macros.status_badge(group.status) }}
   </div>
 
   {{ macros.flash_messages() }}
+{% include "admin/groups/_atlas_tabs.html" %}
 
   {% set ancestor_archived = group.academic_term.status != "active"
         or group.course.status != "active"
@@ -28,8 +29,8 @@
 
 
 
-  <section style="margin-bottom: var(--space-8)">
-    <h2>Teachers</h2>
+  <section class="ad-card">
+    <div class="ad-card-top"><h2>Assigned teachers</h2></div>
 
     {% if eligible_teacher_count == 0 %}
     <div class="alert alert--warning" style="margin-bottom: var(--space-4)">
@@ -38,8 +39,8 @@
     {% endif %}
 
     {% if teacher_assignments %}
-    <div style="overflow-x:auto; margin-bottom: var(--space-4)">
-    <table style="width:100%; border-collapse:collapse">
+    <div class="ax-roster ad-table-wrap">
+    <table class="ad-table">
       <thead>
         <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
           <th style="padding: var(--space-3)">Teacher</th>
@@ -99,12 +100,12 @@
     {% endif %}
   </section>
 
-  <section>
-    <h2>Students</h2><p class="workspace-meta">{{ active_student_count }}/{{ group.capacity }} · {{ _n('%(count)d seat remaining', '%(count)d seats remaining', remaining_seats) }}</p>
+  <section class="ad-card">
+    <div class="ad-card-top"><h2>Students</h2></div><p class="workspace-meta">{{ active_student_count }}/{{ group.capacity }} · {{ _n('%(count)d seat remaining', '%(count)d seats remaining', remaining_seats) }}</p>
 
     {% if enrollments %}
-    <div style="overflow-x:auto; margin-bottom: var(--space-4)">
-    <table style="width:100%; border-collapse:collapse">
+    <div class="ax-roster ad-table-wrap">
+    <table class="ad-table">
       <thead>
         <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
           <th style="padding: var(--space-3)">Student</th>

@@ -1,0 +1,147 @@
+/* Approved Eclipse entry. Scoped to Login; placement/opening retain their styles. */
+@font-face { font-family: "Inter"; src: url("../fonts/Inter-variable.ttf") format("truetype"); font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Noto Sans Arabic"; src: url("../fonts/NotoSansArabic-variable.ttf") format("truetype"); font-weight: 100 900; font-style: normal; font-display: swap; }
+.eclipse-login { --font-family-base: "Inter", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+.eclipse-login .ec-page {
+  --ec-ink: light-dark(#1c3152,#edf4ff);
+  --ec-muted: light-dark(#546b8d,#b5c4df);
+  --ec-line: light-dark(rgb(20 75 170 / .18),rgb(169 196 241 / .19));
+  --ec-green: light-dark(#17845c,#46d8a0);
+  --ec-red: light-dark(#d32b31,#ff676c);
+  --ec-modal: light-dark(#f8fbff,#13233e);
+  --ec-control: light-dark(#f3f7ff,#0d1b32);
+  --ec-control-active: light-dark(#f9fbff,#10213e);
+  position: relative; isolation: isolate; overflow: hidden; min-height: max(710px,100svh);
+  display: flex; flex-direction: column; color: var(--ec-ink); background: light-dark(#e4eafa,#0a142b);
+  font: 400 14px/1.5 var(--font-family-base); text-align: start; color-scheme: inherit;
+}
+.eclipse-login .ec-page :where(h1,h2,p) { margin: 0; }
+.eclipse-login .ec-page button, .eclipse-login .ec-page input { font: inherit; }
+.eclipse-login .ec-page button, .eclipse-login .ec-page summary { cursor: pointer; }
+.eclipse-login .ec-page button:disabled { cursor: wait; }
+.eclipse-login .ec-page svg { flex-shrink: 0; vertical-align: middle; }
+.eclipse-login .ec-backdrop { position: absolute; inset: 0; z-index: -2; background: radial-gradient(ellipse at 1% 3%,light-dark(rgb(20 75 170 / .28),rgb(20 75 170 / .62)),transparent 56%),radial-gradient(ellipse at 100% 98%,light-dark(rgb(245 26 23 / .19),rgb(151 11 19 / .43)),transparent 56%),radial-gradient(ellipse at 72% 21%,light-dark(rgb(140 169 220 / .22),rgb(27 62 129 / .12)),transparent 45%),linear-gradient(135deg,light-dark(#eaf1ff,#07152b),light-dark(#e8eafa,#111a35) 58%,light-dark(#f5e9f1,#271427)); }
+.eclipse-login .ec-backdrop::after { content: ""; position: absolute; inset: 0; opacity: .18; background-image: repeating-radial-gradient(circle at 0 0,rgb(140 169 220 / .12) 0 1px,transparent 1px 4px); background-size: 5px 5px; }
+.eclipse-login .ec-header { min-height: 89px; padding: 21px 38px; display: flex; align-items: center; justify-content: space-between; gap: 20px; position: relative; z-index: 4; }
+.eclipse-login .ec-brand { display: flex; align-items: center; gap: 11px; font: 600 15px/1.3 "Manrope",var(--font-family-base); letter-spacing: -.3px; }
+.eclipse-login .ec-brand .workspace-theme-logo { display: block; width: 43px; height: 46px; }
+.eclipse-login .ec-brand img { display: block; width: 43px; height: 46px; object-fit: contain; }
+.eclipse-login .ec-brand .workspace-logo--dark { display: none; }
+:root[data-theme="dark"] .eclipse-login .ec-brand .workspace-logo--light { display: none; }
+:root[data-theme="dark"] .eclipse-login .ec-brand .workspace-logo--dark { display: block; }
+.eclipse-login .ec-theme { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--ec-line); border-radius: 50%; color: var(--ec-ink); background: light-dark(rgb(255 255 255 / .4),rgb(140 169 220 / .07)); transition: background .25s,transform .25s; }
+.eclipse-login .ec-theme:hover { background: light-dark(rgb(255 255 255 / .8),rgb(140 169 220 / .17)); transform: rotate(-12deg); }
+.eclipse-login .ec-main { flex: 1; min-height: 551px; width: 100%; max-width: 1180px; margin-inline: auto; display: grid; grid-template-columns: minmax(0,1fr) 374px minmax(0,1fr); align-items: center; padding: 13px 30px 28px; position: relative; }
+.eclipse-login .ec-orbit { position: absolute; width: 780px; height: 416px; left: 50%; top: 50%; transform: translate(-50%,-50%) rotate(-29deg); border-radius: 50%; border: 1px solid light-dark(rgb(20 75 170 / .12),rgb(140 169 220 / .13)); pointer-events: none; }
+.eclipse-login .ec-orbit::after { content: ""; position: absolute; inset: 36px -35px; border: 1px solid light-dark(rgb(20 75 170 / .07),rgb(140 169 220 / .08)); border-radius: 50%; }
+.eclipse-login .ec-art { position: absolute; width: 375px; height: 442px; right: -54px; top: 50%; transform: translateY(-48%) rotate(14deg); opacity: .86; pointer-events: none; }
+.eclipse-login .ec-art img { width: 100%; height: 100%; object-fit: contain; display: block; animation: ec-float 10s ease-in-out 2; }
+.eclipse-login .ec-card { position: relative; grid-column: 2; z-index: 2; width: 100%; min-width: 0; border-radius: 25px; padding: 28px; border: 1px solid light-dark(rgb(255 255 255 / .85),rgb(157 184 230 / .21)); background: light-dark(rgb(255 255 255 / .63),rgb(15 28 52 / .63)); backdrop-filter: blur(24px) saturate(125%); -webkit-backdrop-filter: blur(24px) saturate(125%); box-shadow: 0 28px 75px -38px rgb(0 10 30 / .5),inset 0 1px 0 rgb(255 255 255 / .1); }
+.eclipse-login .ec-card::before { content: ""; position: absolute; top: 0; inset-inline: 34px; height: 1px; background: linear-gradient(90deg,transparent,rgb(169 195 240 / .7),transparent); }
+.eclipse-login .ec-title-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 27px; }
+.eclipse-login .ec-page :is(h1,h2) { font: 600 28px/1.2 "Manrope",var(--font-family-base); letter-spacing: -1.1px; color: var(--ec-ink); }
+.eclipse-login .ec-title-icon { width: 36px; height: 36px; border: 1px solid var(--ec-line); border-radius: 11px; display: flex; align-items: center; justify-content: center; color: light-dark(#144baa,#a8c7ff); background: light-dark(rgb(20 75 170 / .06),rgb(140 169 220 / .06)); flex-shrink: 0; }
+.eclipse-login .ec-field { display: block; }
+.eclipse-login .ec-field + .ec-field { margin-top: 19px; }
+.eclipse-login .ec-label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 9px; }
+.eclipse-login .ec-shell { --ec-autofill: var(--ec-control); position: relative; display: flex; align-items: center; gap: 10px; min-height: 51px; padding: 0 13px; border: 1px solid var(--ec-line); border-radius: 11px; background: var(--ec-autofill); color: var(--ec-muted); transition: border-color .32s,box-shadow .32s,background .32s; }
+.eclipse-login .ec-shell::after { content: ""; position: absolute; inset: -4px; border: 1px solid transparent; border-radius: 14px; opacity: 0; transform: scale(.985); pointer-events: none; transition: opacity .3s,transform .3s,border-color .3s; }
+.eclipse-login .ec-shell .ec-input { display: block; width: 100%; min-width: 0; height: 49px; border: 0; border-radius: 0; background: transparent; color: var(--ec-ink); font-size: 13px; padding: 0; outline: none; box-shadow: none; text-align: start; }
+/* The animated outer shell replaces the browser's inner focus rectangle. */
+.eclipse-login .ec-shell .ec-input:focus, .eclipse-login .ec-shell .ec-input:focus-visible { outline: none; box-shadow: none; }
+.eclipse-login .ec-input::placeholder { color: var(--ec-muted); opacity: .68; }
+.eclipse-login .ec-field:focus-within .ec-shell { --ec-autofill: var(--ec-control-active); border-color: var(--ec-red); box-shadow: 0 0 0 2px light-dark(rgb(211 43 49 / .07),rgb(255 103 108 / .07)); }
+.eclipse-login .ec-field:focus-within .ec-shell::after { border-color: light-dark(rgb(211 43 49 / .24),rgb(255 103 108 / .26)); opacity: 1; transform: scale(1); }
+.eclipse-login .ec-field[data-valid="true"] .ec-shell { border-color: var(--ec-green); box-shadow: 0 0 0 2px light-dark(rgb(23 132 92 / .06),rgb(70 216 160 / .05)); }
+.eclipse-login .ec-field[data-valid="true"] .ec-shell::after { border-color: light-dark(rgb(23 132 92 / .22),rgb(70 216 160 / .23)); opacity: 1; transform: scale(1); }
+.eclipse-login .ec-email-status { display: flex; align-items: center; flex-shrink: 0; width: 0; opacity: 0; transform: scale(.6); overflow: hidden; color: var(--ec-green); transition: width .28s,opacity .25s,transform .35s; }
+.eclipse-login .ec-field[data-valid="true"] .ec-email-status { width: 16px; opacity: 1; transform: scale(1); }
+.eclipse-login .ec-field[data-error="true"] .ec-shell { border-color: var(--ec-red); }
+.eclipse-login .ec-error { color: var(--ec-red); font-size: 12px; line-height: 1.6; margin-top: 7px !important; overflow-wrap: anywhere; }
+.eclipse-login .ec-form-error { margin-bottom: 18px !important; }
+.eclipse-login .ec-notice { border: 1px solid var(--ec-line); border-radius: 11px; padding: 12px 14px; margin-bottom: 20px; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; background: light-dark(rgb(255 255 255 / .45),rgb(9 23 46 / .5)); }
+.eclipse-login .ec-notice--danger { border-color: light-dark(rgb(211 43 49 / .4),rgb(255 103 108 / .4)); color: var(--ec-red); }
+.eclipse-login .ec-eye { width: 30px; height: 42px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 0; padding: 0; background: none; color: var(--ec-muted); border-radius: 7px; }
+.eclipse-login .ec-eye:focus-visible { outline: 2px solid var(--ec-red); outline-offset: 1px; }
+.eclipse-login .ec-options { display: flex; justify-content: flex-end; margin: 19px 0 23px; min-height: 20px; }
+.eclipse-login .ec-link { color: light-dark(#144baa,#b8d0fa); background: none; border: 0; padding: 0; font-size: 11px; border-radius: 3px; text-decoration: none; }
+.eclipse-login .ec-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+.eclipse-login .ec-help-inline { max-width: 100%; text-align: end; }
+.eclipse-login .ec-help-inline summary { list-style: none; }
+.eclipse-login .ec-help-inline summary::-webkit-details-marker { display: none; }
+.eclipse-login .ec-help-inline p { max-width: 265px; padding-top: 12px; color: var(--ec-muted); font-size: 12px; line-height: 1.8; }
+.eclipse-login .ec-action { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 49px; padding: 12px 15px; border: 1px solid transparent; border-radius: 11px; font-size: 13px; font-weight: 500; text-decoration: none; text-align: center; position: relative; overflow: hidden; transition: transform .22s,box-shadow .22s,background .22s; }
+.eclipse-login .ec-action:hover { transform: translateY(-2px); }
+.eclipse-login .ec-action:active { transform: translateY(0); }
+.eclipse-login .ec-primary { background: linear-gradient(115deg,light-dark(#144baa,#f3f7ff),light-dark(#225dc5,#d6e5ff)); color: light-dark(#fff,#102b53); box-shadow: 0 7px 18px -10px rgb(20 75 170 / .6); }
+.eclipse-login .ec-primary:hover { box-shadow: 0 10px 26px -13px light-dark(rgb(20 75 170 / .55),rgb(140 169 220 / .6)); }
+.eclipse-login .ec-primary::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg,transparent 25%,rgb(255 255 255 / .2),transparent 75%); transform: translateX(-140%); transition: transform .65s; pointer-events: none; }
+.eclipse-login .ec-primary:hover::after { transform: translateX(140%); }
+.eclipse-login .ec-secondary { margin-top: 13px; border-color: light-dark(rgb(20 75 170 / .27),rgb(172 197 240 / .32)); background: light-dark(rgb(255 255 255 / .13),rgb(140 169 220 / .07)); color: var(--ec-ink); }
+.eclipse-login .ec-secondary:hover { background: light-dark(rgb(20 75 170 / .06),rgb(140 169 220 / .15)); }
+.eclipse-login .ec-secondary svg { color: light-dark(#144baa,#a8c8ff); }
+.eclipse-login .ec-loading { display: inline-block; width: 16px; height: 16px; border: 2px solid currentColor; border-inline-end-color: transparent; border-radius: 50%; animation: ec-spin .8s linear infinite; }
+.eclipse-login [aria-busy="true"] .ec-arrow { display: none; }
+.eclipse-login .ec-action:disabled { opacity: .8; transform: none; }
+.eclipse-login .ec-footer { position: relative; z-index: 3; min-height: 70px; padding: 20px 38px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; color: var(--ec-muted); font-size: 11px; }
+.eclipse-login .ec-footer-links { display: flex; align-items: center; gap: 18px; }
+.eclipse-login .ec-footer .ec-link { color: var(--ec-muted); }
+.eclipse-login .ec-dialog { width: 340px; max-width: calc(100% - 40px); max-height: calc(100svh - 40px); overflow: auto; border: 1px solid var(--ec-line); border-radius: 22px; background: var(--ec-modal); color: var(--ec-ink); padding: 29px; box-shadow: 0 28px 80px -20px rgb(0 8 24 / .38); font-family: var(--font-family-base); }
+.eclipse-login .ec-dialog[open] { animation: ec-dialog-in .38s cubic-bezier(.16,1,.3,1); }
+.eclipse-login .ec-dialog::backdrop { background: light-dark(rgb(7 23 51 / .25),rgb(2 9 24 / .52)); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.eclipse-login .ec-dialog .ec-title-icon { margin-bottom: 23px; width: 45px; height: 45px; border-radius: 14px; }
+.eclipse-login .ec-dialog h2 { font-size: 23px; }
+.eclipse-login .ec-dialog p { font-size: 12px; line-height: 1.8; color: var(--ec-muted); margin: 13px 0 25px; }
+.eclipse-login .ec-close { position: absolute; top: 12px; inset-inline-end: 12px; border: 0; width: 31px; height: 31px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: none; color: var(--ec-muted); }
+.eclipse-login .ec-shell .ec-input:is(:autofill,:-webkit-autofill) { -webkit-box-shadow: 0 0 0 1000px var(--ec-autofill) inset; box-shadow: 0 0 0 1000px var(--ec-autofill) inset; -webkit-text-fill-color: var(--ec-ink); caret-color: var(--ec-ink); animation: ec-autofill .01s; }
+.eclipse-login .ec-page[data-page-hidden="true"] .ec-art img { animation-play-state: paused; }
+html[dir="rtl"] .eclipse-login .ec-page { --font-family-base: "Noto Sans Arabic",Tahoma,sans-serif; }
+html[dir="rtl"] .eclipse-login .ec-page :is(h1,h2), html[dir="rtl"] .eclipse-login .ec-brand { font-family: var(--font-family-base); letter-spacing: 0; }
+html[dir="rtl"] .eclipse-login .ec-arrow { transform: scaleX(-1); }
+@keyframes ec-float { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-10px) rotate(2deg); } }
+@keyframes ec-dialog-in { from { opacity: 0; transform: translateY(18px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes ec-spin { to { transform: rotate(360deg); } }
+@keyframes ec-autofill { from { opacity: .999; } to { opacity: 1; } }
+@media (max-width: 720px) {
+  .eclipse-login .ec-main { grid-template-columns: minmax(0,1fr) 354px minmax(0,1fr); padding-inline: 22px; }
+  .eclipse-login .ec-art { width: 300px; right: -117px; opacity: .54; }
+}
+@media (max-width: 480px) {
+  .eclipse-login .ec-page { min-height: max(780px,100svh); }
+  .eclipse-login .ec-header { min-height: 91px; padding: 20px 23px; }
+  .eclipse-login .ec-brand { font-size: 14px; gap: 9px; }
+  .eclipse-login .ec-brand .workspace-theme-logo, .eclipse-login .ec-brand img { width: 39px; height: 44px; }
+  .eclipse-login .ec-main { min-height: 614px; display: flex; align-items: flex-start; justify-content: center; padding: 79px 22px 26px; }
+  .eclipse-login .ec-card { max-width: 354px; padding: 27px 24px; border-radius: 23px; }
+  .eclipse-login .ec-title-row { margin-bottom: 25px; }
+  .eclipse-login .ec-page :is(h1,h2) { font-size: 26px; }
+  .eclipse-login .ec-shell .ec-input { font-size: 16px; }
+  .eclipse-login .ec-art { width: 232px; height: 238px; top: -30px; right: -35px; transform: rotate(16deg); opacity: .51; }
+  .eclipse-login .ec-orbit { width: 590px; height: 310px; top: 27%; }
+  .eclipse-login .ec-footer { min-height: 75px; padding: 22px 23px; gap: 12px; }
+  .eclipse-login .ec-footer-links { gap: 15px; }
+  .eclipse-login .ec-dialog { padding: 25px; }
+}
+@media (max-width: 350px) {
+  .eclipse-login .ec-header, .eclipse-login .ec-footer { padding-inline: 18px; }
+  .eclipse-login .ec-main { padding-inline: 15px; }
+  .eclipse-login .ec-card { padding-inline: 20px; }
+}
+@media (pointer: coarse) {
+  .eclipse-login .ec-theme { min-width: 44px; min-height: 44px; }
+  .eclipse-login .ec-eye { min-width: 35px; min-height: 44px; }
+  .eclipse-login .ec-close { min-width: 40px; min-height: 40px; }
+  .eclipse-login .ec-options .ec-link { min-height: 30px; }
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] .eclipse-login .ec-brand .workspace-logo--light { display: none; }
+  :root[data-theme="system"] .eclipse-login .ec-brand .workspace-logo--dark { display: block; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eclipse-login .ec-page *, .eclipse-login .ec-page *::before, .eclipse-login .ec-page *::after { animation: none !important; transition: none !important; }
+}
+:root[data-ui-motion="reduce"] .eclipse-login .ec-page *, :root[data-ui-motion="reduce"] .eclipse-login .ec-page *::before, :root[data-ui-motion="reduce"] .eclipse-login .ec-page *::after { animation: none !important; transition: none !important; }
+@media (forced-colors: active) {
+  .eclipse-login .ec-shell { border: 1px solid CanvasText; }
+  .eclipse-login .ec-field:focus-within .ec-shell { outline: 2px solid Highlight; outline-offset: 2px; }
+}

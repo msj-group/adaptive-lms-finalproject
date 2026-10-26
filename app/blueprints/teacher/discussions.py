@@ -175,6 +175,9 @@ def _topic_or_404(group, topic_public_id):
 
 def _topic_url(group_public_id, topic_public_id, page=1, anchor=None):
     values = {"group_public_id": group_public_id, "topic_public_id": topic_public_id}
+    topic_page = normalize_page(request.args.get("topic_page"))
+    if topic_page > 1:
+        values["topic_page"] = topic_page
     if page > 1:
         values["page"] = page
     if anchor:
@@ -196,39 +199,66 @@ def _reply_url(group_public_id, topic, reply_public_id):
 @teacher_bp.get("/discussions")
 @roles_required(_TEACHER)
 def discussions_overview():
-    """The Groups this Teacher may currently discuss in, with topic counts."""
+    """Open an authorized Group's full topic list, without selecting a topic."""
     groups, truncated = member_groups(current_user.id, _TEACHER)
-    counts = topic_counts([group["id"] for group in groups])
+    selected = request.args.get("group")
+    group = _group_or_404(current_user.id, selected) if selected else (groups[0] if groups else None)
+    if group is not None:
+        return _render_group_workspace(group, groups, truncated)
     return _private_no_store(
         "teacher/discussions/overview.html",
-        groups=build_group_cards(groups, counts),
+        groups=[],
+        group=None,
+        topic=None,
         truncated=truncated,
         group_limit=GROUP_LIMIT,
+    )
+
+
+def _workspace_context(group, topic_page, groups=None, truncated=False):
+    """Compose existing bounded reads; the current Group was already authorized."""
+    if groups is None:
+        groups, truncated = member_groups(current_user.id, _TEACHER)
+    groups = list(groups)
+    # A direct authorized link can address a Group beyond the first 50.
+    if not any(item["public_id"] == group["public_id"] for item in groups):
+        groups.append(group)
+    cards = build_group_cards(groups, topic_counts([item["id"] for item in groups]))
+    selected = next(item for item in cards if item["public_id"] == group["public_id"])
+    rows, has_next = topics_page(group["id"], topic_page)
+    if not rows and topic_page > 1:
+        topic_page = 1
+        rows, has_next = topics_page(group["id"], topic_page)
+    return {
+        "groups": cards,
+        "truncated": truncated,
+        "group_limit": GROUP_LIMIT,
+        "topics": build_topic_list_view(rows, reply_counts([row[0] for row in rows]), _tz_name()),
+        "topic_page": topic_page,
+        "topics_has_next": has_next,
+        "topics_has_prev": topic_page > 1,
+        "topic_page_size": TOPIC_PAGE_SIZE,
+        "topic_total_count": selected["topic_count"],
+        "topic_open_count": selected["open_count"],
+    }
+
+
+def _render_group_workspace(group, groups=None, truncated=False):
+    workspace = _workspace_context(
+        group, normalize_page(request.args.get("page")), groups, truncated
+    )
+    return _private_no_store(
+        "teacher/discussions/list.html",
+        group=public_group(group), topic=None, tz_name=_tz_name(), **workspace,
     )
 
 
 @teacher_bp.get("/groups/<group_public_id>/discussions")
 @roles_required(_TEACHER)
 def discussions_group(group_public_id):
-    """One Group's topics, newest first, 20 per page."""
+    """The full-width Group list; a native topic link opens the reading card."""
     group = _group_or_404(current_user.id, group_public_id)
-    tz_name = _tz_name()
-    page = normalize_page(request.args.get("page"))
-    rows, has_next = topics_page(group["id"], page)
-    if not rows and page > 1:
-        page = 1
-        rows, has_next = topics_page(group["id"], page)
-    counts = reply_counts([row[0] for row in rows])
-    return _private_no_store(
-        "teacher/discussions/list.html",
-        group=public_group(group),
-        topics=build_topic_list_view(rows, counts, tz_name),
-        page=page,
-        has_next=has_next,
-        has_prev=page > 1,
-        page_size=TOPIC_PAGE_SIZE,
-        tz_name=tz_name,
-    )
+    return _render_group_workspace(group)
 
 
 # ----------------------------------------------------------------------
@@ -327,6 +357,7 @@ def _render_topic(group, topic, viewer_id, viewer_public_id, draft="", nonce=Non
     the moderation control for the current state, and -- only while the
     topic is open -- the reply form."""
     tz_name = _tz_name()
+    workspace = _workspace_context(group, normalize_page(request.args.get("topic_page")))
     page = normalize_page(request.args.get("page"))
     rows, has_next = replies_page(topic["id"], page)
     if not rows and page > 1:
@@ -334,6 +365,12 @@ def _render_topic(group, topic, viewer_id, viewer_public_id, draft="", nonce=Non
         rows, has_next = replies_page(topic["id"], page)
     can_reply = topic["status"] == _OPEN
     moderation_action = ACTION_LOCK if can_reply else ACTION_REOPEN
+    reply_total = next(
+        (item["reply_count"] for item in workspace["topics"]
+         if item["public_id"] == topic["public_id"]), None
+    )
+    if reply_total is None:
+        reply_total = reply_counts([topic["id"]]).get(topic["id"], 0)
     return _private_no_store(
         "teacher/discussions/detail.html",
         group=public_group(group),
@@ -361,6 +398,8 @@ def _render_topic(group, topic, viewer_id, viewer_public_id, draft="", nonce=Non
         form_error=form_error,
         body_max=DISCUSSION_BODY_MAX_LENGTH,
         tz_name=tz_name,
+        reply_total_count=reply_total,
+        **workspace,
     )
 
 

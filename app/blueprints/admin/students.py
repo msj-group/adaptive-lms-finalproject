@@ -3,11 +3,13 @@ from app.blueprints.admin.account_actions import edit_account, toggle_account, r
 from flask import flash, redirect, render_template, request, url_for
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 
 from app.blueprints.admin import admin_bp
 from app.blueprints.admin.forms import StudentCreateForm, StudentEditForm, StudentPasswordResetForm
 from app.extensions import db
-from app.models import User, UserRole, UserStatus
+from app.models import Enrollment, Group, User, UserRole, UserStatus
+from app.services.general_finance_queries import balances_for_students
 from app.security.decorators import roles_required
 from app.security.passwords import hash_password
 
@@ -114,7 +116,15 @@ def student_create():
 @roles_required(UserRole.ADMINISTRATOR.value)
 def student_detail(public_id):
     student = _get_student_or_404(public_id)
-    return render_template("admin/students/detail.html", student=student)
+    current_episodes = Enrollment.query.options(
+        joinedload(Enrollment.group).joinedload(Group.course),
+        joinedload(Enrollment.group).joinedload(Group.academic_term),
+    ).filter(Enrollment.student_id == student.id, Enrollment.status == "active").order_by(
+        Enrollment.created_at.desc(), Enrollment.id.desc()).limit(6).all()
+    return render_template("admin/students/detail.html", student=student,
+                           current_episodes=current_episodes[:5],
+                           more_episodes=len(current_episodes) > 5,
+                           account_facts=balances_for_students([student.id])[student.id])
 
 
 @admin_bp.route("/students/<public_id>/edit", methods=["GET", "POST"])

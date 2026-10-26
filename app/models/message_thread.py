@@ -28,8 +28,8 @@ def valid_creation_nonce(value):
 
 
 class MessageThread(db.Model):
-    """One private conversation between exactly one Student and exactly
-    one Teacher (Phase 4 / M11).
+    """One private two-member conversation: an eligible academic pair or
+    a pair containing an active Administrator at send time.
 
     **Append-only by construction.** A thread row is inserted once, in
     the same transaction as its two :class:`MessageThreadMember` rows and
@@ -44,10 +44,9 @@ class MessageThread(db.Model):
     projected queries in ``app/services/message_queries.py``.
 
     **Invariants a CHECK cannot express** -- exactly two members, one of
-    them a Student and the other a Teacher, the creator being one of them,
-    and a currently shared operational Group at the moment of creation --
-    are proved by ``app/services/message_transactions.py`` against locked
-    rows before the insert. ``created_by_id`` is a plain foreign key into
+    them an eligible academic counterpart or an Administrator, with the creator
+    being one of them -- are proved against locked rows by the academic
+    message transaction or the separate administrative message transaction. ``created_by_id`` is a plain foreign key into
     ``users``: it proves the row exists, never its role or status.
 
     ``creation_nonce`` is the duplicate-submission defense: a random value

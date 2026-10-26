@@ -64,7 +64,7 @@
       <p class="cockpit-feedback-meaning">Awaiting a saved comment, not a grade.</p><a class="cockpit-review-all" href="{{ url_for('workspace.review_queue') }}">Open review queue{{ ui.icon('arrow', 16) }}</a>
     </section>
     <section class="cockpit-announcements cockpit-panel" data-cockpit-announcements aria-labelledby="cockpit-announcements-title">
-      <header class="cockpit-section-heading"><h2 id="cockpit-announcements-title">Announcements</h2><a href="{{ url_for('teacher.announcements_feed') }}">View all{{ ui.icon('arrow', 16) }}</a></header>
+      <header class="cockpit-section-heading"><h2 id="cockpit-announcements-title">Announcements</h2><a href="{{ url_for('teacher.announcements_feed', view='received') }}">View all{{ ui.icon('arrow', 16) }}</a></header>
       {% for item in announcements[:1] %}<a class="cockpit-announcement" href="{{ url_for('teacher.announcement_detail', announcement_public_id=item.public_id) }}"><span class="cockpit-announcement-icon" aria-hidden="true">{{ ui.icon('megaphone', 22) }}</span><div><h3 dir="auto">{{ item.title }}</h3><p><bdi>{{ item.context }}</bdi> {{ ann.scope_badge(item) }}</p>{% if item.published_local %}<time datetime="{{ item.published_local.isoformat() }}">{{ ui_date(item.published_local.strftime('%d %b %Y · %H:%M')) }}</time>{% endif %}</div><span class="cockpit-announcement-arrow" aria-hidden="true">{{ ui.icon('chevron', 16) }}</span></a>{% else %}<p class="cockpit-announcements-empty">No announcements yet.</p>{% endfor %}
     </section>
   </div>

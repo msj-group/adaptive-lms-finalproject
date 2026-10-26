@@ -1,10 +1,12 @@
 {% extends "layouts/admin_base.html" %}
+{% import "_figma_ui.html" as ui %}
 {% block title %}Financial document · {{ student.full_name }}{% endblock %}
 {% block admin_content %}
-<article class="workspace-document">
-<h1>{{ document.invoice_number or 'Invoice' if kind == 'invoice' else 'Payout' if document.movement_direction == 'out' else 'Collection' }}</h1>
-<p>{{ student.full_name }} · <span class="badge badge--neutral">{{ 'Deleted' if document.deleted_at else document.status.title() }}</span></p>
-<dl class="detail-grid">
+<div class="ad-stack">
+<header class="ad-page-head"><div><p class="ad-eyebrow">FINANCE / DOCUMENT</p><h1 data-workspace-page-heading>{{ document.invoice_number or _('Invoice') if kind == 'invoice' else _('Payout') if document.movement_direction == 'out' else _('Collection') }}</h1><p class="ad-subtitle">{{ student.full_name }} · {{ _('General account') }}</p></div>{% if not document.deleted_at and (kind == 'invoice' or document.kind == 'collection') %}<a class="btn btn--secondary" href="{{ url_for('admin.student_document_correct', student_public_id=student.public_id, kind=kind, document_public_id=document.public_id) }}">{{ ui.icon('pen',14) }} Review correction</a>{% endif %}</header>
+{% if document.deleted_at %}<div class="ad-notice orange">{{ ui.icon('info',16) }}<p>Deleted from active accounting. Original values and correction history remain preserved.</p></div>{% endif %}
+<div class="ad-grid"><article class="ad-card workspace-document"><div class="ad-card-top"><h2>Document details</h2><span class="ad-tag {{ 'green' if not document.deleted_at and document.status in ['issued','confirmed'] else 'orange' if document.status == 'pending' else '' }}">{{ _('Deleted') if document.deleted_at else _(document.status.title()) }}</span></div>
+<dl class="ad-definition detail-grid">
 {% if kind == 'invoice' %}
 <dt>Course at issue</dt><dd>{{ (document.course_snapshot or {}).get('title', 'Not recorded') }}</dd>
 <dt>Charge</dt><dd>{{ money(document.charge_amount or 0) }} LYD</dd><dt>Discount</dt><dd>{{ money(document.discount_amount) }} LYD</dd>
@@ -18,14 +20,8 @@
 {% endif %}
 {% if document.deleted_at %}<dt>Deleted</dt><dd>{{ local(document.deleted_at) }} · {{ document.deletion_reason or 'Reason not recorded' }}</dd>{% endif %}
 </dl>
-<p>Invoice references provide context. They do not allocate a payment or create installments.</p>
-<div class="ds-row yc-actions">
-<a class="btn btn--secondary" href="{{ url_for('admin.student_financial_record', student_public_id=student.public_id) }}">Back to account</a>
-<a class="btn btn--secondary" href="{{ url_for('admin.student_financial_history', student_public_id=student.public_id) }}">Correction history</a>
-{% if not document.deleted_at and (kind == 'invoice' or document.kind == 'collection') %}<a class="btn btn--primary" href="{{ url_for('admin.student_document_correct', student_public_id=student.public_id, kind=kind, document_public_id=document.public_id) }}">Review correction</a>{% endif %}
-{% if receipt %}<a class="btn btn--secondary" href="{{ url_for('admin.student_account_receipt', student_public_id=student.public_id, receipt_public_id=receipt.public_id) }}">Receipt</a>{% endif %}
-<button type="button" class="btn btn--secondary" data-print>Print document</button>
-</div>
 <details><summary>Document reference</summary><p class="workspace-digest">{{ document.public_id }}</p></details>
 </article>
+<aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Related records</h2>{{ ui.icon('file',16) }}</div><div class="ad-list"><div class="ad-list-row"><a class="ad-row-link" href="{{ url_for('admin.student_financial_record', student_public_id=student.public_id) }}">Student account {{ ui.icon('arrow-up',14) }}</a></div><div class="ad-list-row"><a class="ad-row-link" href="{{ url_for('admin.student_financial_history', student_public_id=student.public_id) }}">Correction history {{ ui.icon('arrow-up',14) }}</a></div>{% if receipt %}<div class="ad-list-row"><a class="ad-row-link" href="{{ url_for('admin.student_account_receipt', student_public_id=student.public_id, receipt_public_id=receipt.public_id) }}">Receipt {{ ui.icon('arrow-up',14) }}</a></div>{% endif %}</div></section><section class="ad-card"><div class="ad-card-top"><h2>Accounting meaning</h2></div><p class="ad-meta">Invoice references provide context. They do not allocate a payment or create installments.</p><button type="button" class="btn btn--secondary" data-print>Print document</button></section></aside>
+</div></div>
 {% endblock %}

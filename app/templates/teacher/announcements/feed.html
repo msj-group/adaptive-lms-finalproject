@@ -1,37 +1,35 @@
 {% extends "layouts/portal_base.html" %}
+{% import "_figma_ui.html" as ui %}
 {% import "_announcement_macros.html" as ann %}
 {% block title %}Announcements{% endblock %}
-{% block portal_nav %}
-  <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
-  <a class="portal-nav__link portal-nav__link--active" href="{{ url_for('teacher.announcements_feed') }}">Announcements</a>
-{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/announcements.css', v='group-deck-reader-20261020') }}">{% endblock %}
 {% block portal_content %}
-{#- Phase 4 / M09. Two sections, and they answer two different questions.
-
-    The feed is what is currently addressed to THIS teacher -- the centre's
-    announcements, their courses' and their assigned groups'. It contains only
-    published announcements; a draft of their own is not a notice yet, and a
-    withdrawn one is not standing any more, so neither appears here.
-
-    The group cards below are the way in to authoring. A teacher may only ever
-    write a group announcement, and only for a group they are actively assigned
-    to, so there is no "new centre announcement" or "new course announcement"
-    control anywhere on this surface -- and no such endpoint exists either. -#}
-<h1 data-workspace-page-heading style="margin-top: 0">Announcements</h1>
-
-
-{{ ann.flash_messages() }}
-
-<form class="ds-row yc-actions yc-filter-form" method="get" action="{{ url_for('teacher.announcements_feed') }}" role="search"
-      style="margin-bottom: var(--space-4); align-items: flex-end; gap: var(--space-2); flex-wrap: wrap;" data-query-form data-query-results="query-results" data-query-min="2">
-  <div class="field" style="margin:0">
-    <label class="field__label" for="announcement-q">Search announcements</label>
-    <input class="field__input" type="search" id="announcement-q" name="q" value="{{ q }}"
-           maxlength="100" autocomplete="off" placeholder="e.g. exam, holiday, room change">
-  </div>
-  <button data-query-submit type="submit" class="btn btn--secondary">Search</button>
-
-  <a class="btn btn--secondary" href="{{ url_for('teacher.announcements_feed') }}">Clear</a>
-
-</form><div id="query-results">{% include "teacher/announcements/_feed_results.html" %}</div>
+<div class="teacher-announcements">
+  {% set filter_count = (1 if selected_status else 0) + (1 if since else 0) + (1 if until else 0) + (1 if q else 0) %}
+  <header class="tan-heading">
+    <div class="tan-heading-title"><h1 data-workspace-page-heading>Announcements<span class="figma-brand-dot">.</span></h1></div>
+    <details class="tan-filters">
+      <summary>{{ ui.icon('settings', 18) }}<span class="tan-filter-label">Filters</span>{% if filter_count %}<span class="tan-filter-count" aria-label="{{ _n('%(count)d active filter', '%(count)d active filters', filter_count) }}">{{ filter_count }}</span>{% endif %}{{ ui.icon('chevron-down', 16) }}</summary>
+      <form method="get" action="{{ url_for('teacher.announcements_feed') }}" class="tan-filter-form" role="search">
+        <input type="hidden" name="view" value="{{ view }}">
+        {% if selected_group %}<input type="hidden" name="group" value="{{ selected_group }}">{% endif %}
+        <div class="field tan-search-field"><label for="announcement-q">Search announcements</label><input type="search" id="announcement-q" name="q" value="{{ q }}" maxlength="100" autocomplete="off" placeholder="e.g. exam, holiday, room change"></div>
+        {% if view == 'sent' %}<div class="field"><label for="announcement-status">Status</label><select id="announcement-status" name="status"><option value="">All states</option>{% for value,label in statuses.items() %}<option value="{{ value }}"{% if value == selected_status %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</select></div>{% endif %}
+        <fieldset class="tan-date-fields"><legend>Date range</legend>
+          <div class="field"><label for="announcement-from">{{ _('Published from' if view == 'received' else 'Last updated from') }}</label><input type="date" id="announcement-from" name="from" value="{{ since }}" max="9999-12-30"></div>
+          <div class="field"><label for="announcement-to">{{ _('Published through' if view == 'received' else 'Last updated through') }}</label><input type="date" id="announcement-to" name="to" value="{{ until }}" max="9999-12-30"></div>
+        </fieldset>
+        <div class="tan-filter-actions"><button type="submit" class="btn btn--primary">Apply filters</button><a class="btn" href="{{ url_for('teacher.announcements_feed', view=view, group=selected_group or None) }}">Clear filters</a></div>
+      </form>
+    </details>
+    <nav class="tan-tabs" aria-label="{{ _('Announcement sections') }}">
+      <a href="{{ url_for('teacher.announcements_feed', view='sent', group=selected_group or None) }}"{% if view == 'sent' %} aria-current="page"{% endif %}>{{ ui.icon('megaphone', 18) }}<span>Group announcements</span></a>
+      <a href="{{ url_for('teacher.announcements_feed', view='received', group=selected_group or None) }}"{% if view == 'received' %} aria-current="page"{% endif %}>{{ ui.icon('mail', 18) }}<span>Received announcements</span></a>
+    </nav>
+  </header>
+  {{ ann.flash_messages() }}
+  <div id="query-results">{% include "teacher/announcements/_feed_results.html" %}</div>
+  <p class="tan-timezone">{{ _('Times shown in %(timezone)s', timezone=tz_name) }}</p>
+</div>
 {% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_announcements.js', v='group-deck-20261020') }}" defer></script>{% endblock %}

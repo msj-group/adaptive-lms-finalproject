@@ -1,7 +1,7 @@
 {% extends "messages/base.html" %}
 {% import "_message_macros.html" as msg %}
 {% block title %}Messages{% endblock %}
-{% block portal_content %}
+{% block message_content %}
 {{ msg.flash_messages() }}
 <div class="messenger messenger--inbox">
   <div class="messenger-inbox-list">

@@ -1,0 +1,16 @@
+{% import '_figma_ui.html' as atlas_icons %}
+{% macro heading(title, subtitle='', eyebrow='', actions='') -%}
+<header class="ad-page-head" data-atlas-heading>
+  <div>{% if eyebrow %}<p class="ad-eyebrow">{{ _(eyebrow) }}</p>{% endif %}<h1 data-workspace-page-heading>{{ title }}</h1>{% if subtitle %}<p class="ad-subtitle">{{ _(subtitle) }}</p>{% endif %}</div>
+  {% if actions %}<div class="ad-actions">{{ actions }}</div>{% endif %}
+</header>
+{%- endmacro %}
+{% macro person_avatar(name) -%}
+<span class="ad-avatar" aria-hidden="true">{% for word in name.split()[:2] %}{{ word[0]|upper }}{% endfor %}</span>
+{%- endmacro %}
+{% macro tabs(links) -%}
+<nav class="ad-tabs" aria-label="Related pages">{% for item in links %}<a href="{{ item[1] }}"{% if item|length > 2 and item[2] %} aria-current="page"{% endif %}>{{ _(item[0]) }}</a>{% endfor %}</nav>
+{%- endmacro %}
+{% macro section(title) -%}
+<section class="ad-card"><div class="ad-card-top"><h2>{{ _(title) }}</h2></div>{{ caller() }}</section>
+{%- endmacro %}

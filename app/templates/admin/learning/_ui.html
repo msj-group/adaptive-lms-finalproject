@@ -1,0 +1,55 @@
+{% import '_figma_ui.html' as ui %}
+{% import '_attendance_macros.html' as att %}
+{# Presentation only. Sum existing finalized counts on the bounded page.
+   No attendance rate, grade calculation or database access is introduced. #}
+{% macro attendance_summary(sessions) %}
+{% set totals = namespace(present=0, absent=0, late=0, excused=0, sessions=0) %}
+{% for session in sessions if session.is_finalized %}
+  {% set totals.sessions = totals.sessions + 1 %}
+  {% for mark in session.counts %}
+    {% if mark.status == 'present' %}{% set totals.present = totals.present + mark.count %}
+    {% elif mark.status == 'absent' %}{% set totals.absent = totals.absent + mark.count %}
+    {% elif mark.status == 'late' %}{% set totals.late = totals.late + mark.count %}
+    {% elif mark.status == 'excused' %}{% set totals.excused = totals.excused + mark.count %}{% endif %}
+  {% endfor %}
+{% endfor %}
+{% set total = totals.present + totals.absent + totals.late + totals.excused %}
+{% set marks = [('present','Present',totals.present),('absent','Absent',totals.absent),('late','Late',totals.late),('excused','Excused',totals.excused)] %}
+<section class="al-panel al-summary" aria-label="Finalized attendance summary">
+  <div class="al-summary-heading"><h3>Finalized attendance</h3><span>{{ _n('%(count)d finalized session on this page', '%(count)d finalized sessions on this page', totals.sessions) }}</span></div>
+  <div class="al-ring">
+    <svg viewBox="0 0 112 112" aria-hidden="true" focusable="false"><circle class="al-ring-track" cx="56" cy="56" r="48" pathLength="100" />{% set arc = namespace(offset=0) %}{% for status,label,count in marks %}{% set length = count * 100 / total if total else 0 %}<circle class="al-ring-segment al-status--{{ status }}" cx="56" cy="56" r="48" pathLength="100" stroke-dasharray="{{ '%.6f'|format(length) }} {{ '%.6f'|format(100 - length) }}" stroke-dashoffset="{{ '%.6f'|format(-arc.offset) }}" />{% set arc.offset = arc.offset + length %}{% endfor %}</svg>
+    <div class="al-ring-total"><strong>{{ total }}</strong><span>Captured marks</span></div>
+  </div>
+  <ul class="al-metrics" aria-label="Attendance counts">{% for status,label,count in marks %}<li class="al-metric al-status--{{ status }}"><span class="al-metric-label"><i aria-hidden="true"></i>{{ _(label) }}</span><strong>{{ count }}</strong><div class="al-track" aria-hidden="true"><span style="width:{{ count * 100 / total if total else 0 }}%"></span></div></li>{% endfor %}</ul>
+</section>
+{% endmacro %}
+
+{% macro grade_summary(groups) %}
+{% set size = groups|length %}{% set complete = groups|selectattr('weights_complete')|list|length %}{% set ratio = complete * 100 / size if size else 0 %}
+<section class="al-panel al-summary al-summary--grade" aria-label="Configured gradebook weights">
+  <div class="al-summary-heading"><h3>Configured weight</h3><span>Groups on this page</span></div>
+  <div class="al-ring"><svg viewBox="0 0 112 112" aria-hidden="true" focusable="false"><circle class="al-ring-track" cx="56" cy="56" r="48" pathLength="100" /><circle class="al-ring-segment al-status--excused" cx="56" cy="56" r="48" pathLength="100" stroke-dasharray="{{ '%.6f'|format(ratio) }} {{ '%.6f'|format(100 - ratio) }}" /><circle class="al-ring-segment al-status--late" cx="56" cy="56" r="48" pathLength="100" stroke-dasharray="{{ '%.6f'|format(100 - ratio) }} {{ '%.6f'|format(ratio) }}" stroke-dashoffset="{{ '%.6f'|format(-ratio) }}" /></svg><div class="al-ring-total"><strong><bdi dir="ltr">{{ complete }}/{{ size }}</bdi></strong><span>Groups</span></div></div>
+  <ul class="al-metrics"><li class="al-metric al-status--excused"><span class="al-metric-label"><i aria-hidden="true"></i>Exactly 100%</span><strong>{{ complete }}</strong></li><li class="al-metric al-status--late"><span class="al-metric-label"><i aria-hidden="true"></i>Not yet 100%</span><strong>{{ size - complete }}</strong></li></ul>
+</section>
+{% endmacro %}
+
+{% macro inline_marks(counts) %}
+<div class="al-inline-marks">{% for mark in counts %}<span class="al-status--{{ mark.status }}"><i aria-hidden="true"></i><b>{{ mark.count }}</b><span>{{ _(mark.label) }}</span></span>{% endfor %}</div>
+{% endmacro %}
+
+{% macro session_list(sessions) %}
+<div class="al-section-heading"><h3>Class records</h3><span>Newest first</span></div>
+<div class="al-panel al-sessions">{% for item in sessions %}
+  <article class="al-session">
+    <time class="al-date-tile" datetime="{{ item.session_date.isoformat() }}"><strong>{{ item.session_date.strftime('%d') }}</strong><span>{{ ui_date(item.session_date.strftime('%b')) }}</span><small>{{ item.session_date.year }}</small></time>
+    <div class="al-session-main"><h3 dir="auto">{{ item.group_name }}</h3><p dir="auto">{{ item.course_title }} · {{ item.level_name }} · {{ item.term_name }}</p><p>{{ _(att.weekday_name(item.day_of_week)|trim) }} · <bdi dir="ltr">{{ att.time_range(item.start_time,item.end_time) }}</bdi> · <bdi>{{ item.location or '—' }}</bdi></p>{{ inline_marks(item.counts) }}</div>
+    <div class="al-session-actions">{{ att.state_badge(item.is_finalized) }}<a class="al-link" data-learning-open="session" data-learning-group="{{ item.group_public_id }}" data-learning-session="{{ item.public_id }}" href="{{ url_for('admin.attendance_session_detail',group_public_id=item.group_public_id,session_public_id=item.public_id) }}">Review {{ ui.icon('arrow-up',15) }}</a></div>
+  </article>
+{% endfor %}</div>
+<p class="al-note">{{ ui.icon('info',14) }}<span>Drafts are excluded from the summary.</span></p>
+{% endmacro %}
+
+{% macro attendance_pager(group_public_id=none) %}
+{% if has_prev or has_next %}<nav class="al-pager" aria-label="Attendance pages"><span>{{ _('Page %(page)d · up to %(size)d per page',page=page,size=page_size) }}</span><div>{% if group_public_id %}{% if has_prev %}<a class="btn" href="{{ url_for('admin.group_attendance',group_public_id=group_public_id,page=page-1) }}">Previous</a>{% endif %}{% if has_next %}<a class="btn" href="{{ url_for('admin.group_attendance',group_public_id=group_public_id,page=page+1) }}">Next</a>{% endif %}{% else %}{% if has_prev %}<a class="btn" href="{{ url_for('admin.attendance_overview',page=page-1,group=filter_group,session_date=filter_date.isoformat() if filter_date else none,state=filter_state or none) }}">Previous</a>{% endif %}{% if has_next %}<a class="btn" href="{{ url_for('admin.attendance_overview',page=page+1,group=filter_group,session_date=filter_date.isoformat() if filter_date else none,state=filter_state or none) }}">Next</a>{% endif %}{% endif %}</div></nav>{% endif %}
+{% endmacro %}

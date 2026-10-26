@@ -1,0 +1,61 @@
+  <form method="get" action="{{ today_url }}" class="calendar-filter-form">
+    <input type="hidden" name="day" value="{{ calendar.selected.isoformat() }}" data-cal-day-input>
+    <input type="hidden" name="view" value="{{ calendar.view }}" data-cal-view-input>
+    <div class="field"><label class="field__label" for="q">Location:</label>
+    <input type="search" name="q" id="q" class="field__input" placeholder="Location" value="{{ search }}" maxlength="100"></div>
+
+    <div class="field"><label class="field__label" for="term_id">Term:</label>
+    <select name="term_id" id="term_id" class="field__input">
+      <option value="">All Terms</option>
+      {% for term in terms %}
+        <option value="{{ term.id }}" {{ "selected" if selected_term_id == term.id else "" }}>{{ term.name }}</option>
+      {% endfor %}
+    </select></div>
+
+    <div class="field"><label class="field__label" for="level_id">Level:</label>
+    <select name="level_id" id="level_id" class="field__input">
+      <option value="">All Levels</option>
+      {% for level in levels %}
+        <option value="{{ level.id }}" {{ "selected" if selected_level_id == level.id else "" }}>{{ level.name }}</option>
+      {% endfor %}
+    </select></div>
+
+    <div class="field"><label class="field__label" for="course_id">Course:</label>
+    <select name="course_id" id="course_id" class="field__input">
+      <option value="">All Courses</option>
+      {% for course in courses %}
+        <option value="{{ course.id }}" {{ "selected" if selected_course_id == course.id else "" }}>{{ course.title }} ({{ course.level.name }})</option>
+      {% endfor %}
+    </select></div>
+
+    <div class="field"><label class="field__label" for="group_id">Group:</label>
+    <select name="group_id" id="group_id" class="field__input">
+      <option value="">All Groups</option>
+      {% for group in groups %}
+        <option value="{{ group.id }}" {{ "selected" if selected_group_id == group.id else "" }}>{{ group.name }}</option>
+      {% endfor %}
+    </select></div>
+
+    <div class="field"><label class="field__label" for="day_of_week">Day:</label>
+    <select name="day_of_week" id="day_of_week" class="field__input">
+      <option value="">All Days</option>
+      {% for value, name in weekday_choices %}
+        <option value="{{ value }}" {{ "selected" if selected_day_of_week == value else "" }}>{{ name }}</option>
+      {% endfor %}
+    </select></div>
+
+    <div class="field"><label class="field__label" for="status">Status:</label>
+    <select name="status" id="status" class="field__input">
+      <option value="">All Statuses</option>
+      <option value="active" {{ "selected" if selected_status == "active" else "" }}>Active</option>
+      <option value="archived" {{ "selected" if selected_status == "archived" else "" }}>Archived</option>
+    </select></div>
+
+    <div class="field"><label for="calendar-from">From date</label><input type="date" id="calendar-from" name="from" value="{{ range_start.isoformat() }}"></div>
+    <div class="field"><label for="calendar-to">To date</label><input type="date" id="calendar-to" name="to" value="{{ range_end.isoformat() }}"></div>
+    <p class="calendar-range-limit">{{ _('A calendar view covers at most %(count)d days.', count=max_range_days) }}</p>
+    <div class="calendar-filter-actions"><button type="submit" class="btn btn--primary">Apply filters</button>
+
+      <a class="btn btn--secondary" href="{{ url_for('admin.schedules_overview', **{'from':range_start.isoformat(), 'to':range_end.isoformat(), 'day':calendar.selected.isoformat(), 'view':calendar.view}) }}">Clear filters</a></div>
+
+  </form>

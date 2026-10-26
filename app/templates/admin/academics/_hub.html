@@ -1,0 +1,19 @@
+{% set hub_totals = academic_setup_totals() %}
+{% set hub_sections = [
+  ('courses','Courses','Course catalogue','admin.courses_list','book'),
+  ('terms','Academic terms','Dates & periods','admin.academic_terms_list','calendar'),
+  ('levels','Levels','Learning structure','admin.levels_list','layers'),
+  ('rooms','Rooms','Teaching spaces','admin.rooms_list','room')
+] %}
+<nav class="ah-hub" data-academic-hub aria-label="Academic setup sections">
+  <div class="ah-track" data-academic-track>
+    {% for key,label,description,endpoint,symbol in hub_sections %}
+    <a class="ah-area" href="{{ url_for(endpoint) }}" data-academic-area="{{ key }}"{% if academic_section == key %} aria-current="page"{% endif %}>
+      <div class="ah-area-top"><span class="ah-area-icon" aria-hidden="true">{{ ui.icon(symbol,22) }}</span><span class="ah-total"><span class="sr-only">Total records:</span>{{ hub_totals[key] }}</span></div>
+      <div class="ah-area-copy"><strong>{{ _(label) }}</strong><span>{{ _(description) }}</span></div>
+      <span class="ah-area-arrow" aria-hidden="true">{{ ui.icon('arrow',17) }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  <div class="ah-deck-caption"><span>Swipe to explore academic setup</span><span class="ah-deck-position" dir="ltr" aria-hidden="true" data-academic-position>{{ {'courses':1,'terms':2,'levels':3,'rooms':4}[academic_section] }} / 4</span></div>
+</nav>

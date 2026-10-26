@@ -1,55 +1,35 @@
-{% extends "layouts/admin_base.html" %}
+{% import "admin/academics/_controls.html" as academic with context %}
+{% extends "admin/academics/_base.html" %}
 {% import "admin/_macros.html" as macros %}
+{% import "_figma_ui.html" as ui %}
 {% block title %}Levels{% endblock %}
-{% block admin_content %}
-<div class="ds-page yc-surface">
-  <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-6)">
-    <h1 data-workspace-page-heading style="margin:0">Levels</h1>
-    <a class="btn btn--primary" href="{{ url_for('admin.level_create') }}">New Level</a>
-  </div>
-
-  {{ macros.flash_messages() }}
-
+{% set academic_section = 'levels' %}
+{% block academic_actions %}<a class="btn btn--primary" data-academic-editor-open href="{{ url_for('admin.level_create') }}"><span class="ah-add" aria-hidden="true">+</span> New Level</a>{% endblock %}
+{% block academic_directory %}
+  <header class="ah-directory-head"><div><h2 id="academic-directory-heading">Levels</h2><p>A clear structure for your centre's courses.</p></div><span class="ax-record-count">{{ levels|length }} <span>records</span></span></header>
   {% if levels %}
-  <div style="overflow-x:auto">
-  <table style="width:100%; border-collapse:collapse">
+  <div class="ad-table-wrap">
+  <table class="ad-table ax-mobile-records">
     <thead>
-      <tr style="text-align:left; border-bottom:1px solid var(--color-border)">
-        <th style="padding: var(--space-3)">Order</th>
-        <th style="padding: var(--space-3)">Name</th>
-        <th style="padding: var(--space-3)">Code</th>
-        <th style="padding: var(--space-3)">Status</th>
-        <th style="padding: var(--space-3)">Actions</th>
+      <tr>
+        <th scope="col">Name</th>
+        <th scope="col">Status</th>
+        <th scope="col">Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for level in levels %}
-      <tr style="border-bottom:1px solid var(--color-border)">
-        <td style="padding: var(--space-3)">{{ loop.index }}</td>
-        <td style="padding: var(--space-3)">{{ level.name }}</td>
-        <td style="padding: var(--space-3)">{{ level.code or "--" }}</td>
-        <td style="padding: var(--space-3)">{{ macros.status_badge(level.status) }}</td>
-        <td style="padding: var(--space-3)">
-          <div class="ds-row yc-actions" style="gap: var(--space-2)">
-            <form method="post" action="{{ url_for('admin.level_move_up', public_id=level.public_id) }}" class="yc-form">
+      <tr>
+        <td data-label="{{ _('Name') }}"><div class="ah-record-identity"><span class="ah-record-icon" aria-hidden="true">{{ ui.icon('layers',17) }}</span><span class="ah-record-copy"><strong dir="auto">{{ level.name }}</strong><small><bdi>{{ level.code or "--" }}</bdi> · {{ _('Order') }} {{ loop.index }}</small></span></div><div class="ah-order-actions"><form method="post" action="{{ url_for('admin.level_move_up', public_id=level.public_id) }}" class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--secondary" aria-label="Move {{ level.name }} up" {{ "disabled" if loop.first }}>&uarr;</button>
-            </form>
-            <form method="post" action="{{ url_for('admin.level_move_down', public_id=level.public_id) }}" class="yc-form">
+            </form><form method="post" action="{{ url_for('admin.level_move_down', public_id=level.public_id) }}" class="yc-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn--secondary" aria-label="Move {{ level.name }} down" {{ "disabled" if loop.last }}>&darr;</button>
-            </form>
-            <a class="btn btn--secondary" href="{{ url_for('admin.level_edit', public_id=level.public_id) }}">Edit</a>
-            <a class="btn btn--secondary" href="{{ url_for('admin.courses_list', level_id=level.id) }}">Courses</a>
-            <form method="post" action="{{ url_for('admin.level_toggle_status', public_id=level.public_id) }}" class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              {% if level.status == "active" %}
-                <button type="submit" class="btn btn--danger-outline">Deactivate</button>
-              {% else %}
-                <button type="submit" class="btn btn--secondary">Activate</button>
-              {% endif %}
-            </form>
-          </div>
+            </form></div><a class="ad-row-link" href="{{ url_for('admin.courses_list', level_id=level.id) }}">Courses</a></td>
+        <td data-label="{{ _('Status') }}">{{ academic.status_control('levels', level) }}</td>
+        <td class="ah-tools-cell" data-label="{{ _('Actions') }}">
+          <a data-academic-editor-open class="ad-row-link" href="{{ url_for('admin.level_edit', public_id=level.public_id) }}">Edit</a>
         </td>
       </tr>
       {% endfor %}
@@ -62,5 +42,4 @@
     <div>Create the first level to get started.</div>
   </div>
   {% endif %}
-</div>
 {% endblock %}

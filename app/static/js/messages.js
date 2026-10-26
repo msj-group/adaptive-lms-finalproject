@@ -4,8 +4,16 @@
   "use strict";
   var t = window.aelmsUI ? window.aelmsUI.t : function (text) { return text; };
   var emojiCatalog;
+  var disposeMessages;
+  function enhanceMessages(root) {
+  if (disposeMessages) disposeMessages();
+  var cleanup = [];
+  function listen(target, type, handler, options) {
+    target.addEventListener(type, handler, options);
+    cleanup.push(function () { target.removeEventListener(type, handler, options); });
+  }
 
-  document.querySelectorAll("[data-conversation-panel]").forEach(function (panel) {
+  root.querySelectorAll("[data-conversation-panel]").forEach(function (panel) {
     var search = panel.querySelector("[data-conversation-search]");
     var input = panel.querySelector("[data-conversation-query]");
     var status = panel.querySelector("[data-conversation-status]");
@@ -22,6 +30,7 @@
       if (contactController) contactController.abort();
       contactController = null;
     }
+    cleanup.push(cancelContactSearch);
     async function loadContacts() {
       if (current !== "contacts" || !contacts || !window.fetch || !window.AbortController) return;
       cancelContactSearch();
@@ -96,8 +105,8 @@
     activate(current);
   });
 
-  var timeline = document.querySelector("[data-message-timeline]");
-  var bottomButton = document.querySelector("[data-scroll-bottom]");
+  var timeline = root.querySelector("[data-message-timeline]");
+  var bottomButton = root.querySelector("[data-scroll-bottom]");
   var followTimeline = false;
   function nearBottom() {
     return !timeline || timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight < 100;
@@ -130,7 +139,7 @@
     updateBottomButton();
   }
 
-  document.querySelectorAll("[data-message-form]").forEach(function (form) {
+  root.querySelectorAll("[data-message-form]").forEach(function (form) {
     var input = form.querySelector("[data-message-input]");
     var count = form.querySelector("[data-message-count]");
     var shortcut = form.querySelector("[data-message-shortcut]");
@@ -147,7 +156,7 @@
       updateBottomButton();
     }
     input.addEventListener("input", updateInput);
-    window.addEventListener("resize", function () {
+    listen(window, "resize", function () {
       var follow = followTimeline;
       updateInput();
       if (follow) scrollToBottom();
@@ -197,8 +206,9 @@
       var pickerSize = new ResizeObserver(fitPicker);
       pickerSize.observe(messageWorkspace);
       pickerSize.observe(form);
+      cleanup.push(function () { pickerSize.disconnect(); });
     }
-    window.addEventListener("resize", fitPicker);
+    listen(window, "resize", fitPicker);
     input.addEventListener("input", function () { requestAnimationFrame(fitPicker); });
     var data, visible = [], limit = 80, caretStart = input.selectionStart, caretEnd = input.selectionEnd;
     function rememberCaret() { caretStart = input.selectionStart; caretEnd = input.selectionEnd; }
@@ -251,16 +261,16 @@
     panel.querySelector("[data-emoji-close]").addEventListener("click", function () { close(true); });
     [search, tone].forEach(function (field) { field.addEventListener(field === search ? "input" : "change", function () { if (data) { limit = 80; grid.scrollTop = 0; render(); } }); });
     more.addEventListener("click", function () { var top = grid.scrollTop; limit += 80; render(); grid.scrollTop = top; });
-    document.addEventListener("pointerdown", function (event) { if (!panel.hidden && !panel.contains(event.target) && !toggle.contains(event.target)) close(false); });
-    document.addEventListener("keydown", function (event) { if (event.key === "Escape" && !panel.hidden) { event.preventDefault(); close(true); } });
+    listen(document, "pointerdown", function (event) { if (!panel.hidden && !panel.contains(event.target) && !toggle.contains(event.target)) close(false); });
+    listen(document, "keydown", function (event) { if (event.key === "Escape" && !panel.hidden) { event.preventDefault(); close(true); } });
     form.addEventListener("submit", function () { close(false); });
   }
 
-  var threadQuery = document.querySelector("[data-thread-query]");
-  var searchToggle = document.querySelector("[data-thread-search-toggle]");
+  var threadQuery = root.querySelector("[data-thread-query]");
+  var searchToggle = root.querySelector("[data-thread-search-toggle]");
   if (threadQuery && searchToggle && timeline) {
-    var searchPanel = document.querySelector("[data-thread-search]");
-    var threadStatus = document.querySelector("[data-thread-search-status]");
+    var searchPanel = root.querySelector("[data-thread-search]");
+    var threadStatus = root.querySelector("[data-thread-search-status]");
     function filterMessages() {
       var query = threadQuery.value.trim().toLocaleLowerCase(), count = 0, day;
       Array.from(timeline.children).forEach(function (child) {
@@ -278,8 +288,8 @@
     searchToggle.addEventListener("click", function () { searchPanel.hidden = !searchPanel.hidden; searchToggle.setAttribute("aria-expanded", String(!searchPanel.hidden)); if (!searchPanel.hidden) threadQuery.focus(); else { threadQuery.value = ""; filterMessages(); } });
     threadQuery.addEventListener("input", filterMessages);
   }
-  var infoToggle = document.querySelector("[data-thread-info-toggle]");
-  if (infoToggle) { infoToggle.hidden = false; infoToggle.addEventListener("click", function () { var info = document.querySelector("[data-thread-info]"); info.hidden = !info.hidden; infoToggle.setAttribute("aria-expanded", String(!info.hidden)); }); }
+  var infoToggle = root.querySelector("[data-thread-info-toggle]");
+  if (infoToggle) { infoToggle.hidden = false; infoToggle.addEventListener("click", function () { var info = root.querySelector("[data-thread-info]"); info.hidden = !info.hidden; infoToggle.setAttribute("aria-expanded", String(!info.hidden)); }); }
   // Move the existing action nodes into a native modal on small screens.
   // Never clone forms, tokens or controls; this is the same authorized POST.
   var actionSheet = document.createElement("dialog");
@@ -307,11 +317,11 @@
     if (event.clientY < bounds.top || event.clientX < bounds.left || event.clientX > bounds.right) closeActions();
   });
   var mobileActions = window.matchMedia("(max-width:760px)");
-  mobileActions.addEventListener("change", closeActions);
-  document.querySelectorAll(".messenger-message-actions, .messenger-header-actions").forEach(function (details) {
+  listen(mobileActions, "change", closeActions);
+  root.querySelectorAll(".messenger-message-actions, .messenger-header-actions").forEach(function (details) {
     details.addEventListener("toggle", function () {
       if (!details.open) return;
-      document.querySelectorAll(".messenger-message-actions[open], .messenger-header-actions[open]").forEach(function (other) { if (other !== details) other.open = false; });
+      root.querySelectorAll(".messenger-message-actions[open], .messenger-header-actions[open]").forEach(function (other) { if (other !== details) other.open = false; });
       if (mobileActions.matches && typeof actionSheet.showModal === "function") {
         if (actionSheet.open) return;
         sheetOwner = details; sheetMenu = details.querySelector(".messenger-action-menu"); sheetFocus = details.querySelector("summary");
@@ -325,5 +335,15 @@
       if (event.key === "Escape" && details.open && !actionSheet.open) { event.preventDefault(); details.open = false; details.querySelector("summary").focus(); }
     });
   });
-  document.addEventListener("click", function (event) { if (actionSheet.open) return; document.querySelectorAll(".messenger-message-actions[open], .messenger-header-actions[open]").forEach(function (details) { if (!details.contains(event.target)) details.open = false; }); });
+  listen(document, "click", function (event) { if (actionSheet.open) return; root.querySelectorAll(".messenger-message-actions[open], .messenger-header-actions[open]").forEach(function (details) { if (!details.contains(event.target)) details.open = false; }); });
+  disposeMessages = function () {
+    closeActions();
+    cleanup.forEach(function (release) { release(); });
+    actionSheet.remove();
+    disposeMessages = null;
+  };
+  }
+  window.aelmsEnhanceMessages = enhanceMessages;
+  window.aelmsDisposeMessages = function () { if (disposeMessages) disposeMessages(); };
+  enhanceMessages(document);
 })();

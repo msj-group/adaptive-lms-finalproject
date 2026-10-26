@@ -1,0 +1,50 @@
+{% import "_figma_ui.html" as ui %}
+{% macro flashes() -%}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for category,message in messages %}<div class="alert alert--{{ category }}" role="{{ 'alert' if category == 'danger' else 'status' }}">{{ message }}</div>{% endfor %}
+{% endwith %}
+{%- endmacro %}
+{% macro context(group,groups) -%}
+<div class="tgb-contextbar">
+<a class="tgb-feature-name" href="{{ url_for('teacher.gradebook_overview') }}">{{ ui.icon('book',20) }}<span>Gradebook</span>
+</a>{% if group %}<div class="tgb-context-select">
+<label class="tgb-sr-only" for="gradebook-group">Choose group</label>
+<select id="gradebook-group" data-group-switch>{% for card in groups %}<option value="{{ url_for('teacher.group_gradebook',group_public_id=card.group_public_id) }}" {{ 'selected' if card.group_public_id==group.public_id }}>{{ card.group_name }} · {{ card.course_title }}</option>{% endfor %}</select>
+<small dir="auto">{{ group.academic_term.name }}</small>
+</div>{% endif %}
+<details class="tgb-group-picker">
+<summary>
+<span dir="auto">{{ group.name if group else _('All groups') }}</span>{{ ui.icon('chevron-down',15) }}</summary>
+<div class="tgb-group-menu">
+<p>Choose group</p>{% for card in groups %}<a href="{{ url_for('teacher.group_gradebook',group_public_id=card.group_public_id) }}" {% if group and card.group_public_id==group.public_id %}aria-current="page"{% endif %}>
+<strong dir="auto">{{ card.group_name }}</strong>
+<small dir="auto">{{ card.course_title }} · {{ card.term_name }}</small>
+</a>{% endfor %}<a href="{{ url_for('teacher.gradebook_overview') }}">All groups {{ ui.icon('arrow',15) }}</a>
+</div>
+</details>
+</div>
+{%- endmacro %}
+{% macro heading(title, eyebrow, group=none, subtitle='') -%}<header class="tgb-heading">
+<div>
+<p class="tgb-eyebrow">{{ _(eyebrow) }}</p>
+<h1 data-workspace-page-heading dir="auto">{{ title }}</h1>{% if subtitle %}<p class="tgb-meta">{{ _(subtitle) }}</p>{% elif group %}<p class="tgb-meta" dir="auto">{{ group.name }} · {{ group.academic_term.name }}</p>{% endif %}</div>{% if caller is defined %}<div class="tgb-actions">{{ caller() }}</div>{% endif %}</header>{%- endmacro %}
+{% macro back(url,label='Back to gradebook') -%}<a class="tgb-back" href="{{ url }}">
+<span aria-hidden="true">&larr;</span>{{ _(label) }}</a>{%- endmacro %}
+{% macro empty(title,body='') -%}<div class="tgb-empty">
+<span class="tgb-taskicon">{{ ui.icon('book',24) }}</span>
+<h2>{{ _(title) }}</h2>{% if body %}<p>{{ _(body) }}</p>{% endif %}
+{% if caller is defined %}<div class="tgb-actions">{{ caller() }}</div>{% endif %}</div>{%- endmacro %}
+{% macro person(name) -%}<span class="tgb-person">
+<span class="tgb-avatar" aria-hidden="true">{{ name.split()|map('first')|join('')|truncate(2,true,'') }}</span>
+<span dir="auto">{{ name }}</span>
+</span>{%- endmacro %}
+{% macro progress(value,total) -%}<progress class="tgb-progress" value="{{ value }}" max="{{ total if total else 1 }}" aria-label="{{ _('%(scored)d of %(total)d graded',scored=value,total=total) }}">
+</progress>{%- endmacro %}
+{% macro planbar(categories) -%}<div class="tgb-planbar" aria-hidden="true">{% for category in categories %}<span style="width:{{ category.weight_display }}%;opacity:{{ [0.28,1-loop.index0*0.18]|max }}">
+</span>{% endfor %}</div>{%- endmacro %}
+
+{% macro plus(size=20) -%}<svg class="figma-icon" width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+<path d="M12 5v14M5 12h14"/>
+</svg>{%- endmacro %}
+
+{% macro kind_label(kind) -%}{{ _({'assignment':'Assignment','quiz':'Quiz / Listening','speaking':'Speaking','activity':'Class activity','manual':'Manual grade'}.get(kind,'Grade item')) }}{%- endmacro %}

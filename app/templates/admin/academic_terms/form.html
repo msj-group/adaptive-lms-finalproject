@@ -1,33 +1,40 @@
 {% extends "layouts/admin_base.html" %}
 {% import "admin/_macros.html" as macros %}
 {% block title %}{{ 'Edit Academic Term' if term else 'New Academic Term' }}{% endblock %}
+{% import "admin/_atlas_ui.html" as atlas %}
+{% import "_figma_ui.html" as ui %}
 {% block admin_content %}
-<div class="ds-page yc-surface" style="max-width: 480px">
-  <h1 data-workspace-page-heading>{{ 'Edit Academic Term' if term else 'New Academic Term' }}</h1>
+<div class="ad-page">
+  <header class="ad-page-head"><div><div class="ad-eyebrow">Academic setup / Academic terms</div><h1 data-workspace-page-heading>{{ 'Edit Academic Term' if term else 'New Academic Term' }}</h1></div><a class="btn btn--secondary" href="{{ url_for('admin.academic_terms_list') }}">Back</a></header>
+  <div data-academic-messages>{{ macros.flash_messages() }}</div>
+  <form data-academic-form data-academic-kind="terms" data-academic-record="{{ term.public_id if term else '' }}" data-academic-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}" method="post" novalidate class="yc-form ad-form-workspace">
+    <section class="ad-card ad-field-panel"><div class="ax-form-section"><span>{{ ui.icon('calendar', 18) }}</span><div><h2>Academic term details</h2><p class="ad-meta">Complete the details below.</p></div></div><div class="ad-form-grid">
 
-  {{ macros.flash_messages() }}
-
-  <form method="post" novalidate class="yc-form">
     {{ form.hidden_tag() }}
     <div class="field">
       {{ form.name.label(class_="field__label") }}
       {{ form.name(class_="field__input") }}
       {% for error in form.name.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="">
+    <div class="field">
       {{ form.start_date.label(class_="field__label") }}
       {{ form.start_date(class_="field__input") }}
       {% for error in form.start_date.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="field" style="">
+    <div class="field">
       {{ form.end_date.label(class_="field__label") }}
       {{ form.end_date(class_="field__input") }}
       {% for error in form.end_date.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
+
+    </div></section>
+    <aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Academic period</h2>{{ ui.icon('info', 18) }}</div><p class="ad-meta">Academic terms organize the periods used by teaching groups.</p>{% if term %}<dl class="ad-definition"><dt>Name</dt><dd dir="auto">{{ term.name }}</dd><dt>Status</dt><dd>{{ macros.status_badge(term.status) }}</dd></dl>{% endif %}</section></aside>
+    <section class="ad-card ad-save-panel"><div class="ad-form-foot"><span class="ad-meta">Review the details before saving.</span><div class="ad-actions">
+
       {{ form.submit(class_="btn btn--primary") }}
-      <a class="btn btn--secondary" href="{{ url_for('admin.academic_terms_list') }}">Cancel</a>
-    </div>
+      <a class="btn btn--secondary" href="{{ url_for('admin.academic_terms_list') }}" data-academic-editor-cancel>Cancel</a>
+
+    </div></div></section>
   </form>
 </div>
 {% endblock %}

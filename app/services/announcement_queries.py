@@ -59,6 +59,8 @@ Everything else
   one query, a detail is one query. Nothing is asked per announcement.
 """
 
+from datetime import date, datetime, time, timedelta
+
 from sqlalchemy import and_, or_
 
 from app.extensions import db
@@ -78,7 +80,7 @@ from app.models import (
     User,
 )
 from app.services.announcement_search import match_clause
-from app.services.schedule_occurrences import to_app_local
+from app.services.schedule_occurrences import from_app_local, to_app_local
 
 _ACTIVE = AcademicStatus.ACTIVE.value
 _ENROLLMENT_ACTIVE = EnrollmentStatus.ACTIVE.value
@@ -154,6 +156,28 @@ def normalize_status_filter(value):
     """One of :data:`STATUS_FILTERS`, or ``None`` for "any status"."""
     value = (value or "").strip()
     return value if value in STATUS_FILTERS else None
+
+
+def announcement_date_bounds(since, until, tz_name):
+    """Inclusive local dates as a half-open naive-UTC interval.
+
+    Invalid or inverted dates raise instead of silently widening a filter.
+    The upper bound is midnight following the selected final local day.
+    """
+    bounds = []
+    for raw, end in ((since, False), (until, True)):
+        if not raw:
+            bounds.append(None)
+            continue
+        day = date.fromisoformat(raw)
+        if day.isoformat() != raw:
+            raise ValueError("Invalid date")
+        if end:
+            day += timedelta(days=1)
+        bounds.append(from_app_local(tz_name, datetime.combine(day, time.min)))
+    if since and until and since > until:
+        raise ValueError("Invalid date range")
+    return tuple(bounds)
 
 
 # ---------------------------------------------------------------------------
@@ -387,7 +411,7 @@ def student_feed_page(student_id, page):
     return _page(query, page)
 
 
-def teacher_feed_page(teacher_id, page, tokens=()):
+def teacher_feed_page(teacher_id, page, tokens=(), *, lower=None, upper=None):
     """One bounded page of the announcements this Teacher may read right
     now, newest publication first.
 
@@ -396,11 +420,16 @@ def teacher_feed_page(teacher_id, page, tokens=()):
     Student's global search, applied through exactly the same normalised,
     escaped ``LIKE`` conventions (see
     :func:`app.services.announcement_search.match_clause`) and **on top
-    of** the visibility clause, never instead of it.
+    of** the visibility clause, never instead of it. Optional half-open UTC
+    bounds narrow publication time without changing visibility or ordering.
     """
     query = _visible_feed_query(teacher_visibility_clause(teacher_id))
     if tokens:
         query = query.filter(match_clause(tokens))
+    if lower is not None:
+        query = query.filter(Announcement.published_at >= lower)
+    if upper is not None:
+        query = query.filter(Announcement.published_at < upper)
     return _page(_newest_first(query), page)
 
 
@@ -536,18 +565,27 @@ def _management_order(query):
     return query.order_by(Announcement.created_at.desc(), Announcement.id.desc())
 
 
-def group_announcements_page(group_id, page):
+def group_announcements_page(group_id, page, *, status=None, tokens=(), lower=None, upper=None):
     """One bounded page of **every** announcement owned by one Group --
     drafts, published and withdrawn alike -- newest first.
 
     This is the Teacher's management list, and it is reached only after
     the caller has proved an active assignment to that exact Group. The
     Group constraint is applied in SQL rather than by a check somebody
-    could forget.
+    could forget. Optional state/search and half-open last-change bounds
+    narrow this same Group; creation-time ordering and the page cap remain.
     """
     query = _management_order(
         _management_select().filter(Announcement.group_id == group_id)
     )
+    if status in STATUS_FILTERS:
+        query = query.filter(Announcement.status == status)
+    if tokens:
+        query = query.filter(match_clause(tokens))
+    if lower is not None:
+        query = query.filter(Announcement.updated_at >= lower)
+    if upper is not None:
+        query = query.filter(Announcement.updated_at < upper)
     return _page(query, page)
 
 

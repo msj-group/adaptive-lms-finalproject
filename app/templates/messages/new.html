@@ -1,17 +1,17 @@
 {% extends "messages/base.html" %}
 {% import "_message_macros.html" as msg %}
 {% block title %}Messages{% endblock %}
-{% block portal_content %}
+{% block message_content %}
 {{ msg.flash_messages() }}
 <div class="messenger {{ 'messenger--thread' if mode == 'compose' else 'messenger--inbox' }}">
   {{ msg.sidebar(conversations, recipients=recipients, audience=audience, contacts_active=true, query_text=query_text if mode == 'picker' else '') }}
   {% if mode == 'compose' %}
   <section class="messenger-chat" aria-labelledby="conversation-title">
     <header class="messenger-chat__header"><a class="messenger-icon-button messenger-chat__back" href="{{ url_for('messages.new_thread') }}" aria-label="Choose another recipient">{{ msg.icon('back') }}</a>{{ msg.avatar(recipient.full_name, recipient.role_label) }}<div class="messenger-chat__person"><h2 id="conversation-title" dir="auto">{{ recipient.full_name }}</h2><p>{{ recipient.role_label }} · Private conversation</p></div><a class="messenger-icon-button" href="{{ url_for('messages.new_thread') }}" aria-label="Choose another recipient" title="Choose another recipient">{{ msg.icon('users') }}</a></header>
-    <div class="messenger-timeline-wrap messenger-greeting"><div>{{ msg.avatar(recipient.full_name, recipient.role_label) }}<h2>Say hello to <bdi>{{ recipient.full_name.split()[0] if recipient.full_name.split() else 'your contact' }}</bdi>.</h2><p>Ask about your lesson or share what you're working on.<br>Write your first message below.</p></div></div>
-    <div class="messenger-composer">
+    <div class="messenger-timeline-wrap messenger-greeting"><div>{{ msg.avatar(recipient.full_name, recipient.role_label) }}<h2>Say hello to <bdi>{{ recipient.full_name.split()[0] if recipient.full_name.split() else 'your contact' }}</bdi>.</h2><p>Write your first message below. Only the two participants can access this conversation.</p></div></div>
+    <div class="messenger-composer" data-people-message-panel data-message-mode="compose" data-person-id="{{ recipient.public_id }}" data-people-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}">
       {% if form_error %}<div class="alert alert--danger" role="alert">{{ form_error }}</div>{% endif %}
-      <form method="post" action="{{ url_for('messages.create_thread') }}" novalidate data-research-form="message_send" data-message-form>
+      <form method="post" action="{{ url_for('messages.create_thread') }}" novalidate data-research-form="message_send" data-message-form data-people-message-form>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="recipient" value="{{ recipient.public_id }}"><input type="hidden" name="message_state" value="{{ message_state }}">
         {% if not errors.get('subject') %}<input type="hidden" name="subject" value="{{ subject or 'Private conversation' }}">{% endif %}
         {% if errors.get('subject') %}<div class="field"><label class="field__label" for="message-subject">Conversation subject</label><input id="message-subject" class="field__input" name="subject" maxlength="{{ subject_max }}" value="{{ subject }}" aria-invalid="true" aria-describedby="subject-error"><p id="subject-error" class="field__error">{{ errors.get('subject') }}</p></div>{% endif %}

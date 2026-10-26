@@ -55,6 +55,7 @@ from sqlalchemy.orm import aliased
 
 from app.models import (
     AcademicStatus,
+    AcademicRevision,
     AcademicTerm,
     BASIS_POINTS_TOTAL,
     Assignment,
@@ -886,7 +887,7 @@ def build_student_totals(view, score_rows):
 # ---------------------------------------------------------------------------
 
 
-def teacher_group_cards(teacher_id):
+def teacher_group_cards(teacher_id, *, with_summary=False):
     """Every Group this Teacher is **actively assigned** to, as plain
     dicts, ascending by ``(group name, group id)``.
 
@@ -898,6 +899,7 @@ def teacher_group_cards(teacher_id):
     """
     rows = (
         db.session.query(
+            Group.id,
             Group.public_id,
             Group.name,
             Group.status,
@@ -921,7 +923,9 @@ def teacher_group_cards(teacher_id):
         .all()
     )
     cards = []
+    identities = {}
     for (
+        group_id,
         group_public_id,
         group_name,
         group_status,
@@ -932,6 +936,7 @@ def teacher_group_cards(teacher_id):
         level_status,
         course_status,
     ) in rows:
+        identities[group_public_id] = group_id
         archived = [
             label
             for label, status in (
@@ -953,6 +958,19 @@ def teacher_group_cards(teacher_id):
                 "archived_labels": archived,
             }
         )
+    if with_summary:
+        ids = list(identities.values())
+        students = active_student_counts_for_groups(ids)
+        items = item_counts_for_groups(ids)
+        weights = dict(db.session.query(GradeCategory.group_id,
+            func.sum(GradeCategory.weight_basis_points))
+            .filter(GradeCategory.group_id.in_(ids)).group_by(GradeCategory.group_id).all()) if ids else {}
+        for card in cards:
+            group_id = identities[card["group_public_id"]]
+            total = int(weights.get(group_id, 0))
+            card.update(student_count=students.get(group_id, 0),
+                item_count=items.get(group_id, (0, 0, 0))[0],
+                weight_total_display=format_weight(total), weights_complete=total == BASIS_POINTS_TOTAL)
     return cards
 
 
@@ -1520,3 +1538,75 @@ def item_release_blockers(item_view, weight_total):
         item_view["source_published"],
         source_present=(not linked) or item_view["source_title"] is not None,
     )
+
+
+# Teacher Guided Workspace projections. These reads never change captured history.
+def teacher_score_rows(group_id):
+    """All captured records in one authorized Group, including private drafts.
+
+    The caller proves Teacher assignment first. Scope is in SQL through category;
+    current enrollment/account status never removes an historical captured record.
+    One query for the whole matrix, with no per-student lazy loads or numeric IDs
+    in its presentation output. Student routes do not call this projection.
+    """
+    return (db.session.query(
+        User.public_id.label("student_public_id"), User.full_name.label("student_name"),
+        GradeRecord.public_id.label("record_public_id"),
+        GradeItem.public_id.label("item_public_id"), GradeRecord.score)
+        .select_from(GradeRecord).join(GradeItem, GradeRecord.grade_item_id == GradeItem.id)
+        .join(GradeCategory, GradeItem.category_id == GradeCategory.id)
+        .join(User, GradeRecord.student_id == User.id)
+        .filter(GradeCategory.group_id == group_id)
+        .order_by(User.full_name.asc(), User.id.asc(), GradeItem.id.asc()).all())
+
+
+def build_teacher_matrix(view, rows):
+    """Captured Student rows and released-only totals from the existing calculator."""
+    items = {item["public_id"]: item for category in view for item in category["grade_items"]}
+    students = {}
+    for row in rows:
+        student = students.setdefault(row.student_public_id, {
+            "public_id": row.student_public_id, "student_name": row.student_name,
+            "records": {}, "released_scores": {}})
+        item = items[row.item_public_id]
+        student["records"][row.item_public_id] = {
+            "public_id": row.record_public_id, "score_display": format_points(row.score)}
+        if item["is_released"] and row.score is not None:
+            student["released_scores"][row.item_public_id] = row.score
+    result = []
+    for student in students.values():
+        summary = summarize(calculation_categories(view), student.pop("released_scores"))
+        student.update(overall_display=format_percentage(summary.overall),
+            unavailable_reason=summary.unavailable_reason, categories=[{
+                "title": category.title, "percentage_display": format_percentage(category.percentage),
+                "complete": category.complete, "scored_item_count": category.scored_item_count,
+                "released_item_count": category.released_item_count} for category in summary.categories])
+        result.append(student)
+    return result
+
+
+def teacher_item_history(group_id, item_id, page=1):
+    """One 20-entry page of actual corrections, scoped by both Group and item.
+
+    Project only score/comment changes; snapshots contain other internal identity
+    values that must never reach a template. The extra row derives has_next.
+    """
+    actor = aliased(User)
+    rows = (db.session.query(AcademicRevision.created_at,
+        AcademicRevision.before_snapshot, AcademicRevision.after_snapshot,
+        User.full_name.label("student_name"), actor.full_name.label("actor_name"))
+        .select_from(AcademicRevision)
+        .join(GradeRecord, AcademicRevision.grade_record_id == GradeRecord.id)
+        .join(GradeItem, GradeRecord.grade_item_id == GradeItem.id)
+        .join(GradeCategory, GradeItem.category_id == GradeCategory.id)
+        .join(User, GradeRecord.student_id == User.id)
+        .join(actor, AcademicRevision.actor_id == actor.id)
+        .filter(GradeCategory.group_id == group_id, GradeItem.id == item_id)
+        .order_by(AcademicRevision.created_at.desc(), AcademicRevision.id.desc())
+        .offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE + 1).all())
+    return [{"created_at": row.created_at, "student_name": row.student_name,
+             "actor_name": row.actor_name,
+             "changes": [(label, row.before_snapshot.get(key), row.after_snapshot.get(key))
+                         for key, label in (("score", "Score"), ("comment", "Feedback"))
+                         if row.before_snapshot.get(key) != row.after_snapshot.get(key)]}
+            for row in rows[:PAGE_SIZE]], len(rows) > PAGE_SIZE

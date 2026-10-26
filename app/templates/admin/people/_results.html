@@ -1,0 +1,23 @@
+{% import "admin/_macros.html" as macros %}
+{% import "admin/_atlas_ui.html" as atlas %}
+{% import "_figma_ui.html" as ui %}
+<span hidden data-query-count="{{ people|length }}"></span>
+<div class="pf-workspace" data-people-workspace data-people-kind="{{ people_kind }}" data-people-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}">
+  <section class="pf-directory" aria-label="{{ _('Students') if people_kind == 'student' else _('Teachers') }}">
+    <div class="pf-viewbar"><span><strong>{{ people|length }}</strong> {{ _('records in this view') }}</span><span>Select a profile</span></div>
+    {% if people %}
+    <ul class="pf-people">
+      {% for person in people %}
+      <li><a class="pf-person" href="{{ url_for('admin.' ~ people_kind ~ '_detail', public_id=person.public_id) }}" data-people-open data-person-id="{{ person.public_id }}">
+        {{ atlas.person_avatar(person.full_name) }}<span class="pf-person-identity"><strong dir="auto">{{ person.full_name }}</strong><small dir="auto">{{ person.email }}</small></span>{{ macros.user_status_badge(person.status) }}
+      </a></li>
+      {% endfor %}
+    </ul>
+    {% elif search or selected_status %}
+    <div class="ad-empty"><h2>{{ _('No students match your filters') if people_kind == 'student' else _('No teachers match your filters') }}</h2><a class="ad-row-link" href="{{ url_for('admin.students_list' if people_kind == 'student' else 'admin.teachers_list') }}">clear all filters</a></div>
+    {% else %}
+    <div class="ad-empty">{{ ui.icon('users', 28) }}<h2>{{ _('No students yet') if people_kind == 'student' else _('No teachers yet') }}</h2></div>
+    {% endif %}
+  </section>
+  <aside class="pf-reader" data-people-reader aria-label="Profile" tabindex="-1"><div class="pf-reader-empty">{{ ui.icon('users', 28) }}<h2>Select a profile</h2><p>Choose a person to view their profile.</p></div></aside>
+</div>
