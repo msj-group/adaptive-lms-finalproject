@@ -1,0 +1,42 @@
+{# Optional v2 self-report. Its inputs are never part of the predictor stream. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/research_v2.css') }}">
+<section id="research-feedback-v2" class="research-v2-card" hidden role="dialog" aria-modal="false"
+         aria-labelledby="research-v2-title" aria-describedby="research-v2-note">
+  <form data-v2-feedback-form novalidate>
+    <div class="research-v2-header">
+      <h2 id="research-v2-title">{{ _('A quick question') }}</h2>
+      <button type="button" class="btn btn--secondary" data-v2-skip>{{ _('Skip') }}</button>
+    </div>
+    <p id="research-v2-note">{{ _('Answering is optional. Skipping does not affect your grades or your access.') }}</p>
+    <fieldset>
+      <legend>{{ _('In the two minutes before this question was sent, how frustrated did you feel on this platform?') }}</legend>
+      {% for value, label in research.anchors %}
+      <label class="research-v2-choice"><input type="radio" name="v2-rating" value="{{ value }}" required><span><strong>{{ value }}</strong> — {{ _(label) }}</span></label>
+      {% endfor %}
+    </fieldset>
+    <fieldset>
+      <legend>{{ _('What contributed to that feeling?') }} <span>{{ _('Optional; choose any.') }}</span></legend>
+      {% for code, _column, label in research.causes %}
+      <label class="research-v2-choice"><input type="checkbox" name="v2-cause" value="{{ code }}"><span>{{ _(label) }}</span></label>
+      {% endfor %}
+    </fieldset>
+    <fieldset data-v2-help-question hidden>
+      <legend>{{ _('Would you have wanted help at that moment?') }} <span>{{ _('Optional.') }}</span></legend>
+      <label class="research-v2-choice"><input type="radio" name="v2-help" value="yes"><span>{{ _('Yes') }}</span></label>
+      <label class="research-v2-choice"><input type="radio" name="v2-help" value="no"><span>{{ _('No') }}</span></label>
+      <p>{{ _('This question records your preference; it does not send a help request.') }}</p>
+    </fieldset>
+    <div class="research-v2-actions">
+      <button type="submit" class="btn btn--primary" data-v2-submit disabled>{{ _('Submit') }}</button>
+    </div>
+    <p data-v2-status role="status" aria-live="polite"></p>
+    <template>
+      <span data-v2-message="submit">{{ _('Submit') }}</span><span data-v2-message="skip">{{ _('Skip') }}</span>
+      <span data-v2-message="recorded">{{ _('Thank you.') }}</span>
+      <span data-v2-message="failed">{{ _('We could not confirm that your response was saved. Please try again.') }}</span>
+      <span data-v2-message="kept">{{ _('Your earlier response to this question was already saved. It has not been changed.') }}</span>
+      <span data-v2-message="unavailable">{{ _('This question is no longer available.') }}</span>
+      <span data-v2-message="retry">{{ _('Try again') }}</span><span data-v2-message="close">{{ _('Close') }}</span>
+    </template>
+  </form>
+</section>

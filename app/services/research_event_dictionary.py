@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 EVENT_SCHEMA_VERSION = "natural-use-events.v1"
 EVENT_DICTIONARY_REVISION = "va-w7-r1"
 TRACKING_SCOPE_REVISION = "va-scope-r1"
-SUPPORTED_EVENT_SCHEMA_VERSIONS = (EVENT_SCHEMA_VERSION,)
+SUPPORTED_EVENT_SCHEMA_VERSIONS = (EVENT_SCHEMA_VERSION, "natural-use-events.v2")
 
 SOURCE_CLIENT = "client"
 SOURCE_SERVER = "server"

@@ -46,6 +46,7 @@ _MESSAGES = {
     tx.NOT_ACTIVE: ("Only the active configuration can be paused or resumed.", "warning"),
     tx.NO_RETENTION: ("The deployment has not supplied RESEARCH_RETENTION_DAYS, so no "
                       "configuration can be activated.", "danger"),
+    tx.V2_NOT_READY: ("V2 needs the reviewed database update, an enabled release gate and the approved 45-day retention before activation.", "danger"),
     tx.PERIOD_ENDED: ("The collection period of this configuration has already ended.",
                       "warning"),
     tx.UNCHANGED: ("Nothing changed.", "info"),
@@ -76,9 +77,16 @@ def _or_404(public_id):
 def _defaults(form):
     for column, (_low, _high, default) in POLICY_BOUNDS.items():
         getattr(form, column).data = default
+    form.event_schema_version.data = "natural-use-events.v1"
+    if current_app.config.get("RESEARCH_V2_ENABLED", False):
+        from app.services.research_v2_policy import POLICY
+        form.event_schema_version.data = "natural-use-events.v2"
+        for column, value in POLICY.items():
+            getattr(form, column).data = value
 
 
 def _fill(form, configuration):
+    form.event_schema_version.data = configuration.event_schema_version
     form.label.data = configuration.label
     form.collection_starts_at.data = _local(configuration.collection_starts_at)
     form.collection_ends_at.data = _local(configuration.collection_ends_at)

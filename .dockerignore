@@ -14,6 +14,7 @@
 !scripts/create_researcher.py
 !scripts/research_operator.py
 !scripts/run_research_retention.py
+!scripts/run_research_quality.py
 !scripts/deployment_diagnostics.py
 !scripts/railway_start.py
 !scripts/railway_migrate.py

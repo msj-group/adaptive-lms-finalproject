@@ -26,6 +26,13 @@ def storage_usage():
     counts = {"sessions": int(ResearchSession.query.count()), "events": int(ResearchEvent.query.count()),
               "prompts": int(ResearchFeedbackPrompt.query.count()), "archives": int(archives), "archive_bytes": int(archive_bytes),
               "estimated_allocated_bytes": allocated}
+    from app.services import research_v2_storage as v2
+    if v2.schema_present():
+        from app.models.research_v2 import ResearchV2Event, ResearchV2Prompt
+        counts["events"] += db.session.query(ResearchV2Event).count()
+        counts["prompts"] += db.session.query(ResearchV2Prompt).count()
+        new_allocated = db.session.execute(text("SELECT COALESCE(SUM(DATA_LENGTH+INDEX_LENGTH),0) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND (TABLE_NAME LIKE 'research\\_v2\\_%' OR TABLE_NAME LIKE 'research\\_quality\\_%')")).scalar()
+        counts["estimated_allocated_bytes"] += int(new_allocated or 0)
     return counts
 
 
@@ -75,10 +82,12 @@ def cleanup_preview(start, end, all_data=False, provenance="all"):
     selected = query.with_entities(ResearchSession.id).statement
     count = int(query.count())
     archives = _affected_archives(query) if count else ResearchExportArchive.query.filter(False)
+    from app.services import research_v2_storage as v2
+    extra_events, extra_prompts = v2.raw_counts(selected) if v2.schema_present() else (0, 0)
     return {"start": start.isoformat() if start and not all_data else None, "end": end.isoformat() if end and not all_data else None,
         "all_data": bool(all_data), "provenance": provenance, "timezone": current_app.config["APP_TIMEZONE"],
-        "sessions": count, "events": int(ResearchEvent.query.filter(ResearchEvent.session_id.in_(selected)).count()),
-        "prompts": int(ResearchFeedbackPrompt.query.filter(ResearchFeedbackPrompt.session_id.in_(selected)).count()),
+        "sessions": count, "events": int(ResearchEvent.query.filter(ResearchEvent.session_id.in_(selected)).count()) + extra_events,
+        "prompts": int(ResearchFeedbackPrompt.query.filter(ResearchFeedbackPrompt.session_id.in_(selected)).count()) + extra_prompts,
         "archives": int(archives.count()), "open_sessions": int(query.filter(ResearchSession.ended_at_ms.is_(None)).count()),
         "selection_digest": _cohort_digest(query)}
 
@@ -98,6 +107,8 @@ def cleanup_data(actor_id, expected, start, end, all_data=False, provenance="all
     if not actual["sessions"]:
         return actual
     query = _sessions(start, end, all_data, provenance)
+    from app.services import research_v2_storage as v2
+    has_v2 = v2.schema_present()
     # The control gate and all configuration locks exclude collection and
     # concurrent retention/export removal while whole sessions are removed.
     while True:
@@ -109,6 +120,8 @@ def cleanup_data(actor_id, expected, start, end, all_data=False, provenance="all
         ids = [row[0] for row in query.with_entities(ResearchSession.id).order_by(ResearchSession.id).limit(500).with_for_update().all()]
         if not ids:
             break
+        if has_v2:
+            v2.delete_session_children(ids)
         ResearchEvent.query.filter(ResearchEvent.session_id.in_(ids)).delete(synchronize_session=False)
         ResearchFeedbackPrompt.query.filter(ResearchFeedbackPrompt.session_id.in_(ids)).delete(synchronize_session=False)
         ResearchSession.query.filter(ResearchSession.id.in_(ids)).delete(synchronize_session=False)

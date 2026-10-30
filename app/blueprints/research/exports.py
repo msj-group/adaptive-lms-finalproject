@@ -40,7 +40,7 @@ def _provenance():
 
 def _form():
     form = ExportForm()
-    form.configuration.choices = [("", "Every configuration version")] + [
+    form.configuration.choices = [("", "Legacy v1 configurations only — select one version for v2")] + [
         (row.public_id, f"Version {row.version_number} — {row.label}")
         for row in queries.configuration_choices()
     ]

@@ -2,7 +2,10 @@
 
 A session is a period of ordinary LMS use by one subject in one browser login
 session, under one configuration version. It needs no experiment, task set or
-task: it starts with the first accepted observation and ends on logout, after
+task. V1 starts with the first accepted observation. V2 may start when the
+server prepares an eligible Student page, before any client observation;
+this is server presence only, never browser display or visible coverage.
+A session ends on logout, after
 the configuration's inactivity timeout, when the active configuration
 changes, or when the subject stops being eligible. Tabs of one browser share
 one session (the signed Flask session cookie names it); a second browser is a

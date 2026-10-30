@@ -59,3 +59,5 @@ def resolve_research_settings(config):
     config["RESEARCH_DATA_PROVENANCE"] = provenance
     config["RESEARCH_RETENTION_DAYS"] = parse_retention_days(config.get("RESEARCH_RETENTION_DAYS"))
     config["RESEARCHER_EMAIL_ALLOWLIST"] = parse_allowlist(config.get("RESEARCHER_EMAIL_ALLOWLIST"))
+    if type(config.get("RESEARCH_V2_ENABLED", False)) is not bool:
+        raise ResearchSettingsError("RESEARCH_V2_ENABLED must be boolean")

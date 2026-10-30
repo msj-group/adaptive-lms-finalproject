@@ -85,7 +85,9 @@ def normalize_page(value):
 
 def _session_scope(provenance):
     """Server-selected study scope, or retained non-study review history."""
-    return ResearchSession.provenance.in_(export_session_provenances(provenance))
+    return (ResearchSession.provenance.in_(export_session_provenances(provenance))
+            & ResearchSession.configuration_id.in_(db.session.query(ResearchConfiguration.id).filter(
+                ResearchConfiguration.event_schema_version == "natural-use-events.v1")))
 
 
 def ms_to_local(tz_name, moment_ms):
@@ -411,7 +413,8 @@ def session_detail(public_id):
         )
         .join(ResearchSubject, ResearchSubject.id == ResearchSession.subject_id)
         .join(ResearchConfiguration, ResearchConfiguration.id == ResearchSession.configuration_id)
-        .filter(ResearchSession.public_id == public_id)
+        .filter(ResearchSession.public_id == public_id,
+                ResearchConfiguration.event_schema_version == "natural-use-events.v1")
         .first()
     )
 

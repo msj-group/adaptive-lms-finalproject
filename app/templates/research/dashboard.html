@@ -3,6 +3,7 @@
 {% import "_product_ui.html" as product %}
 {% block title %}Research dashboard{% endblock %}
 {% block research_content %}
+<p>Legacy v1 dashboard. Use <a href="{{ url_for('research.v2_review') }}">Collection v2 review</a> for the new collection method.</p>
 {#- Real counts of stored rows only, with explicit empty states. No
     prediction, no accuracy figure, no chart of measured emotion. -#}
 {{ product.workspace_heading('Research dashboard') }}

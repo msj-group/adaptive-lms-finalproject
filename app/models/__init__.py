@@ -398,6 +398,12 @@ __all__ = [
 from app.models.academic_revision import AcademicRevision
 from app.models.attempt_submission_receipt import AttemptSubmissionReceipt
 from app.models.research_storage import ResearchConfigurationSequence, ResearchDataGap, ResearchExportSession
+from app.models.research_v2 import (
+    ResearchV2Protocol, ResearchV2SamplingState, ResearchV2SamplingOpportunity,
+    ResearchV2Event, ResearchV2Prompt, ResearchV2FeatureMembership,
+    ResearchV2DeliveryReceipt, ResearchV2EvaluationPartition,
+    ResearchQualityRun, ResearchQualityReport, ResearchQualityIncident,
+)
 from app.services import history_write_guards
 from app.models.message_change import MessageChange, MessageThreadClear
 from app.services import attempt_finalization_guards

@@ -32,6 +32,7 @@ def dashboard_filters(args, as_of_ms):
 
 def _scope(provenance, filters, moment_column):
     terms = [ResearchSession.provenance.in_(export_session_provenances(provenance)),
+             ResearchConfiguration.event_schema_version == "natural-use-events.v1",
              moment_column >= filters["lower"], moment_column < filters["upper"]]
     if filters["version_number"] is not None:
         terms.append(ResearchConfiguration.version_number == filters["version_number"])

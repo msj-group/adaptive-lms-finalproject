@@ -15,6 +15,7 @@ only deletion, and it is a deliberate bulk delete.
 """
 
 from sqlalchemy import event
+from sqlalchemy.orm import deferred
 from sqlalchemy.dialects import mysql
 
 from app.extensions import db
@@ -40,6 +41,8 @@ class ResearchExportArchive(db.Model):
             f"byte_size > 0 AND byte_size <= {MAX_EXPORT_ARCHIVE_BYTES}",
             name="ck_research_export_archives_size_range",
         ),
+        db.CheckConstraint("expiry_at_ms IS NULL OR expiry_at_ms>0", name="ck_research_export_archives_expiry_ms"),
+        db.Index("ix_research_export_archives_expiry_ms", "expiry_at_ms"),
     )
 
     id = db.Column(ID_TYPE, primary_key=True)
@@ -48,6 +51,8 @@ class ResearchExportArchive(db.Model):
     byte_size = db.Column(db.Integer, nullable=False)
     content = db.Column(ARCHIVE_CONTENT_TYPE, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=whole_second_utc)
+    # Deferred so ordinary v1 reads remain compatible before the v2 migration.
+    expiry_at_ms = deferred(db.Column(db.BigInteger, nullable=True))
 
 
 @event.listens_for(ResearchExportArchive, "before_update")

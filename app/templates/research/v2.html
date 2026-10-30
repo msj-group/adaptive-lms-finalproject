@@ -1,0 +1,45 @@
+{% extends "layouts/research_base.html" %}
+{% block title %}Collection v2 review{% endblock %}
+{% block research_content %}
+<h1 data-workspace-page-heading>Collection v2 review</h1>
+<p>Review collection quality before training. These counts do not establish model accuracy or whether help benefits students.</p>
+{% if not enabled %}
+<div class="alert">V2 release gate is closed. The database update, manual phone checks and pilot acceptance must be completed before real collection.</div>
+{% else %}
+<h2>Latest technical reports</h2>
+<p>Technical reports contain no ratings. Telegram and the independent missed-run monitor require separate cloud configuration.</p>
+{% if not reports %}<div class="alert">No saved quality report is available. This is not evidence of healthy collection. Configure the cloud checker and confirm its first report and alert delivery.</div>{% endif %}
+{% for report in reports %}
+<article class="ds-section">
+  <h3>{{ report.provenance }} · {{ report.analysis_partition }}</h3>
+  <p>Report cutoff: {{ report.cutoff_ms }} UTC epoch ms. {% if now-report.created_at_ms > 7200000 %}<strong>Stale report: the checker needs attention.</strong>{% endif %}</p>
+  <dl><dt>Observed sessions</dt><dd>{{ report.observed_sessions }}</dd><dt>Accepted events</dt><dd>{{ report.events_accepted }}</dd><dt>Invalid / late events</dt><dd>{{ report.events_invalid }} / {{ report.events_late }}</dd><dt>Rendered / reserved questions</dt><dd>{{ report.prompts_rendered }} / {{ report.prompts_reserved }}</dd><dt>Matured answered / unanswered</dt><dd>{{ report.prompts_answered_matured }} / {{ report.prompts_unanswered_matured }}</dd><dt>Low coverage / uncertain clock windows</dt><dd>{{ report.low_coverage_windows }} / {{ report.clock_uncertain_windows }}</dd><dt>Phone-size / tablet-size / desktop-size sessions</dt><dd>{{ report.phone_sessions }} / {{ report.tablet_sessions }} / {{ report.desktop_sessions }}</dd></dl>
+  <p>Release <code>{{ report.release_ref }}</code></p>
+</article>
+{% endfor %}
+<h2>Development data review</h2>
+<p>These daily counts cover assigned development participants only. Reserved final-test answers remain hidden. A rare rating class or a small participant count means that model readiness still needs review.</p>
+{% for report in development_reports %}
+<article class="ds-section">
+  <h3>{{ report.provenance }} · development</h3>
+  <dl><dt>Recorded answers / participants</dt><dd>{{ report.ratings_total }} / {{ report.rating_participants }}</dd>
+    <dt>Raw ratings 1 / 2 / 3 / 4 / 5</dt><dd>{{ report.rating_1_count }} / {{ report.rating_2_count }} / {{ report.rating_3_count }} / {{ report.rating_4_count }} / {{ report.rating_5_count }}</dd>
+    <dt>Low coverage / uncertain clock windows</dt><dd>{{ report.low_coverage_windows }} / {{ report.clock_uncertain_windows }}</dd></dl>
+  {% if report.ratings_total < 20 or report.rating_participants < 5 or report.rating_1_count+report.rating_2_count < 2 or report.rating_3_count+report.rating_4_count+report.rating_5_count < 2 %}
+  <p><strong>Insufficient variety or sample size. Review the pilot before planning model training.</strong></p>
+  {% endif %}
+  <p>Raw counts include late and excluded answers; only eligible timely windows may train the model. These review thresholds are provisional, not an accuracy guarantee.</p>
+</article>
+{% else %}<p>No development daily report is available yet.</p>{% endfor %}
+<h2>Evaluation groups</h2>
+<p>Assign groups using a documented plan before reviewing answers. Unassigned and reserved-final-test participants are excluded from ordinary exports. A saved assignment cannot be changed here. Use separate pilot participants for development.</p>
+{% for participant in participants %}
+<article class="ds-section"><h3>{{ participant.subject_code }}</h3><p>{{ participant.partition_code }}</p>
+{% if participant.partition_code == 'unassigned' %}{% set form=forms[participant.subject_code] %}
+<form method="post" action="{{ url_for('research.v2_partition', subject_code=participant.subject_code) }}">{{ form.csrf_token }}{{ form.state }}{{ form.partition.label }} {{ form.partition(class_='field__input') }} {{ form.submit(class_='btn btn--primary') }}</form>
+{% endif %}</article>
+{% else %}<p>No v2 participants have been recorded yet.</p>{% endfor %}
+{% if page > 1 %}<a href="{{ url_for('research.v2_review',page=page-1) }}">Previous</a>{% endif %}
+{% if has_next %}<a href="{{ url_for('research.v2_review',page=page+1) }}">Next</a>{% endif %}
+{% endif %}
+{% endblock %}

@@ -32,7 +32,7 @@
   {{ ui.nav_link('Notifications','notifications.inbox','bell',request.blueprint == 'notifications',link_class='st-nav-link') }}
   {% for heading, links in [
     ('Workspace', [('dashboard','Dashboard','research.dashboard','dashboard'), ('configurations','Configurations','research.configurations','settings')]),
-    ('Data & review', [('sessions','Sessions','research.sessions','activity'), ('exports','Exports','research.exports','file'), ('exclusions','Exclusions','research.exclusions','users')]),
+    ('Data & review', [('v2','Collection v2 review','research.v2_review','activity'), ('sessions','Sessions','research.sessions','activity'), ('exports','Exports','research.exports','file'), ('exclusions','Exclusions','research.exclusions','users')]),
     ('Governance', [('storage','Storage and gaps','research.storage','layers'), ('audit','Audit log','research.activity_log','lock')])] %}
   <p class="st-nav-label">{{ heading }}</p>
   {% for key, label, target, symbol in links %}

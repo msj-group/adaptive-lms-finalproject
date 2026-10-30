@@ -62,6 +62,8 @@ class Config:
     # supplies one, no collection configuration can be activated.
     RESEARCH_DATA_PROVENANCE = os.environ.get("RESEARCH_DATA_PROVENANCE", "development")
     RESEARCH_RETENTION_DAYS = os.environ.get("RESEARCH_RETENTION_DAYS")
+    # Release gate: enable only after the reviewed v2 migration and pilot checks.
+    RESEARCH_V2_ENABLED = os.environ.get("RESEARCH_V2_ENABLED", "false").lower() == "true"
     RESEARCHER_EMAIL_ALLOWLIST = os.environ.get("RESEARCHER_EMAIL_ALLOWLIST", "")
 
 

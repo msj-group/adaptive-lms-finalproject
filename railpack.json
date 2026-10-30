@@ -30,6 +30,7 @@
         {"src": "scripts/create_researcher.py", "dest": "scripts/create_researcher.py"},
         {"src": "scripts/research_operator.py", "dest": "scripts/research_operator.py"},
         {"src": "scripts/run_research_retention.py", "dest": "scripts/run_research_retention.py"},
+        {"src": "scripts/run_research_quality.py", "dest": "scripts/run_research_quality.py"},
         {"src": "scripts/deployment_diagnostics.py", "dest": "scripts/deployment_diagnostics.py"},
         {"src": "scripts/railway_start.py", "dest": "scripts/railway_start.py"},
         {"src": "scripts/railway_migrate.py", "dest": "scripts/railway_migrate.py"},

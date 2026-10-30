@@ -44,5 +44,6 @@ def resolve_deployment_settings(config, environment):
         raise ValueError("Production requires secure session cookies and HTTPS.")
     if not Path(str(config.get("MATERIAL_STORAGE_ROOT", ""))).is_absolute():
         raise ValueError("Production MATERIAL_STORAGE_ROOT must be an absolute private persistent path.")
-    if config.get("RESEARCH_RETENTION_DAYS") != 15:
-        raise ValueError("This approved Version A production baseline requires 15-day research retention.")
+    expected_retention = 45 if config.get("RESEARCH_V2_ENABLED", False) else 15
+    if config.get("RESEARCH_RETENTION_DAYS") != expected_retention:
+        raise ValueError("Production retention must match its approved collection release (legacy 15 days; v2 45 days).")

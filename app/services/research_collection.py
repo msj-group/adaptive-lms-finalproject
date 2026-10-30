@@ -66,7 +66,7 @@ from app.models.submission_feedback import whole_second_utc
 from app.services import research_sampling as sampling
 from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
 from app.services.research_delivery_scope import DeliveryProof
-from app.services.research_event_dictionary import SOURCE_CLIENT, SOURCE_SERVER, activity_end
+from app.services.research_event_dictionary import EVENT_SCHEMA_VERSION, SOURCE_CLIENT, SOURCE_SERVER, activity_end
 from app.services.research_event_validation import is_uuid, validate_event
 from app.services.research_scope import (
     account_is_eligible_student,
@@ -183,7 +183,7 @@ def _provision_subject(user_id):
 
 
 def lock_collection_chain(user_id, moment, provision=True, *,
-                          delivery_proof=None, delivery_scope=None):
+                          delivery_proof=None, delivery_scope=None, required_schema=None):
     """Take the documented chain through the subject and re-prove
     eligibility. ``(chain, None)`` or ``(None, NOT_COLLECTING)``; on refusal
     the transaction is rolled back and nothing is written.
@@ -199,6 +199,7 @@ def lock_collection_chain(user_id, moment, provision=True, *,
         if not (
             account_is_eligible_student(user)
             and configuration_is_live(configuration, _naive(moment))
+            and (required_schema is None or configuration.event_schema_version == required_schema)
         ):
             db.session.rollback()
             return None, NOT_COLLECTING
@@ -386,6 +387,7 @@ def ingest_batch(user_id, session_ref, batch, deployment_provenance, tz_name,
     chain, refused = lock_collection_chain(
         user_id, received_ms, delivery_proof=delivery_proof,
         delivery_scope=batch.delivery_scope,
+        required_schema=EVENT_SCHEMA_VERSION,
     )
     if refused:
         return IngestResult(refused, None, 0, 0, 0, 0, None)
@@ -499,7 +501,7 @@ def record_outcomes(user_id, session_ref, outcomes, deployment_provenance):
 
 def _record_outcomes(user_id, session_ref, outcomes, deployment_provenance):
     moment = now_ms()
-    chain, refused = lock_collection_chain(user_id, moment)
+    chain, refused = lock_collection_chain(user_id, moment, required_schema=EVENT_SCHEMA_VERSION)
     if refused:
         return session_ref
     kept = list(outcomes)

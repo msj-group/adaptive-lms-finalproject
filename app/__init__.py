@@ -211,7 +211,7 @@ def create_app(config_name=None, **config_overrides):
             with db.engine.connect() as connection:
                 connection.execute(text("SELECT 1"))
                 revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
-            ready = revision == "8e5f3b0d7124"
+            ready = revision == "a6f2c9d84e71"
         except Exception as error:
             app.logger.warning("Database readiness unavailable type=%s", type(error).__name__)
             ready = False

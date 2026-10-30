@@ -217,6 +217,11 @@
           post.mode !== 'picker' || form.querySelector('[name="recipient"]')?.value !== content.dataset.personId)) return;
       if (!isMessage && (from.mode === 'detail' ? !['publish','withdraw'].includes(post.mode) || post.id !== from.id : postURL.href !== current.href)) return;
       cancelRead(); posting = true; validationDraft = true;
+      let researchAttempt = null;
+      try { if (isMessage && window.researchV2) researchAttempt = window.researchV2.beginRequest({form, action_code:'send'}); } catch (_) {}
+      const researchFinish = (detail) => {
+        try { if (window.researchV2) window.researchV2.finishRequest(researchAttempt, detail); } catch (_) {}
+      };
       const data = new FormData(form);
       if (event.submitter?.name) data.append(event.submitter.name, event.submitter.value);
       const buttons = Array.from(form.querySelectorAll('[type="submit"]'));
@@ -225,6 +230,7 @@
       form.setAttribute('aria-busy','true'); setStatus(isMessage ? 'Sending…' : 'Saving…');
       try {
         const response = await fetch(postURL.href, {method:'POST', body:data, credentials:'same-origin', cache:'no-store', headers:{Accept:'text/html'}});
+        researchFinish('finished');
         if (!response.ok && ![400,422].includes(response.status)) throw new Error([401,403].includes(response.status) ? 'scope' : 'unavailable');
         const loaded = await parsed(response);
         if (!isOpen()) return;
@@ -243,6 +249,7 @@
         if (!isMessage && loaded.mode === 'detail') refreshNeeded = true;
         install(loaded, 'replace', loaded.mode === 'create' || loaded.mode === 'edit');
       } catch (error) {
+        researchFinish('network_unknown');
         if (!isOpen()) return;
         if (error.message === 'scope') scopeInvalid = true;
         uncertain = true; failed(true);

@@ -554,6 +554,11 @@
       progress.hidden = false; progress.removeAttribute("value");
       var upload = new XMLHttpRequest();
       upload.open("POST", form.action);
+      var researchAttempt = null;
+      try { if (window.researchV2) researchAttempt = window.researchV2.beginRequest({form: form, action_code: "upload"}); } catch (_) {}
+      function researchFinish(detail) {
+        try { if (window.researchV2) window.researchV2.finishRequest(researchAttempt, detail); } catch (_) {}
+      }
       upload.upload.addEventListener("progress", function (update) {
         if (update.lengthComputable) {
           progress.value = Math.round(update.loaded * 100 / update.total);
@@ -568,6 +573,7 @@
         say(t("Review the recording, then retry with the same submission. A previously accepted upload will open its receipt."));
       }
       upload.addEventListener("load", function () {
+        researchFinish("finished");
         var destination = new URL(upload.responseURL || form.action, location.href);
         if (upload.status >= 200 && upload.status < 400 && destination.origin === location.origin && destination.pathname.startsWith("/student/") && destination.href !== new URL(form.action, location.href).href) {
           form.dispatchEvent(new Event("workspace:saved"));
@@ -579,7 +585,9 @@
         var messages = Array.from(result.querySelectorAll(".field__error,.alert")).map(function (item) { return item.textContent.trim(); }).filter(Boolean);
         retry(messages.join(" ") || t("The server could not confirm this recording. Check your session and file limits, then retry."));
       });
-      upload.addEventListener("error", function () { retry(t("The connection was interrupted. The server may have received the recording; retrying uses the same one-time submission token.")); });
+      upload.addEventListener("error", function () { researchFinish("network_unknown"); retry(t("The connection was interrupted. The server may have received the recording; retrying uses the same one-time submission token.")); });
+      upload.addEventListener("abort", function () { researchFinish("network_unknown"); });
+      upload.addEventListener("timeout", function () { researchFinish("timeout"); });
       upload.send(new FormData(form));
     });
 

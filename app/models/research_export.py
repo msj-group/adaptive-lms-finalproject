@@ -44,7 +44,7 @@ class ResearchExport(db.Model):
     __tablename__ = "research_exports"
     __table_args__ = (
         db.CheckConstraint(
-            f"export_format = '{EXPORT_FORMAT}'", name="ck_research_exports_format_valid"
+            f"export_format IN ('{EXPORT_FORMAT}','natural-use-v2-export.v1')", name="ck_research_exports_format_valid"
         ),
         db.CheckConstraint(
             f"LENGTH(manifest_digest) = {EXPORT_DIGEST_LENGTH}",

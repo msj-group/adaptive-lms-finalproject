@@ -1,5 +1,190 @@
 # Project Decisions
 
+## 2026-10-30 - Count usable-label yield separately from raw responses
+
+Successful response delivery does not imply primary training eligibility. Keep
+installed SQL/Researcher counters and monitor identity unchanged; add explicit
+versioned per-group private JSON counts for matured rendered prompts, raw,
+timely, late, stored-eligible and excluded answers, with stored-quality reasons.
+Technical scope must not SELECT rating. Match the export's stored eligibility
+predicate; never recompute old labels from new timing semantics. Small cohorts
+retain unknown assessment/fraction while descriptive counts remain available.
+
+Prepare an optional investigation signal for zero eligible examples in two
+nonoverlapping populated completed Tripoli days, each with five matured rendered
+prompts. Missing/small days, weekends and disabled evaluation do not manufacture
+recovery; two comparable populated days with eligible examples are required.
+Use a separate daily state horizon/semantics and retain evidence for 45 days.
+Thresholds are provisional; sparse groups may never trigger and neither an
+alarm nor recovery establishes model quality. This source preparation does not
+activate the runner, Telegram, heartbeat, SQL publication or a paid resource.
+
+## 2026-10-30 - Complete a feedback terminal transition before one flush
+
+An actual timely fictional answer exposed a query-triggered autoflush after
+the prompt had been marked answered but before final quality was assigned.
+The subsequent quality update correctly hit the immutable-terminal guard;
+the request rolled back. Compute frozen-membership features and final quality
+before dirtying any prompt terminal fields, then assign the complete answer
+and commit once. Preserve the guard, server receipt time, deadline, late and
+skip semantics, old rows and ordinary retry idempotency. Never recreate the
+failed answer after its deadline; a fresh naturally sampled question must
+verify the corrected path. No schema or sampling change is needed.
+
+## 2026-10-29 - Preserve uncertainty when validating reported render time
+
+Fictional local acceptance exposed E-G=-64 ms with u=173 ms and server render
+receipt R-G=91 ms. A strict point comparison can reject a timely report merely
+because of normal calibration uncertainty. Preserve E and all old rows; for
+new render validation intersect [E-u,E+u] with [G,R], require known u<=5000,
+R>=G and the full nonempty interval within unchanged [G,G+5000]. Disjoint or
+ambiguous evidence remains excluded. Do not clamp E or infer attention.
+Keep the recorded 60-second answer deadline and 120-second feature window.
+The actual rehearsal answer arrived after about 71 seconds and remains late.
+Monitoring reconstructs clock evidence independently of overwritten answer
+quality flags. Explicit timing-semantics metadata and the source digest record
+this pre-study measurement correction; no schema/old-data reclassification.
+The existing Skip button moves into the sticky card header so phone users can
+decline without scrolling through optional questions. Collection was paused
+and its fictional session closed before these source corrections.
+
+## 2026-10-29 - Independent v2 server-presence and retention monitoring
+
+To implement the owner's requested autonomous collection monitoring before any
+real v2 data exists, v2 may start an eligible research session when the server
+prepares the collector for an eligible Student page. This is server-prepared
+presence only, not confirmed browser display, visible time, emotion or a label.
+V1 keeps first-accepted-observation session start. Recorded policy/labels and
+sampling budgets remain unchanged. Resolve any successor reference before
+issuing the HMAC scope token; recheck active Student/auth/config/subject under
+existing locks in an isolated Flask application-context SQLAlchemy session.
+Never commit or roll back the academic route's ORM transaction.
+
+Monitor missing client observations separately from server presence, and query
+expiry backlog independently of the recent-activity window using each version's
+recorded retention. Preserve missing-evidence flags and do not infer recovery
+from no traffic. A separately monitored daily-retention success heartbeat is
+required before autonomous operation. No new schema, fabricated observations,
+response/rating data or actual purge is part of this source correction.
+
+## 2026-10-29 - Complete acceptance before the requested launch
+
+Owner asks to finish collection readiness and launch. Correct observed source
+defects before fictional rehearsal; preserve server sampling/label semantics.
+Use a research-only release candidate rather than the mixed Finance worktree.
+Versioned 45-day forthcoming-study policy remains separate from legacy recorded
+retention. Inspect current hosting/price prerequisites, prepare exact release
+and monitoring changes, and obtain concrete cost approval before new paid
+resources. No study-data fabrication, automated application tests, reset or
+silent production-schema repair. Phone viewport emulation is not actual-device
+evidence. Main collection remains gated by pilot acceptance.
+
+## 2026-10-29 - Local v2 schema verified and temporary rights removed
+
+Owner-authorized migration and temporary table-scoped privileges completed
+locally. Exact original grants restored; original rows preserved. Independent
+real-MySQL schema/preservation/grant verification passed. The existing local
+source implementation authority then covered the two readiness expected-head
+literals; the diagnostic CLI confirms a6f2c9d84e71/database_ready=true.
+No policy, collection gate, hosting, scheduler, paid service or Git activation.
+Successful migration is a schema checkpoint, not Phase 6 or study acceptance.
+Evidence: RESEARCH_V2_LOCAL_MIGRATION.md. Historical pending-permission and
+readiness-followup entries below are resolved for this local checkpoint.
+
+## 2026-10-29 - Exact temporary grants approved for local migration
+
+Owner authorizes only the reviewed table-specific rights for the existing
+local migration account, followed by removal and original-grant verification.
+Owner can enter the DBA password locally via hidden interactive input.
+Use that administrative connection solely for reviewed grant/revoke, read-only
+preflight/verification and the session migration lease; migration DDL runs as
+the separate migrator. No runtime-account change, stored/chat password, new
+account, global privilege or automatic schema recovery. Preserve the original
+grant baseline and attempt complete added-rights cleanup after any failure.
+
+## 2026-10-29 - Preserve the stopped local migration boundary
+
+The owner-approved exact local upgrade was refused under runtime DML-only
+credentials; no schema/data change occurred. The existing separate local
+migrator is explicitly Listening-only. Do not broaden either account, reset,
+bootstrap or silently switch to an administrator. A concrete temporary
+table-specific grant/revoke proposal is prepared privately for a separate
+owner decision, with secure DBA credentials required outside chat.
+The promoted revision's singleton-CHECK preflight correction is semantically
+equivalent; its upgrade DDL is unchanged. Active source head a6f2c9d84e71 is
+distinct from verified DB revision 8e5f3b0d7124. Full preservation evidence
+and remaining gates are in RESEARCH_V2_LOCAL_MIGRATION.md.
+
+## 2026-10-28 - Exact local research-v2 migration approved
+
+Owner approved backup and exact-parent-checked promotion/application of
+a6f2c9d84e71 only to loopback adaptive_english_lms, preserving existing data.
+Approved digest 911806f5be7b7c8bcf17d88879537ce3f63352756ab3ffbc0092733c6bdd561e.
+Unexpected revision/schema means stop, not repair. No reset/seed/downgrade,
+deployment, paid/cloud activation, settings/secrets/schedules, automated tests
+or Git mutation. Schema installation does not activate a study or accept phones.
+
+## 2026-10-28 - Local v2 implementation and decision snapshot
+
+Owner authorized implementing and continuing v2 source integration. Keep v1
+records separate; default-off release gate, no database/cloud activation yet.
+Freeze exact committed event membership at grant G in a normalized join table.
+Question/reference window ends at G, browser render T is recorded separately;
+display lag over 5 seconds excludes primary training labels. Session release
+digest is the actual app source SHA256, immutable per session. Preserve old
+version retention; new v2 policy is 45 days when separately configured/activated.
+
+## 2026-10-28 - Local research-v2 migration proposal authorized
+
+- The owner explicitly authorizes preparing the database update file locally
+  and requests a simple explanation. This is file preparation only, not DB
+  execution or activation of research-v2/monitoring/45-day hosted retention.
+- Keep the proposal under migrations/proposals/ so the currently accepted
+  Alembic graph/head and normal application schema remain unchanged. The
+  source parent is 8e5f3b0d7124; actual database revision is not inspected.
+- New measurement/quality tables, narrow v1+v2 CHECK extensions and a nullable
+  archive-expiry column must preserve old rows, bytes, identity and policy.
+  No migration DML, backfill, deletion, reclassification or seed is included.
+- No runtime/model changes, DB connections, service/scheduler/secret changes,
+  dependencies, automated tests, Git mutation or deployment. File-only
+  preparation opts out of the standard migration-application/commit close-out.
+  See RESEARCH_V2_MIGRATION_PROPOSAL.md for exact file/evidence/limitations.
+- Prepared revision a6f2c9d84e71 outside active versions, parent 8e5f3b0d7124.
+  The 10-table proposal preserves v1 and distinguishes display reservation,
+  reported render, response deadline/locale/help exposure, receipt quality
+  and evaluation partitions. Reports/incident relations bind configuration,
+  provenance, protocol/features, release and analysis scope; technical reports
+  cannot contain rating histograms. Nullable archive expiry includes its
+  range CHECK/index without filling old rows. Syntax/offline DDL pass;
+  active graph/protected runtime hashes are unchanged. No DB proof is claimed.
+
+## 2026-10-28 - Research collection v2 and computer-independent monitoring
+
+- The owner approved a new mobile-first collection direction, designed for
+  recent-frustration detection and separately evaluated assistance. Existing
+  v1 collection is a comparison baseline; preserve its data meanings rather
+  than retrospectively relabeling it v2. No real study collection has started
+  according to the owner. Recruitment target is at least 30 consenting adults.
+- Owner selections: Telegram alerts and 45-day research retention for the
+  forthcoming study, replacing the previous 15-day target. Deployment values
+  and frozen historical configurations have not been changed. Additional
+  budget is undecided; an estimate precedes any paid activation.
+- Recommended architecture: short hourly Railway read-only quality snapshot,
+  daily protected Researcher report, deduplicated incident/recovery Telegram
+  notices and an independent missed-success monitor. AI commentary is optional
+  and initially off. This desktop chat/local automation is not a promise of
+  computer-off execution. Plus does not fund Railway or API-key billing.
+- Preserve raw optional ratings, distinct missing states, independent sparse
+  sampling, occurrence/receipt cutoffs, participant-separated evaluation and
+  a closed final test. Data quality is not demonstrated model accuracy or
+  causal evidence that assistance works. Use a real early pilot before the
+  main month; do not automatically change methodology or labels.
+- Specifications and observed hosting inventory are recorded in
+  RESEARCH_COLLECTION_V2_PLAN.md and RESEARCH_QUALITY_MONITOR_PLAN.md.
+  Proposed defaults/formulas/schema scope: RESEARCH_V2_DATA_CONTRACT.md.
+  Source runtime, schema, settings, schedules and paid services are unchanged.
+  No new automated test package, DB action, Git mutation or deployment.
+
 ## 2026-10-26 — Share Communication Messages with Student and Teacher
 
 - Apply the owner's Admin Messages reference to the existing Teacher/Student

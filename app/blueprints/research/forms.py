@@ -41,6 +41,10 @@ def _policy_field(column):
 
 
 class ConfigurationForm(FlaskForm):
+    event_schema_version = SelectField("Collection method", choices=[
+        ("natural-use-events.v1", "Legacy collection v1"),
+        ("natural-use-events.v2", "Collection v2 — phone and desktop pilot"),
+    ], validators=[DataRequired()])
     label = StringField(
         "Label", validators=[DataRequired(), Length(max=CONFIGURATION_LABEL_MAX_LENGTH)]
     )
@@ -67,6 +71,9 @@ class ConfigurationForm(FlaskForm):
         self._tz_name = tz_name
         self.starts_utc = None
         self.ends_utc = None
+        from flask import current_app
+        if not current_app.config.get("RESEARCH_V2_ENABLED", False):
+            self.event_schema_version.choices = self.event_schema_version.choices[:1]
 
     def _to_utc(self, field):
         try:
@@ -102,6 +109,7 @@ class ConfigurationForm(FlaskForm):
     def values(self):
         """The editable values, normalised, for the transaction."""
         result = {
+            "event_schema_version": self.event_schema_version.data,
             "label": " ".join(self.label.data.split()),
             "collection_starts_at": self.starts_utc.replace(microsecond=0),
             "collection_ends_at": self.ends_utc.replace(microsecond=0),

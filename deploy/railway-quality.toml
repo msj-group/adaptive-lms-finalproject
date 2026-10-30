@@ -1,0 +1,14 @@
+# EXAMPLE ONLY. This file is not Railway's active root configuration.
+# Requires separate cost approval, deployment, SELECT-only DB principal,
+# private operations volume and manual success/failure/phone acceptance.
+# No scheduler, service, token, chat or heartbeat is activated by this file.
+# One scheduled instance, one private persistent operations directory;
+# the local OS lease does not coordinate multiple hosts/independent volumes.
+[build]
+builder = "RAILPACK"
+
+[deploy]
+startCommand = "python scripts/run_research_quality.py"
+preDeployCommand = []
+cronSchedule = "0 * * * *"
+restartPolicyType = "NEVER"

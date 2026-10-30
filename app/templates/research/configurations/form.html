@@ -7,6 +7,12 @@
   {{ form.csrf_token }}
   {{ form.state }}
   <div class="field">
+    {{ form.event_schema_version.label(class_="field__label") }}
+    {{ form.event_schema_version(class_="field__input") }}
+    {% for error in form.event_schema_version.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+    <p class="workspace-meta">A saved draft keeps its collection method. V2 uses the reviewed fixed pilot settings: a 120-second window, 90 observed seconds, 10% per eligible minute, 10-minute spacing, at most 2 questions per session and 3 per day, and a 60-second answer window. Activation requires the approved 45-day retention. Changes to policy fields below apply to legacy v1 only.</p>
+  </div>
+  <div class="field">
     {{ form.label.label(class_="field__label") }}
     {{ form.label(class_="field__input", maxlength=80) }}
     {% for error in form.label.errors %}<span class="field__error">{{ error }}</span>{% endfor %}

@@ -6,7 +6,8 @@
 {% block body_class %}figma-workspace {{ 'figma-student' if current_user.role == 'student' else 'figma-teacher' }} yc-workspace{{ ' yc-messages' if template_messages else (' st-workspace' if template_student else ' yc-operations yc-teacher') }}{% endblock %}
 {% block extra_head %}
   {# Capture intentions before Quiz's async navigation guards; never block them. #}
-  {% if research %}<script type="application/json" id="research-collector-config">{{ research.config|tojson }}</script><script src="{{ url_for('static', filename='js/usage_collector.js') }}" defer></script>{% endif %}
+  {% if research and research.v2 %}<script type="application/json" id="research-v2-config">{{ research.config|tojson }}</script><script src="{{ url_for('static', filename='js/usage_collector_v2.js') }}" defer></script>
+  {% elif research %}<script type="application/json" id="research-collector-config">{{ research.config|tojson }}</script><script src="{{ url_for('static', filename='js/usage_collector.js') }}" defer></script>{% endif %}
 {% endblock %}
 {% block product_styles %}
   {% if not template_student and not template_messages %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/community.css') }}">{% endif %}
@@ -24,7 +25,7 @@
 {% set notif = notification_header() %}
 {% set portal_blocks = self %}
 {% include 'layouts/_product_shell.html' %}
-{% if research %}{% include "_research_feedback.html" %}{% endif %}
+{% if research and research.v2 %}{% include "_research_feedback_v2.html" %}{% elif research %}{% include "_research_feedback.html" %}{% endif %}
 {% endblock %}
 {% block workspace_page_label %}{{ ui.page_heading(self.title()) }}{% endblock %}
 {% block workspace_content_class %}{% endblock %}

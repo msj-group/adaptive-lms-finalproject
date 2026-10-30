@@ -1,5 +1,144 @@
 # Approved repair contract
 
+## Owner-approved source branch and baseline - 2026-10-30
+
+The owner explicitly approved the reviewed Research-only source baseline, one
+commit and push of codex/research-v2-launch-20261030 in the existing repository.
+Use the isolated checkout based on 4544d56915b7e321921f9ea652ba9b6b9c86e357.
+RESEARCH_V2_BASELINE_SOURCE.json records the exact unchanged runtime, reviewed
+pre-baseline proposal and local acceptance limits. This supersedes the earlier
+Git prohibition for this exact source operation only. Preserve the original
+worktree; no master merge, deployment, hosted database or paid activation.
+Actual phones, hosted parent/backup, cloud delivery and pilot gates remain.
+
+Approved by the owners in the final-discovery conversation; implementation
+authorized on 2026-10-05. This is the canonical target for rehabilitation of
+the existing application. A target in this document is not a claim that it
+has already been implemented or verified.
+
+## Continue the paused fictional rehearsal and source corrections - 2026-10-30
+
+Owner asks to continue. Their explicit confirmation that all 81 local Student
+accounts are fictional permits temporary ordinary-workflow rehearsal followed
+by a confirmed pause; it does not authorize Study provenance. Their latest
+monitoring decision is preparation only, without paid activation.
+
+Correct calibrated-render measurement while preserving the actual G..G+5-second
+alignment allowance, recorded estimate/uncertainty, existing 60-second deadline,
+120-second predictor window, sampling and old rows. Exact causal-interval
+semantics are in RESEARCH_V2_DATA_CONTRACT.md. Move the existing Skip button into
+the sticky card header. Rehearse/export normally, preserve old exclusions and
+refresh the filtered Research candidate. No automatic tests, new schema change,
+purge, paid activation, mixed-tree publication, reset or Git mutation. Hosted
+exact parent/backup/publication and physical-phone/pilot gates remain.
+
+During the authorized rehearsal a timely response exposed an intermediate ORM
+flush followed by the correct terminal-history refusal. The source correction
+computes final quality before dirtying the complete terminal transition; no
+guard, old row, deadline or sampling change. Continue fresh ordinary acceptance.
+The requested monitoring preparation also covers technical timely/eligible/
+excluded aggregate evidence and a provisional repeated daily zero-eligible
+investigation signal. Keep fixed SQL metrics/schema and raw rating boundaries;
+private JSON evidence is not a model-accuracy claim or paid activation.
+
+## Owner requests closing acceptance and launch preparation - 2026-10-29
+
+Owner explicitly asks to continue the remaining collection-readiness work
+because they want to launch. Proceed with local source corrections, normal
+fictional Student/Researcher acceptance, phone-layout review, export/retention
+verification, versioned 45-day v2 setup and concrete hosted-release/monitoring
+preparation. Preserve existing data and unrelated Finance work. Use development
+provenance for fictional rehearsal; do not claim actual Android/iPhone acceptance
+from a resized desktop viewport. No new automated test package or pytest.
+
+Prepare a separate reviewed research-only release candidate; do not publish
+the mixed dirty tree. Inspect existing Railway services/accounts and current
+costs read-only. New paid monitoring resources require a concrete estimate and
+owner cost approval before activation. Telegram credentials must be supplied
+securely, never chat/source; no third-party test message is implied yet.
+Review exact hosted DB parent, backup, source allowlist and staged deployment
+before final publication. No reset, seed, downgrade, credential reset, destructive
+cleanup or unrelated Git mutation. The completed local migration is not
+permission for an unnamed hosted database revision or additional schema change.
+This supersedes earlier local-only preparation boundaries for launch preparation;
+resource-cost and exact hosted-execution gates remain explicit.
+
+## Exact local migration complete; local source authority resumed - 2026-10-29
+
+The owner-approved local a6f2c9d84e71 upgrade and exact temporary grant/revoke
+sequence are complete. Operator receipt plus independent real-MySQL read-only
+verification confirm 86 tables including 11 empty new tables, original 21543
+row preservation except the intended version value, zero model/schema delta
+and exact restoration of original migration/runtime grants. No elevated rights
+remain. Evidence: RESEARCH_V2_LOCAL_MIGRATION.md.
+
+After completing MIGRATION_EXECUTION, resumed the owner's previously approved
+local source integration authority for the two expected-revision literals in
+readiness/diagnostics. The change was explained before editing and independently
+reviewed; diagnostic CLI passes. No collection/settings/retention activation,
+hosting release, automated application tests or Git mutation. Phase 6 remains
+open for phone/pilot/monitor acceptance. Earlier pending execution statements
+below are historical, not current blockers or new permission requirements.
+
+## Temporary local migration grants approved; secure input pending - 2026-10-29
+
+Owner explicitly approved the reviewed temporary table-scoped additions to the
+existing migration account only, their removal after verification, and the
+exact local upgrade a6f2c9d84e71. Owner also confirmed they can enter a local
+MySQL administrator password on the device, outside chat. Prepare a reviewed
+interactive one-off operator helper for hidden local input; never store or
+display that password. Preserve the runtime account and all existing grants.
+Only the reviewed 17 table scopes/additional privilege bits are authorized;
+no account creation/password change, global grants, broad fallback or bootstrap.
+Take a fresh backup, verify the exact parent, inspect the real result, and
+attempt removal of all added rights even if execution or verification fails.
+No deployment, cloud/payment/scheduler activation, application tests or Git
+mutation. RESEARCH_V2_ENABLED remains false; local readiness source followup
+is separate. No additional permission decision is needed for these exact grants.
+
+## Local migration attempt stopped; additional authority required - 2026-10-29
+
+The approved exact local upgrade was attempted after a verified native table
+backup and successful preflight, but the configured runtime account lacks DDL
+privileges. Read-only inspection also confirms the existing migration account
+is Listening-only. No schema/data change occurred: all 75 table definitions
+and 21543 row fingerprints match backup; DB remains 8e5f3b0d7124.
+The source revision is promoted to versions/ (head a6f2c9d84e71). Its equivalent
+preflight-only correction has SHA256 17134427fa9bb31193210497db14a60bbaa9ba0d39426c3d446371f25fa97ba6;
+upgrade DDL is unchanged from the reviewed proposal. No grants were changed.
+Temporary table-scoped grant/revoke files are prepared privately for review
+only. Permission changes and secure local DBA availability require a separate
+owner decision before retry. Evidence: RESEARCH_V2_LOCAL_MIGRATION.md.
+All cloud/runtime/test/Git boundaries below remain in effect.
+
+## Current owner local migration execution authority - 2026-10-28
+
+The owner explicitly approved promotion/application of exact research-v2
+revision a6f2c9d84e71 to the configured loopback adaptive_english_lms database
+only, after a backup and exact-parent check 8e5f3b0d7124. Approved file SHA256:
+911806f5be7b7c8bcf17d88879537ce3f63352756ab3ffbc0092733c6bdd561e.
+Use MIGRATION_EXECUTION: preserve all existing data, stop on another revision
+or material schema conflict, inspect the result. No reset, seed, downgrade,
+deployment, cloud/paid activation, secret/settings/scheduler change, automated
+test or Git mutation. The prior no-application boundary is superseded only for
+this named local operation. V2 activation/mobile/pilot acceptance remain separate.
+
+## Current owner implementation authority - 2026-10-28
+
+The owner requested implementation and continuation of collection v2 after the
+local migration proposal review. Local source, models, client collection,
+configuration, export, retention, quality tooling and documentation integration
+are authorized. Preserve old data and unrelated work. No automated tests,
+database application, deployment, scheduler activation, paid resource activation,
+secret changes or Git mutation are included. V2 remains disabled by default
+until schema and manual/pilot acceptance. This supersedes the earlier file-only
+scope for local source work, not its database/cloud boundaries.
+
+Before real data exists, the v2 decision snapshot is clarified: freeze exact
+committed event membership at server grant G; the reference window ends at G.
+Store browser render T separately, exclude primary labels with display lag over
+5 seconds or uncertain clocks. This prevents commit-order leakage.
+
 Approved by the owners in the final-discovery conversation; implementation
 authorized on 2026-10-05. This is the canonical target for rehabilitation of
 the existing application. A target in this document is not a claim that it

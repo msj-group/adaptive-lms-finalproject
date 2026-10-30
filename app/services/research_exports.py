@@ -256,14 +256,29 @@ def selection_summary(configuration_public_id, period_from, period_to, tz_name):
         query = query.where(ResearchSubject.provenance == _STUDY)
     if configuration_public_id:
         query = query.where(ResearchConfiguration.public_id == configuration_public_id)
+        schema = db.session.query(ResearchConfiguration.event_schema_version).filter_by(public_id=configuration_public_id).scalar()
+    else:
+        schema = EVENT_SCHEMA_VERSION
+        query = query.where(ResearchConfiguration.event_schema_version == EVENT_SCHEMA_VERSION)
+    if schema == "natural-use-events.v2":
+        if not current_app.config.get("RESEARCH_V2_ENABLED", False):
+            raise ValueError("V2 is not enabled")
+        from app.models.research_v2 import ResearchV2EvaluationPartition as Partition
+        query = query.join(Partition, Partition.subject_id == ResearchSession.subject_id).where(
+            Partition.partition_code.in_(("development", "prospective_monitor")))
     if lower is not None:
         query = query.where(ResearchSession.started_at_ms >= lower)
     if upper is not None:
         query = query.where(ResearchSession.started_at_ms < upper)
     scope = query.subquery()
     sessions, subjects = db.session.execute(select(func.count(scope.c.id), func.count(func.distinct(scope.c.subject_id)))).one()
-    events = db.session.execute(select(func.count(ResearchEvent.id)).join(scope, scope.c.id == ResearchEvent.session_id)).scalar()
-    prompts = db.session.execute(select(func.count(ResearchFeedbackPrompt.id)).join(scope, scope.c.id == ResearchFeedbackPrompt.session_id)).scalar()
+    if schema == "natural-use-events.v2":
+        from app.models.research_v2 import ResearchV2Event as VEvent, ResearchV2Prompt as VPrompt, ResearchV2SamplingOpportunity as Opportunity
+        events = db.session.execute(select(func.count(VEvent.id)).join(scope, scope.c.id == VEvent.session_id)).scalar()
+        prompts = db.session.execute(select(func.count(VPrompt.id)).join(Opportunity, VPrompt.opportunity_id == Opportunity.id).join(scope, scope.c.id == Opportunity.session_id)).scalar()
+    else:
+        events = db.session.execute(select(func.count(ResearchEvent.id)).join(scope, scope.c.id == ResearchEvent.session_id)).scalar()
+        prompts = db.session.execute(select(func.count(ResearchFeedbackPrompt.id)).join(scope, scope.c.id == ResearchFeedbackPrompt.session_id)).scalar()
     return {"sessions": int(sessions), "subjects": int(subjects), "events": int(events), "prompts": int(prompts)}
 
 
@@ -296,7 +311,8 @@ def _sessions(configuration_id, lower, upper, provenance):
         )
         .join(ResearchSubject, ResearchSubject.id == ResearchSession.subject_id)
         .join(ResearchConfiguration, ResearchConfiguration.id == ResearchSession.configuration_id)
-        .filter(ResearchSession.provenance.in_(export_session_provenances(provenance)))
+        .filter(ResearchSession.provenance.in_(export_session_provenances(provenance)),
+                ResearchConfiguration.event_schema_version == EVENT_SCHEMA_VERSION)
     )
     if provenance == _STUDY:
         query = query.filter(ResearchSubject.provenance == _STUDY)
@@ -567,14 +583,26 @@ def create_export(actor_id, configuration_public_id, period_from, period_to, tz_
             db.session.rollback()
             return BAD_PERIOD, None
     try:
-        data, _manifest, counts, digest = build_export(
-            configuration_id, period_from, period_to, cutoff, tz_name)
+        schema = db.session.query(ResearchConfiguration.event_schema_version).filter(
+            ResearchConfiguration.id == configuration_id).scalar() if configuration_id else EVENT_SCHEMA_VERSION
+        if schema == "natural-use-events.v2":
+            if not current_app.config.get("RESEARCH_V2_ENABLED", False):
+                db.session.rollback()
+                return CONFLICT, None
+            from app.services.research_v2_exports import build_export as build_v2
+            data, _manifest, counts, digest = build_v2(configuration_id, period_from, period_to, cutoff, tz_name)
+        else:
+            data, _manifest, counts, digest = build_export(
+                configuration_id, period_from, period_to, cutoff, tz_name)
     except ExportTooLarge:
         db.session.rollback()
         return TOO_LARGE, None
     except ClockAhead:
         db.session.rollback()
         return CLOCK_AHEAD, None
+    except ValueError:
+        db.session.rollback()
+        return CONFLICT, None
     # The snapshot ends here; nothing above wrote anything.
     db.session.rollback()
     if len(data) > MAX_EXPORT_ARCHIVE_BYTES:
@@ -586,6 +614,9 @@ def create_export(actor_id, configuration_public_id, period_from, period_to, tz_
     from app.services.research_control_gate import lock_research_control
     from app.models.research_storage import ResearchExportSession
     lock_research_control()
+    if schema == "natural-use-events.v2":
+        for subject_id in counts.get("_subject_ids", []):
+            db.session.query(ResearchSubject).filter_by(id=subject_id).with_for_update().one()
     # A snapshot may be older than a concurrently completed cleanup. Never
     # republish the removed rows in a new archive after that cleanup commits.
     refs = counts["_session_refs"]
@@ -595,9 +626,25 @@ def create_export(actor_id, configuration_public_id, period_from, period_to, tz_
     if retained != len(refs):
         db.session.rollback()
         return CONFLICT, None
+    if schema == "natural-use-events.v2":
+        from app.models.research_v2 import ResearchV2EvaluationPartition
+        # Recheck the participant partition under the same subject locks used
+        # by assignment. Never publish a snapshot after a final-test reservation.
+        subjects = counts.get("_subject_ids", [])
+        for subject_id in subjects:
+            part = db.session.get(ResearchV2EvaluationPartition, subject_id)
+            if part is None or part.partition_code not in {"development", "prospective_monitor"}:
+                db.session.rollback()
+                return CONFLICT, None
+            if part.partition_code == "development" and part.development_exposed_at_ms is None:
+                part.development_exposed_at_ms = now_ms()
+                part.version += 1
+        if counts["_expiry_at_ms"] <= now_ms():
+            db.session.rollback()
+            return EXPIRED, None
     export = ResearchExport(
-        export_format=EXPORT_FORMAT,
-        event_schema_version=EVENT_SCHEMA_VERSION,
+        export_format=_manifest["format"],
+        event_schema_version=schema,
         configuration_id=configuration_id,
         period_from=period_from,
         period_to=period_to,
@@ -614,12 +661,12 @@ def create_export(actor_id, configuration_public_id, period_from, period_to, tz_
     db.session.add(export)
     db.session.flush()
     db.session.add_all(ResearchExportSession(export_id=export.id, session_public_id=public_id) for public_id in refs)
-    db.session.add(ResearchExportArchive(
-        export_id=export.id,
-        archive_sha256=hashlib.sha256(data).hexdigest(),
-        byte_size=len(data),
-        content=data,
-    ))
+    archive_values = dict(export_id=export.id, archive_sha256=hashlib.sha256(data).hexdigest(),
+                          byte_size=len(data), content=data)
+    if schema == "natural-use-events.v2":
+        archive_values["expiry_at_ms"] = counts["_expiry_at_ms"]
+    # Explicit Core columns keep legacy inserts compatible before migration.
+    db.session.execute(ResearchExportArchive.__table__.insert().values(**archive_values))
     db.session.add(ResearchAuditEvent(
         action=ResearchAuditAction.EXPORT_CREATED.value,
         channel=ResearchAuditChannel.WORKSPACE.value,
@@ -658,6 +705,9 @@ def download_export(actor_id, export_public_id):
     if archive is None:
         db.session.rollback()
         return EXPIRED, None
+    if archive_is_expired(export, archive):
+        db.session.rollback()
+        return EXPIRED, None
     data = bytes(archive.content)
     if hashlib.sha256(data).hexdigest() != archive.archive_sha256 \
             or len(data) != archive.byte_size:
@@ -676,3 +726,17 @@ def archive_available(export_id):
     """Whether the stored archive of an export still exists."""
     return db.session.query(ResearchExportArchive.id).filter(
         ResearchExportArchive.export_id == export_id).first() is not None
+
+
+def archive_is_expired(export, archive):
+    """Refuse expired bytes even if a scheduled purge has missed its run."""
+    if export.event_schema_version == "natural-use-events.v2" and archive.expiry_at_ms is not None:
+        return archive.expiry_at_ms <= now_ms()
+    from sqlalchemy import func
+    # Old archives lack a stored expiry. The shortest recorded configuration
+    # retention is conservative for mixed legacy archives and never extends it.
+    days = db.session.query(func.min(ResearchConfiguration.retention_days)).scalar()
+    if days is None:
+        days = current_app.config.get("RESEARCH_RETENTION_DAYS")
+    return days is None or (export.oldest_last_seen_ms is not None and
+                           export.oldest_last_seen_ms + days * 86400000 <= now_ms())

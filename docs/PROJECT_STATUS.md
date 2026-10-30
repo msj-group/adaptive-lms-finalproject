@@ -1,5 +1,227 @@
 # Repair status
 
+## Research source branch approved; launch gates remain - 2026-10-30
+
+The owner approved one source-only commit and push on the isolated branch
+codex/research-v2-launch-20261030. The source-owned baseline freezes the 826-file
+runtime at 201ead4f8d0fd95a320800cbb1fd56d50404d3d222f0f55bf23d14542b525c37.
+The new baseline and approval records follow the independently
+reviewed 919-file proposal; runtime bytes remain unchanged. Local fictional
+timely-answer/export checks passed and collection remains paused. This source
+approval does not close Phase 6: actual Android/iPhone, hosted parent/backup,
+monitor delivery/retention and the consented pilot still gate main collection.
+Earlier entries below record the checkpoint before this Git approval.
+
+## Local timely-answer and export verified - 2026-10-30
+
+Oct 29 collection was paused through the Researcher UI; its one fictional
+development session closed with 174 accepted and zero invalid/late events.
+The natural question's answer arrived after about 71 seconds and remains
+late/excluded. Membership contains 166 pre-grant events and no later arrivals.
+A post-answer operational export preserves the raw answer and that exclusion.
+
+The negative mapped-render estimate was within its measured clock uncertainty.
+The reviewed causal-bound correction preserves the estimate and checks the full
+plausible reported-render interval within the unchanged five-second allowance.
+The existing Skip button is now in the sticky header. No old row was rewritten.
+The earlier cross-page sampling/clock-recovery/order fixes and build packaging
+are implemented. The corrected predeploy read-only schema helper passed on
+local MySQL; the hosted migration/main predeploy has not run.
+
+The second session was paused with 58 accepted, zero invalid/late events after
+a timely response exposed an autoflush/terminal-history conflict. Rollback
+left no partial answer. The source fix computes final quality before assigning
+the complete terminal transition, preserving the immutable guard. A fresh third
+session saved a new natural answer in 31,123 ms with timely=true/quality=eligible.
+Its 77 events had zero invalid/late events. All three sessions are now closed
+and collection is paused. The final Oct 30 operational export has two sessions,
+135 events and three prompts: exactly one eligible target 0; the late and
+unanswered examples retain blank targets. Manifest, ZIP, frozen-window and
+predictor-field checks passed. These are fictional development data only.
+
+Private quality JSON now counts timely/late/eligible/excluded answers and
+reasons separately from raw SQL/Researcher counters. Actual read-only snapshots
+confirmed three raw answers, two late and one eligible, plus one unanswered
+prompt. Small release groups remain insufficient evidence. A provisional daily
+zero-eligible investigation signal is prepared; no scheduler/Telegram/heartbeat
+or paid activation ran. The final filtered runtime fingerprint is
+201ead4f8d0fd95a320800cbb1fd56d50404d3d222f0f55bf23d14542b525c37;
+the filtered candidate handoff records its captured documentation and inventory.
+No approved baseline, ZIP, Git mutation or deployment occurred. Phase 6 remains
+open for actual Android/iPhone, cloud failure/recovery/retention acceptance,
+hosted backup/parent/publication and pilot gates. Details:
+RESEARCH_V2_LAUNCH_ACCEPTANCE.md. Older entries are history.
+
+## Launch acceptance work resumed - 2026-10-29
+
+Owner requests finishing the remaining collection-readiness work to launch.
+Read-only source audits found three collection defects before acceptance:
+page-local sampling poll counters, missing renewed support/context after clock
+recovery, and UUID ordering of simultaneous context transitions. Corrections
+are in progress. Local schema/grants remain as verified below; no new DB action.
+
+Release preparation must separate Research edits from unrelated Finance work.
+Railway predeploy/source-manifest still expect the older head; monitor script
+is missing from Railpack/.dockerignore packaging. Cloud quality and retention
+need independent failure/traffic checks before autonomous-health claims. Existing
+Railway discovery is read-only; no deployment or new paid activation yet.
+Fictional browser rehearsal, actual phones, export/retention and pilot evidence
+remain outstanding. New scope/limits are in APPROVED_REPAIR_CONTRACT.md.
+
+## Local v2 migration verified; temporary privileges removed - 2026-10-29
+
+The owner completed hidden local DBA input. The reviewed operator succeeded
+and a separate read-only real-MySQL verification passed: exact a6f2c9d84e71,
+86 tables including 11 empty new tables, original 21543 rows preserved except
+the intentional version value, 16 FKs, 12 explicit indexes, 70 new-table CHECKs
+enforced, archive expiry NULL, two extended version CHECKs and zero Alembic
+model/schema differences. All 17 temporary grants/revokes completed; original
+migrator grants restored and runtime grants unchanged. Fresh backup verified.
+
+Exact two-line local readiness/diagnostics source integration followed under
+the existing source authority. Python AST and independent diff review pass;
+real diagnostic CLI exits 0/database_ready=true. No HTTP/browser or automated
+application tests were run. V2 stays disabled; development provenance, inactive
+v1 configuration and recorded 15-day legacy policy are unchanged. No 45-day
+study activation, scheduler/Telegram/paid resource, deployment or Git mutation.
+Evidence: RESEARCH_V2_LOCAL_MIGRATION.md. Phase 6 still requires phone/export/
+retention/pilot/monitor acceptance; earlier blocked/launch-pending statuses below
+are historical. Future hosting expected-head/release review remains separate.
+
+## Local operator authenticated; another connection prevented changes - 2026-10-29
+
+The owner ran the reviewed local operator. Its private receipt shows successful
+administrator authentication followed by the first connection guard refusal:
+other_database_or_writer_connection_exists. Exact recorded result: DB revision
+8e5f3b0d7124, 75 tables, zero new tables, temporary grants never started. No
+privilege/schema change or revocation failure occurred. Source review confirms
+the guard excludes all three operator-owned connections correctly.
+
+Close other local platform/MySQL clients, keep the MySQL service running, then
+relaunch and enter the password locally. The agent has no administrator password
+and did not reset credentials, kill sessions or change ACLs/services. Read-only
+receipt inspection and independent source review only; no application tests,
+browser work, deployment or Git mutation. Full evidence:
+RESEARCH_V2_LOCAL_MIGRATION.md. Successful migration and Phase 6 acceptance
+remain pending; earlier secure-input/launch checkpoints below are historical.
+
+## Temporary migration permissions approved; local password input pending - 2026-10-29
+
+Owner approved the reviewed temporary additions to the existing migration
+identity only and their removal after verification; they can enter the local
+MySQL administrator password on-device. The ignored interactive operator and
+launcher are prepared and independently reviewed; Python AST passes. They have
+not been executed. No new DB/grant action has run at this checkpoint.
+The latest verified DB remains 8e5f3b0d7124 with all original schema/data intact.
+The permission decision is resolved; secure local administrator authentication
+is still required. No credential is requested in chat or stored in files.
+Readiness still expects the old revision in app/__init__.py and deployment
+diagnostics; that bounded source followup remains separate from this execution.
+
+## Local v2 migration refused; preservation verified - 2026-10-29
+
+Database upgrade is NOT complete. Native table backup succeeded (5716715
+bytes), corrected preflight passed, and byte-reviewed revision a6f2c9d84e71
+was promoted to versions/. Source graph is 49 revisions / one head a6f2c9d84e71.
+The exact Alembic attempt used the configured runtime identity and failed
+before schema changes. Read-only grants show runtime DML only; the existing
+separate migrator has Listening-only ALTER, schema SELECT and version DML.
+No suitable local administrative environment credential was found/configured.
+
+All 75 original SHOW CREATE TABLE definitions and all 21543 typed original-row
+fingerprints match the verified backup. DB still has exactly one revision
+8e5f3b0d7124, no new tables or archive-expiry column. No permissions/settings,
+runtime collection, cloud/scheduler/paid activation, application tests or Git
+mutation. Review-only temporary table-specific grant/revoke files are prepared;
+separate owner approval and secure DBA access are the next execution gate.
+Evidence, backup scope/hash, corrected-source hash and limits:
+RESEARCH_V2_LOCAL_MIGRATION.md. Phase 6 remains open. Earlier "in progress"
+and "pending owner approval to apply" entries below are historical checkpoints.
+
+## Exact local v2 migration authorized; execution in progress - 2026-10-28
+
+Owner answered yes to the pending local-only application question. The
+configured loopback adaptive_english_lms target was read successfully: MySQL
+8.4.8, exact revision 8e5f3b0d7124. The approved file digest matches. No DDL
+has run at this checkpoint; complete schema/page-size/quiescence inspection,
+private backup, exact revision promotion/application and preservation checks.
+An initial extended read encountered an OperationalError; a bounded identity/
+revision retry succeeded. No database repair or permission change is included.
+Cloud/paid activation, resets/seeding, automated tests and Git mutation remain
+outside scope. Final evidence belongs in RESEARCH_V2_LOCAL_MIGRATION.md.
+
+## Collection v2 local source prepared; acceptance pending - 2026-10-28
+
+Owner requested local implementation and continuation after reviewing the
+migration proposal. Source integration is prepared behind default-off
+RESEARCH_V2_ENABLED. The proposal now includes immutable session release digest
+and exact prompt/event snapshot membership (11 new tables). Earlier counts and
+hashes below describe the earlier file only. No database, deployment, scheduler,
+secrets, paid service, automated tests or Git mutation is authorized/performed.
+Phase 6 remains open until real MySQL, manual mobile and pilot acceptance.
+
+Source areas and acceptance runbook: RESEARCH_V2_IMPLEMENTATION.md. The
+new proposal now has 11 tables, 16 FKs, 70 new-table CHECKs, 3 grouped ALTERs
+and no upgrade DML. Python/JS/template/import/offline schema compilation
+is separate from actual MySQL, browser and automated regression acceptance.
+
+Pending owner question: promote/apply only a6f2c9d84e71 to the configured
+loopback database adaptive_english_lms after backup and exact-parent check
+8e5f3b0d7124. A different revision is a stop condition. Configuration identity
+was read without connecting; no database action is implied by that discovery.
+No cloud deployment, paid activation, reset/seed, downgrade or Git mutation.
+
+## Local research-v2 migration proposal preparation - 2026-10-28
+
+The owner explicitly approved creating the update file locally and explaining
+the changes. Created migrations/proposals/a6f2c9d84e71_research_v2_collection.py
+outside active versions, after source parent 8e5f3b0d7124. It prepares 10
+separate measurement/quality tables, narrow v1+v2 CHECK extensions and nullable
+archive expiry. Existing data, classifications and archive bytes are not
+rewritten. The preceding pending creation question is resolved.
+
+Executed: syntax parsing and in-memory MySQL DDL generation pass; output has
+10 tables, 14 FKs, 71 named CHECK definitions and 3 grouped ALTERs, with zero
+DML or DROP TABLE in upgrade. Protected-file hashes (16) and all 48 active
+migration source hashes are unchanged; active source head remains
+8e5f3b0d7124. Documentation/diff inspection passes with CR-at-EOL awareness.
+Evidence and review limits: RESEARCH_V2_MIGRATION_PROPOSAL.md.
+
+No database connection/application, runtime/model edit, automated test, browser
+review, dependency install, settings/secret/scheduler change, paid activation,
+Telegram delivery, Git mutation or deployment occurred. This completes the
+local proposal request only; real MySQL/schema/runtime/mobile/pilot/monitoring
+acceptance and activation remain outstanding.
+
+## Research collection v2 and cloud quality monitoring - 2026-10-28
+
+The owners approved the new collection direction and selected Telegram
+notifications and 45-day forthcoming-study retention. They report that real
+study collection has not started. Additional cost is undecided. Phase 6
+requires renewed acceptance/pilot for the current UI and new collection;
+there is no trained detector or accepted adaptive-help runtime.
+
+Created concrete collection/feature/label/mobile/early-feasibility and cloud
+monitoring specifications: RESEARCH_COLLECTION_V2_PLAN.md and
+RESEARCH_QUALITY_MONITOR_PLAN.md. RESEARCH_V2_DATA_CONTRACT.md adds proposed
+pilot settings, formulas and a pre-migration relational change boundary;
+source parsing finds head 8e5f3b0d7124, not a verified database revision.
+Read-only Railway discovery found the live
+web/MySQL services and no Cron schedule on either. Source inspection found
+that existing session-wide counters and display grants need distinct v2
+measurements for honest interval health and confirmed-display metrics.
+
+This is specification completion, not implementation or production acceptance.
+The plans state cost assumptions, Plus/API separation, missing-run monitoring,
+correct denominators and remaining schema/device/export/retention gates.
+The new 45-day policy has not been applied to hosted settings. No database
+query/mutation, application runtime edit, migration, automated test, dependency,
+secret/configuration change, scheduler, paid activation, Telegram message,
+Git mutation or deployment was performed. Existing Finance work is preserved.
+At the initial design stop point a narrow creation question was pending.
+The owner subsequently approved local proposal preparation only; applying it
+to any database, starting paid services and deployment remain out of scope.
+
 ## Release preparation — 2026-10-26
 
 The owner now authorizes commit, push and deployment of the accumulated source
