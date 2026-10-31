@@ -1,0 +1,5 @@
+{% macro messages() -%}
+{% for category,message in get_flashed_messages(with_categories=true) %}
+<div class="alert alert--{{ category }}" role="status"{% if category == 'success' and message == 'Money movement recorded.' %} data-finance-completed="new"{% elif category == 'success' and message == 'Correction saved with its previous values and operator.' %} data-finance-completed="correct"{% endif %}>{{ _(message) }}</div>
+{% endfor %}
+{%- endmacro %}

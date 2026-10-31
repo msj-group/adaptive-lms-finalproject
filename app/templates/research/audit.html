@@ -1,12 +1,13 @@
 {% extends "layouts/research_base.html" %}
 {% from "research/_macros.html" import pager %}
+{% import "research/_ui.html" as rs %}
 {% block title %}Research audit log{% endblock %}
 {% block research_content %}
-<h1 data-workspace-page-heading>Audit log</h1>
-<p class="ds-section__desc">Operator audit: configurations, collection, exclusions, exports, downloads and retention. No student content.</p>
+{{ rs.heading('Audit log','Configurations, collection, exclusions, exports, downloads and retention. No student content.','Workspace history') }}
+<div class="rs-scope"><span class="badge badge--neutral">{{ pagination.total }} matching audit events</span><span>Newest first · Operator and service actions</span></div>
 <form method="get" class="workspace-filter-grid yc-filter-form"><div class="field"><label for="action">Action</label><select class="field__input" id="action" name="action"><option value="">All actions</option>{% for action in actions %}<option value="{{ action }}"{% if filters.action == action %} selected{% endif %}>{{ action.replace('_',' ').title() }}</option>{% endfor %}</select></div><details class="workspace-date-filters"{% if filters['from'] or filters['to'] %} open{% endif %}><summary>Date range · {{ filters["from"] or "—" }} – {{ filters["to"] or "—" }}</summary><div class="workspace-filter-grid">{% for key,label in [('from','From'),('to','Through')] %}<div class="field"><label for="{{ key }}">{{ label }}</label><input class="field__input" type="date" name="{{ key }}" id="{{ key }}" value="{{ filters[key] }}"></div>{% endfor %}</div></details><div class="ds-row yc-actions"><button class="btn btn--primary">Apply filters</button><a href="{{ url_for('research.activity_log') }}">Reset</a></div></form>
 {% if rows %}
-<div style="overflow-x: auto">
+<div class="rs-table-wrap">
 <table class="dash-table" style="width:100%">
   <thead><tr><th scope="col">When</th><th scope="col">Action</th><th scope="col">By</th>
     <th scope="col">Configuration</th><th scope="col">Subject</th><th scope="col">Detail</th></tr></thead>
@@ -14,7 +15,7 @@
   {% for row in rows %}
     <tr data-audit="{{ row[0] }}">
       <td style="white-space: nowrap">{{ workspace_local(row[3]).strftime("%Y-%m-%d %H:%M:%S") }}</td>
-      <td>{{ row[0]|replace('_', ' ') }}</td>
+      <td><span class="badge badge--neutral">{{ row[0]|replace('_', ' ') }}</span></td>
       <td>{% if row[1] in ['workspace','operator'] %}{{ ("You" if row[2] == me else "Another researcher") if row[2] is not none else "Historical operator (identity unavailable)" }}{% if row[1] == 'operator' %} · Operator tool{% endif %}{% elif row[1] == 'service' %}Daily retention service{% else %}Migration{% endif %}</td>
       <td>{{ row[6] if row[6] is not none else "—" }}</td>
       <td>{{ row[8] or "—" }}</td>
@@ -26,6 +27,6 @@
 </div>
 {{ pager(pagination, "Audit events") }}
 {% else %}
-<div class="empty-state"><div class="empty-state__title">No audit events</div><div>Nothing has been audited yet.</div></div>
+{{ rs.empty('No matching audit events','No recorded actions match the current date and action filters.','clock') }}
 {% endif %}
 {% endblock %}

@@ -20,6 +20,7 @@ from app.security.decorators import roles_required
 from app.services.financial_history import document_snapshot
 from app.services.general_finance import account_totals, correct_invoice, correct_payment, lock_financial_student, record_money
 from app.services.general_finance_queries import balances_for_students
+from app.services.financial_report_presentation import is_report_reader, revision_document_link
 from app.services.money import calculate_discount, format_amount, validate_amount, validate_course_price
 
 
@@ -90,6 +91,10 @@ def record_page(student_public_id):
     episodes = {episode.id: (episode, group) for episode, group in db.session.query(Enrollment, Group).join(Group,
         Group.id == Enrollment.group_id).filter(Enrollment.id.in_([row.enrollment_id for row in invoices.items]), Enrollment.student_id == student.id).all()}
     from app.blueprints.admin.finance_registers import local_moment
+    if is_report_reader():
+        return render_template("admin/general_finance/_report_reader.html", reader_mode="account", student=student,
+            facts=account_totals(student.id), invoices=invoices, payments=payments, receipts=receipts,
+            money=format_amount, local=local_moment)
     return render_template("admin/general_finance/record.html", student=student, facts=account_totals(student.id),
         invoices=invoices, payments=payments, money=format_amount, receipts=receipts, episodes=episodes,
         local=local_moment)
@@ -270,6 +275,9 @@ def student_document_detail(student_public_id, kind, document_public_id):
     document = model.query.filter_by(public_id=document_public_id, student_id=student.id).first_or_404()
     receipt = Receipt.query.filter_by(payment_transaction_id=document.id).first() if kind == "payment" else None
     from app.blueprints.admin.finance_registers import local_moment
+    if is_report_reader():
+        return render_template("admin/general_finance/_report_reader.html", reader_mode="document", student=student,
+            document=document, kind=kind, receipt=receipt, money=format_amount, local=local_moment)
     return render_template("admin/general_finance/document.html", student=student, document=document,
         kind=kind, receipt=receipt, money=format_amount, local=local_moment)
 
@@ -283,6 +291,10 @@ def student_financial_history(student_public_id):
         FinancialRevision.student_id == student.id).order_by(FinancialRevision.created_at.desc(), FinancialRevision.id.desc()).paginate(
         page=max(1, request.args.get("page", 1, type=int)), per_page=50, error_out=False)
     from app.services.general_financial_reports import revision_view
+    if is_report_reader():
+        return render_template("admin/general_finance/_report_reader.html", reader_mode="history", student=student,
+            revisions=revisions, entries=[dict(revision_view(row, actor),
+                document_url=revision_document_link(row, student.public_id)) for row, actor in revisions.items], money=format_amount)
     return render_template("admin/general_finance/history.html", student=student, revisions=revisions,
         entries=[revision_view(row, actor) for row, actor in revisions.items], money=format_amount)
 
@@ -306,5 +318,6 @@ def student_account_receipt(student_public_id, receipt_public_id):
         confirmed_moment = datetime.strptime(confirmed_text, "%Y-%m-%dT%H:%M:%S")
     else:
         confirmed_moment = parse_receipt_moment(confirmed_text)
-    return render_template("admin/general_finance/receipt.html", student=student, receipt=receipt, money=format_amount,
+    return render_template("admin/general_finance/_report_reader.html" if is_report_reader() else "admin/general_finance/receipt.html",
+        reader_mode="receipt", student=student, receipt=receipt, money=format_amount,
         amount=format_amount(Decimal(receipt.snapshot["amount"])), confirmed_at=local_moment(confirmed_moment))

@@ -1,21 +1,22 @@
 {% extends "layouts/research_base.html" %}
 {% from "research/_macros.html" import pager, provenance_notice %}
+{% import "research/_ui.html" as rs %}
+{% import "_figma_ui.html" as icons %}
 {% block title %}Research exports{% endblock %}
 {% block research_content %}
-<h1 data-workspace-page-heading>Research exports</h1>
-{{ provenance_notice(provenance, provenance_labels) }}
-<p class="ds-section__desc">
+{% call rs.heading('Archive' if request.args.get('view') == 'archive' else 'Export center','Review export descriptions and available snapshot archives.','Research exports') %}<a class="btn btn--primary" href="{{ url_for('research.export_create') }}">{{ icons.icon('file',17) }} Prepare export</a>{% endcall %}
+{{ rs.scope(provenance,provenance_labels) }}
+<nav class="rs-tabs" aria-label="Export sections"><a href="{{ url_for('research.exports') }}"{% if request.args.get('view') != 'archive' %} aria-current="page"{% endif %}>Export center</a><a href="{{ url_for('research.exports',view='archive') }}"{% if request.args.get('view') == 'archive' %} aria-current="page"{% endif %}>Archive</a><a href="{{ url_for('research.export_create') }}">New selection</a></nav>
+<details class="rs-card"><summary>Export contents and privacy</summary><p class="ds-section__desc">
   Exports contain {{ "study data only" if provenance == 'study' else "operational review data only" }},
   grouped by pseudonymous subject code, with a data dictionary and a manifest recording the source.
   They never contain names, email addresses, account identifiers, the
   subject-to-account mapping or any content. Raw 1&ndash;5 ratings are preserved and unrated data
   stays unlabeled.
-</p>
-
-<p><a class="btn btn--primary" href="{{ url_for('research.export_create') }}">Create export</a></p>
+</p></details>
 
 {% if rows %}
-<div style="overflow-x: auto">
+<div class="rs-table-wrap">
 <table class="dash-table" style="width:100%">
   <thead><tr><th scope="col">Created</th><th scope="col">Configuration</th><th scope="col">Period</th>
     <th scope="col">Subjects</th><th scope="col">Sessions</th><th scope="col">Events</th><th scope="col">Prompts</th>
@@ -35,6 +36,6 @@
 </div>
 {{ pager(pagination, "Exports") }}
 {% else %}
-<div class="empty-state"><div class="empty-state__title">No exports</div><div>No export has been created.</div></div>
+{% call rs.empty('No exports yet','Saved export descriptions will appear here after a reviewed selection is created.','file') %}<p style="margin-top:16px"><a class="btn btn--primary" href="{{ url_for('research.export_create') }}">Prepare an export</a></p>{% endcall %}
 {% endif %}
 {% endblock %}

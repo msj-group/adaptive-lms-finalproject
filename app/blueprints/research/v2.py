@@ -79,7 +79,7 @@ def v2_partition(subject_code):
     if part.version != token[2] or part.partition_code != "unassigned":
         db.session.rollback()
         flash("This participant already has a group or the form is stale. Reload the page.", "warning")
-        return redirect(url_for("research.v2_review"))
+        return redirect(url_for("research.v2_review", view="groups"))
     if form.partition.data == "locked_final_test" and part.development_exposed_at_ms is not None:
         abort(409)
     moment = now_ms()
@@ -95,4 +95,4 @@ def v2_partition(subject_code):
         flash("The group could not be saved. Reload and try again.", "danger")
     else:
         flash("Evaluation group recorded. Final-test data stays quarantined.", "success")
-    return redirect(url_for("research.v2_review"))
+    return redirect(url_for("research.v2_review", view="groups"))

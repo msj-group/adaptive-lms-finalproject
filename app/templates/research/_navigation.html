@@ -1,0 +1,18 @@
+{% import '_figma_ui.html' as ui %}
+{% set endpoint = request.endpoint or '' %}
+{% set group_view = request.args.get('view') == 'groups' %}
+{% set destinations = [
+  ('Overview','research.dashboard','dashboard',endpoint == 'research.dashboard',{}),
+  ('Sessions','research.sessions','activity',endpoint in ['research.sessions','research.session_detail'],{}),
+  ('Collection quality','research.v2_review','chart',endpoint == 'research.v2_review' and not group_view,{}),
+  ('Configuration','research.configurations','settings','research.configuration' in endpoint,{}),
+  ('Evaluation groups','research.v2_review','users',endpoint == 'research.v2_review' and group_view,{'view':'groups'}),
+  ('Export center','research.exports','file',endpoint in ['research.exports','research.export_create'] and request.args.get('view') != 'archive',{}),
+  ('Archive','research.exports','layers',endpoint == 'research.export_detail' or endpoint == 'research.exports' and request.args.get('view') == 'archive',{'view':'archive'}),
+  ('Storage','research.storage','room',endpoint == 'research.storage',{}),
+  ('Audit log','research.activity_log','clock',endpoint == 'research.activity_log',{})
+] %}
+{% for label,target,symbol,selected,params in destinations %}
+<a class="st-nav-link rs-nav-link" href="{{ url_for(target,**params) }}"{% if selected %} aria-current="page"{% endif %}>{{ ui.icon(symbol,18) }}<span>{{ label }}</span>{% if selected %}<span class="rs-nav-dot" aria-hidden="true"></span>{% endif %}</a>
+{% endfor %}
+<a class="st-nav-link rs-nav-link" href="{{ url_for('research.exclusions') }}"{% if endpoint == 'research.exclusions' %} aria-current="page"{% endif %}>{{ ui.icon('lock',18) }}<span>Exclusions</span></a>

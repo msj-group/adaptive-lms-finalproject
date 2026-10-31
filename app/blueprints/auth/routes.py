@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, flash, make_response, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
 from app.blueprints.auth.forms import LoginForm
@@ -30,13 +30,14 @@ def home_endpoint_for(user):
 
 def login_target_for(user, candidate):
     """Honor safe return paths; Researchers return only to their workspace."""
+    home = url_for(home_endpoint_for(user))
     target = get_safe_redirect_target(candidate)
     if user.role == UserRole.RESEARCHER.value:
         if target and (target == "/research" or target.startswith("/research/")) \
                 and not target.startswith(("/research/login", "/research/logout")):
             return target
-        return url_for(home_endpoint_for(user))
-    return target or url_for(home_endpoint_for(user))
+        return home
+    return target or home
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -54,8 +55,8 @@ def login():
             and verify_password(user.password_hash, form.password.data)
         ):
             login_user(user)
-            session["workspace_opening_target"] = login_target_for(user, request.args.get("next"))
-            return redirect(url_for("auth.opening"))
+            session.pop("workspace_opening_target", None)
+            return redirect(login_target_for(user, request.args.get("next")))
         flash("Invalid email or password.", "danger")
 
     return render_template("auth/login.html", form=form)
@@ -70,24 +71,11 @@ def placement():
 @auth_bp.get("/opening")
 @login_required
 def opening():
-    """A one-use presentation step after a successful ordinary sign-in."""
+    """Redirect old transition URLs without rendering an intermediate page."""
     home_endpoint = home_endpoint_for(current_user)
     candidate = session.pop("workspace_opening_target", None)
-    if not isinstance(candidate, str):
-        return redirect(url_for(home_endpoint))
-    target = login_target_for(current_user, candidate)
-    copy = {
-        UserRole.STUDENT.value: ("STUDENT WORKSPACE", "Your next chapter", "Opening your learning space…"),
-        UserRole.TEACHER.value: ("TEACHER WORKSPACE", "Your teaching space", "Opening your teaching workspace…"),
-        UserRole.ADMINISTRATOR.value: ("ADMINISTRATOR WORKSPACE", "Your centre workspace", "Opening your centre workspace…"),
-        UserRole.RESEARCHER.value: ("RESEARCH WORKSPACE", "Your research workspace", "Opening your research workspace…"),
-    }
-    eyebrow, heading, description = copy[current_user.role]
-    response = make_response(render_template(
-        "auth/opening.html", target=target, eyebrow=eyebrow,
-        heading=heading, description=description,
-        logout_endpoint="research.logout" if current_user.role == UserRole.RESEARCHER.value else "auth.logout",
-    ))
+    target = login_target_for(current_user, candidate) if isinstance(candidate, str) else url_for(home_endpoint)
+    response = redirect(target)
     response.headers["Cache-Control"] = "private, no-store"
     response.vary.add("Cookie")
     return response

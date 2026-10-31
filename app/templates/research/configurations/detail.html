@@ -1,8 +1,8 @@
 {% extends "layouts/research_base.html" %}
+{% import "research/_ui.html" as rs %}
 {% block title %}Configuration version {{ configuration.version_number }}{% endblock %}
 {% block research_content %}
-<h1 data-workspace-page-heading>Configuration version {{ configuration.version_number }}</h1>
-<p class="ds-section__desc">{{ configuration.label }} &middot; event schema {{ configuration.event_schema_version }}</p>
+{{ rs.heading('Configuration v' ~ configuration.version_number,configuration.label ~ ' · ' ~ configuration.event_schema_version,'Collection policy') }}
 
 <p data-configuration-status>
   {% if configuration.status == 'active' %}
@@ -16,7 +16,7 @@
   ethics approval, and it does not start collection by itself.
 </p>
 
-<table class="dash-table" style="width:100%">
+<div class="rs-split"><section class="rs-card"><header class="rs-card-head"><h2>Saved policy</h2><span class="badge badge--neutral">Version {{ configuration.version_number }}</span></header><div class="rs-table-wrap"><table class="dash-table" style="width:100%">
   <tbody>
     <tr><th scope="row" style="text-align:left">Collection period</th>
         <td>{{ local(configuration.collection_starts_at).strftime("%Y-%m-%d %H:%M") }} &ndash; {{ local(configuration.collection_ends_at).strftime("%Y-%m-%d %H:%M") }}</td></tr>
@@ -30,6 +30,7 @@
     {% if configuration.retired_at %}<tr><th scope="row" style="text-align:left">Retired</th><td>{{ local(configuration.retired_at).strftime("%Y-%m-%d %H:%M") }}</td></tr>{% endif %}
   </tbody>
 </table>
+</div></section><aside class="rs-card"><p class="rs-eyebrow">Collection lifecycle</p><h2>Version controls</h2><p class="workspace-meta">Review the saved collection period and policy before changing the collection state.</p>
 
 {% if configuration.status == 'draft' %}
 <div class="ds-row yc-actions" style="gap: var(--space-3); margin-top: var(--space-6); flex-wrap: wrap">
@@ -64,4 +65,5 @@
   </form>
 </div></section>
 {% endif %}
+</aside></div>
 {% endblock %}

@@ -1,0 +1,9 @@
+{% import '_figma_ui.html' as ui %}
+<header class="st-header">
+  <div class="st-header-context"><a class="st-mobile-brand" href="{{ url_for(home_endpoint) }}" aria-label="Youth Centre home">{{ ui.brand_logo('Youth Centre',48,48) }}</a></div>
+  <div class="st-header-actions">
+    <a class="st-icon-button" href="{{ url_for('workspace.search') }}" data-workspace-search-open data-research-id="nav_search" aria-label="Search your workspace" aria-haspopup="dialog" aria-controls="workspace-search-dialog">{{ ui.icon('search') }}</a>
+    {% if notif %}{% include 'notifications/_bell.html' %}{% endif %}
+    {{ ui.account(current_user, url_for('research.logout' if role == 'researcher' else 'auth.logout'), csrf_token(), photo_url=account_photo_url()) }}
+  </div>
+</header>

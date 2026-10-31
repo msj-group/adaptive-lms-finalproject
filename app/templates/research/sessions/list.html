@@ -1,15 +1,15 @@
 {% extends "layouts/research_base.html" %}
 {% from "research/_macros.html" import pager, provenance_notice, ms_time %}
+{% import "research/_ui.html" as rs %}
+{% import "_figma_ui.html" as icons %}
 {% block title %}Natural-use sessions{% endblock %}
 {% block research_content %}
-<p>Legacy v1 sessions only. Use <a href="{{ url_for('research.v2_review') }}">Collection v2 review</a> for the new method.</p>
-<h1 data-workspace-page-heading>Natural-use sessions</h1>
-<p class="ds-section__desc">Pseudonymous sessions: subject codes only. Refused events are
-  counted, never stored.</p>
-{{ provenance_notice(provenance, provenance_labels) }}
-<form method="get" class="workspace-filter-grid yc-filter-form"><div class="field"><label for="subject">Subject code (exact)</label><input class="field__input" id="subject" name="subject" value="{{ filters.subject }}" maxlength="80"></div><div class="field"><label for="version">Configuration</label><select class="field__input" id="version" name="version"><option value="">All versions</option>{% for row in configurations %}<option value="{{ row.version_number }}" {{ 'selected' if filters.version == row.version_number|string else '' }}>Version {{ row.version_number }} · {{ row.label }}</option>{% endfor %}</select></div><div class="field"><label for="state">Session state</label><select class="field__input" name="state" id="state"><option value="">Open and ended</option><option value="open" {{ 'selected' if filters.state == 'open' else '' }}>Open</option><option value="ended" {{ 'selected' if filters.state == 'ended' else '' }}>Ended</option></select></div><details class="workspace-date-filters"{% if filters['from'] or filters['to'] %} open{% endif %}><summary>Date range · {{ filters["from"] or "—" }} – {{ filters["to"] or "—" }}</summary><div class="workspace-filter-grid">{% for key,label in [('from','Started from'),('to','Started through')] %}<div class="field"><label for="{{ key }}">{{ label }}</label><input class="field__input" type="date" name="{{ key }}" id="{{ key }}" value="{{ filters[key] }}"></div>{% endfor %}</div></details><div class="ds-row yc-actions"><button class="btn btn--primary">Apply filters</button><a href="{{ url_for('research.sessions') }}">Reset</a></div></form><p class="workspace-meta">Last seen: server-accepted activity. Refused events: counters, never stored rows.</p>
+{% call rs.heading('Sessions','Inspect recorded activity and optional feedback by pseudonymous subject.','Session explorer') %}<a class="btn btn--secondary" href="{{ url_for('research.export_create') }}">{{ icons.icon('file',17) }} Prepare export</a>{% endcall %}
+{{ rs.scope(provenance,provenance_labels,legacy=true) }}
+<details class="rs-filters" data-rs-filters data-active="{{ 'true' if filters.subject or filters.version or filters.state or filters['from'] or filters['to'] else 'false' }}" open><summary>{{ icons.icon('settings',16) }} Filters <span>Subject · Version · Period</span></summary>
+<form method="get" class="workspace-filter-grid yc-filter-form"><div class="field"><label for="subject">Subject code (exact)</label><input class="field__input" id="subject" name="subject" value="{{ filters.subject }}" maxlength="80"></div><div class="field"><label for="version">Configuration</label><select class="field__input" id="version" name="version"><option value="">All versions</option>{% for row in configurations %}<option value="{{ row.version_number }}" {{ 'selected' if filters.version == row.version_number|string else '' }}>Version {{ row.version_number }} · {{ row.label }}</option>{% endfor %}</select></div><div class="field"><label for="state">Session state</label><select class="field__input" name="state" id="state"><option value="">Open and ended</option><option value="open" {{ 'selected' if filters.state == 'open' else '' }}>Open</option><option value="ended" {{ 'selected' if filters.state == 'ended' else '' }}>Ended</option></select></div><details class="workspace-date-filters"{% if filters['from'] or filters['to'] %} open{% endif %}><summary>Date range · {{ filters["from"] or "—" }} – {{ filters["to"] or "—" }}</summary><div class="workspace-filter-grid">{% for key,label in [('from','Started from'),('to','Started through')] %}<div class="field"><label for="{{ key }}">{{ label }}</label><input class="field__input" type="date" name="{{ key }}" id="{{ key }}" value="{{ filters[key] }}"></div>{% endfor %}</div></details><div class="ds-row yc-actions"><button class="btn btn--primary">Apply filters</button><a href="{{ url_for('research.sessions') }}">Reset</a></div></form></details><p class="workspace-meta">Last seen: server-accepted activity. Refused events: counters, never stored rows.</p>
 {% if rows %}
-<div style="overflow-x: auto">
+<div class="rs-table-wrap rs-session-table">
 <table class="dash-table" style="width:100%">
   <thead>
     <tr><th scope="col">Subject</th><th scope="col">Config</th><th scope="col">Started</th>
@@ -34,9 +34,11 @@
   </tbody>
 </table>
 </div>
+<div class="rs-session-cards" aria-label="Sessions">
+{% for row in rows %}<a class="rs-session-card" href="{{ url_for('research.session_detail',session_public_id=row[0]) }}"><div class="rs-session-card-head"><strong>{{ row[1] }}</strong><span class="badge {{ 'badge--neutral' if row[5] is not none else 'badge--success' }}">{{ 'Ended' if row[5] is not none else 'Open' }}</span></div><p>v{{ row[2] }} · {{ ms_time(to_local,row[3]) }}</p><div class="rs-session-card-foot"><span>{{ row[7] }} events</span><span>{{ row[8] }} refused</span><span>{{ row[9] }} prompts</span>{{ icons.icon('chevron',15) }}</div></a>{% endfor %}
+</div>
 {{ pager(pagination, "Sessions") }}
 {% else %}
-<div class="empty-state"><div class="empty-state__title">No sessions</div>
-  <div>No sessions match the current filters in this deployment scope.</div></div>
+{{ rs.empty('No matching sessions','No sessions match these filters in the server-defined deployment scope. Try a different subject, configuration or date range.','activity') }}
 {% endif %}
 {% endblock %}

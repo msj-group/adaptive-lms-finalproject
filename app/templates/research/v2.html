@@ -1,45 +1,35 @@
 {% extends "layouts/research_base.html" %}
-{% block title %}Collection v2 review{% endblock %}
+{% import "research/_ui.html" as rs %}
+{% import "_figma_ui.html" as icons %}
+{% set groups_view = request.args.get('view') == 'groups' %}
+{% set group_labels = {'unassigned':'Unassigned','development':'Development / pilot','locked_final_test':'Reserved final test','prospective_monitor':'Future monitoring'} %}
+{% block title %}{{ 'Evaluation groups' if groups_view else 'Collection quality' }}{% endblock %}
 {% block research_content %}
-<h1 data-workspace-page-heading>Collection v2 review</h1>
-<p>Review collection quality before training. These counts do not establish model accuracy or whether help benefits students.</p>
+{{ rs.heading('Evaluation groups' if groups_view else 'Collection quality','Pseudonymous participant assignments and protected evaluation groups.' if groups_view else 'Saved technical reports and development data review.','Collection v2') }}
+<nav class="rs-tabs" aria-label="Collection v2 sections"><a href="{{ url_for('research.v2_review') }}"{% if not groups_view %} aria-current="page"{% endif %}>Collection quality</a><a href="{{ url_for('research.v2_review',view='groups') }}"{% if groups_view %} aria-current="page"{% endif %}>Evaluation groups</a></nav>
 {% if not enabled %}
-<div class="alert">V2 release gate is closed. The database update, manual phone checks and pilot acceptance must be completed before real collection.</div>
+{{ rs.empty('V2 release gate is closed','The database update, manual phone checks and pilot acceptance must be completed before real collection.','lock') }}
+{% elif groups_view %}
+<div class="rs-split">
+  <section class="rs-card"><header class="rs-card-head"><div><h2>Participant assignments</h2><p>Page {{ page }} · {{ participants|length }} participants displayed</p></div><span class="badge badge--neutral">Subject codes only</span></header>
+    {% if participants %}<div class="rs-table-wrap rs-groups-table"><table class="dash-table"><thead><tr><th scope="col">Subject</th><th scope="col">Evaluation group</th><th scope="col">Assignment</th></tr></thead><tbody>
+    {% for participant in participants %}<tr><th scope="row"><code>{{ participant.subject_code }}</code></th><td><span class="badge {{ 'badge--warning' if participant.partition_code == 'unassigned' else 'badge--neutral' }}">{{ _(group_labels.get(participant.partition_code,participant.partition_code)) }}</span></td><td>{% if participant.partition_code == 'unassigned' %}{% set form=forms[participant.subject_code] %}<form class="rs-partition-form" method="post" action="{{ url_for('research.v2_partition',subject_code=participant.subject_code) }}">{{ form.csrf_token(id='partition-csrf-' ~ loop.index) }}{{ form.state(id='partition-state-' ~ loop.index) }}<label for="partition-{{ loop.index }}" class="sr-only">Assign {{ participant.subject_code }}</label>{{ form.partition(class_='field__input',id='partition-' ~ loop.index) }}{{ form.submit(class_='btn btn--primary',id='partition-submit-' ~ loop.index) }}</form>{% else %}<span class="workspace-meta">Saved · Locked</span>{% endif %}</td></tr>{% endfor %}
+    </tbody></table></div>{% else %}{{ rs.empty('No v2 participants','No participant records are available for assignment.','users') }}{% endif %}
+    <nav class="rs-actions" aria-label="Participant pages">{% if page > 1 %}<a class="btn btn--secondary" href="{{ url_for('research.v2_review',view='groups',page=page-1) }}">Previous</a>{% endif %}{% if has_next %}<a class="btn btn--secondary" href="{{ url_for('research.v2_review',view='groups',page=page+1) }}">Next</a>{% endif %}</nav>
+  </section>
+  <aside class="rs-card"><p class="rs-eyebrow">Assignment policy</p><h2>Evaluation groups</h2><p class="workspace-meta">Assign groups using a documented plan before reviewing answers. A saved assignment cannot be changed here.</p><a class="rs-task" href="{{ url_for('research.v2_review') }}"><span class="rs-task-icon">{{ icons.icon('chart',18) }}</span><span><strong>Development</strong><small>Use separate pilot participants for development.</small></span></a><div class="rs-task"><span class="rs-task-icon">{{ icons.icon('lock',18) }}</span><span><strong>Reserved final test</strong><small>Answers remain hidden from ordinary review and exports.</small></span></div><div class="rs-task"><span class="rs-task-icon">{{ icons.icon('users',18) }}</span><span><strong>Unassigned</strong><small>Excluded from ordinary exports until assigned.</small></span></div><p class="workspace-meta">The server rechecks the signed assignment state and development exposure before saving.</p></aside>
+</div>
 {% else %}
-<h2>Latest technical reports</h2>
-<p>Technical reports contain no ratings. Telegram and the independent missed-run monitor require separate cloud configuration.</p>
-{% if not reports %}<div class="alert">No saved quality report is available. This is not evidence of healthy collection. Configure the cloud checker and confirm its first report and alert delivery.</div>{% endif %}
-{% for report in reports %}
-<article class="ds-section">
-  <h3>{{ report.provenance }} · {{ report.analysis_partition }}</h3>
-  <p>Report cutoff: {{ report.cutoff_ms }} UTC epoch ms. {% if now-report.created_at_ms > 7200000 %}<strong>Stale report: the checker needs attention.</strong>{% endif %}</p>
-  <dl><dt>Observed sessions</dt><dd>{{ report.observed_sessions }}</dd><dt>Accepted events</dt><dd>{{ report.events_accepted }}</dd><dt>Invalid / late events</dt><dd>{{ report.events_invalid }} / {{ report.events_late }}</dd><dt>Rendered / reserved questions</dt><dd>{{ report.prompts_rendered }} / {{ report.prompts_reserved }}</dd><dt>Matured answered / unanswered</dt><dd>{{ report.prompts_answered_matured }} / {{ report.prompts_unanswered_matured }}</dd><dt>Low coverage / uncertain clock windows</dt><dd>{{ report.low_coverage_windows }} / {{ report.clock_uncertain_windows }}</dd><dt>Phone-size / tablet-size / desktop-size sessions</dt><dd>{{ report.phone_sessions }} / {{ report.tablet_sessions }} / {{ report.desktop_sessions }}</dd></dl>
-  <p>Release <code>{{ report.release_ref }}</code></p>
-</article>
-{% endfor %}
-<h2>Development data review</h2>
-<p>These daily counts cover assigned development participants only. Reserved final-test answers remain hidden. A rare rating class or a small participant count means that model readiness still needs review.</p>
-{% for report in development_reports %}
-<article class="ds-section">
-  <h3>{{ report.provenance }} · development</h3>
-  <dl><dt>Recorded answers / participants</dt><dd>{{ report.ratings_total }} / {{ report.rating_participants }}</dd>
-    <dt>Raw ratings 1 / 2 / 3 / 4 / 5</dt><dd>{{ report.rating_1_count }} / {{ report.rating_2_count }} / {{ report.rating_3_count }} / {{ report.rating_4_count }} / {{ report.rating_5_count }}</dd>
-    <dt>Low coverage / uncertain clock windows</dt><dd>{{ report.low_coverage_windows }} / {{ report.clock_uncertain_windows }}</dd></dl>
-  {% if report.ratings_total < 20 or report.rating_participants < 5 or report.rating_1_count+report.rating_2_count < 2 or report.rating_3_count+report.rating_4_count+report.rating_5_count < 2 %}
-  <p><strong>Insufficient variety or sample size. Review the pilot before planning model training.</strong></p>
-  {% endif %}
-  <p>Raw counts include late and excluded answers; only eligible timely windows may train the model. These review thresholds are provisional, not an accuracy guarantee.</p>
-</article>
-{% else %}<p>No development daily report is available yet.</p>{% endfor %}
-<h2>Evaluation groups</h2>
-<p>Assign groups using a documented plan before reviewing answers. Unassigned and reserved-final-test participants are excluded from ordinary exports. A saved assignment cannot be changed here. Use separate pilot participants for development.</p>
-{% for participant in participants %}
-<article class="ds-section"><h3>{{ participant.subject_code }}</h3><p>{{ participant.partition_code }}</p>
-{% if participant.partition_code == 'unassigned' %}{% set form=forms[participant.subject_code] %}
-<form method="post" action="{{ url_for('research.v2_partition', subject_code=participant.subject_code) }}">{{ form.csrf_token }}{{ form.state }}{{ form.partition.label }} {{ form.partition(class_='field__input') }} {{ form.submit(class_='btn btn--primary') }}</form>
-{% endif %}</article>
-{% else %}<p>No v2 participants have been recorded yet.</p>{% endfor %}
-{% if page > 1 %}<a href="{{ url_for('research.v2_review',page=page-1) }}">Previous</a>{% endif %}
-{% if has_next %}<a href="{{ url_for('research.v2_review',page=page+1) }}">Next</a>{% endif %}
+<p class="workspace-meta">Review collection quality before training. These counts do not establish model accuracy or whether help benefits students. Technical reports contain no ratings.</p>
+{% if reports %}{% set latest=reports[0] %}<div class="rs-scope"><span class="badge badge--neutral">Latest technical report</span><span>{{ _(latest.provenance|replace('_',' ')|title) }} · {{ _(latest.analysis_partition|replace('_',' ')|title) }}</span><span>Report cutoff: {{ latest.cutoff_ms }} UTC epoch ms.</span></div><div class="rs-metrics">{{ rs.metric('Observed sessions',latest.observed_sessions,'Latest technical report','activity') }}{{ rs.metric('Accepted events',latest.events_accepted,'Latest technical report','layers') }}{{ rs.metric('Rendered questions',latest.prompts_rendered,'Reserved: ' ~ latest.prompts_reserved,'message') }}{{ rs.metric('Matured answers',latest.prompts_answered_matured,'Unanswered: ' ~ latest.prompts_unanswered_matured,'check') }}</div>{% endif %}
+<div class="rs-split">
+  <section class="rs-card"><header class="rs-card-head"><div><h2>Technical reports</h2><p>Saved reports · Latest first</p></div>{{ icons.icon('chart',19) }}</header>
+    {% for report in reports %}<details class="rs-report"{% if loop.first %} open{% endif %}><summary>{{ report.provenance }} · {{ report.analysis_partition }}</summary><p class="workspace-meta">Report cutoff: {{ report.cutoff_ms }} UTC epoch ms.</p>{% if now-report.created_at_ms > 7200000 %}<p class="alert alert--warning">Stale report: the checker needs attention.</p>{% endif %}<dl class="rs-facts"><dt>Observed sessions</dt><dd>{{ report.observed_sessions }}</dd><dt>Accepted events</dt><dd>{{ report.events_accepted }}</dd><dt>Invalid / late events</dt><dd>{{ report.events_invalid }} / {{ report.events_late }}</dd><dt>Rendered / reserved questions</dt><dd>{{ report.prompts_rendered }} / {{ report.prompts_reserved }}</dd><dt>Matured answered / unanswered</dt><dd>{{ report.prompts_answered_matured }} / {{ report.prompts_unanswered_matured }}</dd><dt>Low coverage / uncertain clock windows</dt><dd>{{ report.low_coverage_windows }} / {{ report.clock_uncertain_windows }}</dd><dt>Phone / tablet / desktop sessions</dt><dd>{{ report.phone_sessions }} / {{ report.tablet_sessions }} / {{ report.desktop_sessions }}</dd><dt>Release</dt><dd><code>{{ report.release_ref }}</code></dd></dl></details>{% else %}{{ rs.empty('No saved quality report','No report is available. This is not evidence of healthy collection. Configure the cloud checker and confirm its first report and alert delivery.','chart') }}{% endfor %}
+  </section>
+  <aside class="rs-card"><p class="rs-eyebrow">Review scope</p><h2>Collection v2</h2><p class="workspace-meta">Reports describe the recorded technical state. They do not establish scientific validity.</p><a class="rs-task" href="{{ url_for('research.v2_review',view='groups') }}"><span class="rs-task-icon">{{ icons.icon('users',18) }}</span><span><strong>Evaluation groups</strong><small>Review participant assignments</small></span>{{ icons.icon('chevron',14) }}</a><a class="rs-task" href="{{ url_for('research.configurations') }}"><span class="rs-task-icon">{{ icons.icon('settings',18) }}</span><span><strong>Configuration</strong><small>Saved policy, period and collection state</small></span>{{ icons.icon('chevron',14) }}</a><p class="workspace-meta">Telegram and the independent missed-run monitor require separate cloud configuration.</p></aside>
+</div>
+<section class="rs-card"><header class="rs-card-head"><div><h2>Development data review</h2><p>Assigned development participants only · Reserved final-test answers remain hidden</p></div><span class="badge badge--neutral">Raw 1–5 ratings</span></header>
+{% for report in development_reports %}<details class="rs-report"{% if loop.first %} open{% endif %}><summary>{{ report.provenance }} · Development</summary><dl class="rs-facts"><dt>Recorded answers / participants</dt><dd>{{ report.ratings_total }} / {{ report.rating_participants }}</dd><dt>Raw ratings 1 / 2 / 3 / 4 / 5</dt><dd>{{ report.rating_1_count }} / {{ report.rating_2_count }} / {{ report.rating_3_count }} / {{ report.rating_4_count }} / {{ report.rating_5_count }}</dd><dt>Low coverage / uncertain clock windows</dt><dd>{{ report.low_coverage_windows }} / {{ report.clock_uncertain_windows }}</dd></dl>{% if report.ratings_total < 20 or report.rating_participants < 5 or report.rating_1_count+report.rating_2_count < 2 or report.rating_3_count+report.rating_4_count+report.rating_5_count < 2 %}<p class="alert alert--warning">Insufficient variety or sample size. Review the pilot before planning model training.</p>{% endif %}<p class="workspace-meta">Raw counts include late and excluded answers; only eligible timely windows may train the model. These review thresholds are provisional, not an accuracy guarantee.</p></details>{% else %}{{ rs.empty('No development daily report','No saved development data review is available.','file') }}{% endfor %}
+</section>
 {% endif %}
 {% endblock %}

@@ -1,11 +1,14 @@
 {% extends "layouts/research_base.html" %}
 {% from "research/_macros.html" import ms_time %}
+{% import "research/_ui.html" as rs %}
+{% import "_figma_ui.html" as icons %}
 {% block title %}Session {{ session.subject_code }}{% endblock %}
 {% block research_content %}
-<h1 data-workspace-page-heading>Session of {{ session.subject_code }}</h1>
-<p class="ds-section__desc">{{ provenance_labels[session.provenance] }} &middot; configuration version {{ session.version_number }}
-  </p>
+{{ rs.heading(session.subject_code,'Recorded session activity, delivery counters and feedback prompts.','Session detail · Legacy v1') }}
+{{ rs.scope(session.provenance,provenance_labels,legacy=true) }}
+<div class="rs-metrics">{{ rs.metric('Stored events',session.events_accepted,'Accepted events','layers') }}{{ rs.metric('Feedback prompts',prompts|length,'Offered in this session','message') }}{{ rs.metric('Batches received',session.batches_received,'Recorded delivery counter','activity') }}{{ rs.metric('Configuration','v' ~ session.version_number,'Saved collection policy','settings') }}</div>
 
+<details class="rs-card"><summary>Session times and delivery counters</summary>
 <table class="dash-table" style="width:100%">
   <tbody>
     <tr><th scope="row" style="text-align:left">Started</th><td>{{ ms_time(to_local, session.started_at_ms) }}</td></tr>
@@ -18,13 +21,14 @@
     {% endfor %}
   </tbody>
 </table>
+</details>
 
 <div class="dash-section yc-section">
   <h2>Feedback prompts</h2>
   {% if prompts %}
   <table class="dash-table research-dense-table" style="width:100%">
     <thead><tr><th scope="col">Reason</th><th scope="col">State</th><th scope="col">Offered</th><th scope="col">Deferrals</th>
-      <th scope="col">Shown</th><th scope="col">Observed in window</th><th scope="col">Rating (1&ndash;5)</th></tr></thead>
+      <th scope="col">Shown</th><th scope="col">Observed in window</th><th scope="col">Rating (1&ndash;5)</th><th scope="col">Window</th></tr></thead>
     <tbody>
     {% for item in prompts %}{% set p = item.row %}
       <tr data-prompt>
@@ -35,10 +39,12 @@
         <td>{{ ms_time(to_local, p[5]) }}</td>
         <td>{% if p[7] is not none %}{{ (p[7] / 1000)|round|int }} s{% else %}&mdash;{% endif %}</td>
         <td>{% if item.state == 'answered' %}{{ p[9] }}{% else %}&mdash;{% endif %}</td>
+        <td><button type="button" class="btn btn--secondary" data-rs-dialog="prompt-window-{{ loop.index }}" hidden>Details</button></td>
       </tr>
     {% endfor %}
     </tbody>
   </table>
+  {% for item in prompts %}{% set p=item.row %}<dialog class="rs-dialog" id="prompt-window-{{ loop.index }}" aria-labelledby="prompt-title-{{ loop.index }}"><header class="rs-dialog-head"><h2 id="prompt-title-{{ loop.index }}">Feedback window</h2><button type="button" class="st-icon-button" data-rs-close aria-label="Close window details">{{ icons.icon('close') }}</button></header><span class="badge badge--neutral">{{ prompt_state_labels[item.state] }}</span><dl class="rs-facts"><dt>Sampling reason</dt><dd>{{ p[1]|replace('_',' ') }}</dd><dt>Offered</dt><dd>{{ ms_time(to_local,p[2]) }}</dd><dt>Shown</dt><dd>{{ ms_time(to_local,p[5]) }}</dd><dt>Window start</dt><dd>{{ ms_time(to_local,p[6]) }}</dd><dt>Observed duration</dt><dd>{{ ((p[7]/1000)|round|int) ~ ' s' if p[7] is not none else 'Unavailable' }}</dd><dt>Response</dt><dd>{{ ms_time(to_local,p[8]) }}</dd><dt>Recorded rating</dt><dd>{{ p[9] if item.state == 'answered' else 'Unlabeled' }}</dd><dt>Late response</dt><dd>{{ 'Not stored' if p[10] else 'None recorded' }}</dd></dl><p class="workspace-meta">Legacy v1 window. Missing ratings remain unlabeled; no frustration score is inferred.</p><button class="btn btn--secondary" type="button" data-rs-close>Close details</button></dialog>{% endfor %}
   {% else %}
   <div class="empty-state"><div class="empty-state__title">No prompts</div><div>This session was not sampled. It is unlabeled.</div></div>
   {% endif %}

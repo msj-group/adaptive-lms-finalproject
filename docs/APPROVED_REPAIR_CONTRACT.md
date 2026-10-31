@@ -1,20 +1,37 @@
 # Approved repair contract
 
-## Owner-approved source branch and baseline - 2026-10-30
+## New owner-authorized hosted reset completed - 2026-10-30
 
-The owner explicitly approved the reviewed Research-only source baseline, one
-commit and push of codex/research-v2-launch-20261030 in the existing repository.
-Use the isolated checkout based on 4544d56915b7e321921f9ea652ba9b6b9c86e357.
-RESEARCH_V2_BASELINE_SOURCE.json records the exact unchanged runtime, reviewed
-pre-baseline proposal and local acceptance limits. This supersedes the earlier
-Git prohibition for this exact source operation only. Preserve the original
-worktree; no master merge, deployment, hosted database or paid activation.
-Actual phones, hosted parent/backup, cloud delivery and pilot gates remain.
+After deployment, the owner separately requested clearing the hosted database
+and creating only two named Teachers, their Groups and one Administrator.
+They confirmed the emails, current term, Saturday 18:00-20:00 and 20 seats,
+and explicitly approved a temporary SSH key followed by revocation. This
+bounded operation is complete. A verified recovery copy stayed on the hosted
+private volume; no database payload was downloaded. The active hosted DB now
+contains exactly the requested setup plus required schema/control metadata,
+with no Students, Researcher, configuration or old business/research rows.
+Local data, application source and private files were preserved. No schema,
+deployment, scheduler or Git mutation ran. Exact evidence and limits are in
+HOSTED_DATA_RESET_20261030.md. Older preservation statements describe the
+earlier deployment; they are not the current hosted row inventory or further
+reset/restore authority.
 
-Approved by the owners in the final-discovery conversation; implementation
-authorized on 2026-10-05. This is the canonical target for rehabilitation of
-the existing application. A target in this document is not a claim that it
-has already been implemented or verified.
+## Owner-authorized exact hosted deployment completed - 2026-10-30
+
+After the separately approved Research-only commit/push, the owner explicitly
+requested execution of deployment and then approved one temporary personal SSH
+key, used only for this web service and revoked after verification. Deploy
+exact b33535e568ae5a2a3b9720aeedbbb8bfec1bb252 to existing Railway production,
+with a protected fresh backup, paused collection/quiescent writers and only
+8e5f3b0d7124 -> a6f2c9d84e71. That operation is complete; real schema, old-row,
+provider health and browser evidence is in RESEARCH_V2_HOSTED_DEPLOYMENT.md.
+
+No additional grant, password change, reset/seed/downgrade, paid monitor,
+scheduler, Telegram transmission, automated application test or Git mutation
+was part of deployment. Old v1 recorded retention remains 15 days; upcoming
+v2 uses 45 days. Development provenance and Study disabled remain. The main
+study/phone/pilot/monitoring/storage gates are still open. This is a bounded
+completed deployment, not continuing authority for unrelated hosted changes.
 
 ## Continue the paused fictional rehearsal and source corrections - 2026-10-30
 
@@ -145,6 +162,54 @@ the existing application. A target in this document is not a claim that it
 has already been implemented or verified.
 
 ## Authority and current checkpoint
+
+- Owner local migration preparation, 2026-10-28: explicitly authorizes
+  preparing the research-v2 database update file locally and explaining it.
+  Prepare one standalone proposal outside the active Alembic versions path,
+  based on source parent 8e5f3b0d7124 and RESEARCH_V2_DATA_CONTRACT.md. This
+  supersedes the earlier pending creation question only. Do not apply it to
+  any database, alter runtime/models/settings, activate a service, install
+  dependencies, run automated tests, mutate Git or deploy. Existing data and
+  concurrent Finance work remain intact. The standard automatic application/
+  commit close-out is explicitly out of scope for this file-only request.
+  Evidence and activation prerequisites: RESEARCH_V2_MIGRATION_PROPOSAL.md.
+
+- Owner research collection/readiness direction, 2026-10-28: design a new
+  mobile-first collection method for future frustration detection and useful
+  assistance, with early pilot/model feasibility review. The owners report no
+  real study data yet, target at least 30 adults and confirm external approvals.
+  Telegram is selected for cloud monitoring alerts; 45-day retention supersedes
+  the earlier 15-day target for the forthcoming study. Additional cost is
+  undecided: present an estimate before paid activation. Current deliverables
+  are RESEARCH_COLLECTION_V2_PLAN.md and RESEARCH_QUALITY_MONITOR_PLAN.md;
+  RESEARCH_V2_DATA_CONTRACT.md makes proposed pilot defaults, formulas and
+  pre-migration scope concrete. Their target is not an implemented/accepted
+  v2 release. Existing data,
+  exclusions, provenance and historical exports remain intact. No database,
+  migration, scheduler, secrets, Git or deployment action has been performed
+  for this direction. The no-new-automated-tests boundary remains.
+
+- Owner Financial reports selection, 2026-10-26: apply Ledger Studio and
+  explicitly verify all requested subpage transitions. Preserve report
+  filters, pagination, signed balance meanings, export scope/limits and
+  server authority. Use native read-only account/document/history/receipt
+  GETs in a desktop side dialog/phone sheet with nested Back and list-state
+  return; use actual CSV/PDF downloads. Preserve shell/dock, themes, RTL,
+  20px panels and concurrent Finance work. Source/localization/docs and
+  bounded static/manual fictional-memory review only; no automated tests,
+  actual database/business write, migration, scheduler, dependency, Git
+  mutation or deployment. Evidence: ADMIN_FINANCIAL_REPORTS_LEDGER_STUDIO.md.
+
+- Owner Finance selection, 2026-10-26: apply Account focus and verify its
+  subpage transitions. Retain native account/register GETs, filters/paging,
+  financial meanings and signed writers. Readers, forms, correction history,
+  receipts and read-only enrollment history stay inside Finance with Back,
+  draft protection and native recovery. Preserve current shell/dock, themes,
+  RTL and 20px panels. Source/localization/docs and bounded static/manual
+  fictional-memory review only; no automated tests, actual database/business
+  write, migration, dependency, scheduler, Git mutation or deployment.
+  Local implementation, concurrent-work boundary and evidence:
+  ADMIN_FINANCE_ACCOUNT_FOCUS.md.
 
 - Owner release request, 2026-10-26: commit and push the latest reviewed
   application/documentation changes and deploy the existing Railway web

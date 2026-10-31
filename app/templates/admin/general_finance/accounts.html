@@ -1,16 +1,17 @@
-{% extends "layouts/admin_base.html" %}
+{% extends 'admin/general_finance/_base.html' %}
 {% import "admin/_macros.html" as macros %}
 {% import "_figma_ui.html" as ui %}
 {% block title %}Student Accounts{% endblock %}
-{% block admin_content %}
-<header class="ad-page-head"><div><p class="ad-eyebrow">FINANCE / ACCOUNTS</p><h1 data-workspace-page-heading>Student accounts</h1><p class="ad-subtitle">A clear position for every student.</p></div></header>
+{% set finance_view = 'accounts' %}
+{% block finance_content %}
 {{ macros.flash_messages() }}
-<section class="ad-card ax-roster">
-  <form method="get" class="yc-filter-form ad-toolbar" data-query-form data-query-results="query-results" data-query-min="0">
+<section class="ad-card ff-directory" aria-label="Student accounts">
+  <div class="ff-directory-heading"><h2>Student accounts</h2><span class="ad-meta">{{ page.total }}</span></div>
+  <form method="get" class="yc-filter-form ff-search" data-query-form data-query-results="query-results" data-query-min="0" data-query-refresh data-query-refresh-current data-query-quiet-success>
     <label class="ad-input-wrap" for="q">{{ ui.icon('search', 16) }}<span class="visually-hidden">Name or email</span><input id="q" name="q" value="{{ search }}" maxlength="100" placeholder="Find a student account"></label>
     <button data-query-submit class="btn btn--secondary">Search</button>
   </form>
   <div id="query-results">{% include "admin/general_finance/_account_results.html" %}</div>
 </section>
-<div class="ad-notice">{{ ui.icon('info', 16) }}<p>One signed balance: obligations − confirmed collections + payouts. Pending collections are excluded.</p></div>
+<p class="ff-directory-note">One signed balance: obligations − confirmed collections + payouts. Pending collections are excluded.</p>
 {% endblock %}

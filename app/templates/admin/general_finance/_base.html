@@ -1,0 +1,32 @@
+{% extends 'layouts/admin_base.html' %}
+{% import '_figma_ui.html' as finance_ui %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static',filename='css/admin/finance_focus.css',v='account-focus-20261026') }}">{% endblock %}
+{% block admin_content %}
+<div class="ff-page" data-finance-workspace data-finance-root="{{ finance_view|default('accounts') }}" data-finance-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}"
+ data-finance-index-url="{{ url_for('admin.student_accounts') }}"
+ data-finance-account-url="{{ url_for('admin.student_financial_record',student_public_id='__student__') }}"
+ data-finance-new-url="{{ url_for('admin.student_money_new',student_public_id='__student__') }}"
+ data-finance-preview-url="{{ url_for('admin.student_money_preview',student_public_id='__student__') }}"
+ data-finance-document-url="{{ url_for('admin.student_document_detail',student_public_id='__student__',kind='__kind__',document_public_id='__document__') }}"
+ data-finance-correct-url="{{ url_for('admin.student_document_correct',student_public_id='__student__',kind='__kind__',document_public_id='__document__') }}"
+ data-finance-history-url="{{ url_for('admin.student_financial_history',student_public_id='__student__') }}"
+ data-finance-receipt-url="{{ url_for('admin.student_account_receipt',student_public_id='__student__',receipt_public_id='__document__') }}"
+ data-finance-enrollment-url="{{ url_for('admin.student_enrollment_history',student_public_id='__student__') }}">
+  <header class="ad-page-head ff-heading"><div><p class="ad-eyebrow">Administration / Finance</p><h1 data-workspace-page-heading>Finance<span aria-hidden="true">.</span></h1><p class="ad-subtitle">Every account, in focus.</p></div><span class="ff-currency">{{ finance_ui.icon('wallet',16) }} LYD</span></header>
+  <nav class="ad-tabs ff-primary-tabs" aria-label="Finance workspace">
+    {% for label,target in [('Student accounts','admin.student_accounts'),('Invoices','admin.invoice_register'),('Collections & payouts','admin.payments_overview'),('Deleted records','admin.deleted_financial_records')] %}
+    <a href="{{ url_for(target) }}"{% if request.endpoint == target or target == 'admin.student_accounts' and finance_view|default('accounts') != 'register' %} aria-current="page"{% endif %}>{{ _(label) }}</a>
+    {% endfor %}
+  </nav>
+  <div class="ff-desk{% if finance_view|default('accounts') == 'accounts' %} ff-desk--accounts{% endif %}" data-finance-desk>
+    <div class="ff-origin" data-finance-origin>{% block finance_content %}{% endblock %}</div>
+    <section class="ff-reader" data-finance-reader aria-label="Financial account workspace" hidden>
+      <div class="ff-reader-toolbar"><button type="button" class="btn btn--secondary" data-finance-back>{{ finance_ui.icon('arrow',15) }} Back</button><a class="ad-row-link" data-finance-native href="{{ url_for('admin.student_accounts') }}">Open full page {{ finance_ui.icon('arrow-up',14) }}</a></div>
+      <p class="ff-read-status" data-finance-status role="status" aria-live="polite" hidden></p>
+      <div class="ff-recovery" data-finance-recovery hidden><button type="button" class="btn btn--secondary" data-finance-retry>Retry read</button><a class="ad-row-link" data-finance-recover href="{{ url_for('admin.student_accounts') }}">Open full page</a></div>
+      <div class="ff-stage" data-finance-stage></div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static',filename='js/admin_finance_focus.js',v='account-focus-20261026') }}" defer></script>{% endblock %}

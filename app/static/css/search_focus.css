@@ -1,0 +1,16 @@
+/* Owner-selected caret-only search focus. Load after feature styles so all
+   role workspaces share the same behavior without changing other controls. */
+body.yc-workspace input:is([type='search'],[name='q'],[name='search']):is(:focus,:focus-visible) {
+  outline:none;
+  box-shadow:none;
+}
+body.yc-workspace :is(.workspace-search-field,.agroups-search,.messenger-search):focus-within {
+  outline:none;
+  box-shadow:none;
+}
+/* Grouped workspace search already has an outer field boundary. */
+body.yc-workspace .workspace-search-field input {
+  border:0;
+  border-radius:0;
+  background:transparent;
+}

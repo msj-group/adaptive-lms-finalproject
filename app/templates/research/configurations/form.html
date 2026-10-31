@@ -1,9 +1,9 @@
 {% extends "layouts/research_base.html" %}
+{% import "research/_ui.html" as rs %}
 {% block title %}{{ "Edit draft" if configuration else "New draft" }}{% endblock %}
 {% block research_content %}
-<h1 data-workspace-page-heading>{% if configuration %}Edit draft version {{ configuration.version_number }}{% else %}New configuration draft{% endif %}</h1>
-<p class="ds-section__desc">Versioned pilot settings, not validated constants. Saving a draft collects nothing.</p>
-<form method="post" novalidate class="yc-form research-configuration-form">
+{{ rs.heading('Edit draft v' ~ configuration.version_number if configuration else 'New configuration draft','Versioned pilot settings, not validated constants. Saving a draft collects nothing.','Collection policy') }}
+<form method="post" novalidate class="yc-form research-configuration-form rs-card">
   {{ form.csrf_token }}
   {{ form.state }}
   <div class="field">

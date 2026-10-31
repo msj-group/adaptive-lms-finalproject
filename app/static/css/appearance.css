@@ -105,3 +105,8 @@ html[data-ui-motion='reduce'] *, html[data-ui-motion='reduce'] *::before, html[d
   .appearance-public, .workspace-utility-panel { display: none !important; }
   html[dir='rtl'] .figma-workspace .figma-body { margin: 0 !important; }
 }
+/* The icon follows the resolved theme, including live device-theme changes. */
+.workspace-theme-icon,.workspace-theme-icon>span { display:inline-flex; align-items:center; }
+.workspace-theme-icon .workspace-theme-icon--dark { display:none; }
+html[data-theme='dark'] .workspace-theme-icon .workspace-theme-icon--light { display:none; }
+html[data-theme='dark'] .workspace-theme-icon .workspace-theme-icon--dark { display:inline-flex; }

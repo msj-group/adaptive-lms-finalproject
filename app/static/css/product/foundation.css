@@ -85,7 +85,7 @@ html[data-theme='dark'] .yc-workspace { --st-ink:#e1eaff; --st-muted:#b1c2df; --
 .yc-workspace .field { min-width:0; }
 .yc-workspace :is(.field__label,label:not(.activity-choice,.quiz-unanswered-confirm)) { font-size:12px; font-weight:500; }
 .yc-workspace :is(.field__input,input:not([type='hidden'],[type='checkbox'],[type='radio'],[type='submit']),textarea,select) { width:100%; min-width:0; min-height:var(--st-control-height,48px); padding:var(--st-field-pad,13px 16px); border:1px solid var(--st-border); border-radius:var(--st-control-radius,16px); color:var(--st-ink); background-color:var(--st-control); font:400 14px/1.6 var(--st-body); box-shadow:inset 0 1px 0 #ffffff30; backdrop-filter:blur(16px); }
-.yc-workspace :is(input,textarea,select):focus { border-color:#86a8f5; box-shadow:0 0 0 4px #5286f01a; }
+.yc-workspace :is(input:not([type='search'],[name='q'],[name='search']),textarea,select):focus { border-color:#86a8f5; box-shadow:0 0 0 4px #5286f01a; }
 .yc-workspace textarea { min-height:180px; resize:vertical; }
 .yc-workspace :is(input[type='checkbox'],input[type='radio']) { width:18px; height:18px; margin:0; accent-color:#3166dc; flex-shrink:0; }
 .yc-workspace select option { background:var(--st-solid); color:var(--st-ink); }

@@ -210,7 +210,7 @@ button, input, select, textarea { font-family: inherit; }
               box-shadow var(--motion-duration-base) var(--motion-easing-standard);
 }
 
-.field__input:focus, .figma-workspace .field__input:focus,
+.field__input:not([type='search'],[name='q'],[name='search']):focus, .figma-workspace .field__input:not([type='search'],[name='q'],[name='search']):focus,
 .figma-workspace select:focus, .figma-workspace textarea:focus {
   outline: 3px solid var(--ui-focus);
   outline-offset: 2px;

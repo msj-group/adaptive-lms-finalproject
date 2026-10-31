@@ -1,0 +1,31 @@
+{% import '_figma_ui.html' as ui %}
+{% set role = 'researcher' %}
+{% set endpoint = request.endpoint or '' %}
+<a class="st-skip-link" href="#workspace-content">Skip to content</a>
+<div class="st-shell rs-shell" data-workspace-history='{{ workspace_navigation()|tojson }}'>
+  <aside class="st-sidebar rs-sidebar" id="workspace-navigation" aria-label="Researcher navigation">
+    <a class="rs-brand" href="{{ url_for('research.dashboard') }}"><img src="{{ url_for('static',filename='images/figma_logo.png') }}" width="42" height="54" alt="Youth Centre"><span><strong>Youth Centre</strong><small>RESEARCHER</small></span></a>
+    <nav class="rs-navigation" aria-label="Research workspace">{% include 'research/_navigation.html' %}</nav>
+    <div class="rs-sidebar-foot">{{ ui.icon('lock',16) }}<span>Pseudonymous records<br><a href="{{ url_for('research.configurations') }}">Collection settings</a></span></div>
+  </aside>
+  <div class="st-body rs-body" data-workspace-body>
+    <header class="st-header rs-header">
+      <a class="rs-mobile-brand" href="{{ url_for('research.dashboard') }}"><img src="{{ url_for('static',filename='images/figma_logo.png') }}" width="36" height="44" alt="Youth Centre"><span>Research</span></a>
+      <span class="rs-header-label">Research workspace</span>
+      <div class="st-header-actions"><a class="rs-search" href="{{ url_for('workspace.search') }}" data-workspace-search-open aria-haspopup="dialog" aria-controls="workspace-search-dialog" aria-label="Search your workspace">{{ ui.icon('search',17) }}<span>Search workspace</span><kbd>Ctrl K</kbd></a>{% if notif %}{% include 'notifications/_bell.html' %}{% endif %}{{ ui.account(current_user,url_for('research.logout'),csrf_token(),photo_url=account_photo_url()) }}<button class="st-icon-button rs-menu-toggle" type="button" data-more-toggle aria-label="Open navigation" aria-controls="workspace-more-panel" aria-expanded="false" aria-haspopup="dialog" hidden>{{ ui.icon('menu') }}</button></div>
+    </header>
+    <noscript><details class="rs-noscript-navigation"><summary>Research navigation</summary><nav aria-label="All research destinations">{% include 'research/_navigation.html' %}<a class="st-nav-link" href="{{ url_for('account.settings') }}">Account settings</a></nav><form method="post" action="{{ url_for('research.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn--secondary">Sign out</button></form></details></noscript>
+    <div class="st-content rs-content {{ portal_blocks.workspace_content_class() }}" id="workspace-content" tabindex="-1">
+      {% include 'layouts/_workspace_back.html' %}
+      {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="rs-flashes" aria-live="polite">{% for category,message in messages %}<div class="alert alert--{{ category }}">{{ message }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+      {{ portal_blocks.research_content() }}
+      <footer class="rs-footer"><span>Youth Centre · Research workspace</span><span>Subject codes only · No student content</span></footer>
+    </div>
+  </div>
+</div>
+<button class="workspace-more-backdrop" type="button" tabindex="-1" data-more-dismiss aria-label="Close navigation" hidden></button>
+<section class="workspace-more-panel rs-more" id="workspace-more-panel" role="dialog" aria-label="Research navigation" tabindex="-1" data-more-panel hidden><header><h2>Workspace</h2><button type="button" class="st-icon-button" data-more-dismiss aria-label="Close navigation">{{ ui.icon('close') }}</button></header><nav aria-label="All research destinations">{% include 'research/_navigation.html' %}<a class="st-nav-link" href="{{ url_for('account.settings') }}">{{ ui.icon('user',18) }}<span>Account settings</span></a><button class="st-nav-link" type="button" popovertarget="workspace-language-panel" aria-haspopup="dialog">{{ ui.icon('globe',18) }}<span>Language</span></button></nav><div class="rs-more-preferences"><label for="research-motion">Motion</label><select id="research-motion" data-ui-preference="motion"><option value="system">Follow device setting</option><option value="reduce">Reduce motion</option></select></div><form method="post" action="{{ url_for('research.logout') }}" data-account-signout><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn--secondary">{{ ui.icon('logout',17) }} Sign out</button></form></section>
+<nav class="workspace-mobile-nav rs-mobile-nav" aria-label="Mobile research workspace">
+  {% for label,target,symbol,selected in [('Home','research.dashboard','dashboard',endpoint == 'research.dashboard'),('Sessions','research.sessions','activity',endpoint in ['research.sessions','research.session_detail']),('Quality','research.v2_review','chart',endpoint == 'research.v2_review' and request.args.get('view') != 'groups'),('Exports','research.exports','file',endpoint in ['research.exports','research.export_create','research.export_detail'])] %}<a href="{{ url_for(target) }}"{% if selected %} aria-current="page"{% endif %}>{{ ui.icon(symbol,19) }}<span>{{ label }}</span></a>{% endfor %}<button type="button" data-more-toggle aria-label="More navigation" aria-controls="workspace-more-panel" aria-expanded="false" aria-haspopup="dialog" hidden>{{ ui.icon('menu',19) }}<span>More</span></button>
+</nav>
+{% include 'layouts/_workspace_search.html' %}

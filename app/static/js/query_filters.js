@@ -158,7 +158,7 @@
       form.addEventListener("aelms:query-refresh", function (event) {
         if (event.target !== form) return;
         event.preventDefault(); invalidate();
-        if (!composing && validQuery()) load(form.hasAttribute("data-query-motion") ? new URL(committed) : urlForForm(),"replace",true);
+        if (!composing && validQuery()) load(form.hasAttribute("data-query-motion") || form.hasAttribute("data-query-refresh-current") ? new URL(committed) : urlForForm(),"replace",true);
       });
       form.dataset.queryRefreshReady = "true";
     }

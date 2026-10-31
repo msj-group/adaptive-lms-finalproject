@@ -11,11 +11,25 @@
   function syncThemeFields() {
     var preference = root.dataset.themePreference;
     if (!["system", "light", "dark"].includes(preference)) return;
-    document.querySelectorAll("[data-appearance-form] [name='theme']").forEach(function (control) { control.value = preference; });
+    document.querySelectorAll("[data-appearance-form] input[name='theme'], [data-appearance-form] select[name='theme']").forEach(function (control) { control.value = preference; });
+    document.querySelectorAll('[data-theme-options] button[name="theme"]').forEach(function (button) {
+      button.setAttribute('aria-pressed', String(button.value === preference));
+    });
   }
   document.querySelectorAll('[data-appearance-form]').forEach(function (form) {
     form.addEventListener('submit', syncThemeFields);
   });
+  document.querySelectorAll('[data-theme-options]').forEach(function (form) {
+    form.addEventListener('submit', function (event) {
+      var choice = event.submitter;
+      if (!choice || !['system', 'light', 'dark'].includes(choice.value)) return;
+      event.preventDefault();
+      window.aelmsUI.theme(choice.value);
+      syncThemeFields();
+    });
+  });
+  syncThemeFields();
+  new MutationObserver(syncThemeFields).observe(root, {attributes:true, attributeFilter:['data-theme-preference']});
   var panels = document.querySelectorAll('[data-utility-panel]');
   panels.forEach(function (panel) {
     var nativePopover = 'showPopover' in panel;

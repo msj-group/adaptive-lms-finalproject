@@ -1,0 +1,13 @@
+{% import '_figma_ui.html' as ui %}
+{% macro heading(title, description='', section='Research workspace') -%}
+<header class="rs-page-heading"><div><p class="rs-eyebrow">{{ _(section) }}</p><h1 data-workspace-page-heading>{{ _(title) }}</h1>{% if description %}<p>{{ _(description) }}</p>{% endif %}</div>{% if caller is defined %}<div class="rs-actions">{{ caller() }}</div>{% endif %}</header>
+{%- endmacro %}
+{% macro metric(label, value, detail='', symbol='chart') -%}
+<article class="rs-metric"><div class="rs-metric-label"><span>{{ _(label) }}</span>{{ ui.icon(symbol,17) }}</div><strong>{{ value }}</strong>{% if detail %}<small>{{ _(detail) }}</small>{% endif %}</article>
+{%- endmacro %}
+{% macro empty(title, description, symbol='layers') -%}
+<div class="rs-empty"><span class="rs-empty-icon">{{ ui.icon(symbol,28) }}</span><h3>{{ _(title) }}</h3><p>{{ _(description) }}</p>{% if caller is defined %}{{ caller() }}{% endif %}</div>
+{%- endmacro %}
+{% macro scope(provenance, labels, legacy=false) -%}
+<div class="rs-scope"><span class="badge badge--neutral">{{ _(labels[provenance]) }}</span>{% if legacy %}<span>Legacy v1 records</span><a href="{{ url_for('research.v2_review') }}">Open collection v2 {{ ui.icon('arrow',14) }}</a>{% endif %}{% if provenance != 'study' %}<span>These records must not be reported as study findings.</span>{% endif %}</div>
+{%- endmacro %}

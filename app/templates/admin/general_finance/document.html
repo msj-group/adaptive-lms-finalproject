@@ -1,9 +1,11 @@
-{% extends "layouts/admin_base.html" %}
+{% extends 'admin/general_finance/_base.html' %}
+{% import 'admin/general_finance/_ui.html' as finance with context %}
+{% set finance_view = 'document' %}
 {% import "_figma_ui.html" as ui %}
 {% block title %}Financial document · {{ student.full_name }}{% endblock %}
-{% block admin_content %}
-<div class="ad-stack">
-<header class="ad-page-head"><div><p class="ad-eyebrow">FINANCE / DOCUMENT</p><h1 data-workspace-page-heading>{{ document.invoice_number or _('Invoice') if kind == 'invoice' else _('Payout') if document.movement_direction == 'out' else _('Collection') }}</h1><p class="ad-subtitle">{{ student.full_name }} · {{ _('General account') }}</p></div>{% if not document.deleted_at and (kind == 'invoice' or document.kind == 'collection') %}<a class="btn btn--secondary" href="{{ url_for('admin.student_document_correct', student_public_id=student.public_id, kind=kind, document_public_id=document.public_id) }}">{{ ui.icon('pen',14) }} Review correction</a>{% endif %}</header>
+{% block finance_content %}
+<div class="ad-stack ff-native-content" data-finance-content data-finance-view="document" data-finance-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}" data-finance-student="{{ student.public_id }}" data-finance-document="{{ document.public_id }}" data-finance-kind="{{ kind }}">
+<header class="ad-page-head"><div><p class="ad-eyebrow">FINANCE / DOCUMENT</p><h2 data-workspace-page-heading>{{ document.invoice_number or _('Invoice') if kind == 'invoice' else _('Payout') if document.movement_direction == 'out' else _('Collection') }}</h2><p class="ad-subtitle">{{ student.full_name }} · {{ _('General account') }}</p></div>{% if not document.deleted_at and (kind == 'invoice' or document.kind == 'collection') %}<a class="btn btn--secondary" href="{{ url_for('admin.student_document_correct', student_public_id=student.public_id, kind=kind, document_public_id=document.public_id) }}">{{ ui.icon('pen',14) }} Review correction</a>{% endif %}</header>
 {% if document.deleted_at %}<div class="ad-notice orange">{{ ui.icon('info',16) }}<p>Deleted from active accounting. Original values and correction history remain preserved.</p></div>{% endif %}
 <div class="ad-grid"><article class="ad-card workspace-document"><div class="ad-card-top"><h2>Document details</h2><span class="ad-tag {{ 'green' if not document.deleted_at and document.status in ['issued','confirmed'] else 'orange' if document.status == 'pending' else '' }}">{{ _('Deleted') if document.deleted_at else _(document.status.title()) }}</span></div>
 <dl class="ad-definition detail-grid">

@@ -97,8 +97,10 @@ def exports():
         to_local=lambda ms: queries.ms_to_local(_tz_name(), ms),
         pagination={
             "first": first, "last": last, "total": total,
-            "prev_url": url_for("research.exports", page=page - 1) if page > 1 else None,
-            "next_url": url_for("research.exports", page=page + 1) if last < total else None,
+            "prev_url": url_for("research.exports", page=page - 1,
+                view="archive" if request.args.get("view") == "archive" else None) if page > 1 else None,
+            "next_url": url_for("research.exports", page=page + 1,
+                view="archive" if request.args.get("view") == "archive" else None) if last < total else None,
         },
     )
 

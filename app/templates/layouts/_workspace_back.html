@@ -1,0 +1,7 @@
+{% set back = workspace_back() %}
+{% if back %}
+<div class="workspace-page-navigation">
+  <a class="workspace-page-back" href="{{ back }}" data-workspace-back><span aria-hidden="true">&larr;</span> Back</a>
+  {% if role in ['student','teacher'] %}{{ portal_blocks.workspace_page_actions() }}{% endif %}
+</div>
+{% endif %}

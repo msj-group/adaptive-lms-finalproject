@@ -1,7 +1,9 @@
-{% extends "layouts/admin_base.html" %}{% import "_figma_ui.html" as ui %}
+{% extends 'admin/general_finance/_base.html' %}
+{% import 'admin/general_finance/_ui.html' as finance with context %}
+{% set finance_view = 'history' %}{% import "_figma_ui.html" as ui %}
 {% block title %}{{ student.full_name }} — Financial history{% endblock %}
-{% block admin_content %}<div class="ad-stack">
-<header class="ad-page-head"><div><p class="ad-eyebrow">FINANCE / CORRECTION HISTORY</p><h1 data-workspace-page-heading>{{ student.full_name }}</h1><p class="ad-subtitle">Preserved changes, operators and recording times.</p></div><a class="btn btn--secondary" href="{{ url_for('admin.student_financial_record',student_public_id=student.public_id) }}">Current account</a></header>
+{% block finance_content %}<div class="ad-stack ff-native-content" data-finance-content data-finance-view="history" data-finance-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}" data-finance-student="{{ student.public_id }}" data-finance-document="" data-finance-kind="">
+<header class="ad-page-head"><div><p class="ad-eyebrow">FINANCE / CORRECTION HISTORY</p><h2 data-workspace-page-heading>{{ student.full_name }}</h2><p class="ad-subtitle">Preserved changes, operators and recording times.</p></div><a class="btn btn--secondary" href="{{ url_for('admin.student_financial_record',student_public_id=student.public_id) }}">Current account</a></header>
 <div class="ad-notice">{{ ui.icon('info',16) }}<p>Records appear at the time each change was recorded. Deleted and corrected documents retain their previous values.</p></div>
 <div class="ad-stack ax-correction-history">
 {% for entry in entries %}<article class="ad-card"><div class="ad-card-top"><div><p class="ad-eyebrow">{{ _(entry.kind) }} / {{ _(entry.action) }}</p><h2>{{ entry.document }}</h2><p class="ad-meta">{{ entry.moment }} · {{ entry.actor }}</p></div><span class="ad-tag">{{ _(entry.action) }}</span></div>

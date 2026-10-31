@@ -200,6 +200,7 @@ def workspace_context():
             to_app_local(_tz(), moment) if moment else None, "workspace_group_choices": group_choices,
             "workspace_nav_active": nav_active, "workspace_size": human_size,
             "workspace_calendar_weeks": calendar_weeks, "workspace_back": workspace_back_link,
+            "workspace_navigation": workspace_navigation,
             "workspace_breadcrumbs": workspace_breadcrumbs,
             "workspace_admin_navigation": admin_navigation,
             "workspace_mobile_shortcuts": mobile_shortcuts}
@@ -266,7 +267,7 @@ def _workspace_page_match(path):
         "administrator": {"workspace.student_enrollments"},
     }
     allowed = endpoint.startswith(own_blueprint + ".") or endpoint in {"account.settings", "workspace.search"} \
-        or endpoint.startswith("messages.") and role in ("student", "teacher", "administrator", "researcher") \
+        or endpoint.startswith(("messages.", "notifications.")) and role in ("student", "teacher", "administrator", "researcher") \
         or endpoint in shared.get(role, set())
     return (endpoint, args) if allowed else None
 
@@ -379,14 +380,51 @@ def workspace_breadcrumbs(context, page_title):
     return crumbs
 
 
-def workspace_back_link():
-    """Return to a same-origin GET page in this role, or a registered parent.
-
-    A native link preserves the activity save/leave guards and works without JS.
-    No navigation history, query values or private content is persisted.
-    Destination views remain responsible for object-level authorization.
-    """
+def _workspace_previous_page():
+    """Accept only a same-origin, same-role registered GET page as an origin."""
     from urllib.parse import urlsplit
+
+    try:
+        previous = urlsplit(request.referrer or "")
+        current = urlsplit(request.url)
+        if (previous.netloc == current.netloc and previous.scheme == current.scheme
+                and not previous.username and not previous.password
+                and len(previous.query) <= 2048
+                and (previous.path, previous.query) != (current.path, current.query)
+                and not any(ord(char) < 32 for char in previous.query)
+                and _workspace_page_match(previous.path)):
+            return previous.path + ("?" + previous.query if previous.query else "")
+    except ValueError:
+        pass
+    return None
+
+
+def workspace_navigation():
+    """Ephemeral tab navigation is isolated by account and authentication version.
+
+    The opaque scope exposes neither identity nor credentials. No server session,
+    database, collector, or business record is changed by navigation metadata.
+    """
+    import hashlib
+    import hmac
+
+    if not current_user.is_authenticated:
+        return {}
+    identity = f"workspace-navigation:v1:{current_user.public_id}:{current_user.auth_version}:{current_user.role}"
+    secret = current_app.secret_key
+    scope = hmac.new(secret.encode() if isinstance(secret, str) else secret,
+                     identity.encode(), hashlib.sha256).hexdigest()[:32]
+    return {"scope": scope, "previous": _workspace_previous_page(),
+            "get": request.method == "GET"}
+
+
+def workspace_back_link():
+    """Return a registered parent as the safe no-script/direct-entry fallback.
+
+    JavaScript enhances this native link from an ephemeral per-tab trail; using
+    the referrer as the fallback would create A -> B -> A -> B loops. Ordinary
+    links preserve activity save/leave guards and destination authorization.
+    """
     from app.blueprints.auth.routes import home_endpoint_for
 
     if not current_user.is_authenticated:
@@ -399,16 +437,6 @@ def workspace_back_link():
         nav_active("teacher.activities") or bool((request.view_args or {}).get("group_public_id"))
         and nav_active("workspace.review_queue"))
 
-    try:
-        previous = urlsplit(request.referrer or "")
-        current = urlsplit(request.url)
-        if (previous.netloc == current.netloc and previous.scheme == current.scheme
-                and not previous.username and not previous.password
-                and len(previous.query) <= 2048 and previous.path != current.path
-                and _workspace_page_match(previous.path)):
-            return previous.path + ("?" + previous.query if previous.query else "")
-    except ValueError:
-        pass
     parent = request.path.rstrip("/").rsplit("/", 1)[0]
     while parent:
         match = _workspace_page_match(parent)

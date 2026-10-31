@@ -65,7 +65,8 @@ def build_general_report(key, args, *, export=False):
             query = query.filter(User.full_name.ilike(f"%{search}%"))
         students = query.order_by(User.full_name, User.id).offset(offset).limit(limit).all()
         balances = balances_for_students(row.id for row in students)
-        rows = [{"student": row.full_name, "balance": balances[row.id]["balance"]} for row in students]
+        rows = [dict(student=row.full_name, balance=balances[row.id]["balance"],
+                     **({"student_public_id": row.public_id} if not export else {})) for row in students]
         columns = (Column("student", "Student", TEXT), Column("balance", "Signed balance (LYD)", AMOUNT))
         title = "Current Student accounts"
         notes = ("Positive: student owes the center. Negative: center owes the student. Zero: balanced.",
@@ -74,11 +75,14 @@ def build_general_report(key, args, *, export=False):
         if args.get("start") or args.get("end"):
             raise ValueError("Exceptions show current unresolved records and take no date range.")
         manual = select(User.full_name.label("student"),literal("Bank transfer").label("kind"),PaymentTransaction.amount.label("amount"),
-            PaymentTransaction.status.label("state"),PaymentTransaction.recorded_at.label("moment"),literal(1).label("source"),PaymentTransaction.id.label("row_id")).join(User,User.id==PaymentTransaction.student_id).where(
+            PaymentTransaction.status.label("state"),PaymentTransaction.recorded_at.label("moment"),literal(1).label("source"),PaymentTransaction.id.label("row_id"),
+            User.public_id.label("student_public_id"),PaymentTransaction.public_id.label("document_public_id"),literal("payment").label("document_kind")).join(User,User.id==PaymentTransaction.student_id).where(
                 User.role=="student",PaymentTransaction.deleted_at.is_(None),PaymentTransaction.status.in_(["pending","rejected"]))
-        intents = select(User.full_name,literal("Historical payment request"),PaymentIntent.amount,PaymentIntent.status,PaymentIntent.created_at,literal(2),PaymentIntent.id).join(
+        intents = select(User.full_name,literal("Historical payment request"),PaymentIntent.amount,PaymentIntent.status,PaymentIntent.created_at,literal(2),PaymentIntent.id,
+            User.public_id,Invoice.public_id,literal("invoice")).join(
             Invoice,Invoice.id==PaymentIntent.invoice_id).join(User,User.id==Invoice.student_id).where(User.role=="student",PaymentIntent.status.in_(["pending","provider_succeeded"]))
-        events = select(User.full_name,literal("Provider reconciliation"),PaymentProviderEvent.amount,PaymentProviderEvent.outcome,PaymentProviderEvent.received_at,literal(3),PaymentProviderEvent.id).join(
+        events = select(User.full_name,literal("Provider reconciliation"),PaymentProviderEvent.amount,PaymentProviderEvent.outcome,PaymentProviderEvent.received_at,literal(3),PaymentProviderEvent.id,
+            User.public_id,Invoice.public_id,literal("invoice")).join(
             PaymentIntent,PaymentIntent.id==PaymentProviderEvent.payment_intent_id).join(Invoice,Invoice.id==PaymentIntent.invoice_id).join(User,User.id==Invoice.student_id).where(
                 User.role=="student",PaymentProviderEvent.outcome=="reconciliation_required")
         table = union_all(manual,intents,events).subquery()
@@ -100,7 +104,10 @@ def build_general_report(key, args, *, export=False):
         revisions = query.order_by(FinancialRevision.created_at.desc(), FinancialRevision.id.desc()).offset(offset).limit(limit).all()
         student_names = dict(db.session.query(User.id, User.full_name).filter(User.id.in_(
             {revision.student_id for revision, _actor in revisions})).all())
-        rows = [dict(revision_view(revision, actor), student=student_names.get(revision.student_id, "Student")) for revision, actor in revisions]
+        rows = [dict(revision_view(revision, actor), student=student_names.get(revision.student_id, "Student"),
+            **({"document_public_id": (revision.after_snapshot or {}).get("public_id"),
+                "document_kind": "invoice" if revision.invoice_id else "receipt" if revision.receipt_id else "payment"}
+               if not export else {})) for revision, actor in revisions]
         columns = tuple(Column(*value) for value in (("moment","Recorded",MOMENT),("student","Student",TEXT),
             ("document","Document",TEXT),("action","Action",TEXT),("before_amount","Before (LYD)",AMOUNT),
             ("after_amount","After (LYD)",AMOUNT),("before_state","Previous state",TEXT),("after_state","Current state",TEXT),

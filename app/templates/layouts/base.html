@@ -7,13 +7,14 @@
   <script src="{{ url_for('static', filename='js/ui_boot.js') }}"></script>
   {% if ui_language() == 'ar' %}<script src="{{ url_for('appearance.arabic_script', v=ui_catalog_version()) }}" defer></script>{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css', v='search-focus-20261030') }}">
   {% block extra_head %}{% endblock %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/appearance.css', v='navigation-preferences-20261016') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/appearance.css', v='workspace-theme-20261030') }}">
   {% block product_styles %}{% endblock %}
   {% block protected_styles %}{% endblock %}
-  <script src="{{ url_for('static', filename='js/appearance.js', v='navigation-preferences-20261016') }}" defer></script>
-  {% if current_user.is_authenticated %}<script src="{{ url_for('static', filename='js/file_inputs.js', v='platform-fixes-20261011') }}" defer></script>{% endif %}
+  {% if current_user.is_authenticated %}<link rel="stylesheet" href="{{ url_for('static', filename='css/search_focus.css', v='caret-search-20261030') }}">{% endif %}
+  <script src="{{ url_for('static', filename='js/appearance.js', v='workspace-theme-20261030') }}" defer></script>
+  {% if current_user.is_authenticated %}<script src="{{ url_for('static', filename='js/file_inputs.js', v='platform-fixes-20261011') }}" defer></script><script src="{{ url_for('static', filename='js/workspace_back.js', v='workspace-back-20261030') }}" defer></script>{% endif %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <main>

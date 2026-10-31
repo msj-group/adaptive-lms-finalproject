@@ -1,5 +1,17 @@
 # Project Decisions
 
+## 2026-10-31 — Approved light Researcher interface
+
+Implement the owner's revised Figma concept inside the existing Researcher
+workspace, using the actual platform logo and light platform palette with no
+motivational copy or AURA branding in product UI. The Figma filename stays as-is.
+The light surface is scoped to Researcher pages; it does not rewrite device
+preferences or other roles. Preserve real server data, v1/v2 distinctions,
+evaluation-group protection and native signed/CSRF workflows. Prototype sample
+values never become application data. Entrance motion respects reduced motion;
+exact prototype Smart Animate transition parity is not claimed. See
+[implementation evidence](RESEARCHER_INTERFACE_20261031.md).
+
 ## 2026-10-30 - Count usable-label yield separately from raw responses
 
 Successful response delivery does not imply primary training eligibility. Keep
@@ -184,6 +196,25 @@ version retention; new v2 policy is 45 days when separately configured/activated
   Proposed defaults/formulas/schema scope: RESEARCH_V2_DATA_CONTRACT.md.
   Source runtime, schema, settings, schedules and paid services are unchanged.
   No new automated test package, DB action, Git mutation or deployment.
+
+## 2026-10-26 — Administrator Finance Account focus
+
+- Apply the owner's selected directory/account composition using existing
+  balances and native routes. Preserve register filters, independent ledger
+  paging, original accounting statuses and shared shell/themes/RTL/20px panels.
+- Open native financial readers/forms, history, receipts and read-only
+  enrollment history within Finance. Bind actor/auth version/role and exact
+  public Student/document/path; cancel obsolete reads and retain native recovery.
+  People profile and Group/course operations keep their native module owners.
+- Preserve native CSRF, operation keys, snapshots and returned validation.
+  Native form fields named action/method require HTML attribute access.
+  Only the matching native account success marker confirms completion; an
+  uncertain result keeps the draft and blocks repeated writes. Stale/uncertain
+  return requests a fresh account instead of restoring cached values.
+- Keep the existing query fragment owner. An explicit refresh-current option
+  preserves Finance's committed list URL/page after confirmed completion;
+  behavior of other query consumers is unchanged. No financial SQL/write policy
+  is added. Evidence and limits: ADMIN_FINANCE_ACCOUNT_FOCUS.md.
 
 ## 2026-10-26 — Share Communication Messages with Student and Teacher
 
@@ -13791,3 +13822,21 @@ sampling/session/provenance semantics. Operational details and migration/recover
 evidence are in `REPAIR_INTEGRATION.md`; implementation is distinct from acceptance.
 No reset, scheduler change, real collection period or Git mutation is authorized
 by this integration instruction.
+
+## Financial reports Ledger Studio - 2026-10-26
+
+The owner selected Ledger Studio with explicit verification of in-page
+subpage transitions. Keep the current Admin shell/dock and all existing
+financial meanings, limits, server guards and signed writers. Page-scoped
+metrics must never imply centre-wide totals. The original authorized GETs
+may return read-only report fragments when X-Ledger-Reader is requested;
+ordinary Finance templates remain their native owners. Bind imported content
+to the exact actor, public Student, document and reader kind. Preserve nested
+Back and report filters/paging, abort stale reads and retain explicit recovery.
+Actual CSV/PDF exports use native scope/limits and must not report success for
+HTML/error responses. No simulated payment or new financial rule is added.
+
+Implementation and bounded static/fictional-memory manual evidence are in
+ADMIN_FINANCIAL_REPORTS_LEDGER_STUDIO.md. This Part performs no automated
+tests, actual database/business write, migration, reset/seed, scheduler,
+dependency, Git mutation or deployment. Preserve concurrent Finance work.

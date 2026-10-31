@@ -1,16 +1,78 @@
 # Repair status
 
-## Research source branch approved; launch gates remain - 2026-10-30
+## Researcher Figma interface implemented locally — 2026-10-31
 
-The owner approved one source-only commit and push on the isolated branch
-codex/research-v2-launch-20261030. The source-owned baseline freezes the 826-file
-runtime at 201ead4f8d0fd95a320800cbb1fd56d50404d3d222f0f55bf23d14542b525c37.
-The new baseline and approval records follow the independently
-reviewed 919-file proposal; runtime bytes remain unchanged. Local fictional
-timely-answer/export checks passed and collection remains paused. This source
-approval does not close Phase 6: actual Android/iPhone, hosted parent/backup,
-monitor delivery/retention and the consented pilot still gate main collection.
-Earlier entries below record the checkpoint before this Git approval.
+The owner's approved light Researcher concept is implemented in the existing
+Jinja workspace: platform logo, translucent blue/white surfaces, desktop/phone
+navigation, overview, sessions/detail, quality/groups, configuration, exports,
+storage and audit. Source counts, v1/v2 separation, CSRF/signed forms and reserved
+final-test protection are preserved. Only presentation redirects/pagination were
+adjusted in Python. Other role shells and existing uncommitted work are preserved.
+
+Localized-template/Python syntax, JavaScript syntax and bounded manual fictional
+presentation review were performed. No automated tests, database/authenticated
+workflow acceptance, migrations, deployment, scheduler or Git mutation occurred.
+The Figma filename remains unchanged. See
+[Researcher implementation and evidence](RESEARCHER_INTERFACE_20261031.md).
+
+## Workspace shell and Theme corrected locally - 2026-10-30
+
+The owner's new UI request replaces the Admin rail/header with shared Student-style
+navigation, removes the specified rail/account Help shortcuts and header/page
+hierarchies, adds inline account Theme choices with resolved sun/moon icons,
+and preserves contextual Back without repeated loops. Desktop/phone and Arabic
+presentation were reviewed manually using actual templates/assets and fictional
+in-memory context without a database. Static syntax and CRLF-aware diff checks
+passed; these are not automated or authenticated application acceptance.
+Details, evidence, files and limits: WORKSPACE_SHELL_20261030.md. No database,
+migration, scheduler, deployment or Git mutation is included; all earlier Finance
+and Research work is preserved. The hosted installation is unchanged by this Part.
+
+The subsequent search/Login UI request is also implemented locally: caret-only
+search focus, neutral Login typing and explicit email/lock icons. Bounded manual
+presentation and static evidence, with no authentication/DB or automated tests,
+is recorded in SEARCH_AND_LOGIN_FIELDS_20261030.md. Hosting is unchanged.
+
+The owner then requested removing the post-login intermediate screen. Shared
+sign-in now redirects directly to the validated destination; the legacy opening
+URL redirects without rendering. Static evidence and explicit authentication
+verification limits are in DIRECT_SIGN_IN_20261030.md. No deployment was performed.
+
+## Hosted data reset and three-account setup verified - 2026-10-30
+
+The owner's new explicit reset request is complete on the existing Railway
+production database only. Final independent MySQL verification: 86 unchanged
+InnoDB tables at a6f2c9d84e71, 14 rows comprising the requested teaching setup
+plus Alembic/control metadata, all other business/research tables empty, and
+FK/CHECK enforcement retained. All three browser logins passed; each Teacher
+saw her correct Group and Saturday 18:00-20:00 class. Web service was resumed;
+temporary SSH access was revoked and its key files removed. A verified
+22141-row pre-reset backup stays in a private directory on the hosting volume.
+Local DB, application/private files and existing source work were preserved.
+No migration, deployment, scheduler, automated application tests or Git mutation
+ran. Course price/room remain unset; no Researcher/configuration was recreated.
+Details and recovery limitations: HOSTED_DATA_RESET_20261030.md. Earlier hosted
+row-preservation counts below are historical, before this separately approved
+reset, and must not be treated as the current active database contents.
+
+## Hosted Research v2 deployed and verified - 2026-10-30
+
+Owner-authorized deployment 371a2d5a-dc13-4c78-9d51-e24d9dfcfe06 is SUCCESS,
+serving exact Research-only commit b33535e568ae5a2a3b9720aeedbbb8bfec1bb252.
+The exact hosted railway database transition 8e5f3b0d7124 -> a6f2c9d84e71 passed
+schema/constraint verification. A protected frozen-parent backup and separate
+postdeploy typed-row comparison confirmed all 22141 original rows preserved
+except the intended Alembic revision value; all 11 new tables were empty.
+Health returned 200; authenticated browser review confirmed v2 draft controls.
+The approved temporary SSH key was revoked and its private files removed.
+
+Upcoming v2 activation uses enabled=true/45 days; old v1 stays paused with its
+recorded 15-day policy. Development provenance and Study disabled remain.
+No new Git mutation, reset, paid monitor, scheduler, Telegram or purge ran.
+Phase 6/main collection still requires hosted v2 configuration/release, actual
+Android/iPhone and pilot acceptance, monitoring/retention operation and storage
+capacity decisions. Details/evidence: RESEARCH_V2_HOSTED_DEPLOYMENT.md.
+Older "not deployed" entries below describe earlier checkpoints only.
 
 ## Local timely-answer and export verified - 2026-10-30
 
@@ -221,6 +283,58 @@ Git mutation or deployment was performed. Existing Finance work is preserved.
 At the initial design stop point a narrow creation question was pending.
 The owner subsequently approved local proposal preparation only; applying it
 to any database, starting paid services and deployment remain out of scope.
+
+## Administrator Financial reports Ledger Studio - 2026-10-26
+
+Implemented the owner's selected report composition and requested in-page
+transitions locally from `4544d56`. The three reports retain native filters,
+paging, financial meanings and export columns/limits. Desktop side dialogs
+become full-width phone sheets; account/document/history/receipt GETs and
+their nested links/paging remain inside the report. Back/Close/browser history
+retain report state. CSV/PDF use actual downloads with inline failure/retry.
+Concurrent Finance Account focus and other existing work were preserved.
+
+Executed: four Python sources parse; three localized StrictUndefined templates
+compile; JavaScript syntax passes; seven protected hashes, three native writer
+ASTs, two calculation helper ASTs and export column definitions match. Manual
+actual-template review over fictional memory covered nested readers, account
+and report paging, search/dates, retained state, browser Back/Forward, real
+fictional CSV/PDF export and refused/foreign Student/actor responses. Desktop
+and 390/320px phone widths fit, including Arabic/RTL/dark. The actor-change
+Close edge case and native phone-dialog width cap were corrected and rechecked.
+Evidence/limits: [Ledger Studio](ADMIN_FINANCIAL_REPORTS_LEDGER_STUDIO.md).
+
+No automated tests, actual database/business write, migration, reset/seed,
+scheduler, dependency, Git mutation or deployment occurred. ORM/live role
+execution, concurrency, physical printing and comprehensive regression
+acceptance remain unperformed. Source completion and bounded presentation
+review do not establish production acceptance.
+
+## Administrator Finance Account focus — 2026-10-26
+
+Implemented the owner's selected composition locally from `4544d56`, including
+the requested subpage transitions. Existing account/register queries, signed
+forms and accounting meanings remain. Desktop directory/account split stacks
+on phones; invoices, movements, forms, correction/enrollment history and receipts
+open within Finance. Back, draft protection, native completion, uncertain-write
+blocking and native recovery remain explicit. A scoped shared-query option
+preserves the committed page after a completed write response. Concurrent
+Ledger Studio source changes and pre-existing untracked work were preserved.
+
+Executed: twelve scoped localized StrictUndefined templates compile, seven
+native-control comparisons match, both JavaScript syntax checks pass, and the
+three native movement/correction/preview handlers match the baseline by AST.
+Actual-template manual browser review over fictional memory covered the nested
+readers/forms, validation/drafts, server-return presentation, filter/page return,
+read failure/retry, stale/uncertain/foreign actor or Student responses, and
+1440/768/390/320px layouts including Arabic/RTL/dark. Measured document widths
+do not overflow; original locale values/duplicate counts are retained.
+
+No automated tests, actual database access, real financial operation, migration,
+reset/seed, dependency, scheduler, staging/commit/push or deployment occurred in
+this task. Manual response fixtures do not establish real persistence, MySQL
+concurrency or full regression acceptance. Exact evidence and local stop point:
+[ADMIN_FINANCE_ACCOUNT_FOCUS.md](ADMIN_FINANCE_ACCOUNT_FOCUS.md).
 
 ## Release preparation — 2026-10-26
 

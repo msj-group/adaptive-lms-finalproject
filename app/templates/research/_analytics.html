@@ -1,6 +1,6 @@
 {% macro count_chart(title, series, source, scope, note='') %}
 <figure class="research-chart">
-  <figcaption><h3>{{ title }}</h3><span>Count axis · 0–{{ series.maximum }}</span></figcaption>
+  <figcaption><h3>{{ _(title) }}</h3><span>Count axis · 0–{{ series.maximum }}</span></figcaption>
   {% if series.total %}
   <table class="research-bar-table"><caption class="sr-only">{{ title }}: exact counts and visual bars</caption>
     <thead class="sr-only"><tr><th scope="col">Category</th><th scope="col">Count bar</th><th scope="col">Count</th></tr></thead>

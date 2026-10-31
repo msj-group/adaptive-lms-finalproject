@@ -1,7 +1,9 @@
 {% extends "layouts/research_base.html" %}
+{% import "research/_ui.html" as rs %}
 {% block title %}Export unavailable{% endblock %}
 {% block research_content %}
-<h1 data-workspace-page-heading>Export unavailable</h1>
+{{ rs.heading('Export unavailable','The saved export description remains available.','Export archive') }}
+<section class="rs-card">
 {% if reason == "expired" %}
 <p data-archive-state="expired">This export's ZIP bytes are no longer retained. Automatic retention or an authorized cleanup may remove an archive while preserving its description and digest. These exact bytes are never rebuilt. Create a new export for the data that
   is still retained.</p>
@@ -10,4 +12,5 @@
   not served. Create a new export.</p>
 {% endif %}
 <p><a class="btn btn--secondary" href="{{ url_for('research.exports') }}">Back to exports</a></p>
+</section>
 {% endblock %}

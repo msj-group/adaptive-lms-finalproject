@@ -10,7 +10,6 @@
   --ec-red: light-dark(#d32b31,#ff676c);
   --ec-modal: light-dark(#f8fbff,#13233e);
   --ec-control: light-dark(#f3f7ff,#0d1b32);
-  --ec-control-active: light-dark(#f9fbff,#10213e);
   position: relative; isolation: isolate; overflow: hidden; min-height: max(710px,100svh);
   display: flex; flex-direction: column; color: var(--ec-ink); background: light-dark(#e4eafa,#0a142b);
   font: 400 14px/1.5 var(--font-family-base); text-align: start; color-scheme: inherit;
@@ -45,13 +44,12 @@
 .eclipse-login .ec-field + .ec-field { margin-top: 19px; }
 .eclipse-login .ec-label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 9px; }
 .eclipse-login .ec-shell { --ec-autofill: var(--ec-control); position: relative; display: flex; align-items: center; gap: 10px; min-height: 51px; padding: 0 13px; border: 1px solid var(--ec-line); border-radius: 11px; background: var(--ec-autofill); color: var(--ec-muted); transition: border-color .32s,box-shadow .32s,background .32s; }
+.eclipse-login .ec-field-icon { display:inline-flex; align-items:center; justify-content:center; flex:0 0 20px; width:20px; height:20px; color:light-dark(#144baa,#b8d0fa); pointer-events:none; }
 .eclipse-login .ec-shell::after { content: ""; position: absolute; inset: -4px; border: 1px solid transparent; border-radius: 14px; opacity: 0; transform: scale(.985); pointer-events: none; transition: opacity .3s,transform .3s,border-color .3s; }
 .eclipse-login .ec-shell .ec-input { display: block; width: 100%; min-width: 0; height: 49px; border: 0; border-radius: 0; background: transparent; color: var(--ec-ink); font-size: 13px; padding: 0; outline: none; box-shadow: none; text-align: start; }
-/* The animated outer shell replaces the browser's inner focus rectangle. */
+/* Typing keeps the normal shell appearance; validation is styled separately. */
 .eclipse-login .ec-shell .ec-input:focus, .eclipse-login .ec-shell .ec-input:focus-visible { outline: none; box-shadow: none; }
 .eclipse-login .ec-input::placeholder { color: var(--ec-muted); opacity: .68; }
-.eclipse-login .ec-field:focus-within .ec-shell { --ec-autofill: var(--ec-control-active); border-color: var(--ec-red); box-shadow: 0 0 0 2px light-dark(rgb(211 43 49 / .07),rgb(255 103 108 / .07)); }
-.eclipse-login .ec-field:focus-within .ec-shell::after { border-color: light-dark(rgb(211 43 49 / .24),rgb(255 103 108 / .26)); opacity: 1; transform: scale(1); }
 .eclipse-login .ec-field[data-valid="true"] .ec-shell { border-color: var(--ec-green); box-shadow: 0 0 0 2px light-dark(rgb(23 132 92 / .06),rgb(70 216 160 / .05)); }
 .eclipse-login .ec-field[data-valid="true"] .ec-shell::after { border-color: light-dark(rgb(23 132 92 / .22),rgb(70 216 160 / .23)); opacity: 1; transform: scale(1); }
 .eclipse-login .ec-email-status { display: flex; align-items: center; flex-shrink: 0; width: 0; opacity: 0; transform: scale(.6); overflow: hidden; color: var(--ec-green); transition: width .28s,opacity .25s,transform .35s; }
@@ -62,7 +60,7 @@
 .eclipse-login .ec-notice { border: 1px solid var(--ec-line); border-radius: 11px; padding: 12px 14px; margin-bottom: 20px; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; background: light-dark(rgb(255 255 255 / .45),rgb(9 23 46 / .5)); }
 .eclipse-login .ec-notice--danger { border-color: light-dark(rgb(211 43 49 / .4),rgb(255 103 108 / .4)); color: var(--ec-red); }
 .eclipse-login .ec-eye { width: 30px; height: 42px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 0; padding: 0; background: none; color: var(--ec-muted); border-radius: 7px; }
-.eclipse-login .ec-eye:focus-visible { outline: 2px solid var(--ec-red); outline-offset: 1px; }
+.eclipse-login .ec-eye:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 1px; }
 .eclipse-login .ec-options { display: flex; justify-content: flex-end; margin: 19px 0 23px; min-height: 20px; }
 .eclipse-login .ec-link { color: light-dark(#144baa,#b8d0fa); background: none; border: 0; padding: 0; font-size: 11px; border-radius: 3px; text-decoration: none; }
 .eclipse-login .ec-link:hover { text-decoration: underline; text-underline-offset: 4px; }

@@ -10,12 +10,14 @@
   ('finance','Finance','Finance','admin.student_accounts','wallet'),
   ('reports','Financial reports','Reports','admin.financial_reports_index','chart')
 ] %}
-{% macro rail(section) -%}
-{% for heading,links in [
- ('Workspace',[('Overview','admin.dashboard','dashboard'),('People','admin.students_list','users'),('Groups','admin.groups_list','book'),('Calendar','admin.schedules_overview','calendar')]),
- ('Management',[('Academic setup','admin.courses_list','layers'),('Attendance & grades','admin.attendance_overview','activity'),('Communication','messages.inbox','message'),('Finance','admin.student_accounts','wallet'),('Financial reports','admin.financial_reports_index','chart')])] %}
-<p class="ax-nav-heading">{{ _(heading) }}</p>
-{% for label,target,symbol in links %}{% set section_target={'admin.students_list':'people','admin.courses_list':'academics','admin.attendance_overview':'learning','messages.inbox':'communication','admin.student_accounts':'finance','admin.financial_reports_index':'reports','admin.schedules_overview':'calendar','admin.groups_list':'groups'}.get(target) %}<a href="{{ url_for(target) }}" class="ax-rail-link"{% if workspace_nav_active(target) or (section_target and section == section_target) %} aria-current="page"{% endif %}>{{ atlas_ui.icon(symbol,19) }}<span>{{ _(label) }}</span></a>{% endfor %}
+{% macro rail(section, mobile_more=false, primary_targets=[]) -%}
+{% for heading,keys in [('Workspace',['home','people','groups','calendar']), ('Administration',['academics','learning','communication','finance','reports'])] %}
+<p class="st-nav-label">{{ _(heading) }}</p>
+{% for key,label,short,target,symbol in destinations if key in keys %}
+{% if not mobile_more or target not in primary_targets %}
+{{ atlas_ui.nav_link({'groups':'Groups','calendar':'Calendar'}.get(key,label), target, symbol, section == key if section else workspace_nav_active(target), link_class='st-nav-link') }}
+{% endif %}
+{% endfor %}
 {% endfor %}
 {%- endmacro %}
 {% macro section_tabs(section) -%}

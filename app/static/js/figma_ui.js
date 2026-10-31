@@ -43,9 +43,14 @@
     });
     document.addEventListener("keydown", function (event) {
       if (event.key === "Escape" && accountMenu.open) {
+        var themeMenu = accountMenu.querySelector('[data-theme-menu][open]');
+        if (themeMenu) { event.preventDefault(); themeMenu.open = false; themeMenu.querySelector('summary').focus({preventScroll:true}); return; }
         event.preventDefault(); accountMenu.open = false;
         accountMenu.querySelector("summary").focus({preventScroll:true});
       }
+    });
+    accountMenu.addEventListener('toggle', function () {
+      if (!accountMenu.open) accountMenu.querySelectorAll('[data-theme-menu]').forEach(function (menu) { menu.open = false; });
     });
     accountMenu.addEventListener("focusout", function (event) {
       if (event.relatedTarget && !accountMenu.contains(event.relatedTarget)) accountMenu.open = false;

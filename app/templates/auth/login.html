@@ -4,7 +4,7 @@
 {% block body_class %}figma-login eclipse-login{% endblock %}
 {% block protected_styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css', v='placement-entry-20261013') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/login_eclipse.css', v='eclipse-20261022') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login_eclipse.css', v='neutral-fields-20261030') }}">
 {% endblock %}
 {% block content %}
 <div class="ec-page" data-eclipse-login>
@@ -26,12 +26,12 @@
         {% for error in form.csrf_token.errors %}<p class="ec-error ec-form-error" role="alert">{{ error }}</p>{% endfor %}
         <div class="ec-field" data-email-field{% if form.email.errors %} data-error="true"{% endif %}>
           <label class="ec-label" for="{{ form.email.id }}">Email address</label>
-          <div class="ec-shell">{{ ui.icon('mail', 18) }}{{ form.email(class_='ec-input', type='email', autocomplete='username', placeholder='you@example.com', dir='ltr', spellcheck='false', aria_describedby='email-errors email-format-status', aria_invalid='true' if form.email.errors else 'false') }}<span class="ec-email-status" aria-hidden="true">{{ ui.icon('check', 16) }}</span></div>
+          <div class="ec-shell"><span class="ec-field-icon" aria-hidden="true">{{ ui.icon('mail', 20) }}</span>{{ form.email(class_='ec-input', type='email', autocomplete='username', placeholder='you@example.com', dir='ltr', spellcheck='false', aria_describedby='email-errors email-format-status', aria_invalid='true' if form.email.errors else 'false') }}<span class="ec-email-status" aria-hidden="true">{{ ui.icon('check', 16) }}</span></div>
           <div id="email-errors" data-field-errors>{% for error in form.email.errors %}<p class="ec-error" role="alert">{{ error }}</p>{% endfor %}</div>
         </div>
         <div class="ec-field"{% if form.password.errors %} data-error="true"{% endif %}>
           {{ form.password.label(class_='ec-label') }}
-          <div class="ec-shell">{{ ui.icon('lock', 18) }}{{ form.password(class_='ec-input', autocomplete='current-password', placeholder='Enter your password', dir='ltr', aria_describedby='password-errors', aria_invalid='true' if form.password.errors else 'false') }}<button class="ec-eye" type="button" data-password-toggle aria-label="Show password" aria-pressed="false" aria-controls="{{ form.password.id }}" hidden>{{ ui.icon('eye', 17) }}</button></div>
+          <div class="ec-shell"><span class="ec-field-icon" aria-hidden="true">{{ ui.icon('lock', 20) }}</span>{{ form.password(class_='ec-input', autocomplete='current-password', placeholder='Enter your password', dir='ltr', aria_describedby='password-errors', aria_invalid='true' if form.password.errors else 'false') }}<button class="ec-eye" type="button" data-password-toggle aria-label="Show password" aria-pressed="false" aria-controls="{{ form.password.id }}" hidden>{{ ui.icon('eye', 17) }}</button></div>
           <div id="password-errors" data-field-errors>{% for error in form.password.errors %}<p class="ec-error" role="alert">{{ error }}</p>{% endfor %}</div>
         </div>
         <div class="ec-options"><details id="login-account-help" class="ec-help-inline"><summary class="ec-link" data-login-help>Forgot password?</summary><p>Contact your centre administrator for account or password help.</p></details></div>

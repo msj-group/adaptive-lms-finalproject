@@ -1,8 +1,8 @@
 {% import '_figma_ui.html' as appearance_ui %}
 {% if current_user.is_authenticated %}
-{% for preference, title, symbol, close_label in [('language', 'Language', 'globe', 'Close language options'), ('theme', 'Dark mode', 'moon', 'Close dark mode options')] %}
+{% for preference, title, symbol, close_label in [('language', 'Language', 'globe', 'Close language options'), ('theme', 'Theme', 'moon', 'Close theme options')] %}
 <section id="workspace-{{ preference }}-panel" class="workspace-utility-panel workspace-preference-panel" popover="auto" role="dialog" aria-labelledby="{{ preference }}-panel-title" data-utility-panel>
-  <header class="utility-panel-heading"><span class="utility-panel-icon">{{ appearance_ui.icon(symbol,24) }}</span><div><h2 id="{{ preference }}-panel-title">{{ _(title) }}</h2></div><button type="button" class="utility-panel-close" popovertarget="workspace-{{ preference }}-panel" popovertargetaction="hide" aria-label="{{ _(close_label) }}">{{ appearance_ui.icon('close') }}</button></header>
+  <header class="utility-panel-heading"><span class="utility-panel-icon">{{ appearance_ui.theme_icon(24) if preference == 'theme' else appearance_ui.icon(symbol,24) }}</span><div><h2 id="{{ preference }}-panel-title">{{ _(title) }}</h2></div><button type="button" class="utility-panel-close" popovertarget="workspace-{{ preference }}-panel" popovertargetaction="hide" aria-label="{{ _(close_label) }}">{{ appearance_ui.icon('close') }}</button></header>
   <form class="appearance-settings" method="post" action="{{ url_for('appearance.update') }}" data-appearance-form data-research-form="display_preferences_submit">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}">
     {% if preference == 'language' %}

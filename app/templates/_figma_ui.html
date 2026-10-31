@@ -41,6 +41,7 @@
 {% elif name == 'info' %}<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>
 {% elif name == 'globe' %}<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a19 19 0 0 1 0 18 19 19 0 0 1 0-18Z"/>
 {% elif name == 'moon' %}<path d="M20.5 14A9 9 0 0 1 10 3.5 9 9 0 1 0 20.5 14Z"/>
+{% elif name == 'sun' %}<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/>
 {% else %}<circle cx="12" cy="12" r="8"/>{% endif %}
 </svg>
 {%- endmacro %}
@@ -62,6 +63,9 @@
 {% macro page_heading(title) -%}
 <h1 class="figma-page-label">{{ title|striptags }}</h1>
 {%- endmacro %}
+{% macro theme_icon(size=19) -%}
+<span class="workspace-theme-icon" aria-hidden="true"><span class="workspace-theme-icon--light">{{ icon('sun', size) }}</span><span class="workspace-theme-icon--dark">{{ icon('moon', size) }}</span></span>
+{%- endmacro %}
 {% macro account(user, logout_url, csrf, photo_url=none) -%}
 <details class="workspace-account" data-account-menu>
   <summary class="workspace-account-toggle" aria-label="Account options for {{ user.full_name }}" aria-controls="workspace-account-card" title="Account options">{{ avatar(user.full_name, photo_url) }}<span class="workspace-account-caption"><span dir="auto">{{ user.full_name }}</span><small>{{ user.role|capitalize }} workspace</small></span><span class="workspace-account-caret">{{ icon('chevron-down', 14) }}</span></summary>
@@ -69,9 +73,16 @@
     <div class="workspace-account-identity">{{ avatar(user.full_name, photo_url) }}<div><strong dir="auto">{{ user.full_name }}</strong><span class="workspace-account-role">{{ user.role|capitalize }}</span></div></div>
     <nav class="workspace-account-links" aria-label="Account options">
       <a href="{{ url_for('account.settings') }}" data-research-id="nav_account"{% if request.blueprint == 'account' %} aria-current="page"{% endif %}><span class="workspace-menu-icon">{{ icon('user', 19) }}</span><span class="workspace-menu-copy"><strong>Account settings</strong><small>Password and profile photo</small></span>{{ icon('chevron', 14) }}</a>
-      {% for panel, label, symbol in [('language', 'Language', 'globe'), ('theme', 'Dark mode', 'moon'), ('help', 'Help', 'help')] %}
-      <button type="button" popovertarget="workspace-{{ panel }}-panel" data-research-id="{{ 'nav_help' if panel == 'help' else 'nav_display' }}" aria-haspopup="dialog"><span class="workspace-menu-icon">{{ icon(symbol, 19) }}</span><span class="workspace-menu-copy"><strong>{{ label }}</strong></span>{{ icon('chevron', 14) }}</button>
-      {% endfor %}
+      <button type="button" popovertarget="workspace-language-panel" data-research-id="nav_display" aria-haspopup="dialog"><span class="workspace-menu-icon">{{ icon('globe', 19) }}</span><span class="workspace-menu-copy"><strong>Language</strong></span>{{ icon('chevron', 14) }}</button>
+      <details class="workspace-theme-menu" data-theme-menu>
+        <summary data-research-id="nav_display"><span class="workspace-menu-icon">{{ theme_icon() }}</span><span class="workspace-menu-copy"><strong>Theme</strong></span><span class="workspace-theme-caret">{{ icon('chevron-down', 14) }}</span></summary>
+        <form class="workspace-theme-options" method="post" action="{{ url_for('appearance.update') }}" data-appearance-form data-theme-options data-research-form="display_preferences_submit" aria-label="Theme">
+          <input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}"><input type="hidden" name="language" value="{{ ui_language() }}">
+          {% for value, label, symbol in [('system', 'Follow device setting', 'settings'), ('light', 'Light', 'sun'), ('dark', 'Dark', 'moon')] %}
+          <button type="submit" name="theme" value="{{ value }}" aria-pressed="{{ 'true' if ui_theme() == value else 'false' }}" data-research-id="display_preferences_submit">{{ icon(symbol,18) }}<span>{{ label }}</span><span class="workspace-theme-check">{{ icon('check',16) }}</span></button>
+          {% endfor %}
+        </form>
+      </details>
     </nav>
     <form class="workspace-account-signout" method="post" action="{{ logout_url }}" data-account-signout><input type="hidden" name="csrf_token" value="{{ csrf }}"><button type="submit" data-research-id="nav_logout">{{ icon('logout', 18) }} Sign out</button></form>
   </div>

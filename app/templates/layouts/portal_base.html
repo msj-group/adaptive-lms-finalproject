@@ -12,8 +12,8 @@
 {% block product_styles %}
   {% if not template_student and not template_messages %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/community.css') }}">{% endif %}
   {% block feature_styles %}{% endblock %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/foundation.css', v='platform-navigation-20261011') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/shell.css', v='platform-navigation-20261011') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/foundation.css', v='search-focus-20261030') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product/shell.css', v='workspace-navigation-20261030') }}">
   {% if template_messages %}<link rel="stylesheet" href="{{ url_for('static', filename='css/messages.css', v='role-messages-20261026') }}">
   {% elif template_student %}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/features.css', v='student-listening-20261013') }}">
   {% else %}<link rel="stylesheet" href="{{ url_for('static', filename='css/product/operations.css', v='st2-density-20261010') }}">{% endif %}
@@ -33,4 +33,4 @@
 {% block workspace_context %}{% include "_workspace_context.html" %}{% endblock %}
 {% block portal_content %}{% endblock %}
 {% block workspace_footer %}{% endblock %}
-{% block body_scripts %}<script src="{{ url_for('static', filename='js/query_filters.js', v='quiet-success-20261011') }}" defer></script><script src="{{ url_for('static', filename='js/mobile_navigation.js', v='navigation-preferences-20261016') }}" defer></script><script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace_search.js') }}" defer></script><script src="{{ url_for('static', filename='js/live_query.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js', v='dynamic-form-guards-20261022') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js') }}" defer></script>{% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/query_filters.js', v='quiet-success-20261011') }}" defer></script><script src="{{ url_for('static', filename='js/mobile_navigation.js', v='navigation-preferences-20261016') }}" defer></script><script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace_search.js') }}" defer></script><script src="{{ url_for('static', filename='js/live_query.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js', v='dynamic-form-guards-20261022') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js', v='workspace-theme-20261030') }}" defer></script>{% endblock %}

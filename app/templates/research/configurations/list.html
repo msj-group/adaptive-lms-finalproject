@@ -1,14 +1,13 @@
 {% extends "layouts/research_base.html" %}
 {% from "research/_macros.html" import pager %}
+{% import "research/_ui.html" as rs %}
+{% import "_figma_ui.html" as icons %}
 {% block title %}Collection configurations{% endblock %}
 {% block research_content %}
-<div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3)">
-  <h1 data-workspace-page-heading style="margin:0">Collection configurations</h1>
-  <a class="btn btn--primary" href="{{ url_for('research.configuration_new') }}">New draft</a>
-</div>
-<p class="ds-section__desc">Versioned collection and sampling settings; neither consent nor ethics approval.</p>
+{% call rs.heading('Configuration','Versioned collection periods, sampling settings and collection controls.','Collection policy') %}<a class="btn btn--primary" href="{{ url_for('research.configuration_new') }}">{{ icons.icon('pen',17) }} New draft</a>{% endcall %}
+<div class="rs-split"><section class="rs-card"><header class="rs-card-head"><h2>Collection versions</h2><span class="badge badge--neutral">{{ pagination.total }} configurations</span></header>
 {% if rows %}
-<div style="overflow-x: auto">
+<div class="rs-table-wrap">
 <table class="dash-table" style="width:100%">
   <thead>
     <tr><th scope="col">Version</th><th scope="col">Label</th><th scope="col">Status</th>
@@ -33,7 +32,7 @@
 </div>
 {{ pager(pagination, "Configurations") }}
 {% else %}
-<div class="empty-state"><div class="empty-state__title">No configurations</div>
-  <div></div></div>
+{{ rs.empty('No configurations','Create a draft to define a collection period and review its saved policy. A draft collects nothing.','settings') }}
 {% endif %}
+</section><aside class="rs-card"><p class="rs-eyebrow">Version lifecycle</p><h2>Collection controls</h2><div class="rs-task"><span class="rs-task-icon">{{ icons.icon('pen',18) }}</span><span><strong>Draft</strong><small>Edit and review before activation.</small></span></div><div class="rs-task"><span class="rs-task-icon">{{ icons.icon('lock',18) }}</span><span><strong>Active</strong><small>Activation freezes a version. Starting collection is a separate action.</small></span></div><div class="rs-task"><span class="rs-task-icon">{{ icons.icon('layers',18) }}</span><span><strong>Retired</strong><small>Retained as historical collection policy.</small></span></div><p class="workspace-meta">Settings are neither consent nor ethics approval. Review the collection method and retention before activating a version.</p><a href="{{ url_for('research.v2_review') }}">Review collection quality →</a></aside></div>
 {% endblock %}
