@@ -1,0 +1,36 @@
+/* Shared actions that used to be rendered as plain text links. */
+:is(body,.figma-workspace) :is(.ad-row-link,.atlas-link,.cs-text-link,.messenger-text-link,.ls-text-link,.tgb-text-link,.atlas-context-link) {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 2.15rem;
+  max-width: 100%;
+  padding: .35rem .65rem;
+  border: 1px solid var(--ui-line);
+  border-radius: .65rem;
+  color: var(--ui-link);
+  background: color-mix(in srgb, var(--ui-soft) 42%, var(--ui-surface));
+  font-weight: 650;
+  line-height: 1.35;
+  text-decoration: none;
+  vertical-align: middle;
+  transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+:is(body,.figma-workspace) :is(.ad-row-link,.atlas-link,.cs-text-link,.messenger-text-link,.ls-text-link,.tgb-text-link,.atlas-context-link):hover {
+  background: var(--ui-soft);
+  border-color: var(--ui-primary);
+  text-decoration: none;
+}
+:is(body,.figma-workspace) :is(a,button,summary).btn { text-decoration: none; }
+:is(body,.figma-workspace) :is(a,button,summary).btn:not(.btn--accent,.btn--danger-outline) {
+  border-radius: .7rem;
+}
+:is(body,.figma-workspace) .btn--primary:not(:disabled):not([aria-disabled="true"]) {
+  box-shadow: 0 2px 5px color-mix(in srgb, var(--ui-primary) 22%, transparent);
+}
+@media (pointer: coarse) {
+  :is(body,.figma-workspace) :is(.ad-row-link,.atlas-link,.cs-text-link,.messenger-text-link,.ls-text-link,.tgb-text-link,.atlas-context-link) { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.ad-row-link,.atlas-link,.cs-text-link,.messenger-text-link,.ls-text-link,.tgb-text-link,.atlas-context-link) { transition: none; }
+}

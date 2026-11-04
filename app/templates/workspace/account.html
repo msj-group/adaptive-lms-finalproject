@@ -66,13 +66,13 @@
   </section>
   <section class="{{ 'st-panel' if current_user.role == 'student' else 'card' }} account-section" aria-labelledby="password-heading">
     <h2 id="password-heading">Change password</h2>
-    <p class="account-hint" id="password-help">Use 15–128 characters. A long passphrase works well. After saving, sign in again; your other sessions will also end.</p>
+    <p class="account-hint" id="password-help">{{ _('Use %(minimum)d–%(maximum)d characters. No required character mix. After saving, sign in again; your other sessions will also end.', minimum=password_form.new_password.flags.minlength, maximum=password_form.new_password.flags.maxlength) }}</p>
     <form method="post" action="{{ url_for('account.password') }}" data-research-form="account_password_submit" class="yc-form">
       {{ password_form.hidden_tag() }}{{ errors(password_form.state) }}{{ errors(password_form.csrf_token) }}
       {% for field in [password_form.current_password, password_form.new_password, password_form.confirm_password] %}
       <div class="field">
         {{ field.label(class_="field__label") }}
-        {{ field(class_="field__input", autocomplete='current-password' if field.name.endswith('current_password') else 'new-password', required=true, minlength=15 if field.name.endswith('new_password') else false, maxlength=1024 if field.name.endswith('current_password') else 128, aria_describedby='password-help' ~ (' ' ~ field.id ~ '-errors' if field.errors else ''), aria_invalid='true' if field.errors else 'false') }}
+        {{ field(class_="field__input", autocomplete='current-password' if field.name.endswith('current_password') else 'new-password', required=true, minlength=password_form.new_password.flags.minlength if field.name.endswith('new_password') else false, maxlength=field.flags.maxlength, aria_describedby='password-help' ~ (' ' ~ field.id ~ '-errors' if field.errors else ''), aria_invalid='true' if field.errors else 'false') }}
         {{ errors(field) }}
       </div>
       {% endfor %}

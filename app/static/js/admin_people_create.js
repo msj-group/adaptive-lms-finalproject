@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Centered account creation using the original signed forms and native POSTs. */
 (function () {
   'use strict';
@@ -95,7 +97,7 @@
     dialog.setAttribute('aria-busy', 'true');
     setStatus('Loading account form…');
     try {
-      const response = await fetch(createURL.href, {credentials: 'same-origin', cache: 'no-store',
+      const response = await pageScope.fetch(createURL.href, {credentials: 'same-origin', cache: 'no-store',
         signal: controller.signal, headers: {'Accept': 'text/html'}});
       if (!response.ok || response.redirected) throw new Error('unavailable');
       const loaded = await parsed(response);
@@ -113,7 +115,7 @@
   };
   document.querySelectorAll('[data-people-create-open]').forEach((link) => {
     if (new URL(link.href, location.href).href !== createURL.href) return;
-    link.addEventListener('click', (event) => {
+    pageScope.listen(link, 'click', (event) => {
       if (event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey || scopeInvalid) return;
       event.preventDefault();
       if (dialog.open) return;
@@ -123,10 +125,10 @@
       loadForm();
     });
   });
-  closeButton.addEventListener('click', permitClose);
-  retry.addEventListener('click', loadForm);
-  dialog.addEventListener('cancel', (event) => {event.preventDefault(); permitClose();});
-  dialog.addEventListener('click', (event) => {
+  pageScope.listen(closeButton, 'click', permitClose);
+  pageScope.listen(retry, 'click', loadForm);
+  pageScope.listen(dialog, 'cancel', (event) => {event.preventDefault(); permitClose();});
+  pageScope.listen(dialog, 'click', (event) => {
     if (event.target.closest('[data-people-create-cancel]')) {
       event.preventDefault(); event.stopPropagation(); permitClose(); return;
     }
@@ -134,12 +136,12 @@
     const box = dialog.getBoundingClientRect();
     if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) permitClose();
   });
-  dialog.addEventListener('close', () => {
+  pageScope.listen(dialog, 'close', () => {
     cancelRead();
     delete document.body.dataset.peopleCreateOpen;
     if (opener?.isConnected) opener.focus({preventScroll: true});
   });
-  dialog.addEventListener('submit', async (event) => {
+  pageScope.listen(dialog, 'submit', async (event) => {
     const form = event.target;
     if (event.defaultPrevented || !form.matches('form[data-people-create-form]')) return;
     event.preventDefault();
@@ -155,7 +157,7 @@
     recovery.hidden = true;
     setStatus('Creating account…');
     try {
-      const response = await fetch(createURL.href, {method: 'POST', body: data, credentials: 'same-origin',
+      const response = await pageScope.fetch(createURL.href, {method: 'POST', body: data, credentials: 'same-origin',
         cache: 'no-store', headers: {'Accept': 'text/html'}});
       const loaded = await parsed(response);
       if (!active || !dialog.open) return;
@@ -191,8 +193,8 @@
       buttons.forEach((button) => {button.disabled = uncertain || scopeInvalid;});
     }
   });
-  window.addEventListener('pagehide', () => {active = false; cancelRead(); delete document.body.dataset.peopleCreateOpen;});
-  window.addEventListener('pageshow', (event) => {
+  pageScope.listen(window, 'pagehide', () => {active = false; cancelRead(); delete document.body.dataset.peopleCreateOpen;});
+  pageScope.listen(window, 'pageshow', (event) => {
     active = true;
     if (event.persisted && dialog.open) {
       document.body.dataset.peopleCreateOpen = 'true';
@@ -202,3 +204,5 @@
     }
   });
 })();
+
+});

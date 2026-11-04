@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Switch between already-authorized summaries; no requests or stored results. */
 (function () {
   "use strict";
@@ -21,11 +23,13 @@
     cards.forEach(function (card) {
       card.querySelector("[data-attempt-heading]").classList.add("sr-only");
     });
-    choice.addEventListener("change", showAttempt);
+    pageScope.listen(choice, "change", showAttempt);
     // History traversal can restore the native select after deferred scripts run.
-    window.addEventListener("pageshow", function () { requestAnimationFrame(showAttempt); });
+    pageScope.listen(window, "pageshow", function () { pageScope.requestAnimationFrame(showAttempt); });
     panels.setAttribute("aria-live", "polite");
     panels.setAttribute("aria-atomic", "true");
     picker.hidden = false;
   });
 }());
+
+});

@@ -11,8 +11,8 @@
     transition:transform 180ms ease;
   }
   .yc-workspace[data-header-hidden='true'] .st-header { transform:translateY(-100%); pointer-events:none; }
-  .figma-student[data-scroll-header='true'] .st-header { background:var(--ui-page); border-bottom-color:transparent; backdrop-filter:none; -webkit-backdrop-filter:none; }
-  .figma-student[data-header-scrolled='true'] .st-header { background:var(--st-glass); border-bottom-color:var(--st-border); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); }
+  :is(.figma-student,.admin-atlas)[data-scroll-header='true'] .st-header { background:var(--ui-page); border-bottom-color:transparent; backdrop-filter:none; -webkit-backdrop-filter:none; }
+  :is(.figma-student,.admin-atlas)[data-header-scrolled='true'] .st-header { background:var(--st-glass); border-bottom-color:var(--st-border); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); }
   .figma-workspace[data-ui-ready='true'] #workspace-navigation { visibility:hidden; pointer-events:none; }
   .figma-workspace:has([data-more-panel]) .figma-menu-toggle { display:none!important; }
   .figma-workspace:has([data-more-panel]) [data-workspace-body] { padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
@@ -70,9 +70,6 @@
 @keyframes yc-more-arrive { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
 @media(prefers-reduced-motion:reduce) { .workspace-more-panel,.workspace-more-grid *,.workspace-mobile-nav * { animation:none!important; transition:none!important; } }
 @media(prefers-reduced-motion:reduce) { .yc-workspace .st-header { transition:none!important; } }
-html[data-ui-motion='reduce'] .yc-workspace .st-header,body[data-ui-motion='reduce'] .st-header { transition:none!important; }
-html[data-ui-motion='reduce'] :is(.workspace-more-panel,.workspace-mobile-nav) * { animation:none!important; transition:none!important; }
-html[data-ui-motion='reduce'] .workspace-more-panel { animation:none!important; }
 @supports not (backdrop-filter:blur(1px)) { .workspace-more-panel:not([hidden]),.figma-workspace .workspace-mobile-nav { background:var(--mobile-solid); } }
 @media(prefers-reduced-transparency:reduce) { .workspace-more-panel:not([hidden]),.figma-workspace .workspace-mobile-nav { background:var(--mobile-solid); backdrop-filter:none; } }
 @media(forced-colors:active) { .workspace-more-panel,.workspace-more-grid .st-nav-link,.workspace-mobile-nav { border:1px solid CanvasText; } }

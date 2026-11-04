@@ -11,11 +11,7 @@ from app.models.enums import AcademicStatus, MaterialKind
 class Material(db.Model):
     """One ordered learning material inside a single Lesson (M12).
 
-    A Material belongs **directly** to exactly one Lesson; Unit, Group,
-    Course, Level and AcademicTerm are all reachable through
-    ``material.lesson.unit.group``. Every active assigned Teacher of the
-    owning Group is an equal collaborator -- there is no per-Material
-    owner column.
+    A Material inherits its Course or legacy Group ownership through its Lesson.
 
     ``kind`` is one of ``rich_text`` / ``external_link`` / ``file`` and is
     **immutable after creation** (no route ever writes it, and the
@@ -56,6 +52,13 @@ class Material(db.Model):
     __tablename__ = "materials"
     __table_args__ = (
         db.UniqueConstraint("lesson_id", "title", name="uq_materials_lesson_title"),
+        db.CheckConstraint(
+            "(pin_page IS NULL AND pin_x IS NULL AND pin_y IS NULL AND pin_show_name = FALSE) OR "
+            "(kind = 'file' AND pin_page IS NOT NULL AND pin_page >= 1 "
+            "AND pin_x IS NOT NULL AND pin_x BETWEEN 0 AND 10000 "
+            "AND pin_y IS NOT NULL AND pin_y BETWEEN 0 AND 10000)",
+            name="ck_materials_page_pin",
+        ),
         db.CheckConstraint("display_order >= 1", name="ck_materials_display_order_positive"),
         db.CheckConstraint(
             "kind IN ('rich_text', 'external_link', 'file')", name="ck_materials_kind_valid"
@@ -104,6 +107,10 @@ class Material(db.Model):
     )
     display_order = db.Column(db.Integer, nullable=False, index=True)
     creation_nonce = db.Column(db.String(64), nullable=False, unique=True)
+    pin_page = db.Column(db.Integer())
+    pin_x = db.Column(db.Integer())
+    pin_y = db.Column(db.Integer())
+    pin_show_name = db.Column(db.Boolean(), nullable=False, default=False, server_default=db.false())
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,

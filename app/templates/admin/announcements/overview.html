@@ -30,7 +30,6 @@
   </header>
   {{ macros.flash_messages() }}
   <div id="query-results">{% include "admin/announcements/_query_results.html" %}</div>
-  <p class="aan-timezone">{{ _('Times shown in %(timezone)s', timezone=tz_name) }}</p>
 </div>
 <dialog class="ac-announcement-dialog" data-announcement-dialog aria-labelledby="announcement-dialog-title">
   <header class="ac-dialog-heading"><h2 id="announcement-dialog-title">Announcement</h2><button class="btn btn--secondary" type="button" data-communication-close aria-label="{{ _('Close') }}">{{ ui.icon('close', 20) }}</button></header>

@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Focus planner dialogs reuse the native actor-bound event form and Group GET.
    Business validation, signed tokens, authorization and writes remain server-owned. */
 (function () {
@@ -172,7 +174,7 @@
     var mine = revision, request = new AbortController(); controller = request;
     notice("Loading…"); recovery.hidden = true;
     try {
-      var response = await fetch(targetURL.href, {credentials:"same-origin", cache:"no-store", signal:request.signal, headers:{Accept:"text/html"}});
+      var response = await pageScope.fetch(targetURL.href, {credentials:"same-origin", cache:"no-store", signal:request.signal, headers:{Accept:"text/html"}});
       var loaded = await parse(response, false);
       if (mine !== revision || request.signal.aborted || !dialog.open || !active) return;
       if (loaded.kind === "form") installForm(loaded); else displayGroup(loaded);
@@ -189,7 +191,7 @@
     mode = "choices"; dialog.dataset.mode = mode; title.textContent = t("Choose a group");
     notice(""); back.hidden = true; recovery.hidden = true;
     var search = content.querySelector("[data-planner-group-search]");
-    search.addEventListener("input", function () {
+    pageScope.listen(search, "input", function () {
       var needle = search.value.trim().toLocaleLowerCase(), count = 0;
       content.querySelectorAll(".fp-choice").forEach(function (link) {
         link.hidden = !link.querySelector("[data-planner-group-name]").textContent.toLocaleLowerCase().includes(needle);
@@ -226,7 +228,7 @@
     if (completed || refreshOnClose) { location.reload(); return; }
     if (trigger && trigger.isConnected) trigger.focus();
   }
-  root.addEventListener("click", function (event) {
+  pageScope.listen(root, "click", function (event) {
     var link = event.target.closest("a[href]");
     if (!link || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.target || link.hasAttribute("download")) return;
     if (dialog.open && link.matches("[data-planner-form-cancel]")) { event.preventDefault(); event.stopPropagation(); closeDialog(); return; }
@@ -258,16 +260,16 @@
     if (scopeInvalid) { notice(sessionMessage, true); recovery.hidden = false; }
     else load();
   });
-  close.addEventListener("click", closeDialog);
-  back.addEventListener("click", function () { if (mode === "slot") closeDialog(); else showChoices(); });
-  retry.addEventListener("click", load);
-  dialog.addEventListener("cancel", function (event) { event.preventDefault(); closeDialog(); });
-  dialog.addEventListener("click", function (event) {
+  pageScope.listen(close, "click", closeDialog);
+  pageScope.listen(back, "click", function () { if (mode === "slot") closeDialog(); else showChoices(); });
+  pageScope.listen(retry, "click", load);
+  pageScope.listen(dialog, "cancel", function (event) { event.preventDefault(); closeDialog(); });
+  pageScope.listen(dialog, "click", function (event) {
     if (event.target !== dialog) return;
     var rect = dialog.getBoundingClientRect();
     if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeDialog();
   });
-  dialog.addEventListener("submit", async function (event) {
+  pageScope.listen(dialog, "submit", async function (event) {
     var form = event.target;
     if (event.defaultPrevented || !(mode === "create" && form.matches("form[data-planner-native-form]") || mode === "slot" && form.matches("form[data-planner-slot-form]"))) return;
     event.preventDefault(); event.stopPropagation();
@@ -281,7 +283,7 @@
     posting = true; close.disabled = true; form.inert = true; form.setAttribute("aria-busy", "true");
     notice("Saving…"); recovery.hidden = true;
     try {
-      var response = await fetch(postURL.href, {method:"POST", body:data, credentials:"same-origin", cache:"no-store", headers:{Accept:"text/html"}});
+      var response = await pageScope.fetch(postURL.href, {method:"POST", body:data, credentials:"same-origin", cache:"no-store", headers:{Accept:"text/html"}});
       var loaded = await parse(response, true);
       if (!active || !dialog.open) { uncertain = true; return; }
       if (loaded.kind === "form") { installForm(loaded); notice(""); }
@@ -307,8 +309,8 @@
       if (uncertain || scopeInvalid) content.querySelectorAll('[type="submit"]').forEach(function (button) { button.disabled = true; });
     }
   }, true);
-  window.addEventListener("pagehide", function () { active = false; cancelRead(); if (posting) uncertain = true; });
-  window.addEventListener("pageshow", function () {
+  pageScope.listen(window, "pagehide", function () { active = false; cancelRead(); if (posting) uncertain = true; });
+  pageScope.listen(window, "pageshow", function () {
     active = true;
     if (uncertain && dialog.open) {
       notice(mode === "slot" ? slotUncertainMessage : uncertainMessage, true); recovery.hidden = false; retry.hidden = true;
@@ -316,3 +318,5 @@
     }
   });
 })();
+
+});

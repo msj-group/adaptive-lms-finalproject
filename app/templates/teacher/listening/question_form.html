@@ -100,8 +100,6 @@
                    name="option_text" value="{{ row.text }}"
                    maxlength="{{ form.OPTION_TEXT_MAX }}"
                    aria-label="Answer option text">
-            <button type="button" class="btn btn--secondary" data-option-move-up aria-label="Move this option up">&uarr;</button>
-            <button type="button" class="btn btn--secondary" data-option-move-down aria-label="Move this option down">&darr;</button>
             <button type="button" class="btn btn--danger-outline" data-option-remove>Remove</button>
           </div>
         </div>
@@ -122,8 +120,6 @@
                    name="option_text" value=""
                    maxlength="{{ form.OPTION_TEXT_MAX }}"
                    aria-label="Answer option text">
-            <button type="button" class="btn btn--secondary" data-option-move-up aria-label="Move this option up">&uarr;</button>
-            <button type="button" class="btn btn--secondary" data-option-move-down aria-label="Move this option down">&darr;</button>
             <button type="button" class="btn btn--danger-outline" data-option-remove>Remove</button>
           </div>
         </div>
@@ -145,7 +141,7 @@
     </div>
   </form>
 </div>
-<script src="{{ url_for('static', filename='js/quiz_question_editor.js') }}" defer>
+<script src="{{ url_for('static', filename='js/quiz_question_editor.js', v='option-controls-1') }}" defer>
 </script>
 
 </div>

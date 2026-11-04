@@ -1,0 +1,5 @@
+{% extends "layouts/admin_base.html" %}
+{% block body_class %}{{ super() }} ce-focused{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='group-editors-1') }}">{% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='inline-media-1') }}" defer></script>{% endblock %}
+{% block content %}{% block editor_content %}{% endblock %}{% endblock %}

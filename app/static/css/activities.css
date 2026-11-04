@@ -107,7 +107,6 @@
  .quiz-bookmark-button,.quiz-bookmark-button svg,.quiz-bookmark-button .quiz-bookmark-shape,.quiz-bookmark-button .quiz-bookmark-check { transition: none; }
  .quiz-bookmark-button[aria-pressed=true]::after,.quiz-bookmark-button[aria-busy=true] svg { animation: none; }
 }
-:is(:root,body)[data-ui-motion=reduce] .quiz-bookmark-button::after,:is(:root,body)[data-ui-motion=reduce] .quiz-bookmark-button svg { animation: none; }
 .activity-listening-layout { display: grid; grid-template-columns: minmax(230px,.82fr) minmax(0,1.5fr); gap: 28px; align-items: start; }
 .activity-listening-desk { position: sticky; top: 18px; background: var(--activity-tint); border: 1px solid var(--ui-line); border-radius: 24px; padding: 22px; min-width: 0; }
 .activity-listening-desk > h2 { margin-block: 0 18px; }

@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app import create_app
 from app.extensions import db
 from app.models.user import User, UserRole, UserStatus
-from app.security.passwords import hash_password
+from app.security.passwords import ACCOUNT_PASSWORD_MAX_LENGTH, ACCOUNT_PASSWORD_MIN_LENGTH, hash_password
 
 
 def main() -> int:
@@ -50,8 +50,11 @@ def main() -> int:
         if password != confirm:
             print("Passwords do not match.", file=sys.stderr)
             return 1
-        if len(password) < 12:
-            print("Password must be at least 12 characters.", file=sys.stderr)
+        if not ACCOUNT_PASSWORD_MIN_LENGTH <= len(password) <= ACCOUNT_PASSWORD_MAX_LENGTH:
+            print(
+                f"Password must contain between {ACCOUNT_PASSWORD_MIN_LENGTH} and {ACCOUNT_PASSWORD_MAX_LENGTH} characters.",
+                file=sys.stderr,
+            )
             return 1
 
         user = User(

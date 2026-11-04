@@ -11,13 +11,7 @@ from app.models.enums import LessonStatus
 class Lesson(db.Model):
     """One ordered teaching Lesson inside a single Unit (M11).
 
-    A Lesson belongs **directly** to exactly one Unit. Group, Course,
-    Level, AcademicTerm are all reachable through ``lesson.unit.group``,
-    and every active assigned Teacher of that Group is an equal
-    collaborator, so there is no ``group_id`` / ``course_id`` /
-    ``level_id`` / ``academic_term_id`` / ``teacher_id`` / ``created_by``
-    column -- the same single-source-of-truth reasoning already applied to
-    Enrollment, GroupTeacherAssignment, Schedule, and Unit.
+    A Lesson inherits its Course or legacy Group ownership from its Unit.
 
     Lifecycle is ``draft`` / ``published`` (the Lesson-specific
     :class:`LessonStatus`, never the academic active/archived enum). A new
@@ -58,6 +52,11 @@ class Lesson(db.Model):
     __table_args__ = (
         db.UniqueConstraint("unit_id", "title", name="uq_lessons_unit_title"),
         db.CheckConstraint(
+            "(page_start IS NULL AND page_end IS NULL) OR "
+            "(page_start IS NOT NULL AND page_end IS NOT NULL "
+            "AND page_start >= 1 AND page_end >= page_start)", name="ck_lessons_page_range"
+        ),
+        db.CheckConstraint(
             "display_order >= 0", name="ck_lessons_display_order_non_negative"
         ),
         db.CheckConstraint(
@@ -83,6 +82,8 @@ class Lesson(db.Model):
     title = db.Column(db.String(150), nullable=False)
     description = db.Column(db.Text, nullable=True)
     search_keywords = db.Column(db.String(500), nullable=True)
+    page_start = db.Column(db.Integer())
+    page_end = db.Column(db.Integer())
     display_order = db.Column(db.Integer, nullable=False, default=0, index=True)
     status = db.Column(
         db.String(32, collation=CODE_COLLATION), nullable=False, default=LessonStatus.DRAFT.value, index=True

@@ -125,8 +125,7 @@
 <p class="ds-section__desc" style="margin-bottom: var(--space-3)">
   {{ range_start.strftime("%d %B %Y") }} &ndash; {{ range_end.strftime("%d %B %Y") }}
   ({{ range_days }} {{ "day" if range_days == 1 else "days" }}) &middot;
-  {{ entry_count }} {{ "entry" if entry_count == 1 else "entries" }} &middot;
-  times shown in the center timezone
+  {{ entry_count }} {{ "entry" if entry_count == 1 else "entries" }}
 </p>
 {%- endmacro %}
 

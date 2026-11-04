@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Presentation enhancements only. Contact search reads the existing scoped GET
    endpoint without storing content. Native POST, CSRF and nonce protection remain authoritative. */
 (function () {
@@ -9,7 +11,7 @@
   if (disposeMessages) disposeMessages();
   var cleanup = [];
   function listen(target, type, handler, options) {
-    target.addEventListener(type, handler, options);
+    pageScope.listen(target, type, handler, options);
     cleanup.push(function () { target.removeEventListener(type, handler, options); });
   }
 
@@ -25,7 +27,7 @@
     search.hidden = false;
     panel.querySelector("[data-chat-tabs]").hidden = false;
     function cancelContactSearch() {
-      clearTimeout(contactTimer);
+      pageScope.clearTimeout(contactTimer);
       contactSequence += 1;
       if (contactController) contactController.abort();
       contactController = null;
@@ -40,7 +42,7 @@
       url.searchParams.set("q", input.value.trim());
       status.hidden = false; status.textContent = t("Searching…");
       try {
-        var response = await fetch(url.href, {credentials:"same-origin", cache:"no-store", signal:request.signal});
+        var response = await pageScope.fetch(url.href, {credentials:"same-origin", cache:"no-store", signal:request.signal});
         if (request.signal.aborted || revision !== contactSequence || current !== "contacts") return;
         if (response.redirected || response.status === 401 || response.status === 403) {
           status.textContent = t("Your session may have ended. Reload the page to sign in again."); return;
@@ -85,20 +87,20 @@
       if (name === "contacts" && input.value.trim() && window.fetch) loadContacts();
     }
     tabs.forEach(function (tab, index) {
-      tab.addEventListener("click", function () { activate(tab.dataset.chatTab); });
-      tab.addEventListener("keydown", function (event) {
+      pageScope.listen(tab, "click", function () { activate(tab.dataset.chatTab); });
+      pageScope.listen(tab, "keydown", function (event) {
         var next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length : null;
         if (next !== null) { event.preventDefault(); activate(tabs[next].dataset.chatTab); tabs[next].focus(); }
       });
     });
-    input.addEventListener("input", function () {
+    pageScope.listen(input, "input", function () {
       filter();
       if (current === "contacts" && window.fetch && window.AbortController) {
-        cancelContactSearch(); contactTimer = setTimeout(loadContacts, 250);
+        cancelContactSearch(); contactTimer = pageScope.setTimeout(loadContacts, 250);
       }
     });
-    input.addEventListener("keydown", function (event) { if (event.key === "Enter" && current === "chats" && !event.isComposing) { event.preventDefault(); filter(); } });
-    search.addEventListener("submit", function (event) {
+    pageScope.listen(input, "keydown", function (event) { if (event.key === "Enter" && current === "chats" && !event.isComposing) { event.preventDefault(); filter(); } });
+    pageScope.listen(search, "submit", function (event) {
       if (current === "chats") { event.preventDefault(); filter(); }
       else if (window.fetch && window.AbortController) { event.preventDefault(); loadContacts(); }
     });
@@ -106,16 +108,12 @@
   });
 
   var timeline = root.querySelector("[data-message-timeline]");
-  var bottomButton = root.querySelector("[data-scroll-bottom]");
   var followTimeline = false;
   function nearBottom() {
     return !timeline || timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight < 100;
   }
   function scrollToBottom() {
     if (timeline) timeline.scrollTop = timeline.scrollHeight;
-  }
-  function updateBottomButton() {
-    if (bottomButton && timeline) bottomButton.hidden = nearBottom();
   }
   if (timeline) {
     // Respect message deep links and older-page reading positions.
@@ -127,16 +125,9 @@
       scrollToBottom();
     }
     followTimeline = nearBottom();
-    timeline.addEventListener("scroll", function () {
+    pageScope.listen(timeline, "scroll", function () {
       followTimeline = nearBottom();
-      updateBottomButton();
     }, {passive:true});
-    if (bottomButton) bottomButton.addEventListener("click", function () {
-      scrollToBottom();
-      timeline.focus({preventScroll:true});
-      updateBottomButton();
-    });
-    updateBottomButton();
   }
 
   root.querySelectorAll("[data-message-form]").forEach(function (form) {
@@ -153,15 +144,14 @@
       input.style.height = Math.min(maximum, Math.max(minimum, input.scrollHeight + 2)) + "px";
       if (count) count.textContent = input.value.length + " / " + input.maxLength;
       if (follow) scrollToBottom();
-      updateBottomButton();
     }
-    input.addEventListener("input", updateInput);
+    pageScope.listen(input, "input", updateInput);
     listen(window, "resize", function () {
       var follow = followTimeline;
       updateInput();
       if (follow) scrollToBottom();
     });
-    input.addEventListener("keydown", function (event) {
+    pageScope.listen(input, "keydown", function (event) {
       // Enter sends; Shift+Enter inserts a newline. IME composition never sends.
       if (event.key === "Enter" && !event.shiftKey && !event.isComposing && event.keyCode !== 229 && !event.repeat) {
         event.preventDefault();
@@ -177,7 +167,7 @@
 
 
   function catalog(url) {
-    if (!emojiCatalog) emojiCatalog = fetch(url, {credentials:"omit", cache:"force-cache"}).then(function (response) {
+    if (!emojiCatalog) emojiCatalog = pageScope.fetch(url, {credentials:"omit", cache:"force-cache"}).then(function (response) {
       if (!response.ok) throw new Error(t("Emoji unavailable"));
       return response.json();
     }).then(function (data) { return data.groups.flatMap(function (group) { return group.emoji.map(function (emoji) { return {glyph:emoji[0], name:emoji[1], search:(emoji[1] + " " + emoji[2] + " " + group.name + " " + t(group.name)).toLocaleLowerCase(), group:group.name}; }); }); }).catch(function (error) { emojiCatalog = null; throw error; });
@@ -203,16 +193,16 @@
       panel.style.setProperty("--message-picker-room", Math.max(0, bottom - top - 8) + "px");
     }
     if (typeof ResizeObserver === "function" && messageWorkspace) {
-      var pickerSize = new ResizeObserver(fitPicker);
+      var pickerSize = pageScope.createObserver(ResizeObserver, fitPicker);
       pickerSize.observe(messageWorkspace);
       pickerSize.observe(form);
       cleanup.push(function () { pickerSize.disconnect(); });
     }
     listen(window, "resize", fitPicker);
-    input.addEventListener("input", function () { requestAnimationFrame(fitPicker); });
+    pageScope.listen(input, "input", function () { pageScope.requestAnimationFrame(fitPicker); });
     var data, visible = [], limit = 80, caretStart = input.selectionStart, caretEnd = input.selectionEnd;
     function rememberCaret() { caretStart = input.selectionStart; caretEnd = input.selectionEnd; }
-    ["select", "input", "keyup", "click", "blur"].forEach(function (event) { input.addEventListener(event, rememberCaret); });
+    ["select", "input", "keyup", "click", "blur"].forEach(function (event) { pageScope.listen(input, event, rememberCaret); });
     function close(restore) { panel.hidden = true; toggle.setAttribute("aria-expanded", "false"); if (restore) toggle.focus(); }
     function selectCategory(value) {
       if (!data) return;
@@ -223,7 +213,7 @@
       limit = 80; grid.scrollTop = 0; render();
     }
     shortcuts.querySelectorAll("button").forEach(function (button) {
-      button.addEventListener("click", function () { selectCategory(button.dataset.emojiGroup); });
+      pageScope.listen(button, "click", function () { selectCategory(button.dataset.emojiGroup); });
     });
     function render() {
       var query = search.value.trim().toLocaleLowerCase();
@@ -236,7 +226,7 @@
       var fragment = document.createDocumentFragment();
       visible.slice(0, limit).forEach(function (emoji) {
         var button = document.createElement("button"); button.type = "button"; button.textContent = emoji.glyph; button.title = emoji.name; button.setAttribute("aria-label", emoji.name);
-        button.addEventListener("click", function () {
+        pageScope.listen(button, "click", function () {
           if (input.value.length - (caretEnd - caretStart) + emoji.glyph.length > input.maxLength) { status.textContent = t("Your message is at the character limit."); return; }
           input.setRangeText(emoji.glyph, caretStart, caretEnd, "end"); rememberCaret(); input.dispatchEvent(new Event("input", {bubbles:true})); input.focus({preventScroll:true});
         }); fragment.appendChild(button);
@@ -246,7 +236,7 @@
       status.textContent = visible.length ? t("%(shown)s of %(total)s emoji", {shown:Math.min(limit,visible.length),total:visible.length}) : t("No matching emoji.");
     }
     toggle.hidden = false;
-    toggle.addEventListener("click", async function () {
+    pageScope.listen(toggle, "click", async function () {
       if (!panel.hidden) { close(false); return; }
       panel.hidden = false; fitPicker(); toggle.setAttribute("aria-expanded", "true"); search.focus();
       if (!data) {
@@ -259,11 +249,11 @@
       render();
     });
     panel.querySelector("[data-emoji-close]").addEventListener("click", function () { close(true); });
-    [search, tone].forEach(function (field) { field.addEventListener(field === search ? "input" : "change", function () { if (data) { limit = 80; grid.scrollTop = 0; render(); } }); });
-    more.addEventListener("click", function () { var top = grid.scrollTop; limit += 80; render(); grid.scrollTop = top; });
+    [search, tone].forEach(function (field) { pageScope.listen(field, field === search ? "input" : "change", function () { if (data) { limit = 80; grid.scrollTop = 0; render(); } }); });
+    pageScope.listen(more, "click", function () { var top = grid.scrollTop; limit += 80; render(); grid.scrollTop = top; });
     listen(document, "pointerdown", function (event) { if (!panel.hidden && !panel.contains(event.target) && !toggle.contains(event.target)) close(false); });
     listen(document, "keydown", function (event) { if (event.key === "Escape" && !panel.hidden) { event.preventDefault(); close(true); } });
-    form.addEventListener("submit", function () { close(false); });
+    pageScope.listen(form, "submit", function () { close(false); });
   }
 
   var threadQuery = root.querySelector("[data-thread-query]");
@@ -285,11 +275,11 @@
       updateBottomButton();
     }
     searchToggle.hidden = false;
-    searchToggle.addEventListener("click", function () { searchPanel.hidden = !searchPanel.hidden; searchToggle.setAttribute("aria-expanded", String(!searchPanel.hidden)); if (!searchPanel.hidden) threadQuery.focus(); else { threadQuery.value = ""; filterMessages(); } });
-    threadQuery.addEventListener("input", filterMessages);
+    pageScope.listen(searchToggle, "click", function () { searchPanel.hidden = !searchPanel.hidden; searchToggle.setAttribute("aria-expanded", String(!searchPanel.hidden)); if (!searchPanel.hidden) threadQuery.focus(); else { threadQuery.value = ""; filterMessages(); } });
+    pageScope.listen(threadQuery, "input", filterMessages);
   }
   var infoToggle = root.querySelector("[data-thread-info-toggle]");
-  if (infoToggle) { infoToggle.hidden = false; infoToggle.addEventListener("click", function () { var info = root.querySelector("[data-thread-info]"); info.hidden = !info.hidden; infoToggle.setAttribute("aria-expanded", String(!info.hidden)); }); }
+  if (infoToggle) { infoToggle.hidden = false; pageScope.listen(infoToggle, "click", function () { var info = root.querySelector("[data-thread-info]"); info.hidden = !info.hidden; infoToggle.setAttribute("aria-expanded", String(!info.hidden)); }); }
   // Move the existing action nodes into a native modal on small screens.
   // Never clone forms, tokens or controls; this is the same authorized POST.
   var actionSheet = document.createElement("dialog");
@@ -304,14 +294,14 @@
   var sheetMenu = null;
   var sheetFocus = null;
   function closeActions() { if (actionSheet.open) actionSheet.close(); }
-  sheetClose.addEventListener("click", closeActions);
-  actionSheet.addEventListener("close", function () {
+  pageScope.listen(sheetClose, "click", closeActions);
+  pageScope.listen(actionSheet, "close", function () {
     if (sheetOwner && sheetMenu) { sheetOwner.appendChild(sheetMenu); sheetOwner.open = false; }
     var returnTo = sheetFocus;
     sheetOwner = sheetMenu = sheetFocus = null;
     if (returnTo && returnTo.isConnected) returnTo.focus({preventScroll:true});
   });
-  actionSheet.addEventListener("click", function (event) {
+  pageScope.listen(actionSheet, "click", function (event) {
     if (event.target !== actionSheet) return;
     var bounds = actionSheet.getBoundingClientRect();
     if (event.clientY < bounds.top || event.clientX < bounds.left || event.clientX > bounds.right) closeActions();
@@ -319,7 +309,7 @@
   var mobileActions = window.matchMedia("(max-width:760px)");
   listen(mobileActions, "change", closeActions);
   root.querySelectorAll(".messenger-message-actions, .messenger-header-actions").forEach(function (details) {
-    details.addEventListener("toggle", function () {
+    pageScope.listen(details, "toggle", function () {
       if (!details.open) return;
       root.querySelectorAll(".messenger-message-actions[open], .messenger-header-actions[open]").forEach(function (other) { if (other !== details) other.open = false; });
       if (mobileActions.matches && typeof actionSheet.showModal === "function") {
@@ -331,7 +321,7 @@
       }
       if (timeline && details.matches(".messenger-message-actions")) { var menu = details.querySelector(".messenger-action-menu"); details.toggleAttribute("data-menu-below", details.getBoundingClientRect().top - menu.offsetHeight < timeline.getBoundingClientRect().top + 8); }
     });
-    details.addEventListener("keydown", function (event) {
+    pageScope.listen(details, "keydown", function (event) {
       if (event.key === "Escape" && details.open && !actionSheet.open) { event.preventDefault(); details.open = false; details.querySelector("summary").focus(); }
     });
   });
@@ -347,3 +337,5 @@
   window.aelmsDisposeMessages = function () { if (disposeMessages) disposeMessages(); };
   enhanceMessages(document);
 })();
+
+});

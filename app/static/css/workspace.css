@@ -64,7 +64,6 @@
 .workspace-confirmation form { display:flex; gap:12px; flex-wrap:wrap; margin-top:24px; }
 .workspace-submitting { opacity:.65; cursor:wait; pointer-events:none; }
 body[data-ui-density="compact"] .figma-page .card { padding:16px; }
-body[data-ui-motion="reduce"] *, body[data-ui-motion="reduce"] *::before, body[data-ui-motion="reduce"] *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
 @media (max-width:767px) {
   .figma-workspace .figma-page { padding:18px 16px; }
   .figma-workspace .figma-hero { padding:22px; }

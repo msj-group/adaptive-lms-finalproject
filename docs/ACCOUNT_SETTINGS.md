@@ -1,4 +1,4 @@
-# Account settings — updated 2026-10-17
+# Account settings — updated 2026-11-04
 
 The owner requested voluntary password changes and profile-photo uploads.
 Entry: the existing top-right account card → **Account settings**, for Student,
@@ -22,13 +22,25 @@ checks improve feedback; server decoding and validation remain authoritative.
 
 ## Password
 
-`POST /account/password` requires the current password, a new 15–128 character
+`POST /account/password` requires the current password, a new 4–128 character
 password and matching confirmation. The shared password service supplies Argon2
 and the same length policy as administrator-managed resets. Current passwords
 may be shorter than the new-password minimum, preserving access for existing
 accounts; input is bounded before hashing. The new password must differ from
 the current one. No forced-change flag, forgotten-password/email workflow,
 MFA, composition requirement or compromised-password blocklist was added.
+
+The owner approved the four-character minimum on 2026-11-04. Creation, resets,
+self-service changes and Administrator/Researcher provisioning share the same
+4–128 limits. Four lowercase letters, or four digits, are accepted without a
+character mix. Existing passwords and hashes are unchanged by this policy update.
+
+Bounded Chrome review used a new fictional Student in the existing isolated
+MySQL fixture: creation with four lowercase letters, administrator reset and
+login with four digits, then own-password change and re-login with four lowercase
+letters. Three-character creation and change were rejected; native minlength and
+visible help matched. Static Python/template/catalog checks ran separately. No
+real credential, migration or replacement automated test package was changed.
 
 Purpose-specific signed snapshots expire after one hour and bind public account
 identity, role, account version and auth version. Global CSRF remains enabled.

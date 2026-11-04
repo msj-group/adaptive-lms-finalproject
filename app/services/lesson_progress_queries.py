@@ -12,11 +12,10 @@ acting account itself::
     User.role == student AND User.status == active
       AND Enrollment(student, group).status == active
       AND AcademicTerm, Level, Course and Group all active
-      AND Unit.status == active   AND Unit.group_id == that Group
+      AND Unit.status == active   AND Unit belongs to that Group or its Course
       AND Lesson.status == published AND Lesson.unit_id == Unit.id
 
-and a progress row is joined only on ``(student, group, lesson)`` with
-``Unit.group_id == LessonProgress.group_id``. A withdrawn Enrollment, a
+and a progress row is joined only on ``(student, group, lesson)`` through its recorded Group. A withdrawn Enrollment, a
 suspended account, an archived link, an unpublished Lesson and a row bound
 to another Group therefore never contribute to a count, an ordering, a
 destination or an empty state. Nothing is loaded broadly and filtered in
@@ -38,6 +37,7 @@ from collections import namedtuple
 
 from sqlalchemy import and_, case, func, select
 
+from app.services.curriculum_visibility import lesson_is_released
 from app.extensions import db
 from app.models import (
     AcademicStatus,
@@ -50,7 +50,6 @@ from app.models import (
     GroupTeacherAssignmentStatus,
     Lesson,
     LessonProgress,
-    LessonStatus,
     Level,
     Unit,
     User,
@@ -78,7 +77,6 @@ _ASSIGNMENT_ACTIVE = GroupTeacherAssignmentStatus.ACTIVE.value
 _USER_ACTIVE = UserStatus.ACTIVE.value
 _STUDENT = UserRole.STUDENT.value
 _TEACHER = UserRole.TEACHER.value
-_PUBLISHED = LessonStatus.PUBLISHED.value
 
 #: One Student's progress on one authorized Lesson. The internal ids are
 #: for the write paths only and never reach a template.
@@ -192,14 +190,14 @@ def student_lesson_progress(student_id, group_public_id, unit_public_id, lesson_
         )
         .select_from(Lesson)
         .join(Unit, Lesson.unit_id == Unit.id)
-        .join(Group, Unit.group_id == Group.id)
+        .join(Group, Unit.in_group(Group.id, Group.course_id))
     )
     row = (
         scope_to_student(query, student_id)
         .outerjoin(LessonProgress, progress_join(student_id))
         .filter(
             Lesson.public_id == lesson_public_id,
-            Lesson.status == _PUBLISHED,
+            lesson_is_released(),
             Unit.public_id == unit_public_id,
             Unit.status == _ACTIVE,
             Group.public_id == group_public_id,
@@ -234,7 +232,7 @@ def lock_target(group_public_id, unit_public_id, lesson_public_id):
         )
         .select_from(Lesson)
         .join(Unit, Lesson.unit_id == Unit.id)
-        .join(Group, Unit.group_id == Group.id)
+        .join(Group, Unit.in_group(Group.id, Group.course_id))
         .join(Course, Group.course_id == Course.id)
         .filter(
             Lesson.public_id == lesson_public_id,
@@ -266,17 +264,18 @@ def student_group_progress(student_id, limit=DASHBOARD_GROUP_LIMIT):
     )
     totals = (
         db.session.query(
-            Unit.group_id.label("group_id"),
+            Group.id.label("group_id"),
             func.count(Lesson.id).label("lesson_total"),
         )
-        .select_from(Unit)
+        .select_from(Group)
+        .join(Unit, Unit.in_group(Group.id, Group.course_id))
         .join(Lesson, Lesson.unit_id == Unit.id)
         .filter(
-            Unit.group_id.in_(enrolled_group_ids),
+            Group.id.in_(enrolled_group_ids),
             Unit.status == _ACTIVE,
-            Lesson.status == _PUBLISHED,
+            lesson_is_released(),
         )
-        .group_by(Unit.group_id)
+        .group_by(Group.id)
         .subquery()
     )
     completed = (
@@ -286,12 +285,13 @@ def student_group_progress(student_id, limit=DASHBOARD_GROUP_LIMIT):
         )
         .select_from(LessonProgress)
         .join(Lesson, Lesson.id == LessonProgress.lesson_id)
-        .join(Unit, and_(Unit.id == Lesson.unit_id, Unit.group_id == LessonProgress.group_id))
+        .join(Group, Group.id == LessonProgress.group_id)
+        .join(Unit, and_(Unit.id == Lesson.unit_id, Unit.in_group(Group.id, Group.course_id)))
         .filter(
             LessonProgress.student_id == student_id,
             LessonProgress.completed_at.isnot(None),
             Unit.status == _ACTIVE,
-            Lesson.status == _PUBLISHED,
+            lesson_is_released(),
         )
         .group_by(LessonProgress.group_id)
         .subquery()
@@ -354,13 +354,13 @@ def continue_learning(student_id):
         )
         .select_from(Lesson)
         .join(Unit, Lesson.unit_id == Unit.id)
-        .join(Group, Unit.group_id == Group.id)
+        .join(Group, Unit.in_group(Group.id, Group.course_id))
     )
     row = (
         scope_to_student(query, student_id)
         .outerjoin(LessonProgress, progress_join(student_id))
         .filter(
-            Lesson.status == _PUBLISHED,
+            lesson_is_released(),
             Unit.status == _ACTIVE,
             LessonProgress.completed_at.is_(None),
         )
@@ -410,8 +410,8 @@ def recently_opened(student_id, limit=RECENTLY_OPENED_LIMIT, *, group_public_ids
         )
         .select_from(LessonProgress)
         .join(Lesson, Lesson.id == LessonProgress.lesson_id)
-        .join(Unit, and_(Unit.id == Lesson.unit_id, Unit.group_id == LessonProgress.group_id))
         .join(Group, Group.id == LessonProgress.group_id)
+        .join(Unit, and_(Unit.id == Lesson.unit_id, Unit.in_group(Group.id, Group.course_id)))
     )
     query = (
         scope_to_student(query, student_id)
@@ -419,7 +419,7 @@ def recently_opened(student_id, limit=RECENTLY_OPENED_LIMIT, *, group_public_ids
             LessonProgress.student_id == student_id,
             LessonProgress.enrollment_id == Enrollment.id,
             LessonProgress.last_opened_at.isnot(None),
-            Lesson.status == _PUBLISHED,
+            lesson_is_released(),
             Unit.status == _ACTIVE,
         )
     )
@@ -526,10 +526,11 @@ def group_lesson_total(group_id):
         db.session.query(func.count(Lesson.id))
         .select_from(Lesson)
         .join(Unit, Lesson.unit_id == Unit.id)
+        .join(Group, Unit.in_group(Group.id, Group.course_id))
         .filter(
-            Unit.group_id == group_id,
+            Group.id == group_id,
             Unit.status == _ACTIVE,
-            Lesson.status == _PUBLISHED,
+            lesson_is_released(),
         )
         .scalar()
         or 0
@@ -575,7 +576,8 @@ def roster_progress(group_id, student_ids):
         )
         .select_from(LessonProgress)
         .join(Lesson, Lesson.id == LessonProgress.lesson_id)
-        .join(Unit, and_(Unit.id == Lesson.unit_id, Unit.group_id == LessonProgress.group_id))
+        .join(Group, Group.id == LessonProgress.group_id)
+        .join(Unit, and_(Unit.id == Lesson.unit_id, Unit.in_group(Group.id, Group.course_id)))
         .join(Enrollment, Enrollment.id == LessonProgress.enrollment_id)
         .filter(
             LessonProgress.group_id == group_id,
@@ -584,7 +586,7 @@ def roster_progress(group_id, student_ids):
             Enrollment.status == _ENROLLMENT_ACTIVE,
             LessonProgress.student_id.in_(list(student_ids)),
             Unit.status == _ACTIVE,
-            Lesson.status == _PUBLISHED,
+            lesson_is_released(),
         )
         .group_by(LessonProgress.student_id)
         .all()

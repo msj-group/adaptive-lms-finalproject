@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Direct enrollment entry. Only GETs are enhanced; the signed save stays native. */
 (function () {
   "use strict";
@@ -31,7 +33,7 @@
     fallback.href = url.href;
     dialog.setAttribute("aria-busy", "true");
     try {
-      var response = await fetch(url.href, {credentials:"same-origin", cache:"no-store", signal:request.signal,
+      var response = await pageScope.fetch(url.href, {credentials:"same-origin", cache:"no-store", signal:request.signal,
         headers:{"Accept":"text/html"}});
       var destination = new URL(response.url);
       if (!response.ok || destination.origin !== location.origin ||
@@ -78,7 +80,7 @@
     } finally { changing = false; }
   }
   document.querySelectorAll("[data-enrollment-open]").forEach(function (link) {
-    link.addEventListener("click", function (event) {
+    pageScope.listen(link, "click", function (event) {
       if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.defaultPrevented) return;
       event.preventDefault();
       if (dialog.open) return;
@@ -87,18 +89,18 @@
       load(entry, null, null, null);
     });
   });
-  dialog.querySelectorAll("[data-enrollment-close]").forEach(function (button) { button.addEventListener("click", close); });
-  dialog.addEventListener("cancel", function (event) { event.preventDefault(); close(); });
-  dialog.addEventListener("click", function (event) {
+  dialog.querySelectorAll("[data-enrollment-close]").forEach(function (button) { pageScope.listen(button, "click", close); });
+  pageScope.listen(dialog, "cancel", function (event) { event.preventDefault(); close(); });
+  pageScope.listen(dialog, "click", function (event) {
     if (event.target !== dialog) return;
     var rect = dialog.getBoundingClientRect();
     if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) close();
   });
-  dialog.addEventListener("close", function () {
+  pageScope.listen(dialog, "close", function () {
     cancelRead(); delete document.body.dataset.enrollmentOpen;
     if (opener && opener.isConnected) opener.focus({preventScroll:true});
   });
-  reset.addEventListener("click", async function () {
+  pageScope.listen(reset, "click", async function () {
     if (!await discardAllowed()) return;
     var form = content.querySelector("form[method='post']"), url = new URL(entry.href);
     if (form) {
@@ -108,7 +110,7 @@
     // Discard was approved; release this draft before requesting new choices.
     releaseForms(); load(url, null, null, null);
   });
-  dialog.addEventListener("submit", function (event) {
+  pageScope.listen(dialog, "submit", function (event) {
     var form = event.target;
     if (!form.matches("[data-enrollment-picker]") || event.defaultPrevented) return;
     event.preventDefault();
@@ -120,5 +122,7 @@
     var operation = selected && selected.dataset.operationUrl ? new URL(selected.dataset.operationUrl, location.origin).pathname : null;
     load(url, operation, form.elements.student.value, form.elements.group.value);
   });
-  window.addEventListener("pagehide", function () { cancelRead(); if (dialog.open) dialog.close(); });
+  pageScope.listen(window, "pagehide", function () { cancelRead(); if (dialog.open) dialog.close(); });
 })();
+
+});

@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Shared, read-only bell preview on every viewport. Owned POSTs remain native. */
 (function () {
   "use strict";
@@ -38,7 +40,7 @@
     message(t("Loading your updates…"));
     content.setAttribute("aria-busy", "true");
     try {
-      var response = await fetch(bell.dataset.previewUrl, {
+      var response = await pageScope.fetch(bell.dataset.previewUrl, {
         credentials: "same-origin", cache: "no-store", signal: request.signal
       });
       if (request.signal.aborted || panel.hidden) return;
@@ -60,14 +62,14 @@
       retry.type = "button";
       retry.className = "btn btn--secondary";
       retry.textContent = t("Try again");
-      retry.addEventListener("click", load);
+      pageScope.listen(retry, "click", load);
       content.appendChild(retry);
     } finally {
       if (controller === request) content.removeAttribute("aria-busy");
     }
   }
 
-  toggle.addEventListener("click", function (event) {
+  pageScope.listen(toggle, "click", function (event) {
     event.preventDefault();
     if (!panel.hidden) { close(true); return; }
     document.querySelectorAll("[data-account-menu]").forEach(function (menu) { menu.open = false; });
@@ -77,16 +79,18 @@
     load();
   });
   bell.querySelector("[data-notification-close]").addEventListener("click", function () { close(true); });
-  document.addEventListener("click", function (event) {
+  pageScope.listen(document, "click", function (event) {
     // Retry replaces its own button before bubbling; the original event path
     // still identifies the click as inside the preview, so do not dismiss it.
     var inside = event.composedPath ? event.composedPath().includes(bell) : bell.contains(event.target);
     if (!panel.hidden && !inside) close(false);
   });
-  document.addEventListener("focusin", function (event) { if (!panel.hidden && !bell.contains(event.target)) close(false); });
-  document.addEventListener("keydown", function (event) {
+  pageScope.listen(document, "focusin", function (event) { if (!panel.hidden && !bell.contains(event.target)) close(false); });
+  pageScope.listen(document, "keydown", function (event) {
     if (!panel.hidden && event.key === "Escape") { event.preventDefault(); close(true); }
   });
-  compact.addEventListener("change", function () { close(false); });
-  window.addEventListener("pagehide", function () { close(false); });
+  pageScope.listen(compact, "change", function () { close(false); });
+  pageScope.listen(window, "pagehide", function () { close(false); });
 })();
+
+});

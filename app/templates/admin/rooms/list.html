@@ -6,7 +6,7 @@
 {% set academic_section = 'rooms' %}
 {% block academic_actions %}<a class="btn btn--primary" data-academic-editor-open href="{{ url_for('admin.room_edit') }}"><span class="ah-add" aria-hidden="true">+</span> New room</a>{% endblock %}
 {% block academic_directory %}
-  <header class="ah-directory-head"><div><h2 id="academic-directory-heading">Rooms</h2><p>Teaching spaces and capacity, ready for scheduling.</p></div><span class="ax-record-count">{{ page.total }} <span>records</span></span></header>
+  <h2 class="sr-only" id="academic-directory-heading">Rooms</h2>
   <div class="ad-table-wrap"><table class="ad-table{{ ' ax-mobile-records' if page.items else '' }}"><thead><tr><th scope="col">Name</th><th scope="col">Capacity</th><th scope="col">Status</th><th scope="col">Actions</th></tr></thead><tbody>
   {% for room in page.items %}<tr><td data-label="{{ _('Name') }}"><div class="ah-record-identity"><span class="ah-record-icon" aria-hidden="true">{{ ui.icon('room',17) }}</span><span class="ah-record-copy"><strong dir="auto">{{ room.name }}</strong><a href="{{ url_for('admin.operational_history',kind='room',public_id=room.public_id) }}">History</a></span></div></td><td data-label="{{ _('Capacity') }}">{{ room.capacity }}</td><td data-label="{{ _('Status') }}">{{ academic.status_control('rooms', room) }}</td><td class="ah-tools-cell" data-label="{{ _('Actions') }}"><a data-academic-editor-open class="ad-row-link" href="{{ url_for('admin.room_edit', public_id=room.public_id) }}">Edit</a></td></tr>{% else %}<tr><td colspan="4">No rooms yet.</td></tr>{% endfor %}
   </tbody></table></div>

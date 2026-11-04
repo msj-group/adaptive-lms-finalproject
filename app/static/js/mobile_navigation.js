@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Local presentation only. More never changes history, sends requests, or
    emits a page view. The existing collector owns allowlisted click metadata. */
 (function () {
@@ -29,30 +31,30 @@
   }
   function syncLayout() {
     setOpen(false, true);
-    if (sidebar) sidebar.inert = compact.matches;
+    if (sidebar) sidebar.inert = compact.matches || document.documentElement.dataset.workspaceSidebar === "collapsed";
     toggles.forEach(function (button) { button.hidden = !compact.matches; });
     document.body.dataset.uiReady = 'true';
     measureNavigation();
   }
-  toggles.forEach(function (button) { button.addEventListener('click', function () { setOpen(panel.hidden, true); }); });
+  toggles.forEach(function (button) { pageScope.listen(button, 'click', function () { setOpen(panel.hidden, true); }); });
   document.querySelectorAll('[data-more-dismiss]').forEach(function (button) {
-    button.addEventListener('click', function () { setOpen(false, true); });
+    pageScope.listen(button, 'click', function () { setOpen(false, true); });
   });
-  panel.addEventListener('click', function (event) {
+  pageScope.listen(panel, 'click', function (event) {
     if (event.target.closest('a[href],[popovertarget]')) setOpen(false, false);
   });
-  document.addEventListener('keydown', function (event) {
+  pageScope.listen(document, 'keydown', function (event) {
     if (!panel.hidden && event.key === 'Escape') { event.preventDefault(); setOpen(false, true); }
   });
   // Non-modal dialog: the bottom bar stays available. Keyboard users may leave
   // normally; dismiss without stealing the focus they just moved to.
-  document.addEventListener('focusin', function (event) {
+  pageScope.listen(document, 'focusin', function (event) {
     if (!panel.hidden && !panel.contains(event.target) && !event.target.closest('.workspace-mobile-nav,[data-more-toggle],[data-more-dismiss]')) setOpen(false, false);
   });
-  compact.addEventListener('change', syncLayout);
-  if (window.ResizeObserver && bottomNav) new ResizeObserver(measureNavigation).observe(bottomNav);
-  window.addEventListener('pagehide', function () { setOpen(false, false); });
-  window.addEventListener('pageshow', syncLayout);
+  pageScope.listen(compact, 'change', syncLayout);
+  if (window.ResizeObserver && bottomNav) pageScope.createObserver(ResizeObserver, measureNavigation).observe(bottomNav);
+  pageScope.listen(window, 'pagehide', function () { setOpen(false, false); });
+  pageScope.listen(window, 'pageshow', syncLayout);
   syncLayout();
 })();
 
@@ -82,7 +84,7 @@
     body.dataset.headerScrolled = String(Boolean(root && root.scrollTop > 12));
     if (root) positions.set(root, {position:root.scrollTop, anchor:root.scrollTop, direction:0});
   }
-  document.addEventListener('scroll', function (event) {
+  pageScope.listen(document, 'scroll', function (event) {
     if (!compact.matches) return;
     var target = event.target === document ? document.scrollingElement : event.target;
     if (!target || (target !== document.scrollingElement && !target.matches('.messenger-sidebar__list,.messenger-timeline,.messenger-welcome,.messenger-greeting'))) return;
@@ -109,16 +111,18 @@
   }, {capture:true, passive:true});
   // Tabbing into the header restores it before the focused control can be obscured.
   ['wheel','touchmove','pointerdown'].forEach(function (name) {
-    document.addEventListener(name, function () { hasScrollIntent = true; }, {passive:true});
+    pageScope.listen(document, name, function () { hasScrollIntent = true; }, {passive:true});
   });
-  document.addEventListener('keydown', function (event) {
+  pageScope.listen(document, 'keydown', function (event) {
     if (event.key === 'Tab') showHeader();
     if (['ArrowDown','ArrowUp','PageDown','PageUp','Home','End',' '].indexOf(event.key) !== -1) hasScrollIntent = true;
   });
-  header.addEventListener('focusin', showHeader);
-  compact.addEventListener('change', syncHeader);
-  window.addEventListener('resize', measureHeader);
-  window.addEventListener('pageshow', syncHeader);
-  if (window.ResizeObserver) new ResizeObserver(measureHeader).observe(header);
+  pageScope.listen(header, 'focusin', showHeader);
+  pageScope.listen(compact, 'change', syncHeader);
+  pageScope.listen(window, 'resize', measureHeader);
+  pageScope.listen(window, 'pageshow', syncHeader);
+  if (window.ResizeObserver) pageScope.createObserver(ResizeObserver, measureHeader).observe(header);
   syncHeader();
 })();
+
+});

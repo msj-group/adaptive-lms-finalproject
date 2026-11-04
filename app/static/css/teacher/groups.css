@@ -25,6 +25,7 @@ html[dir='rtl'] .teacher-groups-filter-form { direction:rtl; }
 .teacher-group>summary { display:grid; grid-template-columns:minmax(0,1fr) minmax(125px,auto) 115px 18px; align-items:center; gap:20px; padding:20px var(--st-panel-pad); list-style:none; cursor:pointer; }
 .teacher-group[open]>summary { background:var(--st-wash); }
 .teacher-group-identity,.teacher-group-state { display:flex; flex-direction:column; min-width:0; gap:6px; }
+.teacher-group-meta { display:contents; }
 .teacher-group-name { color:var(--st-blue); font:500 20px/1.3 var(--st-display); overflow-wrap:anywhere; }
 .teacher-group-course,.teacher-group-period { color:var(--st-muted); font-size:11px; line-height:1.7; overflow-wrap:anywhere; }
 .teacher-group-state .badge { align-self:flex-start; max-width:100%; white-space:normal; }

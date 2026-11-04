@@ -29,7 +29,6 @@
   </header>
   {{ ann.flash_messages() }}
   <div id="query-results">{% include "teacher/announcements/_feed_results.html" %}</div>
-  <p class="tan-timezone">{{ _('Times shown in %(timezone)s', timezone=tz_name) }}</p>
 </div>
 {% endblock %}
 {% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_announcements.js', v='group-deck-20261020') }}" defer></script>{% endblock %}

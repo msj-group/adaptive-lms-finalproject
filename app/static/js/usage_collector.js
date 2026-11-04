@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Natural-use collector -- Phase 6 research collection.
  * No dependency, no build step.
  *
@@ -28,7 +30,7 @@
  *
  * DELIVERY
  *   Batched POSTs to the server with the CSRF token in X-CSRFToken, every
- *   one sent with fetch(..., {keepalive: true}) so that a navigation -- a
+ *   one sent with pageScope.fetch(..., {keepalive: true}) so that a navigation -- a
  *   submitted form, a followed link, a closed tab -- never cancels a batch
  *   already handed to the browser. There is no sendBeacon and no CSRF
  *   exemption. Each batch is written to a small per-tab outbox
@@ -148,7 +150,7 @@
   // ---------------------------------------------------------------- delivery
 
   function post(url, body, keepalive) {
-    return window.fetch(url, {
+    return pageScope.fetch(url, {
       method: "POST",
       credentials: "same-origin",
       keepalive: !!keepalive,
@@ -371,7 +373,7 @@
         visibleSince = null;
       }
       record("visibility_hidden");
-      pendingHidden = window.setTimeout(function () { pendingHidden = null; flush(false); }, 300);
+      pendingHidden = pageScope.setTimeout(function () { pendingHidden = null; flush(false); }, 300);
     } else {
       visibleSince = Date.now();
       record("visibility_visible");
@@ -384,7 +386,7 @@
     if (pendingHidden !== null) {
       /* The page is unloading, not being hidden: a navigation must not end
          the observation run. Drop the hidden event that unloading caused. */
-      window.clearTimeout(pendingHidden);
+      pageScope.clearTimeout(pendingHidden);
       pendingHidden = null;
       var last = buffer[buffer.length - 1];
       if (last && last.type === "visibility_hidden" && Date.now() - last.t < 1000) {
@@ -414,7 +416,7 @@
   var lastClick = { node: null, at: 0, count: 0, element: null, timer: null };
 
   function endBurst() {
-    window.clearTimeout(lastClick.timer);
+    pageScope.clearTimeout(lastClick.timer);
     if (lastClick.count >= 2) {
       record("repeated_click", { element: lastClick.element, count: Math.min(lastClick.count, 50) });
     }
@@ -445,12 +447,12 @@
     if (lastClick.node === control && now - lastClick.at < REPEAT_WINDOW_MS) {
       lastClick.count += 1;
       lastClick.at = now;
-      window.clearTimeout(lastClick.timer);
-      lastClick.timer = window.setTimeout(endBurst, REPEAT_WINDOW_MS);
+      pageScope.clearTimeout(lastClick.timer);
+      lastClick.timer = pageScope.setTimeout(endBurst, REPEAT_WINDOW_MS);
       return;
     }
     if (lastClick.node) {
-      window.clearTimeout(lastClick.timer);
+      pageScope.clearTimeout(lastClick.timer);
       endBurst();
     }
     var fields = { element: element };
@@ -462,7 +464,7 @@
     }
     record("control_click", fields);
     lastClick = { node: control, at: now, count: 1, element: element,
-                  timer: window.setTimeout(endBurst, REPEAT_WINDOW_MS) };
+                  timer: pageScope.setTimeout(endBurst, REPEAT_WINDOW_MS) };
   }
 
   var INPUT_IDS = { quiz_option: 1, listening_option: 1, quiz_submit_confirm: 1,
@@ -494,7 +496,7 @@
     var id = formId(target.form);
     if (!invalidCounts[id]) {
       invalidCounts[id] = 0;
-      window.setTimeout(function () {
+      pageScope.setTimeout(function () {
         record("form_invalid", { element: id, count: Math.min(invalidCounts[id], 50) });
         delete invalidCounts[id];
       }, 0);
@@ -528,11 +530,11 @@
           record("media_event", fields);
         };
       }
-      node.addEventListener("play", note("play"));
-      node.addEventListener("pause", note("pause"));
-      node.addEventListener("ended", note("ended"));
-      node.addEventListener("seeked", note("seek"));
-      node.addEventListener("ratechange", note("rate_change"));
+      pageScope.listen(node, "play", note("play"));
+      pageScope.listen(node, "pause", note("pause"));
+      pageScope.listen(node, "ended", note("ended"));
+      pageScope.listen(node, "seeked", note("seek"));
+      pageScope.listen(node, "ratechange", note("rate_change"));
     });
   }
 
@@ -544,7 +546,7 @@
     if (!root || typeof window.MutationObserver !== "function") {
       return;
     }
-    new window.MutationObserver(function (mutations) {
+    pageScope.createObserver(MutationObserver, function (mutations) {
       mutations.forEach(function (mutation) {
         var value = root.getAttribute(mutation.attributeName);
         if (mutation.attributeName === "data-recorder-state" && RECORDER_STATES[value]) {
@@ -686,7 +688,7 @@
       form.removeEventListener("submit", onAnswer);
       skip.removeEventListener("click", onSkip);
       dialog.removeEventListener("keydown", onKey);
-      window.setTimeout(hideAndRestore, delay);
+      pageScope.setTimeout(hideAndRestore, delay);
     }
 
     /* The response may or may not have been saved: the request failed, or
@@ -799,10 +801,10 @@
       }
     }
 
-    form.addEventListener("change", onRating);
-    form.addEventListener("submit", onAnswer);
-    skip.addEventListener("click", onSkip);
-    dialog.addEventListener("keydown", onKey);
+    pageScope.listen(form, "change", onRating);
+    pageScope.listen(form, "submit", onAnswer);
+    pageScope.listen(skip, "click", onSkip);
+    pageScope.listen(dialog, "keydown", onKey);
   }
 
   // ------------------------------------------------------------------- start
@@ -820,22 +822,24 @@
       fields.count = config.progress.count;
     }
     record("page_view", fields);
-    document.addEventListener("click", guard(onClick), true);
-    document.addEventListener("change", guard(onChange), true);
-    document.addEventListener("invalid", guard(onInvalid), true);
-    document.addEventListener("submit", guard(onSubmit), true);
+    pageScope.listen(document, "click", guard(onClick), true);
+    pageScope.listen(document, "change", guard(onChange), true);
+    pageScope.listen(document, "invalid", guard(onInvalid), true);
+    pageScope.listen(document, "submit", guard(onSubmit), true);
     ["pointerdown", "keydown", "wheel", "touchstart", "scroll"].forEach(function (type) {
-      document.addEventListener(type, markInput, { capture: true, passive: true });
+      pageScope.listen(document, type, markInput, { capture: true, passive: true });
     });
-    document.addEventListener("visibilitychange", guard(onVisibility));
-    window.addEventListener("pagehide", guard(onPageHide));
+    pageScope.listen(document, "visibilitychange", guard(onVisibility));
+    pageScope.listen(window, "pagehide", guard(onPageHide));
     watchMedia();
     watchRecorder();
-    window.setInterval(guard(heartbeat), config.heartbeatMs);
-    window.setInterval(guard(function () { flush(false); replayOutbox(); }), config.flushMs);
-    window.setInterval(guard(considerPendingOffer), 5000);
-    window.setTimeout(guard(function () { replayOutbox(); flush(false); }), 1000);
+    pageScope.setInterval(guard(heartbeat), config.heartbeatMs);
+    pageScope.setInterval(guard(function () { flush(false); replayOutbox(); }), config.flushMs);
+    pageScope.setInterval(guard(considerPendingOffer), 5000);
+    pageScope.setTimeout(guard(function () { replayOutbox(); flush(false); }), 1000);
   } catch (error) {
     stop();
   }
 })();
+
+});

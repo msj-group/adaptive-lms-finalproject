@@ -1,0 +1,12 @@
+<form class="ce-source-form" method="post" enctype="multipart/form-data" action="{{ curriculum_url('document_upload') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="revision" value="{{ document.revision if document else 0 }}">
+  <label>{{ _('PDF file') }} <input type="file" name="document" accept="application/pdf,.pdf" required></label>
+  <small>{{ _('Up to 64 MiB and 1,000 pages.') }}</small>
+  {% if document %}
+    <label><input type="checkbox" name="keep_ranges" value="yes" required>
+      {{ _('The existing ranges and media positions refer to the same pages in the replacement PDF.') }}
+    </label>
+  {% endif %}
+  <button class="btn btn--primary" type="submit">{{ _('Save PDF') }}</button>
+</form>

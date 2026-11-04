@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Native forms own writes. Script changes presentation and local destinations only. */
 (() => {
   'use strict';
@@ -14,24 +16,28 @@
   const groupSwitch=root.querySelector('[data-group-switch]');
   groupSwitch?.addEventListener('change',()=> { location.assign(groupSwitch.value); });
   const groupPicker=root.querySelector('.tgb-group-picker');
-  document.addEventListener('click',event=> { if(groupPicker && !groupPicker.contains(event.target)) groupPicker.open=false; });
-  root.addEventListener('keydown',event=> { if(event.key==='Escape' && groupPicker?.open) { groupPicker.open=false; groupPicker.querySelector('summary').focus(); } });
+  pageScope.listen(document, 'click',event=> { if(groupPicker && !groupPicker.contains(event.target)) groupPicker.open=false; });
+  pageScope.listen(root, 'keydown',event=> { if(event.key==='Escape' && groupPicker?.open) { groupPicker.open=false; groupPicker.querySelector('summary').focus(); } });
   const sectionOwner=root.querySelector('[data-tgb-sections]');
   if(sectionOwner) {
     const sections=[...sectionOwner.querySelectorAll('[data-tgb-section]')];
     const links=[...sectionOwner.querySelectorAll('[data-tgb-tab]')];
-    const activate=id=> {
+    const positions=new Map();
+    const activate=(id, restorePosition=false)=> {
       if(!sections.some(section=>section.id===id)) id=sectionOwner.dataset.defaultSection || 'grade-tasks';
+      const previous=root.dataset.activeSection;
+      if(previous===id) return;
+      if(previous) positions.set(previous, window.scrollY);
       sections.forEach(section=> { section.hidden=section.id!==id; });
       links.forEach(link=> { if(link.hash==='#'+id) link.setAttribute('aria-current','page'); else link.removeAttribute('aria-current'); });
       root.classList.toggle('is-student-view',id.startsWith('student-'));
       root.dataset.activeSection=id;
-      requestAnimationFrame(()=>window.scrollTo({top:0,behavior:'instant'}));
+      if(restorePosition) pageScope.requestAnimationFrame(()=>window.scrollTo({top:positions.get(id) || 0,behavior:'instant'}));
     };
-    root.querySelectorAll('[data-tgb-tab],[data-tgb-jump]').forEach(link=>link.addEventListener('click',event=> {
-      event.preventDefault(); activate(link.hash.slice(1)); history.replaceState(null,'',link.hash);
+    root.querySelectorAll('[data-tgb-tab],[data-tgb-jump]').forEach(link=>pageScope.listen(link, 'click',event=> {
+      event.preventDefault(); activate(link.hash.slice(1), true); history.replaceState(history.state,'',link.hash);
     }));
-    window.addEventListener('hashchange',()=>activate(location.hash.slice(1)));
+    pageScope.listen(window, 'hashchange',()=>activate(location.hash.slice(1), true));
     activate(location.hash.slice(1));
     const filters=root.querySelector('[data-task-filters]');
     if(filters) {
@@ -44,8 +50,8 @@
         root.querySelector('[data-filter-empty]').hidden=!phone.matches || cards.some(card=>!card.hidden && card.dataset.taskState===state);
       };
       filters.hidden=false;
-      filters.addEventListener('click',event=> { const button=event.target.closest('[data-task-filter]'); if(button) {state=button.dataset.taskFilter;filter();} });
-      phone.addEventListener('change',filter); filter();
+      pageScope.listen(filters, 'click',event=> { const button=event.target.closest('[data-task-filter]'); if(button) {state=button.dataset.taskFilter;filter();} });
+      pageScope.listen(phone, 'change',filter); filter();
     }
   }
   const itemForm=root.querySelector('[data-item-form]');
@@ -75,9 +81,9 @@
     choices.hidden=false;
     // Keep the canonical select enabled and expose its server errors.
     itemForm.querySelector('[data-kind-fallback]').hidden=!itemForm.querySelector('[data-kind-fallback] .field__error');
-    choices.addEventListener('click',event=> {const button=event.target.closest('[data-kind-choice]');if(button){kind.value=button.dataset.kindChoice;updateSources(true);}});
-    kind.addEventListener('change',()=>updateSources(true));
-    itemForm.addEventListener('input',live); itemForm.addEventListener('change',live); updateSources(false);
+    pageScope.listen(choices, 'click',event=> {const button=event.target.closest('[data-kind-choice]');if(button){kind.value=button.dataset.kindChoice;updateSources(true);}});
+    pageScope.listen(kind, 'change',()=>updateSources(true));
+    pageScope.listen(itemForm, 'input',live); pageScope.listen(itemForm, 'change',live); updateSources(false);
     if(itemForm.dataset.editing!=='true') {
       const panels=[...itemForm.querySelectorAll('[data-item-step]')];
       const navigation=root.querySelector('[data-wizard-nav]');
@@ -113,12 +119,12 @@
       };
       const advance=target=> {for(let current=step;current<target;current++)if(!valid(current)){show(current);return;}show(target);};
       navigation.hidden=false;
-      navigation.addEventListener('click',event=> {const button=event.target.closest('[data-wizard-step]');if(button)advance(Number(button.dataset.wizardStep));});
-      next.addEventListener('click',()=>advance(Math.min(3,step+1)));
+      pageScope.listen(navigation, 'click',event=> {const button=event.target.closest('[data-wizard-step]');if(button)advance(Number(button.dataset.wizardStep));});
+      pageScope.listen(next, 'click',()=>advance(Math.min(3,step+1)));
       const goBack=()=>{error.textContent='';show(Math.max(1,step-1));};
-      previous.addEventListener('click',goBack);
+      pageScope.listen(previous, 'click',goBack);
       root.querySelector('[data-wizard-phone-back]').addEventListener('click',goBack);
-      itemForm.addEventListener('submit',event=> {if(step!==3){event.preventDefault();advance(3);}});
+      pageScope.listen(itemForm, 'submit',event=> {if(step!==3){event.preventDefault();advance(3);}});
       const invalidPanel=panels.find(panel=>panel.querySelector('.field__error'));show(invalidPanel?Number(invalidPanel.dataset.itemStep):1);
     }
   }
@@ -147,12 +153,12 @@
       });status.textContent=entered+' / '+rows.length+' '+scoreForm.dataset.labelGraded;
     };
     const feedback=()=>rows.forEach(row=>{row.querySelector('details').open=!media.matches || Boolean(row.querySelector('textarea').value);});
-    mode.addEventListener('click',()=>{all=!all;update();});previous.addEventListener('click',()=>{index=Math.max(0,index-1);update();});
+    pageScope.listen(mode, 'click',()=>{all=!all;update();});pageScope.listen(previous, 'click',()=>{index=Math.max(0,index-1);update();});
     const choose=id=>{index=rows.findIndex(row=>row.dataset.record===id);all=false;update();};
-    picker.addEventListener('click',event=>{const button=event.target.closest('[data-score-pick]');if(button)choose(button.dataset.scorePick);});
-    roster.addEventListener('click',event=>{const button=event.target.closest('[data-roster-pick]');if(button)choose(button.dataset.rosterPick);});
-    ungraded.addEventListener('change',update);scoreForm.addEventListener('input',update);media.addEventListener('change',()=>{feedback();update();});
-    scoreForm.addEventListener('submit',event=>{
+    pageScope.listen(picker, 'click',event=>{const button=event.target.closest('[data-score-pick]');if(button)choose(button.dataset.scorePick);});
+    pageScope.listen(roster, 'click',event=>{const button=event.target.closest('[data-roster-pick]');if(button)choose(button.dataset.rosterPick);});
+    pageScope.listen(ungraded, 'change',update);pageScope.listen(scoreForm, 'input',update);pageScope.listen(media, 'change',()=>{feedback();update();});
+    pageScope.listen(scoreForm, 'submit',event=>{
       let invalid=-1;rows.forEach((row,i)=>{
         const input=row.querySelector('[data-score-input]');const comment=row.querySelector('[data-score-comment]');const value=input.value.trim();let error='';
         if(!value && scoreForm.dataset.released==='true')error=scoreForm.dataset.msgBlank;
@@ -161,9 +167,11 @@
         input.setAttribute('aria-invalid',String(Boolean(error)));row.querySelector('[data-score-error]').textContent=error;if(error && invalid<0)invalid=i;
       });if(invalid>=0){event.preventDefault();index=invalid;all=false;ungraded.checked=false;update();rows[index].querySelector('[data-score-input]').focus();}
     });
-    scoreForm.addEventListener('keydown',event=>{if(event.key==='Enter' && event.target.matches('[data-score-input]') && media.matches && !all){event.preventDefault();scoreForm.requestSubmit(next);}});
+    pageScope.listen(scoreForm, 'keydown',event=>{if(event.key==='Enter' && event.target.matches('[data-score-input]') && media.matches && !all){event.preventDefault();scoreForm.requestSubmit(next);}});
     feedback();update();
   }
   const choice=root.querySelector('[data-preview-choice]');
-  if(choice){const panels=[...root.querySelectorAll('[data-preview-record]')];const select=()=>panels.forEach(panel=>{panel.hidden=panel.dataset.previewRecord!==choice.value;});choice.addEventListener('change',select);select();}
+  if(choice){const panels=[...root.querySelectorAll('[data-preview-record]')];const select=()=>panels.forEach(panel=>{panel.hidden=panel.dataset.previewRecord!==choice.value;});pageScope.listen(choice, 'change',select);select();}
 })();
+
+});

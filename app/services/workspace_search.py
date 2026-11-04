@@ -80,14 +80,14 @@ def _teacher(user_id, norm, url):
         query = db.session.query(model.title.label("title"), Group.name.label("group_name"),
             Group.public_id.label("group_public_id"), Unit.public_id.label("unit_public_id"))
         if model is Unit:
-            query = query.select_from(Unit).join(Group, Group.id == Unit.group_id)
+            query = query.select_from(Unit).join(Group, Unit.in_group(Group.id, Group.course_id))
         else:
             query = query.add_columns(Lesson.public_id.label("lesson_public_id"))
             if model is Material:
                 query = query.select_from(Material).join(Lesson, Lesson.id == Material.lesson_id)
             else:
                 query = query.select_from(Lesson)
-            query = query.join(Unit, Unit.id == Lesson.unit_id).join(Group, Group.id == Unit.group_id)
+            query = query.join(Unit, Unit.id == Lesson.unit_id).join(Group, Unit.in_group(Group.id, Group.course_id))
         rows = query.filter(_assigned(user_id), _match((model.title, model.search_keywords), norm)).order_by(
             model.title, model.public_id).limit(CAP + 1).all()
         def build(row, current=model):

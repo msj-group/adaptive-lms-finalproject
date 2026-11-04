@@ -119,7 +119,7 @@ def record_projection(episode_id, student_id, record_type, course_id=None):
         func.coalesce(LessonProgress.completed_at, LessonProgress.last_opened_at, LessonProgress.created_at),
     )).select_from(LessonProgress).join(Lesson, Lesson.id == LessonProgress.lesson_id).join(
         Unit, Unit.id == Lesson.unit_id).join(Group, Group.id == LessonProgress.group_id).where(
-        Unit.group_id == LessonProgress.group_id))
+        Unit.in_group(Group.id, Group.course_id)))
     models.append(LessonProgress)
 
     sources.append(select(*_columns(AcademicRevision, "corrections", literal("Recorded correction"),
@@ -166,7 +166,8 @@ def _details(rows, episode_id, student_id, course_id):
             statement = statement.where(_revision_visibility())
         else:
             statement = statement.join(Lesson, Lesson.id == LessonProgress.lesson_id).join(
-                Unit, Unit.id == Lesson.unit_id).where(Unit.group_id == LessonProgress.group_id)
+                Unit, Unit.id == Lesson.unit_id).join(Group, Group.id == LessonProgress.group_id).where(
+                    Unit.in_group(Group.id, Group.course_id))
         statement = _owned(statement, model, episode_id, student_id, course_id)
         for record in db.session.execute(statement).scalars():
             data = {}

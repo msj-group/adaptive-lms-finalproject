@@ -41,8 +41,10 @@
     <details class="teacher-group"{% if loop.first %} open{% endif %}>
       <summary>
         <span class="teacher-group-identity"><strong class="teacher-group-name" dir="auto">{{ card.group_name }}</strong><span class="teacher-group-course"><bdi>{{ card.course_title }}</bdi> · <bdi>{{ card.level_name }}</bdi> · <bdi>{{ card.term_name }}</bdi></span></span>
+        <span class="teacher-group-meta">
         <span class="teacher-group-state"><span class="badge badge--{{ 'success' if card.operational else 'neutral' }}">{{ _('Operational' if card.operational else 'Archived context') }}</span><span class="teacher-group-period">{{ _({'current':'Current term','upcoming':'Upcoming term','ended':'Term ended'}[card.term_period]) }}{% if card.term_period != 'current' %} · {{ ui_date((card.term_start if card.term_period == 'upcoming' else card.term_end).strftime('%d %b %Y')) }}{% endif %}</span></span>
         <span class="teacher-group-count">{{ _n('%(count)d active student', '%(count)d active students', card.student_count) }}</span>
+        </span>
         <span class="teacher-group-arrow">{{ ui.icon('chevron-down', 18) }}</span>
       </summary>
       <div class="teacher-group-body">

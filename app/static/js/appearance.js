@@ -1,11 +1,12 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Native POST forms persist language/theme; scripts only add preview and dismissal. */
 (function () {
   "use strict";
   var root = document.documentElement;
-  document.body.dataset.uiMotion = root.dataset.uiMotion || "system";
   document.body.dataset.uiDensity = root.dataset.uiDensity || "comfortable";
   document.querySelectorAll("[data-appearance-form] select[name='theme']").forEach(function (control) {
-    control.addEventListener("change", function () { window.aelmsUI.theme(control.value); });
+    pageScope.listen(control, "change", function () { window.aelmsUI.theme(control.value); });
   });
   // Separate language/theme forms must retain the latest in-page theme preview.
   function syncThemeFields() {
@@ -17,10 +18,10 @@
     });
   }
   document.querySelectorAll('[data-appearance-form]').forEach(function (form) {
-    form.addEventListener('submit', syncThemeFields);
+    pageScope.listen(form, 'submit', syncThemeFields);
   });
   document.querySelectorAll('[data-theme-options]').forEach(function (form) {
-    form.addEventListener('submit', function (event) {
+    pageScope.listen(form, 'submit', function (event) {
       var choice = event.submitter;
       if (!choice || !['system', 'light', 'dark'].includes(choice.value)) return;
       event.preventDefault();
@@ -29,7 +30,7 @@
     });
   });
   syncThemeFields();
-  new MutationObserver(syncThemeFields).observe(root, {attributes:true, attributeFilter:['data-theme-preference']});
+  pageScope.createObserver(MutationObserver, syncThemeFields).observe(root, {attributes:true, attributeFilter:['data-theme-preference']});
   var panels = document.querySelectorAll('[data-utility-panel]');
   panels.forEach(function (panel) {
     var nativePopover = 'showPopover' in panel;
@@ -50,7 +51,7 @@
       return !closed || closed.querySelector('summary') === control;
     }
     function restoreFocus() {
-      setTimeout(function () {
+      pageScope.setTimeout(function () {
         if (nativePopover ? panel.matches(':popover-open') : !panel.hidden) return;
         var active = document.activeElement;
         // Light dismissal may already have focused another page control.
@@ -62,14 +63,14 @@
         if (visible(destination)) destination.focus({preventScroll:true});
       }, 0);
     }
-    panel.addEventListener('beforetoggle', function (event) {
+    pageScope.listen(panel, 'beforetoggle', function (event) {
       if (event.newState !== 'open') return;
       prepareOpen();
     });
-    panel.addEventListener('toggle', function (event) { if (event.newState === 'closed') restoreFocus(); });
+    pageScope.listen(panel, 'toggle', function (event) { if (event.newState === 'closed') restoreFocus(); });
     if (!nativePopover) { panel.classList.add('utility-panel-fallback'); panel.hidden = true; }
     document.querySelectorAll('[popovertarget="' + panel.id + '"]').forEach(function (button) {
-      button.addEventListener('click', function () {
+      pageScope.listen(button, 'click', function () {
         var hide = button.getAttribute('popovertargetaction') === 'hide';
         if (!hide) previous = button;
         if (nativePopover) return;
@@ -80,8 +81,8 @@
       });
     });
     if (nativePopover) return;
-    document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !panel.hidden) { panel.hidden = true; restoreFocus(); } });
-    document.addEventListener('click', function (event) {
+    pageScope.listen(document, 'keydown', function (event) { if (event.key === 'Escape' && !panel.hidden) { panel.hidden = true; restoreFocus(); } });
+    pageScope.listen(document, 'click', function (event) {
       if (!panel.hidden && !panel.contains(event.target) && !event.target.closest('[popovertarget]')) { panel.hidden = true; restoreFocus(); }
     });
   });
@@ -101,23 +102,36 @@
       }
     }
     locationUrl.searchParams.delete('_utility');
-    history.replaceState(history.state, '', locationUrl.href);
+    pageScope.setTimeout(function () { history.replaceState(history.state, '', locationUrl.href); }, 0);
   }
-  document.querySelectorAll('[data-ui-preference]').forEach(function (control) {
-    var name = control.dataset.uiPreference;
-    control.value = document.body.dataset[name === 'motion' ? 'uiMotion' : 'uiDensity'];
-    control.addEventListener('change', function () {
-      var settings;
-      try { settings = JSON.parse(localStorage.getItem('aelms.display.v1') || '{}'); } catch (_) { settings = {}; }
-      if (!settings || typeof settings !== 'object') settings = {};
-      settings[name] = control.value;
-      root.dataset[name === 'motion' ? 'uiMotion' : 'uiDensity'] = control.value;
-      document.body.dataset[name === 'motion' ? 'uiMotion' : 'uiDensity'] = control.value;
-      document.querySelectorAll('[data-ui-preference="'+name+'"]').forEach(function (other) { other.value = control.value; });
+  var densityControls = document.querySelectorAll('[data-ui-preference="density"]');
+  densityControls.forEach(function (control) {
+    control.value = document.body.dataset.uiDensity;
+    pageScope.listen(control, 'change', function () {
+      root.dataset.uiDensity = document.body.dataset.uiDensity = control.value;
+      densityControls.forEach(function (other) { other.value = control.value; });
       var message = 'Display preferences saved on this device.';
-      try { localStorage.setItem('aelms.display.v1',JSON.stringify({motion:document.body.dataset.uiMotion,density:document.body.dataset.uiDensity})); }
+      try { localStorage.setItem('aelms.display.v1',JSON.stringify({density:control.value})); }
       catch (_) { message = 'Applied for this page. Device storage is unavailable.'; }
       document.querySelectorAll('[data-preference-status]').forEach(function (status) { status.textContent = window.aelmsUI.t(message); });
     });
   });
+
+  var noticeCount = 0;
+  function showFlashNotices(container) {
+    container.querySelectorAll('[data-app-flash]').forEach(function (source) {
+      var dialog = source.querySelector('template').content.firstElementChild.cloneNode(true);
+      if (typeof dialog.showModal !== 'function') return;
+      var messages = source.querySelector('[data-app-flash-items]');
+      messages.id = 'app-flash-items-' + (++noticeCount);
+      dialog.setAttribute('aria-describedby', messages.id);
+      dialog.querySelector('form').before(messages);
+      source.replaceWith(dialog);
+      dialog.showModal();
+    });
+  }
+  window.aelmsUI.showFlashNotices = showFlashNotices;
+  pageScope.listen(document, 'DOMContentLoaded', function () { showFlashNotices(document); }, {once:true});
 })();
+
+});

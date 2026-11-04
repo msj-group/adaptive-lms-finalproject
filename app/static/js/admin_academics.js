@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Setup Hub phone deck. Selection uses the existing four native GET destinations. */
 (function () {
   "use strict";
@@ -26,7 +28,7 @@
     cards.forEach(function (card) { card.classList.toggle("is-front", card === item.card); });
     if (position) position.textContent = String(cards.indexOf(item.card) + 1) + " / " + String(cards.length);
   }
-  function schedule() { if (!frame) frame = requestAnimationFrame(front); }
+  function schedule() { if (!frame) frame = pageScope.requestAnimationFrame(front); }
   function centre(card) {
     var bounds = rail.getBoundingClientRect(), box = card.getBoundingClientRect();
     var delta = box.left + box.width / 2 - bounds.left - rail.clientWidth / 2;
@@ -34,16 +36,16 @@
   }
   function cancelGesture() {
     gesture = false; moved = false; pointerDown = false; settleAttempts = 0;
-    clearTimeout(settleTimer);
+    pageScope.clearTimeout(settleTimer);
   }
   function settle() {
-    clearTimeout(settleTimer);
+    pageScope.clearTimeout(settleTimer);
     if (!phone || pointerDown || !gesture || leaving) return;
     if (!moved) { cancelGesture(); return; }
     var item = nearest();
     if (!item || item.distance > 3) {
       if (++settleAttempts > 6) { cancelGesture(); return; }
-      settleTimer = setTimeout(settle, 160);
+      settleTimer = pageScope.setTimeout(settle, 160);
       return;
     }
     cancelGesture();
@@ -58,46 +60,48 @@
     if (nextPhone === phone && nextWidth === width) return;
     cancelGesture(); phone = nextPhone; width = nextWidth;
     hub.dataset.enhanced = String(phone);
-    requestAnimationFrame(function () {
+    pageScope.requestAnimationFrame(function () {
       if (phone) { centre(selected); front(); }
       else cards.forEach(function (card) { card.classList.remove("is-front"); });
     });
   }
-  var observer = new ResizeObserver(layout);
+  var observer = pageScope.createObserver(ResizeObserver, layout);
   observer.observe(rail);
-  rail.addEventListener("scroll", function () {
+  pageScope.listen(rail, "scroll", function () {
     schedule();
     if (gesture && Math.abs(rail.scrollLeft - startScroll) > 8) moved = true;
-    clearTimeout(settleTimer);
-    if (gesture) settleTimer = setTimeout(settle, 180);
+    pageScope.clearTimeout(settleTimer);
+    if (gesture) settleTimer = pageScope.setTimeout(settle, 180);
   }, {passive:true});
-  rail.addEventListener("scrollend", settle, {passive:true});
-  rail.addEventListener("pointerdown", function () {
+  pageScope.listen(rail, "scrollend", settle, {passive:true});
+  pageScope.listen(rail, "pointerdown", function () {
     if (!phone || leaving) return;
     cancelGesture(); gesture = true; pointerDown = true; startScroll = rail.scrollLeft;
   }, {passive:true});
   function release() {
     pointerDown = false;
-    if (gesture) { clearTimeout(settleTimer); settleTimer = setTimeout(settle, 180); }
+    if (gesture) { pageScope.clearTimeout(settleTimer); settleTimer = pageScope.setTimeout(settle, 180); }
   }
-  rail.addEventListener("pointerup", release, {passive:true});
-  rail.addEventListener("pointercancel", release, {passive:true});
-  rail.addEventListener("wheel", function (event) {
+  pageScope.listen(rail, "pointerup", release, {passive:true});
+  pageScope.listen(rail, "pointercancel", release, {passive:true});
+  pageScope.listen(rail, "wheel", function (event) {
     if (!phone || leaving || (!event.deltaX && !event.shiftKey)) return;
     if (!gesture) startScroll = rail.scrollLeft;
     gesture = true;
   }, {passive:true});
-  rail.addEventListener("focusin", function (event) {
+  pageScope.listen(rail, "focusin", function (event) {
     var card = event.target.closest("[data-academic-area]");
     if (phone && card && !pointerDown) { cancelGesture(); centre(card); schedule(); }
   });
-  document.addEventListener("visibilitychange", function () { if (document.hidden) cancelGesture(); });
-  window.addEventListener("pagehide", function () {
+  pageScope.listen(document, "visibilitychange", function () { if (document.hidden) cancelGesture(); });
+  pageScope.listen(window, "pagehide", function () {
     cancelGesture(); observer.disconnect();
-    if (frame) cancelAnimationFrame(frame);
+    if (frame) pageScope.cancelAnimationFrame(frame);
   });
-  window.addEventListener("pageshow", function () {
+  pageScope.listen(window, "pageshow", function () {
     leaving = false; width = -1; observer.observe(rail); layout();
   });
   layout();
 })();
+
+});

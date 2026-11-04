@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Switch between authorized activity summaries without requests or storage. */
 (function () {
   "use strict";
@@ -22,10 +24,12 @@
       var heading = card.querySelector("[data-picker-heading]");
       if (heading) heading.classList.add("sr-only");
     });
-    choice.addEventListener("change", showCard);
-    window.addEventListener("pageshow", function () { requestAnimationFrame(showCard); });
+    pageScope.listen(choice, "change", showCard);
+    pageScope.listen(window, "pageshow", function () { pageScope.requestAnimationFrame(showCard); });
     panels.setAttribute("aria-live", "polite");
     panels.setAttribute("aria-atomic", "true");
     control.hidden = false;
   });
 }());
+
+});

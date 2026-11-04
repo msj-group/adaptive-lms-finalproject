@@ -1,0 +1,4 @@
+{% import 'curriculum/_pages.html' as reader with context %}
+{% import 'admin/curriculum/_saved_material.html' as saved with context %}
+{{ reader.media_pin(material, editor_file_endpoint, editor_route_values, true, pin_version) }}
+<ul>{{ saved.item(course_id, revision, lesson, material, pin_version, origin) }}</ul>

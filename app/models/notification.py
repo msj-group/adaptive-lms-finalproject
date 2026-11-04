@@ -91,6 +91,7 @@ class Notification(db.Model):
 
     __tablename__ = "notifications"
     __table_args__ = (
+        db.UniqueConstraint("recipient_id", "curriculum_notice_key", name="uq_notifications_curriculum_notice"),
         db.CheckConstraint(_KIND_CHECK_SQL, name="ck_notifications_kind_valid"),
         db.Index(
             "ix_notifications_recipient_unread_created",
@@ -120,6 +121,7 @@ class Notification(db.Model):
     message = db.Column(db.String(500), nullable=False)
     target_path = db.Column(db.String(512), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    curriculum_notice_key = db.Column(db.String(36), nullable=True)
     read_at = db.Column(db.DateTime, nullable=True)
 
     recipient = db.relationship("User")

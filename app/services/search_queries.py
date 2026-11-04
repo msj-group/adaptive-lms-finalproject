@@ -36,8 +36,9 @@ Design rules (Part M13):
   ``app.services.search_terms.escape_like`` so they match literally.
 """
 
-from sqlalchemy import and_, case, func, or_
+from sqlalchemy import exists, select, and_, case, func, or_
 
+from app.services.curriculum_visibility import lesson_is_released, material_is_released
 from app.extensions import db
 from app.models import (
     AcademicStatus,
@@ -50,7 +51,6 @@ from app.models import (
     EnrollmentStatus,
     Group,
     Lesson,
-    LessonStatus,
     Level,
     Material,
     MaterialKind,
@@ -66,7 +66,6 @@ from app.services.search_terms import escape_like
 
 _ACTIVE = AcademicStatus.ACTIVE.value
 _ENROLLMENT_ACTIVE = EnrollmentStatus.ACTIVE.value
-_PUBLISHED = LessonStatus.PUBLISHED.value
 _ANNOUNCEMENT_PUBLISHED = AnnouncementStatus.PUBLISHED.value
 _ANNOUNCEMENT_COURSE = AnnouncementScope.COURSE.value
 _ANNOUNCEMENT_GROUP = AnnouncementScope.GROUP.value
@@ -288,10 +287,12 @@ def _unit_results(student_id, qn, group_public_id, cap):
         .join(Course, Group.course_id == Course.id)
         .join(Level, Course.level_id == Level.id)
         .join(AcademicTerm, Group.academic_term_id == AcademicTerm.id)
-        .join(Unit, Unit.group_id == Group.id)
+        .join(Unit, Unit.in_group(Group.id, Group.course_id))
         .filter(
             Enrollment.student_id == student_id,
             Unit.status == _ACTIVE,
+            exists(select(1).where(Lesson.unit_id == Unit.id, lesson_is_released())
+                   .correlate(Group, Unit)),
             _match_clause(
                 [Unit.title, Unit.description, Unit.search_keywords], qn.tokens
             ),
@@ -335,12 +336,12 @@ def _lesson_results(student_id, qn, group_public_id, cap):
         .join(Course, Group.course_id == Course.id)
         .join(Level, Course.level_id == Level.id)
         .join(AcademicTerm, Group.academic_term_id == AcademicTerm.id)
-        .join(Unit, Unit.group_id == Group.id)
+        .join(Unit, Unit.in_group(Group.id, Group.course_id))
         .join(Lesson, Lesson.unit_id == Unit.id)
         .filter(
             Enrollment.student_id == student_id,
             Unit.status == _ACTIVE,
-            Lesson.status == _PUBLISHED,
+            lesson_is_released(),
             _match_clause(
                 [Lesson.title, Lesson.description, Lesson.search_keywords], qn.tokens
             ),
@@ -398,15 +399,16 @@ def _material_results(student_id, qn, group_public_id, material_kind, cap):
         .join(Course, Group.course_id == Course.id)
         .join(Level, Course.level_id == Level.id)
         .join(AcademicTerm, Group.academic_term_id == AcademicTerm.id)
-        .join(Unit, Unit.group_id == Group.id)
+        .join(Unit, Unit.in_group(Group.id, Group.course_id))
         .join(Lesson, Lesson.unit_id == Unit.id)
         .join(Material, Material.lesson_id == Lesson.id)
         .outerjoin(UploadedFile, Material.uploaded_file_id == UploadedFile.id)
         .filter(
             Enrollment.student_id == student_id,
             Unit.status == _ACTIVE,
-            Lesson.status == _PUBLISHED,
+            lesson_is_released(),
             Material.status == _ACTIVE,
+            material_is_released(),
             _match_clause(search_columns, qn.tokens),
         ),
         group_public_id=group_public_id,

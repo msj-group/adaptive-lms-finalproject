@@ -9,7 +9,10 @@
   <div class="st-body figma-body" data-workspace-body>
     {% include 'layouts/_workspace_header.html' %}
     <div class="st-content figma-page {{ portal_blocks.workspace_content_class() }}" id="workspace-content" tabindex="-1">
-      {% include 'layouts/_workspace_back.html' %}
+      {% if role in ['student','teacher'] %}
+        {% set page_actions = portal_blocks.workspace_page_actions()|trim %}
+        {% if page_actions %}<div class="workspace-page-navigation">{{ page_actions }}</div>{% endif %}
+      {% endif %}
       {% set page_content %}{% if role in ['student','teacher'] %}{{ portal_blocks.portal_content() }}{% elif role == 'administrator' %}{{ portal_blocks.admin_content() }}{% else %}{{ portal_blocks.research_content() }}{% endif %}{% endset %}
       {% if request.endpoint not in ['student.dashboard','teacher.dashboard','admin.dashboard','research.dashboard'] %}
       {% if request.blueprint == 'messages' or 'data-workspace-page-heading' not in page_content %}<header class="st-page-heading">{{ portal_blocks.workspace_page_label() }}</header>{% endif %}
@@ -18,7 +21,7 @@
       {{ page_content }}
       {% if request.blueprint != 'messages' %}{% include '_workspace_navigation.html' %}{% endif %}
     </div>
-    {% if request.blueprint != 'messages' %}<footer class="st-footer"><span>Youth Centre · {{ role|capitalize }} portal</span>{% if role == 'researcher' %}<span>Pseudonymous data</span>{% endif %}</footer>{% endif %}
+    {% if request.blueprint != 'messages' and role == 'researcher' %}<footer class="st-footer"><span>Pseudonymous data</span></footer>{% endif %}
   </div>
 </div>
 {% include 'layouts/_mobile_navigation.html' %}

@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Optional read-only reader. Native authorized GET URLs remain the fallback. */
 (function () {
   'use strict';
@@ -75,7 +77,7 @@
     link.setAttribute('aria-busy', 'true'); reader.setAttribute('aria-busy', 'true');
     message('Loading details…');
     try {
-      const response = await fetch(target.url.href, {credentials: 'same-origin', cache: 'no-store',
+      const response = await pageScope.fetch(target.url.href, {credentials: 'same-origin', cache: 'no-store',
         signal: request.signal, headers: {'Accept': 'text/html'}});
       if (!response.ok || response.redirected || response.url !== target.url.href ||
           !response.headers.get('Content-Type')?.includes('text/html')) throw new Error('unavailable');
@@ -119,26 +121,28 @@
       }
     }
   };
-  desk.addEventListener('click', (event) => {
+  pageScope.listen(desk, 'click', (event) => {
     if (event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const link = event.target.closest('a');
     if (link && !disabled && targetFor(link)) { event.preventDefault(); load(link); }
     else if (event.target.closest('[data-learning-back]')) back();
     else if (event.target.closest('[data-learning-retry]') && pendingLink) load(pendingLink);
   });
-  desk.addEventListener('keydown', (event) => {
+  pageScope.listen(desk, 'keydown', (event) => {
     if (event.key === 'Escape' && !reader.hidden) { event.preventDefault(); back(); }
   });
   // Keep the existing filter/fragment owner; stale reads never re-open over new results.
   origin.querySelectorAll('form').forEach((form) => {
-    ['input', 'change', 'submit'].forEach((name) => form.addEventListener(name, reset));
+    ['input', 'change', 'submit'].forEach((name) => pageScope.listen(form, name, reset));
   });
   const results = origin.querySelector('#query-results');
-  if (results) new MutationObserver(reset).observe(results, {childList: true});
-  window.addEventListener('popstate', reset);
-  window.addEventListener('pagehide', () => { active = false; reset(); });
-  window.addEventListener('pageshow', (event) => {
+  if (results) pageScope.createObserver(MutationObserver, reset).observe(results, {childList: true});
+  pageScope.listen(window, 'popstate', reset);
+  pageScope.listen(window, 'pagehide', () => { active = false; reset(); });
+  pageScope.listen(window, 'pageshow', (event) => {
     active = true;
     if (event.persisted) location.reload(); // Re-authorize restored private content.
   });
 })();
+
+});

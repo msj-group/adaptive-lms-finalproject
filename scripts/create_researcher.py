@@ -30,10 +30,9 @@ in the shared form. It manages collection configurations, reads pseudonymous
 sessions and creates exports. It cannot open any Administrator, Teacher or
 Student page, and it never sees a Student's name, email address or account.
 
-``scripts/create_admin.py`` is deliberately untouched: the two scripts create
-different roles and share nothing but the password service, and editing a
-working Administrator bootstrap to save a few lines here would put the first
-Administrator account at risk for no benefit.
+``scripts/create_admin.py`` provisions its separate role using the same shared
+password service and length limits. Researcher allowlisting remains specific
+to this helper.
 """
 import getpass
 import sys
@@ -44,9 +43,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app import create_app
 from app.extensions import db
 from app.models.user import User, UserRole, UserStatus
-from app.security.passwords import hash_password
-
-MIN_PASSWORD_LENGTH = 12
+from app.security.passwords import ACCOUNT_PASSWORD_MAX_LENGTH, ACCOUNT_PASSWORD_MIN_LENGTH, hash_password
 
 
 def main() -> int:
@@ -91,9 +88,9 @@ def main() -> int:
         if password != confirm:
             print("Passwords do not match.", file=sys.stderr)
             return 1
-        if len(password) < MIN_PASSWORD_LENGTH:
+        if not ACCOUNT_PASSWORD_MIN_LENGTH <= len(password) <= ACCOUNT_PASSWORD_MAX_LENGTH:
             print(
-                f"Password must be at least {MIN_PASSWORD_LENGTH} characters.",
+                f"Password must contain between {ACCOUNT_PASSWORD_MIN_LENGTH} and {ACCOUNT_PASSWORD_MAX_LENGTH} characters.",
                 file=sys.stderr,
             )
             return 1

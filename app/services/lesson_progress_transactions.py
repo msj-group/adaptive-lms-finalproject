@@ -66,6 +66,7 @@ from datetime import timedelta
 
 from sqlalchemy.exc import IntegrityError
 
+from app.services.curriculum_visibility import lesson_is_released_locked
 from app.extensions import db
 from app.models import (
     AcademicStatus,
@@ -73,7 +74,6 @@ from app.models import (
     EnrollmentStatus,
     Lesson,
     LessonProgress,
-    LessonStatus,
     Unit,
     User,
     UserRole,
@@ -89,7 +89,6 @@ _ACTIVE = AcademicStatus.ACTIVE.value
 _ENROLLMENT_ACTIVE = EnrollmentStatus.ACTIVE.value
 _USER_ACTIVE = UserStatus.ACTIVE.value
 _STUDENT = UserRole.STUDENT.value
-_PUBLISHED = LessonStatus.PUBLISHED.value
 
 #: Previews tried before a write is rejected. A retry happens only after
 #: the locked chain proved the Group's academic parents moved, and only for
@@ -197,14 +196,14 @@ def access_proof_error(locks, target, student_id):
     ):
         return "enrollment"
     unit = locks.unit
-    if unit is None or unit.id != target.unit_id or unit.group_id != group.id:
+    if unit is None or unit.id != target.unit_id or not unit.in_group(group.id, group.course_id):
         return "unit"
     if unit.status != _ACTIVE:
         return "unit"
     lesson = locks.lesson
     if lesson is None or lesson.id != target.lesson_id or lesson.unit_id != unit.id:
         return "lesson"
-    if lesson.status != _PUBLISHED:
+    if not lesson_is_released_locked(group, unit, lesson):
         return "lesson"
     progress = locks.progress
     if progress is not None and (

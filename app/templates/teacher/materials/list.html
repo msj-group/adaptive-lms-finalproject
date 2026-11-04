@@ -6,28 +6,9 @@
 {% block studio_content %}
 
 
-{% if not operational %}
-<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
-  This group is not operational: the {{ archived_labels | join(", ") }} {{ "is" if archived_labels|length == 1 else "are" }} archived.
-  Active materials here are currently <strong>hidden from students</strong>, but the files and content are preserved. You cannot add,
-  edit, reorder, or reactivate materials until every parent is active again.
+<div class="cs-section-head"><h2>Lesson materials</h2>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.curriculum_publication', group_public_id=gp) }}">Course publication</a>
 </div>
-{% elif not unit_active %}
-<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
-  This unit is archived. Its materials are <strong>hidden from students</strong> for as long as the unit stays archived — nothing is
-  deleted, and reactivating the unit restores visibility. You cannot add, edit, reorder, or reactivate materials until then.
-</div>
-{% elif not ctx.lesson_published %}
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">
-  This lesson is still a draft: its materials are visible to teachers only until the lesson is published.
-</div>
-{% else %}
-<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
-  This lesson is published: any active material you add here becomes <strong>immediately visible</strong> to enrolled students.
-</div>
-{% endif %}
-
-<div class="cs-section-head"><h2>Lesson materials</h2>{% if can_manage %}<details class="cs-add-material"><summary class="btn btn--primary">Add material {{ ui.icon('chevron-down',15) }}</summary><div class="cs-actions"><a class="btn" href="{{ url_for('teacher.material_create_rich_text',group_public_id=gp,unit_public_id=up,lesson_public_id=lp) }}">Add Rich Text</a><a class="btn" href="{{ url_for('teacher.material_create_external_link',group_public_id=gp,unit_public_id=up,lesson_public_id=lp) }}">Add External Link</a><a class="btn" href="{{ url_for('teacher.material_create_file',group_public_id=gp,unit_public_id=up,lesson_public_id=lp) }}">Add File</a></div></details>{% endif %}</div>
 {% if active_materials %}<div class="cs-material-layout" data-studio-selection><aside class="cs-panel"><p class="cs-eyebrow">Active materials</p><nav aria-label="Lesson materials">{% for material in active_materials %}<a class="cs-material-pick" href="#studio-material-{{ material.public_id }}" data-studio-target="studio-material-{{ material.public_id }}">{{ ui.icon('book' if material.kind=='rich_text' else 'globe' if material.kind=='external_link' else 'file',18) }}<span><strong dir="auto">{{ material.title }}</strong><small>{{ dash.material_kind_badge(material) }}</small></span></a>{% endfor %}</nav><p class="cs-note">Materials appear in this teaching order.</p></aside>
 <div>{% for material in active_materials %}<article class="cs-panel cs-reader cs-material-pane" id="studio-material-{{ material.public_id }}" data-studio-pane><p class="cs-eyebrow">{{ dash.material_kind_badge(material) }}</p><h2 dir="auto">{{ material.title }}</h2>{{ studio.material_body(material,gp,up,lp) }}<div class="cs-actions">
             {% if material.kind == "file" %}
@@ -36,44 +17,11 @@
             {% elif material.kind == "external_link" %}
             <a class="btn btn--secondary" href="{{ material.external_url }}" target="_blank" rel="noopener noreferrer nofollow">Visit</a>
             {% endif %}
-            {% if can_manage %}
-            <a class="btn btn--secondary" href="{{ url_for('teacher.material_edit', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}">Edit</a>
-            {% if not loop.first %}
-            <form method="post" action="{{ url_for('teacher.material_move_up', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" style="display:inline" class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn--secondary" aria-label="Move up">↑</button>
-            </form>
-            {% endif %}
-            {% if not loop.last %}
-            <form method="post" action="{{ url_for('teacher.material_move_down', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" style="display:inline" class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn--secondary" aria-label="Move down">↓</button>
-            </form>
-            {% endif %}
-            {% endif %}
-            <form method="post" action="{{ url_for('teacher.material_toggle_status', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}"
-              data-confirm="Archive material '{{ material.title }}'? It will be hidden from students. Nothing is deleted." class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn--danger-outline">Archive</button>
-            </form></div></article>{% endfor %}</div></div>
+</div></article>{% endfor %}</div></div>
 {% else %}<div class="empty-state"><h2>No materials yet</h2></div>{% endif %}
-{% if archived_materials %}<details class="cs-archive"><summary>Archived materials <span class="badge badge--neutral">{{ archived_materials|length }}</span></summary><p class="cs-meta">Archived materials keep their stored order and content — nothing is deleted. Reactivating one appends it to the end of the active list.</p><div class="cs-unit-cards">{% for material in archived_materials %}<article class="cs-unit-card"><div><h3 dir="auto">{{ material.title }}</h3>{{ dash.material_kind_badge(material) }}</div><div class="cs-actions">
-            {% if material.kind == "file" %}
-            <a class="btn btn--secondary" href="{{ url_for('teacher.material_open', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" target="_blank" rel="noopener">Open</a>
-            {% endif %}
-            {% if can_manage %}
-            <form method="post" action="{{ url_for('teacher.material_toggle_status', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}" class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn--secondary">Reactivate</button>
-            </form>
-            {% else %}
-            <span class="badge badge--neutral">Read-only</span>
-            {% endif %}</div></article>{% endfor %}</div></details>{% endif %}
-<script>
-  document.querySelectorAll("form[data-confirm]").forEach(function (form) {
-    form.addEventListener("submit", function (event) {
-      if (!window.aelmsConfirm && !confirm(form.dataset.confirm)) { event.preventDefault(); }
-    });
-  });
-</script>
+{% if archived_materials %}
+<details class="cs-archive"><summary>Archived materials ({{ archived_materials|length }})</summary>
+  <ul>{% for material in archived_materials %}<li dir="auto">{{ material.title }}{% if material.kind == 'file' %} · <a href="{{ url_for('teacher.material_open', group_public_id=gp, unit_public_id=up, lesson_public_id=lp, material_public_id=material.public_id) }}">Open file</a>{% endif %}</li>{% endfor %}</ul>
+</details>
+{% endif %}
 {% endblock %}

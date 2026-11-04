@@ -196,7 +196,11 @@ def build_inbox_view(rows, tz_name):
             "kind": row.kind,
             "kind_label": KIND_LABELS.get(row.kind, "Notice"),
             "icon": KIND_ACTIONS.get(row.kind, ("bell", "View update"))[0],
-            "action_label": KIND_ACTIONS.get(row.kind, ("bell", "View update"))[1],
+            "action_label": (
+                "View course" if row.target_path.startswith("/student/courses/")
+                else "View publication" if row.target_path.endswith("/curriculum/publication")
+                else KIND_ACTIONS.get(row.kind, ("bell", "View update"))[1]
+            ),
             "title": row.title,
             "message": row.message,
             "created_local": to_app_local(tz_name, row.created_at),
@@ -291,6 +295,10 @@ def header_badge(user):
         if cached is not None and cached[0] == user.id:
             return cached[1]
 
+    if holder is not None:
+        from app.services.curriculum_notifications import sync_curriculum_notices
+
+        sync_curriculum_notices(user)
     count = unread_count(user.id)
     badge = {"unread_count": count, "unread_label": badge_label(count)}
     if holder is not None:

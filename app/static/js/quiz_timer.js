@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Quiz attempt countdown -- display only.
  * Phase 4 / M04D. No dependency, no build step.
  *
@@ -69,7 +71,7 @@
         var link = document.createElement("a"); link.href = location.href; link.textContent = t("View saved attempt status"); help.appendChild(link); root.appendChild(help);
       }
       if (timer) {
-        window.clearInterval(timer);
+        pageScope.clearInterval(timer);
       }
       return;
     }
@@ -81,5 +83,7 @@
   }
 
   tick();
-  timer = window.setInterval(tick, 1000);
+  timer = pageScope.setInterval(tick, 1000);
 })();
+
+});

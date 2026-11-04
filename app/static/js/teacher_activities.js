@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Native GETs/disclosures work alone. This only refines local presentation. */
 (function () {
   "use strict";
@@ -19,9 +21,9 @@
   }
   fitCreationPanel();
   if (typeof ResizeObserver !== "undefined") {
-    new ResizeObserver(fitCreationPanel).observe(root);
+    pageScope.createObserver(ResizeObserver, fitCreationPanel).observe(root);
   } else {
-    window.addEventListener("resize", fitCreationPanel);
+    pageScope.listen(window, "resize", fitCreationPanel);
   }
   function updateGroups(reset) {
     if (!course || !group) return;
@@ -33,12 +35,12 @@
     });
   }
   updateGroups(false);
-  if (course) course.addEventListener("change", function () { updateGroups(true); });
+  if (course) pageScope.listen(course, "change", function () { updateGroups(true); });
   if (filters) {
-    document.addEventListener("click", function (event) {
+    pageScope.listen(document, "click", function (event) {
       if (filters.open && !filters.contains(event.target)) filters.open = false;
     });
-    filters.addEventListener("keydown", function (event) {
+    pageScope.listen(filters, "keydown", function (event) {
       if (event.key === "Escape" && filters.open) {
         event.preventDefault();
         filters.open = false;
@@ -47,3 +49,5 @@
     });
   }
 })();
+
+});

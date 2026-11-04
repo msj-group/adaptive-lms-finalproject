@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Presentation only: no API requests, learning state, credentials or business
    data in browser storage. Ordinary forms continue to submit to Flask. */
 (function () {
@@ -30,18 +32,18 @@
     } catch (_) { /* Storage can be unavailable. */ }
   }
   if (navigation) {
-    navigation.addEventListener("scroll", saveNavigationPosition, {passive:true});
-    navigation.addEventListener("click", saveNavigationPosition, true);
-    window.addEventListener("pagehide", saveNavigationPosition);
-    window.addEventListener("pageshow", restoreNavigationPosition);
+    pageScope.listen(navigation, "scroll", saveNavigationPosition, {passive:true});
+    pageScope.listen(navigation, "click", saveNavigationPosition, true);
+    pageScope.listen(window, "pagehide", saveNavigationPosition);
+    pageScope.listen(window, "pageshow", restoreNavigationPosition);
   }
 
   var accountMenu = document.querySelector("[data-account-menu]");
   if (accountMenu) {
-    document.addEventListener("click", function (event) {
+    pageScope.listen(document, "click", function (event) {
       if (accountMenu.open && !accountMenu.contains(event.target)) accountMenu.open = false;
     });
-    document.addEventListener("keydown", function (event) {
+    pageScope.listen(document, "keydown", function (event) {
       if (event.key === "Escape" && accountMenu.open) {
         var themeMenu = accountMenu.querySelector('[data-theme-menu][open]');
         if (themeMenu) { event.preventDefault(); themeMenu.open = false; themeMenu.querySelector('summary').focus({preventScroll:true}); return; }
@@ -49,16 +51,16 @@
         accountMenu.querySelector("summary").focus({preventScroll:true});
       }
     });
-    accountMenu.addEventListener('toggle', function () {
+    pageScope.listen(accountMenu, 'toggle', function () {
       if (!accountMenu.open) accountMenu.querySelectorAll('[data-theme-menu]').forEach(function (menu) { menu.open = false; });
     });
-    accountMenu.addEventListener("focusout", function (event) {
+    pageScope.listen(accountMenu, "focusout", function (event) {
       if (event.relatedTarget && !accountMenu.contains(event.relatedTarget)) accountMenu.open = false;
     });
-    window.addEventListener("pagehide", function () { accountMenu.open = false; });
+    pageScope.listen(window, "pagehide", function () { accountMenu.open = false; });
   }
   document.querySelectorAll("[data-account-signout]").forEach(function (form) {
-    form.addEventListener("submit", function (event) {
+    pageScope.listen(form, "submit", function (event) {
       queueMicrotask(function () {
         if (event.defaultPrevented) return;
         navigationReset = true;
@@ -93,15 +95,15 @@
     setOpen(false, false);
     body.dataset.uiReady = "true";
     restoreNavigationPosition();
-    toggles.forEach(function (button) { button.addEventListener("click", function () { setOpen(body.dataset.navOpen !== "true", true); }); });
+    toggles.forEach(function (button) { pageScope.listen(button, "click", function () { setOpen(body.dataset.navOpen !== "true", true); }); });
     document.querySelectorAll("[data-nav-close]").forEach(function (button) {
-      button.addEventListener("click", function () { setOpen(false, true); });
+      pageScope.listen(button, "click", function () { setOpen(false, true); });
     });
-    sidebar.addEventListener("click", function (event) {
+    pageScope.listen(sidebar, "click", function (event) {
       if (event.target.closest("a")) setOpen(false, false);
     });
-    compact.addEventListener("change", function () { setOpen(false, true); });
-    document.addEventListener("keydown", function (event) {
+    pageScope.listen(compact, "change", function () { setOpen(false, true); });
+    pageScope.listen(document, "keydown", function (event) {
       if (body.dataset.navOpen !== "true") return;
       if (event.key === "Escape") { event.preventDefault(); setOpen(false, true); }
       if (event.key === "Tab") {
@@ -146,7 +148,7 @@
   if (passwordToggle) {
     var password = document.getElementById(passwordToggle.getAttribute("aria-controls"));
     passwordToggle.hidden = false;
-    passwordToggle.addEventListener("click", function () {
+    pageScope.listen(passwordToggle, "click", function () {
       var show = password.type === "password";
       password.type = show ? "text" : "password";
       passwordToggle.setAttribute("aria-pressed", String(show));
@@ -162,24 +164,24 @@
       loginForm.querySelector("[data-login-label]").textContent = t("Sign in");
       loginForm.querySelector("[data-login-spinner]").hidden = true;
     }
-    loginForm.addEventListener("submit", function () {
+    pageScope.listen(loginForm, "submit", function () {
       loginForm.setAttribute("aria-busy", "true");
       loginForm.querySelector("[data-login-label]").textContent = t("Signing in…");
       loginForm.querySelector("[data-login-spinner]").hidden = false;
       // Defer disabling until the browser has built the native form submission.
-      window.setTimeout(function () { loginForm.querySelector("[data-login-submit]").disabled = true; }, 0);
+      pageScope.setTimeout(function () { loginForm.querySelector("[data-login-submit]").disabled = true; }, 0);
     });
-    window.addEventListener("pageshow", clearBusy);
-    loginForm.addEventListener("focusin", function () { body.dataset.writing = "true"; });
-    loginForm.addEventListener("focusout", function (event) {
+    pageScope.listen(window, "pageshow", clearBusy);
+    pageScope.listen(loginForm, "focusin", function () { body.dataset.writing = "true"; });
+    pageScope.listen(loginForm, "focusout", function (event) {
       body.dataset.writing = String(event.relatedTarget instanceof HTMLInputElement);
     });
 
     var wordElements = Array.from(document.querySelectorAll("[data-learning-word]"));
     var words = [t("Hello"), t("Discover"), t("Confidence"), t("Grow"), t("Listen"), t("Explore"), t("Together"), t("Learn"), t("Speak"), t("Create"), t("Imagine"), t("Believe"), t("Write"), t("Connect"), t("Practice"), t("Achieve")];
     var timers = [];
-    var wordMotion = new MutationObserver(function () { syncWords(); });
-    function wordsPaused() { return reduceMotion.matches || document.documentElement.dataset.uiMotion === "reduce" || document.hidden || body.dataset.writing === "true"; }
+    var wordMotion = pageScope.createObserver(MutationObserver, function () { syncWords(); });
+    function wordsPaused() { return reduceMotion.matches || document.hidden || body.dataset.writing === "true"; }
     function stopWords() { timers.forEach(window.clearTimeout); timers = []; }
     function startWords() {
       stopWords();
@@ -197,23 +199,24 @@
             if (length <= 0) { index = (index + 4) % words.length; deleting = false; delay = 600; }
             else if (length >= words[index].length) { deleting = true; delay = 3000; }
           }
-          timers[slot] = window.setTimeout(type, delay);
+          timers[slot] = pageScope.setTimeout(type, delay);
         }
-        timers[slot] = window.setTimeout(type, 2200 + slot * 700);
+        timers[slot] = pageScope.setTimeout(type, 2200 + slot * 700);
       });
     }
     function syncWords() {
       stopWords();
       body.dataset.pageHidden = String(document.hidden);
-      if (reduceMotion.matches || document.documentElement.dataset.uiMotion === "reduce") wordElements.forEach(function (element, slot) { element.textContent = words[slot]; });
+      if (reduceMotion.matches) wordElements.forEach(function (element, slot) { element.textContent = words[slot]; });
       if (!wordsPaused()) startWords();
     }
-    wordMotion.observe(document.documentElement, {attributes:true, attributeFilter:["data-ui-motion"]});
     wordMotion.observe(body, {attributes:true, attributeFilter:["data-writing"]});
-    document.addEventListener("visibilitychange", syncWords);
+    pageScope.listen(document, "visibilitychange", syncWords);
     syncWords();
-    reduceMotion.addEventListener("change", syncWords);
-    window.addEventListener("pagehide", stopWords);
-    window.addEventListener("pageshow", syncWords);
+    pageScope.listen(reduceMotion, "change", syncWords);
+    pageScope.listen(window, "pagehide", stopWords);
+    pageScope.listen(window, "pageshow", syncWords);
   }
 })();
+
+});

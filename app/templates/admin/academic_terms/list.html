@@ -6,7 +6,7 @@
 {% set academic_section = 'terms' %}
 {% block academic_actions %}<a class="btn btn--primary" data-academic-editor-open href="{{ url_for('admin.academic_term_create') }}"><span class="ah-add" aria-hidden="true">+</span> New Academic Term</a>{% endblock %}
 {% block academic_directory %}
-  <header class="ah-directory-head"><div><h2 id="academic-directory-heading">Academic terms</h2><p>The academic periods your centre works within.</p></div><span class="ax-record-count">{{ terms|length }} <span>records</span></span></header>
+  <h2 class="sr-only" id="academic-directory-heading">Academic terms</h2>
   {% if terms %}
   <div class="ad-table-wrap">
   <table class="ad-table ax-mobile-records">

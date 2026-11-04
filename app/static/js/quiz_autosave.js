@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Quiz and Listening: serialized answer saves and protected navigation.
  * No browser storage of answers. Never abort an in-flight write on a new choice.
  * CSRF, signed state, selection ownership and expiry are enforced by the server.
@@ -35,7 +37,7 @@
   // when that action is outside the viewport; Listening uses the dock directly.
   var inlineSubmit = root.querySelector(".quiz-finish-submit");
   if (inlineSubmit && window.IntersectionObserver) {
-    new IntersectionObserver(function (entries) {
+    pageScope.createObserver(IntersectionObserver, function (entries) {
       inlineSubmitVisible = entries[0].intersectionRatio >= 0.99;
       renderDocks();
     }, {threshold:[0,0.99,1],rootMargin:"0px 0px -100px 0px"}).observe(inlineSubmit);
@@ -91,11 +93,11 @@
       html.style.scrollBehavior = behavior;
     }
     ["pointerdown","touchstart","wheel","keydown"].forEach(function (type) {
-      window.addEventListener(type, function () { restoreCanceled = true; }, {once:true,passive:true});
+      pageScope.listen(window, type, function () { restoreCanceled = true; }, {once:true,passive:true});
     });
-    requestAnimationFrame(restorePosition);
-    window.addEventListener("load", function () { requestAnimationFrame(restorePosition); }, {once:true});
-    if (document.fonts) document.fonts.ready.then(function () { requestAnimationFrame(restorePosition); });
+    pageScope.requestAnimationFrame(restorePosition);
+    pageScope.listen(window, "load", function () { pageScope.requestAnimationFrame(restorePosition); }, {once:true});
+    if (document.fonts) document.fonts.ready.then(function () { pageScope.requestAnimationFrame(restorePosition); });
   } else {
     var offset = currentLink.getBoundingClientRect().top - grid.getBoundingClientRect().top;
     if (offset + currentLink.offsetHeight > grid.clientHeight) grid.scrollTop += offset + currentLink.offsetHeight - grid.clientHeight;
@@ -150,7 +152,7 @@
       }
     } catch (_) { /* Research never changes the save workflow. */ }
     try {
-      response = await fetch(url, {method:"POST",body:body,credentials:"same-origin",redirect:"error",cache:"no-store",headers:{"Accept":"application/json","X-Quiz-Autosave":"1"}});
+      response = await pageScope.fetch(url, {method:"POST",body:body,credentials:"same-origin",redirect:"error",cache:"no-store",headers:{"Accept":"application/json","X-Quiz-Autosave":"1"}});
       try { if (window.researchV2) window.researchV2.finishRequest(researchAttempt, "finished"); } catch (_) {}
       if ((response.headers.get("Content-Type") || "").includes("application/json")) data = await response.json();
     } catch (_) {
@@ -203,10 +205,10 @@
     })();
     return worker;
   }
-  form.addEventListener("change", function (event) {
+  pageScope.listen(form, "change", function (event) {
     if (event.target.matches("input[name='option']")) ensureSaved();
   });
-  retry.addEventListener("click", ensureSaved);
+  pageScope.listen(retry, "click", ensureSaved);
 
   function toggleBookmark() {
     if (!bookmarkForm || bookmarkWorker || terminal) return bookmarkWorker || Promise.resolve(false);
@@ -251,7 +253,7 @@
   }
   // Run before shared dirty-form guards. Wait for the latest selection before
   // any same-tab navigation or POST (including final submission/logout).
-  document.addEventListener("click", function (event) {
+  pageScope.listen(document, "click", function (event) {
     var link = event.target.closest("a[href]");
     if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.target === "_blank" || link.hasAttribute("download")) return;
     if (link === reload) {
@@ -271,7 +273,7 @@
     leaving = true;
     readyToLeave().then(function (ready) { if (ready) navigate(url.href); else if (!terminal) leaving = false; });
   }, true);
-  document.addEventListener("submit", function (event) {
+  pageScope.listen(document, "submit", function (event) {
     var target = event.target;
     if (approved.has(target)) { approved.delete(target); return; }
     if (target === bookmarkForm) {
@@ -299,11 +301,13 @@
       }
     });
   }, true);
-  window.addEventListener("beforeunload", function (event) {
+  pageScope.listen(window, "beforeunload", function (event) {
     if (!terminal && (worker || bookmarkWorker || needsSave() || bookmarkFailed)) { event.preventDefault(); event.returnValue = ""; }
   });
   // Returning from bfcache must reauthorize the attempt and reload saved state.
-  window.addEventListener("pageshow", function (event) {
+  pageScope.listen(window, "pageshow", function (event) {
     if (event.persisted) { rememberPosition(new URL(location.href)); location.reload(); }
   });
 })();
+
+});

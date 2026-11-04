@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Native academic forms, enhanced within the current directory. No simulated saves. */
 (function () {
   "use strict";
@@ -31,7 +33,10 @@
   function copyMessages(destination, page) {
     const source=page.querySelector('[data-academic-messages]');
     destination.replaceChildren();
-    if(source && !source.querySelector('script,style,iframe,object,embed')) destination.append(...Array.from(source.childNodes).map(n=>document.importNode(n,true)));
+    if(source && !source.querySelector('script,style,iframe,object,embed')) {
+      destination.append(...Array.from(source.childNodes).map(n=>document.importNode(n,true)));
+      queueMicrotask(() => window.aelmsUI.showFlashNotices(destination));
+    }
   }
   async function parsed(response) {
     if (!response.ok || !(response.headers.get('Content-Type')||'').includes('text/html')) throw new Error('response');
@@ -67,7 +72,7 @@
   }
   async function refresh() {
     const url=new URL(location.href);
-    const loaded=await parsed(await fetch(url.href,{credentials:'same-origin',cache:'no-store'}));
+    const loaded=await parsed(await pageScope.fetch(url.href,{credentials:'same-origin',cache:'no-store'}));
     if(!active || loaded.redirected || loaded.url.pathname!==listPath)throw new Error('directory');
     const incoming=bound(loaded.page.querySelector('[data-academic-workspace]'));
     const oldResults=root.querySelector('#query-results');
@@ -88,7 +93,7 @@
     const signal=controller.signal;
     status('Loading form…'); recovery.hidden=true;
     try {
-      const loaded=await parsed(await fetch(target.href,{credentials:'same-origin',cache:'no-store',signal}));
+      const loaded=await parsed(await pageScope.fetch(target.href,{credentials:'same-origin',cache:'no-store',signal}));
       if(!active || signal.aborted || mine!==revision || !dialog.open)return;
       if(loaded.redirected)throw new Error('redirect');
       install(loaded);
@@ -110,7 +115,7 @@
     } finally {confirming=false;}
   }
   function finish() {cancelRead();release(content);content.replaceChildren();messages.replaceChildren();dialog.close();}
-  root.addEventListener('click',event=>{
+  pageScope.listen(root, 'click',event=>{
     const link=event.target.closest('[data-academic-editor-open]');
     if(!link || event.defaultPrevented || event.button || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)return;
     const url=new URL(link.href,location.href);
@@ -123,15 +128,15 @@
     heading.textContent=link.textContent.replace(/^\s*\+\s*/,'').trim();
     dialog.showModal();document.body.dataset.academicEditorOpen='true';load();
   });
-  close.addEventListener('click',dismiss);
-  retry.addEventListener('click',load);
-  dialog.addEventListener('cancel',event=>{event.preventDefault();dismiss();});
-  dialog.addEventListener('close',()=>{delete document.body.dataset.academicEditorOpen;opener?.isConnected&&opener.focus({preventScroll:true});});
-  dialog.addEventListener('click',event=>{
+  pageScope.listen(close, 'click',dismiss);
+  pageScope.listen(retry, 'click',load);
+  pageScope.listen(dialog, 'cancel',event=>{event.preventDefault();dismiss();});
+  pageScope.listen(dialog, 'close',()=>{delete document.body.dataset.academicEditorOpen;opener?.isConnected&&opener.focus({preventScroll:true});});
+  pageScope.listen(dialog, 'click',event=>{
     if(event.target.closest('[data-academic-editor-cancel]')){event.preventDefault();event.stopPropagation();dismiss();return;}
     if(event.target===dialog){const box=dialog.getBoundingClientRect();if(event.clientX<box.left || event.clientX>box.right || event.clientY<box.top || event.clientY>box.bottom)dismiss();}
   });
-  dialog.addEventListener('submit',async event=>{
+  pageScope.listen(dialog, 'submit',async event=>{
     const form=event.target;
     if(event.defaultPrevented || !form.matches('[data-academic-form]'))return;
     event.preventDefault();event.stopPropagation();
@@ -139,7 +144,7 @@
     const data=new FormData(form);if(event.submitter?.name)data.append(event.submitter.name,event.submitter.value);
     posting=true;close.disabled=true;form.inert=true;status('Saving...');
     try {
-      const loaded=await parsed(await fetch(target.href,{method:'POST',body:data,credentials:'same-origin',cache:'no-store'}));
+      const loaded=await parsed(await pageScope.fetch(target.href,{method:'POST',body:data,credentials:'same-origin',cache:'no-store'}));
       if(!active)return;
       if(loaded.page.querySelector('[data-academic-form]'))install(loaded);
       else {
@@ -158,8 +163,8 @@
     root.querySelectorAll('[data-academic-status-apply]').forEach(button=>button.hidden=true);
     window.aelmsRegisterForms(root);
   }
-  root.addEventListener('change',event=>{const form=event.target.closest('[data-academic-status-form]');if(form && event.target.matches('[name=status]'))form.requestSubmit();});
-  root.addEventListener('submit',async event=>{
+  pageScope.listen(root, 'change',event=>{const form=event.target.closest('[data-academic-status-form]');if(form && event.target.matches('[name=status]'))form.requestSubmit();});
+  pageScope.listen(root, 'submit',async event=>{
     const form=event.target;
     if(event.defaultPrevented || !form.matches('[data-academic-status-form]'))return;
     event.preventDefault();
@@ -168,7 +173,7 @@
     if(url.origin!==location.origin || !url.pathname.startsWith(listPath+'/') || !url.pathname.endsWith('/toggle-status'))return;
     const data=new FormData(form);posting=true;root.inert=true;form.inert=true;pageNotice('Saving...');
     try {
-      const loaded=await parsed(await fetch(url.href,{method:'POST',body:data,credentials:'same-origin',cache:'no-store'}));
+      const loaded=await parsed(await pageScope.fetch(url.href,{method:'POST',body:data,credentials:'same-origin',cache:'no-store'}));
       if(!active)return;
       if(!loaded.redirected || loaded.url.pathname!==listPath)throw new Error('destination');
       bound(loaded.page.querySelector('[data-academic-workspace]'));
@@ -179,14 +184,16 @@
     finally {posting=false;root.inert=false;form.inert=false;}
   },true);
   // Query filtering inserts fresh native status forms into the Course results.
-  new MutationObserver(enhance).observe(root.querySelector('.ah-directory'),{childList:true,subtree:true});
+  pageScope.createObserver(MutationObserver, enhance).observe(root.querySelector('.ah-directory'),{childList:true,subtree:true});
   enhance();
-  window.addEventListener('beforeunload',event=>{
+  pageScope.listen(window, 'beforeunload',event=>{
     const form=content.querySelector('form');
     // Validation re-renders entered values as fresh field defaults. Retain the
     // original GET baseline for browser navigation as well as dialog dismissal.
     if(dialog.open && form && baseline!==null && values(form)!==baseline){event.preventDefault();event.returnValue='';}
   });
-  window.addEventListener('pagehide',()=>{active=false;cancelRead();});
-  window.addEventListener('pageshow',()=>{active=true;});
+  pageScope.listen(window, 'pagehide',()=>{active=false;cancelRead();});
+  pageScope.listen(window, 'pageshow',()=>{active=true;});
 })();
+
+});

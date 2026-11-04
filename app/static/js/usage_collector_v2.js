@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Versioned, mobile-first research observations. No business request is intercepted.
  * Closed semantic codes only: never read text, answers, URLs, key identities,
  * coordinates, file names, recordings or account/message field values.
@@ -120,12 +122,12 @@
   function post(url, body, keepalive) {
     if (!sameOriginPath(url)) return Promise.reject(new Error("invalid_endpoint"));
     var controller = window.AbortController ? new AbortController() : null;
-    var timer = controller ? window.setTimeout(function () { controller.abort(); }, 15000) : null;
-    return window.fetch(url, {method: "POST", credentials: "same-origin", keepalive: !!keepalive,
+    var timer = controller ? pageScope.setTimeout(function () { controller.abort(); }, 15000) : null;
+    return pageScope.fetch(url, {method: "POST", credentials: "same-origin", keepalive: !!keepalive,
       signal: controller ? controller.signal : undefined,
       headers: {"Content-Type": "application/json", "X-CSRFToken": config.csrf}, body: JSON.stringify(body)})
-      .then(function (response) { if (timer) window.clearTimeout(timer); return response; }, function (error) {
-        if (timer) window.clearTimeout(timer); throw error;
+      .then(function (response) { if (timer) pageScope.clearTimeout(timer); return response; }, function (error) {
+        if (timer) pageScope.clearTimeout(timer); throw error;
       });
   }
   function jsonPost(url, body, terminalErrors) {
@@ -397,9 +399,9 @@
     var logical = activate(target.getAttribute("data-research-id") === "quiz_option" || target.getAttribute("data-research-id") === "listening_option" ? "answer" : "search");
     if (target.form) formActions.set(target.form, logical);
     var pending = revisionTimers.get(target) || {count: 0, timer: null};
-    if (pending.timer) window.clearTimeout(pending.timer);
+    if (pending.timer) pageScope.clearTimeout(pending.timer);
     pending.count = Math.min(1000, pending.count + 1);
-    pending.timer = window.setTimeout(guard(function () {
+    pending.timer = pageScope.setTimeout(guard(function () {
       record("revision_count", {action_ref: logical.action_ref, action_code: "revise", detail_code: "changed", count: pending.count});
       revisionTimers.delete(target);
     }), 250);
@@ -420,7 +422,7 @@
       if (mediaStates.has(node)) return;
       var state = {since: null, kind: "playing", hadPlayback: false, ended: false}; mediaStates.set(node, state);
       ["play", "playing", "waiting", "stalled", "pause", "ended", "error", "seeked"].forEach(function (type) {
-        node.addEventListener(type, guard(function () {
+        pageScope.listen(node, type, guard(function () {
           var now = Date.now(); mediaInterval(node, now);
           if (type === "play") {
             record("media_action", {action_code: state.ended ? "replay" : "play", detail_code: state.ended ? "replay" : "started"});
@@ -481,7 +483,7 @@
     // Non-modal: retain the Student's focus and let ordinary platform work continue.
     // Two animation frames give the visible card one paint opportunity. This
     // acknowledges reported rendering, never human attention or comprehension.
-    window.requestAnimationFrame(function () { window.requestAnimationFrame(function () {
+    pageScope.requestAnimationFrame(function () { pageScope.requestAnimationFrame(function () {
       if (card.hidden || document.visibilityState !== "visible") { close(); return; }
       var renderedBody = Object.assign({client_at_ms: Date.now(), locale: config.locale === "ar" ? "ar" : "en",
         help_question_shown: !helpGroup.hidden}, clockFields());
@@ -489,7 +491,7 @@
         if (data.rendered || data.status === "rendered" || data.recorded) {
           renderConfirmed = true; skip.disabled = false; onChangeRating();
         } else close();
-      }).catch(function () { status.textContent = message("unavailable"); window.setTimeout(close, 3000); });
+      }).catch(function () { status.textContent = message("unavailable"); pageScope.setTimeout(close, 3000); });
     }); });
     function close() {
       var hadFocus = card.contains(document.activeElement);
@@ -507,10 +509,10 @@
       jsonPost(promptUrl(prompt.id, "respond"), pending, true).then(function (data) {
         waiting = false;
         if (data.recorded || data.status === "already") {
-          status.textContent = message("recorded"); window.setTimeout(close, pending.skipped ? 0 : 1200);
+          status.textContent = message("recorded"); pageScope.setTimeout(close, pending.skipped ? 0 : 1200);
         } else if (data.status === "different") {
-          status.textContent = message("kept"); window.setTimeout(close, 2500);
-        } else { status.textContent = message("unavailable"); window.setTimeout(close, 2500); }
+          status.textContent = message("kept"); pageScope.setTimeout(close, 2500);
+        } else { status.textContent = message("unavailable"); pageScope.setTimeout(close, 2500); }
       }).catch(function () {
         waiting = false; status.textContent = message("failed");
         submit.textContent = message("retry"); skip.textContent = message("close");
@@ -532,8 +534,8 @@
       send({response_ref: uuid(), skipped: true});
     }
     function onEscape(event) { if (event.key === "Escape") onSkip(); }
-    form.addEventListener("submit", onAnswer); form.addEventListener("change", onChangeRating);
-    skip.addEventListener("click", onSkip); card.addEventListener("keydown", onEscape);
+    pageScope.listen(form, "submit", onAnswer); pageScope.listen(form, "change", onChangeRating);
+    pageScope.listen(skip, "click", onSkip); pageScope.listen(card, "keydown", onEscape);
   }
 
   function heartbeat() {
@@ -555,34 +557,36 @@
     writeOutbox(readOutbox().filter(ownEntry));
     declareMeasurementSupport();
     record("context_enter", {detail_code: "started"});
-    document.addEventListener("click", guard(onClick), true);
-    document.addEventListener("change", guard(onChange), true);
-    document.addEventListener("submit", guard(onSubmit), true);
-    document.addEventListener("visibilitychange", guard(function () {
+    pageScope.listen(document, "click", guard(onClick), true);
+    pageScope.listen(document, "change", guard(onChange), true);
+    pageScope.listen(document, "submit", guard(onSubmit), true);
+    pageScope.listen(document, "visibilitychange", guard(function () {
       closeVisibleInterval(); mediaTick();
       if (document.visibilityState === "visible") { visibleStart = Date.now(); calibrateClock(); considerPrompt(); }
       else { visibleStart = null; flush(true); }
     }));
-    window.addEventListener("pagehide", guard(function () {
+    pageScope.listen(window, "pagehide", guard(function () {
       closeVisibleInterval(); mediaTick(); record("context_leave", {detail_code: "finished"}); visibleStart = null; flush(true);
     }));
-    window.addEventListener("pageshow", guard(function (event) {
+    pageScope.listen(window, "pageshow", guard(function (event) {
       if (event.persisted) { visibleStart = Date.now(); record("context_enter", {detail_code: "started"}); calibrateClock(); }
     }));
     bindMedia(); detectContext(); calibrateClock();
     if (window.MutationObserver) {
       var mutationPending = false;
-      new MutationObserver(guard(function () {
+      pageScope.createObserver(MutationObserver, guard(function () {
         if (mutationPending) return; mutationPending = true;
-        window.setTimeout(guard(function () { mutationPending = false; detectContext(); bindMedia(); considerPrompt(); }), 100);
+        pageScope.setTimeout(guard(function () { mutationPending = false; detectContext(); bindMedia(); considerPrompt(); }), 100);
       })).observe(document.getElementById("workspace-content") || document.body,
         {childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "open", "data-research-v2-context", "data-recorder-state"]});
     }
     window.researchV2 = Object.freeze({beginRequest: beginRequest, finishRequest: finishRequest,
       actionFor: function (form) { var action = formActions.get(form); return action ? action.action_ref : null; }});
-    window.setInterval(guard(heartbeat), 30000);
-    window.setInterval(guard(function () { flush(false); }), bounded(policy.flush_ms, 5000, 30000, 15000));
-    window.setInterval(guard(calibrateClock), 300000);
-    window.setTimeout(guard(function () { flush(false); }), 1000);
+    pageScope.setInterval(guard(heartbeat), 30000);
+    pageScope.setInterval(guard(function () { flush(false); }), bounded(policy.flush_ms, 5000, 30000, 15000));
+    pageScope.setInterval(guard(calibrateClock), 300000);
+    pageScope.setTimeout(guard(function () { flush(false); }), 1000);
   } catch (_) { stop(); }
 }());
+
+});

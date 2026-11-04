@@ -14,6 +14,12 @@
 .yc-workspace .cs .cs-tabs>a[aria-current] { color:var(--st-blue); border-color:var(--st-blue); font-weight:600; }
 .yc-workspace .cs .cs-actions { display:flex; align-items:center; flex-wrap:wrap; gap:9px; }
 .yc-workspace .cs .cs-actions>form { margin:0; }
+.yc-workspace .cs .cs-editor-actions { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
+.yc-workspace .cs .cs-editor-actions > form { margin:0; }
+@media(max-width:767px) {
+ .yc-workspace .cs .cs-editor-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .yc-workspace .cs .cs-editor-actions .btn { width:100%; min-height:48px; }
+}
 .yc-workspace .cs .btn { border-radius:10px; font-size:12px; padding:9px 13px; min-height:39px; white-space:normal; text-align:center; }
 .yc-workspace .cs .btn--primary { color:var(--ui-on-primary); background:var(--ui-primary); }
 .yc-workspace .cs .badge { border-radius:6px; font-size:10px; padding:4px 8px; white-space:normal; line-height:1.5; }

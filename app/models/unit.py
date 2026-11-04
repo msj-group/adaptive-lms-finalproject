@@ -1,6 +1,8 @@
 import uuid
 from datetime import datetime, timezone
 
+from sqlalchemy import and_, exists, or_, select
+from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.orm import validates
 
 from app.extensions import db
@@ -8,43 +10,27 @@ from app.models.enums import AcademicStatus
 
 
 class Unit(db.Model):
-    """A structural teaching container inside one Group (M10).
+    """An ordered Unit owned by one Course or by one legacy Group.
 
-    A Unit belongs **directly** to exactly one Group -- Course, Level and
-    AcademicTerm are all reachable through ``unit.group``, so none of them
-    is duplicated here (the same single-source-of-truth reasoning applied
-    to Enrollment, GroupTeacherAssignment, and Schedule). There is no
-    ``teacher_id`` / ``created_by``: every active assigned Teacher of the
-    Group is an equal collaborator on its Units.
-
-    Lifecycle is ``active`` / ``archived`` (the shared ``AcademicStatus``)
-    -- a Unit is a container, so it has no draft/published state; that
-    belongs to Lesson (M11). There is no hard delete; reactivation reuses
-    the same row. Status is owned solely by the dedicated toggle route --
-    the create/edit form never carries it.
-
-    ``display_order`` is server-owned (never a trusted client field):
-    new and reactivated Units append after the Group's current highest
-    order, and move-up / move-down swap the ``display_order`` of adjacent
-    **active** Units. Gaps are acceptable; there is deliberately **no**
-    database uniqueness constraint on ``display_order``.
-
-    ``title`` is unique within a Group -- including against archived Units
-    -- so a teaching order never has two same-named Units. The same title
-    is fine in a different Group. The DB ``UniqueConstraint`` is the final
-    defense; the write path also checks it and catches ``IntegrityError``.
-
-    ``search_keywords`` (M13) is an optional Teacher-authored, canonical
-    comma-and-space separated string (or ``NULL``) used only to widen
-    Student content search. It is normalised/validated by
-    ``app.services.search_terms.normalize_search_keywords`` at the form
-    layer and rendered only as escaped plain text -- never HTML.
+    Shared Units are administered on the Course and read through Groups
+    without an independent curriculum copy. Group copies and legacy Units
+    retain their Group ownership. Legacy Units retain their original
+    and identifiers so existing material links and progress stay valid.
     """
 
     __tablename__ = "units"
     __table_args__ = (
         db.UniqueConstraint("group_id", "title", name="uq_units_group_title"),
+        db.UniqueConstraint("course_id", "title", name="uq_units_course_title"),
+        db.CheckConstraint(
+            "(group_id IS NULL) <> (course_id IS NULL)", name="ck_units_exactly_one_owner"
+        ),
         db.CheckConstraint("display_order >= 0", name="ck_units_display_order_non_negative"),
+        db.CheckConstraint(
+            "(page_start IS NULL AND page_end IS NULL) OR "
+            "(page_start IS NOT NULL AND page_end IS NOT NULL "
+            "AND page_start >= 1 AND page_end >= page_start)", name="ck_units_page_range"
+        ),
     )
 
     id = db.Column(db.BigInteger(), primary_key=True)
@@ -52,12 +38,19 @@ class Unit(db.Model):
     group_id = db.Column(
         db.BigInteger(),
         db.ForeignKey("groups.id"),
-        nullable=False,
+        nullable=True,
         index=True,
+    )
+    course_id = db.Column(
+        db.BigInteger(),
+        db.ForeignKey("courses.id", name="fk_units_course"),
+        nullable=True,
     )
     title = db.Column(db.String(150), nullable=False)
     description = db.Column(db.Text, nullable=True)
     search_keywords = db.Column(db.String(500), nullable=True)
+    page_start = db.Column(db.Integer())
+    page_end = db.Column(db.Integer())
     display_order = db.Column(db.Integer, nullable=False, default=0, index=True)
     status = db.Column(db.String(32), nullable=False, default=AcademicStatus.ACTIVE.value, index=True)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -69,7 +62,23 @@ class Unit(db.Model):
     )
 
     group = db.relationship("Group", back_populates="units")
+    course = db.relationship("Course")
     lessons = db.relationship("Lesson", back_populates="unit")
+
+    @hybrid_method
+    def in_group(self, group_id, course_id):
+        from app.models.group_curriculum import GroupCurriculum
+
+        return self.group_id == group_id or (
+            self.course_id == course_id and db.session.get(GroupCurriculum, group_id) is None
+        )
+
+    @in_group.expression
+    def in_group(cls, group_id, course_id):
+        from app.models.group_curriculum import GroupCurriculum
+
+        copied = exists(select(1).where(GroupCurriculum.group_id == group_id)).correlate_except(GroupCurriculum)
+        return or_(cls.group_id == group_id, and_(cls.course_id == course_id, ~copied))
 
     @validates("status")
     def validate_status(self, _key, value):

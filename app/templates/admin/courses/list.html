@@ -5,15 +5,6 @@
 {% set academic_section = 'courses' %}
 {% block academic_actions %}<a class="btn btn--primary" data-academic-editor-open href="{{ url_for('admin.course_create', level_id=selected_level_id) if selected_level_id else url_for('admin.course_create') }}"><span class="ah-add" aria-hidden="true">+</span> New Course</a>{% endblock %}
 {% block academic_directory %}
-  <header class="ah-directory-head"><div><h2 id="academic-directory-heading">Courses</h2><p>Course identity, learning level and current enrollment price.</p></div>
-  <form method="get" class="ad-toolbar yc-filter-form" data-query-form data-query-results="query-results" data-query-min="0">
-    <div class="field"><label class="field__label" for="level_id">Filter by level:</label>
-    <select name="level_id" id="level_id" class="field__input">
-      <option value="">All Levels</option>
-      {% for level in levels %}
-        <option value="{{ level.id }}" {{ "selected" if selected_level_id == level.id else "" }}>{{ level.name }}</option>
-      {% endfor %}
-    </select></div>
-  <button class="btn btn--secondary" type="submit" data-query-submit>Filter</button></form></header>
+  <h2 class="sr-only" id="academic-directory-heading">Courses</h2>
   <div id="query-results">{% include "admin/courses/_query_results.html" %}</div>
 {% endblock %}

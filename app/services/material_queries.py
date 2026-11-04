@@ -121,7 +121,7 @@ def teacher_lesson_materials_view(group, unit, lesson):
     return context, active, archived
 
 
-def student_visible_materials(lesson_id):
+def student_visible_materials(lesson_id, group_id=None):
     """The active Materials of an **already-authorized** Lesson, as plain
     view dicts for the Student Lesson page -- one batched, eager-loaded
     query, never one query per Material.
@@ -131,10 +131,22 @@ def student_visible_materials(lesson_id):
     place allowed to mark it safe HTML. No Teacher identity and no
     internal numeric id ever appears in the returned dicts.
     """
-    materials = active_materials_ordered(lesson_id)
+    if group_id is None:
+        materials = active_materials_ordered(lesson_id)
+    else:
+        from app.services.curriculum_visibility import material_is_released
+
+        materials = (
+            Material.query.options(joinedload(Material.uploaded_file))
+            .filter(Material.lesson_id == lesson_id, Material.status == _ACTIVE,
+                    material_is_released(group_id))
+            .order_by(Material.display_order, Material.id).all()
+        )
     out = []
     for material in materials:
-        item = {"public_id": material.public_id, "title": material.title, "kind": material.kind}
+        item = {"public_id": material.public_id, "title": material.title, "kind": material.kind,
+                "pin_page": material.pin_page, "pin_x": material.pin_x, "pin_y": material.pin_y,
+                "pin_show_name": material.pin_show_name}
         if material.kind == _RICH_TEXT:
             item["content_html"] = sanitize_rich_text_html(material.content_html) or ""
         elif material.kind == _EXTERNAL_LINK:

@@ -44,3 +44,5 @@ from app.blueprints.admin import operational_history  # noqa: E402,F401
 from app.blueprints.admin import invoice_workspace  # noqa: E402,F401
 from app.blueprints.admin import payment_workspace  # noqa: E402,F401
 from app.blueprints.admin import deleted_records  # noqa: E402,F401
+from app.blueprints.admin import curriculum  # noqa: E402,F401
+from app.blueprints.admin import curriculum_editor  # noqa: E402,F401

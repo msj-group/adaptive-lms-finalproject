@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Presentation only: label native data cells for the Atlas phone composition.
    Filtering, navigation, signed forms and writes remain with existing owners. */
 (function () {
@@ -8,9 +10,23 @@
     var tabs=root.querySelector('.ax-section-tabs,.ax-context-tabs');
     var heading=root.querySelector('[data-workspace-page-heading]');
     if (!tabs || !heading) return;
-    var target=heading.closest('.ad-page-head,.ax-identity') || heading;
+    var target=heading.closest('.ad-page-head,.ax-identity,.aan-heading') || heading;
     if (target.parentElement && target.parentElement.classList.contains('ds-row')) target=target.parentElement;
-    if (target.nextElementSibling !== tabs) target.after(tabs);
+    if (target.matches('header,.ds-row') && target.querySelector('a,button,summary')) {
+      target.classList.add('workspace-section-toolbar');
+      if (tabs.parentElement !== target) target.prepend(tabs);
+    } else if (target.nextElementSibling !== tabs) target.after(tabs);
+  }
+  function alignSectionActions() {
+    placeTabs();
+    root.querySelectorAll('.ad-tabs').forEach(function (tabs) {
+      if (tabs.closest('.workspace-section-toolbar,dialog')) return;
+      var heading=tabs.previousElementSibling;
+      while (heading?.matches('[data-planner-messages],[data-group-messages],[data-app-flash]')) heading=heading.previousElementSibling;
+      if (!heading?.matches('.ad-page-head') || !heading.querySelector('a,button,summary')) return;
+      heading.classList.add('workspace-section-toolbar');
+      heading.prepend(tabs);
+    });
   }
   function tables(scope) {
     scope.querySelectorAll("table.ad-table,table.table").forEach(function (table) {
@@ -28,11 +44,13 @@
     });
   }
   tables(root);
-  placeTabs();
+  alignSectionActions();
   var scheduled = false;
-  new MutationObserver(function (changes) {
+  pageScope.createObserver(MutationObserver, function (changes) {
     if (scheduled || !changes.some(function (change) { return change.addedNodes.length; })) return;
     scheduled=true;
-    window.requestAnimationFrame(function () { scheduled=false; tables(root); placeTabs(); });
+    pageScope.requestAnimationFrame(function () { scheduled=false; tables(root); alignSectionActions(); });
   }).observe(root,{childList:true,subtree:true});
 })();
+
+});

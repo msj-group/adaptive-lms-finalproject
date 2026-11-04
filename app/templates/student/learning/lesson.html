@@ -1,10 +1,12 @@
 {% extends 'layouts/student_atlas_base.html' %}
 {% import '_figma_ui.html' as ui %}
+{% import "curriculum/_pages.html" as reader with context %}
 {% block title %}{{ lesson_title }} — {{ group_name }}{% endblock %}
 {% block extra_head %}
   {{ super() }}
-
+  {% if course_document %}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css') }}">{% endif %}
 {% endblock %}
+{% block body_scripts %}{{ super() }}{% if course_document %}<script src="{{ url_for('static', filename='js/curriculum_editor.js') }}" defer></script>{% endif %}{% endblock %}
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block portal_content %}
 
@@ -23,16 +25,31 @@
   <div style="white-space: pre-wrap; word-break: break-word;">{{ lesson_description }}</div>
 </div>{% endif %}
 
+{% if materials %}
+<details class="atlas-material-index">
+  <summary>Jump to a material</summary>
+  <ol>
+    {% for material in materials %}<li><a href="#material-{{ material.public_id }}" dir="auto">{{ material.title }}</a></li>{% endfor %}
+  </ol>
+</details>
+{% endif %}
+{% if course_document %}
+  {% set page_args = {'group_public_id': group_public_id, 'unit_public_id': unit_public_id, 'lesson_public_id': lesson_public_id} %}
+  {{ reader.pages(course_document, page_start, page_end, materials, 'student.lesson_document_page',
+                  page_args, 'student.material_open', page_args, collect=true) }}
+{% endif %}
+{% set separate_materials = (materials|selectattr('pin_page', 'none')|list) if course_document else materials %}
+{% if separate_materials or not course_document %}
 <div class="atlas-material-toolbar" data-atlas-material-toolbar hidden><nav aria-label="Material type">{% for key,label in [('all','All materials'),('text','Text'),('audio','Audio'),('video','Video'),('image','Images'),('files','Files'),('link','Links')] %}<button type="button" data-atlas-filter="{{ key }}" aria-pressed="{{ 'true' if key == 'all' else 'false' }}">{{ _(label) }}</button>{% endfor %}</nav><p class="atlas-note" role="status" data-atlas-material-status data-single="{{ _('One material shown') }}" data-plural="{{ _('%(count)s materials shown', count='{count}') }}"></p></div>
 <section class="atlas-materials">
   <h2>Materials</h2>
-  {% if not materials %}
+  {% if not separate_materials %}
   <div class="empty-state">
     <div class="empty-state__title">No materials yet</div>
 
   </div>
   {% else %}
-  {% for material in materials %}
+  {% for material in separate_materials %}
   <div id="material-{{ material.public_id }}" class="material-block atlas-material" data-atlas-material="{{ 'text' if material.kind == 'rich_text' else 'link' if material.kind == 'external_link' else material.category if material.category in ['image','audio','video'] else 'files' }}">
     <div class="material-block__title">{{ material.title }}</div>
 
@@ -76,6 +93,7 @@
   {% endfor %}
   {% endif %}
 </section>
+{% endif %}
 <nav class="workspace-tabs" aria-label="Lesson navigation">{% if previous_lesson %}<a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=previous_lesson.unit_public_id, lesson_public_id=previous_lesson.public_id) }}">Previous: {{ previous_lesson.title }}</a>{% endif %}{% if next_lesson %}<a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=next_lesson.unit_public_id, lesson_public_id=next_lesson.public_id) }}">Next: {{ next_lesson.title }}</a>{% endif %}</nav>
 {#- Phase 4 / M13. The student's own completion state, with exactly the one
     action that state allows. The form is bound by a signed token to this

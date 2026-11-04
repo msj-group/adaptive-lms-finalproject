@@ -38,6 +38,7 @@ from app.services.notification_queries import (
     preview_rows,
     unread_count,
 )
+from app.services.curriculum_notifications import sync_curriculum_notices
 from app.services.notification_targets import validate_notification_target
 
 _RECIPIENT_ROLES = (UserRole.STUDENT.value, UserRole.TEACHER.value,
@@ -79,6 +80,7 @@ def inbox():
     page = normalize_page(request.args.get("page"))
     tz_name = current_app.config.get("APP_TIMEZONE", "UTC")
 
+    sync_curriculum_notices(current_user)
     rows, has_next = inbox_page(current_user.id, filter_name, page, kind)
     if not rows and page > 1:
         # A page past the end (a stale bookmark, or everything on the
@@ -110,7 +112,8 @@ def inbox():
 @notifications_bp.get("/preview")
 @roles_required(*_RECIPIENT_ROLES)
 def preview():
-    """Read-only, escaped HTML for the desktop bell; no private message body."""
+    """Render the escaped desktop bell after checking for due notices."""
+    sync_curriculum_notices(current_user)
     tz_name = current_app.config.get("APP_TIMEZONE", "UTC")
     response = make_response(render_template("notifications/_preview.html",
         notifications=build_inbox_view(preview_rows(current_user.id), tz_name),

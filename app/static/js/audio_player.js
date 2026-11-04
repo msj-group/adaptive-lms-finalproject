@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Native audio remains usable without this presentation-only speed selector.
    Authored rates shape the UI; they are not DRM or an authorization boundary. */
 (function () {
@@ -13,14 +15,16 @@
       if (select) select.value = String(audio.playbackRate);
     }
     if (select && rates.length > 1) {
-      select.addEventListener("change", function () {
+      pageScope.listen(select, "change", function () {
         var rate = Number(select.value);
         if (rates.includes(rate)) audio.playbackRate = rate;
         syncRate();
       });
       panel.hidden = false;
     }
-    audio.addEventListener("ratechange", syncRate);
+    pageScope.listen(audio, "ratechange", syncRate);
     syncRate();
   });
 }());
+
+});

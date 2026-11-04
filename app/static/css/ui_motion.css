@@ -1,0 +1,89 @@
+/* Shared feedback for controls, disclosures, overlays, and document navigation. */
+html[data-app-navigating=true]::before {
+  content: ""; position:fixed; z-index:200; inset:0 0 auto; height:3px;
+  background:linear-gradient(90deg, transparent, var(--ui-primary), transparent);
+  background-size:200% 100%; animation:ui-navigation-progress 900ms linear infinite;
+}
+@keyframes ui-navigation-progress { to { background-position:-200% 0; } }
+html[data-app-navigating=true] { cursor:progress; }
+@keyframes ui-page-enter {
+  from { opacity: .86; }
+  to { opacity: 1; }
+}
+
+body > main {
+  animation: ui-page-enter var(--motion-duration-base) var(--motion-easing-standard);
+}
+
+:where(button, summary, a[href], [role=tab]) {
+  transition: background-color var(--motion-duration-fast) ease,
+    border-color var(--motion-duration-fast) ease, color var(--motion-duration-fast) ease,
+    box-shadow var(--motion-duration-press) ease, translate var(--motion-duration-press) ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :is(.btn, .st-icon-button, .ce-thumb):active:not(:disabled, [aria-disabled=true]) {
+    translate: 0 1px;
+  }
+}
+
+@keyframes ui-reveal {
+  from { opacity: 0; translate: 0 -.25rem; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+:where([data-ui-reveal], [data-tgb-section], [role=dialog]:not(dialog, [popover])):not([hidden]) {
+  animation: ui-reveal var(--motion-duration-base) var(--motion-easing-standard);
+}
+
+@supports selector(::details-content) {
+  details::details-content {
+    opacity: 0;
+    transition: opacity var(--motion-duration-fast) ease, content-visibility var(--motion-duration-fast) allow-discrete;
+  }
+  details[open]::details-content { opacity: 1; }
+  html[data-workspace-restoring] details::details-content { transition: none; }
+}
+
+@supports (transition-behavior: allow-discrete) {
+  :where(dialog, [popover]) {
+    opacity: 0;
+    translate: 0 .35rem;
+    transition: opacity var(--motion-duration-popover) ease,
+      translate var(--motion-duration-popover) var(--motion-easing-standard),
+      display var(--motion-duration-popover) allow-discrete,
+      overlay var(--motion-duration-popover) allow-discrete;
+  }
+  :where(dialog[open], [popover]:popover-open) { opacity: 1; translate: 0 0; }
+  :where(dialog)::backdrop {
+    opacity: 0;
+    transition: opacity var(--motion-duration-popover) ease,
+      display var(--motion-duration-popover) allow-discrete,
+      overlay var(--motion-duration-popover) allow-discrete;
+  }
+  :where(dialog[open])::backdrop { opacity: 1; }
+  @starting-style {
+    :where(dialog[open], [popover]:popover-open) { opacity: 0; translate: 0 .35rem; }
+    :where(dialog[open])::backdrop { opacity: 0; }
+  }
+}
+
+html[data-workspace-restoring] [data-ui-reveal] { animation: none; }
+
+.app-flash-dialog {
+  width: min(29rem, calc(100% - 2rem));
+  max-height: calc(100dvh - 2rem);
+  padding: 1.35rem;
+  border: 1px solid var(--ui-line);
+  border-radius: 1rem;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  box-shadow: var(--ui-shadow);
+  overflow: auto;
+}
+.app-flash-dialog::backdrop { background: #14284288; }
+.app-flash-dialog h2 { margin: 0; font-size: 1.2rem; }
+.app-flash-items { display: grid; gap: .5rem; margin-block: .75rem; }
+.app-flash-items > .alert { margin: 0; overflow-wrap: anywhere; }
+.app-flash-dialog .app-flash-items > .alert { padding: 0; border: 0; background: transparent; }
+.app-flash-dialog form { display: flex; justify-content: end; margin-block-start: 1rem; }

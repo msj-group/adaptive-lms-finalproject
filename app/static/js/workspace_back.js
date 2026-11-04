@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Native Back links keep all existing save/leave guards. Browser history owns
    the bounded trail; a consumed, two-minute session bridge joins documents.
    Only visited page URLs are retained, never form fields or page content. */
@@ -20,10 +22,11 @@
     try {
       var url = new URL(value, location.origin);
       if (url.origin !== location.origin) return null;
-      return url.pathname + url.search;
+      return url.pathname + url.search + url.hash;
     } catch (_) { return null; }
   }
-  function here() { return location.pathname + location.search; }
+  function here() { return location.pathname + location.search + location.hash; }
+  function pageState() { return window.navigation?.currentEntry?.getState() || history.state; }
   function clean(items) {
     return Array.isArray(items) ? items.slice(-limit).map(local).filter(Boolean) : [];
   }
@@ -33,15 +36,16 @@
       sessionStorage.removeItem(key);
       if (bridge && bridge.scope === config.scope && bridge.get &&
           Date.now() >= bridge.time && Date.now() - bridge.time < 120000 &&
-          local(config.previous) && local(bridge.url) === local(config.previous)) return bridge;
+          local(config.previous) && local(bridge.url)?.split('#')[0] === local(config.previous)) return bridge;
     } catch (_) { /* Storage-disabled pages retain native parent navigation. */ }
     return null;
   }
   function writeState() {
     try {
-      var state = Object.assign({}, history.state);
+      var state = Object.assign({}, pageState());
       state[stateKey] = {scope:config.scope, trail:trail};
-      history.replaceState(state, '');
+      if (window.navigation?.currentEntry) navigation.updateCurrentEntry({state});
+      else history.replaceState(state, '');
     } catch (_) { /* Keep the native link available. */ }
   }
   function paint() {
@@ -55,26 +59,26 @@
     writeState();
   }
   var bridge = consumeBridge();
-  var saved = history.state && history.state[stateKey];
+  var saved = pageState() && pageState()[stateKey];
   if (saved && saved.scope === config.scope) trail = clean(saved.trail);
   else {
     if (bridge) trail = clean(bridge.trail).concat([local(bridge.url)]).filter(Boolean).slice(-limit);
   }
   paint();
-  window.addEventListener('pageshow', function () {
+  pageScope.listen(window, 'pageshow', function () {
     consumeBridge();
-    var restored = history.state && history.state[stateKey];
+    var restored = pageState() && pageState()[stateKey];
     if (restored && restored.scope === config.scope) trail = clean(restored.trail);
     paint();
   });
-  window.addEventListener('popstate', function () {
-    var restored = history.state && history.state[stateKey];
+  pageScope.listen(window, 'popstate', function () {
+    var restored = pageState() && pageState()[stateKey];
     if (restored && restored.scope === config.scope) trail = clean(restored.trail);
     paint();
   });
   var leavingAccount = false;
   document.querySelectorAll('[data-account-signout]').forEach(function (form) {
-    form.addEventListener('submit', function (event) {
+    pageScope.listen(form, 'submit', function (event) {
       queueMicrotask(function () {
         if (event.defaultPrevented) return;
         leavingAccount = true;
@@ -84,10 +88,12 @@
       });
     });
   });
-  window.addEventListener('pagehide', function () {
+  pageScope.listen(window, 'pagehide', function () {
     if (leavingAccount) return;
     paint();
     try { sessionStorage.setItem(key, JSON.stringify({scope:config.scope, get:config.get,
       url:here(), trail:trail, time:Date.now()})); } catch (_) { /* Native fallback. */ }
   });
 })();
+
+});

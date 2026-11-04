@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Presentation only; native GETs own search/filtering and server scope. */
 (function () {
   "use strict";
@@ -7,15 +9,15 @@
   var form = root.querySelector("[data-group-filter-form]");
   var search = root.querySelector("[data-group-search]");
   if (form && search) {
-    form.addEventListener("submit", function () {
+    pageScope.listen(form, "submit", function () {
       form.querySelector("[data-group-filter-query]").value = search.value;
     });
   }
   if (filters) {
-    document.addEventListener("click", function (event) {
+    pageScope.listen(document, "click", function (event) {
       if (filters.open && !filters.contains(event.target)) filters.open = false;
     });
-    filters.addEventListener("keydown", function (event) {
+    pageScope.listen(filters, "keydown", function (event) {
       if (event.key === "Escape" && filters.open) {
         event.preventDefault();
         filters.open = false;
@@ -24,3 +26,5 @@
     });
   }
 })();
+
+});

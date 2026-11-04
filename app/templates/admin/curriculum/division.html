@@ -1,0 +1,90 @@
+{% extends "admin/curriculum/_editor_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% import "admin/curriculum/_page_jump.html" as navigation with context %}
+{% import "curriculum/_pages.html" as reader with context %}
+{% block title %}{{ _('Edit division') }}{% endblock %}
+{% block editor_content %}
+<div class="ce-workspace" data-curriculum-editor>
+  <h1 class="sr-only">{{ _('Edit division') }}</h1>
+  {{ macros.flash_messages() }}
+  <p class="ce-notice" role="status" data-editor-offline hidden>{{ _('Connection lost. The last saved division is kept. Reconnect to save this change.') }}</p>
+  {% if not document %}
+  <div class="ce-actions"><a class="btn btn--secondary" href="{{ editor_back_url }}" data-workspace-return>{{ _(editor_back_label) }}</a></div>
+  <section class="ad-card ce-source">
+    <h2>{{ _('Choose the main course PDF') }}</h2>
+    <p>{{ _('Upload a PDF to start dividing the course into units and lessons.') }}</p>
+    {% include "admin/curriculum/_source.html" %}
+  </section>
+  {% else %}
+  <div class="ce-division ce-reader-layout" data-book-browser data-division-browser data-open-page="{{ page }}">
+    <section class="ad-card ce-thumbnails ce-index" data-index-panel>
+      {{ navigation.index_header(1, document.page_count, page, division=true) }}
+      <div class="ce-index-body" id="pdf-index" data-index-body data-ui-reveal>
+        <nav class="ce-thumb-list ce-thumb-grid" id="ce-page-index" data-image-scroll data-index-scroll aria-label="{{ _('PDF pages') }}">
+          {% for number in range(1, document.page_count + 1) %}
+            {{ navigation.thumbnail(course, document, number, page) }}
+          {% endfor %}
+        </nav>
+      </div>
+    </section>
+    <section class="ce-preview ce-reader-panel" aria-label="{{ _('PDF preview') }}">
+      <div class="ce-preview-tools">
+        <span>{{ _('Page') }} <strong data-current-page>{{ page }}</strong> / {{ document.page_count }}</span>
+        <div class="ce-actions" data-range-controls data-ui-reveal{% if not kind %} hidden{% endif %}>
+          <button class="btn btn--secondary" type="button" data-select-bound="start">{{ _('Set as first page') }}</button>
+          <button class="btn btn--secondary" type="button" data-select-bound="end">{{ _('Set as last page') }}</button>
+        </div>
+      </div>
+      {{ reader.pages(document, 1, document.page_count, [], editor_page_endpoint,
+                      editor_route_values, none, {}, book_sizes=sizes, page_pins={}) }}
+    </section>
+    <aside class="ad-card ce-division-form" id="ce-division-panel" data-division-panel>
+      <div class="ce-division-top">
+      <details class="ce-source-menu" id="ce-source-menu">
+        <summary class="btn btn--secondary">{{ _('Change main PDF') }}</summary>
+        <div class="ce-source-details">
+          <p dir="auto">{{ document.uploaded_file.original_filename }}</p>
+          {% include "admin/curriculum/_source.html" %}
+        </div>
+      </details>
+      {% if ready %}<a class="btn btn--primary" href="{{ curriculum_url('content') }}">{{ _('Continue to edit content') }}</a>{% endif %}
+      </div>
+      <div class="ce-panel-heading">
+        <h2>{{ _('Saved division') }}</h2>
+        <a class="btn btn--primary" data-edit-range href="{{ curriculum_url('division', kind='unit') }}">{{ _('Add unit') }}</a>
+      </div>
+      <p class="ce-notice" data-range-load-error role="status" hidden>{{ _('Could not open the form. Try again.') }}</p>
+      <div data-range-slot>{% if kind %}{% include "admin/curriculum/_range_form.html" %}{% endif %}</div>
+      <p id="curriculum-page-coverage">{{ _('Pages assigned') }} {{ assigned_pages }} / {{ document.page_count }}</p>
+      <progress aria-labelledby="curriculum-page-coverage" value="{{ assigned_pages }}" max="{{ document.page_count }}"></progress>
+      <ul class="ce-outline">
+        {% for unit in units %}
+        <li class="ce-division-unit">
+          <div class="ce-division-unit-title"><strong dir="auto">{{ unit.title }}</strong><span>{{ unit.page_start ~ '–' ~ unit.page_end if unit.page_start else _('No page range') }}</span></div>
+          {% if unit.status == 'archived' %}<p>{{ _('Archived') }}</p>{% endif %}
+          <div class="ce-actions">
+            <a class="btn btn--secondary ce-small-action" data-edit-range href="{{ curriculum_url('division', kind='unit', item=unit.public_id) }}">{{ _('Edit unit') }}</a>
+            {% if unit.page_start and unit.status == 'active' %}<a class="btn btn--secondary ce-small-action" data-edit-range href="{{ curriculum_url('division', kind='lesson', parent=unit.public_id) }}">{{ _('Add lesson') }}</a>{% endif %}
+          </div>
+          {% if unit.lessons %}<ul class="ce-lesson-actions">
+            {% for lesson in lesson_order(unit) %}
+              <li><a class="btn btn--secondary ce-outline-action" data-edit-range href="{{ curriculum_url('division', kind='lesson', item=lesson.public_id) }}">
+                <span dir="auto">{{ lesson.title }}</span><small>{{ lesson.page_start ~ '–' ~ lesson.page_end if lesson.page_start else _('No page range') }}</small>
+              </a></li>
+            {% endfor %}
+          </ul>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% if ready and has_drafts %}
+      <form method="post" action="{{ curriculum_url('publish') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="revision" value="{{ document.revision }}">
+        <button class="btn btn--secondary ce-ready-action" type="submit">{{ _('Mark all lessons ready' if editor_is_group else 'Mark all shared lessons ready') }}</button>
+      </form>
+      {% endif %}
+    </aside>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

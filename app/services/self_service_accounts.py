@@ -73,7 +73,9 @@ def change_own_password(public_id, role, actor_id, expected, current_password,
         raise AccountConflict("The current password is incorrect.")
     if not isinstance(new_password, str) \
             or not ACCOUNT_PASSWORD_MIN_LENGTH <= len(new_password) <= ACCOUNT_PASSWORD_MAX_LENGTH:
-        raise AccountConflict("Choose a new password between 15 and 128 characters.")
+        raise AccountConflict(
+            f"Choose a new password between {ACCOUNT_PASSWORD_MIN_LENGTH} and {ACCOUNT_PASSWORD_MAX_LENGTH} characters."
+        )
     if current_password == new_password:
         raise AccountConflict("Choose a password different from your current password.")
     if not password_hash:

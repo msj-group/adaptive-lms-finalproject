@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Admin announcements and shared role messaging. Native routes own data. */
 (function () {
   'use strict';
@@ -33,7 +35,7 @@
       status.hidden = !text;
       status.setAttribute('role', error ? 'alert' : 'status');
     };
-    const cancelRead = () => { revision++; controller?.abort(); controller = null; clearTimeout(searchTimer); };
+    const cancelRead = () => { revision++; controller?.abort(); controller = null; pageScope.clearTimeout(searchTimer); };
     const release = () => content.querySelectorAll('form').forEach((form) => form.dispatchEvent(new Event('workspace:saved')));
     const dirty = () => validationDraft || window.aelmsFormHasChanges(content) ||
       Boolean(isMessage && content.querySelector('[data-people-message-form] textarea')?.value.trim());
@@ -84,7 +86,7 @@
       throw new Error('unavailable');
     };
     const animate = (node) => {
-      if (!node?.animate || document.body.dataset.uiMotion === 'reduce' || matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+      if (!node?.animate || matchMedia('(prefers-reduced-motion:reduce)').matches) return;
       const direction = document.documentElement.dir === 'rtl' ? -12 : 12;
       node.animate([{opacity:.35, transform:'translate(' + direction + 'px, 6px)'}, {opacity:1, transform:'translate(0, 0)'}], {duration:260, easing:'cubic-bezier(.22,1,.36,1)'});
     };
@@ -152,7 +154,7 @@
       const mine = revision, request = new AbortController(); controller = request;
       content.setAttribute('aria-busy','true'); recovery.hidden = true; setStatus('Loading…');
       try {
-        const response = await fetch(target.href, {credentials:'same-origin', cache:'no-store', signal:request.signal, headers:{Accept:'text/html'}});
+        const response = await pageScope.fetch(target.href, {credentials:'same-origin', cache:'no-store', signal:request.signal, headers:{Accept:'text/html'}});
         if (mine !== revision || request.signal.aborted || !isOpen()) return;
         if (!response.ok) throw new Error([401,403].includes(response.status) ? 'scope' : 'unavailable');
         const loaded = await parsed(response);
@@ -192,19 +194,19 @@
       if (!isMessage && destination.mode === 'inbox') { close(); return; }
       load(url);
     };
-    root.addEventListener('click', click);
+    pageScope.listen(root, 'click', click);
     if (!isMessage) {
-      surface.addEventListener('click', (event) => {
+      pageScope.listen(surface, 'click', (event) => {
         if (event.target !== surface) { click(event); return; }
         const bounds = surface.getBoundingClientRect();
         if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeSafely();
       });
-      closeButton.addEventListener('click', closeSafely);
-      surface.addEventListener('cancel', (event) => { event.preventDefault(); closeSafely(); });
-      surface.addEventListener('close', () => { if (opener?.isConnected) opener.focus({preventScroll:true}); });
+      pageScope.listen(closeButton, 'click', closeSafely);
+      pageScope.listen(surface, 'cancel', (event) => { event.preventDefault(); closeSafely(); });
+      pageScope.listen(surface, 'close', () => { if (opener?.isConnected) opener.focus({preventScroll:true}); });
     }
-    retry.addEventListener('click', async () => { if (target && await permit()) load(target); });
-    surface.addEventListener('submit', async (event) => {
+    pageScope.listen(retry, 'click', async () => { if (target && await permit()) load(target); });
+    pageScope.listen(surface, 'submit', async (event) => {
       const form = event.target;
       if (event.defaultPrevented || form.method.toLowerCase() !== 'post' ||
           !content.contains(form) || isMessage && !form.matches('[data-people-message-form]')) return;
@@ -229,7 +231,7 @@
       if (closeButton) closeButton.disabled = true;
       form.setAttribute('aria-busy','true'); setStatus(isMessage ? 'Sending…' : 'Saving…');
       try {
-        const response = await fetch(postURL.href, {method:'POST', body:data, credentials:'same-origin', cache:'no-store', headers:{Accept:'text/html'}});
+        const response = await pageScope.fetch(postURL.href, {method:'POST', body:data, credentials:'same-origin', cache:'no-store', headers:{Accept:'text/html'}});
         researchFinish('finished');
         if (!response.ok && ![400,422].includes(response.status)) throw new Error([401,403].includes(response.status) ? 'scope' : 'unavailable');
         const loaded = await parsed(response);
@@ -267,19 +269,19 @@
         load(url, 'replace', {start:input.selectionStart, end:input.selectionEnd});
       };
       // Own this workspace search in capture phase, including the initial shared live-query form.
-      root.addEventListener('input', (event) => {
+      pageScope.listen(root, 'input', (event) => {
         const form = event.target.closest('form.messenger-inbox-search');
         if (!form) return;
         event.stopImmediatePropagation(); cancelRead();
-        if (!event.isComposing) searchTimer = setTimeout(() => search(form), 300);
+        if (!event.isComposing) searchTimer = pageScope.setTimeout(() => search(form), 300);
       }, true);
-      root.addEventListener('compositionstart', (event) => { if (event.target.closest('.messenger-inbox-search')) { event.stopImmediatePropagation(); cancelRead(); } }, true);
-      root.addEventListener('compositionend', (event) => { const form = event.target.closest('.messenger-inbox-search'); if (form) { event.stopImmediatePropagation(); cancelRead(); searchTimer = setTimeout(() => search(form), 300); } }, true);
-      root.addEventListener('submit', (event) => {
+      pageScope.listen(root, 'compositionstart', (event) => { if (event.target.closest('.messenger-inbox-search')) { event.stopImmediatePropagation(); cancelRead(); } }, true);
+      pageScope.listen(root, 'compositionend', (event) => { const form = event.target.closest('.messenger-inbox-search'); if (form) { event.stopImmediatePropagation(); cancelRead(); searchTimer = pageScope.setTimeout(() => search(form), 300); } }, true);
+      pageScope.listen(root, 'submit', (event) => {
         if (!event.target.matches('.messenger-inbox-search')) return;
         event.preventDefault(); event.stopImmediatePropagation(); search(event.target);
       }, true);
-      window.addEventListener('popstate', async () => {
+      pageScope.listen(window, 'popstate', async () => {
         const url = new URL(location.href);
         if (!info(url)) { location.reload(); return; }
         if (posting || confirming || dirty()) {
@@ -288,8 +290,8 @@
         } else load(url, 'pop');
       });
     }
-    window.addEventListener('pagehide', () => { if (posting) uncertain = true; active = false; cancelRead(); });
-    window.addEventListener('pageshow', (event) => {
+    pageScope.listen(window, 'pagehide', () => { if (posting) uncertain = true; active = false; cancelRead(); });
+    pageScope.listen(window, 'pageshow', (event) => {
       active = true;
       if (event.persisted && (posting || uncertain)) {
         uncertain = true; content.querySelectorAll('[type="submit"]').forEach((button) => { button.disabled = true; }); failed(true);
@@ -297,3 +299,5 @@
     });
   }
 })();
+
+});

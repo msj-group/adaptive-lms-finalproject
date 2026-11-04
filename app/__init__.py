@@ -7,6 +7,7 @@ from app.config import config_by_name
 from app.extensions import csrf, db, limiter, login_manager, migrate
 from app.errors import register_error_handlers
 from app.services.material_config import resolve_material_config
+from app.services.course_pdf import DOCUMENT_REQUEST_BYTES
 from app.services.payment_providers import resolve_payment_provider
 from app.services.research_settings import resolve_research_settings
 
@@ -53,7 +54,7 @@ def create_app(config_name=None, **config_overrides):
     project_root = os.path.dirname(app.root_path)
     material_config = resolve_material_config(app.config, project_root)
     app.extensions["material_config"] = material_config
-    app.config["MAX_CONTENT_LENGTH"] = material_config.max_content_length
+    app.config["MAX_CONTENT_LENGTH"] = max(material_config.max_content_length, DOCUMENT_REQUEST_BYTES)
 
     # No online provider is enabled until a real integration is approved.
     # An unsupported provider configuration refuses startup.

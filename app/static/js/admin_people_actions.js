@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* People dialogs reuse the existing signed profile and correspondence forms. */
 (function () {
   'use strict';
@@ -151,7 +153,7 @@
     dialog.setAttribute('aria-busy', 'true');
     setStatus('Loading form…');
     try {
-      const response = await fetch(current.getURL, {credentials:'same-origin', cache:'no-store', signal:request.signal, headers:{'Accept':'text/html'}});
+      const response = await pageScope.fetch(current.getURL, {credentials:'same-origin', cache:'no-store', signal:request.signal, headers:{'Accept':'text/html'}});
       const loaded = await parsed(response);
       if (mine !== revision || request.signal.aborted || !active || !dialog.open) return;
       if (!response.ok || (current.mode === 'edit' && response.redirected)) throw new Error('unavailable');
@@ -164,7 +166,7 @@
       retry.hidden = scopeInvalid;
     } finally { if (mine === revision) { controller = null; dialog.removeAttribute('aria-busy'); } }
   };
-  desk.addEventListener('click', (event) => {
+  pageScope.listen(desk, 'click', (event) => {
     if (event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey || scopeInvalid) return;
     const link = event.target.closest('a[data-people-action]');
     const profile = link?.closest('[data-people-profile]');
@@ -189,26 +191,26 @@
     document.body.dataset.peopleActionOpen = 'true';
     load();
   });
-  closeButton.addEventListener('click', permitClose);
-  retry.addEventListener('click', load);
-  dialog.addEventListener('input', (event) => {
+  pageScope.listen(closeButton, 'click', permitClose);
+  pageScope.listen(retry, 'click', load);
+  pageScope.listen(dialog, 'input', (event) => {
     if (!event.target.matches('textarea[name="body"]')) return;
     const count = content.querySelector('[data-message-count]');
     if (count) count.textContent = event.target.value.length + ' / ' + event.target.maxLength;
   });
-  dialog.addEventListener('cancel', (event) => {event.preventDefault(); permitClose();});
-  dialog.addEventListener('click', (event) => {
+  pageScope.listen(dialog, 'cancel', (event) => {event.preventDefault(); permitClose();});
+  pageScope.listen(dialog, 'click', (event) => {
     if (event.target.closest('[data-people-action-cancel]')) { event.preventDefault(); event.stopPropagation(); permitClose(); return; }
     if (event.target !== dialog) return;
     const box = dialog.getBoundingClientRect();
     if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) permitClose();
   });
-  dialog.addEventListener('close', () => {
+  pageScope.listen(dialog, 'close', () => {
     cancelRead();
     delete document.body.dataset.peopleActionOpen;
     if (current?.opener.isConnected) current.opener.focus({preventScroll:true});
   });
-  dialog.addEventListener('submit', async (event) => {
+  pageScope.listen(dialog, 'submit', async (event) => {
     const form = event.target;
     if (event.defaultPrevented || !form.matches('[data-people-edit-form],[data-people-message-form]')) return;
     event.preventDefault();
@@ -223,7 +225,7 @@
     form.setAttribute('aria-busy', 'true');
     setStatus(current.mode === 'edit' ? 'Saving…' : 'Sending…');
     try {
-      const response = await fetch(current.postURL, {method:'POST', body:data, credentials:'same-origin', cache:'no-store', headers:{'Accept':'text/html'}});
+      const response = await pageScope.fetch(current.postURL, {method:'POST', body:data, credentials:'same-origin', cache:'no-store', headers:{'Accept':'text/html'}});
       const loaded = await parsed(response);
       if (!active || !dialog.open) return;
       if (!response.redirected && [200,400,422].includes(response.status) && loaded.destination.href === current.postURL) {
@@ -265,8 +267,8 @@
       buttons.forEach((button) => {button.disabled = uncertain || scopeInvalid;});
     }
   });
-  window.addEventListener('pagehide', () => {active = false; cancelRead(); delete document.body.dataset.peopleActionOpen;});
-  window.addEventListener('pageshow', (event) => {
+  pageScope.listen(window, 'pagehide', () => {active = false; cancelRead(); delete document.body.dataset.peopleActionOpen;});
+  pageScope.listen(window, 'pageshow', (event) => {
     active = true;
     if (event.persisted && dialog.open) {
       document.body.dataset.peopleActionOpen = 'true';
@@ -276,3 +278,5 @@
     }
   });
 })();
+
+});

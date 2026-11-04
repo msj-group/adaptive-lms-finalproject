@@ -1,0 +1,102 @@
+{% extends "admin/curriculum/_editor_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% import "curriculum/_pages.html" as reader with context %}
+{% import "admin/curriculum/_saved_material.html" as saved with context %}
+{% block title %}{{ _('Student preview') if preview else _('Edit content') }}{% endblock %}
+{% import "admin/curriculum/_page_jump.html" as navigation with context %}
+{% block editor_content %}
+<div class="ce-workspace" data-curriculum-editor>
+  <h1 class="sr-only">{{ _('Student preview') if preview else _('Edit content') }}</h1>
+  {{ macros.flash_messages() }}
+  <p class="ce-notice" role="status" data-editor-offline hidden>{{ _('Connection lost. The last saved position is kept. Reconnect to save this change.') }}</p>
+  {% if not preview %}
+    <form method="post" enctype="multipart/form-data" id="curriculum-media-form" data-media-form
+          action="{{ curriculum_url('media_save', lesson_id=lesson.public_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="revision" value="{{ document.revision }}">
+      <input type="hidden" name="nonce" value="{{ nonce }}">
+      <input type="hidden" name="material">
+      <input type="hidden" name="material_version">
+      <input type="hidden" name="pin_page">
+      <input type="hidden" name="pin_x">
+      <input type="hidden" name="pin_y">
+      <input type="hidden" name="action" value="save">
+      <input class="ce-file-input" type="file" name="media" accept=".mp3,.wav,.mp4,.webm" tabindex="-1" aria-label="{{ _('Choose audio or video') }}">
+    </form>
+    <div class="ce-tools">
+      <div class="ce-placement" data-placement data-ui-reveal data-save-failure="{{ _('The media could not be saved. Try again.') }}" hidden>
+        <button class="btn btn--primary" type="button" data-pin-confirm disabled>{{ _('Confirm position') }}</button>
+        <button class="btn btn--secondary" type="button" data-pin-cancel>{{ _('Cancel') }}</button>
+        <p class="ce-save-error" data-pin-error role="alert" hidden></p>
+      </div>
+      <template data-audio-icon>{{ reader.media_icon('audio') }}</template>
+      <template data-video-icon>{{ reader.media_icon('video') }}</template>
+      <p class="ce-notice" data-unassigned-page role="status" hidden>{{ _('Choose a page assigned to a lesson. Existing markers stay within their original lesson.') }}</p>
+      <p data-invalid-media role="alert" hidden>{{ _('Choose an MP3, WAV, MP4 or WebM file.') }}</p>
+    </div>
+  {% endif %}
+  <div class="ce-content-layout ce-reader-layout" data-book-browser data-open-page="{{ page }}">
+    <section class="ad-card ce-content-outline ce-index" data-index-panel>
+      {{ navigation.index_header(first, last, page) }}
+      <button class="ce-index-toggle" type="button" data-index-toggle data-workspace-disclosure aria-expanded="true" aria-controls="lesson-index">{{ _('Course outline') }}</button>
+      <div class="ce-index-body" id="lesson-index" data-index-body data-ui-reveal>
+      <nav class="ce-index-scroll" id="ce-page-index" data-image-scroll data-index-scroll aria-label="{{ _('Course outline') }}">
+        {% for unit in units if not preview or unit.id == lesson.unit_id %}
+        <details class="ce-tree-unit" id="ce-unit-{{ unit.public_id }}" open>
+          <summary dir="auto">{{ unit.title }}</summary>
+          {% for row in lesson_order(unit) if not preview or row.id == lesson.id %}
+          <details class="ce-tree-lesson" id="ce-lesson-{{ row.public_id }}">
+            <summary><span dir="auto">{{ row.title }}</span><small>{{ row.page_start }}–{{ row.page_end }}</small></summary>
+            <div class="ce-thumb-grid ce-page-thumbnails">
+              {% for number in range(row.page_start, row.page_end + 1) %}
+                {{ navigation.thumbnail(course, document, number, page) }}
+              {% endfor %}
+            </div>
+          </details>
+          {% endfor %}
+        </details>
+        {% endfor %}
+        {% if not preview and page_owners|length < document.page_count %}
+        <details class="ce-tree-unit" id="ce-unassigned-pages">
+          <summary>{{ _('Unassigned pages') }}</summary>
+          <div class="ce-thumb-grid ce-page-thumbnails">
+            {% for number in range(first, last + 1) if number not in page_owners %}
+              {{ navigation.thumbnail(course, document, number, page) }}
+            {% endfor %}
+          </div>
+        </details>
+        {% endif %}
+      </nav>
+      </div>
+      {% if not preview %}
+      <details class="ce-materials" id="ce-saved-materials"{% if not materials %} hidden{% endif %}><summary>{{ _('Saved materials') }}</summary>
+        <ul class="ce-outline" id="ce-material-list">
+          {% for material in materials %}
+            {{ saved.item(course.public_id, document.revision, lesson_by_id[material.lesson_id], material, pin_version, preview_origin) }}
+          {% endfor %}
+        </ul>
+      </details>
+      {% endif %}
+    </section>
+    <section class="ce-content-viewer ce-reader-panel" aria-label="{{ _('PDF pages') }}">
+      <div class="ce-preview-tools ce-content-toolbar">
+        <span dir="auto">{{ _('Page') }} <strong data-current-page>{{ page }}</strong> / {{ document.page_count }}</span>
+        <div class="ce-actions ce-content-actions">
+          {% if preview %}
+          <a class="btn btn--secondary" href="{{ editor_url }}#pdf-page-{{ page }}" data-editor-return>{{ _('Back to editor') }}</a>
+          {% else %}
+          <a class="btn btn--secondary" role="link" data-preview-link
+             data-unassigned-label="{{ _('Preview is available only on pages assigned to a lesson.') }}"
+             {% if preview_url %}href="{{ preview_url }}#pdf-page-{{ page }}"{% else %}aria-disabled="true" title="{{ _('Preview is available only on pages assigned to a lesson.') }}"{% endif %}>{{ _('Student preview') }}</a>
+          <button class="btn btn--primary" type="button" data-add-media>{{ _('Add file') }}</button>
+          {% endif %}
+        </div>
+      </div>
+      {{ reader.pages(document, first, last, materials, editor_page_endpoint,
+                      editor_route_values, editor_file_endpoint, editor_route_values,
+                      editor=not preview, pin_version=pin_version, book_sizes=sizes, page_pins=page_pins,
+                      page_owners=page_owners) }}
+    </section>
+  </div>
+</div>
+{% endblock %}

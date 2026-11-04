@@ -1,8 +1,10 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Read-only profile enhancement. Every action remains a native authorized URL/form. */
 (function () {
   'use strict';
   const t = window.aelmsUI ? window.aelmsUI.t : (value) => value;
-  document.addEventListener('submit', (event) => {
+  pageScope.listen(document, 'submit', (event) => {
     const form = event.target;
     if (!form.closest('[data-people-profile]') || !form.dataset.confirm || window.aelmsConfirm) return;
     if (!window.confirm(t(form.dataset.confirm))) event.preventDefault();
@@ -24,13 +26,13 @@
   if (filterToggle) {
     filterToggle.hidden = false;
     form.dataset.peopleFilterReady = 'true';
-    filterToggle.addEventListener('click', () => {
+    pageScope.listen(filterToggle, 'click', () => {
       const expanded = filterToggle.getAttribute('aria-expanded') !== 'true';
       filterToggle.setAttribute('aria-expanded', String(expanded));
       form.dataset.peopleFilterOpen = String(expanded);
       if (expanded) form.querySelector('input')?.focus({preventScroll: true});
     });
-    form.addEventListener('keydown', (event) => {
+    pageScope.listen(form, 'keydown', (event) => {
       if (event.key !== 'Escape' || !phone.matches) return;
       filterToggle.setAttribute('aria-expanded', 'false');
       form.dataset.peopleFilterOpen = 'false';
@@ -89,7 +91,7 @@
     targetReader.setAttribute('aria-busy', 'true');
     message('Loading profile…');
     try {
-      const response = await fetch(url.href, {credentials: 'same-origin', cache: 'no-store',
+      const response = await pageScope.fetch(url.href, {credentials: 'same-origin', cache: 'no-store',
         signal: request.signal, headers: {'Accept': 'text/html'}});
       if (!response.ok || response.redirected || !response.headers.get('Content-Type')?.includes('text/html') ||
           response.url !== url.href) throw new Error('unavailable');
@@ -107,7 +109,7 @@
       workspace.dataset.reading = 'true';
       link.setAttribute('aria-current', 'true');
       targetReader.classList.add('pf-reading-enter');
-      targetReader.addEventListener('animationend', () => targetReader.classList.remove('pf-reading-enter'), {once: true});
+      pageScope.listen(targetReader, 'animationend', () => targetReader.classList.remove('pf-reading-enter'), {once: true});
       message('');
       if (!automatic) {
         if (phone.matches) targetReader.scrollIntoView({block: 'start', behavior: 'instant'});
@@ -151,7 +153,7 @@
       if (first) load(first, true);
     }
   };
-  desk.addEventListener('click', (event) => {
+  pageScope.listen(desk, 'click', (event) => {
     if (event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const link = event.target.closest('a[data-people-open]');
     if (link && !disabled && profileURL(link)) {
@@ -170,19 +172,19 @@
     }
     if (event.target.closest('[data-people-retry]') && current) load(current);
   });
-  form.addEventListener('input', resetReader);
-  form.addEventListener('change', resetReader);
-  form.addEventListener('submit', resetReader);
-  const observer = new MutationObserver(install);
+  pageScope.listen(form, 'input', resetReader);
+  pageScope.listen(form, 'change', resetReader);
+  pageScope.listen(form, 'submit', resetReader);
+  const observer = pageScope.createObserver(MutationObserver, install);
   observer.observe(region, {childList: true});
-  phone.addEventListener('change', () => {
+  pageScope.listen(phone, 'change', () => {
     if (!phone.matches && !current && !disabled) {
       const first = region.querySelector('[data-people-open]');
       if (first) load(first, true);
     }
   });
-  window.addEventListener('pagehide', () => {active = false; cancel();});
-  window.addEventListener('pageshow', (event) => {
+  pageScope.listen(window, 'pagehide', () => {active = false; cancel();});
+  pageScope.listen(window, 'pageshow', (event) => {
     active = true;
     if (event.persisted) {
       resetReader();
@@ -191,3 +193,5 @@
   });
   install();
 })();
+
+});

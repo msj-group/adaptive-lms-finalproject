@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Presentation helpers only. Native forms and the server own every mutation. */
 (function () {
   'use strict';
@@ -5,7 +7,7 @@
   var searchTrigger = document.querySelector('[data-workspace-search-open]');
   var searchDialog = document.querySelector('[data-workspace-search]');
   if (searchTrigger && searchDialog && typeof searchDialog.showModal === 'function') {
-    document.addEventListener('keydown', function (event) {
+    pageScope.listen(document, 'keydown', function (event) {
       if (event.defaultPrevented || !(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.key.toLowerCase() !== 'k') return;
       if (document.querySelector('dialog[open]')) return;
       event.preventDefault();
@@ -16,17 +18,17 @@
   if (filters) {
     var compact = window.matchMedia('(max-width:599px)');
     var syncFilters = function () { filters.open = !compact.matches || filters.dataset.active === 'true'; };
-    compact.addEventListener('change', syncFilters);
+    pageScope.listen(compact, 'change', syncFilters);
     syncFilters();
   }
   document.querySelectorAll('[data-rs-dialog]').forEach(function (trigger) {
     var dialog = document.getElementById(trigger.dataset.rsDialog);
     if (!dialog || typeof dialog.showModal !== 'function') return;
     trigger.hidden = false;
-    trigger.addEventListener('click', function () {
+    pageScope.listen(trigger, 'click', function () {
       if (dialog.open) return;
       dialog.showModal();
-      dialog.addEventListener('close', function restore() {
+      pageScope.listen(dialog, 'close', function restore() {
         if (trigger.isConnected) trigger.focus({preventScroll: true});
         dialog.removeEventListener('close', restore);
       });
@@ -34,9 +36,9 @@
   });
   document.querySelectorAll('dialog.rs-dialog').forEach(function (dialog) {
     dialog.querySelectorAll('[data-rs-close]').forEach(function (button) {
-      button.addEventListener('click', function () { dialog.close(); });
+      pageScope.listen(button, 'click', function () { dialog.close(); });
     });
-    dialog.addEventListener('click', function (event) {
+    pageScope.listen(dialog, 'click', function (event) {
       if (event.target !== dialog) return;
       var bounds = dialog.getBoundingClientRect();
       if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close();
@@ -55,7 +57,9 @@
       var hint = exportForm.querySelector('[data-rs-review-changed]');
       if (hint) hint.hidden = false;
     }
-    exportForm.addEventListener('input', markSelectionChanged);
-    exportForm.addEventListener('change', markSelectionChanged);
+    pageScope.listen(exportForm, 'input', markSelectionChanged);
+    pageScope.listen(exportForm, 'change', markSelectionChanged);
   }
 })();
+
+});

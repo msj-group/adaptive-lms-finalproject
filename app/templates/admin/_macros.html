@@ -32,8 +32,22 @@
 
 {% macro flash_messages() -%}
   {%- with messages = get_flashed_messages(with_categories=true) -%}
-    {%- for category, message in messages %}
-      <div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
-    {%- endfor -%}
+    {% if messages %}
+      <section data-app-flash>
+        <div class="app-flash-items" data-app-flash-items>
+          {% for category, message in messages %}
+          <p class="alert alert--{{ category }}" role="{{ 'alert' if category in ('danger', 'error') else 'status' }}">{{ _(message) }}</p>
+          {% endfor %}
+        </div>
+        <template>
+          <dialog class="app-flash-dialog" aria-label="{{ _('Notice') }}">
+            <h2>{{ _('Notice') }}</h2>
+            <form method="dialog">
+              <button class="btn btn--primary" autofocus>{{ _('Close') }}</button>
+            </form>
+          </dialog>
+        </template>
+      </section>
+    {% endif %}
   {%- endwith -%}
 {%- endmacro %}

@@ -1,14 +1,16 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Local content selection only. Native links, forms and server guards own operations. */
 (function () {
   "use strict";
   document.querySelectorAll("[data-course-studio] .cs-add-material").forEach(function (menu) {
-    menu.addEventListener("keydown", function (event) {
+    pageScope.listen(menu, "keydown", function (event) {
       if (event.key !== "Escape" || !menu.open) return;
       event.preventDefault();
       menu.open = false;
       menu.querySelector("summary").focus();
     });
-    document.addEventListener("click", function (event) {
+    pageScope.listen(document, "click", function (event) {
       if (menu.open && !menu.contains(event.target)) menu.open = false;
     });
   });
@@ -29,12 +31,14 @@
     select(panels.some(function (panel) { return panel.id === hash; }) ? hash : panels[0].id);
     root.dataset.studioEnhanced = "true";
     links.forEach(function (link) {
-      link.addEventListener("click", function (event) {
+      pageScope.listen(link, "click", function (event) {
         if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
         event.preventDefault();
         select(link.dataset.studioTarget);
       });
     });
-    window.addEventListener("hashchange", function () { select(window.location.hash.slice(1)); });
+    pageScope.listen(window, "hashchange", function () { select(window.location.hash.slice(1)); });
   });
 })();
+
+});

@@ -64,20 +64,8 @@ WEEKDAY_NAMES = (
 )
 WEEKDAY_CHOICES = list(enumerate(WEEKDAY_NAMES))
 
-# Minimum/maximum length for administrator-set passwords on any
-# administrator-managed user account (currently Student and Teacher). No
-# composition rules (uppercase/digit/symbol) are enforced -- strength comes
-# from length instead, so long passphrases are preferred over short,
-# complex-looking passwords. This follows only the length-over-composition
-# principle discussed in guidance such as NIST SP 800-63B; it is not a
-# claim of full compliance with that document. In particular, this system
-# authenticates with a password as the sole factor (no MFA), which is why
-# the minimum sits above the more common 12-character baseline, and
-# blocklisting compromised/common passwords is not implemented -- both are
-# documented here as a deliberate scope decision, not an oversight. The
-# maximum bounds the input size reaching Argon2id, since hashing cost
-# scales with input length.
-# The shared constants above keep administrator and self-service policy aligned.
+# Shared owner-approved length limits keep account creation, administrator
+# resets and self-service changes aligned. No character composition is required.
 
 
 class AcademicTermForm(FlaskForm):

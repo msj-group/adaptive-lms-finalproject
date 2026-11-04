@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Draft form convenience only. No requests, storage, roster or note changes. */
 (function () {
   "use strict";
@@ -21,14 +23,14 @@
     applying = false;
     status.textContent = t(message);
   }
-  mark.addEventListener("click", function () {
+  pageScope.listen(mark, "click", function () {
     if (present.every(function (input) { return input.checked; })) return;
     previous = radios.map(function (input) { return input.checked; });
     present.forEach(function (input) { input.checked = true; });
     undo.hidden = false;
     changed(present, "Marks changed on this form only. Save draft to keep them.");
   });
-  undo.addEventListener("click", function () {
+  pageScope.listen(undo, "click", function () {
     if (!previous) return;
     // Clear first, then restore each group to its previous selection.
     radios.forEach(function (input) { input.checked = false; });
@@ -37,10 +39,12 @@
     undo.hidden = true;
     changed(radios, "Bulk selection undone. Your previous draft marks are restored on this form.");
   });
-  form.addEventListener("change", function (event) {
+  pageScope.listen(form, "change", function (event) {
     // A later manual mark takes priority over the bulk undo snapshot.
     if (!applying && event.target.matches('input[type="radio"][name^="status__"]')) {
       previous = null; undo.hidden = true; status.textContent = "";
     }
   });
 })();
+
+});

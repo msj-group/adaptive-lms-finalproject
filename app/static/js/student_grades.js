@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Progressive presentation only. Server GET owns filtering and authorization. */
 (function () {
   "use strict";
@@ -25,21 +27,21 @@
   }
   if (course && term && group && groupField) {
     updateGroups(false);
-    course.addEventListener("change", function () { updateGroups(true); });
-    term.addEventListener("change", function () { updateGroups(true); });
+    pageScope.listen(course, "change", function () { updateGroups(true); });
+    pageScope.listen(term, "change", function () { updateGroups(true); });
   }
   if (courseSearch && course) {
     var options = Array.from(course.options).map(function (option) {
       return { value: option.value, text: option.textContent };
     });
     courseSearch.hidden = false;
-    courseSearch.addEventListener("keydown", function (event) {
+    pageScope.listen(courseSearch, "keydown", function (event) {
       if (event.key === "Enter") {
         event.preventDefault();
         course.focus();
       }
     });
-    courseSearch.addEventListener("input", function () {
+    pageScope.listen(courseSearch, "input", function () {
       var needle = courseSearch.value.trim().toLocaleLowerCase();
       var selected = course.value;
       course.replaceChildren();
@@ -55,15 +57,15 @@
     });
   }
   if (form && search) {
-    form.addEventListener("submit", function () {
+    pageScope.listen(form, "submit", function () {
       form.querySelector("[data-grade-filter-query]").value = search.value;
     });
   }
   if (filters) {
-    document.addEventListener("click", function (event) {
+    pageScope.listen(document, "click", function (event) {
       if (filters.open && !filters.contains(event.target)) filters.open = false;
     });
-    filters.addEventListener("keydown", function (event) {
+    pageScope.listen(filters, "keydown", function (event) {
       if (event.key === "Escape" && filters.open) {
         event.preventDefault();
         filters.open = false;
@@ -72,3 +74,5 @@
     });
   }
 })();
+
+});

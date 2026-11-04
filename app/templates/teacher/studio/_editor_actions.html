@@ -1,0 +1,10 @@
+{% if operational %}
+<div class="cs-editor-actions">
+  {% for mode,label in [('division','Edit division'),('content','Edit content')] %}
+  <form method="post" action="{{ url_for('teacher.curriculum_begin', group_public_id=group.public_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn--secondary" type="submit" name="editor" value="{{ mode }}">{{ _(label) }}</button>
+  </form>
+  {% endfor %}
+</div>
+{% endif %}

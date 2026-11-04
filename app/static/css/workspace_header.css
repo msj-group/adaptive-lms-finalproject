@@ -1,0 +1,50 @@
+/* One page title beside Back; original filter forms retain their DOM owners. */
+.yc-workspace[data-workspace-header-titles] .st-header { gap:12px; }
+.yc-workspace[data-workspace-header-titles] .st-header-context { flex:1; }
+.yc-workspace .workspace-page-context { display:flex; align-items:center; gap:12px; min-width:0; }
+.yc-workspace .workspace-page-context[hidden], .yc-workspace .workspace-header-filters[hidden] { display:none; }
+.yc-workspace .workspace-header-title {
+  min-width:0; margin:0; padding:0; color:var(--st-ink); font:600 19px/1.35 var(--st-body);
+  letter-spacing:-.02em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.yc-workspace .workspace-header-filters { display:flex; flex:0 0 auto; }
+.yc-workspace .workspace-header-filter {
+  display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; gap:6px;
+  min-height:44px; padding:8px 10px; border:1px solid var(--st-border); border-radius:12px;
+  background:var(--st-control); color:var(--st-blue); font:600 12px/1.3 var(--st-body); cursor:pointer;
+}
+.yc-workspace .workspace-header-filter[aria-expanded=true] { background:var(--st-wash); }
+.yc-workspace .workspace-header-filter:focus-visible { outline:3px solid var(--ui-focus); outline-offset:2px; }
+.yc-workspace .workspace-header-filter > svg { width:18px; height:18px; }
+.yc-workspace .workspace-header-filter > [class*="count"] { min-width:18px; border-radius:9px; padding:2px 4px; background:var(--st-wash); }
+.yc-workspace[data-workspace-header-titles] .st-mobile-brand { display:none; }
+.yc-workspace .workspace-page-back .workspace-back-label { transform:none; }
+.yc-workspace[data-workspace-header-titles] :is(.workspace-heading-source,.workspace-heading-description,[data-header-filter-control]) { display:none!important; }
+.yc-workspace[data-workspace-header-titles] :is(.workspace-heading-shell-empty,[data-header-filter-source]) { display:contents!important; }
+.yc-workspace[data-workspace-header-titles] .workspace-heading-shell-compact { margin-block:0!important; padding-block:0!important; min-height:0!important; }
+.yc-workspace[data-workspace-header-titles] [data-header-filter-source] > summary { display:none!important; }
+.yc-workspace[data-workspace-header-titles] [data-fp-mobile-filter-host]:has(>[data-header-filter-source]) { display:contents; }
+.yc-workspace[data-workspace-header-titles] [data-header-filter-panel]:not(:popover-open) { display:none!important; }
+.yc-workspace[data-workspace-header-titles] .st-shell [data-header-filter-panel] {
+  position:fixed; inset:auto; top:var(--header-filter-top); left:var(--header-filter-left);
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px;
+  width:min(440px,calc(100vw - 24px)); max-width:none; min-width:0;
+  max-height:calc(100dvh - var(--header-filter-top) - 12px); margin:0; padding:18px;
+  overflow:auto; overscroll-behavior:contain; border:1px solid var(--st-border);
+  border-radius:16px; background:var(--st-solid); color:var(--st-ink); box-shadow:var(--ui-shadow-lg);
+}
+.yc-workspace [data-header-filter-panel] :is(.field,fieldset) { min-width:0; }
+@media (max-width:639px) {
+  .yc-workspace[data-workspace-header-titles] .st-header { gap:8px; }
+  .yc-workspace[data-workspace-header-titles] .st-header-context { gap:8px; }
+  .yc-workspace .workspace-page-context { flex:1; gap:8px; }
+  .yc-workspace .workspace-header-title { font-size:16px; }
+  .yc-workspace[data-workspace-header-titles] .workspace-page-back { width:44px; padding:0; justify-content:center; }
+  .yc-workspace[data-workspace-header-titles] .workspace-back-label { display:none; }
+  .yc-workspace .workspace-header-filter { width:44px; padding:0; }
+  .yc-workspace .workspace-header-filter .workspace-filter-label { display:none; }
+  .yc-workspace .workspace-header-filter > [class*="count"] { position:absolute; margin-inline-start:28px; margin-block-start:-25px; }
+}
+@media (max-width:479px) {
+  .yc-workspace[data-workspace-header-titles] .st-shell [data-header-filter-panel] { grid-template-columns:minmax(0,1fr); padding:16px; }
+}

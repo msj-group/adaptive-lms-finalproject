@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Server-rendered, scoped enhancements. Protected writes keep their native handlers. */
 (() => {
   'use strict';
@@ -14,7 +16,7 @@
     const select = groupForm && groupForm.querySelector('[data-tdisc-group-select]');
     const apply = groupForm && groupForm.querySelector('[data-tdisc-group-apply]');
     if (select && apply && typeof groupForm.requestSubmit === 'function') {
-      select.addEventListener('change', () => groupForm.requestSubmit());
+      pageScope.listen(select, 'change', () => groupForm.requestSubmit());
       apply.hidden = true;
     }
     if (picker && 'open' in picker) {
@@ -22,7 +24,7 @@
       const options = Array.from(picker.querySelectorAll('[data-tdisc-group-option]'));
       picker.hidden = false;
       workspace.classList.add('is-enhanced');
-      picker.addEventListener('keydown', (event) => {
+      pageScope.listen(picker, 'keydown', (event) => {
         if (event.key === 'Escape') {
           event.preventDefault();
           event.stopPropagation();
@@ -39,7 +41,7 @@
             : (current - 1 + options.length) % options.length;
         options[next].focus();
       });
-      document.addEventListener('pointerdown', (event) => {
+      pageScope.listen(document, 'pointerdown', (event) => {
         if (picker.open && !picker.contains(event.target)) picker.open = false;
       });
     }
@@ -134,7 +136,7 @@
       const reader = next.querySelector('.tdisc-reader');
       if (reader) {
         reader.classList.add('tdisc-reading-enter');
-        reader.addEventListener('animationend', () => reader.classList.remove('tdisc-reading-enter'), {once: true});
+        pageScope.listen(reader, 'animationend', () => reader.classList.remove('tdisc-reading-enter'), {once: true});
         reader.querySelector('.tdisc-back')?.focus({preventScroll: true});
       } else {
         next.querySelector('.tdisc-topic')?.focus({preventScroll: true});
@@ -161,7 +163,7 @@
       workspace.setAttribute('aria-busy', 'true');
       setStatus(readerStatus, 'Loading discussion…');
       try {
-        const response = await fetch(url.href, {credentials: 'same-origin', cache: 'no-store', signal: controller.signal});
+        const response = await pageScope.fetch(url.href, {credentials: 'same-origin', cache: 'no-store', signal: controller.signal});
         const expected = url.pathname === groupURL.pathname ? '' : url.pathname.split('/').pop();
         const loaded = await parsedPage(response, url, expected);
         if (revision !== readerRevision || controller.signal.aborted || !active) return;
@@ -195,7 +197,7 @@
       setStatus(dialogStatus, 'Loading form…');
       recovery.hidden = true;
       try {
-        const response = await fetch(newURL.href, {credentials: 'same-origin', cache: 'no-store', signal: controller.signal});
+        const response = await pageScope.fetch(newURL.href, {credentials: 'same-origin', cache: 'no-store', signal: controller.signal});
         const loaded = await parsedPage(response, newURL);
         if (revision !== dialogRevision || controller.signal.aborted || !dialog.open || !active) return;
         const panel = loaded.root.querySelector('.tdisc-new-card');
@@ -241,16 +243,16 @@
       dialog.close();
       if (trigger?.isConnected) trigger.focus();
     };
-    dialog.addEventListener('cancel', (event) => { event.preventDefault(); closeDialog(); });
-    dialog.addEventListener('click', (event) => {
+    pageScope.listen(dialog, 'cancel', (event) => { event.preventDefault(); closeDialog(); });
+    pageScope.listen(dialog, 'click', (event) => {
       if (event.target !== dialog) return;
       const rect = dialog.getBoundingClientRect();
       if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeDialog();
     });
-    closeButton.addEventListener('click', () => closeDialog());
+    pageScope.listen(closeButton, 'click', () => closeDialog());
     dialog.querySelector('[data-tdisc-retry]').addEventListener('click', loadCreateForm);
 
-    workspace.addEventListener('click', (event) => {
+    pageScope.listen(workspace, 'click', (event) => {
       if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       const link = event.target.closest('a[href]');
       if (!link || link.target || link.hasAttribute('download')) return;
@@ -274,7 +276,7 @@
       loadReader(url);
     });
 
-    dialog.addEventListener('submit', async (event) => {
+    pageScope.listen(dialog, 'submit', async (event) => {
       const form = event.target;
       if (event.defaultPrevented || !form.matches('.tdisc-new-form') || form.method.toLowerCase() !== 'post') return;
       const url = scopedURL(form.action);
@@ -291,7 +293,7 @@
       cancelReader();
       const data = new FormData(form);
       try {
-        const response = await fetch(url.href, {method: 'POST', body: data, credentials: 'same-origin', cache: 'no-store'});
+        const response = await pageScope.fetch(url.href, {method: 'POST', body: data, credentials: 'same-origin', cache: 'no-store'});
         const loaded = await parsedPage(response);
         if (!active || !dialog.open) return;
         const panel = loaded.root.querySelector('.tdisc-new-card');
@@ -324,11 +326,13 @@
         if (button) button.disabled = false;
       }
     });
-    window.addEventListener('pagehide', () => {
+    pageScope.listen(window, 'pagehide', () => {
       active = false;
       cancelReader();
       cancelDialog();
     });
-    window.addEventListener('pageshow', () => { active = true; });
+    pageScope.listen(window, 'pageshow', () => { active = true; });
   });
 })();
+
+});

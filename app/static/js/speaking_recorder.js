@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Speaking recorder -- Phase 4 / M06.
  *
  * A small, dependency-free controller for the Student recording page. It
@@ -180,7 +182,7 @@
     }
 
     function stopVisualization() {
-      if (waveFrame !== null) window.cancelAnimationFrame(waveFrame);
+      if (waveFrame !== null) pageScope.cancelAnimationFrame(waveFrame);
       waveFrame = null;
       if (audioSource) audioSource.disconnect();
       if (analyser) analyser.disconnect();
@@ -198,7 +200,7 @@
     }
 
     function motionIsReduced() {
-      return (reducedMotion && reducedMotion.matches) || document.documentElement.getAttribute("data-ui-motion") === "reduce";
+      return Boolean(reducedMotion?.matches);
     }
 
     function startVisualization() {
@@ -235,7 +237,7 @@
             var level = Math.max(levels[bin] || 0, levels[bin + 1] || 0) / 255;
             bar.style.transform = "scaleY(" + (0.12 + level * 0.88).toFixed(3) + ")";
           });
-          waveFrame = window.requestAnimationFrame(draw);
+          waveFrame = pageScope.requestAnimationFrame(draw);
         }
         draw();
       } catch (visualizationError) {
@@ -400,13 +402,13 @@
             return;
           }
           chunks = [];
-          recorder.addEventListener("dataavailable", function (event) {
+          pageScope.listen(recorder, "dataavailable", function (event) {
             if (!disposed && event.target === recorder && event.data && event.data.size > 0) {
               chunks.push(event.data);
             }
           });
-          recorder.addEventListener("stop", onStop);
-          recorder.addEventListener("error", function (event) {
+          pageScope.listen(recorder, "stop", onStop);
+          pageScope.listen(recorder, "error", function (event) {
             if (disposed || event.target !== recorder) return;
             fail(t("Recording stopped unexpectedly. Please try again."));
           });
@@ -514,7 +516,7 @@
       return true;
     }
 
-    form.addEventListener("submit", async function (event) {
+    pageScope.listen(form, "submit", async function (event) {
       if (state === STATES.UPLOADING) {
         event.preventDefault();
         return;
@@ -559,7 +561,7 @@
       function researchFinish(detail) {
         try { if (window.researchV2) window.researchV2.finishRequest(researchAttempt, detail); } catch (_) {}
       }
-      upload.upload.addEventListener("progress", function (update) {
+      pageScope.listen(upload.upload, "progress", function (update) {
         if (update.lengthComputable) {
           progress.value = Math.round(update.loaded * 100 / update.total);
           say(t("Uploading recording: %(percent)s%%", {percent:progress.value}) + (progress.value === 100 ? t(" · Waiting for server confirmation…") : ""));
@@ -572,7 +574,7 @@
         showError(message);
         say(t("Review the recording, then retry with the same submission. A previously accepted upload will open its receipt."));
       }
-      upload.addEventListener("load", function () {
+      pageScope.listen(upload, "load", function () {
         researchFinish("finished");
         var destination = new URL(upload.responseURL || form.action, location.href);
         if (upload.status >= 200 && upload.status < 400 && destination.origin === location.origin && destination.pathname.startsWith("/student/") && destination.href !== new URL(form.action, location.href).href) {
@@ -585,19 +587,19 @@
         var messages = Array.from(result.querySelectorAll(".field__error,.alert")).map(function (item) { return item.textContent.trim(); }).filter(Boolean);
         retry(messages.join(" ") || t("The server could not confirm this recording. Check your session and file limits, then retry."));
       });
-      upload.addEventListener("error", function () { researchFinish("network_unknown"); retry(t("The connection was interrupted. The server may have received the recording; retrying uses the same one-time submission token.")); });
-      upload.addEventListener("abort", function () { researchFinish("network_unknown"); });
-      upload.addEventListener("timeout", function () { researchFinish("timeout"); });
+      pageScope.listen(upload, "error", function () { researchFinish("network_unknown"); retry(t("The connection was interrupted. The server may have received the recording; retrying uses the same one-time submission token.")); });
+      pageScope.listen(upload, "abort", function () { researchFinish("network_unknown"); });
+      pageScope.listen(upload, "timeout", function () { researchFinish("timeout"); });
       upload.send(new FormData(form));
     });
 
-    if (fileField) fileField.addEventListener("change", function () {
+    if (fileField) pageScope.listen(fileField, "change", function () {
       if (state !== STATES.RECORDING && state !== STATES.REQUESTING && state !== STATES.UPLOADING) {
         applyState(state);
       }
     });
 
-    window.addEventListener("pagehide", function () {
+    pageScope.listen(window, "pagehide", function () {
       disposed = true;
       requestVersion += 1;
       var activeRecorder = recorder;
@@ -608,7 +610,7 @@
       stopTracks();
       discardRecording();
     });
-    window.addEventListener("pageshow", function (event) {
+    pageScope.listen(window, "pageshow", function (event) {
       if (event.persisted) {
         disposed = false;
         showError("");
@@ -637,7 +639,7 @@
     say(t("Select the microphone to start recording."));
 
     if (toggleButton) {
-      toggleButton.addEventListener("click", function () {
+      pageScope.listen(toggleButton, "click", function () {
         if (state === STATES.RECORDING) {
           stopRecording();
         } else if (state === STATES.READY || state === STATES.ERROR || state === STATES.PREVIEW) {
@@ -652,3 +654,5 @@
     setup(root);
   });
 })();
+
+});

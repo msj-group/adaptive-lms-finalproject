@@ -1,53 +1,17 @@
 {% extends "teacher/studio/_base.html" %}
-{% block title %}{{ group.name }} — Units{% endblock %}
-{% block studio_heading %}{% call studio.heading(_('Your curriculum'),group.name ~ ' · ' ~ group.academic_term.name) %}{% if operational %}<a class="btn btn--primary" href="{{ url_for('teacher.unit_create',group_public_id=group.public_id) }}">Add Unit</a>{% endif %}{% endcall %}{% endblock %}
+{% block title %}{{ group.name }} · Course outline{% endblock %}
+{% block studio_heading %}{{ studio.heading('Course outline', group.name) }}{% endblock %}
 {% block studio_content %}
-
-{% if not operational %}
-<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
-  This group is not operational: the {{ archived_labels | join(", ") }} {{ "is" if archived_labels|length == 1 else "are" }} archived.
-  Units below are read-only history — you cannot add, edit, reorder, or reactivate them, but active units can still be archived for cleanup.
-</div>
-{% endif %}
-
-<div class="cs-section-head"><h2>Active units</h2><span class="cs-meta">{{ _n('%(count)d unit','%(count)d units',active_units|length) }}</span></div>
-<div class="cs-unit-cards">{% for unit in active_units %}<article class="cs-unit-card"><span class="cs-number">{{ '%02d'|format(loop.index) }}</span><div><h3 dir="auto">{{ unit.title }}</h3><p dir="auto">{{ unit.description or '' }}</p>{{ studio.status(unit.status) }}</div><div class="cs-actions">
-            <a class="btn btn--secondary" href="{{ url_for('teacher.group_lessons', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Manage Lessons</a>
-            {% if operational %}
-            <a class="btn btn--secondary" href="{{ url_for('teacher.unit_edit', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Edit</a>
-            {% if not loop.first %}
-            <form method="post" action="{{ url_for('teacher.unit_move_up', group_public_id=group.public_id, unit_public_id=unit.public_id) }}" style="display:inline" class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn--secondary" aria-label="Move up">↑</button>
-            </form>
-            {% endif %}
-            {% if not loop.last %}
-            <form method="post" action="{{ url_for('teacher.unit_move_down', group_public_id=group.public_id, unit_public_id=unit.public_id) }}" style="display:inline" class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn--secondary" aria-label="Move down">↓</button>
-            </form>
-            {% endif %}
-            {% endif %}
-            <form method="post" action="{{ url_for('teacher.unit_toggle_status', group_public_id=group.public_id, unit_public_id=unit.public_id) }}"
-              data-confirm="Archive unit '{{ unit.title }}'? It moves out of the teaching order and its lessons become unavailable to students. Lesson publication statuses are preserved and no content is deleted — reactivating the unit restores visibility." class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn--danger-outline">Archive</button>
-            </form></div></article>{% else %}<div class="empty-state"><h2>No active units yet</h2><p class="cs-meta">Start with a unit, then add lessons and materials.</p></div>{% endfor %}</div>
-{% if archived_units %}<details class="cs-archive"><summary>Archived units <span class="badge badge--neutral">{{ archived_units|length }}</span></summary><p class="cs-meta">Archived units keep their stored order and are not part of the teaching sequence. Their lessons are hidden from students while the unit stays archived; publication statuses are preserved and nothing is deleted. Reactivating a unit restores its lessons to students without rewriting any status.</p><div class="cs-unit-cards">{% for unit in archived_units %}<article class="cs-unit-card"><div><h3 dir="auto">{{ unit.title }}</h3><p dir="auto">{{ unit.description or '' }}</p></div><div class="cs-actions">
-            <a class="btn btn--secondary" href="{{ url_for('teacher.group_lessons', group_public_id=group.public_id, unit_public_id=unit.public_id) }}">Manage Lessons</a>
-            {% if operational %}
-            <form method="post" action="{{ url_for('teacher.unit_toggle_status', group_public_id=group.public_id, unit_public_id=unit.public_id) }}" class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn--secondary">Reactivate</button>
-            </form>
-            {% else %}
-            <span class="badge badge--neutral">Read-only</span>
-            {% endif %}</div></article>{% endfor %}</div></details>{% endif %}
-<script>
-  document.querySelectorAll("form[data-confirm]").forEach(function (form) {
-    form.addEventListener("submit", function (event) {
-      if (!window.aelmsConfirm && !confirm(form.dataset.confirm)) { event.preventDefault(); }
-    });
-  });
-</script>
+{% include 'teacher/studio/_editor_actions.html' %}
+<div class="cs-actions"><a class="btn btn--primary" href="{{ url_for('teacher.curriculum_publication', group_public_id=group.public_id) }}">Course publication</a></div>
+{% for label, entries in [('Active units', active_units), ('Archived units', archived_units)] if entries %}
+<section class="cs-panel">
+  <h2>{{ label }}</h2>
+  <nav class="cs-outline" aria-label="{{ label }}">
+  {% for unit in entries %}
+    <a href="{{ url_for('teacher.group_lessons', group_public_id=group.public_id, unit_public_id=unit.public_id) }}"><span dir="auto">{{ unit.title }}</span></a>
+  {% endfor %}
+  </nav>
+</section>
+{% else %}<div class="empty-state">There are no course units yet.</div>{% endfor %}
 {% endblock %}

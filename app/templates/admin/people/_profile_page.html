@@ -3,7 +3,7 @@
 {% block title %}{{ person.full_name }}{% endblock %}
 {% block admin_content %}
 <div class="ad-page pf-page pf-profile-page">
-  <header class="ad-page-head pf-heading"><div><p class="ad-eyebrow">People / Directory</p><h1 data-workspace-page-heading>People</h1></div></header>
+  <h1 class="sr-only" data-workspace-page-heading>People</h1>
   {{ macros.flash_messages() }}
   {% include "admin/people/_tabs.html" %}
   <section class="pf-standalone">{% include "admin/people/_profile.html" %}</section>

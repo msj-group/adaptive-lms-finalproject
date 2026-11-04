@@ -100,7 +100,6 @@ input[type='email'], input[type='password'], input[type='url'], input[type='tel'
 @media (forced-colors: active) {
   .figma-workspace select:not([multiple]):not([size]), .figma-workspace select[size='1']:not([multiple]) { appearance: auto; background-image: none; }
 }
-html[data-ui-motion='reduce'] *, html[data-ui-motion='reduce'] *::before, html[data-ui-motion='reduce'] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 @media print {
   .appearance-public, .workspace-utility-panel { display: none !important; }
   html[dir='rtl'] .figma-workspace .figma-body { margin: 0 !important; }

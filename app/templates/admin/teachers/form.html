@@ -33,7 +33,7 @@
       {{ form.confirm_password(class_="field__input") }}
       {% for error in form.confirm_password.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
-    <p class="ds-section__desc" style="margin-top: var(--space-4)">At least 15 characters; no required character mix.</p>
+    <p class="ds-section__desc" style="margin-top: var(--space-4)">{{ _('At least %(minimum)d characters; no required character mix.', minimum=form.password.flags.minlength) }}</p>
     {% endif %}
 
     </div></section>

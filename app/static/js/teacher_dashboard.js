@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Presentation-only tabs: no fetch, storage, history, writes or synthetic events.
    Without this enhancement both ordinary linked sections remain available. */
 (function () {
@@ -69,10 +71,10 @@
   }
 
   buttons.forEach(function (button, index) {
-    button.addEventListener("click", function () {
+    pageScope.listen(button, "click", function () {
       if (mobile) activate(button.dataset.cockpitTab, false);
     });
-    button.addEventListener("keydown", function (event) {
+    pageScope.listen(button, "keydown", function (event) {
       if (!mobile) return;
       var next;
       if (event.key === "Home") next = 0;
@@ -88,8 +90,10 @@
   });
   layout(root.getBoundingClientRect().width);
   if (window.ResizeObserver) {
-    new ResizeObserver(function (entries) { layout(entries[0].contentRect.width); }).observe(root);
+    pageScope.createObserver(ResizeObserver, function (entries) { layout(entries[0].contentRect.width); }).observe(root);
   } else {
-    window.addEventListener("resize", function () { layout(root.getBoundingClientRect().width); });
+    pageScope.listen(window, "resize", function () { layout(root.getBoundingClientRect().width); });
   }
 }());
+
+});

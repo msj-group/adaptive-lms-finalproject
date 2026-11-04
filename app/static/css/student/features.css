@@ -458,8 +458,6 @@ html[dir='rtl'] .st-next-activity-action svg { transform:scaleX(-1); }
 .st-workspace .speaking-recorder-status { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 .st-workspace .speaking-recorder [data-recorder-preview-block] { margin-block:12px 20px; }
 .st-workspace .speaking-recorder [data-recorder-error] { overflow-wrap:anywhere; }
-html[data-ui-motion=reduce] .st-workspace .speaking-mic-toggle { transition:none; }
-html[data-ui-motion=reduce] .st-workspace .speaking-waveform span { animation:none!important; transform:scaleY(.35)!important; }
 @keyframes speaking-wave { from { transform:scaleY(.18); } to { transform:scaleY(.88); } }
 @media(hover:hover) { .st-workspace .speaking-mic-toggle:hover:not(:disabled) { box-shadow:0 0 0 6px var(--st-wash),0 8px 24px -12px #1b3a8a40; } }
 @media(prefers-reduced-motion:reduce) {

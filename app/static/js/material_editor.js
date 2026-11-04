@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /*
  * Small local rich-text editor for Lesson Materials (M12). No CDN, no
  * external library. A `contenteditable` surface with a limited toolbar
@@ -35,16 +37,16 @@
       });
     }
 
-    editor.addEventListener("input", sync);
-    editor.addEventListener("blur", sync);
+    pageScope.listen(editor, "input", sync);
+    pageScope.listen(editor, "blur", sync);
 
     var form = root.closest("form");
     if (form) {
-      form.addEventListener("submit", sync);
+      pageScope.listen(form, "submit", sync);
     }
 
     root.querySelectorAll(".rte-toolbar__btn[data-command]").forEach(function (button) {
-      button.addEventListener("click", function (event) {
+      pageScope.listen(button, "click", function (event) {
         event.preventDefault();
         editor.focus();
         var command = button.dataset.command;
@@ -70,3 +72,5 @@
 
   document.querySelectorAll("[data-rte-root]").forEach(initEditor);
 })();
+
+});

@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Progressive live results for ordinary GET search forms. The server remains
    authoritative for filtering, role scope and the rendered result links. */
 (function () {
@@ -15,7 +17,7 @@
     form.appendChild(status);
     var timer, controller, sequence = 0, composing = false;
     function cancel() {
-      clearTimeout(timer);
+      pageScope.clearTimeout(timer);
       sequence += 1;
       if (controller) controller.abort();
       controller = null;
@@ -29,7 +31,7 @@
       url.search = new URLSearchParams(new FormData(form)).toString();
       status.textContent = t("Searching…");
       try {
-        var response = await fetch(url.href, {credentials:"same-origin", cache:"no-store", signal:request.signal});
+        var response = await pageScope.fetch(url.href, {credentials:"same-origin", cache:"no-store", signal:request.signal});
         if (request.signal.aborted || revision !== sequence) return;
         if (response.redirected || response.status === 401 || response.status === 403) {
           status.textContent = t("Your session may have ended. Reload the page to sign in again.");
@@ -67,13 +69,15 @@
     }
     function schedule() {
       cancel();
-      if (!composing) timer = setTimeout(load, 300);
+      if (!composing) timer = pageScope.setTimeout(load, 300);
     }
-    query.addEventListener("input", schedule);
-    query.addEventListener("compositionstart", function () { composing = true; cancel(); });
-    query.addEventListener("compositionend", function () { composing = false; schedule(); });
-    form.addEventListener("change", function (event) { if (event.target !== query) load(); });
-    form.addEventListener("submit", function (event) { event.preventDefault(); load(); });
-    window.addEventListener("pagehide", cancel);
+    pageScope.listen(query, "input", schedule);
+    pageScope.listen(query, "compositionstart", function () { composing = true; cancel(); });
+    pageScope.listen(query, "compositionend", function () { composing = false; schedule(); });
+    pageScope.listen(form, "change", function (event) { if (event.target !== query) load(); });
+    pageScope.listen(form, "submit", function (event) { event.preventDefault(); load(); });
+    pageScope.listen(window, "pagehide", cancel);
   });
 })();
+
+});

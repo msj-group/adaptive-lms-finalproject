@@ -1,5 +1,6 @@
 # CPython 3.14.6 / Linux x86_64 wheels; generated from pip resolution on 2026-10-08.
 # Complete pinned production graph. Windows and other architectures require a new reviewed lock.
+pypdfium2==5.14.0 --hash=sha256:11f281613fa22313d9c7ab89947665e84eccf8ebe40e1198a84a88352305648d
 alembic==1.19.0 --hash=sha256:cf839d3849116aab3cc047e09c6968b9bd6b2fde61b6bb7c1e97352fe5503580
 arabic-reshaper==3.0.1 --hash=sha256:41c5adc2420f85758eada7e880251c4b6a2adbd83377bd27e5d4eba71f648bc7
 argon2-cffi==25.1.0 --hash=sha256:fdc8b074db390fccb6eb4a3604ae7231f219aa669a2652e0f20e16ba513d5741

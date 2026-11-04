@@ -31,6 +31,7 @@ from collections import namedtuple
 from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 
+from app.services.curriculum_visibility import lesson_is_released, material_is_released
 from app.extensions import db
 from app.models import (
     AcademicStatus,
@@ -41,7 +42,6 @@ from app.models import (
     Group,
     Lesson,
     LessonProgress,
-    LessonStatus,
     Level,
     Material,
     MaterialKind,
@@ -53,10 +53,10 @@ from app.models import (
 )
 from app.services.lesson_progress_queries import progress_join, progress_ref
 from app.services.material_queries import student_visible_materials
+from app.services.course_pdf import lesson_document
 
 _ACTIVE = AcademicStatus.ACTIVE.value
 _ENROLLMENT_ACTIVE = EnrollmentStatus.ACTIVE.value
-_PUBLISHED = LessonStatus.PUBLISHED.value
 _FILE = MaterialKind.FILE.value
 _STUDENT = UserRole.STUDENT.value
 _USER_ACTIVE = UserStatus.ACTIVE.value
@@ -99,7 +99,7 @@ def student_outline_group(student_id, group_public_id):
     )
 
 
-def outline_units(group_id, student_id):
+def outline_units(group_id, student_id, *, include_material_index=False):
     """The learning outline body for a Group already authorized for
     `student_id`: every ACTIVE Unit in Unit display order, each carrying
     only its PUBLISHED Lessons in Lesson display order, as plain view dicts.
@@ -112,7 +112,7 @@ def outline_units(group_id, student_id):
     same batched query (Phase 4 / M13).
     """
     units = (
-        Unit.query.filter_by(group_id=group_id, status=_ACTIVE)
+        Unit.query.join(Group, Unit.in_group(Group.id, Group.course_id)).filter(Group.id == group_id, Unit.status == _ACTIVE)
         .order_by(Unit.display_order, Unit.id)
         .all()
     )
@@ -121,7 +121,7 @@ def outline_units(group_id, student_id):
     unit_ids = [u.id for u in units]
     lessons = (
         db.session.query(
-            Lesson.unit_id, Lesson.title, Lesson.public_id, LessonProgress.completed_at
+            Lesson.unit_id, Lesson.title, Lesson.public_id, LessonProgress.completed_at, Lesson.id
         )
         .select_from(Lesson)
         .outerjoin(
@@ -135,14 +135,27 @@ def outline_units(group_id, student_id):
                     Enrollment.status == _ENROLLMENT_ACTIVE).scalar_subquery(),
             ),
         )
-        .filter(Lesson.unit_id.in_(unit_ids), Lesson.status == _PUBLISHED)
+        .join(Unit, Unit.id == Lesson.unit_id)
+        .filter(Lesson.unit_id.in_(unit_ids), lesson_is_released(group_id))
         .order_by(Lesson.display_order, Lesson.id)
         .all()
     )
+    material_index = {}
+    if include_material_index and lessons:
+        rows = (
+            db.session.query(Material.lesson_id, Material.title, Material.public_id)
+            .filter(Material.lesson_id.in_([row.id for row in lessons]),
+                    Material.status == _ACTIVE, material_is_released(group_id))
+            .order_by(Material.display_order, Material.id)
+        )
+        for lesson_id, title, public_id in rows:
+            material_index.setdefault(lesson_id, []).append({"title": title, "public_id": public_id})
+
     lessons_by_unit = {}
-    for unit_id, title, public_id, completed_at in lessons:
+    for unit_id, title, public_id, completed_at, lesson_id in lessons:
         lessons_by_unit.setdefault(unit_id, []).append(
-            {"title": title, "public_id": public_id, "is_completed": completed_at is not None}
+            {"title": title, "public_id": public_id, "is_completed": completed_at is not None,
+             "materials": material_index.get(lesson_id, [])}
         )
     return [
         {
@@ -150,7 +163,7 @@ def outline_units(group_id, student_id):
             "public_id": unit.public_id,
             "lessons": lessons_by_unit.get(unit.id, []),
         }
-        for unit in units
+        for unit in units if unit.id in lessons_by_unit
     ]
 
 
@@ -186,7 +199,7 @@ def student_lesson_detail(student_id, group_public_id, unit_public_id, lesson_pu
         )
         .select_from(Lesson)
         .join(Unit, Lesson.unit_id == Unit.id)
-        .join(Group, Unit.group_id == Group.id)
+        .join(Group, Unit.in_group(Group.id, Group.course_id))
         .join(Course, Group.course_id == Course.id)
         .join(Level, Course.level_id == Level.id)
         .join(AcademicTerm, Group.academic_term_id == AcademicTerm.id)
@@ -197,7 +210,7 @@ def student_lesson_detail(student_id, group_public_id, unit_public_id, lesson_pu
             User.role == _STUDENT,
             User.status == _USER_ACTIVE,
             Lesson.public_id == lesson_public_id,
-            Lesson.status == _PUBLISHED,
+            lesson_is_released(),
             Unit.public_id == unit_public_id,
             Unit.status == _ACTIVE,
             Group.public_id == group_public_id,
@@ -227,7 +240,10 @@ def student_lesson_detail(student_id, group_public_id, unit_public_id, lesson_pu
         "unit_title": unit.title,
         "lesson_title": lesson.title,
         "lesson_description": lesson.description,
-        "materials": student_visible_materials(lesson.id),
+        "page_start": lesson.page_start,
+        "page_end": lesson.page_end,
+        "course_document": lesson_document(lesson),
+        "materials": student_visible_materials(lesson.id, group.id),
     }
     return StudentLessonPage(view, progress)
 
@@ -248,7 +264,7 @@ def student_file_material(student_id, group_public_id, unit_public_id, lesson_pu
         .join(UploadedFile, Material.uploaded_file_id == UploadedFile.id)
         .join(Lesson, Material.lesson_id == Lesson.id)
         .join(Unit, Lesson.unit_id == Unit.id)
-        .join(Group, Unit.group_id == Group.id)
+        .join(Group, Unit.in_group(Group.id, Group.course_id))
         .join(Course, Group.course_id == Course.id)
         .join(Level, Course.level_id == Level.id)
         .join(AcademicTerm, Group.academic_term_id == AcademicTerm.id)
@@ -257,8 +273,9 @@ def student_file_material(student_id, group_public_id, unit_public_id, lesson_pu
             Material.public_id == material_public_id,
             Material.kind == _FILE,
             Material.status == _ACTIVE,
+            material_is_released(),
             Lesson.public_id == lesson_public_id,
-            Lesson.status == _PUBLISHED,
+            lesson_is_released(),
             Unit.public_id == unit_public_id,
             Unit.status == _ACTIVE,
             Group.public_id == group_public_id,

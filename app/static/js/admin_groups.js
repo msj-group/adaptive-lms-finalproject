@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Presentation only. Move one existing server-rendered panel/form between its
    native disclosure, a desktop dialog and an in-flow phone reader. No requests,
    writes, cloned forms or business-state decisions belong to this enhancement. */
@@ -64,7 +66,7 @@
     if (heading) heading.focus();
     return true;
   }
-  root.addEventListener("click", function (event) {
+  pageScope.listen(root, "click", function (event) {
     var close = event.target.closest("[data-groups-close]");
     if (close) { restore(true); return; }
     if (event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -73,18 +75,18 @@
     if (!opener && row && phone.matches && !event.target.closest("a,button,input,select,textarea,summary,[data-group-panel]")) opener = row.querySelector("summary[data-groups-open]");
     if (opener && row && open(row,opener)) event.preventDefault();
   });
-  root.addEventListener("keydown", function (event) {
+  pageScope.listen(root, "keydown", function (event) {
     if (event.key === "Escape" && current && phone.matches && !dialog.open && !root.querySelector('[data-group-create-dialog][open]')) {
       event.preventDefault(); restore(true);
     }
   });
-  dialog.addEventListener("close", function () { if (!editing && !dialog.open && current && current.host === "dialog") restore(true); });
-  dialog.addEventListener("cancel", function (event) { event.preventDefault(); restore(true); });
-  root.addEventListener("submit", function (event) {
+  pageScope.listen(dialog, "close", function () { if (!editing && !dialog.open && current && current.host === "dialog") restore(true); });
+  pageScope.listen(dialog, "cancel", function (event) { event.preventDefault(); restore(true); });
+  pageScope.listen(root, "submit", function (event) {
     var form = event.target;
     if (form.matches(".group-status-form[data-confirm]") && !window.aelmsConfirm && !window.confirm(form.dataset.confirm)) event.preventDefault();
   });
-  new MutationObserver(function () {
+  pageScope.createObserver(MutationObserver, function () {
     var incoming = region.querySelector("[data-groups-directory]");
     if (region.getAttribute("aria-busy") === "true" || incoming !== directory) {
       restore(false);
@@ -103,18 +105,20 @@
   }
   // Suspend the desktop reader while editing, so only one feature dialog is
   // visible. Keep its panel in place for Cancel and defer breakpoint transfer.
-  root.addEventListener("aelms:group-editor-open", function () {
+  pageScope.listen(root, "aelms:group-editor-open", function () {
     editing = true;
     if (dialog.open) dialog.close();
   });
-  root.addEventListener("aelms:group-editor-close", function () {
+  pageScope.listen(root, "aelms:group-editor-close", function () {
     editing = false;
     if (!current) return;
     if (current.host !== (phone.matches ? "phone" : "dialog")) resize();
     else if (current.host === "dialog" && !dialog.open) dialog.showModal();
   });
-  if (phone.addEventListener) phone.addEventListener("change",resize);
+  if (phone.addEventListener) pageScope.listen(phone, "change",resize);
   else if (phone.addListener) phone.addListener(resize);
-  window.addEventListener("pagehide",function () { restore(false); });
+  pageScope.listen(window, "pagehide",function () { restore(false); });
   decorate();
 })();
+
+});

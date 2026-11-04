@@ -138,7 +138,6 @@ html[dir="rtl"] .eclipse-login .ec-arrow { transform: scaleX(-1); }
 @media (prefers-reduced-motion: reduce) {
   .eclipse-login .ec-page *, .eclipse-login .ec-page *::before, .eclipse-login .ec-page *::after { animation: none !important; transition: none !important; }
 }
-:root[data-ui-motion="reduce"] .eclipse-login .ec-page *, :root[data-ui-motion="reduce"] .eclipse-login .ec-page *::before, :root[data-ui-motion="reduce"] .eclipse-login .ec-page *::after { animation: none !important; transition: none !important; }
 @media (forced-colors: active) {
   .eclipse-login .ec-shell { border: 1px solid CanvasText; }
   .eclipse-login .ec-field:focus-within .ec-shell { outline: 2px solid Highlight; outline-offset: 2px; }

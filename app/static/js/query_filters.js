@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Opt-in read-only GET enhancement. Native forms remain the recovery path. */
 (function () {
   "use strict";
@@ -29,7 +31,7 @@
       defaults[e.name] = e.tagName === "SELECT" ? e.options[0].value : e.type === "hidden" ? e.value : "";
     });
     function invalidate() {
-      revision++; clearTimeout(timer);
+      revision++; pageScope.clearTimeout(timer);
       if (controller) controller.abort(); controller = null;
     }
     function pending() {
@@ -69,7 +71,7 @@
       }
       var request = new AbortController(); controller = request; pending(); retry.hidden = true;
       try {
-        var response = await fetch(url.href, {credentials:"same-origin", signal:request.signal,
+        var response = await pageScope.fetch(url.href, {credentials:"same-origin", signal:request.signal,
           headers:{"X-AELMS-Query":"results"}});
         if (mine !== revision) return;
         if (response.redirected) {
@@ -93,7 +95,7 @@
         region.replaceChildren(template.content);
         if (moving) {
           inputs.forEach(function (e) { if (e.type !== "submit") e.value = url.searchParams.has(e.name) ? url.searchParams.get(e.name) : defaults[e.name]; });
-          var reduce = document.body.dataset.uiMotion === "reduce" || window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+          var reduce = window.matchMedia("(prefers-reduced-motion:reduce)").matches;
           region.querySelectorAll("[data-query-key]").forEach(function (node) {
             var before = positions.get(node.dataset.queryKey);
             if (focusKey === node.dataset.queryKey) node.focus({preventScroll:true});
@@ -132,30 +134,30 @@
         status.textContent = t("Enter at least %(count)s characters to search.", {count:form.dataset.queryMin});
         submit.hidden = false; return;
       }
-      timer = setTimeout(function () { load(urlForForm(),mode); }, delay);
+      timer = pageScope.setTimeout(function () { load(urlForForm(),mode); }, delay);
     }
-    form.addEventListener("compositionstart", function () { composing = true; invalidate(); pending(); });
-    form.addEventListener("compositionend", function () { composing = false; schedule("replace",Number(form.dataset.queryDelay || 350)); });
-    form.addEventListener("input", function (event) {
+    pageScope.listen(form, "compositionstart", function () { composing = true; invalidate(); pending(); });
+    pageScope.listen(form, "compositionend", function () { composing = false; schedule("replace",Number(form.dataset.queryDelay || 350)); });
+    pageScope.listen(form, "input", function (event) {
       if (event.target.matches("input:not([type=hidden]),textarea")) schedule("replace",Number(form.dataset.queryDelay || 350));
     });
-    form.addEventListener("change", function (event) {
+    pageScope.listen(form, "change", function (event) {
       if (!event.target.matches("select")) return;
       invalidate(); pending();
       if (queued) return; queued = true;
       queueMicrotask(function () { queued = false; if (!composing && validQuery()) load(urlForForm(),"push"); });
     });
-    form.addEventListener("submit", function (event) {
+    pageScope.listen(form, "submit", function (event) {
       if (!submit.hidden && event.submitter === submit) return; // native recovery path
       if (composing) { event.preventDefault(); return; }
       if (!validQuery()) return;
       event.preventDefault(); invalidate(); load(urlForForm(),"push");
     });
-    retry.addEventListener("click", function () { invalidate(); if (validQuery()) load(urlForForm(),"push"); });
+    pageScope.listen(retry, "click", function () { invalidate(); if (validQuery()) load(urlForForm(),"push"); });
     // Opt-in refresh after an existing write completes in an in-page form.
     // The ordinary query owner still cancels old reads and preserves filters.
     if (form.hasAttribute("data-query-refresh")) {
-      form.addEventListener("aelms:query-refresh", function (event) {
+      pageScope.listen(form, "aelms:query-refresh", function (event) {
         if (event.target !== form) return;
         event.preventDefault(); invalidate();
         if (!composing && validQuery()) load(form.hasAttribute("data-query-motion") || form.hasAttribute("data-query-refresh-current") ? new URL(committed) : urlForForm(),"replace",true);
@@ -169,12 +171,14 @@
       var url = new URL(link.href); if (url.origin !== base.origin || url.pathname !== base.pathname) return;
       event.preventDefault(); invalidate(); load(url,"push");
     });
-    window.addEventListener("popstate", function () {
+    pageScope.listen(window, "popstate", function () {
       invalidate(); var url = new URL(location.href);
       inputs.forEach(function (e) { if (e.type !== "submit") e.value = url.searchParams.has(e.name) ? url.searchParams.get(e.name) : defaults[e.name]; });
       load(url,"pop");
     });
-    window.addEventListener("pagehide", invalidate);
+    pageScope.listen(window, "pagehide", invalidate);
     submit.hidden = true; // only after every required element/capability is initialized
   });
 })();
+
+});

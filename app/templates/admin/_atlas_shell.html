@@ -23,8 +23,7 @@
     {% include 'layouts/_workspace_header.html' %}
     {% set page_content = portal_blocks.admin_content() %}
     <div class="st-content ax-content {{ portal_blocks.workspace_content_class() }}" id="workspace-content" tabindex="-1">
-      {% include 'layouts/_workspace_back.html' %}
-      {% if endpoint != 'admin.dashboard' and 'data-workspace-page-heading' not in page_content %}<header class="ad-page-head"><div><p class="ad-eyebrow">{{ _(atlas.label) }}</p>{{ portal_blocks.workspace_page_label() }}</div></header>{% endif %}
+      {% if endpoint != 'admin.dashboard' and 'data-workspace-page-heading' not in page_content %}<h1 class="sr-only" data-workspace-page-heading>{{ portal_blocks.title() }}</h1>{% endif %}
       {% include '_workspace_context.html' %}
       {% if 'ad-tabs' not in page_content and 'data-academic-hub' not in page_content %}
         {% set context=workspace_context() %}
@@ -33,7 +32,7 @@
       {% endif %}
       {{ page_content }}
     </div>
-    <footer class="st-footer ax-footer"><span>Youth Centre · Administration</span><a href="{{ url_for('workspace.help_page') }}">Workspace help</a></footer>
+    <footer class="st-footer ax-footer"><a href="{{ url_for('workspace.help_page') }}">Workspace help</a></footer>
   </div>
 </div>
 {% include 'layouts/_mobile_navigation.html' %}

@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Optional Ledger Studio navigation. Authorized native GETs remain the fallback. */
 (function () {
   'use strict';
@@ -39,7 +41,7 @@
     node.setAttribute('role', error ? 'alert' : 'status');
   };
   const cancel = () => {
-    generation++; controller?.abort(); controller = null; clearTimeout(timer);
+    generation++; controller?.abort(); controller = null; pageScope.clearTimeout(timer);
     view?.removeAttribute('aria-busy'); dialog.removeAttribute('aria-busy');
     dialog.querySelectorAll('button:disabled').forEach((button) => { button.disabled = false; });
   };
@@ -113,8 +115,7 @@
     link.href = job.href; link.textContent = t('Open full page');
   };
   const animate = () => {
-    if (!slot.animate || document.body.dataset.uiMotion === 'reduce' ||
-        document.documentElement.dataset.uiMotion === 'reduce' || matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+    if (!slot.animate || matchMedia('(prefers-reduced-motion:reduce)').matches) return;
     slot.animate([{opacity:.5, transform:'translateY(9px)'}, {opacity:1, transform:'translateY(0)'}],
       {duration:220, easing:'cubic-bezier(.22,1,.36,1)'});
   };
@@ -169,7 +170,7 @@
     const mine = generation, request = new AbortController(); controller = request;
     dialog.setAttribute('aria-busy', 'true'); message(readerStatus, 'Loading details…');
     try {
-      const response = await fetch(target.url.href, {credentials:'same-origin', cache:'no-store',
+      const response = await pageScope.fetch(target.url.href, {credentials:'same-origin', cache:'no-store',
         signal:request.signal, headers:{Accept:'text/html', 'X-Ledger-Reader':'1'}});
       if (!response.ok || response.redirected || response.url !== target.url.href ||
           !response.headers.get('Content-Type')?.includes('text/html')) throw new Error('unavailable');
@@ -197,7 +198,7 @@
     const mine = generation, request = new AbortController(); controller = request;
     view.setAttribute('aria-busy', 'true'); message(pageStatus, 'Updating report…');
     try {
-      const response = await fetch(url.href, {credentials:'same-origin', cache:'no-store',
+      const response = await pageScope.fetch(url.href, {credentials:'same-origin', cache:'no-store',
         signal:request.signal, headers:{Accept:'text/html'}});
       if (!response.ok || response.redirected || response.url !== url.href ||
           !response.headers.get('Content-Type')?.includes('text/html')) throw new Error('unavailable');
@@ -238,7 +239,7 @@
     const result = slot.querySelector('[data-ledger-export-result]');
     if (result) result.hidden = true;
     try {
-      const response = await fetch(url.href, {credentials:'same-origin', cache:'no-store', signal:request.signal});
+      const response = await pageScope.fetch(url.href, {credentials:'same-origin', cache:'no-store', signal:request.signal});
       const expected = info.format === 'csv' ? 'text/csv' : 'application/pdf';
       if (!response.ok || response.redirected || response.url !== url.href ||
           !response.headers.get('Content-Type')?.includes(expected) ||
@@ -276,7 +277,7 @@
     const url = new URL(form.action, location.href); url.search = new URLSearchParams(new FormData(form)).toString();
     loadReport(url.href, true, restoreSearch);
   };
-  root.addEventListener('click', (event) => {
+  pageScope.listen(root, 'click', (event) => {
     if (event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     if (event.target.closest('[data-ledger-close]')) { event.preventDefault(); close(); return; }
     if (event.target.closest('[data-ledger-back]')) { event.preventDefault(); back(); return; }
@@ -306,7 +307,7 @@
       event.preventDefault(); loadReader(link.href);
     }
   });
-  root.addEventListener('submit', (event) => {
+  pageScope.listen(root, 'submit', (event) => {
     const form = event.target;
     if (invalid) { event.preventDefault(); return; }
     if (form.matches('[data-ledger-filter]')) { event.preventDefault(); submitFilter(form); }
@@ -315,7 +316,7 @@
       if (selected) download(selected.dataset.url);
     }
   });
-  root.addEventListener('input', (event) => {
+  pageScope.listen(root, 'input', (event) => {
     const input = event.target;
     if (input.closest('[data-ledger-export-form]')) {
       cancel(); clearRecovery(); const result = slot.querySelector('[data-ledger-export-result]');
@@ -326,19 +327,19 @@
     }
     if (input.name === 'q' && input.closest('[data-ledger-filter]') && !invalid) {
       cancel(); view.setAttribute('aria-busy', 'true');
-      timer = setTimeout(() => {
+      timer = pageScope.setTimeout(() => {
         if (input.isConnected) submitFilter(input.form, {start:input.selectionStart, end:input.selectionEnd});
       }, 350);
     }
   });
-  dialog.addEventListener('cancel', (event) => { event.preventDefault(); close(); });
-  dialog.addEventListener('click', (event) => {
+  pageScope.listen(dialog, 'cancel', (event) => { event.preventDefault(); close(); });
+  pageScope.listen(dialog, 'click', (event) => {
     if (event.target === dialog) {
       const bounds = dialog.getBoundingClientRect();
       if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
     }
   });
-  window.addEventListener('popstate', async (event) => {
+  pageScope.listen(window, 'popstate', async (event) => {
     if (!active) return;
     if (invalid) { if (dialog.open) { closeDirect(); failScope(); } return; }
     const destination = event.state?.ledger;
@@ -352,10 +353,13 @@
     if (destination.reader === 'export' || destination.reader.startsWith('local:')) localReader(destination.reader, true);
     else loadReader(destination.reader, true);
   });
-  window.addEventListener('pagehide', () => {
+  pageScope.listen(window, 'pagehide', () => {
     active = false; closeDirect();
     if (blobURL) URL.revokeObjectURL(blobURL);
   });
-  window.addEventListener('pageshow', (event) => { active = true; if (event.persisted) location.reload(); });
-  history.replaceState(historyState(), '', committed);
+  pageScope.listen(window, 'pageshow', (event) => { active = true; if (event.persisted) location.reload(); });
+  // Let the containing application navigation finish before updating native history.
+  pageScope.setTimeout(() => history.replaceState(historyState(), '', committed), 0);
 })();
+
+});

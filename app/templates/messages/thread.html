@@ -47,7 +47,6 @@
         {% endfor %}
         {% if has_newer %}<nav class="messenger-history" aria-label="Newer messages"><a href="{{ url_for('messages.thread', thread_public_id=thread.public_id, page=page - 1) }}">Newer messages {{ msg.icon('arrow', 16) }}</a><a href="{{ url_for('messages.thread', thread_public_id=thread.public_id) }}">Latest messages</a></nav>{% endif %}
       </div>
-      <button class="messenger-icon-button messenger-scroll-bottom" type="button" data-scroll-bottom hidden aria-label="Scroll to bottom" title="Scroll to bottom">{{ msg.icon('arrow', 18) }}</button>
     </div>
     <div class="messenger-composer" id="reply" data-people-message-panel data-message-mode="reply" data-thread-id="{{ thread.public_id }}" data-people-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}" data-message-sent="{{ 'true' if get_flashed_messages()|select('in', ['Message sent.', 'Reply sent.', 'This message was already sent.', 'This reply was already sent.'])|list else 'false' }}" data-message-blocked="{{ 'true' if get_flashed_messages(with_categories=true)|selectattr('0', 'in', ['warning', 'danger', 'error'])|list else 'false' }}">
       {% if can_reply %}

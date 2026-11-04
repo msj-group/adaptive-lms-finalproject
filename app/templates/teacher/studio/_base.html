@@ -6,7 +6,7 @@
 {% set studio_gp = group.public_id if group is defined else ctx.group_public_id %}
 {% set studio_name = group.name if group is defined else ctx.group_name %}
 {% set studio_term = (group.term_name if group is mapping else group.academic_term.name) if group is defined else ctx.term_name %}
-{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/course_studio.css', v='course-studio-20261022') }}">{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/course_studio.css', v='group-editors-1') }}">{% endblock %}
 {% block workspace_content_class %}cs-workspace{% endblock %}
 {% block portal_content %}
 <div class="cs" data-course-studio>

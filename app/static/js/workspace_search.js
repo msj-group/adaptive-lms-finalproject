@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Read-only live search: no query storage, collector payload or history change. */
 (function () {
   "use strict";
@@ -17,7 +19,7 @@
     results.replaceChildren(node);
   }
   function cancel() {
-    clearTimeout(timer);
+    pageScope.clearTimeout(timer);
     sequence += 1;
     if (controller) controller.abort();
     controller = null;
@@ -34,7 +36,7 @@
     results.setAttribute("aria-busy", "true");
     message("Searching…");
     try {
-      var response = await fetch(url.href, {credentials:"same-origin", cache:"no-store", signal:request.signal});
+      var response = await pageScope.fetch(url.href, {credentials:"same-origin", cache:"no-store", signal:request.signal});
       if (request.signal.aborted || !dialog.open || revision !== sequence) return;
       if (response.redirected || response.status === 401 || response.status === 403) {
         message("Your session may have ended. Reload the page to sign in again."); return;
@@ -49,17 +51,17 @@
       message("Search could not load. Try again.");
       var retry = document.createElement("button");
       retry.type = "button"; retry.className = "btn btn--secondary"; retry.textContent = t("Try again");
-      retry.addEventListener("click", load); results.appendChild(retry);
+      pageScope.listen(retry, "click", load); results.appendChild(retry);
     } finally {
       if (controller === request) results.removeAttribute("aria-busy");
     }
   }
   function schedule() {
     cancel();
-    if (!composing) timer = setTimeout(load, 160);
+    if (!composing) timer = pageScope.setTimeout(load, 160);
   }
   document.querySelectorAll("[data-workspace-search-open]").forEach(function (trigger) {
-    trigger.addEventListener("click", function (event) {
+    pageScope.listen(trigger, "click", function (event) {
       if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button > 0) return;
       event.preventDefault();
       previous = trigger;
@@ -69,12 +71,12 @@
       dialog.showModal(); input.focus({preventScroll:true}); load();
     });
   });
-  input.addEventListener("input", schedule);
-  input.addEventListener("compositionstart", function () { composing = true; cancel(); });
-  input.addEventListener("compositionend", function () { composing = false; schedule(); });
-  form.addEventListener("submit", function (event) { event.preventDefault(); load(); });
+  pageScope.listen(input, "input", schedule);
+  pageScope.listen(input, "compositionstart", function () { composing = true; cancel(); });
+  pageScope.listen(input, "compositionend", function () { composing = false; schedule(); });
+  pageScope.listen(form, "submit", function (event) { event.preventDefault(); load(); });
   dialog.querySelector("[data-search-close]").addEventListener("click", function () { dialog.close(); });
-  dialog.addEventListener("keydown", function (event) {
+  pageScope.listen(dialog, "keydown", function (event) {
     // Search inputs otherwise consume the first Escape to clear their value.
     if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); dialog.close(); }
     if (event.key === "Tab") {
@@ -86,14 +88,16 @@
     }
   }, true);
   // Backdrop clicks have the dialog as target; retain clicks within its bounds.
-  dialog.addEventListener("click", function (event) {
+  pageScope.listen(dialog, "click", function (event) {
     if (event.target !== dialog) return;
     var rect = dialog.getBoundingClientRect();
     if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
   });
-  dialog.addEventListener("close", function () {
+  pageScope.listen(dialog, "close", function () {
     cancel(); input.value = ""; results.replaceChildren();
     if (previous && previous.isConnected && previous.getClientRects().length) previous.focus({preventScroll:true});
   });
-  window.addEventListener("pagehide", function () { cancel(); if (dialog.open) dialog.close(); });
+  pageScope.listen(window, "pagehide", function () { cancel(); if (dialog.open) dialog.close(); });
 })();
+
+});

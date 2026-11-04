@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Optional native-route Finance readers. No financial calculation or write policy. */
 (function () {
   'use strict';
@@ -186,7 +188,7 @@
     reader.hidden = false; desk.classList.add('ff-open'); reader.setAttribute('aria-busy', 'true');
     recovery.hidden = true; fallback.href = target.url.href; message('Loading account details…');
     try {
-      const response = await fetch(target.url.href, {credentials:'same-origin', cache:'no-store', signal:request.signal, headers:{Accept:'text/html'}});
+      const response = await pageScope.fetch(target.url.href, {credentials:'same-origin', cache:'no-store', signal:request.signal, headers:{Accept:'text/html'}});
       const loaded = await parse(response);
       if (response.redirected || loaded.url.href !== target.url.href) throw new Error('unavailable');
       const source = verify(loaded.page, target);
@@ -246,7 +248,7 @@
     recovery.hidden = true; message('Saving financial details…');
     const mine = revision;
     try {
-      const response = await fetch(target.url.href, {method:'POST', credentials:'same-origin', cache:'no-store', body:data, headers:{Accept:'text/html'}});
+      const response = await pageScope.fetch(target.url.href, {method:'POST', credentials:'same-origin', cache:'no-store', body:data, headers:{Accept:'text/html'}});
       const loaded = await parse(response);
       if (!active || mine !== revision) return;
       const result = classify(loaded.url.href);
@@ -274,7 +276,7 @@
       if (!uncertain) buttons.forEach(([button,disabled]) => button.disabled = disabled);
     }
   };
-  root.addEventListener('click', event => {
+  pageScope.listen(root, 'click', event => {
     if (event.defaultPrevented || event.button || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     const button = event.target.closest('button');
     if (button?.matches('[data-finance-back]')) { event.preventDefault(); back(); return; }
@@ -296,17 +298,17 @@
     const replace = current?.view === 'account' && target.view === 'account' && current.student === target.student && Boolean(target.url.search);
     load(target, {link, accountRoot, replace});
   }, true);
-  root.addEventListener('submit', event => {
+  pageScope.listen(root, 'submit', event => {
     const form = event.target;
     if (event.defaultPrevented || !stage.contains(form) || !form.matches('form[data-finance-form]')) return;
     event.preventDefault(); event.stopPropagation(); submit(form, event.submitter);
   }, true);
-  origin.addEventListener('click', event => {
+  pageScope.listen(origin, 'click', event => {
     // The query owner already handles its paging. Keep the global link guard
     // from treating a retained reader draft as a whole-page navigation.
     if (event.defaultPrevented && event.target.closest('[data-query-page]')) event.stopPropagation();
   });
-  root.addEventListener('keydown', event => {
+  pageScope.listen(root, 'keydown', event => {
     if (event.key === 'Escape' && !reader.hidden && !document.querySelector('dialog[open]')) { event.preventDefault(); back(); }
   });
   const results = origin.querySelector('#query-results');
@@ -316,20 +318,22 @@
     message('Accounts updated. Select an account to continue.');
   };
   origin.querySelectorAll('form[data-query-form]').forEach(form => {
-    ['input','change','submit'].forEach(name => form.addEventListener(name, invalidateRead));
+    ['input','change','submit'].forEach(name => pageScope.listen(form, name, invalidateRead));
   });
-  if (results) new MutationObserver(() => {
+  if (results) pageScope.createObserver(MutationObserver, () => {
     invalidateRead();
     if (current) selectAccount(current.student);
   }).observe(results, {childList:true});
-  window.addEventListener('afterprint', () => document.body.classList.remove('ff-print-reader'));
-  window.addEventListener('popstate', invalidateRead);
-  window.addEventListener('pagehide', () => { active = false; cancel(); });
-  window.addEventListener('pageshow', event => { active = true; if (event.persisted) location.reload(); });
+  pageScope.listen(window, 'afterprint', () => document.body.classList.remove('ff-print-reader'));
+  pageScope.listen(window, 'popstate', invalidateRead);
+  pageScope.listen(window, 'pagehide', () => { active = false; cancel(); });
+  pageScope.listen(window, 'pageshow', event => { active = true; if (event.persisted) location.reload(); });
   desk.classList.add('ff-enabled');
   ledger(origin, classify(location.href));
-  if (directory) {
+  if (directory && matchMedia('(min-width:901px)').matches) {
     const first = origin.querySelector('[data-finance-account]');
     if (first) load(classify(first.href), {link:first, accountRoot:true, focus:false, permitted:true});
   }
 })();
+
+});

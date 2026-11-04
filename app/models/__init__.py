@@ -55,6 +55,7 @@ from app.models.enrollment_history import EnrollmentMembership, EnrollmentEvent
 from app.models.group_teacher_assignment import GroupTeacherAssignment, GroupTeacherAssignmentStatus
 from app.models.schedule import Schedule
 from app.models.unit import Unit
+from app.models.curriculum_release import LessonRelease, MaterialRelease
 from app.models.lesson import Lesson
 from app.models.lesson_progress import LessonProgress
 from app.models.uploaded_file import UploadedFile
@@ -236,6 +237,8 @@ __all__ = [
     "Schedule",
     "Unit",
     "Lesson",
+    "LessonRelease",
+    "MaterialRelease",
     "LessonProgress",
     "UploadedFile",
     "Material",
@@ -396,6 +399,7 @@ __all__ = [
 ]
 
 from app.models.academic_revision import AcademicRevision
+from app.models.group_curriculum import GroupCurriculum
 from app.models.attempt_submission_receipt import AttemptSubmissionReceipt
 from app.models.research_storage import ResearchConfigurationSequence, ResearchDataGap, ResearchExportSession
 from app.models.research_v2 import (

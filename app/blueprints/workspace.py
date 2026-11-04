@@ -11,6 +11,7 @@ from sqlalchemy.orm import joinedload
 from app.extensions import db
 from app.models import AcademicTerm, Course, Enrollment, Group, Unit, User
 from app.security.decorators import roles_required
+from app.services.course_pdf import lesson_document, serve_pdf_page
 from app.services.dashboard_queries import student_dashboard, teacher_dashboard
 from app.services.schedule_occurrences import app_now, to_app_local
 
@@ -72,7 +73,7 @@ def student_course(group_public_id):
     if group is None:
         abort(404)
     return private_page("workspace/course.html", group=group,
-                        units=outline_units(group.id, current_user.id), active_nav="courses")
+                        units=outline_units(group.id, current_user.id, include_material_index=True), active_nav="courses")
 
 
 @workspace_bp.get("/teacher/groups")
@@ -95,9 +96,9 @@ def teacher_group(group_public_id):
     from app.blueprints.teacher.units import _teacher_group_or_404
     from app.models import Lesson
     group = _teacher_group_or_404(group_public_id)
-    units = Unit.query.filter_by(group_id=group.id).order_by(Unit.display_order, Unit.id).all()
+    units = Unit.query.filter(Unit.in_group(group.id, group.course_id)).order_by(Unit.display_order, Unit.id).all()
     lessons = Lesson.query.join(Unit, Lesson.unit_id == Unit.id).filter(
-        Unit.group_id == group.id).order_by(Unit.display_order, Lesson.display_order, Lesson.id).all()
+        Unit.in_group(group.id, group.course_id)).order_by(Unit.display_order, Lesson.display_order, Lesson.id).all()
     by_unit = {}
     for lesson in lessons:
         by_unit.setdefault(lesson.unit_id, []).append(lesson)
@@ -108,14 +109,42 @@ def teacher_group(group_public_id):
 @workspace_bp.get("/teacher/groups/<group_public_id>/units/<unit_public_id>/lessons/<lesson_public_id>/preview")
 @roles_required("teacher")
 def lesson_preview(group_public_id, unit_public_id, lesson_public_id):
-    from app.blueprints.teacher.units import _teacher_group_or_404, _unit_for_group_or_404
-    from app.blueprints.teacher.lessons import _lesson_for_unit_or_404
     from app.services.material_queries import student_visible_materials
-    group = _teacher_group_or_404(group_public_id)
-    unit = _unit_for_group_or_404(group, unit_public_id)
-    lesson = _lesson_for_unit_or_404(unit, lesson_public_id)
+
+    group, unit, lesson, visible = _lesson_preview_context(group_public_id, unit_public_id, lesson_public_id)
+    materials = student_visible_materials(lesson.id, group.id) if visible else []
     return private_page("workspace/lesson_preview.html", group=group, unit=unit,
-                        lesson=lesson, materials=student_visible_materials(lesson.id))
+                        lesson=lesson, materials=materials, visible=visible,
+                        course_document=lesson_document(lesson) if visible else None)
+
+
+def _lesson_preview_context(group_public_id, unit_public_id, lesson_public_id):
+    from app.blueprints.teacher.units import _group_is_operational, _teacher_group_or_404, _unit_for_group_or_404
+    from app.blueprints.teacher.lessons import _lesson_for_unit_or_404
+    from app.models import Lesson
+    from app.services.curriculum_visibility import lesson_is_released
+    group = _teacher_group_or_404(group_public_id)
+    unit = _unit_for_group_or_404(group, unit_public_id, include_shared=True)
+    lesson = _lesson_for_unit_or_404(unit, lesson_public_id)
+    visible = _group_is_operational(group) and unit.status == "active" and (
+        Lesson.query.join(Unit, Lesson.unit_id == Unit.id)
+        .filter(Lesson.id == lesson.id, lesson_is_released(group.id)).first() is not None
+    )
+    return group, unit, lesson, visible
+
+
+@workspace_bp.get(
+    "/teacher/groups/<group_public_id>/units/<unit_public_id>/lessons/<lesson_public_id>"
+    "/preview/document/<document_id>/pages/<int:page_number>"
+)
+@roles_required("teacher")
+def lesson_preview_document_page(group_public_id, unit_public_id, lesson_public_id, document_id, page_number):
+    _, _, lesson, visible = _lesson_preview_context(group_public_id, unit_public_id, lesson_public_id)
+    document = lesson_document(lesson) if visible else None
+    if (document is None or document.uploaded_file.public_id != document_id
+            or not lesson.page_start <= page_number <= lesson.page_end):
+        abort(404)
+    return serve_pdf_page(document, page_number)
 
 
 @workspace_bp.post("/teacher/material-preview")

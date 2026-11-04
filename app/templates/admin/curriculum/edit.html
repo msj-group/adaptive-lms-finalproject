@@ -1,0 +1,75 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ 'Edit' if item else 'Add' }} {{ kind }}{% endblock %}
+{% block admin_content %}
+{% set submitted = request.method == 'POST' %}
+{% set material_kind = item.kind if kind == 'material' and item else request.form.get('kind', 'rich_text') %}
+{% set status = request.form.get('status') if submitted else (item.status if item else statuses[0]) %}
+<div class="ad-page">
+  <header class="ad-page-head">
+    <div><div class="ad-eyebrow" dir="auto">{{ course.title }}{% if parent %} / {{ parent.title }}{% endif %}</div>
+      <h1 data-workspace-page-heading>{{ 'Edit' if item else 'Add' }} {{ kind }}</h1></div>
+    <a class="btn btn--secondary" href="{{ content_url or url_for('admin.course_curriculum', public_id=course.public_id) }}">Back to curriculum</a>
+  </header>
+  {{ macros.flash_messages() }}
+  <form class="ad-card yc-form" method="post" {% if kind == 'material' and not item %}enctype="multipart/form-data"{% endif %}>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if item %}<input type="hidden" name="snapshot" value="{{ snapshot }}">{% endif %}
+    <div class="field">
+      <label class="field__label" for="title">Title</label>
+      <input class="field__input" id="title" name="title" value="{{ request.form.get('title', '') if submitted else (item.title if item else '') }}" maxlength="150" required>
+    </div>
+    <div class="field">
+      <label class="field__label" for="search_keywords">Search keywords</label>
+      <input class="field__input" id="search_keywords" name="search_keywords" value="{{ request.form.get('search_keywords', '') if submitted else (item.search_keywords or '' if item else '') }}" maxlength="500">
+    </div>
+    {% if kind != 'material' %}
+      <div class="field">
+        <label class="field__label" for="description">Description</label>
+        <textarea class="field__input" id="description" name="description" rows="4" maxlength="10000">{{ request.form.get('description', '') if submitted else (item.description or '' if item else '') }}</textarea>
+      </div>
+    {% else %}
+      {% if not item %}
+        <div class="field">
+          <label class="field__label" for="kind">Material type</label>
+          <select class="field__input" id="kind" name="kind">
+            {% for option in kinds %}<option value="{{ option }}" {% if option == material_kind %}selected{% endif %}>{{ option|replace('_', ' ')|capitalize }}</option>{% endfor %}
+          </select>
+          <p class="ad-meta">Complete the field that matches the selected type.</p>
+        </div>
+      {% endif %}
+      {% if not item or material_kind == 'rich_text' %}
+        <div class="field">
+          <label class="field__label" for="content_html">Rich text (HTML)</label>
+          <textarea class="field__input" id="content_html" name="content_html" rows="6" maxlength="10000">{{ request.form.get('content_html', '') if submitted else (item.content_html or '' if item else '') }}</textarea>
+        </div>
+      {% endif %}
+      {% if not item or material_kind == 'external_link' %}
+        <div class="field">
+          <label class="field__label" for="external_url">HTTPS link</label>
+          <input class="field__input" id="external_url" name="external_url" value="{{ request.form.get('external_url', '') if submitted else (item.external_url or '' if item else '') }}" maxlength="2048">
+        </div>
+      {% endif %}
+      {% if not item %}
+        <div class="field"><label class="field__label" for="file">Material file</label><input class="field__input" id="file" name="file" type="file"></div>
+      {% elif material_kind == 'file' %}
+        <p><a href="{{ url_for('admin.curriculum_file', public_id=course.public_id, item_id=item.public_id) }}">{{ item.uploaded_file.original_filename }}</a></p>
+        <p class="ad-meta">To replace the file, archive this material and add a new one.</p>
+      {% endif %}
+    {% endif %}
+    <div class="ad-form-grid">
+      <div class="field">
+        <label class="field__label" for="display_order">Position</label>
+        <input class="field__input" id="display_order" name="display_order" type="number" min="1" max="100000" value="{{ request.form.get('display_order', '') if submitted else position }}" required>
+      </div>
+      <div class="field">
+        <label class="field__label" for="status">Status</label>
+        <select class="field__input" id="status" name="status">
+          {% for option in statuses %}<option value="{{ option }}" {% if option == status %}selected{% endif %}>{{ 'Ready for publication' if kind == 'lesson' and option == 'published' else option|capitalize }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <button class="btn btn--primary" type="submit">Save {{ kind }}</button>
+  </form>
+</div>
+{% endblock %}

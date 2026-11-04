@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Keep the actual file input, form validation and upload contract native. */
 (function () {
   "use strict";
@@ -16,12 +18,14 @@
         ? Array.from(input.files).map(function (file) { return file.name; }).join(", ")
         : t("No file selected");
     }
-    input.addEventListener("change", update);
-    if (input.form) input.form.addEventListener("reset", function () { setTimeout(update, 0); });
-    window.addEventListener("pageshow", update);
+    pageScope.listen(input, "change", update);
+    if (input.form) pageScope.listen(input.form, "reset", function () { pageScope.setTimeout(update, 0); });
+    pageScope.listen(window, "pageshow", update);
     update();
     button.hidden = false;
     name.hidden = false;
     control.dataset.fileEnhanced = "true";
   });
 })();
+
+});

@@ -1,0 +1,63 @@
+{% extends "teacher/studio/_base.html" %}
+{% set studio_page = 'publication' %}
+{% block title %}Course publication{% endblock %}
+{% block studio_heading %}{{ studio.heading('Course publication', group.name ~ ' · ' ~ group.course.title) }}{% endblock %}
+{% block studio_content %}
+{% include 'teacher/studio/_editor_actions.html' %}
+{% if not operational %}
+<div class="alert alert--warning">This group is archived. Its publication settings are read-only.</div>
+{% endif %}
+<form class="yc-form" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="snapshot" value="{{ snapshot }}">
+  <section class="cs-panel">
+    <h2>Control what students see</h2>
+    <p>Select a unit to change all its lessons, or choose individual lessons and materials. A material appears only while its lesson is available.</p>
+    {% if operational %}
+    <div class="cs-actions">
+      <button type="submit" class="btn btn--primary" name="action" value="publish_all">Publish full course now</button>
+      <button type="submit" class="btn btn--secondary" name="action" value="publish">Publish selected now</button>
+      <button type="submit" class="btn btn--secondary" name="action" value="hide">Hide selected</button>
+    </div>
+    <div class="field">
+      <label for="curriculum-opens" class="field__label">Scheduled date and time</label>
+      <input class="field__input" id="curriculum-opens" name="opens_at" type="datetime-local">
+      <button type="submit" class="btn btn--secondary" name="action" value="schedule">Schedule selected</button>
+    </div>
+    {% endif %}
+  </section>
+  <nav class="cs-outline" aria-label="Publication unit index">
+    {% for unit, entries in catalogue if entries %}
+    <a href="#release-{{ unit.public_id }}" dir="auto">{{ unit.title }}</a>
+    {% endfor %}
+  </nav>
+  {% for unit, entries in catalogue if entries %}
+  <section class="cs-panel" id="release-{{ unit.public_id }}">
+    <details>
+      <summary dir="auto">{{ unit.title }} · {{ entries|length }} lessons</summary>
+      {% if operational %}<label><input type="checkbox" name="unit" value="{{ unit.public_id }}"> Select all lessons in this unit</label>{% endif %}
+      <ol>
+        {% for lesson, materials in entries %}
+        <li>
+          <label>{% if operational %}<input type="checkbox" name="lesson" value="{{ lesson.public_id }}"> {% endif %}<span dir="auto">{{ lesson.title }}</span></label>
+          <span class="badge badge--neutral">{{ lesson_states[lesson.id] }}</span>
+          <a href="{{ url_for('teacher.lesson_materials', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">View lesson materials</a>
+          {% if materials %}
+          <details>
+            <summary>{{ materials|length }} materials</summary>
+            <ul>
+            {% for material in materials %}
+              <li><label>{% if operational %}<input type="checkbox" name="material" value="{{ material.public_id }}"> {% endif %}<span dir="auto">{{ material.title }}</span></label>
+              <span class="badge badge--neutral">{{ material_states[material.id] }}</span></li>
+            {% endfor %}
+            </ul>
+          </details>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </details>
+  </section>
+  {% else %}<div class="empty-state">There are no lessons ready for publication.</div>{% endfor %}
+</form>
+{% endblock %}

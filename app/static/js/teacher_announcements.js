@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Presentation only: centre the phone Group deck. Native GET links own selection. */
 (function () {
   "use strict";
@@ -26,34 +28,36 @@
     }, null);
     cards.forEach(function (card) { card.classList.toggle("is-front", card === nearest.card); });
   }
-  function schedule() { if (!frame) frame = requestAnimationFrame(front); }
+  function schedule() { if (!frame) frame = pageScope.requestAnimationFrame(front); }
   var width = -1;
-  var observer = new ResizeObserver(function () {
+  var observer = pageScope.createObserver(ResizeObserver, function () {
     var next = phoneDeck(), nextWidth = rail.clientWidth;
     if (next === deck && nextWidth === width) return;
     deck = next; width = nextWidth;
     rail.classList.toggle("tan-deck-enhanced", deck);
     // Let the browser finish reordering/snap layout before initial centring.
-    if (deck) requestAnimationFrame(function () {
+    if (deck) pageScope.requestAnimationFrame(function () {
       if (phoneDeck()) { centre(selected); front(); }
     });
     else cards.forEach(function (card) { card.classList.remove("is-front"); });
     schedule();
   });
   observer.observe(rail);
-  rail.addEventListener("scroll", schedule, {passive:true});
-  rail.addEventListener("focusin", function (event) {
+  pageScope.listen(rail, "scroll", schedule, {passive:true});
+  pageScope.listen(rail, "focusin", function (event) {
     var card = event.target.closest(".tan-group");
     if (deck && card) { centre(card); schedule(); }
   });
-  window.addEventListener("pagehide", function () {
+  pageScope.listen(window, "pagehide", function () {
     observer.disconnect();
-    if (frame) cancelAnimationFrame(frame);
+    if (frame) pageScope.cancelAnimationFrame(frame);
   });
-  window.addEventListener("pageshow", function () {
+  pageScope.listen(window, "pageshow", function () {
     observer.observe(rail);
-    requestAnimationFrame(function () {
+    pageScope.requestAnimationFrame(function () {
       if (phoneDeck()) { centre(selected); front(); }
     });
   });
 })();
+
+});

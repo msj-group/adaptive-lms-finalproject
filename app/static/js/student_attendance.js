@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Presentation only: Course-owned Group options and native GET/disclosure. */
 (function () {
   "use strict";
@@ -7,7 +9,7 @@
   var group = root.querySelector("[data-attendance-group]");
   var filters = root.querySelector("[data-attendance-filters]");
   if (course && group) {
-    course.addEventListener("change", function () {
+    pageScope.listen(course, "change", function () {
       Array.from(group.options).forEach(function (option) {
         var eligible = option.value === "all" || course.value === "all" || option.dataset.course === course.value;
         option.hidden = !eligible;
@@ -19,14 +21,14 @@
   var from = root.querySelector('[name="date_from"]');
   var to = root.querySelector('[name="date_to"]');
   if (from && to) {
-    from.addEventListener("change", function () { to.min = from.value; });
-    to.addEventListener("change", function () { from.max = to.value; });
+    pageScope.listen(from, "change", function () { to.min = from.value; });
+    pageScope.listen(to, "change", function () { from.max = to.value; });
   }
   if (filters) {
-    document.addEventListener("click", function (event) {
+    pageScope.listen(document, "click", function (event) {
       if (filters.open && !filters.contains(event.target)) filters.open = false;
     });
-    filters.addEventListener("keydown", function (event) {
+    pageScope.listen(filters, "keydown", function (event) {
       if (event.key === "Escape" && filters.open) {
         event.preventDefault();
         filters.open = false;
@@ -35,3 +37,5 @@
     });
   }
 })();
+
+});

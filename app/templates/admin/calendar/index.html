@@ -25,7 +25,7 @@
       <div class="fp-empty" data-fp-upcoming-empty{% if calendar.count %} hidden{% endif %}><strong>No calendar entries</strong><p>Choose another day or view upcoming dates.</p></div>
     </section>
   </div>
-  <footer class="fp-range-footer"><span>{{ planner_ui.icon('globe',14) }}<bdi>{{ tz_name }}</bdi> · {{ _('Center time') }}</span><span>{{ ui_date(range_start.strftime('%d %B %Y')) }} – {{ ui_date(range_end.strftime('%d %B %Y')) }}</span></footer>
+  <footer class="fp-range-footer"><span>{{ ui_date(range_start.strftime('%d %B %Y')) }} – {{ ui_date(range_end.strftime('%d %B %Y')) }}</span></footer>
   <span class="fp-sr-only" role="status" aria-live="polite" data-fp-live></span>
 </div>
 {% endblock %}

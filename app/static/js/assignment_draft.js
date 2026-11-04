@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Private browser-only text drafts. Never POST, log, or emit research outcomes. */
 (function () {
   "use strict";
@@ -91,7 +93,7 @@
     message("Automatic saving is on. Drafts stay on this browser.", false);
   }
   // Save every edit synchronously so closing/reloading cannot lose a debounce.
-  answer.addEventListener("input", save);
+  pageScope.listen(answer, "input", save);
   form.querySelector("[data-draft-use]").addEventListener("click", function () {
     answer.value = recoveryAnswer.value;
     paused = false;
@@ -104,7 +106,7 @@
     recovery.hidden = true;
     save();
   });
-  window.addEventListener("storage", function (event) {
+  pageScope.listen(window, "storage", function (event) {
     if (event.key !== key && event.key !== null) return;
     try {
       var latest = read();
@@ -117,5 +119,7 @@
     }
   });
   // Re-authorize a cached form after Back, including a newly confirmed receipt.
-  window.addEventListener("pageshow", function (event) { if (event.persisted) location.reload(); });
+  pageScope.listen(window, "pageshow", function (event) { if (event.persisted) location.reload(); });
 })();
+
+});

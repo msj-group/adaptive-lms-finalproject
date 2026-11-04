@@ -200,7 +200,6 @@ html[dir=rtl] .ls-dialog-bar [data-ledger-back] .figma-icon { transform:none; }
 }
 @media(max-width:360px) { .ls-date { flex-basis:100%; } .ls-metric { padding:14px; } .ls-metric--lead .ls-metric-value { font-size:31px; } .ls-record { gap:7px; padding-inline:12px; } .ls-amount { max-width:90px; } }
 @media(prefers-reduced-motion:reduce) { .ls-dialog[open] { animation:none; } }
-html[data-ui-motion=reduce] .ls-dialog[open] { animation:none; }
 @media print {
   body:has(.ls-dialog[open]) * { visibility:hidden; }
   body:has(.ls-dialog[open]) .ls-dialog,body:has(.ls-dialog[open]) .ls-dialog * { visibility:visible; }

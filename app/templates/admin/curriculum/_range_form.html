@@ -1,0 +1,31 @@
+{% set low = parent.page_start if parent and parent.page_start else 1 %}
+{% set high = parent.page_end if parent and parent.page_end else document.page_count %}
+<section class="ce-range-card" aria-labelledby="range-card-title">
+  <div class="ce-range-heading">
+    <h2 id="range-card-title">{{ _('Edit unit') if kind == 'unit' and item else _('Add unit') if kind == 'unit' else _('Edit lesson') if item else _('Add lesson') }}</h2>
+    {% if parent %}<p dir="auto">{{ parent.title }} · {{ low }}–{{ high }}</p>{% endif %}
+  </div>
+  <form method="post" action="{{ curriculum_url('division') }}" data-range-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="revision" value="{{ document.revision }}">
+    <input type="hidden" name="kind" value="{{ kind }}">
+    {% if item %}<input type="hidden" name="item" value="{{ item.public_id }}">{% endif %}
+    {% if parent %}<input type="hidden" name="parent" value="{{ parent.public_id }}">{% endif %}
+    <label class="field">{{ _('Title') }}<input class="field__input" name="title" maxlength="150" value="{{ item.title if item else '' }}" required></label>
+    <div class="ce-range-fields">
+      <label class="field">{{ _('First page') }}<input class="field__input" type="number" name="page_start" min="{{ low }}" max="{{ high }}" value="{{ item.page_start if item and item.page_start else low }}" required></label>
+      <label class="field">{{ _('Last page') }}<input class="field__input" type="number" name="page_end" min="{{ low }}" max="{{ high }}" value="{{ item.page_end if item and item.page_end else high }}" required></label>
+    </div>
+    {% if item %}
+      <label class="field">{{ _('Status') }}<select class="field__input" name="status">
+        {% for value, label in ([('active', 'Active'), ('archived', 'Archived')] if kind == 'unit' else [('draft', 'Draft'), ('published', 'Ready for teacher publication')]) %}
+        <option value="{{ value }}"{% if item.status == value %} selected{% endif %}>{{ _(label) }}</option>
+        {% endfor %}
+      </select></label>
+    {% else %}<input type="hidden" name="status" value="{{ 'active' if kind == 'unit' else 'draft' }}">{% endif %}
+    <div class="ce-actions">
+      <button class="btn btn--primary" type="submit">{{ _('Save') }}</button>
+      <a class="btn btn--secondary" data-cancel-range href="{{ curriculum_url('division') }}">{{ _('Cancel') }}</a>
+    </div>
+  </form>
+</section>

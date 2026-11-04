@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Progressive presentation only. Original feedback routes own every read/write guard. */
 (function () {
   "use strict";
@@ -24,15 +26,15 @@
     if (!activeForm) return;
     var draft = activeForm.querySelector("[data-review-draft]");
     function draftState() { draft.hidden = !dirty(); }
-    activeForm.elements.feedback_text.addEventListener("input", draftState);
+    pageScope.listen(activeForm.elements.feedback_text, "input", draftState);
     draftState();
   }
   bindEditor(document.querySelector("[data-review-editor]"));
-  window.addEventListener("pageshow", function () { nativeSubmitting = false; });
-  window.addEventListener("beforeunload", function (event) {
+  pageScope.listen(window, "pageshow", function () { nativeSubmitting = false; });
+  pageScope.listen(window, "beforeunload", function (event) {
     if (!nativeSubmitting && (dirty() || saving)) { event.preventDefault(); event.returnValue = ""; }
   });
-  document.addEventListener("click", async function (event) {
+  pageScope.listen(document, "click", async function (event) {
     var link = event.target.closest("a[href]");
     if (!link || event.defaultPrevented || link.target === "_blank" || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || !document.querySelector(".teacher-review")) return;
     if (link.hasAttribute("download") || link.closest(".assignment-file-receipt")) return;
@@ -42,7 +44,7 @@
     event.preventDefault();
     if (await mayLeave()) { nativeSubmitting = true; location.assign(link.href); }
   });
-  document.addEventListener("submit", async function (event) {
+  pageScope.listen(document, "submit", async function (event) {
     if ((event.target.getAttribute("method") || "get").toLowerCase() === "dialog") return;
     if (nativeSubmitting) return;
     if (!root && event.target.matches("[data-review-form]")) {
@@ -129,7 +131,7 @@
     fallback.href = selected.href;
     markSelected();
     try {
-      var response = await fetch(expected.href, {credentials:"same-origin", cache:"no-store", headers:{"X-Review-Panel":"1"}, signal:pending.signal});
+      var response = await pageScope.fetch(expected.href, {credentials:"same-origin", cache:"no-store", headers:{"X-Review-Panel":"1"}, signal:pending.signal});
       if (revision !== sequence || pending.signal.aborted) return;
       if (!response.ok || new URL(response.url).pathname !== expected.pathname) throw new Error("Feedback unavailable");
       var editor = parsedEditor(await response.text(), expected);
@@ -146,7 +148,7 @@
     }
   }
   async function refreshQueue() {
-    var response = await fetch(location.href, {credentials:"same-origin", cache:"no-store"});
+    var response = await pageScope.fetch(location.href, {credentials:"same-origin", cache:"no-store"});
     if (!response.ok || new URL(response.url).pathname !== location.pathname) throw new Error("Queue unavailable");
     var page = new DOMParser().parseFromString(await response.text(), "text/html");
     var list = page.querySelector("[data-review-list]");
@@ -156,7 +158,7 @@
     root.querySelector("[data-review-pagination]").replaceWith(document.importNode(pages, true));
     markSelected();
   }
-  root.addEventListener("click", async function (event) {
+  pageScope.listen(root, "click", async function (event) {
     var edit = event.target.closest("[data-review-edit]");
     if (edit && content.contains(edit) && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.button === 0) {
       event.preventDefault();
@@ -191,7 +193,7 @@
       if (first) first.focus();
     }
   });
-  root.addEventListener("submit", async function (event) {
+  pageScope.listen(root, "submit", async function (event) {
     if (event.target !== activeForm) return;
     event.preventDefault();
     if (saving || loading) return;
@@ -206,7 +208,7 @@
     status.textContent = t("Saving feedback…");
     fallback.href = expected.href;
     try {
-      var response = await fetch(expected.href, {method:"POST", body:body, credentials:"same-origin", cache:"no-store", headers:{"X-Review-Panel":"1"}});
+      var response = await pageScope.fetch(expected.href, {method:"POST", body:body, credentials:"same-origin", cache:"no-store", headers:{"X-Review-Panel":"1"}});
       if (!response.ok || new URL(response.url).pathname !== expected.pathname) throw new Error("Save response unavailable");
       var editor = parsedEditor(await response.text(), expected);
       showEditor(editor, true);
@@ -223,10 +225,10 @@
     }
   });
   var dateFilters = root.querySelector("[data-review-filters]");
-  document.addEventListener("click", function (event) {
+  pageScope.listen(document, "click", function (event) {
     if (dateFilters.open && !dateFilters.contains(event.target)) dateFilters.open = false;
   });
-  dateFilters.addEventListener("keydown", function (event) {
+  pageScope.listen(dateFilters, "keydown", function (event) {
     if (event.key === "Escape") { dateFilters.open = false; dateFilters.querySelector("summary").focus(); }
   });
   function resize() {
@@ -238,6 +240,8 @@
       else status.textContent = t("Choose a submission when work is available.");
     }
   }
-  new ResizeObserver(resize).observe(root);
+  pageScope.createObserver(ResizeObserver, resize).observe(root);
   resize();
 }());
+
+});

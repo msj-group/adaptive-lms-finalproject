@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Display and unsaved-work protection. Activity-specific clients own saving. */
 (function () {
   "use strict";
@@ -8,7 +10,6 @@
   try { preferences = JSON.parse(localStorage.getItem(preferenceKey) || "{}"); } catch (_) { preferences = {}; }
   if (!preferences || typeof preferences !== "object") preferences = {};
   function applyPreferences() {
-    body.dataset.uiMotion = preferences.motion === "reduce" ? "reduce" : "system";
     body.dataset.uiDensity = preferences.density === "compact" ? "compact" : "comfortable";
   }
   applyPreferences();
@@ -32,12 +33,12 @@
       confirmationDialog.showModal();
     });
   }
-  confirmationDialog.addEventListener("close", function () {
+  pageScope.listen(confirmationDialog, "close", function () {
     var resolve = confirmationResolve; confirmationResolve = null;
     if (confirmationFocus && confirmationFocus.isConnected) confirmationFocus.focus();
     if (resolve) resolve(confirmationDialog.returnValue === "continue");
   });
-  confirmationDialog.addEventListener("keydown", function (event) {
+  pageScope.listen(confirmationDialog, "keydown", function (event) {
     if (event.key !== "Tab") return;
     var first = confirmationDialog.querySelector('[value="cancel"]');
     var last = confirmationDialog.querySelector('[value="continue"]');
@@ -76,10 +77,10 @@
         status.hidden = !dirty || form.matches("[data-quiz-autosave],[data-assignment-draft]");
         status.textContent = form.matches("[data-answer-form]") ? t("Unsaved answer — use Save answer or Save and next.") : t("Unsaved changes — save before leaving this page.");
       }
-      form.addEventListener("input", changed);
-      form.addEventListener("change", changed);
-      form.addEventListener("workspace:saved", function () { baseline = formValue(form); dirtyForms.delete(form); status.hidden = true; });
-      form.addEventListener("submit", function (event) {
+      pageScope.listen(form, "input", changed);
+      pageScope.listen(form, "change", changed);
+      pageScope.listen(form, "workspace:saved", function () { baseline = formValue(form); dirtyForms.delete(form); status.hidden = true; });
+      pageScope.listen(form, "submit", function (event) {
         queueMicrotask(function () { if (!event.defaultPrevented) dirtyForms.delete(form); });
       });
     });
@@ -100,7 +101,7 @@
     if (recorder) recorder.dataset.recorderState = "discarded";
   }
   // Capture covers separate finish/finalize forms before an edited answer or draft is lost.
-  document.addEventListener("submit", function (event) {
+  pageScope.listen(document, "submit", function (event) {
     var form = event.target;
     if ((form.getAttribute("method") || "get").toLowerCase() === "dialog") return;
     if (approvedForms.has(form)) { approvedForms.delete(form); return; }
@@ -138,10 +139,10 @@
       });
     }
   }, true);
-  window.addEventListener("beforeunload", function (event) {
+  pageScope.listen(window, "beforeunload", function (event) {
     if (dirtyForms.size || recordingPending()) { event.preventDefault(); event.returnValue = ""; }
   });
-  document.addEventListener("click", function (event) {
+  pageScope.listen(document, "click", function (event) {
     var link = event.target.closest("a[href]");
     if (!link || link.target === "_blank" || event.ctrlKey || event.metaKey || !dirtyForms.size && !recordingPending()) return;
     var url = new URL(link.href, location.href);
@@ -150,7 +151,7 @@
     confirmAction(t("You have unsaved work. Leave this page and discard it?"), t("Leave this page")).then(function (accepted) { if (accepted) { discardPending(); location.assign(url.href); } });
   });
   var submittingForms = new WeakSet();
-  document.addEventListener("submit", function (event) {
+  pageScope.listen(document, "submit", function (event) {
     var form = event.target;
     if ((form.getAttribute("method") || "get").toLowerCase() !== "post") return;
     // The recorder owns its asynchronous confirmation, upload and retry state.
@@ -163,7 +164,7 @@
       if (event.submitter) { event.submitter.classList.add("workspace-submitting"); event.submitter.setAttribute("aria-disabled","true"); }
     });
   });
-  window.addEventListener("pageshow", function () {
+  pageScope.listen(window, "pageshow", function () {
     submittingForms = new WeakSet();
     document.querySelectorAll("form[method='post'][aria-busy]").forEach(function (form) { form.removeAttribute("aria-busy"); });
     document.querySelectorAll(".workspace-submitting").forEach(function (button) { button.classList.remove("workspace-submitting"); button.removeAttribute("aria-disabled"); });
@@ -197,11 +198,11 @@
     });
     if (firstInvalid) firstInvalid.focus();
   }
-  document.querySelectorAll("[data-copy]").forEach(function (button) { button.addEventListener("click", function () {
+  document.querySelectorAll("[data-copy]").forEach(function (button) { pageScope.listen(button, "click", function () {
     if (!navigator.clipboard) { button.textContent = t("Select the value below to copy"); return; }
     navigator.clipboard.writeText(button.dataset.copy).then(function () { button.textContent = t("Copied"); }, function () { button.textContent = t("Select the value below to copy"); });
   }); });
-  document.querySelectorAll("[data-print]").forEach(function (button) { button.addEventListener("click", function () { window.print(); }); });
+  document.querySelectorAll("[data-print]").forEach(function (button) { pageScope.listen(button, "click", function () { window.print(); }); });
   var financeForms = new WeakSet();
   function registerFinanceForms(root) {
   var forms = root.matches && root.matches("[data-finance-form]") ? [root] : Array.from(root.querySelectorAll("[data-finance-form]"));
@@ -220,11 +221,11 @@
       form.querySelector("[data-finance-output]").textContent = "";
       form.querySelector("[data-finance-note]").textContent = t("Review again after changing the form. The save performs the final validation.");
     }
-    fields(); form.addEventListener("input", fields); form.addEventListener("change", fields);
+    fields(); pageScope.listen(form, "input", fields); pageScope.listen(form, "change", fields);
     form.querySelector("[data-finance-preview]").addEventListener("click", async function (event) {
       var button = event.currentTarget; button.disabled = true;
       var output = form.querySelector("[data-finance-output]"); output.textContent = t("Calculating…");
-      try { var response = await fetch(form.dataset.previewUrl, {method:"POST",body:new FormData(form),headers:{"Accept":"application/json"}});
+      try { var response = await pageScope.fetch(form.dataset.previewUrl, {method:"POST",body:new FormData(form),headers:{"Accept":"application/json"}});
         if (!(response.headers.get("Content-Type") || "").includes("application/json")) throw new Error("unavailable");
         var data = await response.json();
         output.textContent = data.error ? t(data.error) : t("Before: %(before)s → After: %(after)s LYD", {before:data.before,after:data.after});
@@ -236,26 +237,26 @@
   }
   window.aelmsRegisterFinanceForms = registerFinanceForms;
   registerFinanceForms(document);
-  document.querySelectorAll("[data-material-preview]").forEach(function (button) { button.addEventListener("click", async function () {
+  document.querySelectorAll("[data-material-preview]").forEach(function (button) { pageScope.listen(button, "click", async function () {
     var form = button.closest("form"); var output = form.querySelector("[data-material-preview-output]"); output.hidden = false; output.textContent = t("Preparing preview…"); button.disabled = true;
     try { var data = new FormData(); data.set("csrf_token", form.querySelector("[name='csrf_token']").value); data.set("content_html", form.querySelector(".rte-editor").innerHTML);
-      var response = await fetch(button.dataset.previewUrl, {method:"POST",body:data,headers:{"Accept":"application/json"}});
+      var response = await pageScope.fetch(button.dataset.previewUrl, {method:"POST",body:data,headers:{"Accept":"application/json"}});
       if (!response.ok || !(response.headers.get("Content-Type") || "").includes("application/json")) throw new Error("unavailable");
       var result = await response.json(); if (result.content_html) output.innerHTML = result.content_html; else output.textContent = t("No formatted content yet.");
     } catch (_) { output.textContent = t("Preview unavailable. Check your session and try again. Nothing was saved."); }
     finally { button.disabled = false; }
-  }); var materialForm = button.closest("form"); materialForm.addEventListener("input", function () { var previewOutput = materialForm.querySelector("[data-material-preview-output]"); previewOutput.hidden = true; previewOutput.textContent = ""; }); });
+  }); var materialForm = button.closest("form"); pageScope.listen(materialForm, "input", function () { var previewOutput = materialForm.querySelector("[data-material-preview-output]"); previewOutput.hidden = true; previewOutput.textContent = ""; }); });
   document.querySelectorAll("audio,video").forEach(function (media) {
-    media.addEventListener("error", function () { if (media.nextElementSibling && media.nextElementSibling.dataset.mediaError) return;
+    pageScope.listen(media, "error", function () { if (media.nextElementSibling && media.nextElementSibling.dataset.mediaError) return;
       var notice = document.createElement("p"); notice.dataset.mediaError = "true"; notice.className = "alert alert--warning"; notice.setAttribute("role","status"); notice.textContent = t("This media could not be loaded. Reload the page or use the available download link."); media.after(notice); });
   });
   var timelineFilter = document.querySelector("[data-timeline-filter]");
   var dayPicker = document.querySelector("[data-calendar-day]");
   if (dayPicker) {
     function chooseDay() { document.querySelectorAll("[data-calendar-date]").forEach(function (day) { day.hidden = day.dataset.calendarDate !== dayPicker.value; }); }
-    dayPicker.addEventListener("change", chooseDay); chooseDay();
+    pageScope.listen(dayPicker, "change", chooseDay); chooseDay();
   }
-  if (timelineFilter) timelineFilter.addEventListener("change", function () {
+  if (timelineFilter) pageScope.listen(timelineFilter, "change", function () {
     var count = 0;
     document.querySelectorAll("[data-event]").forEach(function (row) { row.hidden = Boolean(timelineFilter.value && row.dataset.event !== timelineFilter.value); if (!row.hidden) count++; });
     document.querySelector("[data-timeline-count]").textContent = t("%(count)s of the loaded events displayed", {count:count});
@@ -266,3 +267,5 @@
     var label = document.querySelector(".figma-page-label"); if (label) label.textContent = heading.textContent.trim();
   }
 })();
+
+});

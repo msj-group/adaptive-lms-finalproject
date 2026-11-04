@@ -50,10 +50,8 @@ body.rs-suite::after{background-image:url('../images/research/ambient-cyan.svg')
 .rs-suite .workspace-account-caption small{font-size:8px;color:#52688e}
 .rs-suite .workspace-account-card{background:#fffefa;border:1px solid #c1cfe3;box-shadow:var(--rs-shadow);border-radius:20px;color:#243d76}
 .rs-suite .workspace-theme-menu{display:none} /* This approved research surface has a fixed light palette. */
-.rs-suite .rs-content{min-width:0;width:100%;max-width:1540px;padding:14px 32px 28px;margin:0 auto;background:transparent;overflow:visible;outline-offset:-3px}
+.rs-suite .rs-content{min-width:0;width:100%;max-width:1540px;padding:8px 32px 24px;margin:0 auto;background:transparent;overflow:visible;outline-offset:-3px}
 .rs-content> *+*{margin-block-start:21px}
-.rs-content>.workspace-page-navigation{margin:0 0 14px}
-.rs-content>.workspace-page-navigation+.rs-page-heading{margin-top:0}
 .rs-page-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;min-width:0}
 .rs-page-heading>div{min-width:0}
 .rs-suite .rs-page-heading p{font-size:12px;color:#52688e;max-width:800px;margin:0}
@@ -184,7 +182,6 @@ body.rs-suite::after{background-image:url('../images/research/ambient-cyan.svg')
 .rs-suite .rs-content dialog.rs-dialog{margin:auto}
 .rs-suite .workspace-account .figma-avatar{background:#dce7f8;color:#144baa;box-shadow:none}
 .rs-suite .rs-sidebar .rs-nav-link{min-height:44px;margin:0;padding:10px 12px}
-.rs-more-preferences{display:grid;grid-template-columns:1fr 1.4fr;align-items:center;gap:12px;border-top:1px solid #dce5f2;margin-top:16px;padding-top:16px;font-size:11px}
 .rs-more form{margin-top:12px}
 .rs-noscript-navigation{margin:16px 24px;padding:14px;border:1px solid #c1cfe3;border-radius:16px;background:#fffefa}
 html[dir=rtl] body.rs-suite{font-family:'Noto Sans Arabic',ResearchManrope,sans-serif}
@@ -237,4 +234,3 @@ body.rs-suite dialog.workspace-confirmation::backdrop,.rs-suite .rs-content dial
 }
 @media(prefers-reduced-motion:reduce){.rs-suite *,.rs-suite *::before,.rs-suite *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media(max-width:359px){.rs-suite .rs-header{padding-inline:16px}.rs-mobile-brand{font-size:20px;gap:6px}.rs-mobile-brand img{width:30px;height:38px}.rs-suite .st-header-actions{gap:6px}.rs-suite .rs-content{padding-inline:16px}}
-html[data-ui-motion=reduce] .rs-suite *,.rs-suite[data-ui-motion=reduce] *{animation:none!important;transition:none!important}

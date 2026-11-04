@@ -38,8 +38,7 @@
       {% for error in form.search_keywords.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    {# No Status or Order control: status is changed only via Archive/Reactivate,
-       and teaching order only via the move-up / move-down actions. #}
+    {# Archive and Reactivate own status changes. #}
     <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
       <a class="btn btn--secondary" href="{{ url_for('teacher.group_units', group_public_id=group.public_id) }}">Cancel</a>

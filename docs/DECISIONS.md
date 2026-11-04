@@ -1,5 +1,15 @@
 # Project Decisions
 
+## 2026-11-04 — Owner-approved four-character passwords
+
+The owner requested a minimum of four characters without composition rules.
+Use shared 4–128 character limits for account creation, administrator resets,
+self-service changes and the Administrator/Researcher provisioning helpers.
+Form constraints and localized hints derive from the same validation limits.
+This supersedes the earlier 15-character UI and 12-character provisioning
+minimums recorded below. Existing credentials, Argon2 hashing, CSRF, current
+password verification, confirmation and session invalidation remain unchanged.
+
 ## 2026-10-31 — Approved light Researcher interface
 
 Implement the owner's revised Figma concept inside the existing Researcher

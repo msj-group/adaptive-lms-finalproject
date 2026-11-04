@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Presentation sync only; query_filters.js owns the ordinary GET enhancement. */
 (function () {
   "use strict";
@@ -19,7 +21,9 @@
       else link.removeAttribute("aria-current");
     });
   }
-  form.addEventListener("change", sync);
-  window.addEventListener("popstate", sync);
+  pageScope.listen(form, "change", sync);
+  pageScope.listen(window, "popstate", sync);
   sync();
 })();
+
+});

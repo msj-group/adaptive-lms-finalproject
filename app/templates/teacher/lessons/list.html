@@ -1,61 +1,15 @@
 {% extends "teacher/studio/_base.html" %}
-{% block title %}{{ unit.title }} — Lessons{% endblock %}
-{% block studio_heading %}{% call studio.heading(unit.title,group.name ~ ' · ' ~ group.academic_term.name) %}{% if can_manage %}<a class="btn btn--primary" href="{{ url_for('teacher.lesson_create',group_public_id=group.public_id,unit_public_id=unit.public_id) }}">Add Lesson</a>{% endif %}{% endcall %}{% endblock %}
+{% block title %}{{ unit.title }} · Lessons{% endblock %}
+{% block studio_heading %}{{ studio.heading(unit.title, group.name) }}{% endblock %}
 {% block studio_content %}
-
-{% if not operational %}
-<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
-  This group is not operational: the {{ archived_labels | join(", ") }} {{ "is" if archived_labels|length == 1 else "are" }} archived.
-  Published lessons here are currently <strong>hidden from students</strong>. Publication statuses are preserved, and reactivating the
-  chain restores visibility without rewriting any status. You can still unpublish a lesson, but cannot add, edit, reorder, or publish
-  until every parent is active again.
-</div>
-{% elif not unit_active %}
-<div class="alert alert--warning" style="margin-bottom: var(--space-6)">
-  This unit is archived. Its published lessons are <strong>hidden from students</strong> for as long as the unit stays archived —
-  their publication statuses are kept unchanged, and reactivating the unit restores visibility. You can still unpublish a lesson,
-  but cannot add, edit, reorder, or publish lessons until the unit is reactivated.
-</div>
-{% else %}
-<div class="alert alert--info" style="margin-bottom: var(--space-6)">Students see published lessons in active units and groups. Drafts are private; editing preserves status and order.</div>
-{% endif %}
-
-<div class="cs-section-head"><h2>Lessons</h2><span class="cs-meta">{{ _n('%(count)d lesson','%(count)d lessons',lessons|length) }}</span></div>
-<section class="cs-panel cs-lessons-list">{% for lesson in lessons %}<article class="cs-lesson-card"><span class="cs-number">{{ '%02d'|format(loop.index) }}</span><div><h2 dir="auto">{{ lesson.title }}</h2>{{ studio.status(lesson.status) }}<p class="cs-meta">{% if lesson.status=='published' and can_manage %}Visible to students{% elif lesson.status=='published' %}Hidden (parent archived){% else %}Not visible (draft){% endif %}</p><a class="cs-text-link" href="{{ url_for('workspace.lesson_preview',group_public_id=group.public_id,unit_public_id=unit.public_id,lesson_public_id=lesson.public_id) }}">{{ ui.icon('eye',15) }} Student preview</a></div><div class="cs-actions">
-            <a class="btn btn--secondary" href="{{ url_for('teacher.lesson_materials', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">Manage Materials</a>
-            {% if can_manage %}
-            <a class="btn btn--secondary" href="{{ url_for('teacher.lesson_edit', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">Edit</a>
-            {% if not loop.first %}
-            <form method="post" action="{{ url_for('teacher.lesson_move_up', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}" style="display:inline" class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn--secondary" aria-label="Move up">↑</button>
-            </form>
-            {% endif %}
-            {% if not loop.last %}
-            <form method="post" action="{{ url_for('teacher.lesson_move_down', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}" style="display:inline" class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn--secondary" aria-label="Move down">↓</button>
-            </form>
-            {% endif %}
-            {% endif %}
-            {% if lesson.status == "published" %}
-            <form method="post" action="{{ url_for('teacher.lesson_toggle_publication', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}"
-              data-confirm="Unpublish lesson '{{ lesson.title }}'? Students will no longer see it. It returns to draft." class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn--danger-outline">Unpublish</button>
-            </form>
-            {% elif can_manage %}
-            <form method="post" action="{{ url_for('teacher.lesson_toggle_publication', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}"
-              data-confirm="Publish lesson '{{ lesson.title }}'? Enrolled students will be able to open it." class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn--primary">Publish</button>
-            </form>
-            {% endif %}</div></article>{% else %}<div class="empty-state"><h2>No lessons yet</h2></div>{% endfor %}</section>
-<script>
-  document.querySelectorAll("form[data-confirm]").forEach(function (form) {
-    form.addEventListener("submit", function (event) {
-      if (!window.aelmsConfirm && !confirm(form.dataset.confirm)) { event.preventDefault(); }
-    });
-  });
-</script>
+<section class="cs-panel">
+  <h2>Lessons</h2>
+  {% if unit.description %}<p dir="auto">{{ unit.description }}</p>{% endif %}
+  <ol>
+    {% for lesson in lessons %}
+    <li><a href="{{ url_for('teacher.lesson_materials', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}" dir="auto">{{ lesson.title }}</a></li>
+    {% else %}<li>There are no lessons in this unit.</li>{% endfor %}
+  </ol>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.curriculum_publication', group_public_id=group.public_id) }}">Course publication</a>
+</section>
 {% endblock %}

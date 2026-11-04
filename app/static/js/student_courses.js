@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Atlas presentation only. Native links, lesson POSTs and media endpoints own data. */
 (function () {
   'use strict';
@@ -11,9 +13,9 @@
     if (target && target.matches('details.atlas-unit')) target.open = true;
   }
   openUnit(window.location.hash);
-  window.addEventListener('hashchange', function () { openUnit(window.location.hash); });
+  pageScope.listen(window, 'hashchange', function () { openUnit(window.location.hash); });
   document.querySelectorAll('.atlas-unit-index a').forEach(function (link) {
-    link.addEventListener('click', function () { openUnit(link.hash); });
+    pageScope.listen(link, 'click', function () { openUnit(link.hash); });
   });
 
   var reader = document.querySelector('[data-atlas-reader]');
@@ -28,8 +30,8 @@
       if (!outline.contains(document.activeElement)) outline.open = wide;
     }
     fitOutline();
-    if (window.ResizeObserver) new ResizeObserver(fitOutline).observe(reader);
-    else window.addEventListener('resize', fitOutline);
+    if (window.ResizeObserver) pageScope.createObserver(ResizeObserver, fitOutline).observe(reader);
+    else pageScope.listen(window, 'resize', fitOutline);
   }
 
   var toolbar = reader.querySelector('[data-atlas-material-toolbar]');
@@ -52,7 +54,7 @@
     buttons.forEach(function (button) { button.setAttribute('aria-pressed', String(button.dataset.atlasFilter === kind)); });
     if (status) status.textContent = shown === 1 ? status.dataset.single : status.dataset.plural.replace('{count}', String(shown));
   }
-  toolbar.addEventListener('click', function (event) {
+  pageScope.listen(toolbar, 'click', function (event) {
     var button = event.target.closest('button[data-atlas-filter]');
     if (button && toolbar.contains(button)) showKind(button.dataset.atlasFilter);
   });
@@ -64,7 +66,14 @@
       if (target.closest('[data-atlas-material]').hidden) showKind('all');
     }
   }
-  window.addEventListener('hashchange', revealMaterialHash);
+  reader.querySelectorAll('.atlas-material-index a').forEach(function (link) {
+    pageScope.listen(link, 'click', function () {
+      if (materials.some(function (item) { return '#' + item.id === link.hash && item.hidden; })) showKind('all');
+    });
+  });
+  pageScope.listen(window, 'hashchange', revealMaterialHash);
   toolbar.hidden = false;
   showKind('all');
 }());
+
+});

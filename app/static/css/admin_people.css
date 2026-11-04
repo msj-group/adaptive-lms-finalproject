@@ -174,5 +174,4 @@ html[dir='rtl'] .admin-atlas .pf-expand[open]>summary>.figma-icon:last-child { t
   .admin-atlas .pf-reader { scroll-margin-block-start:90px; }
 }
 @media(prefers-reduced-motion:reduce) { .admin-atlas .pf-reading-enter { animation:none; } }
-.admin-atlas[data-ui-motion='reduce'] .pf-reading-enter { animation:none; }
 @media print { .admin-atlas .pf-workspace { display:block; height:auto; overflow:visible; } .admin-atlas .pf-directory,.admin-atlas .pf-filters,.admin-atlas .pf-heading>.btn { display:none; } .admin-atlas .pf-reader { display:block; overflow:visible; } }

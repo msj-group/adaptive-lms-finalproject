@@ -22,5 +22,5 @@
   {% endfor %}
 </div>
 {% else %}<div class="student-activity-empty">{{ ui.icon('layers',26) }}<h3>No activities in this view</h3></div>{% endif %}
-<footer class="student-activity-list-footer"><p>{{ _n('Page %(page)d · %(count)d activity shown', 'Page %(page)d · %(count)d activities shown', items|length, page=page) }}{% if has_next %}<span>More on the next page</span>{% endif %}</p><p class="student-activity-timezone">{{ ui.icon('clock',14) }}<span>{{ _('Times shown in %(timezone)s',timezone=tz_name) }}</span></p></footer>
+<footer class="student-activity-list-footer"><p>{{ _n('Page %(page)d · %(count)d activity shown', 'Page %(page)d · %(count)d activities shown', items|length, page=page) }}{% if has_next %}<span>More on the next page</span>{% endif %}</p></footer>
 {% if page > 1 or has_next %}<nav class="activity-hub-pager student-activity-pager" aria-label="Activity pages">{% if page > 1 %}<a class="btn btn--secondary" href="{{ url_for('student.activities',page=page-1,type=selected_type,state=selected_state,course=selected_course,group=selected_group) }}">Previous</a>{% endif %}{% if has_next %}<a class="btn btn--secondary" href="{{ url_for('student.activities',page=page+1,type=selected_type,state=selected_state,course=selected_course,group=selected_group) }}">Next</a>{% endif %}</nav>{% endif %}

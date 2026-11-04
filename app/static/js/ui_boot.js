@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Run before styles: restore only public display choices, never learning data. */
 (function () {
   "use strict";
@@ -12,12 +14,14 @@
     root.dataset.theme = preference === "system" ? (dark.matches ? "dark" : "light") : preference;
   }
   apply();
-  dark.addEventListener("change", function () { if (preference === "system") apply(); });
+  pageScope.listen(dark, "change", function () { if (preference === "system") apply(); });
   try {
     var settings = JSON.parse(localStorage.getItem("aelms.display.v1") || "{}");
-    root.dataset.uiMotion = settings && settings.motion === "reduce" ? "reduce" : "system";
     root.dataset.uiDensity = settings && settings.density === "compact" ? "compact" : "comfortable";
   } catch (_) { /* Native preferences and system defaults remain usable. */ }
+  try {
+    if (sessionStorage.getItem("aelms.sidebar.collapsed") === "true") root.dataset.workspaceSidebar = "collapsed";
+  } catch (_) { /* The sidebar starts open. */ }
   function text(message, values) {
     if (typeof message !== "string") return message;
     var normalized = message.replace(/\s+/g, " ").trim();
@@ -42,3 +46,5 @@
     apply();
   } };
 })();
+
+});

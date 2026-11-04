@@ -253,19 +253,9 @@
 </div>
 </dl>
 <footer>
-          {% if item.move_up_token %}
+          {% if operational and not frozen_message %}
           <div class="ds-row yc-actions" style="gap: var(--space-2)">
             <a class="btn btn--secondary" href="{{ url_for('teacher.listening_question_edit', group_public_id=group.public_id, listening_public_id=activity.public_id, question_public_id=item.public_id) }}">Edit</a>
-            <form method="post" action="{{ url_for('teacher.listening_question_move_up', group_public_id=group.public_id, listening_public_id=activity.public_id, question_public_id=item.public_id) }}" class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <input type="hidden" name="listening_state" value="{{ item.move_up_token }}">
-              <button type="submit" class="btn btn--secondary" aria-label="Move question {{ item.number }} up">Move Up</button>
-            </form>
-            <form method="post" action="{{ url_for('teacher.listening_question_move_down', group_public_id=group.public_id, listening_public_id=activity.public_id, question_public_id=item.public_id) }}" class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <input type="hidden" name="listening_state" value="{{ item.move_down_token }}">
-              <button type="submit" class="btn btn--secondary" aria-label="Move question {{ item.number }} down">Move Down</button>
-            </form>
           </div>
           {% else %}
           <span class="ds-section__desc" style="margin:0">Read only</span>

@@ -53,9 +53,10 @@ from app.blueprints.collector.hooks import note_outcome
 from app.blueprints.student import student_bp
 from app.blueprints.student.routes import private_no_store
 from app.extensions import db
-from app.models import UserRole
+from app.models import Lesson, UserRole
 from app.security.decorators import roles_required
 from app.services import lesson_progress_transactions as progress_tx
+from app.services.course_pdf import lesson_document, serve_pdf_page
 from app.services.lesson_progress_queries import (
     build_lesson_progress_view,
     student_lesson_progress,
@@ -108,7 +109,7 @@ def group_units(group_public_id):
         course_title=group.course.title,
         level_name=group.course.level.name,
         term_name=group.academic_term.name,
-        units=outline_units(group.id, current_user.id),
+        units=outline_units(group.id, current_user.id, include_material_index=True),
     )
 
 
@@ -162,6 +163,23 @@ def _record_open(student_id, progress):
         current_app.logger.exception(
             "Recording a lesson opening failed; the lesson page itself was served normally"
         )
+
+
+@student_bp.get(
+    "/groups/<group_public_id>/units/<unit_public_id>/lessons/<lesson_public_id>"
+    "/document/<document_id>/pages/<int:page_number>"
+)
+@roles_required(_STUDENT)
+def lesson_document_page(group_public_id, unit_public_id, lesson_public_id, document_id, page_number):
+    progress = student_lesson_progress(current_user.id, group_public_id, unit_public_id, lesson_public_id)
+    if progress is None:
+        abort(404)
+    lesson = db.session.get(Lesson, progress.lesson_id)
+    document = lesson_document(lesson) if lesson else None
+    if (document is None or document.uploaded_file.public_id != document_id
+            or not lesson.page_start <= page_number <= lesson.page_end):
+        abort(404)
+    return serve_pdf_page(document, page_number)
 
 
 @student_bp.post(

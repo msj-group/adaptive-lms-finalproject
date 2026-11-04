@@ -6,7 +6,7 @@
 {% set grade_tab = request.endpoint in ['admin.gradebook_overview', 'admin.group_gradebook'] %}
 {% set reader_kind = {'admin.attendance_overview':'attendance','admin.gradebook_overview':'grades','admin.group_attendance':'group','admin.attendance_session_detail':'session','admin.group_gradebook':'gradebook'}.get(request.endpoint, '') %}
 <div class="al-page" data-learning-workspace data-learning-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}" data-learning-group-url="{{ url_for('admin.group_attendance',group_public_id='__group__') }}" data-learning-session-url="{{ url_for('admin.attendance_session_detail',group_public_id='__group__',session_public_id='__session__') }}" data-learning-gradebook-url="{{ url_for('admin.group_gradebook',group_public_id='__group__') }}">
-  <header class="al-heading ad-page-head"><div><p class="ad-eyebrow">Administration / Learning</p><h1 data-workspace-page-heading>Attendance &amp; grades<span class="al-heading-dot" aria-hidden="true">.</span></h1><p class="al-description">A clearer view of every class and gradebook.</p></div></header>
+  <h1 class="sr-only" data-workspace-page-heading>Attendance &amp; grades</h1>
   <nav class="al-tabs ad-tabs" aria-label="Learning workspace">
     <a href="{{ url_for('admin.attendance_overview') }}"{% if not grade_tab %} aria-current="page"{% endif %}>{{ learning_ui.icon('activity',17) }} Attendance</a>
     <a href="{{ url_for('admin.gradebook_overview') }}"{% if grade_tab %} aria-current="page"{% endif %}>{{ learning_ui.icon('book',17) }} Gradebook setup</a>

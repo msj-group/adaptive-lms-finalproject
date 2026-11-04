@@ -21,15 +21,9 @@ class LessonProgress(db.Model):
     """One Student's progress on one Lesson, through one Group
     (Phase 4 / M13).
 
-    **Bound to the Group the Student is authorized through.** A Lesson
-    already determines its Group (``lesson.unit.group``), so ``group_id`` is
-    deliberately redundant: the Part requires progress to name the exact
-    Group whose active Enrollment granted access. The database cannot prove
-    ``lesson.unit.group_id == group_id`` -- ``lessons`` has no ``group_id``
-    for a composite foreign key to reference -- so the completion
-    transaction proves it against locked rows before every write, and every
-    read joins ``Unit.group_id == LessonProgress.group_id``, so a row that
-    ever disagreed would simply never be shown.
+    **Bound to the Group that grants access.** A shared Lesson can appear
+    in several Groups. Every write proves that the Unit belongs to the
+    recorded Group or its Course, and reads enforce the same ownership.
 
     **At most one row per Student, Group and Lesson.** The UNIQUE constraint
     is the final duplicate defense behind the application's own lookups.

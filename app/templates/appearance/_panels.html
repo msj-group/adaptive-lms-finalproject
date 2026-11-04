@@ -27,7 +27,7 @@
     <div class="field"><label for="display-theme">Appearance</label><select id="display-theme" name="theme"><option value="system"{% if ui_theme() == 'system' %} selected{% endif %}>Follow device setting</option><option value="light"{% if ui_theme() == 'light' %} selected{% endif %}>Light</option><option value="dark"{% if ui_theme() == 'dark' %} selected{% endif %}>Dark</option></select></div>
     <button class="btn btn--primary" type="submit" data-research-id="display_preferences_submit">Apply preferences</button>
   </form>
-  <div class="utility-device-options"><div class="field"><label for="display-motion">Motion</label><select id="display-motion" data-ui-preference="motion"><option value="system">Follow device setting</option><option value="reduce">Reduce motion</option></select></div><div class="field"><label for="display-density">Spacing</label><select id="display-density" data-ui-preference="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></div></div>
+  <div class="utility-device-options"><div class="field"><label for="display-density">Spacing</label><select id="display-density" data-ui-preference="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></div></div>
   <p class="utility-panel-note">Saved only on this device. No answers, messages or personal records are stored by these preferences.</p>
 </section>
 <section id="workspace-help-panel" class="workspace-utility-panel" popover="auto" role="dialog" aria-labelledby="help-panel-title" data-utility-panel>

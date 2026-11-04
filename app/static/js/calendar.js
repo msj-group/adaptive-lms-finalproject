@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Local presentation over server-authorized civil dates; no source writes. */
 (function () {
   "use strict";
@@ -51,7 +53,7 @@
     if (announce) live.textContent = heading.textContent + ", " + countLabel.textContent;
   }
   dates.forEach(function (link) {
-    link.addEventListener("click", function (event) {
+    pageScope.listen(link, "click", function (event) {
       if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       event.preventDefault(); selected = link.dataset.calDate;
       if (mobile.matches) view = "day";
@@ -59,7 +61,7 @@
     });
   });
   root.querySelectorAll("[data-cal-view]").forEach(function (button) {
-    button.addEventListener("click", function () { view = button.dataset.calView; preferred = view; render(true); remember(); });
+    pageScope.listen(button, "click", function () { view = button.dataset.calView; preferred = view; render(true); remember(); });
   });
   function navigateWeek(event, delta) {
     if (view === "month" || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
@@ -87,8 +89,10 @@
       event.preventDefault(); selected = root.dataset.today; render(true); remember();
     }
   });
-  document.addEventListener("click", function (event) { if (!filter.contains(event.target)) filter.open = false; });
-  filter.addEventListener("keydown", function (event) { if (event.key === "Escape") { filter.open = false; filter.querySelector("summary").focus(); } });
-  mobile.addEventListener("change", function () { view = mobile.matches ? (view === "upcoming" ? view : "day") : preferred; render(false); });
+  pageScope.listen(document, "click", function (event) { if (!filter.contains(event.target)) filter.open = false; });
+  pageScope.listen(filter, "keydown", function (event) { if (event.key === "Escape") { filter.open = false; filter.querySelector("summary").focus(); } });
+  pageScope.listen(mobile, "change", function () { view = mobile.matches ? (view === "upcoming" ? view : "day") : preferred; render(false); });
   render(false);
 })();
+
+});

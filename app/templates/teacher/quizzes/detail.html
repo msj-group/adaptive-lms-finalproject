@@ -14,14 +14,7 @@
     make an authorization decision. The route already proved this Teacher's
     active assignment to the Group and the Quiz's ownership by that Group.
 
-    This page itself writes nothing. The Move Up / Move Down forms below are
-    POSTs to their own routes, each carrying its own CSRF token and its own
-    signed state; every one of them is re-authorized and re-checked against
-    locked rows server-side. There is no publish, delete, archive, duplicate,
-    attempt, score or answer-release control, because none exists server-side
-    either. `operational` was decided server-side and is re-proved against
-    locked rows by each write route, so this template never decides
-    authorization -- hiding a control here is a courtesy, not the rule. -#}
+    `operational` controls the edit link and is rechecked by the edit route. -#}
 <div class="ds-row yc-actions" style="justify-content: space-between; align-items: center; margin-bottom: var(--space-2)">
 
   <span class="ds-row yc-actions" style="gap: var(--space-2)">
@@ -197,16 +190,6 @@
           {% if operational and not published and not frozen_message %}
           <div class="ds-row yc-actions" style="gap: var(--space-2)">
             <a class="btn btn--secondary" href="{{ url_for('teacher.quiz_question_edit', group_public_id=group.public_id, quiz_public_id=quiz.public_id, question_public_id=item.public_id) }}">Edit</a>
-            <form method="post" action="{{ url_for('teacher.quiz_question_move_up', group_public_id=group.public_id, quiz_public_id=quiz.public_id, question_public_id=item.public_id) }}" class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <input type="hidden" name="question_state" value="{{ item.move_up_token }}">
-              <button type="submit" class="btn btn--secondary" aria-label="Move question {{ item.number }} up">Move Up</button>
-            </form>
-            <form method="post" action="{{ url_for('teacher.quiz_question_move_down', group_public_id=group.public_id, quiz_public_id=quiz.public_id, question_public_id=item.public_id) }}" class="yc-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <input type="hidden" name="question_state" value="{{ item.move_down_token }}">
-              <button type="submit" class="btn btn--secondary" aria-label="Move question {{ item.number }} down">Move Down</button>
-            </form>
           </div>
           {% else %}
           <span class="ds-section__desc" style="margin:0">Read only</span>

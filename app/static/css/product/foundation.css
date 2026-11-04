@@ -140,5 +140,4 @@ html[data-theme='dark'] .yc-workspace { --st-ink:#e1eaff; --st-muted:#b1c2df; --
 @supports not (backdrop-filter:blur(1px)) { .yc-workspace :is(.st-panel,.st-feature-panel,.st-empty,.st-sidebar,.st-nav-link,.empty-state,.st-icon-button) { background:var(--st-solid); } }
 @media(prefers-reduced-transparency:reduce) { .yc-workspace { --st-glass:var(--st-solid); --st-control:var(--st-solid); } .yc-workspace * { backdrop-filter:none!important; } }
 @media(prefers-reduced-motion:reduce) { .yc-workspace *,.yc-workspace *::before,.yc-workspace *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
-html[data-ui-motion='reduce'] .yc-workspace *,html[data-ui-motion='reduce'] .yc-workspace *::before,html[data-ui-motion='reduce'] .yc-workspace *::after { animation:none!important; transition:none!important; }
 @media(forced-colors:active) { .yc-workspace :is(.btn,.st-course-action,.st-panel,.st-sidebar,.st-empty,.badge,.activity-choice) { border:1px solid CanvasText; } }

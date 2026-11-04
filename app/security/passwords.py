@@ -3,9 +3,9 @@ from argon2.exceptions import VerifyMismatchError, VerificationError
 
 _hasher = PasswordHasher()
 
-# Shared by administrator resets and authenticated self-service changes.
+# Shared by account provisioning, administrator resets and self-service changes.
 # Length-only policy; no composition rules or compromised-password blocklist.
-ACCOUNT_PASSWORD_MIN_LENGTH = 15
+ACCOUNT_PASSWORD_MIN_LENGTH = 4
 ACCOUNT_PASSWORD_MAX_LENGTH = 128
 
 

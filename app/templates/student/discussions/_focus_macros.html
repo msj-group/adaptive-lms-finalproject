@@ -62,7 +62,6 @@
   <div class="discussion-reader-top"><span class="discussion-reader-label"><span class="discussion-reader-label-desktop">Discussion</span><span class="discussion-reader-label-mobile" dir="auto">{{ group.name }}</span></span>{{ status_badge(topic.is_locked) }}</div>
   {% if list_view %}<h2 dir="auto">{{ topic.title }}</h2>{% else %}<h1 dir="auto">{{ topic.title }}</h1>{% endif %}
   <div class="discussion-author">{{ ui.avatar(topic.author_name) }}<div><strong dir="auto">{{ topic.author_name }}</strong><span>{{ _(topic.author_role_label) }}<span aria-hidden="true"> · </span><time datetime="{{ topic.created_local.isoformat() }}">{{ topic.created_local.strftime('%Y-%m-%d %H:%M') }}</time></span></div></div>
-  <p class="discussion-timezone">Times are shown in the center timezone.</p>
 </header>
 {% if topic.is_locked %}<div class="discussion-lock-notice" role="status">{{ ui.icon('lock', 17) }}<span>{{ _('This topic is locked.') }} {% if topic.was_moderated %}{{ _('Locked since %(time)s.', time=topic.updated_local.strftime('%Y-%m-%d %H:%M')) }} {% endif %}{{ _('It stays readable, but no new replies can be added.') }}</span></div>{% endif %}
 <article class="discussion-prompt" id="topic" aria-label="Discussion prompt"><div data-topic-body dir="auto">{{ topic.body }}</div></article>

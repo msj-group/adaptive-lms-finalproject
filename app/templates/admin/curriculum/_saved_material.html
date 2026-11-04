@@ -1,0 +1,19 @@
+{% macro item(course_id, revision, lesson, material, pin_version, origin) %}
+<li id="ce-saved-{{ material.public_id }}" data-order="{{ material.display_order }}">
+  <span dir="auto">{{ material.title }}</span>
+  <small dir="auto">{{ lesson.title }}</small>
+  <div class="ce-actions">
+    {% if material.pin_page %}<a class="btn btn--secondary ce-small-action" href="#material-{{ material.public_id }}" data-page-target="{{ material.pin_page }}">{{ _('Page') }} {{ material.pin_page }}</a>{% endif %}
+    <a class="btn btn--secondary ce-small-action" href="{{ curriculum_url('edit', item_id=material.public_id, next='content', **origin) }}">{{ _('Edit details') }}</a>
+    {% if material.pin_page %}
+    <form class="ce-inline" method="post" action="{{ curriculum_url('media_save', lesson_id=lesson.public_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="revision" value="{{ revision }}">
+      <input type="hidden" name="material" value="{{ material.public_id }}">
+      <input type="hidden" name="material_version" value="{{ pin_version(material) }}">
+      <button class="btn btn--secondary ce-small-action" name="action" value="archive">{{ _('Archive') }}</button>
+    </form>
+    {% endif %}
+  </div>
+</li>
+{% endmacro %}

@@ -1,0 +1,159 @@
+/* Phone composition: deliberate action groups, readable cards and touch targets. */
+@media screen and (max-width:767px) {
+  .yc-workspace #workspace-content :is(.btn,.ad-button,.ad-row-link,.atlas-link,.cs-text-link,.tgb-text-link,.ls-button,.ls-text-link) {
+    min-height:48px; min-width:44px; padding:11px 14px; border-radius:14px;
+    font-size:14px; line-height:1.35; white-space:normal; text-align:center;
+    justify-content:center; text-decoration:none; box-sizing:border-box;
+  }
+  .yc-workspace #workspace-content :is(.btn,.ls-button) > svg { width:18px; height:18px; flex:0 0 auto; }
+  .yc-workspace #workspace-content :is(input:not([type=hidden],[type=checkbox],[type=radio],[type=range],[type=submit]),select,textarea),
+  .yc-workspace [data-header-filter-panel] :is(input:not([type=hidden],[type=checkbox],[type=radio]),select,textarea) {
+    min-height:48px; min-width:0; max-width:100%; font-size:16px;
+  }
+  .yc-workspace #workspace-content :is(.ad-form-grid,.ad-form-layout,.ad-form-workspace,.workspace-form-grid,.account-settings-grid) { grid-template-columns:minmax(0,1fr); }
+  .yc-workspace #workspace-content :is(.ad-form-foot,.cs-actions,.tgb-actions,.account-crop-actions),
+  .yc-workspace :is(.record-filter-actions,.teacher-groups-filter-actions,.ta-filter-actions,.tan-filter-actions,.review-filter-actions,.student-activity-filter-actions,.aan-filter-actions,.fp-filter-actions) {
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; align-items:stretch;
+  }
+  .yc-workspace :is(.ad-form-foot,.cs-actions,.tgb-actions,.account-crop-actions,.record-filter-actions,.teacher-groups-filter-actions,.ta-filter-actions,.tan-filter-actions,.review-filter-actions,.student-activity-filter-actions,.aan-filter-actions,.fp-filter-actions) > :is(.btn,.ad-row-link,button,a) {
+    width:100%; margin:0; min-height:48px;
+  }
+  .yc-workspace :is(.ad-form-foot,.cs-actions,.tgb-actions,.account-crop-actions,.record-filter-actions,.teacher-groups-filter-actions,.ta-filter-actions,.tan-filter-actions,.review-filter-actions,.student-activity-filter-actions,.aan-filter-actions,.fp-filter-actions) > :is(.btn--primary,:only-child) { grid-column:1/-1; }
+  .yc-workspace #workspace-content .ad-form-foot > :is(span,.ad-actions) { grid-column:1/-1; }
+  .yc-workspace #workspace-content .ad-form-foot > .ad-actions { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+  .yc-workspace #workspace-content .ad-form-foot > .ad-actions > .btn { width:100%; min-height:48px; }
+  .yc-workspace #workspace-content .ad-form-workspace > .ad-field-panel { order:1; }
+  .yc-workspace #workspace-content .ad-form-workspace > .ad-save-panel { order:2; }
+  .yc-workspace #workspace-content .ad-form-workspace > aside { order:3; }
+  .yc-workspace #workspace-content form .yc-actions:not(:has(h1)) { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+  .yc-workspace #workspace-content form .yc-actions > .btn { width:100%; }
+  .yc-workspace #workspace-content .teacher-attendance > .yc-actions,
+  .yc-workspace #workspace-content .tat-card-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .yc-workspace #workspace-content .teacher-attendance > .yc-actions > .btn,
+  .yc-workspace #workspace-content .tat-card-actions > .btn { width:100%; }
+  .admin-atlas .dd-enrollment-dialog .ad-enrollment-picker-foot { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+  .admin-atlas .dd-enrollment-dialog .ad-enrollment-picker-foot > .btn { width:100%; min-height:48px; }
+  .yc-workspace #workspace-content :is(.ad-tabs,.workspace-tabs,.atlas-tabs,.tan-tabs,.rs-tabs,.cs-tabs) {
+    display:flex; flex-wrap:nowrap; min-width:0; max-width:100%; overflow-x:auto;
+    overscroll-behavior-x:contain; scrollbar-width:none; gap:8px;
+  }
+  .yc-workspace #workspace-content :is(.ad-tabs,.workspace-tabs,.atlas-tabs,.tan-tabs,.rs-tabs,.cs-tabs) > a {
+    flex:0 0 auto; min-height:44px; padding-block:11px; white-space:nowrap; font-size:13px;
+  }
+  .yc-workspace .st-header-actions .st-icon-button,
+  .yc-workspace .workspace-page-back { min-width:44px; min-height:44px; }
+  .yc-workspace #workspace-content :is(.tgb-back,.review-back,.tdisc-back,.announcement-back,.discussion-back) {
+    display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:10px 12px;
+    border:1px solid var(--st-border); border-radius:12px; background:var(--st-solid);
+    font-size:13px; line-height:1.4; text-decoration:none; box-sizing:border-box;
+  }
+  .yc-workspace .workspace-more-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .yc-workspace .workspace-more-grid .st-nav-link { min-height:64px; padding:12px; display:flex; flex-direction:row; align-items:center; gap:10px; font-size:13px; line-height:1.4; text-align:start; border-radius:14px; }
+  .yc-workspace .workspace-more-grid .workspace-nav-icon { flex:0 0 auto; }
+  .yc-workspace .workspace-more-grid .workspace-nav-label { min-width:0; overflow-wrap:anywhere; }
+  .yc-workspace #workspace-content :is(.st-footer,.ax-footer) { font-size:12px; }
+  .yc-workspace :is(.workspace-confirmation,.app-flash-dialog) form {
+    display:grid; grid-template-columns:minmax(0,1fr); gap:10px;
+  }
+  .yc-workspace :is(.workspace-confirmation,.app-flash-dialog) form .btn { width:100%; min-height:48px; font-size:14px; }
+
+  /* Teacher groups have one main action and three equal secondary destinations. */
+  .yc-workspace #workspace-content .teacher-groups-list {
+    display:grid; gap:16px; overflow:visible; background:transparent; border:0; box-shadow:none;
+  }
+  .yc-workspace #workspace-content .teacher-group {
+    overflow:hidden; border:1px solid var(--st-border); border-radius:20px; background:var(--st-solid); box-shadow:var(--ui-shadow-sm);
+  }
+  .yc-workspace #workspace-content .teacher-group > summary { grid-template-columns:minmax(0,1fr) 24px; gap:12px; padding:16px; }
+  .yc-workspace #workspace-content .teacher-group-identity { grid-column:1; grid-row:1; gap:6px; }
+  .yc-workspace #workspace-content .teacher-group-arrow { grid-column:2; grid-row:1; justify-self:end; }
+  .yc-workspace #workspace-content .teacher-group-name { font-size:19px; line-height:1.35; }
+  .yc-workspace #workspace-content .teacher-group-course { font-size:12px; line-height:1.6; }
+  .yc-workspace #workspace-content .teacher-group-meta { grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .yc-workspace #workspace-content .teacher-group-state { flex:1; flex-direction:row; flex-wrap:wrap; align-items:center; gap:6px 8px; }
+  .yc-workspace #workspace-content .teacher-group-period { font-size:11px; }
+  .yc-workspace #workspace-content .teacher-group-count { flex:0 0 auto; max-width:100px; font-size:12px; text-align:end; }
+  .yc-workspace #workspace-content .teacher-group-body { padding:0 16px 16px; }
+  .yc-workspace #workspace-content .teacher-group-facts { display:grid; grid-template-columns:minmax(0,1fr); gap:0; margin:0 0 16px; }
+  .yc-workspace #workspace-content .teacher-group-facts > div { display:grid; grid-template-columns:102px minmax(0,1fr); gap:12px; padding:12px 0; border-bottom:1px solid var(--st-divider); }
+  .yc-workspace #workspace-content .teacher-group-facts > div:last-child { grid-column:auto; grid-template-columns:minmax(0,1fr); gap:4px; }
+  .yc-workspace #workspace-content .teacher-group-facts dt { margin:0; font-size:12px; line-height:1.5; letter-spacing:0; text-transform:none; }
+  .yc-workspace #workspace-content .teacher-group-facts dd { font-size:13px; line-height:1.5; }
+  .yc-workspace #workspace-content .teacher-group-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding:0; border:0; }
+  .yc-workspace #workspace-content .teacher-group-actions > .btn--primary { grid-column:1/-1; min-height:48px; }
+  .yc-workspace #workspace-content .teacher-group-actions > .btn:not(.btn--primary) { min-height:76px; padding:10px 4px; flex-direction:column; gap:8px; font-size:12px; }
+  .yc-workspace #workspace-content .teacher-group-actions > .btn:not(.btn--primary) > svg { width:21px; height:21px; }
+  .yc-workspace #workspace-content .teacher-groups-search { min-width:0; }
+  .yc-workspace #workspace-content .teacher-groups-search input { width:0; }
+  .yc-workspace #workspace-content .tgb-group-card > .btn { width:100%; min-height:48px; }
+  .yc-workspace #workspace-content [data-tgb-sections] > .tgb-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; width:100%; }
+  .yc-workspace #workspace-content [data-tgb-sections] > .tgb-tabs > a { min-height:48px; padding:10px 6px; font-size:13px; justify-content:center; text-align:center; }
+  .yc-workspace #workspace-content .tgb-filters button { min-height:44px; padding:10px; font-size:13px; }
+  .yc-workspace #workspace-content .tgb-wizard-nav { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  .yc-workspace #workspace-content .tgb-wizard-nav button { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; height:auto; min-height:64px; padding:8px 4px; font-size:12px; line-height:1.3; border:1px solid var(--st-border); border-radius:12px; background:var(--st-control); color:var(--st-ink); }
+  .yc-workspace #workspace-content .tgb-wizard-nav button > span { display:grid; place-items:center; width:20px; height:20px; border-radius:50%; background:var(--st-wash); font-size:11px; }
+  .yc-workspace #workspace-content .tgb-wizard-nav button[aria-current] { border-color:var(--ui-primary); background:var(--st-wash); color:var(--ui-primary); }
+  .yc-workspace #workspace-content .tgb-form-actions { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+  .yc-workspace #workspace-content .tgb-form-actions > .btn { width:100%; font-size:14px; }
+  .yc-workspace #workspace-content .ta-create > summary { min-height:56px; padding:16px; }
+  .yc-workspace #workspace-content .ta-create h2 { font-size:19px; }
+  .yc-workspace #workspace-content .ta-create-body > form { grid-template-columns:minmax(0,1fr); }
+
+  /* A course cover is a short, legible band above the card on phones. */
+  .student-atlas #workspace-content .atlas-course-card { display:block; }
+  .student-atlas #workspace-content .atlas-course-cover { width:100%; min-height:84px; height:auto; padding:18px; }
+  .student-atlas #workspace-content .atlas-cover-level { font-size:23px; line-height:1.3; letter-spacing:0; overflow-wrap:normal; word-break:normal; }
+  .student-atlas #workspace-content .atlas-cover-caption { position:static; writing-mode:horizontal-tb; transform:none; margin-top:6px; font-size:10px; }
+  .student-atlas #workspace-content .atlas-course-copy { padding:18px; }
+  .student-atlas #workspace-content .atlas-course-meta { font-size:12px; line-height:1.5; }
+  .student-atlas #workspace-content .atlas-card-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .student-atlas #workspace-content .atlas-card-actions > a { width:100%; min-height:48px; font-size:13px; padding:10px 8px; }
+  .student-atlas #workspace-content .atlas-card-actions > :only-child { grid-column:1/-1; }
+  .student-atlas #workspace-content .atlas-progress-label { font-size:12px; }
+  .student-atlas #workspace-content .atlas-resume .atlas-hero-action { min-height:48px; font-size:14px; }
+
+  /* Admin lists become rows and coherent action areas, rather than tiny columns. */
+  .admin-atlas #workspace-content .ad-page-head:not(:has(.ad-tabs)) > :is(a.btn,.ad-actions) { width:100%; }
+  .admin-atlas #workspace-content .ad-page-head:not(:has(.ad-tabs)) > .ad-actions > .btn:only-child { width:100%; }
+  .admin-atlas #workspace-content .fp-workspace-toolbar { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; }
+  .admin-atlas #workspace-content .fp-workspace-toolbar .fp-tabs { width:100%; }
+  .admin-atlas #workspace-content .fp-workspace-toolbar .fp-heading-actions { width:100%; }
+  .admin-atlas #workspace-content .fp-workspace-toolbar .fp-heading-actions > .btn { width:100%; max-width:none; min-height:48px; font-size:14px; }
+  .admin-atlas #workspace-content .ff-accounts { display:grid; grid-template-columns:minmax(0,1fr); gap:0; }
+  .admin-atlas #workspace-content .ff-account { display:grid; grid-template-columns:36px minmax(0,1fr) auto; align-items:center; gap:12px; padding:16px; min-height:80px; border-radius:0; border-bottom:1px solid var(--ad-line); }
+  .admin-atlas #workspace-content .ff-account:last-child { border-bottom:0; }
+  .admin-atlas #workspace-content .ff-person { min-width:0; flex-basis:auto; }
+  .admin-atlas #workspace-content .ff-person strong { font-size:14px; }
+  .admin-atlas #workspace-content .ff-account-amount { width:auto; max-width:none; padding:0; text-align:end; display:block; }
+  .admin-atlas #workspace-content .ff-account-amount strong { font-size:17px; }
+  .admin-atlas #workspace-content .ff-position { font-size:12px; margin-top:4px; }
+  .admin-atlas #workspace-content .ff-primary-tabs .ff-currency { display:none; }
+  .admin-atlas #workspace-content .ff-desk--accounts.ff-enabled.ff-open > [data-finance-origin] { display:none; }
+  .admin-atlas #workspace-content .ff-desk--accounts.ff-enabled.ff-open { grid-template-columns:minmax(0,1fr); }
+  .admin-atlas #workspace-content .agroups-open { min-height:44px; padding:10px 0; font-size:13px; }
+  .admin-atlas #workspace-content .agroups-panel-tools { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .admin-atlas #workspace-content .agroups-panel-tools > .btn { width:100%; min-height:48px; }
+  .admin-atlas #workspace-content .agroups-panel-actions { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+  .admin-atlas #workspace-content .agroups-panel-actions > .btn { width:100%; }
+
+  /* Keep the Researcher account reachable and give its tools full touch targets. */
+  .rs-suite .rs-header { padding-inline:16px; }
+  .rs-suite .rs-header .workspace-account { display:block; }
+  .rs-suite .rs-header .rs-menu-toggle { display:none; }
+  .rs-suite .rs-header .rs-search { width:44px; height:44px; }
+  .rs-suite #workspace-content .rs-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; width:100%; }
+  .rs-suite #workspace-content .rs-actions > :is(a,button,form) { width:100%; min-height:48px; }
+  .rs-suite #workspace-content .rs-actions > :is(.btn--primary,:only-child) { grid-column:1/-1; }
+  .rs-suite #workspace-content .rs-page-heading > .rs-actions { width:100%; }
+  .rs-suite #workspace-content .yc-form > div:has(>button.btn:only-child) > .btn { width:100%; }
+  .rs-suite #workspace-content :is(.rs-page-heading p,.rs-card p,.rs-session-card p,.rs-session-card-foot,.rs-scope) { font-size:12px; line-height:1.65; }
+  .rs-suite #workspace-content .rs-metric-label { font-size:12px; }
+  .rs-suite #workspace-content .rs-metric small { font-size:11px; }
+  .rs-suite #workspace-content .rs-session-card-head strong { font-size:14px; }
+  .rs-suite .rs-more .st-nav-link { min-height:48px; font-size:13px; }
+  .rs-suite #workspace-content .rs-tabs { width:100%; }
+  .yc-workspace #workspace-content :is(.calendar-mobile-views,.fp-agenda-controls) { display:flex; gap:4px; }
+  .yc-workspace #workspace-content :is(.calendar-mobile-views,.fp-agenda-controls) > button { min-height:44px; min-width:44px; padding:9px 12px; font-size:13px; }
+  .ce-focused .ce-workspace .btn { min-height:44px; font-size:13px; }
+  .ce-focused .ce-workspace .ce-icon-action { min-width:44px; width:44px; flex-basis:44px; }
+}

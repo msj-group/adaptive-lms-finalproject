@@ -21,7 +21,6 @@
   <div data-planner-messages>{{ macros.flash_messages() }}</div>
 
   <div class="alert alert--info" data-planner-event-hint style="margin-bottom: var(--space-6)">
-    Times are entered and shown in the centre timezone.
     Leave both times empty for an all-day event. Cancelling an event later is permanent —
     it can never be edited or restored afterwards.
   </div>
@@ -48,7 +47,7 @@
       <div class="field__error">{{ error }}</div>
       {% endfor %}
       <div class="ds-section__desc" style="margin: var(--space-1) 0 0">
-        One day, in the centre timezone. An event that spans several days is several events.
+        An event takes place on one date. Create separate events for additional dates.
       </div>
     </div>
 
@@ -96,6 +95,6 @@
       <button type="submit" class="btn btn--primary">{{ form.submit.label.text }}</button>
       <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
     </div>
-  </form><aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Event visibility</h2></div><p class="ad-meta">A centre event is visible to active students and teachers. It takes place on one date in the centre timezone.</p></section><section class="ad-card"><div class="ad-card-top"><h2>Times &amp; cancellation</h2></div><p class="ad-meta">Leave both times empty for an all-day event. Cancelling a saved event is permanent; cancelled records remain available to administration.</p></section></aside></div>
+  </form><aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Event visibility</h2></div><p class="ad-meta">A centre event is visible to active students and teachers. It takes place on one date.</p></section><section class="ad-card"><div class="ad-card-top"><h2>Times &amp; cancellation</h2></div><p class="ad-meta">Leave both times empty for an all-day event. Cancelling a saved event is permanent; cancelled records remain available to administration.</p></section></aside></div>
 </div>
 {% endblock %}

@@ -1,9 +1,7 @@
 {% import '_figma_ui.html' as atlas_icons %}
 {% macro heading(title, subtitle='', eyebrow='', actions='') -%}
-<header class="ad-page-head" data-atlas-heading>
-  <div>{% if eyebrow %}<p class="ad-eyebrow">{{ _(eyebrow) }}</p>{% endif %}<h1 data-workspace-page-heading>{{ title }}</h1>{% if subtitle %}<p class="ad-subtitle">{{ _(subtitle) }}</p>{% endif %}</div>
-  {% if actions %}<div class="ad-actions">{{ actions }}</div>{% endif %}
-</header>
+<h1 class="sr-only" data-workspace-page-heading>{{ title }}</h1>
+{% if actions %}<div class="ad-actions">{{ actions }}</div>{% endif %}
 {%- endmacro %}
 {% macro person_avatar(name) -%}
 <span class="ad-avatar" aria-hidden="true">{% for word in name.split()[:2] %}{{ word[0]|upper }}{% endfor %}</span>

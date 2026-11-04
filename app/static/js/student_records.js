@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Native disclosure/GET filters remain usable without this enhancement. */
 (function () {
   "use strict";
@@ -7,7 +9,7 @@
   var enrollment = root.querySelector("[data-record-enrollment]");
   var filters = root.querySelector("[data-record-filters]");
   if (course && enrollment) {
-    course.addEventListener("change", function () {
+    pageScope.listen(course, "change", function () {
       Array.from(enrollment.options).forEach(function (option) {
         var eligible = option.value === "all" || course.value === "all" || option.dataset.course === course.value;
         option.hidden = !eligible;
@@ -17,10 +19,10 @@
     });
   }
   if (filters) {
-    document.addEventListener("click", function (event) {
+    pageScope.listen(document, "click", function (event) {
       if (filters.open && !filters.contains(event.target)) filters.open = false;
     });
-    filters.addEventListener("keydown", function (event) {
+    pageScope.listen(filters, "keydown", function (event) {
       if (event.key === "Escape" && filters.open) {
         event.preventDefault();
         filters.open = false;
@@ -29,3 +31,5 @@
     });
   }
 })();
+
+});

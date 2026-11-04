@@ -1,0 +1,27 @@
+{% extends "admin/curriculum/_editor_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% block title %}{{ _('Edit material') }}{% endblock %}
+{% block editor_content %}
+<section class="ce-workspace ce-material-details">
+  <a class="btn btn--secondary" href="{{ content_url }}">{{ _('Back to editor') }}</a>
+  {{ macros.flash_messages() }}
+  <form class="ad-card yc-form" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="snapshot" value="{{ snapshot }}">
+    <div class="field"><label class="field__label" for="title">{{ _('Title') }}</label><input class="field__input" id="title" name="title" maxlength="150" required value="{{ request.form.get('title', material.title) }}"></div>
+    <div class="field"><label class="field__label" for="search_keywords">{{ _('Search keywords') }}</label><input class="field__input" id="search_keywords" name="search_keywords" maxlength="500" value="{{ request.form.get('search_keywords', material.search_keywords or '') }}"></div>
+    {% if material.kind == 'rich_text' %}
+    <div class="field"><label class="field__label" for="content_html">{{ _('Rich text (HTML)') }}</label><textarea class="field__input" id="content_html" name="content_html" rows="8" maxlength="10000">{{ request.form.get('content_html', material.content_html) }}</textarea></div>
+    {% elif material.kind == 'external_link' %}
+    <div class="field"><label class="field__label" for="external_url">{{ _('HTTPS link') }}</label><input class="field__input" id="external_url" name="external_url" maxlength="2048" value="{{ request.form.get('external_url', material.external_url) }}"></div>
+    {% else %}
+    <a class="btn btn--secondary" href="{{ curriculum_url('file', item_id=material.public_id) }}" dir="auto">{{ material.uploaded_file.original_filename }}</a>
+    {% endif %}
+    <div class="ad-form-grid">
+      <div class="field"><label class="field__label" for="display_order">{{ _('Position') }}</label><input class="field__input" type="number" id="display_order" name="display_order" min="1" max="100000" required value="{{ request.form.get('display_order', material.display_order) }}"></div>
+      <div class="field"><label class="field__label" for="status">{{ _('Status') }}</label><select class="field__input" id="status" name="status">{% for value in ['active','archived'] %}<option value="{{ value }}"{% if value == request.form.get('status', material.status) %} selected{% endif %}>{{ _(value|capitalize) }}</option>{% endfor %}</select></div>
+    </div>
+    <div class="ce-actions"><button class="btn btn--primary" type="submit">{{ _('Save') }}</button><a class="btn btn--secondary" href="{{ content_url }}">{{ _('Cancel') }}</a></div>
+  </form>
+</section>
+{% endblock %}

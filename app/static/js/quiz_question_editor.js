@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Teacher question editor -- option rows and answer-mode help text.
  * Phase 4 / M04B. No dependency, no build step, no framework.
  *
@@ -73,18 +75,10 @@
 
   function refresh() {
     var current = rows();
-    current.forEach(function (row, index) {
+    current.forEach(function (row) {
       var remove = row.querySelector("[data-option-remove]");
-      var up = row.querySelector("[data-option-move-up]");
-      var down = row.querySelector("[data-option-move-down]");
       if (remove) {
         remove.disabled = current.length <= minOptions;
-      }
-      if (up) {
-        up.disabled = index === 0;
-      }
-      if (down) {
-        down.disabled = index === current.length - 1;
       }
     });
     addButton.disabled = current.length >= maxOptions;
@@ -130,26 +124,8 @@
     refresh();
   }
 
-  /* Reordering is a DOM move only. The request body's row order IS the
-   * order of the `option_key` fields, so nothing has to be renumbered and
-   * no checkbox is touched. */
-  function moveRow(row, delta) {
-    var current = rows();
-    var index = current.indexOf(row);
-    var target = index + delta;
-    if (index < 0 || target < 0 || target >= current.length) {
-      return;
-    }
-    if (delta < 0) {
-      list.insertBefore(row, current[target]);
-    } else {
-      list.insertBefore(current[target], row);
-    }
-    refresh();
-  }
-
-  list.addEventListener("click", function (event) {
-    var button = event.target.closest("button");
+  pageScope.listen(list, "click", function (event) {
+    var button = event.target.closest("[data-option-remove]");
     if (!button || !list.contains(button)) {
       return;
     }
@@ -157,16 +133,10 @@
     if (!row) {
       return;
     }
-    if (button.hasAttribute("data-option-remove")) {
-      removeRow(row);
-    } else if (button.hasAttribute("data-option-move-up")) {
-      moveRow(row, -1);
-    } else if (button.hasAttribute("data-option-move-down")) {
-      moveRow(row, 1);
-    }
+    removeRow(row);
   });
 
-  addButton.addEventListener("click", addRow);
+  pageScope.listen(addButton, "click", addRow);
 
   /* Answer mode: help text only. */
   var helps = Array.prototype.slice.call(form.querySelectorAll("[data-mode-help]"));
@@ -181,7 +151,7 @@
   }
 
   modeInputs.forEach(function (input) {
-    input.addEventListener("change", function () {
+    pageScope.listen(input, "change", function () {
       if (input.checked) {
         showHelpFor(input.value);
       }
@@ -197,3 +167,5 @@
 
   refresh();
 })();
+
+});

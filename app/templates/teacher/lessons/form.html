@@ -45,8 +45,7 @@
       {% for error in form.search_keywords.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
 
-    {# No Status or Order control: publication is changed only via
-       Publish / Unpublish, and lesson order only via move-up / move-down. #}
+    {# Publish and Unpublish own publication changes. #}
     <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
       {% if not lesson %}<button type="submit" name="after_save" value="materials" class="btn btn--secondary">Save and add materials</button>{% endif %}

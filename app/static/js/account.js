@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Local photo preview; native POST/CSRF and the server decoder own persistence. */
 (function () {
   "use strict";
@@ -115,7 +117,7 @@
       [82,73,70,70].every(function (value, index) { return bytes[index] === value; }) &&
       [87,69,66,80].every(function (value, index) { return bytes[index + 8] === value; });
   }
-  input.addEventListener("change", async function () {
+  pageScope.listen(input, "change", async function () {
     var sequence = ++revision;
     var file = input.files[0];
     var candidate = null;
@@ -158,9 +160,9 @@
       if (candidate) URL.revokeObjectURL(candidate);
     }
   });
-  zoom.addEventListener("input", function () { setZoom(Number(zoom.value)); });
+  pageScope.listen(zoom, "input", function () { setZoom(Number(zoom.value)); });
   root.querySelector("[data-photo-crop-reset]").addEventListener("click", resetCrop);
-  stage.addEventListener("pointerdown", function (event) {
+  pageScope.listen(stage, "pointerdown", function (event) {
     if (!selection || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     stage.focus({preventScroll:true});
@@ -168,7 +170,7 @@
     stage.setPointerCapture(event.pointerId);
     stage.dataset.dragging = "true";
   });
-  stage.addEventListener("pointermove", function (event) {
+  pageScope.listen(stage, "pointermove", function (event) {
     if (!selection || !pointer || event.pointerId !== pointer.id) return;
     var scale = cropSide() / stage.getBoundingClientRect().width;
     selection.left -= (event.clientX - pointer.x) * scale;
@@ -178,14 +180,14 @@
     drawCrop();
   });
   ["pointerup", "pointercancel", "lostpointercapture"].forEach(function (name) {
-    stage.addEventListener(name, function (event) {
+    pageScope.listen(stage, name, function (event) {
       if (!pointer || pointer.id !== event.pointerId) return;
       if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
       pointer = null;
       delete stage.dataset.dragging;
     });
   });
-  stage.addEventListener("keydown", function (event) {
+  pageScope.listen(stage, "keydown", function (event) {
     if (!selection) return;
     var step = cropSide() * (event.shiftKey ? .1 : .02);
     if (event.key === "ArrowLeft") selection.left += step;
@@ -199,15 +201,15 @@
     event.preventDefault();
     drawCrop();
   });
-  recrop.addEventListener("click", function () {
+  pageScope.listen(recrop, "click", function () {
     if (!selection || !ready) return;
     editingSnapshot = {left:selection.left, top:selection.top, zoom:selection.zoom};
     openCrop();
   });
   root.querySelectorAll("[data-photo-crop-cancel]").forEach(function (button) {
-    button.addEventListener("click", function () { cropper.close("cancel"); });
+    pageScope.listen(button, "click", function () { cropper.close("cancel"); });
   });
-  cropper.addEventListener("close", function () {
+  pageScope.listen(cropper, "close", function () {
     if (cropper.returnValue !== "use") {
       ++revision;
       if (editingSnapshot && selection) {
@@ -218,7 +220,7 @@
     editingSnapshot = null;
     (ready ? recrop : toggle).focus({preventScroll:true});
   });
-  useCrop.addEventListener("click", function () {
+  pageScope.listen(useCrop, "click", function () {
     if (!selection || !context) return;
     var sequence = revision;
     var current = selection;
@@ -252,54 +254,56 @@
       form.dispatchEvent(new Event("change", {bubbles:true}));
     }, "image/png");
   });
-  edit.addEventListener("keydown", function (event) {
+  pageScope.listen(edit, "keydown", function (event) {
     if (event.key === "Enter" || event.key === " ") { event.preventDefault(); input.click(); }
   });
-  view.addEventListener("click", function (event) {
+  pageScope.listen(view, "click", function (event) {
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     event.stopPropagation();
     openDialog(viewer);
   });
-  form.addEventListener("submit", function (event) {
+  pageScope.listen(form, "submit", function (event) {
     if (!ready) { event.preventDefault(); return; }
     save.disabled = true;
     // Shared unsaved-work confirmation may temporarily cancel this submit.
     queueMicrotask(function () { if (event.defaultPrevented) save.disabled = false; });
   });
   root.querySelectorAll("[data-photo-close]").forEach(function (button) {
-    button.addEventListener("click", function () { button.closest("dialog").close(); });
+    pageScope.listen(button, "click", function () { button.closest("dialog").close(); });
   });
   [viewer, errorDialog, cropper].forEach(function (dialog) {
-    if (dialog !== cropper) dialog.addEventListener("close", function () { toggle.focus({preventScroll:true}); });
-    dialog.addEventListener("click", function (event) {
+    if (dialog !== cropper) pageScope.listen(dialog, "close", function () { toggle.focus({preventScroll:true}); });
+    pageScope.listen(dialog, "click", function (event) {
       if (event.target !== dialog) return;
       var bounds = dialog.getBoundingClientRect();
       if (event.clientX < bounds.left || event.clientX > bounds.right ||
           event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close();
     });
   });
-  menu.addEventListener("keydown", function (event) {
+  pageScope.listen(menu, "keydown", function (event) {
     if (event.key === "Escape") { event.preventDefault(); menu.open = false; toggle.focus(); }
   });
-  document.addEventListener("click", function (event) {
+  pageScope.listen(document, "click", function (event) {
     if (!menu.contains(event.target)) menu.open = false;
   });
-  menu.addEventListener("focusout", function (event) {
+  pageScope.listen(menu, "focusout", function (event) {
     if (event.relatedTarget && !menu.contains(event.relatedTarget)) menu.open = false;
   });
   if (errorDialog.hasAttribute("data-photo-server-error")) {
     errorDialog.close();
     openDialog(errorDialog);
   }
-  window.addEventListener("pageshow", function (event) {
+  pageScope.listen(window, "pageshow", function (event) {
     save.disabled = false;
     if (event.persisted) { ++revision; resetSelection(); }
   });
-  window.addEventListener("pagehide", function () {
+  pageScope.listen(window, "pagehide", function () {
     ++revision;
     if (cropper.open) cropper.close("cancel");
     releasePreview();
     releaseSelection();
   });
 })();
+
+});

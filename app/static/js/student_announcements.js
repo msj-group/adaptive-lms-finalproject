@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* The desktop popup is part of the current index document. Each opening reads
    the authorized GET fragment afresh; no navigation, prefetch or content cache.
    Phones and unavailable JavaScript retain the ordinary detail link. */
@@ -33,7 +35,7 @@
     loading.hidden = false;
     errorBox.hidden = true;
     try {
-      var response = await fetch(selected.href, {
+      var response = await pageScope.fetch(selected.href, {
         method: "GET", credentials: "same-origin", cache: "no-store",
         headers: { "X-AELMS-Query": "results" }, signal: request.signal
       });
@@ -62,7 +64,7 @@
       if (controller === request) controller = null;
     }
   }
-  root.addEventListener("click", function (event) {
+  pageScope.listen(root, "click", function (event) {
     if (!(event.target instanceof Element)) return;
     var link = event.target.closest("a[data-announcement-open]");
     if (!link || !root.contains(link) || !desktop.matches || event.defaultPrevented ||
@@ -78,17 +80,17 @@
     closeButton.focus({ preventScroll: true });
     loadReader();
   });
-  closeButton.addEventListener("click", function () { popup.close(); });
+  pageScope.listen(closeButton, "click", function () { popup.close(); });
   popup.querySelector("[data-announcement-retry]").addEventListener("click", function () {
     if (popup.open && current) loadReader();
   });
-  popup.addEventListener("click", function (event) {
+  pageScope.listen(popup, "click", function (event) {
     if (event.target !== popup) return;
     var bounds = popup.getBoundingClientRect();
     if (event.clientX < bounds.left || event.clientX > bounds.right ||
         event.clientY < bounds.top || event.clientY > bounds.bottom) popup.close();
   });
-  popup.addEventListener("close", function () {
+  pageScope.listen(popup, "close", function () {
     if (popup.open) return;
     cancelLoad();
     content.replaceChildren();
@@ -99,5 +101,7 @@
     if (opener && opener.isConnected) opener.focus({ preventScroll: true });
     opener = null;
   });
-  window.addEventListener("pagehide", cancelLoad);
+  pageScope.listen(window, "pagehide", cancelLoad);
 })();
+
+});

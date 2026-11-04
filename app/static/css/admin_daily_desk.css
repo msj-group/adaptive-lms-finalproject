@@ -26,7 +26,7 @@
 .admin-atlas[data-enrollment-open='true'] { overflow:hidden; }
 .admin-atlas dialog.dd-enrollment-dialog { position:fixed; inset:0; margin:auto; padding:25px; width:min(520px,calc(100% - 40px)); max-width:none; max-height:calc(100dvh - 48px); overflow:auto; border:1px solid var(--ad-line); border-radius:20px; color:var(--ad-ink); background:var(--ad-panel); box-shadow:var(--ui-shadow-lg); }
 .admin-atlas dialog.dd-enrollment-dialog[data-phase='details'] { width:min(760px,calc(100% - 40px)); }
-.admin-atlas dialog.dd-enrollment-dialog::backdrop { background:color-mix(in srgb,var(--ui-nav,#142842) 68%,transparent); }
+.admin-atlas dialog.dd-enrollment-dialog::backdrop { background:rgb(0 0 0 / 40%); backdrop-filter:blur(3px); }
 .admin-atlas .dd-dialog-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-block-end:18px; }
 .admin-atlas .dd-dialog-head h2 { margin:0; font-size:21px; }
 .admin-atlas [data-enrollment-status]:empty { display:none; }

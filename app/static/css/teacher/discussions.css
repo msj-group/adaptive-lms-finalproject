@@ -213,7 +213,6 @@ body:has(dialog.tdisc-dialog:modal) { overflow:hidden; }
 .tdisc-dialog .tdisc-dialog-recovery { display:flex; flex-wrap:wrap; gap:10px; padding:0 20px 20px; }
 .tdisc .tdisc-reader.tdisc-reading-enter { animation:tdisc-reader-enter 260ms ease-out both; }
 @keyframes tdisc-reader-enter { from { opacity:0; transform:translateX(var(--tdisc-entry-x)); } to { opacity:1; transform:translateX(0); } }
-body[data-ui-motion=reduce] .tdisc .tdisc-reader.tdisc-reading-enter { animation:none; }
 @media(prefers-reduced-motion:reduce) { .tdisc .tdisc-reader.tdisc-reading-enter { animation:none; } }
 @container workspace (max-width:520px) {
   .tdisc .tdisc-heading { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:16px 12px; align-items:start; }

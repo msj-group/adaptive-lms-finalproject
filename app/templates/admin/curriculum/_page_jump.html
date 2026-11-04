@@ -1,0 +1,29 @@
+{% import "_figma_ui.html" as ui %}
+{% macro index_header(first, last, current, division=false) %}
+<div class="ce-index-header">
+  <div class="ce-index-actions">
+    <a class="btn btn--secondary" href="{{ editor_back_url }}" data-workspace-return>{{ _(editor_back_label) }}</a>
+    <div class="ce-index-icons">
+      <button class="btn btn--secondary ce-icon-action" type="button" data-jump-toggle aria-expanded="false"
+              aria-controls="ce-jump-page" aria-label="{{ _('Go to page') }}" title="{{ _('Go to page') }}">{{ ui.icon('search', 18) }}</button>
+      {% if division %}
+      <button class="btn btn--secondary ce-icon-action" type="button" data-index-toggle data-workspace-disclosure aria-expanded="true"
+              aria-controls="pdf-index" aria-label="{{ _('PDF pages') }}" title="{{ _('PDF pages') }}">{{ ui.icon('dashboard', 18) }}</button>
+      {% endif %}
+    </div>
+  </div>
+  <form class="ce-jump-page" id="ce-jump-page" data-jump-page data-ui-reveal hidden>
+    <label class="sr-only" for="ce-page-number">{{ _('Go to page') }}</label>
+    <input class="field__input" id="ce-page-number" name="page" type="number" inputmode="numeric"
+           min="{{ first }}" max="{{ last }}" value="{{ current }}" placeholder="{{ _('Go to page') }}" required>
+  </form>
+</div>
+{% endmacro %}
+
+{% macro thumbnail(course, document, number, current) %}
+<a class="ce-thumb" href="#pdf-page-{{ number }}" data-page-target="{{ number }}"
+   aria-label="{{ _('Page') }} {{ number }}"{% if number == current %} aria-current="page"{% endif %}>
+  <img data-pdf-src="{{ curriculum_url('document_page', document_id=document.uploaded_file.public_id, page_number=number, thumbnail=1) }}" alt="" decoding="async">
+  <span>{{ number }}</span>
+</a>
+{% endmacro %}

@@ -1,9 +1,21 @@
 {% import '_figma_ui.html' as ui %}
-<header class="st-header">
-  <div class="st-header-context"><a class="st-mobile-brand" href="{{ url_for(home_endpoint) }}" aria-label="Youth Centre home">{{ ui.brand_logo('Youth Centre',48,48) }}</a></div>
+<header class="st-header" data-workspace-dashboard="{{ 'true' if request.endpoint == home_endpoint else 'false' }}">
+  <div class="st-header-context">
+    {% include 'layouts/_workspace_sidebar_toggle.html' %}
+    {% include 'layouts/_workspace_back.html' %}
+    {% if role in ['student','teacher','administrator'] %}
+    <div class="workspace-page-context" data-workspace-page-context hidden>
+      <h1 class="workspace-header-title" data-workspace-header-title>{{ _(portal_blocks.title()|striptags|trim) }}</h1>
+      <div class="workspace-header-filters" data-workspace-header-filters hidden></div>
+    </div>
+    {% endif %}
+    <a class="st-mobile-brand" href="{{ url_for(home_endpoint) }}" aria-label="Youth Centre home">{{ ui.brand_logo('Youth Centre',48,48) }}</a>
+  </div>
   <div class="st-header-actions">
+    {% if request.endpoint == home_endpoint %}
     <a class="st-icon-button" href="{{ url_for('workspace.search') }}" data-workspace-search-open data-research-id="nav_search" aria-label="Search your workspace" aria-haspopup="dialog" aria-controls="workspace-search-dialog">{{ ui.icon('search') }}</a>
     {% if notif %}{% include 'notifications/_bell.html' %}{% endif %}
+    {% endif %}
     {{ ui.account(current_user, url_for('research.logout' if role == 'researcher' else 'auth.logout'), csrf_token(), photo_url=account_photo_url()) }}
   </div>
 </header>

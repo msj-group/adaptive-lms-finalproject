@@ -1,0 +1,125 @@
+/* Customize the native picker while retaining form and keyboard behavior. */
+@supports (appearance: base-select) and selector(::picker(select)) {
+  :root body select:not([multiple]):is(:not([size]), [size="1"]),
+  :root body select:not([multiple]):is(:not([size]), [size="1"])::picker(select) {
+    appearance: base-select;
+  }
+
+  :root body select:not([multiple]):is(:not([size]), [size="1"]) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    background-image: none;
+    padding-inline: .75rem;
+    border-radius: .75rem;
+    cursor: pointer;
+    transition: border-color var(--motion-duration-fast) ease,
+      box-shadow var(--motion-duration-fast) ease, background-color var(--motion-duration-fast) ease;
+  }
+
+  :root:dir(rtl) body select:not([multiple]):is(:not([size]), [size="1"]) {
+    padding-inline: .75rem;
+  }
+
+  :root body select:not([multiple]):is(:not([size]), [size="1"]):not(:disabled):hover {
+    border-color: var(--ui-primary);
+  }
+
+  :root body select:not([multiple]):is(:not([size]), [size="1"]):open {
+    border-color: var(--ui-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-primary) 12%, transparent);
+    outline: none;
+  }
+
+  :root body select::picker-icon {
+    content: "";
+    flex: 0 0 auto;
+    width: .45rem;
+    height: .45rem;
+    margin-inline: .25rem .15rem;
+    border-right: 1.7px solid currentColor;
+    border-bottom: 1.7px solid currentColor;
+    color: var(--ui-muted);
+    rotate: 45deg;
+    transition: rotate var(--motion-duration-fast) var(--motion-easing-standard);
+  }
+  :root body select:open::picker-icon { rotate: 225deg; }
+
+  :root body select::picker(select) {
+    inset: auto;
+    position-area: block-end span-inline-end;
+    position-try-fallbacks: none;
+    margin-block: .4rem;
+    padding: .35rem;
+    max-inline-size: calc(100vw - 1.5rem);
+    min-block-size: 0;
+    max-block-size: min(22rem, 50dvh, calc(100% - .8rem));
+    border: 1px solid var(--ui-line);
+    border-radius: .95rem;
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    box-shadow: var(--ui-shadow-md);
+    font: inherit;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ui-control-line) transparent;
+    opacity: 0;
+    transition: opacity var(--motion-duration-popover) ease,
+      display var(--motion-duration-popover) allow-discrete,
+      overlay var(--motion-duration-popover) allow-discrete;
+  }
+  :root body select:open::picker(select) { opacity: 1; }
+  @starting-style {
+    :root body select:open::picker(select) { opacity: 0; }
+  }
+
+  :root body select:where(:not([multiple]):is(:not([size]), [size="1"])) option {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    min-block-size: 2.4rem;
+    padding: .5rem .65rem;
+    border: 0;
+    border-radius: .6rem;
+    background: transparent;
+    color: var(--ui-text);
+    font: inherit;
+    line-height: 1.45;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+    transition: background-color var(--motion-duration-fast) ease, color var(--motion-duration-fast) ease;
+  }
+  :root body select option:not(:disabled):is(:hover, :focus-visible) {
+    background: color-mix(in srgb, var(--ui-primary) 8%, var(--ui-surface));
+    outline: none;
+  }
+  :root body select option:checked {
+    background: var(--ui-soft);
+    color: var(--ui-primary);
+    font-weight: 650;
+  }
+  :root body select option::checkmark {
+    order: 1;
+    margin-inline-start: auto;
+    color: var(--ui-primary);
+    font-weight: 750;
+  }
+  :root body select:disabled,
+  :root body select option:disabled { color: var(--ui-muted); cursor: not-allowed; }
+  :root body select :is(option, optgroup)[hidden] { display: none; }
+  :root body select optgroup { padding-block: .2rem; }
+
+  @media (pointer: coarse) {
+    :root body select:not([multiple]):is(:not([size]), [size="1"]) option {
+      min-block-size: 44px;
+    }
+  }
+  @media (forced-colors: active) {
+    :root body select::picker(select) { border-color: CanvasText; background: Canvas; }
+    :root body select option:checked { background: Highlight; color: HighlightText; }
+    :root body select option::checkmark { color: currentColor; }
+  }
+}

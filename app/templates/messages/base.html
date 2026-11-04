@@ -5,7 +5,7 @@
 {% block portal_content %}
 <div class="{{ 'ad-page' if current_user.role == 'administrator' else 'message-workspace' }}" data-communication-messages data-communication-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}" data-inbox-url="{{ url_for('messages.inbox') }}" data-message-new-url="{{ url_for('messages.new_thread') }}" data-thread-url="{{ url_for('messages.thread', thread_public_id='__thread__') }}">
   {% if current_user.role == 'administrator' %}
-  <header class="ad-page-head"><div><p class="ad-eyebrow">COMMUNICATION / INBOX</p><h1 data-workspace-page-heading>Messages</h1><p class="ad-subtitle">Direct conversations with your centre.</p></div><a class="btn btn--primary" href="{{ url_for('messages.new_thread') }}">New message</a></header>
+  <header class="ad-page-head workspace-page-tools"><h1 class="sr-only" data-workspace-page-heading>Messages</h1><a class="btn btn--primary" href="{{ url_for('messages.new_thread') }}">New message</a></header>
   {% endif %}
   <p class="ac-status" data-communication-status role="status" hidden></p>
   <div class="ac-recovery" data-communication-recovery hidden><button type="button" class="btn btn--secondary" data-communication-retry>Retry</button><a class="btn btn--secondary" data-communication-fallback>Open full page</a></div>
@@ -15,4 +15,4 @@
 {% block research_content %}{{ self.portal_content() }}{% endblock %}
 {% block workspace_footer %}{% endblock %}
 {% block portal_nav %}{% include "messages/_portal_nav.html" %}{% endblock %}
-{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/messages.js', v='inline-20261026') }}" defer></script>{% if current_user.role in ['administrator','teacher','student'] %}<script src="{{ url_for('static', filename='js/admin_communication.js', v='role-messages-20261026') }}" defer></script>{% endif %}{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/messages.js', v='no-scroll-button-1') }}" defer></script>{% if current_user.role in ['administrator','teacher','student'] %}<script src="{{ url_for('static', filename='js/admin_communication.js', v='role-messages-20261026') }}" defer></script>{% endif %}{% endblock %}

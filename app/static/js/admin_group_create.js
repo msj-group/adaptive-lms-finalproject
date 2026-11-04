@@ -1,3 +1,5 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* The existing GroupForm and create/edit endpoints remain authoritative. Enhance only
    their presentation/transport; never construct a replacement business form. */
 (function () {
@@ -114,7 +116,7 @@
       var option = select && select.options[select.selectedIndex];
       if (level) level.textContent = option && option.dataset.level || "—";
     }
-    if (select) select.addEventListener("change", updateLevel);
+    if (select) pageScope.listen(select, "change", updateLevel);
     updateLevel();
     if (initialValues === null) initialValues = values(form);
     form.querySelectorAll(".field__error").forEach(function (error, index) {
@@ -139,7 +141,7 @@
     recovery.hidden = true;
     check.hidden = true;
     try {
-      var response = await fetch(targetURL.href, {credentials:"same-origin", cache:"no-store", signal:request.signal});
+      var response = await pageScope.fetch(targetURL.href, {credentials:"same-origin", cache:"no-store", signal:request.signal});
       var loaded = await parsed(response);
       if (mine !== revision || request.signal.aborted || !dialog.open || !active) return;
       if (loaded.kind === "form") install(loaded);
@@ -190,7 +192,7 @@
     var reload = root.querySelector("[data-group-workspace-reload]");
     workspace.setAttribute("aria-busy", "true");
     try {
-      var response = await fetch(destination.href, {credentials:"same-origin", cache:"no-store"});
+      var response = await pageScope.fetch(destination.href, {credentials:"same-origin", cache:"no-store"});
       var url = new URL(response.url);
       if (!active || !response.ok || response.redirected || url.origin !== destination.origin || url.pathname !== destination.pathname ||
           !(response.headers.get("Content-Type") || "").includes("text/html")) throw new Error("Unavailable workspace");
@@ -211,7 +213,7 @@
       }
     } finally { workspace.removeAttribute("aria-busy"); }
   }
-  root.addEventListener("click", function (event) {
+  pageScope.listen(root, "click", function (event) {
     if (event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     var link = event.target.closest("a[href]");
     if (!link || link.target || link.hasAttribute("download")) return;
@@ -235,17 +237,17 @@
     if (scopeInvalid) { notice(sessionMessage, true); recovery.hidden = false; retry.disabled = true; }
     else loadForm();
   });
-  close.addEventListener("click", closeDialog);
-  retry.addEventListener("click", loadForm);
-  dialog.addEventListener("cancel", function (event) { event.preventDefault(); closeDialog(); });
-  dialog.addEventListener("click", function (event) {
+  pageScope.listen(close, "click", closeDialog);
+  pageScope.listen(retry, "click", loadForm);
+  pageScope.listen(dialog, "cancel", function (event) { event.preventDefault(); closeDialog(); });
+  pageScope.listen(dialog, "click", function (event) {
     if (event.target !== dialog) return;
     var rect = dialog.getBoundingClientRect();
     if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeDialog();
   });
   // Capture before the registered form's native-submit cleanup microtask.
   // Failed/uncertain asynchronous writes must retain their dirty draft state.
-  dialog.addEventListener("submit", async function (event) {
+  pageScope.listen(dialog, "submit", async function (event) {
     var form = event.target;
     if (event.defaultPrevented || !form.matches("form[data-group-create-form]") || form.method.toLowerCase() !== "post") return;
     event.preventDefault(); event.stopPropagation();
@@ -263,7 +265,7 @@
     recovery.hidden = true;
     notice("Saving...");
     try {
-      var response = await fetch(targetURL.href, {method:"POST", body:data, credentials:"same-origin", cache:"no-store"});
+      var response = await pageScope.fetch(targetURL.href, {method:"POST", body:data, credentials:"same-origin", cache:"no-store"});
       var loaded = await parsed(response);
       if (!active || !dialog.open) return;
       if (loaded.kind === "form") {
@@ -289,11 +291,11 @@
       if (button) button.disabled = uncertain || scopeInvalid;
     }
   }, true);
-  window.addEventListener("pagehide", function () {
+  pageScope.listen(window, "pagehide", function () {
     active = false; cancelRead();
     if (posting) uncertain = true;
   });
-  window.addEventListener("pageshow", function () {
+  pageScope.listen(window, "pageshow", function () {
     active = true;
     if (uncertain && dialog.open) {
       notice(uncertainMessage, true); check.hidden = false;
@@ -301,3 +303,5 @@
     }
   });
 })();
+
+});

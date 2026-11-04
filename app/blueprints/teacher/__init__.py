@@ -18,3 +18,5 @@ from app.blueprints.teacher import calendar  # noqa: E402,F401
 from app.blueprints.teacher import discussions  # noqa: E402,F401
 from app.blueprints.teacher import progress  # noqa: E402,F401
 from app.blueprints.teacher import activities  # noqa: E402,F401
+from app.blueprints.teacher import curriculum_publication  # noqa: E402,F401
+from app.blueprints.teacher import curriculum_editor  # noqa: E402,F401

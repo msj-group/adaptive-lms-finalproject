@@ -1,0 +1,55 @@
+{% macro media_icon(category) %}
+  {% if category == 'video' %}
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>
+  {% else %}
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 9v6m4-10v14m4-12v10m4-13v16m4-11v6"/></svg>
+  {% endif %}
+{% endmacro %}
+
+{% macro media_pin(material, media_endpoint, media_args, editor=false, pin_version=none) %}
+  {% set file = material if material is mapping else material.uploaded_file %}
+  {% if file.category in ['audio', 'video'] %}
+    <button class="ce-pin" type="button"
+            id="material-{{ material.public_id }}" data-category="{{ file.category }}"
+            style="--pin-x:{{ material.pin_x / 100 }}%;--pin-y:{{ material.pin_y / 100 }}%;"
+            data-pin-x="{{ material.pin_x }}" data-pin-y="{{ material.pin_y }}"
+            data-media-title="{{ file.original_filename }}"
+        data-media-src="{{ url_for(media_endpoint, item_id=material.public_id, **media_args) if media_endpoint in ['admin.curriculum_file','teacher.curriculum_file'] else url_for(media_endpoint, material_public_id=material.public_id, **media_args) }}"
+            {% if editor %}data-edit-pin="{{ material.public_id }}" data-material-version="{{ pin_version(material) }}"{% else %}data-play-pin{% endif %}
+            aria-label="{{ _('Move %(name)s', name=file.original_filename) if editor else _('Play %(name)s', name=file.original_filename) }}">
+      {{ media_icon(file.category) }}
+    </button>
+  {% endif %}
+{% endmacro %}
+
+{% macro pages(document, start, end, materials, page_endpoint, page_args, media_endpoint, media_args, editor=false, collect=false, pin_version=none, book_sizes=none, page_pins=none, page_owners=none) %}
+{% set book = book_sizes is not none %}
+<div class="ce-pages" id="ce-page-viewer" data-pdf-viewer{% if book %} data-image-scroll{% endif %} tabindex="0" aria-label="{{ _('PDF pages') if book else _('Lesson pages') }}">
+  {% for number in range(start, end + 1) %}
+  {% set size = book_sizes[number - 1] if book and book_sizes|length >= number else (800, 1100) %}
+  <figure class="ce-page"{% if book %} id="pdf-page-{{ number }}" data-book-page="{{ number }}"{% endif %}>
+    <div class="ce-sheet" data-sheet="{{ number }}"{% if page_owners is not none and number in page_owners %} data-media-action="{{ page_owners[number].save }}" data-lesson-preview="{{ page_owners[number].preview }}"{% endif %}>
+      <img {{ 'data-pdf-src' if book else 'src' }}="{{ url_for(page_endpoint, document_id=document.uploaded_file.public_id, page_number=number, **page_args) }}"
+           alt="{{ _('Course PDF page %(page)s', page=number) }}" width="{{ size[0] }}" height="{{ size[1] }}"
+           {% if book %}style="aspect-ratio: {{ size[0] }} / {{ size[1] }}"{% else %}loading="{{ 'eager' if loop.first else 'lazy' }}"{% endif %} decoding="async" draggable="false">
+      {% set on_page = page_pins.get(number, ()) if page_pins is not none else materials|selectattr('pin_page', 'equalto', number) %}
+      {% for material in on_page %}
+        {{ media_pin(material, media_endpoint, media_args, editor, pin_version) }}
+      {% endfor %}
+    </div>
+    <figcaption>{{ _('Page') }} {{ number }}</figcaption>
+  </figure>
+  {% endfor %}
+</div>
+{% if not editor and media_endpoint %}
+<dialog class="ce-player" data-media-player aria-label="{{ _('Media player') }}">
+  <header>
+    <strong data-player-title dir="auto"></strong>
+    <button class="btn btn--secondary" type="button" data-close-player>{{ _('Close') }}</button>
+  </header>
+  <audio controls preload="none" hidden{% if collect %} data-research-media="lesson_audio"{% endif %}></audio>
+  <video controls playsinline preload="none" hidden{% if collect %} data-research-media="lesson_video"{% endif %}></video>
+  <p data-player-error role="status" hidden>{{ _('This file could not be played.') }}</p>
+</dialog>
+{% endif %}
+{% endmacro %}

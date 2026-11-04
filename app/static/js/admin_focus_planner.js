@@ -1,9 +1,11 @@
+/* Page resource scope. */
+window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
 /* Focus planner presentation only. Native GET filters/management keep their owners. */
 (function () {
   "use strict";
   document.querySelectorAll(".fp-page .fp-filters").forEach(function (filter) {
-    document.addEventListener("click", function (event) { if (!filter.contains(event.target) && !event.target.closest("[data-fp-mobile-filters]")) filter.open = false; });
-    filter.addEventListener("keydown", function (event) {
+    pageScope.listen(document, "click", function (event) { if (!filter.contains(event.target) && !event.target.closest("[data-fp-mobile-filters]")) filter.open = false; });
+    pageScope.listen(filter, "keydown", function (event) {
       if (event.key === "Escape") { filter.open = false; filter.querySelector("summary").focus(); }
     });
   });
@@ -21,10 +23,10 @@
       else filterPlace.after(scheduleFilters);
       mobileFilter.setAttribute("aria-expanded", "false");
     }
-    mobileFilter.addEventListener("click", function () { scheduleFilters.open = !scheduleFilters.open; });
-    scheduleFilters.addEventListener("toggle", function () { mobileFilter.setAttribute("aria-expanded", String(scheduleFilters.open)); });
-    scheduleFilters.addEventListener("keydown", function (event) { if (event.key === "Escape" && filterMedia.matches) mobileFilter.focus(); });
-    filterMedia.addEventListener("change", placeFilters);
+    pageScope.listen(mobileFilter, "click", function () { scheduleFilters.open = !scheduleFilters.open; });
+    pageScope.listen(scheduleFilters, "toggle", function () { mobileFilter.setAttribute("aria-expanded", String(scheduleFilters.open)); });
+    pageScope.listen(scheduleFilters, "keydown", function (event) { if (event.key === "Escape" && filterMedia.matches) mobileFilter.focus(); });
+    pageScope.listen(filterMedia, "change", placeFilters);
     placeFilters();
   }
   var root = document.querySelector("[data-admin-focus-planner]");
@@ -67,13 +69,13 @@
     if (announce) root.querySelector("[data-fp-live]").textContent = root.querySelector("[data-fp-heading]").textContent + ", " + label;
   }
   dates.forEach(function (link) {
-    link.addEventListener("click", function (event) {
+    pageScope.listen(link, "click", function (event) {
       if (!ordinaryClick(event)) return;
       event.preventDefault(); selected = link.dataset.fpDate; view = "day"; render(true); remember();
     });
   });
   root.querySelectorAll("[data-fp-view]").forEach(function (button) {
-    button.addEventListener("click", function () { view = button.dataset.fpView; render(true); remember(); });
+    pageScope.listen(button, "click", function () { view = button.dataset.fpView; render(true); remember(); });
   });
   function navigate(event, delta) {
     if (!ordinaryClick(event)) return;
@@ -94,14 +96,16 @@
     } else { var url = new URL(event.currentTarget.href); url.searchParams.set("view", "day"); event.currentTarget.href = url.toString(); }
   });
   root.querySelectorAll("[data-fp-entry]").forEach(function (entry) {
-    entry.addEventListener("toggle", function () {
+    pageScope.listen(entry, "toggle", function () {
       if (!entry.open) return;
       entry.closest(".fp-day").querySelectorAll("[data-fp-entry]").forEach(function (other) { if (other !== entry) other.open = false; });
     });
   });
-  window.addEventListener("popstate", function () {
+  pageScope.listen(window, "popstate", function () {
     var url = new URL(window.location.href), day = url.searchParams.get("day");
     if (days.some(function (item) { return item.dataset.fpDay === day; })) { selected = day; view = url.searchParams.get("view") === "upcoming" ? "upcoming" : "day"; render(false); }
   });
   render(false);
 })();
+
+});
