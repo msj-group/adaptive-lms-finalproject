@@ -1,0 +1,19 @@
+/* Native touch/wheel/keyboard scrolling with a quiet platform progress cue. */
+html, body, body * { scrollbar-width:none!important; }
+::-webkit-scrollbar { display:none!important; width:0!important; height:0!important; }
+:where(html,body,body *):not(textarea,select,input,[contenteditable=true]) { scroll-behavior:smooth; }
+html[data-workspace-restoring], html[data-workspace-restoring] * { scroll-behavior:auto!important; }
+.platform-scroll-cue { position:fixed; inset:0; z-index:110; pointer-events:none; opacity:0; transition:opacity 220ms ease; contain:strict; }
+.platform-scroll-cue[data-active] { opacity:1; }
+.platform-scroll-cue > i { position:absolute; display:block; border-radius:99px; background:var(--ui-primary,#235ac4); box-shadow:0 0 0 1px color-mix(in srgb,var(--ui-surface,#fff) 55%,transparent); opacity:.65; }
+.platform-scroll-cue > i[hidden] { display:none; }
+@media(prefers-reduced-motion:reduce) {
+  html,body,body * { scroll-behavior:auto!important; }
+  .platform-scroll-cue { transition:none; }
+}
+@media(forced-colors:active) {
+  html,body,body * { scrollbar-width:auto!important; }
+  ::-webkit-scrollbar { display:initial!important; width:auto!important; height:auto!important; }
+  .platform-scroll-cue { display:none; }
+}
+@media print { .platform-scroll-cue { display:none; } }

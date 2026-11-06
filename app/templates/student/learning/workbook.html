@@ -1,0 +1,6 @@
+{% extends 'layouts/student_atlas_base.html' %}
+{% block title %}{{ _('Workbook') }}{% endblock %}
+{% block portal_content %}
+<header class="atlas-heading"><div><h1 data-workspace-page-heading>{{ _('Workbook') }}</h1><p dir="auto">{{ group.course.title }} · {{ group.name }}</p></div></header>
+<section class="atlas-empty"><h2>{{ _('No published Workbook lessons are available yet.') }}</h2><p>{{ _('Your teacher publishes Workbook sections with their course lessons.') }}</p><a class="btn btn--secondary" href="{{ url_for('workspace.student_courses') }}">{{ _('My courses') }}</a></section>
+{% endblock %}

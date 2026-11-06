@@ -1,5 +1,27 @@
 # Project Decisions
 
+## 2026-11-06 — Local Empower map execution and teaching resource separation
+
+The owner authorized applying the extracted Empower map locally, using the
+hosted C1 catalogue as the target. Ten teaching units and three reference
+modules preserve the existing contiguous, non-overlapping page-range editor.
+Private teaching resources and their PDF anchors never become Student
+Materials. Group copies record an explicit link to their Course Materials;
+new Teacher materials remain a separate Student section. The migration is
+additive, and local execution requires a private backup and source-map guards.
+No hosted write, Git commit/push, or new automated test package is included.
+
+## 2026-11-05 — Private teaching books and 500 MiB uploads
+
+The owner requested separate Teacher's Book and Workbook slots for assigned
+Teachers, while the main book remains the Student lesson source. Administrator
+uploads live on the Course; reference-book authorization is independent of
+Student curriculum publication and Group copies. Books and videos accept up to
+500 MiB per file with disk-backed multipart staging and matching proxy limits.
+See [implementation and rollout scope](TEACHING_BOOKS_20261105.md). This request
+authorizes the feature source changes; it is not permission to reset data,
+publish unrelated changes, commit/push, or contact the old Railway target.
+
 ## 2026-11-04 — Owner-approved four-character passwords
 
 The owner requested a minimum of four characters without composition rules.
@@ -13850,3 +13872,37 @@ Implementation and bounded static/fictional-memory manual evidence are in
 ADMIN_FINANCIAL_REPORTS_LEDGER_STUDIO.md. This Part performs no automated
 tests, actual database/business write, migration, reset/seed, scheduler,
 dependency, Git mutation or deployment. Preserve concurrent Finance work.
+## Student continuous reader and bounded VPS append - 2026-11-06
+
+The owner-approved Student view uses one continuous Lesson scroll, on-demand
+contents, ordinary end-of-Lesson completion and browser-native zoom. Media pins
+are never clustered or moved. Shared custom players preserve actual HTML media
+events and use a bounded live waveform for audio and video. Teacher resources
+remain private and separate from course/Teacher Student materials.
+
+The authorized VPS transfer remaps content identities, appends no accounts or
+business data, and releases shared Lessons only to the existing A1/A2 Groups.
+Protect existing rows with hashes, backups and a quiescent cutover; retain the
+additive schema on failure and recover source/proxy without a database downgrade.
+See [scope, evidence and current deployment boundary](STUDENT_FOCUS_ROLLOUT_20261106.md).
+## Platform scroll feedback and explicit Lesson completion - 2026-11-07
+
+The owner requested hiding default scrollbars and adding restrained platform
+feedback. Keep real native scrolling: no wheel/touch interception, synthetic
+momentum, input prevention or scroll telemetry. Phone People panes must allow
+document scroll chaining. Respect reduced motion, forced colors and existing
+position restoration. Reveal the single signed completion action only when
+the reader reaches the end; never automatically complete a Lesson or infer
+media consumption. Keep book metadata in storage without its Student reader
+box. Details: [implementation and evidence](SCROLL_AND_LESSON_FINISH_20261107.md).
+
+## Student Workbook publication and focused finish - 2026-11-07
+
+Owner scope supersedes the earlier Teacher-only Workbook visibility. Students
+see mapped exercise pages following native Lesson publication, while complete
+books, audio scripts and answer pages remain private. Preserve existing signed
+Lesson progress; end-of-content dialogs never submit automatically. Filters are
+upper right and activity type is inside Filters. A new additive page-map table
+is authorized locally and on the new VPS; no Railway operation is authorized.
+The owner explicitly authorized commit and push on a separate reviewed branch.
+See [scope and evidence](STUDENT_BOOKS_AND_ACTIVITIES_20261107.md).

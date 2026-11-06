@@ -8,6 +8,7 @@
 <div class="ce-workspace" data-curriculum-editor>
   <h1 class="sr-only">{{ _('Student preview') if preview else _('Edit content') }}</h1>
   {{ macros.flash_messages() }}
+  {% if not editor_is_group and not preview %}<div class="ce-actions"><a class="btn btn--secondary" href="{{ url_for('admin.course_book_list', public_id=course.public_id) }}">{{ _('Back to course content') }}</a></div>{% endif %}
   <p class="ce-notice" role="status" data-editor-offline hidden>{{ _('Connection lost. The last saved position is kept. Reconnect to save this change.') }}</p>
   {% if not preview %}
     <form method="post" enctype="multipart/form-data" id="curriculum-media-form" data-media-form
@@ -21,7 +22,7 @@
       <input type="hidden" name="pin_x">
       <input type="hidden" name="pin_y">
       <input type="hidden" name="action" value="save">
-      <input class="ce-file-input" type="file" name="media" accept=".mp3,.wav,.mp4,.webm" tabindex="-1" aria-label="{{ _('Choose audio or video') }}">
+      <input class="ce-file-input" type="file" name="media" accept=".mp3,.wav,.mp4,.webm" tabindex="-1" aria-label="{{ _('Choose audio or video') }}" data-max-audio-bytes="{{ media_limits['audio'] }}" data-max-video-bytes="{{ media_limits['video'] }}" data-size-error="{{ _('This file is larger than allowed for its type.') }}">
     </form>
     <div class="ce-tools">
       <div class="ce-placement" data-placement data-ui-reveal data-save-failure="{{ _('The media could not be saved. Try again.') }}" hidden>
@@ -32,7 +33,7 @@
       <template data-audio-icon>{{ reader.media_icon('audio') }}</template>
       <template data-video-icon>{{ reader.media_icon('video') }}</template>
       <p class="ce-notice" data-unassigned-page role="status" hidden>{{ _('Choose a page assigned to a lesson. Existing markers stay within their original lesson.') }}</p>
-      <p data-invalid-media role="alert" hidden>{{ _('Choose an MP3, WAV, MP4 or WebM file.') }}</p>
+      <p data-invalid-media data-file-type-error="{{ _('Choose an MP3, WAV, MP4 or WebM file.') }}" role="alert" hidden>{{ _('Choose an MP3, WAV, MP4 or WebM file.') }}</p>
     </div>
   {% endif %}
   <div class="ce-content-layout ce-reader-layout" data-book-browser data-open-page="{{ page }}">

@@ -1,5 +1,55 @@
 # Repair status
 
+## Scrolling and Lesson completion presentation deployed - 2026-11-07
+
+The owner's People phone-scroll and platform scrolling correction is implemented
+locally, together with removal of the book-page metadata box and an animated
+end-only completion action. Native scroll/input and signed completion semantics
+are preserved. Bounded local Administrator/Student and static evidence is in
+[the correction record](SCROLL_AND_LESSON_FINISH_20261107.md). Owner-approved release
+20261106T221556Z-3067b33 is active; all 896 packaged files matched. The schema and
+course data remain at their existing checkpoint. Hosted Student review passed
+the removed metadata box, loaded images, hidden default bars and single end-only
+completion reveal. The owner will validate People on their physical phone;
+hosted Administrator acceptance is not claimed. No completion was submitted by
+the agent, and no migration, content import, automated tests or Git mutation ran.
+
+## Student focus reader and VPS course rollout verified - 2026-11-06
+
+The owner authorized the continuous Student reader, custom audio/video players,
+native browser zoom and transfer of the verified C1 content to Libyan Spider.
+Release 20261106T203821Z-3067b33 is active on Libyan Spider at schema 8e74c029ab61.
+The 999,223,109-byte bundle and all 894 packaged source files matched their hashes.
+C1 contains 13 Units, 88 Lessons, 252 Student Materials and 208 main-book markers;
+private teaching resources remain Teacher-only. The core Course import preserved
+preexisting rows apart from the target Course's optimistic version/time and
+Alembic metadata. A1/A2 publication passed; the owner then separately authorized filling
+and publishing the existing empty independent Test snapshot without deleting
+history or duplicating payload bytes. Authenticated hosted Student review passed
+direct opening, PDF pages, audio/video/range streaming, custom waveform/controls,
+fullscreen, responsive positions, end-only completion display and Teacher-book
+403. No completion was fabricated. Health/login return 200; the explicitly
+accepted old readiness 503 remains. No automated tests or Git mutation ran.
+See [execution, backups and verification limits](STUDENT_FOCUS_ROLLOUT_20261106.md).
+
+
+## Empower content map applied locally - 2026-11-06
+
+The owner authorized applying the reviewed Empower Intermediate B1+ map to
+the local C1 Course, using C1 as the centre's internal code. Local MySQL is
+at 8e74c029ab61 after a backed-up additive migration. The import contains
+13 Units, 88 Lessons, 252 Student Materials and 208 main-book media anchors,
+plus three books and 150 private teaching resources with 146 private anchors.
+Existing trial Courses/Groups were archived; their rows and memberships were
+preserved. No Group snapshot or Student release was created.
+
+Authenticated Administrator browser review verified main-book audio/video,
+Workbook audio, Academic Skills audio and the ordinary Student preview.
+Static review and scoped real-MySQL verification passed. No automated tests,
+hosted mutation, Git commit or push occurred. Teacher/Student role acceptance
+and publication remain distinct from this Administrator review. See
+[execution, evidence and remaining boundaries](EMPOWER_LOCAL_MAP_20261106.md).
+
 ## Researcher Figma interface implemented locally — 2026-10-31
 
 The owner's approved light Researcher concept is implemented in the existing
@@ -5078,3 +5128,15 @@ The earlier stopped full supervisor was not restarted. P1F/full strict acceptanc
 and broader superseded-contract test review remain pending; selected passing
 checks do not close that gate. No scheduled task, collection period, installation,
 .env change, staging, commit or push occurred. HEAD and staged state are preserved.
+
+### Student Workbook and course reader - 2026-11-07
+
+Prepared simplified Courses/Home, Unit dropdowns, immersive fullscreen,
+end-only signed completion choices, upper-right filters and quieter Activities.
+The local database is at a4b9d0c21e76 after a private backup; old row fingerprints
+were preserved. The reviewed Workbook maps 68 exercise pages to 50 native Lessons
+(74 associations), excluding scripts/answers. Current browser/static evidence,
+VPS-only release scope and the bounded Test practice append are documented in
+[Student books and Activities](STUDENT_BOOKS_AND_ACTIVITIES_20261107.md).
+No automated tests ran. Final deployment receipts belong to the private operator
+workspace and must be checked before describing the VPS rollout as complete.

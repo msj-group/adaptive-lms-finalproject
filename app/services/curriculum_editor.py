@@ -5,7 +5,7 @@ from hashlib import sha256
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from flask import abort, flash, jsonify, redirect, render_template, request
+from flask import abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload, selectinload
@@ -21,7 +21,8 @@ from app.services.material_config import current_material_config
 from app.services.material_queries import next_material_display_order
 
 def _render(scope, template, **context):
-    return render_template(template, **scope.context(), **context)
+    return render_template(template, **scope.context(),
+                           media_limits=current_material_config().max_bytes_by_category, **context)
 
 
 def _document(scope, *, required=False):
@@ -187,7 +188,7 @@ def division(scope):
     )
 
 
-def document_upload(scope):
+def document_upload(scope, *, return_to_books=False):
     course_id = scope.course_id
     actor_id = current_user.id
     upload = request.files.get("document")
@@ -215,6 +216,8 @@ def document_upload(scope):
     else:
         notify_curriculum_updated([course_id], group_id=scope.group_id)
         flash("Main PDF saved.", "success")
+    if return_to_books and not scope.group_id:
+        return redirect(url_for("admin.course_book_list", public_id=scope.public_id))
     return redirect(_division_url(scope))
 
 

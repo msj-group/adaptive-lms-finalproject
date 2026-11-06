@@ -7,13 +7,19 @@
 <div class="ce-workspace" data-curriculum-editor>
   <h1 class="sr-only">{{ _('Edit division') }}</h1>
   {{ macros.flash_messages() }}
+  {% if not editor_is_group %}<div class="ce-actions"><a class="btn btn--secondary" href="{{ url_for('admin.course_book_list', public_id=course.public_id) }}">{{ _('Back to course content') }}</a></div>{% endif %}
   <p class="ce-notice" role="status" data-editor-offline hidden>{{ _('Connection lost. The last saved division is kept. Reconnect to save this change.') }}</p>
   {% if not document %}
-  <div class="ce-actions"><a class="btn btn--secondary" href="{{ editor_back_url }}" data-workspace-return>{{ _(editor_back_label) }}</a></div>
+  {% if editor_is_group %}<div class="ce-actions"><a class="btn btn--secondary" href="{{ editor_back_url }}" data-workspace-return>{{ _(editor_back_label) }}</a></div>{% endif %}
   <section class="ad-card ce-source">
+    {% if editor_is_group %}
     <h2>{{ _('Choose the main course PDF') }}</h2>
     <p>{{ _('Upload a PDF to start dividing the course into units and lessons.') }}</p>
     {% include "admin/curriculum/_source.html" %}
+    {% else %}
+    <h2>{{ _('Add a main book to organize lesson pages.') }}</h2>
+    <a class="btn btn--primary" href="{{ url_for('admin.course_book_list', public_id=course.public_id, add=1, kind='main') }}">{{ _('Add book') }}</a>
+    {% endif %}
   </section>
   {% else %}
   <div class="ce-division ce-reader-layout" data-book-browser data-division-browser data-open-page="{{ page }}">
@@ -40,13 +46,13 @@
     </section>
     <aside class="ad-card ce-division-form" id="ce-division-panel" data-division-panel>
       <div class="ce-division-top">
-      <details class="ce-source-menu" id="ce-source-menu">
+      {% if editor_is_group %}<details class="ce-source-menu" id="ce-source-menu">
         <summary class="btn btn--secondary">{{ _('Change main PDF') }}</summary>
         <div class="ce-source-details">
           <p dir="auto">{{ document.uploaded_file.original_filename }}</p>
           {% include "admin/curriculum/_source.html" %}
         </div>
-      </details>
+      </details>{% else %}<p class="ce-source-name" dir="auto">{{ document.uploaded_file.original_filename }}</p>{% endif %}
       {% if ready %}<a class="btn btn--primary" href="{{ curriculum_url('content') }}">{{ _('Continue to edit content') }}</a>{% endif %}
       </div>
       <div class="ce-panel-heading">

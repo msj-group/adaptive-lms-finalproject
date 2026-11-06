@@ -1,5 +1,6 @@
 /* One page title beside Back; original filter forms retain their DOM owners. */
-.yc-workspace[data-workspace-header-titles] .st-header { gap:12px; }
+.yc-workspace[data-workspace-header-titles] .st-header { gap:12px; direction:ltr; }
+[dir=rtl] .yc-workspace[data-workspace-header-titles] .st-header-context { direction:rtl; }
 .yc-workspace[data-workspace-header-titles] .st-header-context { flex:1; }
 .yc-workspace .workspace-page-context { display:flex; align-items:center; gap:12px; min-width:0; }
 .yc-workspace .workspace-page-context[hidden], .yc-workspace .workspace-header-filters[hidden] { display:none; }

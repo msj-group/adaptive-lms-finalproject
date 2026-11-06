@@ -49,6 +49,8 @@ from app.models.enums import (
 from app.models.academic_term import AcademicTerm
 from app.models.level import Level
 from app.models.course import Course
+from app.models.course_reference_book import CourseReferenceBook
+from app.models.workbook_lesson_page import WorkbookLessonPage
 from app.models.group import Group
 from app.models.enrollment import Enrollment, EnrollmentStatus
 from app.models.enrollment_history import EnrollmentMembership, EnrollmentEvent
@@ -400,6 +402,7 @@ __all__ = [
 
 from app.models.academic_revision import AcademicRevision
 from app.models.group_curriculum import GroupCurriculum
+from app.models.teaching_asset import CourseContentImport, GroupMaterialSource, TeachingAsset, TeachingAssetPin
 from app.models.attempt_submission_receipt import AttemptSubmissionReceipt
 from app.models.research_storage import ResearchConfigurationSequence, ResearchDataGap, ResearchExportSession
 from app.models.research_v2 import (

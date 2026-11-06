@@ -1,6 +1,6 @@
 {% import '_figma_ui.html' as ui %}
 {% import 'student/courses/_ui.html' as atlas %}
-{% set active_filter_count = (1 if selected_state else 0) + (1 if selected_course else 0) %}
+{% set active_filter_count = (1 if selected_type else 0) + (1 if selected_state else 0) + (1 if selected_course else 0) %}
 {% if hub_group %}{{ atlas.tabs(hub_group.public_id, selected_course, 'activities') }}{% endif %}
 <section class="student-activities" aria-labelledby="student-activities-title" data-student-activities>
   <div class="student-activity-sheet">
@@ -12,24 +12,15 @@
     </header>
     <form method="get" action="{{ url_for('student.activities') }}" class="student-activity-filter-form" data-query-form data-query-results="query-results" data-query-min="0" data-query-quiet-success>
       {% if selected_group %}<input type="hidden" name="group" value="{{ selected_group }}">{% endif %}
-      <div class="student-activity-toolbar">
-        <nav class="student-activity-types" aria-label="Activity type">
-          <a data-query-type href="{{ url_for('student.activities',state=selected_state,course=selected_course,group=selected_group) }}"{% if not selected_type %} aria-current="page"{% endif %}>All activities</a>
-          {% for kind,label in types.items() %}<a data-query-type data-research-id="activity_filter" href="{{ url_for('student.activities',type=kind,state=selected_state,course=selected_course,group=selected_group) }}"{% if selected_type == kind %} aria-current="page"{% endif %}>{{ _(label) }}</a>{% endfor %}
-        </nav>
-        <div class="student-activity-phone-type">
-          <label class="student-activity-sr-only" for="activity-type">Activity type</label>
-          <select id="activity-type" name="type" data-research-id="activity_filter"><option value="">All activities</option>{% for kind,label in types.items() %}<option value="{{ kind }}"{% if selected_type == kind %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</select>
-        </div>
         <details class="student-activity-filters">
           <summary>{{ ui.icon('settings',17) }}<span>Filters</span><span class="student-activity-filter-count" data-activity-filter-count{% if not active_filter_count %} hidden{% endif %} aria-label="{{ _n('%(count)d active filter', '%(count)d active filters', active_filter_count) }}">{{ active_filter_count }}</span><span class="student-activity-filter-arrow">{{ ui.icon('chevron-down',15) }}</span></summary>
           <div class="student-activity-filter-fields">
+            <div class="field"><label for="activity-type">Activity type</label><select id="activity-type" name="type" data-research-id="activity_filter"><option value="">All activities</option>{% for kind,label in types.items() %}<option value="{{ kind }}"{% if selected_type == kind %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</select></div>
             <div class="field"><label for="state">Progress &amp; availability</label><select id="state" name="state" data-research-id="activity_filter"><option value="">All states</option>{% for key,label in states.items() %}<option value="{{ key }}"{% if selected_state == key %} selected{% endif %}>{{ _('Available' if key == 'open' else label) }}</option>{% endfor %}</select></div>
             <div class="field"><label for="course">Course</label><select id="course" name="course" data-research-id="activity_filter"><option value="">All courses</option>{% for row in courses %}<option value="{{ row.course_public_id }}"{% if selected_course == row.course_public_id %} selected{% endif %}>{{ row.course_title }}</option>{% endfor %}</select></div>
             <div class="student-activity-filter-actions"><button data-query-submit type="submit" class="btn btn--primary">Apply filters</button><a class="btn btn--secondary" href="{{ url_for('student.activities',group=selected_group) }}">Reset</a></div>
           </div>
         </details>
-      </div>
     </form>
     <div id="query-results" class="student-activity-results">{% include 'student/template/_activity_results.html' %}</div>
   </div>

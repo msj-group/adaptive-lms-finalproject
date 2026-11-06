@@ -15,7 +15,7 @@ from app.services.file_storage import open_stored_file
 from app.services.material_config import MULTIPART_OVERHEAD_BYTES, current_material_config
 
 
-DOCUMENT_MAX_BYTES = 64 * 1024 * 1024
+DOCUMENT_MAX_BYTES = 500 * 1024 * 1024
 DOCUMENT_REQUEST_BYTES = DOCUMENT_MAX_BYTES + MULTIPART_OVERHEAD_BYTES
 _MAX_PAGES = 1000
 # PDFium's C API is not thread-safe, even for calls on different documents.
@@ -39,6 +39,8 @@ def pdf_page_count(uploaded):
                 return count
     except pdfium.PdfiumError as error:
         raise ValueError("Choose a readable PDF without password protection.") from error
+    except MemoryError as error:
+        raise ValueError("This PDF is too complex to process. Choose a smaller PDF.") from error
     raise ValueError(f"The PDF must have between 1 and {_MAX_PAGES} pages.")
 
 

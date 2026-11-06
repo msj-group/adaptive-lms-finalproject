@@ -52,9 +52,16 @@ def _tz():
 @workspace_bp.get("/student/courses")
 @roles_required("student")
 def student_courses():
+    from app.models import CourseReferenceBook
     from app.services.lesson_progress_queries import (student_group_progress,
         recently_opened, build_recent_view, DASHBOARD_GROUP_LIMIT, RECENTLY_OPENED_LIMIT)
     data = student_dashboard(current_user.id, app_now(_tz()))
+    group_ids = [card["group_public_id"] for card in data["cards"]]
+    workbooks = {row[0] for row in db.session.query(Group.public_id).join(CourseReferenceBook,
+        CourseReferenceBook.course_id == Group.course_id).filter(
+        Group.public_id.in_(group_ids), CourseReferenceBook.kind == "workbook").all()} if group_ids else set()
+    for card in data["cards"]:
+        card["has_workbook"] = card["group_public_id"] in workbooks
     progress, truncated = student_group_progress(current_user.id) if data["cards"] else ([], False)
     recent = build_recent_view(recently_opened(current_user.id,
         group_public_ids=[card["group_public_id"] for card in data["cards"]]), _tz()) if data["cards"] else []
@@ -69,11 +76,22 @@ def student_courses():
 @roles_required("student")
 def student_course(group_public_id):
     from app.services.student_lessons import student_outline_group, outline_units
+    from app.services.lesson_progress_queries import recently_opened
     group = student_outline_group(current_user.id, group_public_id)
     if group is None:
         abort(404)
+    units = outline_units(group.id, current_user.id, include_material_index=True)
+    if units:
+        recent = recently_opened(current_user.id, limit=1, group_public_ids=[group_public_id])
+        destination = (recent[0][2], recent[0][0]) if recent else next(
+            ((unit['public_id'], lesson['public_id']) for unit in units for lesson in unit['lessons']), None)
+        if destination:
+            response = redirect(url_for('student.lesson_detail', group_public_id=group_public_id,
+                unit_public_id=destination[0], lesson_public_id=destination[1]))
+            response.headers['Cache-Control'] = 'private, no-store'
+            return response
     return private_page("workspace/course.html", group=group,
-                        units=outline_units(group.id, current_user.id, include_material_index=True), active_nav="courses")
+                        units=units, active_nav="courses")
 
 
 @workspace_bp.get("/teacher/groups")

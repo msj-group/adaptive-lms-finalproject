@@ -1,0 +1,59 @@
+{% extends "layouts/admin_base.html" %}
+{% import "admin/_macros.html" as macros %}
+{% import "_figma_ui.html" as ui %}
+{% block title %}{{ _('Course Content') }}{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/course_books.css', v='interactive-books-3') }}">{% endblock %}
+{% block admin_content %}
+<div class="cb-workspace">
+  {{ macros.flash_messages() }}
+  <div class="cb-heading">
+    <div><a class="cb-back" href="{{ url_for('admin.courses_list') }}">{{ _('Courses') }}</a><h2 dir="auto">{{ course.title }}</h2><p dir="auto">{{ course.level.name }}</p></div>
+    <div class="cb-actions">
+      {% if document %}
+      <a class="btn btn--secondary" href="{{ curriculum_url('division') }}">{{ _('Edit division') }}</a>
+      <a class="btn btn--secondary" href="{{ curriculum_url('content') }}">{{ _('Edit content') }}</a>
+      {% endif %}
+      {% if available_kinds and not show_upload %}<a class="btn btn--primary" href="{{ book_urls('list', add=1) }}">{{ _('Add book') }}</a>{% endif %}
+    </div>
+  </div>
+  {% if show_upload %}
+  <section class="ad-card cb-upload-panel" aria-labelledby="book-upload-heading">
+    <div class="cb-heading"><h2 id="book-upload-heading">{{ _('Replace book') if replacement else _('Add book') }}</h2><a class="cb-back" href="{{ book_urls('list') }}">{{ _('Cancel') }}</a></div>
+    <form method="post" enctype="multipart/form-data" action="{{ book_urls('save') }}" class="cb-upload">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="operation" value="{{ 'replace' if replacement else 'add' }}">
+      <input type="hidden" name="revision" value="{{ replacement.revision if replacement else 0 }}">
+      {% if replacement %}
+        <input type="hidden" name="kind" value="{{ selected_kind }}">
+        <p class="cb-form-kind">{{ _(book_labels[selected_kind]) }}</p>
+      {% else %}
+        <label>{{ _('Book type') }}<select name="kind" required><option value="">{{ _('Choose book type') }}</option>{% for kind in available_kinds %}<option value="{{ kind }}"{% if kind == selected_kind %} selected{% endif %}>{{ _(book_labels[kind]) }}</option>{% endfor %}</select></label>
+        <p class="cb-note">{{ _('Add only the books this course needs. The teacher book and workbook are visible to teachers only.') }}</p>
+      {% endif %}
+      <label>{{ _('PDF file') }}<input type="file" name="document" accept="application/pdf,.pdf" required data-max-file-bytes="{{ book_upload_limit }}" data-file-size-error="{{ _('Choose a file of 500 MiB or less.') }}"></label>
+      <small class="cb-note">{{ _('Up to 500 MiB and 1,000 pages.') }}</small>
+      {% if replacement and selected_kind == 'main' %}<label class="cb-confirm"><input type="checkbox" name="keep_ranges" value="yes" required><span>{{ _('The existing ranges and media positions refer to the same pages in the replacement PDF.') }}</span></label>{% endif %}
+      <div><button class="btn btn--primary" type="submit">{{ _('Save replacement') if replacement else _('Upload book') }}</button></div>
+    </form>
+  </section>
+  {% endif %}
+  {% if books.values()|select|list %}
+  <ul class="cb-book-list" aria-label="{{ _('Course books') }}">
+    {% for kind,label in book_labels.items() %}{% set book = books.get(kind) %}{% if book %}
+    <li class="cb-book" id="book-{{ kind }}">
+      <span class="cb-book-icon" aria-hidden="true">{{ ui.icon('book',24) }}</span>
+      <div class="cb-book-info"><h3>{{ _(label) }}</h3><p class="cb-filename" dir="auto">{{ book.uploaded_file.original_filename }}</p><p class="cb-note">PDF · {{ _('%(count)d pages', count=book.page_count) }} · {{ _('Student lessons') if kind == 'main' else _('Published exercises only for students') if kind == 'workbook' else _('Teachers only') }}</p>{% if kind == 'workbook' %}<p class="cb-note">{{ _('The full book is private. Students see only mapped exercise pages for published lessons. Replacing this PDF requires a new page map.') }}</p>{% endif %}</div>
+      <div class="cb-actions">
+        <a class="btn btn--secondary" href="{{ book_urls('read', kind=kind) }}">{{ _('Read book') }}</a>
+        <details class="cb-menu"><summary class="btn btn--secondary">{{ _('More') }}</summary><div class="cb-menu-items"><a href="{{ book_urls('download', kind=kind, file_id=book.uploaded_file.public_id) }}">{{ _('Download PDF') }}</a><a href="{{ book_urls('list', replace=kind) }}">{{ _('Replace book') }}</a></div></details>
+      </div>
+    </li>
+    {% endif %}{% endfor %}
+  </ul>
+  {% else %}
+  <div class="cb-empty"><span aria-hidden="true">{{ ui.icon('book',32) }}</span><h2>{{ _('No books added yet.') }}</h2><p>{{ _('A course can use one book. Add more only when needed.') }}</p></div>
+  {% endif %}
+  {% include "curriculum/_teaching_assets.html" %}
+</div>
+{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/file_upload_limits.js') }}" defer></script>{% endblock %}

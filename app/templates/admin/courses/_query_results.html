@@ -31,8 +31,7 @@
         <td data-label="{{ _('Status') }}">{{ academic.status_control('courses', course) }}</td>
         <td class="ah-tools-cell" data-label="{{ _('Actions') }}">
           <a data-academic-editor-open class="ad-row-link" href="{{ url_for('admin.course_edit', public_id=course.public_id) }}">Edit</a>
-          <a class="ad-row-link" href="{{ url_for('admin.curriculum_division', public_id=course.public_id) }}">{{ _('Edit division') }}</a>
-          <a class="ad-row-link" href="{{ url_for('admin.curriculum_content', public_id=course.public_id) }}">{{ _('Edit content') }}</a>
+          <a class="ad-row-link" href="{{ url_for('admin.course_book_list', public_id=course.public_id) }}">{{ _('Course Content') }}</a>
         </td>
       </tr>
       {% endfor %}

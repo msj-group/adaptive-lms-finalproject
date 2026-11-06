@@ -122,7 +122,7 @@ apply the tracked Alembic history and inspect the result:
 ```
 
 On Linux/macOS replace `.\.venv\Scripts\python.exe` with `.venv/bin/python`.
-The current expected schema head is **`7d4e2a9c6013`**. Upgrading an existing
+The current expected schema head is **`6c3e8b1a90d2`**. Upgrading an existing
 database requires checking its revision and backups first; these fresh-install
 instructions are not permission to migrate or reset the owner's existing data.
 
@@ -143,8 +143,12 @@ through normal Administrator workflows. Researcher provisioning is a separate
 approved operation using `scripts/create_researcher.py` and the private email
 allowlist; it does not activate collection.
 
-Open **http://127.0.0.1:5000/auth/login**. Check `/health/ready` for HTTP 200
-and `{"status":"ready"}`. The development server is loopback-only and must
+Open **http://127.0.0.1:5000/auth/login**. The legacy `/health/ready` comparison
+still uses an older revision and returns the owner-accepted 503 at the current
+schema. Verify `/health` and the actual Alembic revision separately until that
+check is updated in an approved change. Do not downgrade the database to make
+the historical readiness comparison pass. Check `/health` for HTTP 200
+and `{"status":"ok"}`. The development server is loopback-only and must
 not be exposed as the production server. Missing credentials, an unavailable
 MySQL service, a wrong schema revision or unwritable private storage must be
 corrected in the installation configuration, not by bypassing validation.
@@ -165,7 +169,7 @@ supports this Python/WSGI runtime, dependencies, private storage and operations.
 | Database | Persistent MySQL 8/InnoDB; dedicated non-root runtime account and a separate schema-scoped migration account. Use private networking or verified MySQL TLS for external transport. |
 | Secrets | Stable private `SECRET_KEY` of at least 32 characters, database credentials and any provisioning allowlist in the host's secret store. Never bake `.env` into an image. |
 | Private uploads | Persistent writable storage outside public assets. Back up both the database and private files. Ephemeral container storage alone loses uploads during redeploys. |
-| Request limits | Proxy/platform limits must accommodate the configured file sizes: documents 25 MiB, images 10 MiB, audio 50 MiB, video 100 MiB, plus multipart overhead. |
+| Request limits | Books/documents and video accept up to 500 MiB per file; images remain 10 MiB and audio 50 MiB. Allow multipart overhead at the proxy (501m in the Nginx example). PDFs retain a 1,000-page bound. |
 | Rate limiting | `RATELIMIT_STORAGE_URI=memory://` is process-local. Additional workers/replicas require a separately reviewed shared limiter backend first. |
 | Research | Keep `RESEARCH_DATA_PROVENANCE=development`, `RAILWAY_ALLOW_STUDY=0` and `RESEARCH_RETENTION_DAYS=15`. Research configurations remain paused until separately authorized. |
 | Operations | Monitor `/health/ready`, retain private count-only operational logs, maintain tested backups, and operate the approved daily 15-day retention job separately from web startup. |
@@ -308,7 +312,9 @@ mean their implementation is complete. See the contract and status documents.
 ## Current development data and verification
 
 MySQL/InnoDB is the application database. The current schema head is
-`7d4e2a9c6013`. A new installation starts with an empty business database;
+`8e74c029ab61`. The owner-authorized local Empower content import and its
+verification boundaries are recorded in [Local Empower map](docs/EMPOWER_LOCAL_MAP_20261106.md).
+A new installation starts with an empty business database;
 no accounts, Courses, Groups, payments, sessions or example files are created
 automatically. Provision the first Administrator privately, then enter
 ordinary content through the appropriate role workflows.
@@ -381,3 +387,8 @@ See [Local Research Walkthrough](docs/LOCAL_RESEARCH_WALKTHROUGH.md).
 Starting a real study and setting
 `study` provenance require a separate explicit operational decision.
 Restart the application after deploying changed source/schema.
+# Student focus course reader
+
+The continuous Student reader, custom audio/video players and bounded C1 VPS
+content rollout are described in
+[the current rollout record](docs/STUDENT_FOCUS_ROLLOUT_20261106.md).

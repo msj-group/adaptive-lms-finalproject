@@ -11,11 +11,30 @@ these against the locked rows.
 """
 
 from sqlalchemy import func
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import aliased, joinedload
 
 from app.extensions import db
 from app.models import AcademicStatus, LessonStatus, Material, MaterialKind
 from app.services.material_content import sanitize_rich_text_html
+
+
+def material_origins(lesson, materials):
+    """Derive shared ownership; prove same-Course lineage for Group copies."""
+    from app.models import Lesson, Unit
+    from app.models.teaching_asset import GroupMaterialSource
+
+    if lesson.unit.course_id is not None:
+        return {m.id: "course" for m in materials}
+    source = aliased(Material)
+    ids = [m.id for m in materials]
+    originals = set()
+    if ids:
+        originals = {row[0] for row in db.session.query(GroupMaterialSource.material_id)
+            .join(source, source.id == GroupMaterialSource.course_material_id)
+            .join(Lesson, Lesson.id == source.lesson_id).join(Unit, Unit.id == Lesson.unit_id)
+            .filter(GroupMaterialSource.material_id.in_(ids),
+                    Unit.course_id == lesson.unit.group.course_id).all()}
+    return {m.id: "course" if m.id in originals else "teacher" for m in materials}
 
 _ACTIVE = AcademicStatus.ACTIVE.value
 _RICH_TEXT = MaterialKind.RICH_TEXT.value
@@ -116,8 +135,10 @@ def teacher_lesson_materials_view(group, unit, lesson):
         "level_name": group.course.level.name,
         "term_name": group.academic_term.name,
     }
-    active = [_teacher_material_row(m) for m in active_materials_ordered(lesson.id)]
-    archived = [_teacher_material_row(m) for m in archived_materials_ordered(lesson.id)]
+    active_rows, archived_rows = active_materials_ordered(lesson.id), archived_materials_ordered(lesson.id)
+    origins = material_origins(lesson, active_rows + archived_rows)
+    active = [dict(_teacher_material_row(m), origin=origins[m.id]) for m in active_rows]
+    archived = [dict(_teacher_material_row(m), origin=origins[m.id]) for m in archived_rows]
     return context, active, archived
 
 
@@ -142,9 +163,12 @@ def student_visible_materials(lesson_id, group_id=None):
                     material_is_released(group_id))
             .order_by(Material.display_order, Material.id).all()
         )
+    from app.models import Lesson
+    origins = material_origins(db.session.get(Lesson, lesson_id), materials)
     out = []
     for material in materials:
         item = {"public_id": material.public_id, "title": material.title, "kind": material.kind,
+                "origin": origins[material.id],
                 "pin_page": material.pin_page, "pin_x": material.pin_x, "pin_y": material.pin_y,
                 "pin_show_name": material.pin_show_name}
         if material.kind == _RICH_TEXT:

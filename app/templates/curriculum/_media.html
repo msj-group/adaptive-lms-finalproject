@@ -1,0 +1,33 @@
+{% macro assets() -%}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/course_media.css', v='focus-media-1') }}">
+<script src="{{ url_for('static', filename='js/course_media.js', v='focus-media-1') }}" defer></script>
+{%- endmacro %}
+
+{% macro controls() -%}
+<div class="cm-wave" aria-hidden="true"><canvas data-media-wave></canvas></div>
+<div class="cm-controls" data-media-controls hidden>
+  <div class="cm-timeline"><progress data-media-buffer value="0" max="1" aria-hidden="true"></progress><input type="range" min="0" max="1000" step="1" value="0" data-media-seek aria-label="{{ _('Seek') }}"></div>
+  <div class="cm-transport">
+    <button type="button" class="cm-play" data-media-play data-play-label="{{ _('Play') }}" data-pause-label="{{ _('Pause') }}" aria-label="{{ _('Play') }}"><span data-play-symbol aria-hidden="true">▶</span></button>
+    <button type="button" data-media-skip="-10" aria-label="{{ _('Back 10 seconds') }}">−10</button>
+    <button type="button" data-media-skip="10" aria-label="{{ _('Forward 10 seconds') }}">+10</button>
+    <span class="cm-time" dir="ltr"><span data-media-current>0:00</span> / <span data-media-duration>0:00</span></span>
+    <div class="cm-options">
+      <button type="button" data-media-mute data-mute-label="{{ _('Mute') }}" data-unmute-label="{{ _('Unmute') }}" aria-label="{{ _('Mute') }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4Zm4 4a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg></button>
+      <input class="cm-volume" type="range" min="0" max="1" step="0.05" value="1" data-media-volume aria-label="{{ _('Volume') }}">
+      <select data-media-speed aria-label="{{ _('Playback speed') }}"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>
+      <button type="button" data-media-pip aria-label="{{ _('Picture in picture') }}" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="11" width="8" height="6" rx="1"/></svg></button>
+      <button type="button" data-media-fullscreen aria-label="{{ _('Full screen') }}" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
+    </div>
+  </div>
+</div>
+<p class="cm-status" data-media-status role="status" data-loading="{{ _('Loading media…') }}" data-failed="{{ _('This file could not be played.') }}"></p>
+{%- endmacro %}
+
+{% macro inline_player(src, category, collect=false) -%}
+<div class="course-media" data-course-media data-media-kind="{{ category }}">
+  {% if category == 'video' %}<video class="cm-element" src="{{ src }}" controls playsinline preload="metadata"{% if collect %} data-research-media="lesson_video"{% endif %}></video>
+  {% else %}<audio class="cm-element" src="{{ src }}" controls preload="metadata"{% if collect %} data-research-media="lesson_audio"{% endif %}></audio>{% endif %}
+  {{ controls() }}
+</div>
+{%- endmacro %}

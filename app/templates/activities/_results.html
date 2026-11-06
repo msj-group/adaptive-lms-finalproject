@@ -7,7 +7,6 @@
 <span>Build for this group</span>{% for kind,endpoint in [('assignment','teacher.assignment_create'),('quiz','teacher.quiz_create'),('listening','teacher.listening_create'),('speaking','teacher.speaking_create')] %}<a href="{{ url_for(endpoint,group_public_id=hub_group.public_id) }}">{{ activity_ui.symbol(kind,16) }} {{ _('New %(type)s',type=_(types[kind])) }}</a>{% endfor %}</nav>{% endif %}
 <div class="activity-results-heading">
 <h2>{{ _('Activity library' if teacher else 'Your activities') }}</h2>
-<p>{{ _('Page %(page)d · %(count)d activities shown',page=page,count=items|length) }}{% if has_next %} <span>More on the next page</span>{% endif %}</p>
 </div>
 <div class="activity-hub-grid">{% for item in items %}<article class="activity-hub-card activity-hub-card--{{ item.kind }}">
 <header>

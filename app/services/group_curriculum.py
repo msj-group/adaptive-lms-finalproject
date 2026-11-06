@@ -11,6 +11,7 @@ from app.models import Lesson, LessonProgress, Material, Unit
 from app.models.course_document import CourseDocument
 from app.models.curriculum_release import LessonRelease, MaterialRelease
 from app.models.group_curriculum import GroupCurriculum
+from app.models.teaching_asset import GroupMaterialSource
 from app.services.file_storage import open_stored_file
 
 UNIT_FIELDS = ("title", "description", "search_keywords", "page_start", "page_end", "display_order", "status")
@@ -141,6 +142,8 @@ def prepare_group_curriculum(scope):
                             copied_material.uploaded_file = uploads[material["id"]]
                         db.session.add(copied_material)
                         db.session.flush()
+                        db.session.add(GroupMaterialSource(material_id=copied_material.id,
+                                                           course_material_id=material["id"]))
                         release = material_releases.get(material["id"])
                         if release:
                             db.session.add(MaterialRelease(group_id=group.id, material_id=copied_material.id,

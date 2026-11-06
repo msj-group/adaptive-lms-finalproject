@@ -102,15 +102,11 @@ def group_units(group_public_id):
     group = student_outline_group(current_user.id, group_public_id)
     if group is None:
         abort(404)
-    return private_no_store(
-        "student/learning/outline.html",
-        group_name=group.name,
-        group_public_id=group.public_id,
-        course_title=group.course.title,
-        level_name=group.course.level.name,
-        term_name=group.academic_term.name,
-        units=outline_units(group.id, current_user.id, include_material_index=True),
-    )
+    # Keep bookmarked URLs valid without a separate outline screen.
+    response = redirect(url_for("workspace.student_course", group_public_id=group.public_id))
+    response.headers["Cache-Control"] = "private, no-store"
+    response.vary.add("Cookie")
+    return response
 
 
 @student_bp.get("/groups/<group_public_id>/units/<unit_public_id>/lessons/<lesson_public_id>")
@@ -142,6 +138,7 @@ def lesson_detail(group_public_id, unit_public_id, lesson_public_id):
         ),
         tz_name=tz_name,
         lesson_links=lesson_links,
+        lesson_units=outline,
         previous_lesson=lesson_links[index - 1] if index is not None and index > 0 else None,
         next_lesson=lesson_links[index + 1] if index is not None and index + 1 < len(lesson_links) else None,
         **page.view,
@@ -200,21 +197,25 @@ def lesson_undo_complete(group_public_id, unit_public_id, lesson_public_id):
     return _change_completion(group_public_id, unit_public_id, lesson_public_id, ACTION_UNDO)
 
 
-def _completion_destination(student_id, progress):
+def _completion_destination(student_id, progress, book="main"):
     """Resolve only the next currently visible lesson in this own Group.
 
     No destination identity/URL comes from the form. The destination GET
     rechecks enrollment/publication if either changes during completion.
     """
+    units = outline_units(progress.group_id, student_id)
+    if book == "workbook":
+        from app.blueprints.student.books import workbook_context
+        _, _, units, _, _ = workbook_context(student_id, progress.group_public_id)
     lessons = [dict(unit_public_id=unit["public_id"], public_id=lesson["public_id"])
-               for unit in outline_units(progress.group_id, student_id)
+               for unit in units
                for lesson in unit["lessons"]]
     index = next((i for i, lesson in enumerate(lessons)
                   if lesson["public_id"] == progress.lesson_public_id), None)
     if index is None or index + 1 >= len(lessons):
         return None
     lesson = lessons[index + 1]
-    return url_for("student.lesson_detail", group_public_id=progress.group_public_id,
+    return url_for("student.workbook_lesson" if book == "workbook" else "student.lesson_detail", group_public_id=progress.group_public_id,
                    unit_public_id=lesson["unit_public_id"], lesson_public_id=lesson["public_id"])
 
 
@@ -229,8 +230,14 @@ def _change_completion(group_public_id, unit_public_id, lesson_public_id, action
     )
     if progress is None:
         abort(404)
+    book = "workbook" if request.form.get("book") == "workbook" else "main"
+    if book == "workbook":
+        from app.blueprints.student.books import workbook_context
+        _, _, _, pages, _ = workbook_context(student_id, group_public_id)
+        if not pages.get(lesson_public_id):
+            abort(404)
     lesson_url = url_for(
-        "student.lesson_detail",
+        "student.workbook_lesson" if book == "workbook" else "student.lesson_detail",
         group_public_id=progress.group_public_id,
         unit_public_id=progress.unit_public_id,
         lesson_public_id=progress.lesson_public_id,
@@ -252,7 +259,9 @@ def _change_completion(group_public_id, unit_public_id, lesson_public_id, action
 
     continue_url = None
     if action == ACTION_COMPLETE and request.form.get("after_save") == "next_lesson":
-        continue_url = _completion_destination(student_id, progress)
+        continue_url = _completion_destination(student_id, progress, book)
+    elif action == ACTION_COMPLETE and request.form.get("after_save") == "exit":
+        continue_url = url_for("workspace.student_courses")
 
     outcome = progress_tx.set_completion(
         student_id,
@@ -266,10 +275,12 @@ def _change_completion(group_public_id, unit_public_id, lesson_public_id, action
         abort(404)
     if outcome == progress_tx.CHANGED:
         note_outcome("lesson_completion", "completed" if action == ACTION_COMPLETE else "undone")
-        flash(_DONE[action], "success")
+        if action != ACTION_COMPLETE:
+            flash(_DONE[action], "success")
     elif outcome == progress_tx.ALREADY:
         note_outcome("lesson_completion", "unchanged")
-        flash(_ALREADY[action], "info")
+        if action != ACTION_COMPLETE:
+            flash(_ALREADY[action], "info")
     elif outcome == progress_tx.STALE:
         note_outcome("lesson_completion", "rejected")
         flash(_STALE, "warning")

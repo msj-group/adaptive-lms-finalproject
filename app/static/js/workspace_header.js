@@ -6,7 +6,8 @@ window.aelmsModules.register(document.currentScript, function (pageScope) {
     const root = document.getElementById("workspace-content");
     if (!host || !root) return;
     const title = host.querySelector("[data-workspace-header-title]");
-    const filterHost = host.querySelector("[data-workspace-header-filters]");
+    const filterHost = document.querySelector("[data-workspace-header-filters]");
+    if (!filterHost) return;
     const fallback = title.textContent.trim();
     const t = window.aelmsUI.t;
     const shells = new Set();

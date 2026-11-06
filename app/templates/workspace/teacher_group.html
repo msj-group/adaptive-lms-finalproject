@@ -6,6 +6,7 @@
 {% block studio_content %}
 {% set operational = group.status=='active' and group.academic_term.status=='active' and group.course.status=='active' and group.course.level.status=='active' %}
 {% include 'teacher/studio/_editor_actions.html' %}
+<div class="cs-editor-actions"><a class="btn btn--secondary" href="{{ url_for('teacher.course_book_list', group_public_id=group.public_id) }}">{{ _('Course books') }}</a></div>
 {% set totals=namespace(lessons=0) %}{% for unit in units %}{% set totals.lessons=totals.lessons+lessons_by_unit.get(unit.id,[])|length %}{% endfor %}
 
 <section class="cs-hero">

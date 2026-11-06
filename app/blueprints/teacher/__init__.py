@@ -20,3 +20,4 @@ from app.blueprints.teacher import progress  # noqa: E402,F401
 from app.blueprints.teacher import activities  # noqa: E402,F401
 from app.blueprints.teacher import curriculum_publication  # noqa: E402,F401
 from app.blueprints.teacher import curriculum_editor  # noqa: E402,F401
+from app.blueprints.teacher import course_books  # noqa: E402,F401

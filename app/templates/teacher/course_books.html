@@ -1,0 +1,16 @@
+{% extends "teacher/studio/_base.html" %}
+{% set studio_page = 'overview' %}
+{% block title %}{{ _('Course books') }}{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/course_books.css', v='interactive-books-3') }}">{% endblock %}
+{% block studio_heading %}{{ studio.heading(_('Course books'), group.name ~ ' آ· ' ~ course.title) }}{% endblock %}
+{% block studio_content %}
+<div class="cb-workspace">
+  {% if books.values()|select|list %}<ul class="cb-book-list" aria-label="{{ _('Course books') }}">
+    {% for kind,label in book_labels.items() %}{% set book = books.get(kind) %}{% if book %}
+    <li class="cb-book"><span class="cb-book-icon" aria-hidden="true">{{ ui.icon('book',24) }}</span><div class="cb-book-info"><h2>{{ _(label) }}</h2><p class="cb-filename" dir="auto">{{ book.uploaded_file.original_filename }}</p><p class="cb-note">PDF آ· {{ _('%(count)d pages', count=book.page_count) }} آ· {{ _('Student lessons') if kind == 'main' else _('Published exercises only for students') if kind == 'workbook' else _('Teachers only') }}</p></div><div class="cb-actions"><a class="btn btn--primary" href="{{ book_urls('read', kind=kind) }}">{{ _('Read book') }}</a><a class="btn btn--secondary" href="{{ book_urls('download', kind=kind, file_id=book.uploaded_file.public_id) }}">{{ _('Download PDF') }}</a></div></li>
+    {% endif %}{% endfor %}
+  </ul>{% else %}<div class="cb-empty"><h2>{{ _('No books added yet.') }}</h2></div>{% endif %}
+  {% include "curriculum/_teaching_assets.html" %}
+  <a class="btn btn--secondary" href="{{ url_for('workspace.teacher_group', group_public_id=group.public_id) }}">{{ _('Back to group') }}</a>
+</div>
+{% endblock %}

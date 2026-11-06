@@ -1,48 +1,46 @@
-{% extends 'layouts/student_atlas_base.html' %}
+{% extends 'layouts/portal_base.html' %}
 {% import '_figma_ui.html' as ui %}
-{% import "curriculum/_pages.html" as reader with context %}
-{% block title %}{{ lesson_title }} — {{ group_name }}{% endblock %}
-{% block extra_head %}
-  {{ super() }}
-  {% if course_document %}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css') }}">{% endif %}
-{% endblock %}
-{% block body_scripts %}{{ super() }}{% if course_document %}<script src="{{ url_for('static', filename='js/curriculum_editor.js') }}" defer></script>{% endif %}{% endblock %}
-{% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
-{% block portal_content %}
-
-
-
-<div class="atlas-reader" data-atlas-reader><aside class="atlas-reader-map"><details data-atlas-outline><summary>{{ ui.icon('book',18) }}<span>Course outline</span>{{ ui.icon('chevron-down',15) }}</summary><p class="atlas-note">{{ _n('%(count)d published lesson', '%(count)d published lessons', lesson_links|length) }}</p><ol>{% for item in lesson_links %}<li><a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=item.unit_public_id, lesson_public_id=item.public_id) }}"{% if item.public_id == lesson_public_id %} aria-current="page"{% endif %} data-research-id="lesson_open"><span class="atlas-reader-number" aria-hidden="true">{{ ui.icon('check',13) if item.is_completed else '%02d'|format(loop.index) }}</span><span dir="auto">{{ item.title }}{% if item.is_completed %}<small>Completed</small>{% endif %}</span></a></li>{% endfor %}</ol></details><a class="atlas-link" href="{{ url_for('student.group_units', group_public_id=group_public_id) }}" data-research-id="course_outline">All units {{ ui.icon('arrow-up',15) }}</a></aside><article class="atlas-reader-paper"><header class="atlas-reader-heading"><p class="atlas-eyebrow" dir="auto">{{ course_title }} · {{ unit_title }}</p><h1 data-workspace-page-heading dir="auto">{{ lesson_title }}</h1><p class="atlas-note" dir="auto">{{ group_name }} · {{ term_name }}</p><span class="badge badge--{{ 'success' if progress.is_completed else 'neutral' }}">{{ 'Completed' if progress.is_completed else 'Not completed' }}</span></header>
-
-{%- with messages = get_flashed_messages(with_categories=true) -%}
-  {%- for category, message in messages %}
-<div class="alert alert--{{ category }}" style="margin-bottom: var(--space-4)">{{ message }}</div>
-  {%- endfor -%}
-{%- endwith %}
-
-{% if lesson_description %}<div class="st-reading-prose">
-  {# Plain text: line breaks preserved via CSS, never via |safe or stored HTML. #}
-  <div style="white-space: pre-wrap; word-break: break-word;">{{ lesson_description }}</div>
-</div>{% endif %}
-
-{% if materials %}
-<details class="atlas-material-index">
-  <summary>Jump to a material</summary>
-  <ol>
-    {% for material in materials %}<li><a href="#material-{{ material.public_id }}" dir="auto">{{ material.title }}</a></li>{% endfor %}
-  </ol>
-</details>
-{% endif %}
-{% if course_document %}
-  {% set page_args = {'group_public_id': group_public_id, 'unit_public_id': unit_public_id, 'lesson_public_id': lesson_public_id} %}
-  {{ reader.pages(course_document, page_start, page_end, materials, 'student.lesson_document_page',
-                  page_args, 'student.material_open', page_args, collect=true) }}
-{% endif %}
-{% set separate_materials = (materials|selectattr('pin_page', 'none')|list) if course_document else materials %}
-{% if separate_materials or not course_document %}
-<div class="atlas-material-toolbar" data-atlas-material-toolbar hidden><nav aria-label="Material type">{% for key,label in [('all','All materials'),('text','Text'),('audio','Audio'),('video','Video'),('image','Images'),('files','Files'),('link','Links')] %}<button type="button" data-atlas-filter="{{ key }}" aria-pressed="{{ 'true' if key == 'all' else 'false' }}">{{ _(label) }}</button>{% endfor %}</nav><p class="atlas-note" role="status" data-atlas-material-status data-single="{{ _('One material shown') }}" data-plural="{{ _('%(count)s materials shown', count='{count}') }}"></p></div>
-<section class="atlas-materials">
-  <h2>Materials</h2>
+{% import 'curriculum/_pages.html' as reader with context %}
+{% import 'curriculum/_media.html' as custom_media %}
+{% set reader_lesson_endpoint = reader_lesson_endpoint|default('student.lesson_detail') %}
+{% block title %}{{ lesson_title }} — {{ course_title }}{% endblock %}
+{% block body_class %}{{ super() }} sf-focused{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='focus-reader-1') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/student_focus.css', v='books-finish-3') }}">{% endblock %}
+{% block body_scripts %}{{ super() }}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='focus-media-1') }}" defer></script><script src="{{ url_for('static', filename='js/student_reader.js', v='books-finish-3') }}" defer></script>{% endblock %}
+{% block content %}
+<a class="figma-skip-link" href="#workspace-content">{{ _('Skip to content') }}</a>
+<div class="sf-reader" data-student-reader data-workspace-history='{{ workspace_navigation()|tojson }}'>
+  <header class="sf-header">
+    <div class="sf-context"><a class="sf-back" aria-label="{{ _('My courses') }}" href="{{ url_for('workspace.student_courses') }}">{{ ui.icon('arrow',18) }}</a><div><p dir="auto">{{ unit_title }}</p><h1 data-workspace-page-heading dir="auto">{{ lesson_title }}</h1></div></div>
+    <div class="sf-actions">
+      <details class="sf-outline" data-focus-outline><summary aria-label="{{ _('Course contents') }}">{{ ui.icon('book',18) }}<span class="sf-header-label">{{ _('Course contents') }}</span></summary>
+        <aside class="sf-outline-panel"><header><h2>{{ _('Course contents') }}</h2><button type="button" data-close-outline aria-label="{{ _('Close') }}">{{ ui.icon('close',18) }}</button></header><div class="sf-unit-list">
+          {% for unit in lesson_units %}<details class="sf-outline-unit"{% if unit.public_id == unit_public_id %} open{% endif %}><summary><span dir="auto">{{ unit.title }}</span>{{ ui.icon('chevron-down',16) }}</summary><ol>
+          {% for item in unit.lessons %}<li><a href="{{ url_for(reader_lesson_endpoint, group_public_id=group_public_id, unit_public_id=unit.public_id, lesson_public_id=item.public_id) }}"{% if item.public_id == lesson_public_id %} aria-current="page"{% endif %} data-research-id="lesson_open"><span class="sf-lesson-number" aria-hidden="true">{{ ui.icon('check',13) if item.is_completed else ui.icon('book',13) }}</span><span dir="auto">{{ item.title }}</span></a></li>{% endfor %}
+          </ol></details>{% endfor %}
+        </div></aside>
+      </details>
+      <button class="sf-fullscreen" type="button" data-reader-fullscreen aria-label="{{ _('Full screen') }}" data-enter-label="{{ _('Full screen') }}" data-exit-label="{{ _('Exit full screen') }}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path data-fullscreen-icon d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg><span class="sf-header-label" data-fullscreen-label>{{ _('Full screen') }}</span></button>
+    </div>
+  </header>
+  <div class="sf-scroll" id="workspace-content" tabindex="-1" data-image-scroll>
+    <div class="sf-flashes">{% with messages = get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="alert alert--{{ category }}">{{ message }}</div>{% endfor %}{% endwith %}</div>
+    {% set course_materials = materials|selectattr('origin', 'equalto', 'course')|list %}
+    {% set teacher_materials = materials|selectattr('origin', 'equalto', 'teacher')|list %}
+    {% if course_document %}
+      {% set page_args = {'group_public_id':group_public_id,'unit_public_id':unit_public_id,'lesson_public_id':lesson_public_id} %}
+      {% if reader_book|default('main') == 'workbook' %}
+      {{ reader.pages(course_document, page_start, page_end, [], 'student.workbook_page', {'group_public_id':group_public_id}, 'student.workbook_media', {'group_public_id':group_public_id, 'document_id':course_document.uploaded_file.public_id}, page_pins=workbook_pins, page_numbers=workbook_pages, collect=true, show_page_numbers=false) }}
+      {% else %}
+      {{ reader.pages(course_document, page_start, page_end, course_materials, 'student.lesson_document_page', page_args, 'student.material_open', page_args, collect=true, show_page_numbers=false) }}
+      {% endif %}
+    {% endif %}
+    {% set separate_materials = (course_materials|selectattr('pin_page', 'none')|list) if course_document else course_materials %}
+{% for section_title,section_materials in [('Course content',separate_materials),('Teacher additions',teacher_materials)] %}
+{% set separate_materials = section_materials %}
+{% if separate_materials or (not course_document and section_title == 'Course content') %}
+<details class="sf-material-section"{% if not course_document %} open{% endif %}><summary>{{ _(section_title) }} · {{ section_materials|length }}</summary><section class="atlas-materials">
+  <h2>{{ _(section_title) }}</h2>
   {% if not separate_materials %}
   <div class="empty-state">
     <div class="empty-state__title">No materials yet</div>
@@ -68,17 +66,8 @@
     {% elif material.kind == "file" and material.category == "image" %}
     <img class="material-media" src="{{ url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" alt="{{ material.title }}">
 
-    {% elif material.kind == "file" and material.category == "audio" %}
-    <audio class="material-media" controls preload="none" data-research-media="lesson_audio">
-      <source src="{{ url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" type="{{ material.content_type }}">
-      Your browser does not support inline audio playback.
-    </audio>
-
-    {% elif material.kind == "file" and material.category == "video" %}
-    <video class="material-media" controls preload="none" data-research-media="lesson_video">
-      <source src="{{ url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" type="{{ material.content_type }}">
-      Your browser does not support inline video playback.
-    </video>
+    {% elif material.kind == "file" and material.category in ['audio','video'] %}
+    {{ custom_media.inline_player(url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id), material.category, collect=true) }}
 
     {% elif material.kind == "file" and material.extension == "pdf" %}
     <p class="ds-section__desc">{{ material.original_filename }} · {{ material.byte_size }} bytes. Documents open as downloads for security.</p><a class="btn btn--secondary" href="{{ url_for('student.material_download', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" data-research-id="material_download">Download PDF</a>
@@ -92,40 +81,27 @@
   </div>
   {% endfor %}
   {% endif %}
-</section>
+</section></details>
 {% endif %}
-<nav class="workspace-tabs" aria-label="Lesson navigation">{% if previous_lesson %}<a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=previous_lesson.unit_public_id, lesson_public_id=previous_lesson.public_id) }}">Previous: {{ previous_lesson.title }}</a>{% endif %}{% if next_lesson %}<a href="{{ url_for('student.lesson_detail', group_public_id=group_public_id, unit_public_id=next_lesson.unit_public_id, lesson_public_id=next_lesson.public_id) }}">Next: {{ next_lesson.title }}</a>{% endif %}</nav>
-{#- Phase 4 / M13. The student's own completion state, with exactly the one
-    action that state allows. The form is bound by a signed token to this
-    student, lesson, action and progress version; the route proves access and
-    the version again under locks, whatever this page showed. -#}
-<div class="learning-completion" id="progress">
-  <div class="ds-row" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3)">
-    <div>
-      {% if progress.is_completed %}
-      <span class="badge badge--success">Completed</span>
-      <div class="card__body" style="margin-top: var(--space-2)">You marked this lesson complete on {{ progress.completed_local.strftime("%Y-%m-%d %H:%M") }}.</div>
-      {% else %}
-      <span class="badge badge--neutral">Not completed</span>
+{% endfor %}
 
-      {% endif %}
-    </div>
-    <form method="post" action="{{ url_for('student.lesson_undo_complete' if progress_action == 'undo' else 'student.lesson_mark_complete', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id) }}"
-          data-research-form="{{ 'lesson_undo_complete' if progress_action == 'undo' else 'lesson_complete' }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="progress_state" value="{{ progress_state }}">
-      {% if progress_action == 'undo' %}
-      <button type="submit" class="btn btn--secondary" data-research-id="lesson_undo_complete">Undo completion</button>
-      {% else %}
-      <button type="submit" class="btn btn--primary" data-research-id="lesson_complete">Mark as complete</button>
-      {% if next_lesson %}
-      <button type="submit" name="after_save" value="next_lesson" class="btn btn--secondary" data-research-id="lesson_complete">Complete and next lesson</button>
-      {% endif %}
-      {% endif %}
-    </form>
+    <div class="sf-lesson-end" data-lesson-end aria-hidden="true"></div>
   </div>
+  <dialog class="sf-finish-dialog" id="progress" data-completion-dialog aria-labelledby="lesson-end-title">
+    <button type="button" class="sf-finish-close" data-close-completion aria-label="{{ _('Keep reading') }}">{{ ui.icon('close',20) }}</button>
+    <section class="sf-completion">
+      <div class="sf-finish-copy"><span class="sf-finish-icon" aria-hidden="true">{{ ui.icon('check',26) }}</span><div><h2 id="lesson-end-title">{{ _('Lesson complete') if progress.is_completed else _('Ready for your next step?') }}</h2><p>{{ _('You reached the end of this lesson.') }}</p></div></div>
+      {% if progress_action == 'undo' %}
+      <div class="sf-finish-actions">{% if next_lesson %}<a class="btn btn--primary" href="{{ url_for(reader_lesson_endpoint, group_public_id=group_public_id, unit_public_id=next_lesson.unit_public_id, lesson_public_id=next_lesson.public_id) }}">{{ _('Next lesson') }}</a>{% endif %}<a class="btn btn--secondary" href="{{ url_for('workspace.student_courses') }}">{{ _('Exit to courses') }}</a></div>
+      {% endif %}
+      <form method="post" action="{{ url_for('student.lesson_undo_complete' if progress_action == 'undo' else 'student.lesson_mark_complete', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id) }}" data-research-form="{{ 'lesson_undo_complete' if progress_action == 'undo' else 'lesson_complete' }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="progress_state" value="{{ progress_state }}">
+        {% if reader_book|default('main') == 'workbook' %}<input type="hidden" name="book" value="workbook">{% endif %}
+        {% if progress_action == 'undo' %}<button type="submit" class="sf-undo" data-research-id="lesson_undo_complete">{{ _('Undo completion') }}</button>
+        {% else %}{% if next_lesson %}<button type="submit" name="after_save" value="next_lesson" class="btn btn--primary" data-research-id="lesson_complete">{{ _('Complete and next lesson') }} {{ ui.icon('arrow',18) }}</button>{% endif %}<button type="submit" name="after_save" value="exit" class="btn btn--secondary" data-research-id="lesson_complete">{{ _('Complete and exit') }}</button>{% endif %}
+      </form>
+    </section>
+  </dialog>
 </div>
-
-<a class="atlas-link" href="{{ url_for('student.group_units', group_public_id=group_public_id) }}" data-research-id="course_outline">{{ ui.icon('book',16) }}Back to course outline</a>
-</article></div>
+{% if research and research.v2 %}{% include '_research_feedback_v2.html' %}{% elif research %}{% include '_research_feedback.html' %}{% endif %}
 {% endblock %}

@@ -1,3 +1,4 @@
+{% import 'curriculum/_media.html' as custom_media %}
 {% macro media_icon(category) %}
   {% if category == 'video' %}
     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>
@@ -10,7 +11,7 @@
   {% set file = material if material is mapping else material.uploaded_file %}
   {% if file.category in ['audio', 'video'] %}
     <button class="ce-pin" type="button"
-            id="material-{{ material.public_id }}" data-category="{{ file.category }}"
+            id="material-{{ material.anchor_id|default(material.public_id) }}" data-category="{{ file.category }}"
             style="--pin-x:{{ material.pin_x / 100 }}%;--pin-y:{{ material.pin_y / 100 }}%;"
             data-pin-x="{{ material.pin_x }}" data-pin-y="{{ material.pin_y }}"
             data-media-title="{{ file.original_filename }}"
@@ -22,10 +23,10 @@
   {% endif %}
 {% endmacro %}
 
-{% macro pages(document, start, end, materials, page_endpoint, page_args, media_endpoint, media_args, editor=false, collect=false, pin_version=none, book_sizes=none, page_pins=none, page_owners=none) %}
+{% macro pages(document, start, end, materials, page_endpoint, page_args, media_endpoint, media_args, editor=false, collect=false, pin_version=none, book_sizes=none, page_pins=none, page_owners=none, show_page_numbers=true, page_numbers=none) %}
 {% set book = book_sizes is not none %}
 <div class="ce-pages" id="ce-page-viewer" data-pdf-viewer{% if book %} data-image-scroll{% endif %} tabindex="0" aria-label="{{ _('PDF pages') if book else _('Lesson pages') }}">
-  {% for number in range(start, end + 1) %}
+  {% for number in (page_numbers if page_numbers is not none else range(start, end + 1)) %}
   {% set size = book_sizes[number - 1] if book and book_sizes|length >= number else (800, 1100) %}
   <figure class="ce-page"{% if book %} id="pdf-page-{{ number }}" data-book-page="{{ number }}"{% endif %}>
     <div class="ce-sheet" data-sheet="{{ number }}"{% if page_owners is not none and number in page_owners %} data-media-action="{{ page_owners[number].save }}" data-lesson-preview="{{ page_owners[number].preview }}"{% endif %}>
@@ -37,19 +38,26 @@
         {{ media_pin(material, media_endpoint, media_args, editor, pin_version) }}
       {% endfor %}
     </div>
-    <figcaption>{{ _('Page') }} {{ number }}</figcaption>
+    {% if show_page_numbers %}<figcaption>{{ _('Page') }} {{ number }}</figcaption>{% endif %}
   </figure>
   {% endfor %}
 </div>
 {% if not editor and media_endpoint %}
-<dialog class="ce-player" data-media-player aria-label="{{ _('Media player') }}">
+{{ player(collect) }}
+{% endif %}
+{% endmacro %}
+
+{% macro player(collect=false) %}
+<dialog class="ce-player cm-dialog" data-media-player aria-label="{{ _('Media player') }}">
   <header>
     <strong data-player-title dir="auto"></strong>
     <button class="btn btn--secondary" type="button" data-close-player>{{ _('Close') }}</button>
   </header>
-  <audio controls preload="none" hidden{% if collect %} data-research-media="lesson_audio"{% endif %}></audio>
-  <video controls playsinline preload="none" hidden{% if collect %} data-research-media="lesson_video"{% endif %}></video>
+  <div class="course-media" data-course-media>
+    <audio controls preload="none" hidden{% if collect %} data-research-media="lesson_audio"{% endif %}></audio>
+    <video controls playsinline preload="none" hidden{% if collect %} data-research-media="lesson_video"{% endif %}></video>
+    {{ custom_media.controls() }}
+  </div>
   <p data-player-error role="status" hidden>{{ _('This file could not be played.') }}</p>
 </dialog>
-{% endif %}
 {% endmacro %}

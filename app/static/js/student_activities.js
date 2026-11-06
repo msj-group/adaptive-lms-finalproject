@@ -12,7 +12,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     return text.replace("%(count)d", values.count);
   };
   function sync() {
-    var count = Number(Boolean(form.elements.state.value)) + Number(Boolean(form.elements.course.value));
+    var count = Number(Boolean(form.elements.type.value)) + Number(Boolean(form.elements.state.value)) + Number(Boolean(form.elements.course.value));
     badge.textContent = String(count);
     badge.hidden = count === 0;
     badge.setAttribute("aria-label", t(count === 1 ? "%(count)d active filter" : "%(count)d active filters", {count:count}));

@@ -46,10 +46,10 @@ class Config:
     MATERIAL_ALLOWED_EXTENSIONS = os.environ.get(
         "MATERIAL_ALLOWED_EXTENSIONS", "pdf,docx,png,jpg,jpeg,gif,webp,mp3,wav,mp4,webm"
     )
-    MATERIAL_MAX_DOCUMENT_BYTES = os.environ.get("MATERIAL_MAX_DOCUMENT_BYTES", "26214400")
+    MATERIAL_MAX_DOCUMENT_BYTES = os.environ.get("MATERIAL_MAX_DOCUMENT_BYTES", "524288000")
     MATERIAL_MAX_IMAGE_BYTES = os.environ.get("MATERIAL_MAX_IMAGE_BYTES", "10485760")
     MATERIAL_MAX_AUDIO_BYTES = os.environ.get("MATERIAL_MAX_AUDIO_BYTES", "52428800")
-    MATERIAL_MAX_VIDEO_BYTES = os.environ.get("MATERIAL_MAX_VIDEO_BYTES", "104857600")
+    MATERIAL_MAX_VIDEO_BYTES = os.environ.get("MATERIAL_MAX_VIDEO_BYTES", "524288000")
 
     # Online payment remains disabled until a real provider is integrated.
     # Startup rejects other values; collection uses ordinary cash/bank forms.

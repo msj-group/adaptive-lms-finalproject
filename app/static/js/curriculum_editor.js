@@ -456,8 +456,17 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       const extension = selected.name.split(".").pop().toLowerCase();
       const audio = ["mp3", "wav"].includes(extension);
       const video = ["mp4", "webm"].includes(extension);
+      invalid.textContent = invalid.dataset.fileTypeError;
       invalid.hidden = audio || video;
       if (!audio && !video) {
+        file.value = "";
+        clearDraft();
+        return;
+      }
+      const limit = Number(audio ? file.dataset.maxAudioBytes : file.dataset.maxVideoBytes);
+      if (selected.size > limit) {
+        invalid.textContent = file.dataset.sizeError;
+        invalid.hidden = false;
         file.value = "";
         clearDraft();
         return;

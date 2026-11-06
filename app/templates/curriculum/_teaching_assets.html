@@ -1,0 +1,5 @@
+{% if teaching_assets %}
+<details class="cb-resources ad-card"><summary>{{ _('Teacher resources') }} · {{ teaching_assets|length }}</summary><p class="cb-note">{{ _('Teachers only') }}</p>
+{% for purpose,items in teaching_assets|groupby('purpose') %}<details><summary>{{ purpose|replace('_',' ')|title }} · {{ items|length }}</summary><ul class="cb-resource-list">{% for asset in items %}<li><span dir="auto">{{ asset.title }}</span><a href="{{ resource_urls('read', material_public_id=asset.public_id) }}">{{ _('Open resource') }}</a></li>{% endfor %}</ul></details>{% endfor %}
+</details>
+{% endif %}

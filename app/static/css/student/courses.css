@@ -50,6 +50,9 @@
 .student-atlas .atlas-cover-caption { display:block; margin-block-start:7px; font-size:9px; letter-spacing:.16em; text-transform:uppercase; }
 .student-atlas .atlas-course-cover>i { width:145px; height:145px; border:24px solid currentColor; border-radius:50%; position:absolute; inset-inline-end:-28px; inset-block-start:24px; opacity:.12; z-index:-1; }
 .student-atlas .atlas-course-copy { padding:22px; min-width:0; }
+.student-atlas .atlas-book-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:24px; }
+.student-atlas #workspace-content .atlas-course-card { display:block; }
+.student-atlas .atlas-book-actions .btn { min-height:46px; gap:8px; }
 .student-atlas .atlas-course-copy h2 { font-size:20px; font-weight:600; margin:0 0 8px; }
 .student-atlas .atlas-course-meta { font-size:11px; color:var(--ui-muted); margin:0 0 8px; }
 .student-atlas .atlas-course-state { display:flex; flex-wrap:wrap; gap:6px; margin-block:14px; }

@@ -6,6 +6,7 @@ from app.extensions import db
 from app.models import Course, Unit
 from app.models.course_document import CourseDocument
 from app.models.group_curriculum import GroupCurriculum
+from app.services.course_pdf import DOCUMENT_MAX_BYTES
 
 
 class EditorScope:
@@ -73,6 +74,7 @@ class EditorScope:
 
     def context(self):
         return dict(
+            book_upload_limit=DOCUMENT_MAX_BYTES,
             curriculum_url=self.url, editor_is_group=bool(self.group_id),
             editor_back_url=(url_for("workspace.teacher_group", group_public_id=self.group_public_id)
                              if self.group_id else url_for("admin.courses_list")),
