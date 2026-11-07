@@ -11,7 +11,7 @@ def manifest():
         "description": "Your Youth Centre learning workspace",
         "start_url": "/", "scope": "/", "lang": "en",
         "display": "fullscreen", "display_override": ["fullscreen", "standalone"],
-        "orientation": "any", "theme_color": "#144baa", "background_color": "#f7f8fa",
+        "orientation": "any", "theme_color": "#eaf0fa", "background_color": "#eaf0fa",
         "categories": ["education"],
         "icons": [{"src": url_for("static", filename=f"pwa/icon-{size}.png"),
                    "sizes": f"{size}x{size}", "type": "image/png", "purpose": "any maskable"}

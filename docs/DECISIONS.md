@@ -13941,3 +13941,14 @@ not removed. Suppress routine acknowledgements; preserve finality/validation
 messages and contextual warnings using a shared restrained notice style. Do not
 change notification records, course content, progress policy or the schema.
 See [implementation and verification limits](CENTRE_HEADER_READER_NOTICES_20261107.md).
+
+## Page-relative markers and Android cutout canvas - 2026-11-07
+
+The owner's latest correction replaces fixed-pixel/offset reader markers with
+centered, sheet-relative transparent markers; stored placement remains unchanged.
+Enlarge the header logo to a 44px slot on phone and desktop. Bells appear only on
+main section entry pages, excluding Notifications and the reader. Android's
+installed app keeps fullscreen/standalone metadata, adds viewport-fit=cover and
+safe-area-aware controls, and paints exposed canvas with the app theme. Device
+cutout behavior remains OS/browser-owned and requires physical confirmation.
+See [implementation and verification limits](PAGE_MARKERS_AND_ANDROID_CANVAS_20261107.md).

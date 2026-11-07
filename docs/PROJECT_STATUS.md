@@ -5176,3 +5176,14 @@ are omitted. No migration or business write is required. Browser/device behavior
 remains owner review while Work browser use is disabled. See
 [scope and evidence boundary](CENTRE_HEADER_READER_NOTICES_20261107.md); the private
 deployment receipts establish the actual hosted release and source hashes.
+
+### Page-relative markers, logo size and Android canvas - 2026-11-07
+
+Prepared the owner corrections for proportional reader marker size/placement,
+larger shared header logo, and section-entry-only notification bells. Android
+viewport-fit=cover and safe-area layout now allow the app canvas to extend behind
+display cutouts while keeping controls safe. Manifest identity/display mode and
+private-content cache rules remain unchanged. No schema or business-data write is
+needed. Physical Android strip/gesture acceptance remains owner review while
+browser use is disabled. See [implementation and boundaries](PAGE_MARKERS_AND_ANDROID_CANVAS_20261107.md);
+private deployment receipts establish the active release and source match.

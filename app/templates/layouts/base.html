@@ -2,15 +2,14 @@
 <html lang="{{ ui_language() }}" dir="{{ 'rtl' if ui_language() == 'ar' else 'ltr' }}" data-theme="{{ ui_theme() }}">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="manifest" href="{{ url_for('pwa.manifest') }}">
-  <meta name="theme-color" content="#144baa">
+  <meta name="theme-color" content="#eaf0fa">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Youth LMS">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='pwa/icon-180.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/pwa.css', v='pwa-1') }}">
-  <script src="{{ url_for('static', filename='js/pwa.js', v='pwa-1') }}" data-worker-url="{{ url_for('pwa.service_worker') }}" data-app-runtime defer></script>
+  <script src="{{ url_for('static', filename='js/pwa.js', v='edge-to-edge-2') }}" data-worker-url="{{ url_for('pwa.service_worker') }}" data-app-runtime defer></script>
   <title>{% block title %}Adaptive English LMS{% endblock %}</title>
   <meta name="aelms-workspace-scope" content="{{ workspace_navigation().scope if current_user.is_authenticated else '' }}">
   <script src="{{ url_for('static', filename='js/page_scope.js', v='app-1') }}" data-app-runtime></script>
@@ -27,10 +26,11 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ui_motion.css', v='app-navigation-1') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/select_controls.css', v='platform-select-2') }}">
   {% if current_user.is_authenticated %}<link rel="stylesheet" href="{{ url_for('static', filename='css/search_focus.css', v='caret-search-20261030') }}">{% endif %}
-  {% if current_user.is_authenticated %}<link rel="stylesheet" href="{{ url_for('static', filename='css/workspace_header.css', v='centre-header-3') }}">{% endif %}
+  {% if current_user.is_authenticated %}<link rel="stylesheet" href="{{ url_for('static', filename='css/workspace_header.css', v='centre-brand-5') }}">{% endif %}
   {% if current_user.is_authenticated %}<link rel="stylesheet" href="{{ url_for('static', filename='css/mobile_workspace.css', v='mobile-workspace-1') }}">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/platform_scroll.css', v='native-scroll-1') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/notices.css', v='quiet-notices-1') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pwa.css', v='edge-to-edge-2') }}">
   <script src="{{ url_for('static', filename='js/platform_scroll.js', v='native-scroll-1') }}" defer></script>
   <script src="{{ url_for('static', filename='js/appearance.js', v='quiet-notices-2') }}" defer></script>
   {% if current_user.is_authenticated %}

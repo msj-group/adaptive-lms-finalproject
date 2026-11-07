@@ -6,10 +6,16 @@
   const workerURL = script.dataset.workerUrl;
   let promptEvent = null;
   let installationConfirmed = false;
+  function syncSystemColor() {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const color = getComputedStyle(document.body).backgroundColor;
+    if (meta && color && color !== 'rgba(0, 0, 0, 0)' && color !== 'transparent') meta.content = color;
+  }
   function standalone() {
     return matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
   }
   function refresh() {
+    syncSystemColor();
     document.querySelectorAll('[data-pwa-install]').forEach(button => {
       button.hidden = !window.isSecureContext || standalone() || installationConfirmed;
     });
@@ -25,6 +31,8 @@
   const display = matchMedia('(display-mode: standalone), (display-mode: fullscreen)');
   display.addEventListener('change', refresh);
   document.addEventListener('DOMContentLoaded', refresh);
+  new MutationObserver(syncSystemColor).observe(document.documentElement,
+    {attributes:true, attributeFilter:['data-theme']});
   document.addEventListener('click', async event => {
     const close = event.target.closest('[data-pwa-close]');
     if (close) { document.getElementById('pwa-install-help')?.close(); return; }

@@ -10,7 +10,7 @@
     {% if request.endpoint == home_endpoint %}
     <a class="st-icon-button" href="{{ url_for('workspace.search') }}" data-workspace-search-open data-research-id="nav_search" aria-label="Search your workspace" aria-haspopup="dialog" aria-controls="workspace-search-dialog">{{ ui.icon('search') }}</a>
     {% endif %}
-    {% if notif and request.blueprint != 'notifications' %}{% include 'notifications/_bell.html' %}{% endif %}
+    {% if notif and workspace_is_section_root() and request.blueprint != 'notifications' %}{% include 'notifications/_bell.html' %}{% endif %}
     {{ ui.account(current_user, url_for('research.logout' if role == 'researcher' else 'auth.logout'), csrf_token(), photo_url=account_photo_url()) }}
   </div>
 </header>

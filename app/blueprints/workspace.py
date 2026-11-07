@@ -240,6 +240,7 @@ def workspace_context():
             to_app_local(_tz(), moment) if moment else None, "workspace_group_choices": group_choices,
             "workspace_nav_active": nav_active, "workspace_size": human_size,
             "workspace_calendar_weeks": calendar_weeks, "workspace_back": workspace_back_link,
+            "workspace_is_section_root": workspace_is_section_root,
             "workspace_navigation": workspace_navigation,
             "workspace_breadcrumbs": workspace_breadcrumbs,
             "workspace_admin_navigation": admin_navigation,
@@ -458,20 +459,10 @@ def workspace_navigation():
             "get": request.method == "GET"}
 
 
-def workspace_back_link():
-    """Return a registered parent as the safe no-script/direct-entry fallback.
-
-    JavaScript enhances this native link from an ephemeral per-tab trail; using
-    the referrer as the fallback would create A -> B -> A -> B loops. Ordinary
-    links preserve activity save/leave guards and destination authorization.
-    """
-    from app.blueprints.auth.routes import home_endpoint_for
-
+def workspace_is_section_root():
+    """One presentation predicate for main-section Back and bell visibility."""
     if not current_user.is_authenticated:
-        return None
-    home = home_endpoint_for(current_user)
-    if request.endpoint == home:
-        return None
+        return False
     role = current_user.role
     section_roots = {
         "student.dashboard", "workspace.student_courses", "student.activities", "student.records",
@@ -487,8 +478,22 @@ def workspace_back_link():
         from app.blueprints.admin.navigation import ADMIN_NAV_SECTIONS
         section_roots.update(item["endpoint"] for section in ADMIN_NAV_SECTIONS
                              for item in section["links"] if item.get("endpoint"))
-    if request.endpoint in section_roots and not request.view_args:
+    return request.endpoint in section_roots and not request.view_args
+
+
+def workspace_back_link():
+    """Return a registered parent as the safe no-script/direct-entry fallback.
+
+    JavaScript enhances this native link from an ephemeral per-tab trail; using
+    the referrer as the fallback would create A -> B -> A -> B loops. Ordinary
+    links preserve activity save/leave guards and destination authorization.
+    """
+    from app.blueprints.auth.routes import home_endpoint_for
+
+    if not current_user.is_authenticated or workspace_is_section_root():
         return None
+    home = home_endpoint_for(current_user)
+    role = current_user.role
     teacher_activity = role == "teacher" and (
         nav_active("teacher.activities") or bool((request.view_args or {}).get("group_public_id"))
         and nav_active("workspace.review_queue"))

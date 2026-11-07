@@ -5,7 +5,7 @@
 {% set reader_lesson_endpoint = reader_lesson_endpoint|default('student.lesson_detail') %}
 {% block title %}{{ lesson_title }} — {{ course_title }}{% endblock %}
 {% block body_class %}{{ super() }} sf-focused{% endblock %}
-{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='focus-reader-1') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/student_focus.css', v='reader-persistence-5') }}">{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='focus-reader-1') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/student_focus.css', v='page-relative-pins-6') }}">{% endblock %}
 {% block body_scripts %}{{ super() }}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='focus-media-1') }}" defer></script><script src="{{ url_for('static', filename='js/student_reader.js', v='reader-persistence-5') }}" defer></script>{% endblock %}
 {% block content %}
 <a class="figma-skip-link" href="#workspace-content">{{ _('Skip to content') }}</a>
@@ -13,7 +13,6 @@
   <header class="sf-header">
     <div class="sf-context"><a class="sf-back" aria-label="{{ _('My courses') }}" href="{{ url_for('workspace.student_courses') }}">{{ ui.icon('arrow',18) }}</a><div><p dir="auto">{{ unit_title }}</p><h1 data-workspace-page-heading dir="auto">{{ lesson_title }}</h1></div></div>
     <div class="sf-actions">
-      {% set notif = notification_header() %}{% if notif %}{% include 'notifications/_bell.html' %}{% endif %}
       <details class="sf-outline" data-focus-outline><summary aria-label="{{ _('Course contents') }}">{{ ui.icon('book',18) }}<span class="sf-header-label">{{ _('Course contents') }}</span></summary>
         <aside class="sf-outline-panel"><header><h2>{{ _('Course contents') }}</h2><button type="button" data-close-outline aria-label="{{ _('Close') }}">{{ ui.icon('close',18) }}</button></header><div class="sf-unit-list">
           {% for unit in lesson_units %}<details class="sf-outline-unit"{% if unit.public_id == unit_public_id %} open{% endif %}><summary><span dir="auto">{{ unit.title }}</span>{{ ui.icon('chevron-down',16) }}</summary><ol>
