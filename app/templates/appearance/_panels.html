@@ -16,6 +16,14 @@
   </form>
 </section>
 {% endfor %}
+<section id="workspace-notifications-panel" class="workspace-utility-panel" popover="auto" role="dialog" aria-labelledby="notifications-panel-title" data-utility-panel>
+  <header class="utility-panel-heading"><span class="utility-panel-icon">{{ appearance_ui.icon('bell',24) }}</span><div><h2 id="notifications-panel-title">{{ _('Device notifications') }}</h2></div><button type="button" class="utility-panel-close" popovertarget="workspace-notifications-panel" popovertargetaction="hide" aria-label="{{ _('Close') }}">{{ appearance_ui.icon('close') }}</button></header>
+  <div class="device-notifications-settings" data-device-notifications>
+    <p class="account-hint">{{ _('Receive updates even when Youth Learn is closed.') }}</p>
+    <p class="device-notifications-status" data-device-status role="status" aria-live="polite">{{ _('Checking this device…') }}</p>
+    <button type="button" class="btn btn--primary" data-device-toggle disabled>{{ _('Enable notifications') }}</button>
+  </div>
+</section>
 {% endif %}
 <section id="workspace-display-panel" class="workspace-utility-panel" popover="auto" role="dialog" aria-labelledby="display-panel-title" data-utility-panel>
   <header class="utility-panel-heading"><span class="utility-panel-icon">{{ appearance_ui.icon('settings',24) }}</span><div>{% if not current_user.is_authenticated or request.blueprint == 'messages' %}<p class="utility-panel-eyebrow">YOUR PREFERENCES</p>{% endif %}<h2 id="display-panel-title">Display</h2></div><button type="button" class="utility-panel-close" popovertarget="workspace-display-panel" popovertargetaction="hide" aria-label="Close display options">{{ appearance_ui.icon('close') }}</button></header>

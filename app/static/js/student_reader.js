@@ -147,6 +147,19 @@ window.aelmsModules.register(document.currentScript, function (scope) {
     scope.listen(document, 'fullscreenchange', fit);
     resizePages(1, null);
   }
+  // A deliberate Lesson choice still uses its scoped native route. The Unit
+  // stays continuous, then opens at that Lesson's authorized book position.
+  if (!location.hash) scope.requestAnimationFrame(() => {
+    const number = Number(reader.dataset.readerEntryPage);
+    let target = Number.isInteger(number) && number > 0
+      ? reader.querySelector(`.ce-sheet[data-sheet="${number}"]`)?.closest('.ce-page') : null;
+    if (!target && reader.dataset.readerEntryMaterial) {
+      target = document.getElementById(`material-${reader.dataset.readerEntryMaterial}`);
+      const section = target?.closest('.sf-material-section');
+      if (section) section.open = true;
+    }
+    if (target && reader.contains(target)) target.scrollIntoView({block:'start', behavior:'instant'});
+  });
   const fullscreen = reader.querySelector('[data-reader-fullscreen]');
   if (!fullscreen) return;
   const fullscreenRoot = document.documentElement;

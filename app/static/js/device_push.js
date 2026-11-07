@@ -7,6 +7,7 @@
   const t = value => window.aelmsUI?.t(value) || value;
   let busy = false;
   let state;
+  let stateActor;
   const account = () => document.querySelector('meta[name="aelms-device-account"]');
   const installed = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
   const supported = () => isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -31,14 +32,14 @@
     catch (_) { /* Native sign-in remains available if storage is restricted. */ }
   }
   function paint(message, enabled = false, disabled = false) {
-    const panel = document.querySelector('[data-device-notifications]');
-    if (!panel) return;
-    panel.querySelector('[data-device-status]').textContent = t(message);
-    const button = panel.querySelector('[data-device-toggle]');
-    button.textContent = t(enabled ? 'Disable on this device' : 'Enable notifications');
-    button.disabled = disabled || busy;
-    button.setAttribute('aria-busy', String(busy));
-    panel.dataset.subscribed = String(enabled);
+    document.querySelectorAll('[data-device-notifications]').forEach(panel => {
+      panel.querySelector('[data-device-status]').textContent = t(message);
+      const button = panel.querySelector('[data-device-toggle]');
+      button.textContent = t(enabled ? 'Disable on this device' : 'Enable notifications');
+      button.disabled = disabled || busy;
+      button.setAttribute('aria-busy', String(busy));
+      panel.dataset.subscribed = String(enabled);
+    });
   }
   async function refresh() {
     const checkbox = document.querySelector('[data-remember-device]');
@@ -46,13 +47,17 @@
     remember();
     if (!document.querySelector('[data-device-notifications]')) return;
     if (!supported()) { paint('Device notifications are not supported in this browser.', false, true); return; }
+    const actor = account()?.content;
+    if (!actor) { state = undefined; stateActor = undefined; return; }
     try {
       const response = await fetch(urls.statusUrl, {credentials:'same-origin', cache:'no-store'});
-      state = await response.json();
+      const result = await response.json();
+      if (actor !== account()?.content) return;
+      state = result; stateActor = actor;
       if (!response.ok || !state.enabled) { paint('Device notifications are not available yet.', false, true); return; }
       if (Notification.permission === 'denied') { paint('Notifications are blocked. Allow them in your browser or device settings.', state.subscribed, !state.subscribed); return; }
       paint(state.subscribed ? 'Notifications are enabled on this device.' : 'Turn on device notifications to receive your updates.', state.subscribed);
-    } catch (_) { paint('Could not check notifications. Reopen this page to try again.', false, true); }
+    } catch (_) { if (actor === account()?.content) paint('Could not check notifications. Reopen this page to try again.', false, true); }
   }
   function publicKey(value) {
     const raw = atob(value.replace(/-/g,'+').replace(/_/g,'/') + '='.repeat((4-value.length%4)%4));
@@ -73,13 +78,19 @@
   document.addEventListener('click', async event => {
     const button = event.target.closest('[data-device-toggle]');
     if (!button || busy) return;
+    if (!state || stateActor !== account()?.content) { refresh(); return; }
+    const actor = account()?.content, token = csrf();
+    const checkActor = () => {
+      if (actor !== account()?.content) throw new DOMException('Account changed', 'AbortError');
+    };
     const panel = button.closest('[data-device-notifications]');
     const disabling = panel.dataset.subscribed === 'true';
     busy = true;
     paint(disabling ? 'Turning off notifications…' : 'Preparing device notifications…', disabling);
     try {
       if (disabling) {
-        await send(urls.disableUrl, {});
+        await send(urls.disableUrl, {}, token);
+        checkActor();
         const registration = await navigator.serviceWorker.getRegistration('/');
         const subscription = await registration?.pushManager.getSubscription();
         if (subscription) await subscription.unsubscribe().catch(() => {});
@@ -88,20 +99,25 @@
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') throw new Error(t('Notifications were not enabled. You can choose again in device settings.'));
         const registration = await readyWorker();
+        checkActor();
         let subscription = await registration.pushManager.getSubscription();
         subscription ||= await registration.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:publicKey(state.publicKey)});
-        try { await send(urls.subscribeUrl, subscription.toJSON()); }
+        checkActor();
+        try { await send(urls.subscribeUrl, subscription.toJSON(), token); }
         catch (error) {
           if (error.code !== 'renew_subscription') throw error;
+          checkActor();
           await subscription.unsubscribe();
           subscription = await registration.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:publicKey(state.publicKey)});
-          await send(urls.subscribeUrl, subscription.toJSON());
+          checkActor();
+          await send(urls.subscribeUrl, subscription.toJSON(), token);
         }
       }
       busy = false;
       await refresh();
     } catch (error) {
       busy = false;
+      if (actor !== account()?.content) { refresh(); return; }
       paint(error.message || 'Device notifications could not be saved. Please try again.', disabling);
     }
   });
@@ -110,6 +126,9 @@
     try { localStorage.setItem('aelms.device.remember', event.target.checked ? '1' : '0'); } catch (_) { /* Preference only. */ }
   });
   document.addEventListener('aelms:page-ready', refresh);
+  document.addEventListener('beforetoggle', event => {
+    if (event.target.id === 'workspace-notifications-panel' && event.newState === 'open') refresh();
+  }, true);
   window.addEventListener('pageshow', refresh);
   window.addEventListener('appinstalled', remember);
   window.aelmsDevicePush = {refresh};

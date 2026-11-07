@@ -21,6 +21,8 @@ def unit_reader_context(student_id, group_public_id, unit_public_id, lesson_publ
         abort(404)  # Publication changed during composition; never broaden the page.
     numbers, owners, materials, pins = [], {}, [], {}
     document = primary.view['course_document']
+    entry_page = primary.view['page_start'] if document else None
+    entry_material = next((item['public_id'] for item in primary.view['materials']), None)
     for page in pages:
         lesson_id = page.progress.lesson_public_id
         args = dict(group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_id)
@@ -42,6 +44,8 @@ def unit_reader_context(student_id, group_public_id, unit_public_id, lesson_publ
         mapped_unit = next((item for item in reader_outline if item['public_id'] == unit_public_id), None)
         if mapped_unit is None or not mappings.get(lesson_public_id):
             abort(404)
+        entry_page = mappings[lesson_public_id][0]
+        entry_material = None
         numbers = sorted({number for item in mapped_unit['lessons'] for number in mappings[item['public_id']]})
         owners, materials, pins = {}, [], {}
         for pin, asset in _workbook_media(group.course_id, numbers).order_by(TeachingAssetPin.id):
@@ -58,6 +62,7 @@ def unit_reader_context(student_id, group_public_id, unit_public_id, lesson_publ
     return primary, dict(view, reader_book=book,
         reader_lesson_endpoint='student.workbook_lesson' if book == 'workbook' else 'student.lesson_detail',
         lesson_units=reader_outline, unit_page_numbers=numbers, unit_page_args=owners, unit_page_pins=pins,
+        reader_entry_page=entry_page, reader_entry_material=entry_material,
         next_unit=next_link, unit_complete=all(page.progress.completed_at is not None for page in pages),
         unit_progress_state=make_unit_progress_token(actor_public_id, group_public_id, unit_public_id, book, versions),
         tz_name=current_app.config.get('APP_TIMEZONE', 'UTC'))

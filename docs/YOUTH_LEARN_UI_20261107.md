@@ -32,3 +32,11 @@ changed JavaScript files and changed Python sources, configured ORM mappings
 with database connections blocked, checked installed dependency consistency and
 passed the whitespace review. All 5,132 existing Arabic values were preserved;
 18 complete labels were added without reversible encoding corruption.
+
+The follow-up restores published Lessons inside expandable Unit entries.
+Selecting a Lesson uses its existing authorized route and positions the
+continuous Unit at its own main-book or permitted Workbook page. Native Lesson
+opening provenance, Unit completion and fullscreen transition guards remain.
+The existing device-notification controls are also available from the shared
+account menu beside Language and Theme. The menu and Account settings controls
+share the same state; only an explicit Enable click requests OS permission.
