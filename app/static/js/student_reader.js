@@ -19,39 +19,34 @@ window.aelmsModules.register(document.currentScript, function (scope) {
   revealResource(); scope.listen(window, 'hashchange', revealResource);
   const scroller = reader.querySelector('.sf-scroll');
   const ending = reader.querySelector('[data-lesson-end]');
-  const finish = reader.querySelector('[data-completion-dialog]');
+  const finish = reader.querySelector('[data-completion-panel]');
   let armed = false, zooming = false;
   let maybeFinish = () => {};
   if (scroller && ending && finish) {
     const images = [...scroller.querySelectorAll('[data-pdf-viewer] img')];
-    let dismissed = false, closing = false, touchY = null;
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let touchY = null;
+    // Keep the native form available without JavaScript. With enhancement it
+    // enters the document flow only after a deliberate end-of-content gesture.
+    finish.hidden = true;
     function atEnd() {
       const edge = ending.getBoundingClientRect(), view = scroller.getBoundingClientRect();
       return edge.top >= view.top && edge.bottom <= view.bottom + 2;
     }
     maybeFinish = () => {
-      if (!atEnd()) { dismissed = false; return; }
-      if (!armed || zooming || dismissed || finish.open ||
+      if (!finish.hidden || !armed || zooming || !atEnd() ||
           images.some(image => !image.complete || !image.naturalWidth) ||
           document.querySelector('dialog[open]')) return;
       if (outline) outline.open = false;
-      finish.showModal();
+      finish.hidden = false;
+      finish.classList.add('is-revealed');
+      // The card occupies its own space after Course content and Teacher
+      // additions. It never overlays a book page, disclosure or media player.
+      scope.requestAnimationFrame(() => finish.scrollIntoView({
+        block:'end', behavior:reducedMotion ? 'instant' : 'smooth'
+      }));
     };
-    function closeFinish() {
-      if (closing || !finish.open) return;
-      dismissed = true; closing = true; finish.classList.add('is-closing');
-      scope.setTimeout(() => {
-        finish.close(); finish.classList.remove('is-closing'); closing = false;
-        scroller.focus({preventScroll:true});
-      }, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180);
-    }
-    scope.listen(finish, 'cancel', event => { event.preventDefault(); closeFinish(); });
-    scope.listen(finish, 'click', event => { if (event.target === finish) {
-      const box = finish.getBoundingClientRect();
-      if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeFinish();
-    } });
-    // Restoring a scroll position or loading images cannot arm the prompt.
-    // A deliberate downward gesture is required, including when content fits.
+    // Restoring a scroll position or loading images cannot arm the action.
     scope.listen(scroller, 'wheel', event => { if (event.deltaY > 0 && !event.ctrlKey) { armed = true; scope.requestAnimationFrame(maybeFinish); } }, {passive:true});
     scope.listen(scroller, 'touchstart', event => { touchY = event.touches.length === 1 ? event.touches[0].clientY : null; }, {passive:true});
     scope.listen(scroller, 'touchmove', event => { if (touchY !== null && event.touches.length === 1 && event.touches[0].clientY < touchY - 8) { armed = true; scope.requestAnimationFrame(maybeFinish); } }, {passive:true});
@@ -66,7 +61,6 @@ window.aelmsModules.register(document.currentScript, function (scope) {
     for (const image of images) scope.listen(image, 'load', maybeFinish);
     if (window.IntersectionObserver) scope.createObserver(IntersectionObserver, maybeFinish,
       {root:scroller, threshold:1}).observe(ending);
-    scope.signal.addEventListener('abort', () => { if (finish.open) finish.close(); }, {once:true});
   }
   const pages = scroller?.querySelector('[data-pdf-viewer]');
   if (pages) {
@@ -162,7 +156,7 @@ window.aelmsModules.register(document.currentScript, function (scope) {
   async function advance(url, data = null) {
     if (advancing) return;
     advancing = true;
-    const buttons = [...reader.querySelectorAll('[data-completion-dialog] button')];
+    const buttons = [...reader.querySelectorAll('[data-completion-panel] button')];
     buttons.forEach(button => { button.disabled = true; });
     try { await window.aelmsReaderNavigate(url, data); }
     finally { advancing = false; buttons.forEach(button => { button.disabled = false; }); }
@@ -194,7 +188,6 @@ window.aelmsModules.register(document.currentScript, function (scope) {
   }
   scope.listen(fullscreen, 'click', () => {
     if (outline) outline.open = false;
-    if (finish?.open) finish.close();
     const request = expandedReader() ? document.exitFullscreen() : fullscreenRoot.requestFullscreen();
     request?.catch(() => {});
   });

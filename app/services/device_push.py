@@ -217,7 +217,7 @@ def deliver_device(device_id):
         def post(self, url, **kwargs):
             kwargs["allow_redirects"] = False
             return super().post(url, **kwargs)
-    payload = json.dumps({"title":"Youth Centre LMS", "body":"You have a new update.",
+    payload = json.dumps({"title":"Youth Learn", "body":"You have a new update.",
                          "url":"/notifications", "tag":"youth-centre-updates"})
     try:
         with NoRedirectSession() as http:

@@ -1,11 +1,11 @@
 {% import '_figma_ui.html' as pwa_ui %}
 <dialog class="pwa-install-dialog" id="pwa-install-help" aria-labelledby="pwa-install-title">
   <header><span class="pwa-install-icon">{{ pwa_ui.icon('graduation',27) }}</span><button type="button" class="btn btn--secondary" data-pwa-close aria-label="{{ _('Close') }}">{{ pwa_ui.icon('close',18) }}</button></header>
-  <h2 id="pwa-install-title">{{ _('Install Youth LMS') }}</h2>
+  <h2 id="pwa-install-title">{{ _('Install Youth Learn') }}</h2>
   <p>{{ _('Open your learning workspace from an icon on your device.') }}</p>
   <ol data-pwa-guide="ios" hidden><li>{{ _('Open this page in Safari and tap Share.') }}</li><li>{{ _('Choose Add to Home Screen, then tap Add.') }}</li></ol>
-  <ol data-pwa-guide="android" hidden><li>{{ _('Open this page in Chrome.') }}</li><li>{{ _('Open the browser menu and choose Add to Home screen or Install app.') }}</li><li>{{ _('Confirm installation, then open Youth LMS from its icon.') }}</li></ol>
-  <ol data-pwa-guide="desktop" hidden><li>{{ _('Open this page in Chrome or Edge.') }}</li><li>{{ _('Use the install icon in the address bar, or choose Install app from the browser menu.') }}</li><li>{{ _('Confirm installation, then open Youth LMS from its icon.') }}</li></ol>
+  <ol data-pwa-guide="android" hidden><li>{{ _('Open this page in Chrome.') }}</li><li>{{ _('Open the browser menu and choose Add to Home screen or Install app.') }}</li><li>{{ _('Confirm installation, then open Youth Learn from its icon.') }}</li></ol>
+  <ol data-pwa-guide="desktop" hidden><li>{{ _('Open this page in Chrome or Edge.') }}</li><li>{{ _('Use the install icon in the address bar, or choose Install app from the browser menu.') }}</li><li>{{ _('Confirm installation, then open Youth Learn from its icon.') }}</li></ol>
   <p class="pwa-install-note">{{ _('Books, videos and personal pages need an internet connection.') }}</p>
   <button type="button" class="btn btn--primary" data-pwa-close>{{ _('Done') }}</button>
 </dialog>

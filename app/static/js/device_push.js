@@ -60,14 +60,14 @@
   }
   async function readyWorker() {
     const registration = await Promise.race([navigator.serviceWorker.ready,
-      new Promise((_, reject) => setTimeout(() => reject(new Error(t('Close all Youth LMS windows and reopen the app to finish this update.'))), 6000))]);
+      new Promise((_, reject) => setTimeout(() => reject(new Error(t('Close all Youth Learn windows and reopen the app to finish this update.'))), 6000))]);
     const ready = await new Promise(resolve => {
       const channel = new MessageChannel();
       const timer = setTimeout(() => { channel.port1.close(); resolve(false); }, 2000);
       channel.port1.onmessage = event => { clearTimeout(timer); channel.port1.close(); resolve(event.data?.push === 1); };
       registration.active?.postMessage({type:'push-capability'}, [channel.port2]);
     });
-    if (!ready) throw new Error(t('Close all Youth LMS windows and reopen the app to finish this update.'));
+    if (!ready) throw new Error(t('Close all Youth Learn windows and reopen the app to finish this update.'));
     return registration;
   }
   document.addEventListener('click', async event => {

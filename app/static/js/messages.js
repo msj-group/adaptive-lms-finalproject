@@ -53,7 +53,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         if (!incoming || request.signal.aborted || revision !== contactSequence || current !== "contacts") throw new Error("Search unavailable");
         contacts.replaceChildren(...Array.from(incoming.childNodes));
         var count = contacts.querySelectorAll("[data-contact-row]").length;
-        status.textContent = count ? t(count === 1 ? "%(count)s match in the loaded list." : "%(count)s matches in the loaded list.", {count:count}) : t("No matching contacts.");
+        status.textContent = count ? t(count === 1 ? "%(count)s match in the loaded list." : "%(count)s matches in the loaded list.", {count:count}) : t("No matching people.");
       } catch (error) {
         if (!request.signal.aborted && revision === contactSequence) status.textContent = t("Search could not load. Try again.");
       } finally {
@@ -74,11 +74,14 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         if (!row.hidden) visible += 1;
       });
       status.hidden = !query;
-      status.textContent = visible ? t(visible === 1 ? "%(count)s match in the loaded list." : "%(count)s matches in the loaded list.", {count:visible}) : t("No matches in the loaded list. Use Browse or search to find other contacts.");
+      status.textContent = visible ? t(visible === 1 ? "%(count)s match in the loaded list." : "%(count)s matches in the loaded list.", {count:visible}) : t("No matches in this list. Search by name to find someone else.");
     }
     function activate(name) {
       if (name !== "contacts") cancelContactSearch();
       current = name;
+      var prompt = t(name === "contacts" ? "Search people" : "Search conversations");
+      input.placeholder = prompt;
+      search.querySelector("label").textContent = prompt;
       search.hidden = panel.hasAttribute("data-contacts-search-only") && name === "chats";
       panel.querySelector("[data-contact-search-submit]").hidden = name !== "contacts";
       tabs.forEach(function (tab) { tab.setAttribute("aria-selected", String(tab.dataset.chatTab === name)); tab.tabIndex = tab.dataset.chatTab === name ? 0 : -1; });
@@ -89,7 +92,9 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     tabs.forEach(function (tab, index) {
       pageScope.listen(tab, "click", function () { activate(tab.dataset.chatTab); });
       pageScope.listen(tab, "keydown", function (event) {
-        var next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length : null;
+        var forward = getComputedStyle(panel).direction === "rtl" ? "ArrowLeft" : "ArrowRight";
+        var backward = forward === "ArrowLeft" ? "ArrowRight" : "ArrowLeft";
+        var next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : event.key === forward ? (index + 1) % tabs.length : event.key === backward ? (index + tabs.length - 1) % tabs.length : null;
         if (next !== null) { event.preventDefault(); activate(tabs[next].dataset.chatTab); tabs[next].focus(); }
       });
     });

@@ -7,8 +7,8 @@ pwa_bp = Blueprint("pwa", __name__)
 @pwa_bp.get("/manifest.webmanifest")
 def manifest():
     response = jsonify({
-        "id": "/", "name": "Youth Centre LMS", "short_name": "Youth LMS",
-        "description": "Your Youth Centre learning workspace",
+        "id": "/", "name": "Youth Learn", "short_name": "Youth Learn",
+        "description": "Your Youth Learn learning workspace",
         "start_url": "/", "scope": "/", "lang": "en",
         "display": "fullscreen", "display_override": ["fullscreen", "standalone"],
         "orientation": "any", "theme_color": "#eaf0fa", "background_color": "#eaf0fa",

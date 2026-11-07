@@ -8,7 +8,7 @@
   {% if mode == 'compose' %}
   <section class="messenger-chat" aria-labelledby="conversation-title">
     <header class="messenger-chat__header"><a class="messenger-icon-button messenger-chat__back" href="{{ url_for('messages.new_thread') }}" aria-label="Choose another recipient">{{ msg.icon('back') }}</a>{{ msg.avatar(recipient.full_name, recipient.role_label) }}<div class="messenger-chat__person"><h2 id="conversation-title" dir="auto">{{ recipient.full_name }}</h2><p>{{ recipient.role_label }} · Private conversation</p></div><a class="messenger-icon-button" href="{{ url_for('messages.new_thread') }}" aria-label="Choose another recipient" title="Choose another recipient">{{ msg.icon('users') }}</a></header>
-    <div class="messenger-timeline-wrap messenger-greeting"><div>{{ msg.avatar(recipient.full_name, recipient.role_label) }}<h2>Say hello to <bdi>{{ recipient.full_name.split()[0] if recipient.full_name.split() else 'your contact' }}</bdi>.</h2><p>Write your first message below. Only the two participants can access this conversation.</p></div></div>
+    <div class="messenger-timeline-wrap messenger-greeting"><div>{{ msg.avatar(recipient.full_name, recipient.role_label) }}<h2>Say hello to <bdi>{{ recipient.full_name.split()[0] if recipient.full_name.split() else 'the recipient' }}</bdi>.</h2><p>Write your first message below. Only the two participants can access this conversation.</p></div></div>
     <div class="messenger-composer" data-people-message-panel data-message-mode="compose" data-person-id="{{ recipient.public_id }}" data-people-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}">
       {% if form_error %}<div class="alert alert--danger" role="alert">{{ form_error }}</div>{% endif %}
       <form method="post" action="{{ url_for('messages.create_thread') }}" novalidate data-research-form="message_send" data-message-form data-people-message-form>
@@ -20,8 +20,8 @@
     </div>
   </section>
   {% else %}
-  <section class="messenger-welcome" aria-labelledby="new-message-title"><div class="messenger-welcome__art" aria-hidden="true">{{ msg.icon('message', 30) }}</div><h2 id="new-message-title">Start a conversation.</h2><p>Choose one of your {{ audience }} from the list to say hello.</p>
-    {% if recipients|length >= recipient_limit %}<p class="messenger-page-note">Showing up to {{ recipient_limit }} contacts. Search by name to find someone else.</p>{% endif %}
+  <section class="messenger-welcome" aria-labelledby="new-message-title"><div class="messenger-welcome__art" aria-hidden="true">{{ msg.icon('message', 30) }}</div><h2 id="new-message-title">Start a conversation.</h2><p>Choose a person from the list to start a conversation.</p>
+    {% if recipients|length >= recipient_limit %}<p class="messenger-page-note">{{ _('Showing up to %(count)s people. Search by name to find someone else.', count=recipient_limit) }}</p>{% endif %}
   </section>
   {% endif %}
 </div>

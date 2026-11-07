@@ -18,7 +18,7 @@ body:where(:not(.yc-operations)) .today-meta, body:where(:not(.yc-operations)) .
 .figma-workspace:where(:not(.yc-operations)) :is(.figma-eyebrow,.workspace-meta,.workspace-kicker,.workspace-breadcrumb,.workspace-context>p,.account-intro,.account-hint,.account-profile>div>span,.figma-footer,.notif-item__kind,.notif-preview-note,.messenger-action-note,.messenger-date,.messenger-bubble__meta) { color: var(--ui-muted); }
 .workspace-opening-logo img, .figma-login-logo { background: #fff; border-radius: 10px; padding: 4px; }
 .figma-workspace:where(:not(.yc-operations)) .account-file, .account-file::file-selector-button { background: var(--ui-soft); border-color: var(--ui-line); color: var(--ui-link); }
-.figma-workspace:where(:not(.yc-operations)) :is(.messenger-tabs [aria-selected='true'],.notif-filter--active) { background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-ink); }
+.figma-workspace:where(:not(.yc-operations)) .notif-filter--active { background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-ink); }
 .figma-workspace:where(:not(.yc-operations)) :is(.figma-pagination,.notif-pagination,.messenger-pagination,.figma-page nav[aria-label$='pages']) a { background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-link); }
 .figma-workspace:where(:not(.yc-operations)) td a:not(.btn), .workspace-reading-nav li a, .workspace-outline li>a { color: var(--ui-link); }
 .figma-workspace:where(:not(.yc-operations)) :is(.messenger-secondary,.workspace-opening-continue) { background: var(--ui-soft); border-color: var(--ui-line); color: var(--ui-link); }
@@ -66,7 +66,10 @@ body:where(:not(.yc-operations)) .today-meta, body:where(:not(.yc-operations)) .
 .workspace-utility-panel label { display: block; margin-bottom: 7px; font-size: 12px; color: var(--ui-text); }
 .workspace-utility-panel select { width: 100%; min-height: 44px; padding: 10px; border: 1px solid var(--ui-line); border-radius: 11px; background: var(--ui-raised); color: var(--ui-text); font: inherit; }
 .workspace-utility-panel .appearance-settings { margin: 24px 0; }
-.workspace-preference-panel .appearance-settings { grid-template-columns: minmax(0,1fr); }
+.appearance-settings.appearance-settings--inline { grid-template-columns: repeat(2,minmax(0,1fr)) auto; align-items: end; }
+.appearance-settings--inline > .field { margin: 0; }
+.appearance-settings.appearance-settings--inline > .btn { grid-column: auto; align-self: end; justify-self: stretch; min-height: 44px; margin: 0; white-space: nowrap; }
+.workspace-preference-panel .appearance-settings.appearance-settings--inline { grid-template-columns: minmax(0,1fr) auto; gap: 12px; }
 .utility-panel-note { margin: 22px 0 0; }
 .utility-help-list { display: grid; gap: 14px; }
 .utility-help-list article { padding: 18px; border: 1px solid var(--ui-line); border-radius: 14px; background: var(--ui-raised); }
@@ -92,6 +95,9 @@ input[type='email'], input[type='password'], input[type='url'], input[type='tel'
 [dir='auto'] { unicode-bidi: plaintext; }
 @media screen and (max-width: 480px) {
   .appearance-settings { grid-template-columns: minmax(0,1fr); }
+  .appearance-settings.appearance-settings--inline { grid-template-columns: minmax(0,1fr) auto; gap: 12px; }
+  .appearance-settings--inline > .field:nth-of-type(2) { grid-column: 1 / -1; grid-row: 2; }
+  .appearance-settings.appearance-settings--inline > .btn { grid-column: 2; grid-row: 1; }
   .utility-device-options { grid-template-columns: minmax(0,1fr); }
   .workspace-utility-panel { padding: 20px; }
   .appearance-public { top: 12px; inset-inline-end: 12px; }
