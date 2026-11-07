@@ -12,6 +12,9 @@ WTForms==3.2.2
 argon2-cffi==25.1.0
 email-validator==2.3.0
 Flask-Limiter==4.1.1
+pywebpush==2.5.0
+requests==2.34.2
+cryptography==50.0.2
 python-dotenv==1.2.2
 nh3==0.3.7
 reportlab==5.0.1

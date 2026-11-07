@@ -107,9 +107,11 @@ def create_app(config_name=None, **config_overrides):
     migrate.init_app(app, db)
     login_manager.init_app(app)
     from app.blueprints.account import account_bp, enforce_account_body_limits
+    from app.blueprints.device_push import device_push_bp, enforce_push_body_limits
 
     # Bound account bodies before CSRF inspects any uploaded/form fields.
     app.before_request(enforce_account_body_limits)
+    app.before_request(enforce_push_body_limits)
     csrf.init_app(app)
     limiter.init_app(app)
 
@@ -160,6 +162,9 @@ def create_app(config_name=None, **config_overrides):
     app.register_blueprint(account_bp)
     app.register_blueprint(appearance_bp)
     app.register_blueprint(pwa_bp)
+    app.register_blueprint(device_push_bp)
+    from app.services.device_push_worker import register_device_push_cli
+    register_device_push_cli(app)
 
     # M14: the shared Student/Teacher portal header renders a
     # Notifications link and unread badge. This injects a *callable*, not

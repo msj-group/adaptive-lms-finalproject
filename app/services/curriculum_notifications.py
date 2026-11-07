@@ -14,7 +14,7 @@ from app.models.curriculum_release import LessonRelease, MaterialRelease
 from app.models.group_curriculum import GroupCurriculum
 from app.services.curriculum_visibility import lesson_is_released, material_is_released
 from app.services.notification_delivery import _deliver, _entry
-from app.services.notification_targets import student_lesson_target, student_material_target
+from app.services.notification_targets import _build_path, student_lesson_target, student_material_target
 
 
 def _student_groups(query):
@@ -50,11 +50,12 @@ def _due_releases(recipient_id, model):
     )
 
 
-def sync_curriculum_notices(user):
-    """Deliver on a student's next in-app visit, once per release action."""
-    if not user.is_authenticated or user.role != "student" or g.get("curriculum_notices_synced"):
+def sync_curriculum_notices(user, *, background=False):
+    """Deliver due releases once, from a visit or the opted-in device worker."""
+    if not user.is_authenticated or user.role != "student" or (not background and g.get("curriculum_notices_synced")):
         return
-    g.curriculum_notices_synced = True
+    if not background:
+        g.curriculum_notices_synced = True
     try:
         recipient_id = user.id
         due = union_all(_due_releases(recipient_id, LessonRelease),
@@ -77,7 +78,7 @@ def sync_curriculum_notices(user):
                 for row in rows:
                     kind = "lesson_published"
                     if row.item_count > 1:
-                        path = url_for("workspace.student_course", group_public_id=row.group_public_id)
+                        path = _build_path("workspace.student_course", group_public_id=row.group_public_id)
                     elif row.material_public_id:
                         kind = "material_available"
                         path = student_material_target(row.group_public_id, row.unit_public_id,

@@ -1,0 +1,26 @@
+[Unit]
+Description=AdaptiveEnglishLMS device notifications
+After=network-online.target mysql.service adaptiveenglishlms.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=adaptiveapp
+Group=adaptiveapp
+WorkingDirectory=/srv/adaptiveenglishlms/current
+Environment=FLASK_ENV=production
+EnvironmentFile=/etc/adaptiveenglishlms/runtime.env
+ExecStart=/srv/adaptiveenglishlms/current/.venv/bin/python -B -m flask --app wsgi:application device-push-worker
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+UMask=0077
+MemoryMax=192M
+
+[Install]
+WantedBy=multi-user.target

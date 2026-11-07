@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
 from app.blueprints.auth.forms import LoginForm
@@ -54,12 +54,24 @@ def login():
             and user.is_active_account()
             and verify_password(user.password_hash, form.password.data)
         ):
-            login_user(user)
+            login_user(user, remember=bool(form.remember_device.data))
             session.pop("workspace_opening_target", None)
             return redirect(login_target_for(user, request.args.get("next")))
         flash("Invalid email or password.", "danger")
 
     return render_template("auth/login.html", form=form)
+
+
+@auth_bp.post("/remember-device")
+@login_required
+@limiter.limit("10 per minute")
+def remember_device():
+    # The signed identity includes auth_version; password changes revoke it.
+    session["_remember"] = "set"
+    response = jsonify(remembered=True)
+    response.headers["Cache-Control"] = "private, no-store"
+    response.vary.add("Cookie")
+    return response
 
 
 @auth_bp.get("/placement")
@@ -88,5 +100,9 @@ def logout():
     # it never raises, so research can never prevent a logout.
     end_session_on_logout(authenticated_user_id())
     session.pop("workspace_opening_target", None)
+    from app.services.device_push import revoke_current_device
+    revoke_current_device(current_user.id)
     logout_user()
-    return redirect(url_for("auth.login"))
+    response = redirect(url_for("auth.login"))
+    response.delete_cookie("aelms_push_device", path="/")
+    return response

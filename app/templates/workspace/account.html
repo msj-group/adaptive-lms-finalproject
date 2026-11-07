@@ -15,6 +15,11 @@
 {% endif %}
 
 <div class="account-settings-grid">
+  <section class="{{ 'st-panel' if current_user.role == 'student' else 'card' }} account-section device-notifications" data-device-notifications aria-labelledby="device-notifications-title">
+    <span class="device-notifications-icon" aria-hidden="true">{{ account_ui.icon('bell', 22) }}</span>
+    <div><h2 id="device-notifications-title">Device notifications</h2><p class="account-hint">Receive updates even when Youth LMS is closed.</p><p class="device-notifications-status" data-device-status role="status" aria-live="polite">Checking this device…</p></div>
+    <button type="button" class="btn btn--secondary" data-device-toggle disabled>Enable notifications</button>
+  </section>
   {% set photo_url = account_photo_url() %}
   <section class="{{ 'st-panel' if current_user.role == 'student' else 'card' }} account-section account-photo-section" aria-labelledby="photo-heading" data-account-photo>
     <h2 id="photo-heading">Profile photo</h2>

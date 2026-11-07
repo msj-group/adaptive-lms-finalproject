@@ -1,0 +1,11 @@
+.device-notifications{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:1rem}
+.device-notifications-icon{display:grid;place-items:center;width:46px;height:46px;border-radius:16px;color:var(--color-primary,#24477e);background:rgba(120,151,215,.12)}
+.device-notifications h2{margin-block:0 .5rem}
+.device-notifications .account-hint{margin-block:0 .6rem}
+.device-notifications-status{font-size:.88rem;line-height:1.65;color:var(--color-text-muted,#60708a);margin:0;overflow-wrap:anywhere}
+.device-notifications [data-device-toggle]{grid-column:2;justify-self:start;transition:opacity .2s ease,transform .2s ease}
+.device-notifications [aria-busy=true]{opacity:.65}
+.ec-remember{display:flex;align-items:center;gap:.7rem;min-height:44px;font-size:.86rem;color:var(--color-text,#24344e);cursor:pointer}
+.ec-remember input{width:18px;height:18px;accent-color:#37568f;flex-shrink:0}
+@media(max-width:420px){.device-notifications{gap:.8rem}.device-notifications [data-device-toggle]{grid-column:1/-1;justify-self:stretch}}
+@media(prefers-reduced-motion:reduce){.device-notifications [data-device-toggle]{transition:none}}

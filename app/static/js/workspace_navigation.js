@@ -146,7 +146,7 @@
       window.aelmsPage.dispose();
       document.documentElement.removeAttribute("data-workspace-restoring");
       for (const key of Object.keys(window)) {
-        if (/^(aelms(?!CreatePageScope$|Page$|Modules$|ReaderNavigate$|InstallApp$)|researchV2$|AELMS_AR$)/.test(key)) delete window[key];
+        if (/^(aelms(?!CreatePageScope$|Page$|Modules$|ReaderNavigate$|InstallApp$|DevicePush$)|researchV2$|AELMS_AR$)/.test(key)) delete window[key];
       }
       window.aelmsPage = window.aelmsCreatePageScope();
       for (const item of Array.from(document.head.children)) {

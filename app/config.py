@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from sqlalchemy.engine import URL
 
 from dotenv import load_dotenv
@@ -31,6 +32,16 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False
+    REMEMBER_COOKIE_DURATION = timedelta(days=30)
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = "Lax"
+    REMEMBER_COOKIE_SECURE = False
+    REMEMBER_COOKIE_REFRESH_EACH_REQUEST = False
+
+    DEVICE_PUSH_ENABLED = os.environ.get("DEVICE_PUSH_ENABLED", "false").lower() == "true"
+    PUSH_VAPID_PUBLIC_KEY = os.environ.get("PUSH_VAPID_PUBLIC_KEY", "")
+    PUSH_VAPID_PRIVATE_KEY_FILE = os.environ.get("PUSH_VAPID_PRIVATE_KEY_FILE", "")
+    PUSH_VAPID_SUBJECT = os.environ.get("PUSH_VAPID_SUBJECT", "")
 
     RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
     TRUSTED_HOSTS = [host.strip() for host in os.environ.get("TRUSTED_HOSTS", "").split(",") if host.strip()] or None
@@ -93,6 +104,7 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     DEBUG = False
     SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
     # Hosting evaluation must never become study data just because it uses
     # production HTTP settings. A genuine study supplies "study" explicitly.
 

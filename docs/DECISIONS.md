@@ -13964,3 +13964,14 @@ current-episode completion transaction preserve Lesson-level progress/history;
 publication/version conflicts write nothing. No fabricated sibling openings or
 client completion events are generated. Keep fullscreen on Next unit and the
 existing book/Teacher-resource separation. See [scope and verification boundary](UNIT_READER_20261107.md).
+
+## Device Web Push and installed-device sign-in - 2026-11-07
+
+The owner requested system notifications without an open page and remembered
+sign-in on installed devices. Add explicit per-device opt-in, generic private
+lock-screen updates, an independent five-second worker over stored notifications,
+and a fixed 30-day signed/revocable remember cookie. The additive subscription
+table never changes academic/research history. Keep permission user-initiated,
+logout opt-out, native auth-version revocation, private file/cache boundaries, and
+source rollback without dropping subscriptions. VPS activation still requires the
+owner's standing service-impact approval. See [scope and checks](DEVICE_NOTIFICATIONS_20261107.md).
