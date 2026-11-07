@@ -5152,3 +5152,14 @@ bounded static source checks were inspected. Browser use remains disabled and
 the owner chose actual device review themselves. No migration or business data
 write is required; deployment receipts establish the eventual hosting state.
 See [implementation, approved scope and evidence boundary](LEARNING_CARDS_AND_PWA_20261107.md).
+
+### Reader page zoom and fullscreen completion - 2026-11-07
+
+Implemented the owner's reader correction: no Undo completion or X in the finish
+card, fullscreen end-card visibility and page-only Ctrl+wheel/two-finger zoom.
+The header/player/modal stay at their normal size. Shared pointer styling removes
+native tap flash and pointer-only outlines while retaining keyboard focus.
+No backend/schema/data change is needed. Actual device gestures and fullscreen
+visual review remain owner checks while browser access is disabled. See
+[implementation and evidence boundary](READER_PAGE_ZOOM_20261107.md); deployment
+receipts in the private operator workspace establish the active source release.

@@ -14,6 +14,7 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -40,6 +41,9 @@ h1 { font-size: clamp(1.625rem, 1.4rem + 1vw, 2.1875rem); color: var(--ui-ink); 
 h2 { font-size: 1.25rem; color: var(--ui-ink); letter-spacing: -.025em; }
 h3 { font-size: var(--font-size-lg); color: var(--ui-ink); }
 button, input, select, textarea { font-family: inherit; }
+/* Pointer taps use the platform's own styles; keyboard focus stays visible. */
+:is(button, input[type=button], input[type=submit], input[type=reset]) { -webkit-appearance:none; appearance:none; }
+:is(a[href], button, summary, [role=button], [tabindex]):focus:not(:focus-visible) { outline:none; }
 :focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 3px; }
 [hidden] { display: none !important; }
 

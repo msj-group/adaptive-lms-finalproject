@@ -13918,3 +13918,14 @@ public-static-only Service Worker caching. Private content stays online.
 The owner accepted available static/HTTP checks while browser use is disabled.
 Master is now the single branch; the owner explicitly deleted the old Railway
 project and its data. See [implementation and boundaries](LEARNING_CARDS_AND_PWA_20261107.md).
+
+## Book-only zoom and fullscreen Lesson completion - 2026-11-07
+
+The owner's new correction supersedes native whole-document zoom inside the
+Student reader. Ctrl+wheel and two-finger pinch resize only book pages while
+preserving the gesture anchor and normal-sized reader controls. Retain native
+one-finger panning, viewport accessibility and page-scope cleanup. End-only
+completion remains explicit and works in fullscreen; remove Undo and X from its
+card without changing progress history or signed submission rules. Remove native
+tap flash/pointer focus decoration platform-wide while retaining keyboard focus.
+See [scope, implementation and verification limits](READER_PAGE_ZOOM_20261107.md).

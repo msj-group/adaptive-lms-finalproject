@@ -5,8 +5,8 @@
 {% set reader_lesson_endpoint = reader_lesson_endpoint|default('student.lesson_detail') %}
 {% block title %}{{ lesson_title }} — {{ course_title }}{% endblock %}
 {% block body_class %}{{ super() }} sf-focused{% endblock %}
-{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='focus-reader-1') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/student_focus.css', v='books-finish-3') }}">{% endblock %}
-{% block body_scripts %}{{ super() }}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='focus-media-1') }}" defer></script><script src="{{ url_for('static', filename='js/student_reader.js', v='books-finish-3') }}" defer></script>{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='focus-reader-1') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/student_focus.css', v='page-zoom-4') }}">{% endblock %}
+{% block body_scripts %}{{ super() }}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='focus-media-1') }}" defer></script><script src="{{ url_for('static', filename='js/student_reader.js', v='page-zoom-4') }}" defer></script>{% endblock %}
 {% block content %}
 <a class="figma-skip-link" href="#workspace-content">{{ _('Skip to content') }}</a>
 <div class="sf-reader" data-student-reader data-workspace-history='{{ workspace_navigation()|tojson }}'>
@@ -88,18 +88,17 @@
     <div class="sf-lesson-end" data-lesson-end aria-hidden="true"></div>
   </div>
   <dialog class="sf-finish-dialog" id="progress" data-completion-dialog aria-labelledby="lesson-end-title">
-    <button type="button" class="sf-finish-close" data-close-completion aria-label="{{ _('Keep reading') }}">{{ ui.icon('close',20) }}</button>
     <section class="sf-completion">
       <div class="sf-finish-copy"><span class="sf-finish-icon" aria-hidden="true">{{ ui.icon('check',26) }}</span><div><h2 id="lesson-end-title">{{ _('Lesson complete') if progress.is_completed else _('Ready for your next step?') }}</h2><p>{{ _('You reached the end of this lesson.') }}</p></div></div>
       {% if progress_action == 'undo' %}
       <div class="sf-finish-actions">{% if next_lesson %}<a class="btn btn--primary" href="{{ url_for(reader_lesson_endpoint, group_public_id=group_public_id, unit_public_id=next_lesson.unit_public_id, lesson_public_id=next_lesson.public_id) }}">{{ _('Next lesson') }}</a>{% endif %}<a class="btn btn--secondary" href="{{ url_for('workspace.student_courses') }}">{{ _('Exit to courses') }}</a></div>
-      {% endif %}
-      <form method="post" action="{{ url_for('student.lesson_undo_complete' if progress_action == 'undo' else 'student.lesson_mark_complete', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id) }}" data-research-form="{{ 'lesson_undo_complete' if progress_action == 'undo' else 'lesson_complete' }}">
+      {% else %}
+      <form method="post" action="{{ url_for('student.lesson_mark_complete', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id) }}" data-research-form="lesson_complete">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="progress_state" value="{{ progress_state }}">
         {% if reader_book|default('main') == 'workbook' %}<input type="hidden" name="book" value="workbook">{% endif %}
-        {% if progress_action == 'undo' %}<button type="submit" class="sf-undo" data-research-id="lesson_undo_complete">{{ _('Undo completion') }}</button>
-        {% else %}{% if next_lesson %}<button type="submit" name="after_save" value="next_lesson" class="btn btn--primary" data-research-id="lesson_complete">{{ _('Complete and next lesson') }} {{ ui.icon('arrow',18) }}</button>{% endif %}<button type="submit" name="after_save" value="exit" class="btn btn--secondary" data-research-id="lesson_complete">{{ _('Complete and exit') }}</button>{% endif %}
+        {% if next_lesson %}<button type="submit" name="after_save" value="next_lesson" class="btn btn--primary" data-research-id="lesson_complete">{{ _('Complete and next lesson') }} {{ ui.icon('arrow',18) }}</button>{% endif %}<button type="submit" name="after_save" value="exit" class="btn btn--secondary" data-research-id="lesson_complete">{{ _('Complete and exit') }}</button>
       </form>
+      {% endif %}
     </section>
   </dialog>
 </div>

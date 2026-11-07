@@ -28,6 +28,8 @@
 .sf-scroll { min-height:0; flex:1; overflow:auto; padding:28px 24px; overscroll-behavior:auto; touch-action:pan-x pan-y pinch-zoom; scroll-padding-top:20px; }
 .sf-reader .ce-pages { height:auto; min-height:0; overflow:visible; padding:0; background:transparent; border-radius:0; touch-action:pan-x pan-y pinch-zoom; }
 .sf-reader .ce-page { width:min(100%,760px); margin:0 auto 28px; }
+.sf-reader [data-reader-zoom] { width:var(--sf-page-width); max-width:none; margin-inline:auto; touch-action:pan-x pan-y; }
+.sf-reader [data-reader-zoom] .ce-page { width:100%; }
 .sf-reader .ce-sheet { box-shadow:0 3px 20px #11182710; }
 .sf-reader .ce-page figcaption { padding-top:8px; font-size:11px; }
 .sf-reader .ce-pin { left:var(--pin-x); top:var(--pin-y); width:40px; height:40px; border-radius:50%; background:#144baa; border:2px solid white; color:white; box-shadow:0 2px 8px #11182730; }
@@ -46,13 +48,11 @@
 .sf-finish-dialog::backdrop { background:#10203e60; backdrop-filter:blur(6px); animation:sf-finish-backdrop 300ms ease both; }
 .sf-finish-dialog.is-closing { animation:sf-finish-leave 180ms ease-in both; }
 .sf-finish-dialog.is-closing::backdrop { animation:sf-finish-backdrop 180ms ease reverse both; }
-.sf-finish-close { position:absolute; top:12px; right:12px; width:44px; height:44px; display:grid; place-items:center; border:0; border-radius:50%; color:var(--ui-muted); background:var(--ui-soft); cursor:pointer; }
-.sf-completion { width:100%; margin:0; background:radial-gradient(ellipse at top,var(--ui-soft),var(--ui-surface) 65%); padding:54px 32px 32px; display:flex; flex-direction:column; align-items:stretch; gap:28px; text-align:center; }
+.sf-completion { width:100%; margin:0; background:radial-gradient(ellipse at top,var(--ui-soft),var(--ui-surface) 65%); padding:32px; display:flex; flex-direction:column; align-items:stretch; gap:28px; text-align:center; }
 .sf-completion h2 { margin:0 0 6px; font-size:18px; }
 .sf-completion p { margin:0; font-size:12px; color:var(--ui-muted); }
 .sf-completion form,.sf-finish-actions { display:grid; gap:12px; }
 .sf-completion .btn { width:100%; justify-content:center; min-height:50px; border-radius:14px; }
-.sf-undo { justify-self:center; background:none; border:0; padding:8px; color:var(--ui-muted); font:inherit; font-size:12px; text-decoration:underline; cursor:pointer; }
 .sf-finish-copy { display:flex; flex-direction:column; gap:22px; align-items:center; }
 .sf-finish-icon { display:grid; place-items:center; width:68px; height:68px; flex-shrink:0; border-radius:24px; background:var(--ui-primary); color:var(--ui-on-primary); box-shadow:0 12px 30px color-mix(in srgb,var(--ui-primary) 22%,transparent); }
 .sf-lesson-end { height:2px; }
