@@ -83,7 +83,7 @@ html[dir='rtl'] :is(.figma-workspace,.figma-login) { --font-family-base: 'Segoe 
 html[dir='rtl'] :is(h1,h2,h3,.figma-eyebrow,.figma-nav-section-title,.admin-nav__section-title,.workspace-role-badge) { letter-spacing: normal !important; }
 html[dir='rtl'] .figma-workspace :is(.figma-topbar,.figma-page,.appearance-card) { text-align: start; }
 html[dir='rtl'] .workspace-nav-link[aria-current='page']::before { border-radius: 3px 0 0 3px; }
-html[dir='rtl'] :is(.workspace-nav-chevron,.workspace-account-links>a>.figma-icon,.figma-sign-in>.figma-icon,.workspace-help-links .figma-icon) { transform: scaleX(-1); }
+html[dir='rtl'] :is(.workspace-nav-chevron,.workspace-account-links>:is(a,button)>.figma-icon,.workspace-account-signout .figma-icon,.figma-sign-in>.figma-icon,.workspace-help-links .figma-icon) { transform: scaleX(-1); }
 html[dir='rtl'] .figma-workspace .figma-sidebar-close { right: auto; left: 10px; }
 html[dir='rtl'] .figma-workspace .workspace-breadcrumb { flex-wrap: wrap; }
 html[dir='rtl'] .figma-workspace select:not([multiple]):not([size]), html[dir='rtl'] .figma-workspace select[size='1']:not([multiple]) { padding-right: 13px; padding-left: 38px; background-position: left 12px center; }

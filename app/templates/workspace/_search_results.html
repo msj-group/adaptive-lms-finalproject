@@ -1,6 +1,5 @@
 {% import '_figma_ui.html' as ui %}
 <div data-workspace-search-fragment>
-{% if search_query and not searchable %}<p class="workspace-search-status" role="status">Enter at least two characters to find records.</p>{% endif %}
 {% if searchable %}<p class="workspace-search-summary">{{ _('Showing %(count)s results.', count=result_count) }}</p>{% endif %}
 {% set ordinal = namespace(value=0) %}
 {% for section in search_sections %}{% if section['items'] %}<section class="workspace-search-section" aria-label="{{ section.label }}"><h3>{{ _(section.label) }}</h3><ul>
