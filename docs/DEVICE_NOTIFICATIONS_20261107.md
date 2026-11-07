@@ -54,11 +54,13 @@ change the Researcher password-only authentication policy.
 
 Apply exactly `a4b9d0c21e76 -> c5d7e8f901ab` on MySQL/InnoDB after a protected
 backup. No content import is included. Keep VAPID private PEM outside Git,
-readable only to root/the application group. Configure:
+readable only to root/the application group. Keep its directory root-owned with
+mode 0750/group adaptiveapp and the PEM mode 0640. The existing /etc application
+configuration directory remains root-only; the worker cannot traverse it. Configure:
 
 ```
 DEVICE_PUSH_ENABLED=true
-PUSH_VAPID_PRIVATE_KEY_FILE=/etc/adaptiveenglishlms/webpush-private.pem
+PUSH_VAPID_PRIVATE_KEY_FILE=/srv/adaptiveenglishlms/shared/webpush-keys/vapid-private.pem
 PUSH_VAPID_PUBLIC_KEY=<public uncompressed P-256 key, URL-safe base64>
 PUSH_VAPID_SUBJECT=https://102.203.203.125
 ```
