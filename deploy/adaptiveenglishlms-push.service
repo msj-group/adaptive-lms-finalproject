@@ -1,5 +1,6 @@
 [Unit]
 Description=AdaptiveEnglishLMS device notifications
+PartOf=adaptiveenglishlms.service
 After=network-online.target mysql.service adaptiveenglishlms.service
 Wants=network-online.target
 
@@ -23,4 +24,4 @@ UMask=0077
 MemoryMax=192M
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=multi-user.target adaptiveenglishlms.service

@@ -10,7 +10,8 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Youth LMS">
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='pwa/icon-180.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='pwa/icon-clear-180.png') }}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='pwa/icon-clear-192.png') }}">
   <script src="{{ url_for('static', filename='js/pwa.js', v='edge-to-edge-2') }}" data-worker-url="{{ url_for('pwa.service_worker') }}" data-app-runtime defer></script>
   <script src="{{ url_for('static', filename='js/device_push.js', v='device-push-1') }}" data-status-url="{{ url_for('device_push.status') }}" data-subscribe-url="{{ url_for('device_push.subscribe') }}" data-disable-url="{{ url_for('device_push.disable') }}" data-remember-url="{{ url_for('auth.remember_device') }}" data-app-runtime defer></script>
   <title>{% block title %}Adaptive English LMS{% endblock %}</title>

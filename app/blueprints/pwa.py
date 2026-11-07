@@ -13,8 +13,8 @@ def manifest():
         "display": "fullscreen", "display_override": ["fullscreen", "standalone"],
         "orientation": "any", "theme_color": "#eaf0fa", "background_color": "#eaf0fa",
         "categories": ["education"],
-        "icons": [{"src": url_for("static", filename=f"pwa/icon-{size}.png"),
-                   "sizes": f"{size}x{size}", "type": "image/png", "purpose": "any maskable"}
+        "icons": [{"src": url_for("static", filename=f"pwa/icon-clear-{size}.png"),
+                   "sizes": f"{size}x{size}", "type": "image/png", "purpose": "any"}
                   for size in (192, 512)],
     })
     response.mimetype = "application/manifest+json"
