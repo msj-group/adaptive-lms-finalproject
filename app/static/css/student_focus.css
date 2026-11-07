@@ -19,6 +19,7 @@
 .sf-outline-panel a[aria-current] { background:var(--ui-soft); color:var(--ui-link); font-weight:750; }
 .sf-outline-panel .sf-lesson-number { flex-shrink:0; width:25px; font-size:11px; color:var(--ui-muted); }
 .sf-unit-list { margin-top:18px; }
+.sf-reader .sf-outline-unit-link { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 10px; border-bottom:1px solid var(--ui-line); font-size:13px; }
 .sf-outline-unit { border-bottom:1px solid var(--ui-line); }
 .sf-outline-unit > summary { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 6px; font-size:13px; font-weight:700; cursor:pointer; list-style:none; }
 .sf-outline-unit > summary::-webkit-details-marker { display:none; }

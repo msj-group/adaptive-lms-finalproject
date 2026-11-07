@@ -344,3 +344,77 @@ def record_open(student_id, progress, now=None):
         db.session.rollback()
         return SKIPPED
     return RECORDED
+
+
+def complete_unit(student_id, group_public_id, unit_public_id, expected_versions):
+    """Complete one signed published-Unit snapshot atomically, in native lock order.
+
+    The academic/Group prefix serializes publication and membership changes.
+    Lock all Lessons before any progress rows, prove access and the exact current
+    visible membership, then check every changing version before writing anything.
+    Already completed rows keep their timestamps/version. No opening is fabricated.
+    """
+    if not expected_versions:
+        return UNAVAILABLE
+    first = next(iter(expected_versions))
+    previous = None
+    for _ in range(MAX_ATTEMPTS):
+        target = lesson_progress_queries.lock_target(group_public_id, unit_public_id, first)
+        if target is None or target == previous:
+            break
+        previous = target
+        hierarchy = lock_academic_hierarchy(term_ids=[target.term_id],
+            level_ids=[target.level_id], course_ids=[target.course_id])
+        group = lock_group_in_open_transaction(group_public_id)
+        actor = User.query.filter_by(id=student_id).with_for_update().first()
+        enrollment = (Enrollment.query.filter_by(group_id=target.group_id, student_id=student_id,
+            status=_ENROLLMENT_ACTIVE).with_for_update().first())
+        unit = Unit.query.filter_by(id=target.unit_id).with_for_update().first()
+        lessons = Lesson.query.filter_by(unit_id=target.unit_id).order_by(Lesson.id).with_for_update().all()
+        first_lesson = next((item for item in lessons if item.public_id == first), None)
+        base = ProgressLocks(hierarchy, group, actor, enrollment, unit, first_lesson, None)
+        error = access_proof_error(base, target, student_id)
+        if error:
+            db.session.rollback()
+            if error == 'moved':
+                continue
+            return UNAVAILABLE
+        visible = [item for item in lessons if lesson_is_released_locked(group, unit, item)]
+        if {item.public_id for item in visible} != set(expected_versions):
+            db.session.rollback()
+            return STALE
+        rows = (LessonProgress.query.filter_by(student_id=student_id, group_id=group.id,
+            enrollment_id=enrollment.id).filter(LessonProgress.lesson_id.in_([item.id for item in visible]))
+            .order_by(LessonProgress.lesson_id).with_for_update().all())
+        progress_by_lesson = {row.lesson_id: row for row in rows}
+        changes = []
+        for lesson in visible:
+            row = progress_by_lesson.get(lesson.id)
+            if row is not None and row.completed_at is not None:
+                continue
+            version = row.version if row is not None else lesson_progress_queries.NO_PROGRESS_VERSION
+            if version != expected_versions[lesson.public_id]:
+                db.session.rollback()
+                return STALE
+            changes.append((lesson, row))
+        if not changes:
+            db.session.rollback()
+            return ALREADY
+        now = progress_now()
+        for lesson, row in changes:
+            if row is None:
+                db.session.add(LessonProgress(enrollment_id=enrollment.id, student_id=student_id,
+                    group_id=group.id, lesson_id=lesson.id, created_at=now, completed_at=now,
+                    last_opened_at=None, version=lesson_progress_queries.NO_PROGRESS_VERSION + 1))
+            else:
+                row.completed_at = now
+                row.version += 1
+        try:
+            db.session.flush()
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            return CONFLICT
+        return CHANGED
+    db.session.rollback()
+    return UNAVAILABLE

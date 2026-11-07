@@ -1,4 +1,4 @@
-/* Book-only zoom and explicit end-of-Lesson actions, including fullscreen. */
+/* Book-only zoom and explicit end-of-Unit actions, including fullscreen. */
 window.aelmsModules.register(document.currentScript, function (scope) {
   'use strict';
   const reader = document.querySelector('[data-student-reader]');
@@ -171,7 +171,7 @@ window.aelmsModules.register(document.currentScript, function (scope) {
     if (!expandedReader() || !window.aelmsReaderNavigate || event.defaultPrevented ||
         !event.target.matches('[data-research-form=lesson_complete]')) return;
     const submitter = event.submitter;
-    if (submitter?.value !== 'next_lesson') return;
+    if (!['next_lesson','next_unit'].includes(submitter?.value)) return;
     const data = new FormData(event.target, submitter);
     event.preventDefault();
     advance(event.target.action, data);

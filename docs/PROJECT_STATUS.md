@@ -5187,3 +5187,14 @@ private-content cache rules remain unchanged. No schema or business-data write i
 needed. Physical Android strip/gesture acceptance remains owner review while
 browser use is disabled. See [implementation and boundaries](PAGE_MARKERS_AND_ANDROID_CANVAS_20261107.md);
 private deployment receipts establish the active release and source match.
+
+### Continuous Unit reader - 2026-11-07
+
+The owner selected Unit navigation and explicit completion of all its published
+Lessons. The reader now composes the Unit's authorized pages/materials, deduplicates
+shared physical pages, and uses Unit outline/end actions. A signed snapshot and
+atomic native lock chain protect per-Lesson current-enrollment progress. Static
+checks and a bounded local MySQL read-only content audit are available; no real
+completion is fabricated and browser/device acceptance remains owner review.
+No schema/content import is required. See [implementation and evidence boundary](UNIT_READER_20261107.md);
+private deployment receipts establish the active VPS source release.

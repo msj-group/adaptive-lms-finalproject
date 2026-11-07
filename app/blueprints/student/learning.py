@@ -1,5 +1,10 @@
 """Student lesson navigation (M11) and lesson progress (Phase 4 / M13).
 
+The current owner-approved reader composes the entire containing Unit through
+these authorized entry URLs. Its explicit Unit action uses a separate signed
+snapshot and atomic completion of all published Lessons; legacy Lesson forms
+and file URL authorization remain valid.
+
 Group-centered, public-id-only routes::
 
     GET   /student/groups/<gp>/units
@@ -58,14 +63,12 @@ from app.security.decorators import roles_required
 from app.services import lesson_progress_transactions as progress_tx
 from app.services.course_pdf import lesson_document, serve_pdf_page
 from app.services.lesson_progress_queries import (
-    build_lesson_progress_view,
     student_lesson_progress,
 )
 from app.services.lesson_progress_tokens import (
     ACTION_COMPLETE,
     ACTION_UNDO,
     load_progress_token,
-    make_progress_token,
 )
 from app.services.student_lessons import (
     outline_units,
@@ -112,37 +115,11 @@ def group_units(group_public_id):
 @student_bp.get("/groups/<group_public_id>/units/<unit_public_id>/lessons/<lesson_public_id>")
 @roles_required(_STUDENT)
 def lesson_detail(group_public_id, unit_public_id, lesson_public_id):
+    from app.blueprints.student.unit_reader import unit_reader_context
     student_id = current_user.id
-    page = student_lesson_detail(student_id, group_public_id, unit_public_id, lesson_public_id)
-    if page is None:
-        abort(404)
+    page, context = unit_reader_context(student_id, group_public_id, unit_public_id, lesson_public_id, actor_public_id=current_user.public_id)
     progress = page.progress
-    action = ACTION_UNDO if progress.completed_at is not None else ACTION_COMPLETE
-    tz_name = current_app.config.get("APP_TIMEZONE", "UTC")
-    outline = outline_units(progress.group_id, student_id)
-    lesson_links = [dict(title=lesson["title"], public_id=lesson["public_id"],
-        unit_public_id=unit["public_id"], is_completed=lesson["is_completed"])
-        for unit in outline for lesson in unit["lessons"]]
-    index = next((i for i, lesson in enumerate(lesson_links) if lesson["public_id"] == lesson_public_id), None)
-    response = private_no_store(
-        "student/learning/lesson.html",
-        progress=build_lesson_progress_view(progress, tz_name),
-        progress_action=action,
-        progress_state=make_progress_token(
-            current_user.public_id,
-            progress.group_public_id,
-            progress.unit_public_id,
-            progress.lesson_public_id,
-            action,
-            progress.version,
-        ),
-        tz_name=tz_name,
-        lesson_links=lesson_links,
-        lesson_units=outline,
-        previous_lesson=lesson_links[index - 1] if index is not None and index > 0 else None,
-        next_lesson=lesson_links[index + 1] if index is not None and index + 1 < len(lesson_links) else None,
-        **page.view,
-    )
+    response = private_no_store("student/learning/lesson.html", **context)
     # Recorded only after the page above was authorized and fully rendered,
     # so no read of this request runs after the write commits.
     if request.method == "GET":
@@ -197,8 +174,8 @@ def lesson_undo_complete(group_public_id, unit_public_id, lesson_public_id):
     return _change_completion(group_public_id, unit_public_id, lesson_public_id, ACTION_UNDO)
 
 
-def _completion_destination(student_id, progress, book="main"):
-    """Resolve only the next currently visible lesson in this own Group.
+def _completion_destination(student_id, progress, book="main", *, next_unit=False):
+    """Resolve the next visible Unit entry, or a legacy Lesson, in this own Group.
 
     No destination identity/URL comes from the form. The destination GET
     rechecks enrollment/publication if either changes during completion.
@@ -207,6 +184,14 @@ def _completion_destination(student_id, progress, book="main"):
     if book == "workbook":
         from app.blueprints.student.books import workbook_context
         _, _, units, _, _ = workbook_context(student_id, progress.group_public_id)
+    if next_unit:
+        index = next((i for i, unit in enumerate(units) if unit["public_id"] == progress.unit_public_id), None)
+        if index is None or index + 1 >= len(units):
+            return None
+        unit = units[index + 1]
+        return url_for("student.workbook_lesson" if book == "workbook" else "student.lesson_detail",
+            group_public_id=progress.group_public_id, unit_public_id=unit["public_id"],
+            lesson_public_id=unit["lessons"][0]["public_id"])
     lessons = [dict(unit_public_id=unit["public_id"], public_id=lesson["public_id"])
                for unit in units
                for lesson in unit["lessons"]]
@@ -243,6 +228,27 @@ def _change_completion(group_public_id, unit_public_id, lesson_public_id, action
         lesson_public_id=progress.lesson_public_id,
         _anchor="progress",
     )
+
+    unit_token = request.form.get("unit_progress_state")
+    if unit_token and action == ACTION_COMPLETE:
+        from app.services.unit_progress_tokens import load_unit_progress_token
+        versions = load_unit_progress_token(unit_token, actor_public_id, group_public_id, unit_public_id, book)
+        if versions is None:
+            note_outcome("lesson_completion", "rejected")
+            flash("Unit completion could not be verified. Reload the unit and try again.", "warning")
+            return redirect(lesson_url)
+        destination = (_completion_destination(student_id, progress, book, next_unit=True)
+                       if request.form.get("after_save") == "next_unit" else url_for("workspace.student_courses"))
+        outcome = progress_tx.complete_unit(student_id, group_public_id, unit_public_id, versions)
+        if outcome == progress_tx.UNAVAILABLE:
+            abort(404)
+        if outcome in (progress_tx.CHANGED, progress_tx.ALREADY):
+            note_outcome("lesson_completion", "completed" if outcome == progress_tx.CHANGED else "unchanged")
+            return redirect(destination or url_for("workspace.student_courses"))
+        note_outcome("lesson_completion", "rejected")
+        flash("The unit content or your progress changed. Reload the unit and try again."
+              if outcome == progress_tx.STALE else _CONFLICT, "warning")
+        return redirect(lesson_url)
 
     payload = load_progress_token(
         request.form.get("progress_state"),

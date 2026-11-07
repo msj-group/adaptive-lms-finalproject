@@ -8,6 +8,7 @@
 {% endmacro %}
 
 {% macro media_pin(material, media_endpoint, media_args, editor=false, pin_version=none) %}
+  {% set media_args = material.reader_media_args|default(media_args) %}
   {% set file = material if material is mapping else material.uploaded_file %}
   {% if file.category in ['audio', 'video'] %}
     <button class="ce-pin" type="button"
@@ -23,10 +24,11 @@
   {% endif %}
 {% endmacro %}
 
-{% macro pages(document, start, end, materials, page_endpoint, page_args, media_endpoint, media_args, editor=false, collect=false, pin_version=none, book_sizes=none, page_pins=none, page_owners=none, show_page_numbers=true, page_numbers=none) %}
+{% macro pages(document, start, end, materials, page_endpoint, page_args, media_endpoint, media_args, editor=false, collect=false, pin_version=none, book_sizes=none, page_pins=none, page_owners=none, show_page_numbers=true, page_numbers=none, page_args_by_number=none) %}
 {% set book = book_sizes is not none %}
 <div class="ce-pages" id="ce-page-viewer" data-pdf-viewer{% if book %} data-image-scroll{% endif %} tabindex="0" aria-label="{{ _('PDF pages') if book else _('Lesson pages') }}">
   {% for number in (page_numbers if page_numbers is not none else range(start, end + 1)) %}
+  {% set page_args = page_args_by_number[number] if page_args_by_number is not none else page_args %}
   {% set size = book_sizes[number - 1] if book and book_sizes|length >= number else (800, 1100) %}
   <figure class="ce-page"{% if book %} id="pdf-page-{{ number }}" data-book-page="{{ number }}"{% endif %}>
     <div class="ce-sheet" data-sheet="{{ number }}"{% if page_owners is not none and number in page_owners %} data-media-action="{{ page_owners[number].save }}" data-lesson-preview="{{ page_owners[number].preview }}"{% endif %}>

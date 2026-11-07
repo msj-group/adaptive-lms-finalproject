@@ -5101,5 +5101,12 @@
   "Confirm installation, then open Youth LMS from its icon.": "أكد التثبيت، ثم افتح Youth LMS من أيقونته.",
   "Open this page in Chrome or Edge.": "افتح هذه الصفحة في Chrome أو Edge.",
   "Use the install icon in the address bar, or choose Install app from the browser menu.": "استخدم أيقونة التثبيت في شريط العنوان، أو اختر تثبيت التطبيق من قائمة المتصفح.",
-  "Books, videos and personal pages need an internet connection.": "تحتاج الكتب والفيديو والصفحات الشخصية إلى اتصال بالإنترنت."
+  "Books, videos and personal pages need an internet connection.": "تحتاج الكتب والفيديو والصفحات الشخصية إلى اتصال بالإنترنت.",
+  "Unit complete": "اكتملت الوحدة",
+  "You reached the end of this unit.": "وصلت إلى نهاية هذه الوحدة.",
+  "Next unit": "الوحدة التالية",
+  "Complete and next unit": "إكمال الوحدة والانتقال للتالية",
+  "Complete unit and exit": "إكمال الوحدة والخروج",
+  "The unit content or your progress changed. Reload the unit and try again.": "تغير محتوى الوحدة أو تقدمك. أعد تحميل الوحدة ثم حاول مجددًا.",
+  "Unit completion could not be verified. Reload the unit and try again.": "تعذر التحقق من إكمال الوحدة. أعد تحميلها ثم حاول مجددًا."
 }

@@ -13953,3 +13953,14 @@ installed app keeps fullscreen/standalone metadata, adds viewport-fit=cover and
 safe-area-aware controls, and paints exposed canvas with the app theme. Device
 cutout behavior remains OS/browser-owned and requires physical confirmation.
 See [implementation and verification limits](PAGE_MARKERS_AND_ANDROID_CANVAS_20261107.md).
+
+## Unit navigation and explicit Unit completion - 2026-11-07
+
+The owner requested Unit navigation and explicitly chose to complete every
+published Lesson in the Unit with the end action. Compose a continuous Unit from
+the existing scoped Lesson/book/file guards, preserve repeated media placements
+and share physical pages once. A purpose-bound Unit snapshot and one atomic
+current-episode completion transaction preserve Lesson-level progress/history;
+publication/version conflicts write nothing. No fabricated sibling openings or
+client completion events are generated. Keep fullscreen on Next unit and the
+existing book/Teacher-resource separation. See [scope and verification boundary](UNIT_READER_20261107.md).

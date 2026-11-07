@@ -3,21 +3,19 @@
 {% import 'curriculum/_pages.html' as reader with context %}
 {% import 'curriculum/_media.html' as custom_media %}
 {% set reader_lesson_endpoint = reader_lesson_endpoint|default('student.lesson_detail') %}
-{% block title %}{{ lesson_title }} — {{ course_title }}{% endblock %}
+{% block title %}{{ unit_title }} — {{ course_title }}{% endblock %}
 {% block body_class %}{{ super() }} sf-focused{% endblock %}
-{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='focus-reader-1') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/student_focus.css', v='page-relative-pins-6') }}">{% endblock %}
-{% block body_scripts %}{{ super() }}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='focus-media-1') }}" defer></script><script src="{{ url_for('static', filename='js/student_reader.js', v='reader-persistence-5') }}" defer></script>{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='focus-reader-1') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/student_focus.css', v='unit-reader-7') }}">{% endblock %}
+{% block body_scripts %}{{ super() }}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='focus-media-1') }}" defer></script><script src="{{ url_for('static', filename='js/student_reader.js', v='unit-reader-7') }}" defer></script>{% endblock %}
 {% block content %}
 <a class="figma-skip-link" href="#workspace-content">{{ _('Skip to content') }}</a>
 <div class="sf-reader" data-student-reader data-reader-group="{{ group_public_id }}" data-workspace-history='{{ workspace_navigation()|tojson }}'>
   <header class="sf-header">
-    <div class="sf-context"><a class="sf-back" aria-label="{{ _('My courses') }}" href="{{ url_for('workspace.student_courses') }}">{{ ui.icon('arrow',18) }}</a><div><p dir="auto">{{ unit_title }}</p><h1 data-workspace-page-heading dir="auto">{{ lesson_title }}</h1></div></div>
+    <div class="sf-context"><a class="sf-back" aria-label="{{ _('My courses') }}" href="{{ url_for('workspace.student_courses') }}">{{ ui.icon('arrow',18) }}</a><div><h1 data-workspace-page-heading dir="auto">{{ unit_title }}</h1></div></div>
     <div class="sf-actions">
       <details class="sf-outline" data-focus-outline><summary aria-label="{{ _('Course contents') }}">{{ ui.icon('book',18) }}<span class="sf-header-label">{{ _('Course contents') }}</span></summary>
         <aside class="sf-outline-panel"><header><h2>{{ _('Course contents') }}</h2><button type="button" data-close-outline aria-label="{{ _('Close') }}">{{ ui.icon('close',18) }}</button></header><div class="sf-unit-list">
-          {% for unit in lesson_units %}<details class="sf-outline-unit"{% if unit.public_id == unit_public_id %} open{% endif %}><summary><span dir="auto">{{ unit.title }}</span>{{ ui.icon('chevron-down',16) }}</summary><ol>
-          {% for item in unit.lessons %}<li><a href="{{ url_for(reader_lesson_endpoint, group_public_id=group_public_id, unit_public_id=unit.public_id, lesson_public_id=item.public_id) }}"{% if item.public_id == lesson_public_id %} aria-current="page"{% endif %} data-research-id="lesson_open"><span class="sf-lesson-number" aria-hidden="true">{{ ui.icon('check',13) if item.is_completed else ui.icon('book',13) }}</span><span dir="auto">{{ item.title }}</span></a></li>{% endfor %}
-          </ol></details>{% endfor %}
+          {% for unit in lesson_units %}<a class="sf-outline-unit-link" data-reader-next href="{{ url_for(reader_lesson_endpoint, group_public_id=group_public_id, unit_public_id=unit.public_id, lesson_public_id=unit.lessons[0].public_id) }}"{% if unit.public_id == unit_public_id %} aria-current="page"{% endif %}><span dir="auto">{{ unit.title }}</span>{{ ui.icon('arrow',16) }}</a>{% endfor %}
         </div></aside>
       </details>
       <button class="sf-fullscreen" type="button" data-reader-fullscreen aria-label="{{ _('Full screen') }}" data-enter-label="{{ _('Full screen') }}" data-exit-label="{{ _('Exit full screen') }}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path data-fullscreen-icon d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg><span class="sf-header-label" data-fullscreen-label>{{ _('Full screen') }}</span></button>
@@ -30,9 +28,9 @@
     {% if course_document %}
       {% set page_args = {'group_public_id':group_public_id,'unit_public_id':unit_public_id,'lesson_public_id':lesson_public_id} %}
       {% if reader_book|default('main') == 'workbook' %}
-      {{ reader.pages(course_document, page_start, page_end, [], 'student.workbook_page', {'group_public_id':group_public_id}, 'student.workbook_media', {'group_public_id':group_public_id, 'document_id':course_document.uploaded_file.public_id}, page_pins=workbook_pins, page_numbers=workbook_pages, collect=true, show_page_numbers=false) }}
+      {{ reader.pages(course_document, page_start, page_end, [], 'student.workbook_page', {'group_public_id':group_public_id}, 'student.workbook_media', {'group_public_id':group_public_id, 'document_id':course_document.uploaded_file.public_id}, page_pins=unit_page_pins, page_numbers=unit_page_numbers, collect=true, show_page_numbers=false) }}
       {% else %}
-      {{ reader.pages(course_document, page_start, page_end, course_materials, 'student.lesson_document_page', page_args, 'student.material_open', page_args, collect=true, show_page_numbers=false) }}
+      {{ reader.pages(course_document, page_start, page_end, course_materials, 'student.lesson_document_page', page_args, 'student.material_open', page_args, page_pins=unit_page_pins, page_numbers=unit_page_numbers, page_args_by_number=unit_page_args, collect=true, show_page_numbers=false) }}
       {% endif %}
     {% endif %}
     {% set separate_materials = (course_materials|selectattr('pin_page', 'none')|list) if course_document else course_materials %}
@@ -64,16 +62,16 @@
     </p>
 
     {% elif material.kind == "file" and material.category == "image" %}
-    <img class="material-media" src="{{ url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" alt="{{ material.title }}">
+    <img class="material-media" src="{{ url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=material.reader_lesson_public_id|default(lesson_public_id), material_public_id=material.public_id) }}" alt="{{ material.title }}">
 
     {% elif material.kind == "file" and material.category in ['audio','video'] %}
-    {{ custom_media.inline_player(url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id), material.category, collect=true) }}
+    {{ custom_media.inline_player(url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=material.reader_lesson_public_id|default(lesson_public_id), material_public_id=material.public_id), material.category, collect=true) }}
 
     {% elif material.kind == "file" and material.extension == "pdf" %}
-    <p class="ds-section__desc">{{ material.original_filename }} · {{ material.byte_size }} bytes. Documents open as downloads for security.</p><a class="btn btn--secondary" href="{{ url_for('student.material_download', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" data-research-id="material_download">Download PDF</a>
+    <p class="ds-section__desc">{{ material.original_filename }} · {{ material.byte_size }} bytes. Documents open as downloads for security.</p><a class="btn btn--secondary" href="{{ url_for('student.material_download', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=material.reader_lesson_public_id|default(lesson_public_id), material_public_id=material.public_id) }}" data-research-id="material_download">Download PDF</a>
     {% elif material.kind == "file" %}
     <p class="ds-section__desc" style="margin: 0 0 var(--space-2)">{{ material.original_filename }} &middot; {{ material.extension|upper }}</p>
-    <a class="btn btn--secondary" href="{{ url_for('student.material_download', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id, material_public_id=material.public_id) }}" data-research-id="material_download">Download</a>
+    <a class="btn btn--secondary" href="{{ url_for('student.material_download', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=material.reader_lesson_public_id|default(lesson_public_id), material_public_id=material.public_id) }}" data-research-id="material_download">Download</a>
 
     {% else %}
     <p class="ds-section__desc" style="margin:0">This material is not available.</p>
@@ -89,14 +87,14 @@
   </div>
   <dialog class="sf-finish-dialog" id="progress" data-completion-dialog aria-labelledby="lesson-end-title">
     <section class="sf-completion">
-      <div class="sf-finish-copy"><span class="sf-finish-icon" aria-hidden="true">{{ ui.icon('check',26) }}</span><div><h2 id="lesson-end-title">{{ _('Lesson complete') if progress.is_completed else _('Ready for your next step?') }}</h2><p>{{ _('You reached the end of this lesson.') }}</p></div></div>
-      {% if progress_action == 'undo' %}
-      <div class="sf-finish-actions">{% if next_lesson %}<a class="btn btn--primary" data-reader-next href="{{ url_for(reader_lesson_endpoint, group_public_id=group_public_id, unit_public_id=next_lesson.unit_public_id, lesson_public_id=next_lesson.public_id) }}">{{ _('Next lesson') }}</a>{% endif %}<a class="btn btn--secondary" href="{{ url_for('workspace.student_courses') }}">{{ _('Exit to courses') }}</a></div>
+      <div class="sf-finish-copy"><span class="sf-finish-icon" aria-hidden="true">{{ ui.icon('check',26) }}</span><div><h2 id="lesson-end-title">{{ _('Unit complete') if unit_complete else _('Ready for your next step?') }}</h2><p>{{ _('You reached the end of this unit.') }}</p></div></div>
+      {% if unit_complete %}
+      <div class="sf-finish-actions">{% if next_unit %}<a class="btn btn--primary" data-reader-next href="{{ url_for(reader_lesson_endpoint, group_public_id=group_public_id, unit_public_id=next_unit.unit_public_id, lesson_public_id=next_unit.public_id) }}">{{ _('Next unit') }}</a>{% endif %}<a class="btn btn--secondary" href="{{ url_for('workspace.student_courses') }}">{{ _('Exit to courses') }}</a></div>
       {% else %}
       <form method="post" action="{{ url_for('student.lesson_mark_complete', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id) }}" data-research-form="lesson_complete">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="progress_state" value="{{ progress_state }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="unit_progress_state" value="{{ unit_progress_state }}">
         {% if reader_book|default('main') == 'workbook' %}<input type="hidden" name="book" value="workbook">{% endif %}
-        {% if next_lesson %}<button type="submit" name="after_save" value="next_lesson" class="btn btn--primary" data-research-id="lesson_complete">{{ _('Complete and next lesson') }} {{ ui.icon('arrow',18) }}</button>{% endif %}<button type="submit" name="after_save" value="exit" class="btn btn--secondary" data-research-id="lesson_complete">{{ _('Complete and exit') }}</button>
+        {% if next_unit %}<button type="submit" name="after_save" value="next_unit" class="btn btn--primary" data-research-id="lesson_complete">{{ _('Complete and next unit') }} {{ ui.icon('arrow',18) }}</button>{% endif %}<button type="submit" name="after_save" value="exit" class="btn btn--secondary" data-research-id="lesson_complete">{{ _('Complete unit and exit') }}</button>
       </form>
       {% endif %}
     </section>

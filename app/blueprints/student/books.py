@@ -1,7 +1,7 @@
 """Own-enrollment Workbook pages follow the same native Lesson releases."""
 from collections import defaultdict
 
-from flask import abort, redirect, url_for, current_app
+from flask import abort, redirect, url_for
 from flask_login import current_user
 from sqlalchemy.orm import joinedload
 
@@ -13,9 +13,7 @@ from app.models.teaching_asset import TeachingAsset, TeachingAssetPin
 from app.security.decorators import roles_required
 from app.services.course_pdf import serve_pdf_page
 from app.services.material_serving import serve_uploaded_file
-from app.services.student_lessons import student_outline_group, outline_units, student_lesson_detail
-from app.services.lesson_progress_queries import build_lesson_progress_view
-from app.services.lesson_progress_tokens import ACTION_COMPLETE, ACTION_UNDO, make_progress_token
+from app.services.student_lessons import student_outline_group, outline_units
 
 
 def workbook_context(student_id, group_public_id, document_id=None):
@@ -90,30 +88,10 @@ def workbook(group_public_id):
 @student_bp.get("/groups/<group_public_id>/workbook/units/<unit_public_id>/lessons/<lesson_public_id>")
 @roles_required("student")
 def workbook_lesson(group_public_id, unit_public_id, lesson_public_id):
-    group, book, units, pages, _ = workbook_context(current_user.id, group_public_id)
-    page = student_lesson_detail(current_user.id, group_public_id, unit_public_id, lesson_public_id)
-    selected = pages.get(lesson_public_id, [])
-    if page is None or not selected:
-        abort(404)
-    pins = {}
-    for pin, asset in _workbook_media(group.course_id, selected).order_by(TeachingAssetPin.id):
-        pins.setdefault(pin.page_number, []).append(dict(
-            public_id=asset.public_id, category=asset.uploaded_file.category,
-            anchor_id=f"{asset.public_id}-{pin.page_number}-{pin.pin_x}-{pin.pin_y}",
-            original_filename=asset.title, pin_x=pin.pin_x, pin_y=pin.pin_y))
-    links = [dict(lesson, unit_public_id=unit["public_id"]) for unit in units for lesson in unit["lessons"]]
-    index = next(i for i, lesson in enumerate(links) if lesson["public_id"] == lesson_public_id)
-    progress = page.progress
-    action = ACTION_UNDO if progress.completed_at is not None else ACTION_COMPLETE
-    view = dict(page.view, course_document=book, materials=[], page_start=selected[0], page_end=selected[-1])
-    return private_no_store("student/learning/lesson.html", **view,
-        reader_book="workbook", reader_lesson_endpoint="student.workbook_lesson",
-        workbook_pages=selected, workbook_pins=pins, lesson_units=units,
-        next_lesson=links[index+1] if index+1 < len(links) else None,
-        progress=build_lesson_progress_view(progress, current_app.config.get("APP_TIMEZONE", "UTC")),
-        progress_action=action,
-        progress_state=make_progress_token(current_user.public_id, progress.group_public_id,
-            progress.unit_public_id, progress.lesson_public_id, action, progress.version))
+    from app.blueprints.student.unit_reader import unit_reader_context
+    _, context = unit_reader_context(current_user.id, group_public_id, unit_public_id, lesson_public_id, 'workbook', actor_public_id=current_user.public_id)
+    return private_no_store("student/learning/lesson.html", **context)
+
 
 
 @student_bp.get("/groups/<group_public_id>/workbook/<document_id>/pages/<int:page_number>")
