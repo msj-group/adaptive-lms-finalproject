@@ -1,11 +1,15 @@
 {% import '_figma_ui.html' as pwa_ui %}
-<dialog class="pwa-install-dialog" id="pwa-install-help" aria-labelledby="pwa-install-title">
+<dialog class="pwa-install-dialog" id="pwa-install-help" role="dialog" aria-modal="true" aria-labelledby="pwa-install-title">
   <header><span class="pwa-install-icon">{{ pwa_ui.icon('graduation',27) }}</span><button type="button" class="btn btn--secondary" data-pwa-close aria-label="{{ _('Close') }}">{{ pwa_ui.icon('close',18) }}</button></header>
   <h2 id="pwa-install-title">{{ _('Install Youth Learn') }}</h2>
   <p>{{ _('Open your learning workspace from an icon on your device.') }}</p>
-  <ol data-pwa-guide="ios" hidden><li>{{ _('Open this page in Safari and tap Share.') }}</li><li>{{ _('Choose Add to Home Screen, then tap Add.') }}</li></ol>
-  <ol data-pwa-guide="android" hidden><li>{{ _('Open this page in Chrome.') }}</li><li>{{ _('Open the browser menu and choose Add to Home screen or Install app.') }}</li><li>{{ _('Confirm installation, then open Youth Learn from its icon.') }}</li></ol>
+  <p data-pwa-prompt-failed role="status" hidden>{{ _('Your browser could not open the install window. Follow the steps below.') }}</p>
+  <ol data-pwa-guide="ios" hidden><li>{{ _('Open this page in Safari and tap Share.') }}</li><li>{{ _('Choose Add to Home Screen. If Open as Web App appears, turn it on, then tap Add.') }}</li><li>{{ _('Open Youth Learn from the new Home Screen icon.') }}</li></ol>
+  <ol data-pwa-guide="android" hidden><li>{{ _('Open the browser menu and choose Add to Home screen or Install app.') }}</li><li>{{ _('Confirm installation, then open Youth Learn from its icon.') }}</li><li>{{ _('If the install option is missing, open this page in Chrome and try again.') }}</li></ol>
+  <ol data-pwa-guide="mac" hidden><li>{{ _('In Safari on macOS Sonoma 14 or later, choose File, then Add to Dock.') }}</li><li>{{ _('Confirm the name Youth Learn, then choose Add.') }}</li><li>{{ _('If Add to Dock is unavailable, open this page in Chrome or Edge and use their install option.') }}</li></ol>
+  <ol data-pwa-guide="firefox" hidden><li>{{ _('In a supported Firefox version on Windows, use the web apps button in the address bar.') }}</li><li>{{ _('Follow Firefox to add the app to Start or the taskbar.') }}</li><li>{{ _('If the web apps button is unavailable, open this page in Chrome or Edge and use their install option.') }}</li></ol>
   <ol data-pwa-guide="desktop" hidden><li>{{ _('Open this page in Chrome or Edge.') }}</li><li>{{ _('Use the install icon in the address bar, or choose Install app from the browser menu.') }}</li><li>{{ _('Confirm installation, then open Youth Learn from its icon.') }}</li></ol>
   <p class="pwa-install-note">{{ _('Books, videos and personal pages need an internet connection.') }}</p>
+  <p class="pwa-install-note">{{ _('In an in-app browser, open this page in Safari on iPhone or iPad, or Chrome on Android. Installation depends on your browser and device.') }}</p>
   <button type="button" class="btn btn--primary" data-pwa-close>{{ _('Done') }}</button>
 </dialog>

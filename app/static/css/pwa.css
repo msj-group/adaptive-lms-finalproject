@@ -1,4 +1,5 @@
-.pwa-install-dialog { width:min(460px,calc(100% - 32px)); max-height:calc(100dvh - 32px); margin:auto; overflow:auto; padding:28px; border:1px solid var(--ui-line); border-radius:22px; background:var(--ui-surface); color:var(--ui-text); box-shadow:var(--ui-shadow-lg); }
+.pwa-install-dialog { position:fixed; inset:0; z-index:200; width:min(460px,calc(100% - 32px)); max-height:calc(100dvh - 32px); margin:auto; overflow:auto; padding:28px; border:1px solid var(--ui-line); border-radius:22px; background:var(--ui-surface); color:var(--ui-text); box-shadow:var(--ui-shadow-lg); }
+.pwa-install-dialog:not([open]) { display:none; }
 .pwa-install-dialog::backdrop { background:color-mix(in srgb,var(--ui-ink) 45%,transparent); backdrop-filter:blur(5px); }
 .pwa-install-dialog header { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
 .pwa-install-icon { display:grid; place-items:center; width:52px; height:52px; border-radius:16px; background:var(--ui-soft); color:var(--ui-primary); }
@@ -30,7 +31,7 @@ html { background:var(--ui-page,#eaf0fa); }
    padding-right:max(10px,env(safe-area-inset-right,0px));
  }
  .sf-reader .sf-scroll { padding-left:env(safe-area-inset-left,0px); padding-right:env(safe-area-inset-right,0px); }
- html:fullscreen .sf-reader .sf-header {
+ html:is(:fullscreen,[data-reader-expanded]) .sf-reader .sf-header {
    top:calc(14px + env(safe-area-inset-top,0px));
    right:calc(14px + env(safe-area-inset-right,0px)); padding:0;
  }

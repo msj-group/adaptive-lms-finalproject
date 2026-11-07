@@ -135,10 +135,14 @@
     const previousReader = document.querySelector('[data-student-reader]');
     const nextReader = page.querySelector('[data-student-reader]');
     const fullscreenRoot = document.documentElement;
-    const keepReader = document.fullscreenElement === fullscreenRoot && previousReader && nextReader &&
+    const readerExpanded = document.fullscreenElement === fullscreenRoot || fullscreenRoot.hasAttribute('data-reader-expanded');
+    const keepReader = readerExpanded && previousReader && nextReader &&
       previousReader.dataset.readerGroup === nextReader.dataset.readerGroup;
     if (keepReader) fullscreenRoot.dataset.readerTransition = 'true';
-    else if (previousReader && document.fullscreenElement === fullscreenRoot) await document.exitFullscreen();
+    else if (previousReader && readerExpanded) {
+      fullscreenRoot.removeAttribute('data-reader-expanded');
+      if (document.fullscreenElement === fullscreenRoot) await document.exitFullscreen();
+    }
     try {
 
       window.aelmsDisposeMessages?.();
@@ -199,7 +203,8 @@
   // This path also works in browsers without Navigation API interception.
   let readerRequest = null;
   window.aelmsReaderNavigate = async function (url, formData = null) {
-    if (readerRequest || document.fullscreenElement !== document.documentElement ||
+    if (readerRequest || (document.fullscreenElement !== document.documentElement &&
+        !document.documentElement.hasAttribute('data-reader-expanded')) ||
         !document.querySelector('[data-student-reader]')) return;
     const destination = new URL(url, location.href);
     if (destination.origin !== location.origin) return;

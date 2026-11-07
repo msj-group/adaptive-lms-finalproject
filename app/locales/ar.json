@@ -5148,5 +5148,16 @@
   "Choose a person from the list to start a conversation.": "اختر شخصًا من القائمة لبدء محادثة.",
   "Showing up to %(count)s people. Search by name to find someone else.": "يُعرض حتى %(count)s شخصًا. ابحث بالاسم للعثور على شخص آخر.",
   "Up to %(count)s recent conversations.": "حتى %(count)s من المحادثات الأخيرة.",
-  "the recipient": "المستلم"
+  "the recipient": "المستلم",
+  "Your browser could not open the install window. Follow the steps below.": "تعذر فتح نافذة التثبيت من المتصفح. اتبع الخطوات التالية.",
+  "Choose Add to Home Screen. If Open as Web App appears, turn it on, then tap Add.": "اختر «إضافة إلى الشاشة الرئيسية». إذا ظهر «فتح كتطبيق ويب»، فعّله، ثم اضغط «إضافة».",
+  "Open Youth Learn from the new Home Screen icon.": "افتح Youth Learn من الأيقونة الجديدة على الشاشة الرئيسية.",
+  "If the install option is missing, open this page in Chrome and try again.": "إذا لم يظهر خيار التثبيت، افتح هذه الصفحة في Chrome وحاول مجددًا.",
+  "In Safari on macOS Sonoma 14 or later, choose File, then Add to Dock.": "في Safari على macOS Sonoma 14 أو أحدث، اختر «ملف»، ثم «إضافة إلى Dock».",
+  "Confirm the name Youth Learn, then choose Add.": "أكد الاسم Youth Learn، ثم اختر «إضافة».",
+  "If Add to Dock is unavailable, open this page in Chrome or Edge and use their install option.": "إذا لم يتوفر «إضافة إلى Dock»، افتح الصفحة في Chrome أو Edge واستخدم خيار التثبيت فيه.",
+  "In a supported Firefox version on Windows, use the web apps button in the address bar.": "في إصدار Firefox الداعم على Windows، استخدم زر تطبيقات الويب في شريط العنوان.",
+  "Follow Firefox to add the app to Start or the taskbar.": "اتبع خطوات Firefox لإضافة التطبيق إلى قائمة «ابدأ» أو شريط المهام.",
+  "If the web apps button is unavailable, open this page in Chrome or Edge and use their install option.": "إذا لم يظهر زر تطبيقات الويب، افتح الصفحة في Chrome أو Edge واستخدم خيار التثبيت فيه.",
+  "In an in-app browser, open this page in Safari on iPhone or iPad, or Chrome on Android. Installation depends on your browser and device.": "إذا كانت الصفحة داخل متصفح تطبيق آخر، افتحها في Safari على iPhone أو iPad، أو Chrome على Android. يعتمد التثبيت على دعم المتصفح والجهاز."
 }

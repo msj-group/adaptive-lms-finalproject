@@ -65,7 +65,7 @@ window.aelmsModules.register(document.currentScript, function (scope) {
   const pages = scroller?.querySelector('[data-pdf-viewer]');
   if (pages) {
     const sheets = [...pages.querySelectorAll('.ce-page')];
-    let scale = 1, pinch = null, settleTimer = 0;
+    let scale = 1, pinch = null, settleTimer = 0, zoomFrame = 0, pendingZoom = null;
     const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
     function viewportCenter() {
       const box = scroller.getBoundingClientRect();
@@ -95,42 +95,83 @@ window.aelmsModules.register(document.currentScript, function (scope) {
       pages.setAttribute('data-reader-zoom', '');
       if (anchor && point) {
         const box = anchor.sheet.getBoundingClientRect();
-        scroller.scrollLeft += box.left + box.width * anchor.x - point.x;
-        scroller.scrollTop += box.top + box.height * anchor.y - point.y;
+        // Both axes must commit together, without the platform's smooth-scroll
+        // animation trailing behind a stream of Android pinch updates.
+        scroller.scrollTo({
+          left:scroller.scrollLeft + box.left + box.width * anchor.x - point.x,
+          top:scroller.scrollTop + box.top + box.height * anchor.y - point.y,
+          behavior:'instant'
+        });
       }
     }
-    function zoomGesture() {
+    function flushZoom() {
+      scope.cancelAnimationFrame(zoomFrame); zoomFrame = 0;
+      if (!pendingZoom) return;
+      const next = pendingZoom; pendingZoom = null;
+      resizePages(next.value, next.anchor, next.point);
+    }
+    function cancelZoom() {
+      scope.cancelAnimationFrame(zoomFrame); zoomFrame = 0; pendingZoom = null;
+    }
+    function queueZoom(value, anchor, point = anchor?.target) {
+      pendingZoom = {value:clamp(value,1,4), anchor, point};
+      if (!zoomFrame) zoomFrame = scope.requestAnimationFrame(flushZoom);
+    }
+    function zoomGesture(held = false) {
       // A zoom/reflow is not evidence that the Student scrolled to the end.
       armed = false; zooming = true;
       scope.clearTimeout(settleTimer);
-      settleTimer = scope.setTimeout(() => { zooming = false; }, 180);
+      if (!held) settleTimer = scope.setTimeout(() => { zooming = false; }, 180);
     }
     scope.listen(reader, 'wheel', event => {
       if (!event.ctrlKey || event.target.closest('dialog') || !event.cancelable) return;
       event.preventDefault(); zoomGesture();
       const units = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scroller.clientHeight : 1;
       const delta = clamp(event.deltaY * units, -120, 120);
-      resizePages(scale * Math.exp(-delta * .002), anchorAt({x:event.clientX, y:event.clientY}));
+      queueZoom((pendingZoom?.value ?? scale) * Math.exp(-delta * .002), anchorAt({x:event.clientX, y:event.clientY}));
     }, {passive:false});
     const midpoint = touches => ({x:(touches[0].clientX + touches[1].clientX) / 2,
       y:(touches[0].clientY + touches[1].clientY) / 2});
     const separation = touches => Math.hypot(touches[0].clientX - touches[1].clientX,
       touches[0].clientY - touches[1].clientY);
+    const bookTouches = event => [...event.touches].filter(touch => pages.contains(touch.target));
+    function startPinch(touches) {
+      flushZoom();
+      const pair = touches.slice(0,2);
+      pinch = {ids:pair.map(touch => touch.identifier), distance:Math.max(1,separation(pair)),
+        scale, anchor:anchorAt(midpoint(pair))};
+      zoomGesture(true);
+    }
     scope.listen(pages, 'touchstart', event => {
-      if (event.touches.length !== 2) { pinch = null; return; }
-      if (event.cancelable) event.preventDefault();
-      zoomGesture();
-      pinch = {distance:Math.max(1, separation(event.touches)), scale,
-        anchor:anchorAt(midpoint(event.touches))};
+      const touches = bookTouches(event);
+      if (touches.length < 2) {
+        if (pinch) { flushZoom(); pinch = null; zoomGesture(); }
+        return;
+      }
+      if (!event.cancelable) return;
+      event.preventDefault(); startPinch(touches);
     }, {passive:false});
     scope.listen(pages, 'touchmove', event => {
-      if (!pinch || event.touches.length !== 2) return;
-      if (event.cancelable) event.preventDefault();
-      zoomGesture();
-      resizePages(pinch.scale * separation(event.touches) / pinch.distance,
-        pinch.anchor, midpoint(event.touches));
+      if (!pinch) return;
+      // Never resize while Android already owns a native scroll gesture.
+      if (!event.cancelable) { cancelZoom(); pinch = null; zoomGesture(); return; }
+      const touches = bookTouches(event);
+      const pair = pinch.ids.map(id => touches.find(touch => touch.identifier === id));
+      if (pair.some(touch => !touch)) return;
+      event.preventDefault(); zoomGesture(true);
+      queueZoom(pinch.scale * separation(pair) / pinch.distance, pinch.anchor, midpoint(pair));
     }, {passive:false});
-    for (const name of ['touchend','touchcancel']) scope.listen(pages, name, () => { pinch = null; }, {passive:true});
+    scope.listen(pages, 'touchend', event => {
+      if (!pinch) return;
+      flushZoom();
+      const touches = bookTouches(event);
+      if (touches.length >= 2) startPinch(touches);
+      else { pinch = null; zoomGesture(); }
+    }, {passive:true});
+    scope.listen(pages, 'touchcancel', () => {
+      cancelZoom();
+      pinch = null; zoomGesture();
+    }, {passive:true});
     // Safari's native gesture zoom must not also magnify the surrounding UI.
     for (const name of ['gesturestart','gesturechange']) scope.listen(pages, name, event => {
       if (event.cancelable) event.preventDefault();
@@ -140,11 +181,13 @@ window.aelmsModules.register(document.currentScript, function (scope) {
           event.target.closest('input,textarea,select,dialog,[contenteditable=true]')) return;
       if (!['+','=','-','0'].includes(event.key)) return;
       event.preventDefault(); zoomGesture();
+      flushZoom();
       resizePages(event.key === '0' ? 1 : scale * (event.key === '-' ? 1 / 1.2 : 1.2), anchorAt(viewportCenter()));
     });
-    const fit = () => resizePages(scale, anchorAt(viewportCenter()));
+    const fit = () => { flushZoom(); resizePages(scale, anchorAt(viewportCenter())); pinch = null; zoomGesture(); };
     scope.listen(window, 'resize', fit, {passive:true});
     scope.listen(document, 'fullscreenchange', fit);
+    scope.listen(document, 'aelms:reader-display-change', fit);
     resizePages(1, null);
   }
   // A deliberate Lesson choice still uses its scoped native route. The Unit
@@ -163,8 +206,9 @@ window.aelmsModules.register(document.currentScript, function (scope) {
   const fullscreen = reader.querySelector('[data-reader-fullscreen]');
   if (!fullscreen) return;
   const fullscreenRoot = document.documentElement;
-  const expandedReader = () => document.fullscreenElement === fullscreenRoot;
-  fullscreen.hidden = !fullscreenRoot.requestFullscreen;
+  const appDisplay = matchMedia('(display-mode: fullscreen)');
+  const expandedReader = () => document.fullscreenElement === fullscreenRoot || fullscreenRoot.hasAttribute('data-reader-expanded');
+  fullscreen.hidden = !fullscreenRoot.requestFullscreen && !appDisplay.matches;
   let advancing = false;
   async function advance(url, data = null) {
     if (advancing) return;
@@ -201,12 +245,35 @@ window.aelmsModules.register(document.currentScript, function (scope) {
   }
   scope.listen(fullscreen, 'click', () => {
     if (outline) outline.open = false;
-    const request = expandedReader() ? document.exitFullscreen() : fullscreenRoot.requestFullscreen();
-    request?.catch(() => {});
+    if (fullscreenRoot.hasAttribute('data-reader-expanded')) {
+      fullscreenRoot.removeAttribute('data-reader-expanded');
+    } else if (!document.fullscreenElement && appDisplay.matches) {
+      // The installed app is already fullscreen. Focus the book without a
+      // redundant browser fullscreen request and its browser-owned notice.
+      fullscreenRoot.setAttribute('data-reader-expanded','');
+    } else {
+      const request = expandedReader() ? document.exitFullscreen() : fullscreenRoot.requestFullscreen();
+      request?.catch(() => {});
+      return;
+    }
+    fullscreenState(); document.dispatchEvent(new Event('aelms:reader-display-change'));
+  });
+  scope.listen(reader, 'keydown', event => {
+    if (event.key !== 'Escape' || !fullscreenRoot.hasAttribute('data-reader-expanded') ||
+        document.querySelector('dialog[open],[popover]:popover-open')) return;
+    fullscreenRoot.removeAttribute('data-reader-expanded');
+    fullscreenState(); document.dispatchEvent(new Event('aelms:reader-display-change'));
+  });
+  scope.listen(appDisplay, 'change', () => {
+    if (!appDisplay.matches) fullscreenRoot.removeAttribute('data-reader-expanded');
+    fullscreen.hidden = !fullscreenRoot.requestFullscreen && !appDisplay.matches;
+    fullscreenState(); document.dispatchEvent(new Event('aelms:reader-display-change'));
   });
   scope.listen(document, 'fullscreenchange', fullscreenState);
   fullscreenState();
   scope.signal.addEventListener('abort', () => {
-    if (expandedReader() && !fullscreenRoot.hasAttribute('data-reader-transition')) document.exitFullscreen().catch(() => {});
+    if (!expandedReader() || fullscreenRoot.hasAttribute('data-reader-transition')) return;
+    fullscreenRoot.removeAttribute('data-reader-expanded');
+    if (document.fullscreenElement === fullscreenRoot) document.exitFullscreen().catch(() => {});
   }, {once:true});
 });
