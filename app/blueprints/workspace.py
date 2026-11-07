@@ -473,6 +473,22 @@ def workspace_back_link():
     if request.endpoint == home:
         return None
     role = current_user.role
+    section_roots = {
+        "student.dashboard", "workspace.student_courses", "student.activities", "student.records",
+        "student.attendance_list", "student.grades_list", "student.calendar", "student.announcements_list",
+        "student.discussions_overview", "teacher.dashboard", "workspace.teacher_groups", "teacher.activities",
+        "workspace.review_queue", "teacher.attendance_overview", "teacher.gradebook_overview",
+        "teacher.calendar", "teacher.announcements_feed", "teacher.discussions_overview",
+        "research.dashboard", "research.sessions", "research.exports", "research.configurations",
+        "research.exclusions", "research.storage", "research.activity_log", "research.v2_review",
+        "admin.dashboard", "messages.inbox", "notifications.inbox", "account.settings", "workspace.search",
+    }
+    if role == "administrator":
+        from app.blueprints.admin.navigation import ADMIN_NAV_SECTIONS
+        section_roots.update(item["endpoint"] for section in ADMIN_NAV_SECTIONS
+                             for item in section["links"] if item.get("endpoint"))
+    if request.endpoint in section_roots and not request.view_args:
+        return None
     teacher_activity = role == "teacher" and (
         nav_active("teacher.activities") or bool((request.view_args or {}).get("group_public_id"))
         and nav_active("workspace.review_queue"))

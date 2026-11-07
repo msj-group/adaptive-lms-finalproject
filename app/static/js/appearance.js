@@ -117,17 +117,11 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     });
   });
 
-  var noticeCount = 0;
   function showFlashNotices(container) {
     container.querySelectorAll('[data-app-flash]').forEach(function (source) {
-      var dialog = source.querySelector('template').content.firstElementChild.cloneNode(true);
-      if (typeof dialog.showModal !== 'function') return;
-      var messages = source.querySelector('[data-app-flash-items]');
-      messages.id = 'app-flash-items-' + (++noticeCount);
-      dialog.setAttribute('aria-describedby', messages.id);
-      dialog.querySelector('form').before(messages);
-      source.replaceWith(dialog);
-      dialog.showModal();
+      // Important feedback stays beside the form and never steals focus.
+      source.querySelector('template')?.remove();
+      source.classList.add('platform-notices');
     });
   }
   window.aelmsUI.showFlashNotices = showFlashNotices;

@@ -5163,3 +5163,16 @@ No backend/schema/data change is needed. Actual device gestures and fullscreen
 visual review remain owner checks while browser access is disabled. See
 [implementation and evidence boundary](READER_PAGE_ZOOM_20261107.md); deployment
 receipts in the private operator workspace establish the active source release.
+
+### Centre header, fullscreen continuity and necessary notices - 2026-11-07
+
+Implemented the current owner corrections across shared role headers, reader
+navigation and media controls. Main section pages omit Back, all role headers
+have the centre logo left of the title, and the bell appears outside Notifications.
+The reader retains a stable fullscreen root during a real Complete and next lesson
+request. Media markers/titles and narrow player layout are simplified. Necessary
+notices receive a shared modern inline design; routine acknowledgement flashes
+are omitted. No migration or business write is required. Browser/device behavior
+remains owner review while Work browser use is disabled. See
+[scope and evidence boundary](CENTRE_HEADER_READER_NOTICES_20261107.md); the private
+deployment receipts establish the actual hosted release and source hashes.

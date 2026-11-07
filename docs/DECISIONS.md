@@ -13929,3 +13929,15 @@ completion remains explicit and works in fullscreen; remove Undo and X from its
 card without changing progress history or signed submission rules. Remove native
 tap flash/pointer focus decoration platform-wide while retaining keyboard focus.
 See [scope, implementation and verification limits](READER_PAGE_ZOOM_20261107.md).
+
+## Shared centre header, fullscreen continuity and necessary notices - 2026-11-07
+
+The owner requested logo/title consistency across all roles, no Back on main
+section pages, persistent fullscreen for Complete and next lesson, smaller media
+markers and a compact waveform-free player. A stable fullscreen document root
+and the native authorized-page loader retain the reader through real signed
+completion requests. The owner clarified that necessary alerts must be redesigned,
+not removed. Suppress routine acknowledgements; preserve finality/validation
+messages and contextual warnings using a shared restrained notice style. Do not
+change notification records, course content, progress policy or the schema.
+See [implementation and verification limits](CENTRE_HEADER_READER_NOTICES_20261107.md).

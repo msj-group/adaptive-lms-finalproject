@@ -1,17 +1,18 @@
 {% macro assets() -%}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/course_media.css', v='focus-media-1') }}">
-<script src="{{ url_for('static', filename='js/course_media.js', v='focus-media-1') }}" defer></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/course_media.css', v='compact-media-2') }}">
+<script src="{{ url_for('static', filename='js/course_media.js', v='compact-media-2') }}" defer></script>
 {%- endmacro %}
 
 {% macro controls() -%}
-<div class="cm-wave" aria-hidden="true"><canvas data-media-wave></canvas></div>
 <div class="cm-controls" data-media-controls hidden>
   <div class="cm-timeline"><progress data-media-buffer value="0" max="1" aria-hidden="true"></progress><input type="range" min="0" max="1000" step="1" value="0" data-media-seek aria-label="{{ _('Seek') }}"></div>
   <div class="cm-transport">
+    <div class="cm-playback">
     <button type="button" class="cm-play" data-media-play data-play-label="{{ _('Play') }}" data-pause-label="{{ _('Pause') }}" aria-label="{{ _('Play') }}"><span data-play-symbol aria-hidden="true">▶</span></button>
     <button type="button" data-media-skip="-10" aria-label="{{ _('Back 10 seconds') }}">−10</button>
     <button type="button" data-media-skip="10" aria-label="{{ _('Forward 10 seconds') }}">+10</button>
     <span class="cm-time" dir="ltr"><span data-media-current>0:00</span> / <span data-media-duration>0:00</span></span>
+    </div>
     <div class="cm-options">
       <button type="button" data-media-mute data-mute-label="{{ _('Mute') }}" data-unmute-label="{{ _('Unmute') }}" aria-label="{{ _('Mute') }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4Zm4 4a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg></button>
       <input class="cm-volume" type="range" min="0" max="1" step="0.05" value="1" data-media-volume aria-label="{{ _('Volume') }}">

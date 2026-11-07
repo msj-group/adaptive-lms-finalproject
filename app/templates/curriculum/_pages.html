@@ -14,10 +14,10 @@
             id="material-{{ material.anchor_id|default(material.public_id) }}" data-category="{{ file.category }}"
             style="--pin-x:{{ material.pin_x / 100 }}%;--pin-y:{{ material.pin_y / 100 }}%;"
             data-pin-x="{{ material.pin_x }}" data-pin-y="{{ material.pin_y }}"
-            data-media-title="{{ file.original_filename }}"
+            data-media-title="{{ file.original_filename|media_label }}"
         data-media-src="{{ url_for(media_endpoint, item_id=material.public_id, **media_args) if media_endpoint in ['admin.curriculum_file','teacher.curriculum_file'] else url_for(media_endpoint, material_public_id=material.public_id, **media_args) }}"
             {% if editor %}data-edit-pin="{{ material.public_id }}" data-material-version="{{ pin_version(material) }}"{% else %}data-play-pin{% endif %}
-            aria-label="{{ _('Move %(name)s', name=file.original_filename) if editor else _('Play %(name)s', name=file.original_filename) }}">
+            aria-label="{{ _('Move %(name)s', name=file.original_filename|media_label) if editor else _('Play %(name)s', name=file.original_filename|media_label) }}">
       {{ media_icon(file.category) }}
     </button>
   {% endif %}
@@ -51,7 +51,7 @@
 <dialog class="ce-player cm-dialog" data-media-player aria-label="{{ _('Media player') }}">
   <header>
     <strong data-player-title dir="auto"></strong>
-    <button class="btn btn--secondary" type="button" data-close-player>{{ _('Close') }}</button>
+    <button class="cm-close" type="button" data-close-player aria-label="{{ _('Close') }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   </header>
   <div class="course-media" data-course-media>
     <audio controls preload="none" hidden{% if collect %} data-research-media="lesson_audio"{% endif %}></audio>

@@ -177,6 +177,10 @@ def create_app(config_name=None, **config_overrides):
 
         return {"notification_header": lambda: header_badge(current_user)}
 
+    from app.services.ui_presentation import media_label, visible_flash_messages
+    app.jinja_env.filters["media_label"] = media_label
+    app.jinja_env.globals["get_flashed_messages"] = visible_flash_messages
+
     # Phase 6: the shared portal layout renders the research collector and
     # the optional feedback dialog only for a Student inside the collection
     # scope. Injected as a *callable*, like the notification badge: one

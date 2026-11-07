@@ -5,14 +5,15 @@
 {% set reader_lesson_endpoint = reader_lesson_endpoint|default('student.lesson_detail') %}
 {% block title %}{{ lesson_title }} — {{ course_title }}{% endblock %}
 {% block body_class %}{{ super() }} sf-focused{% endblock %}
-{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='focus-reader-1') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/student_focus.css', v='page-zoom-4') }}">{% endblock %}
-{% block body_scripts %}{{ super() }}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='focus-media-1') }}" defer></script><script src="{{ url_for('static', filename='js/student_reader.js', v='page-zoom-4') }}" defer></script>{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='focus-reader-1') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/student_focus.css', v='reader-persistence-5') }}">{% endblock %}
+{% block body_scripts %}{{ super() }}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='focus-media-1') }}" defer></script><script src="{{ url_for('static', filename='js/student_reader.js', v='reader-persistence-5') }}" defer></script>{% endblock %}
 {% block content %}
 <a class="figma-skip-link" href="#workspace-content">{{ _('Skip to content') }}</a>
-<div class="sf-reader" data-student-reader data-workspace-history='{{ workspace_navigation()|tojson }}'>
+<div class="sf-reader" data-student-reader data-reader-group="{{ group_public_id }}" data-workspace-history='{{ workspace_navigation()|tojson }}'>
   <header class="sf-header">
     <div class="sf-context"><a class="sf-back" aria-label="{{ _('My courses') }}" href="{{ url_for('workspace.student_courses') }}">{{ ui.icon('arrow',18) }}</a><div><p dir="auto">{{ unit_title }}</p><h1 data-workspace-page-heading dir="auto">{{ lesson_title }}</h1></div></div>
     <div class="sf-actions">
+      {% set notif = notification_header() %}{% if notif %}{% include 'notifications/_bell.html' %}{% endif %}
       <details class="sf-outline" data-focus-outline><summary aria-label="{{ _('Course contents') }}">{{ ui.icon('book',18) }}<span class="sf-header-label">{{ _('Course contents') }}</span></summary>
         <aside class="sf-outline-panel"><header><h2>{{ _('Course contents') }}</h2><button type="button" data-close-outline aria-label="{{ _('Close') }}">{{ ui.icon('close',18) }}</button></header><div class="sf-unit-list">
           {% for unit in lesson_units %}<details class="sf-outline-unit"{% if unit.public_id == unit_public_id %} open{% endif %}><summary><span dir="auto">{{ unit.title }}</span>{{ ui.icon('chevron-down',16) }}</summary><ol>
@@ -49,7 +50,7 @@
   {% else %}
   {% for material in separate_materials %}
   <div id="material-{{ material.public_id }}" class="material-block atlas-material" data-atlas-material="{{ 'text' if material.kind == 'rich_text' else 'link' if material.kind == 'external_link' else material.category if material.category in ['image','audio','video'] else 'files' }}">
-    <div class="material-block__title">{{ material.title }}</div>
+    <div class="material-block__title">{{ material.title|media_label if material.category in ['audio','video'] else material.title }}</div>
 
     {% if material.kind == "rich_text" %}
     {# The only |safe in the Student app: content_html was sanitized on
@@ -91,7 +92,7 @@
     <section class="sf-completion">
       <div class="sf-finish-copy"><span class="sf-finish-icon" aria-hidden="true">{{ ui.icon('check',26) }}</span><div><h2 id="lesson-end-title">{{ _('Lesson complete') if progress.is_completed else _('Ready for your next step?') }}</h2><p>{{ _('You reached the end of this lesson.') }}</p></div></div>
       {% if progress_action == 'undo' %}
-      <div class="sf-finish-actions">{% if next_lesson %}<a class="btn btn--primary" href="{{ url_for(reader_lesson_endpoint, group_public_id=group_public_id, unit_public_id=next_lesson.unit_public_id, lesson_public_id=next_lesson.public_id) }}">{{ _('Next lesson') }}</a>{% endif %}<a class="btn btn--secondary" href="{{ url_for('workspace.student_courses') }}">{{ _('Exit to courses') }}</a></div>
+      <div class="sf-finish-actions">{% if next_lesson %}<a class="btn btn--primary" data-reader-next href="{{ url_for(reader_lesson_endpoint, group_public_id=group_public_id, unit_public_id=next_lesson.unit_public_id, lesson_public_id=next_lesson.public_id) }}">{{ _('Next lesson') }}</a>{% endif %}<a class="btn btn--secondary" href="{{ url_for('workspace.student_courses') }}">{{ _('Exit to courses') }}</a></div>
       {% else %}
       <form method="post" action="{{ url_for('student.lesson_mark_complete', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=lesson_public_id) }}" data-research-form="lesson_complete">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="progress_state" value="{{ progress_state }}">

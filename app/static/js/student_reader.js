@@ -155,9 +155,35 @@ window.aelmsModules.register(document.currentScript, function (scope) {
   }
   const fullscreen = reader.querySelector('[data-reader-fullscreen]');
   if (!fullscreen) return;
-  fullscreen.hidden = !reader.requestFullscreen;
+  const fullscreenRoot = document.documentElement;
+  const expandedReader = () => document.fullscreenElement === fullscreenRoot;
+  fullscreen.hidden = !fullscreenRoot.requestFullscreen;
+  let advancing = false;
+  async function advance(url, data = null) {
+    if (advancing) return;
+    advancing = true;
+    const buttons = [...reader.querySelectorAll('[data-completion-dialog] button')];
+    buttons.forEach(button => { button.disabled = true; });
+    try { await window.aelmsReaderNavigate(url, data); }
+    finally { advancing = false; buttons.forEach(button => { button.disabled = false; }); }
+  }
+  scope.listen(reader, 'submit', event => {
+    if (!expandedReader() || !window.aelmsReaderNavigate || event.defaultPrevented ||
+        !event.target.matches('[data-research-form=lesson_complete]')) return;
+    const submitter = event.submitter;
+    if (submitter?.value !== 'next_lesson') return;
+    const data = new FormData(event.target, submitter);
+    event.preventDefault();
+    advance(event.target.action, data);
+  });
+  scope.listen(reader, 'click', event => {
+    const link = event.target.closest('[data-reader-next]');
+    if (!link || !expandedReader() || !window.aelmsReaderNavigate || event.defaultPrevented ||
+        event.button || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault(); advance(link.href);
+  });
   function fullscreenState() {
-    const expanded = document.fullscreenElement === reader;
+    const expanded = expandedReader();
     const label = expanded ? fullscreen.dataset.exitLabel : fullscreen.dataset.enterLabel;
     fullscreen.setAttribute('aria-label', label); fullscreen.setAttribute('title', label);
     const text = fullscreen.querySelector('[data-fullscreen-label]');
@@ -169,10 +195,12 @@ window.aelmsModules.register(document.currentScript, function (scope) {
   scope.listen(fullscreen, 'click', () => {
     if (outline) outline.open = false;
     if (finish?.open) finish.close();
-    const request = document.fullscreenElement === reader ? document.exitFullscreen() : reader.requestFullscreen();
+    const request = expandedReader() ? document.exitFullscreen() : fullscreenRoot.requestFullscreen();
     request?.catch(() => {});
   });
   scope.listen(document, 'fullscreenchange', fullscreenState);
   fullscreenState();
-  scope.signal.addEventListener('abort', () => { if (document.fullscreenElement === reader) document.exitFullscreen().catch(() => {}); }, {once:true});
+  scope.signal.addEventListener('abort', () => {
+    if (expandedReader() && !fullscreenRoot.hasAttribute('data-reader-transition')) document.exitFullscreen().catch(() => {});
+  }, {once:true});
 });

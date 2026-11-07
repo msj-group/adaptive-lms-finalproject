@@ -1,7 +1,6 @@
 /* Render authorized server pages without replacing the browser document. */
 (() => {
   "use strict";
-  if (!window.navigation || !window.NavigationPrecommitController) return;
   const scopeSelector = 'meta[name="aelms-workspace-scope"]';
   const persistent = "script[data-app-runtime]";
   const request = window.fetch.bind(window);
@@ -133,60 +132,104 @@
       .filter(script => !script.type || ["text/javascript", "application/javascript", "module"].includes(script.type));
     for (const script of scripts) script.remove();
 
-    window.aelmsDisposeMessages?.();
-    document.querySelectorAll("audio,video").forEach(media => media.pause());
-    window.aelmsPage.dispose();
-    document.documentElement.removeAttribute("data-workspace-restoring");
-    for (const key of Object.keys(window)) {
-      if (/^(aelms(?!CreatePageScope$|Page$|Modules$)|researchV2$|AELMS_AR$)/.test(key)) delete window[key];
-    }
-    window.aelmsPage = window.aelmsCreatePageScope();
-    for (const item of Array.from(document.head.children)) {
-      if (item.matches(persistent) || styles.some(style => style.node === item)) continue;
-      item.remove();
-    }
-    for (const item of Array.from(page.head.children)) {
-      if (item.matches('link[rel="stylesheet"]')) continue;
-      document.head.append(document.importNode(item, true));
-    }
-    for (const {node, media} of styles) {
-      node.removeAttribute("data-app-pending");
-      if (media === null) node.removeAttribute("media");
-      else node.media = media;
-      if (document.head.moveBefore) document.head.moveBefore(node, null);
-      else document.head.append(node);
-    }
-    await Promise.all(styles.map(({node}) => node.sheet ? undefined : new Promise((resolve, reject) => {
-      node.addEventListener("load", resolve, {once: true});
-      node.addEventListener("error", () => reject(new Error("Styles unavailable")), {once: true});
-    })));
-    event.signal.throwIfAborted();
-    document.documentElement.lang = page.documentElement.lang;
-    document.documentElement.dir = page.documentElement.dir;
-    document.body.replaceWith(document.importNode(page.body, true));
-    mountedURL = location.href;
-    await runScripts(scripts, event.signal, window.aelmsPage);
-    event.signal.throwIfAborted();
-    document.dispatchEvent(new Event("DOMContentLoaded"));
-    window.dispatchEvent(new Event("load"));
-    window.dispatchEvent(new PageTransitionEvent("pageshow", {persisted: false}));
-    if (location.hash) {
-      const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
-      if (target && !target.closest("[data-pdf-viewer]")) target.scrollIntoView({block: "start"});
-    } else {
-      window.scrollTo({top: 0, behavior: "instant"});
-    }
-    document.dispatchEvent(new CustomEvent("aelms:page-ready"));
-    mountedURL = location.href;
-    const view = document.querySelector("#workspace-content,[data-curriculum-editor]") || document.querySelector("main");
-    if (document.activeElement === document.body) view?.focus({preventScroll: true});
-    if (view && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      view.animate([{opacity: .6, translate: "0 4px"}, {opacity: 1, translate: "0 0"}],
-        {duration: 160, easing: "ease-out"});
-    }
+    const previousReader = document.querySelector('[data-student-reader]');
+    const nextReader = page.querySelector('[data-student-reader]');
+    const fullscreenRoot = document.documentElement;
+    const keepReader = document.fullscreenElement === fullscreenRoot && previousReader && nextReader &&
+      previousReader.dataset.readerGroup === nextReader.dataset.readerGroup;
+    if (keepReader) fullscreenRoot.dataset.readerTransition = 'true';
+    else if (previousReader && document.fullscreenElement === fullscreenRoot) await document.exitFullscreen();
+    try {
+
+      window.aelmsDisposeMessages?.();
+      document.querySelectorAll("audio,video").forEach(media => media.pause());
+      window.aelmsPage.dispose();
+      document.documentElement.removeAttribute("data-workspace-restoring");
+      for (const key of Object.keys(window)) {
+        if (/^(aelms(?!CreatePageScope$|Page$|Modules$|ReaderNavigate$|InstallApp$)|researchV2$|AELMS_AR$)/.test(key)) delete window[key];
+      }
+      window.aelmsPage = window.aelmsCreatePageScope();
+      for (const item of Array.from(document.head.children)) {
+        if (item.matches(persistent) || styles.some(style => style.node === item)) continue;
+        item.remove();
+      }
+      for (const item of Array.from(page.head.children)) {
+        if (item.matches('link[rel="stylesheet"]')) continue;
+        document.head.append(document.importNode(item, true));
+      }
+      for (const {node, media} of styles) {
+        node.removeAttribute("data-app-pending");
+        if (media === null) node.removeAttribute("media");
+        else node.media = media;
+        if (document.head.moveBefore) document.head.moveBefore(node, null);
+        else document.head.append(node);
+      }
+      await Promise.all(styles.map(({node}) => node.sheet ? undefined : new Promise((resolve, reject) => {
+        node.addEventListener("load", resolve, {once: true});
+        node.addEventListener("error", () => reject(new Error("Styles unavailable")), {once: true});
+      })));
+      event.signal.throwIfAborted();
+      document.documentElement.lang = page.documentElement.lang;
+      document.documentElement.dir = page.documentElement.dir;
+      document.body.replaceWith(document.importNode(page.body, true));
+      mountedURL = location.href;
+      await runScripts(scripts, event.signal, window.aelmsPage);
+      event.signal.throwIfAborted();
+      document.dispatchEvent(new Event("DOMContentLoaded"));
+      window.dispatchEvent(new Event("load"));
+      window.dispatchEvent(new PageTransitionEvent("pageshow", {persisted: false}));
+      if (location.hash) {
+        const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+        if (target && !target.closest("[data-pdf-viewer]")) target.scrollIntoView({block: "start"});
+      } else {
+        window.scrollTo({top: 0, behavior: "instant"});
+      }
+      document.dispatchEvent(new CustomEvent("aelms:page-ready"));
+      mountedURL = location.href;
+      const view = document.querySelector("#workspace-content,[data-curriculum-editor]") || document.querySelector("main");
+      if (document.activeElement === document.body) view?.focus({preventScroll: true});
+      if (view && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        view.animate([{opacity: .6, translate: "0 4px"}, {opacity: 1, translate: "0 0"}],
+          {duration: 160, easing: "ease-out"});
+      }
+    } finally { delete fullscreenRoot.dataset.readerTransition; }
   }
 
-  navigation.addEventListener("navigate", event => {
+  // The root document stays fullscreen while an authorized reader page changes.
+  // This path also works in browsers without Navigation API interception.
+  let readerRequest = null;
+  window.aelmsReaderNavigate = async function (url, formData = null) {
+    if (readerRequest || document.fullscreenElement !== document.documentElement ||
+        !document.querySelector('[data-student-reader]')) return;
+    const destination = new URL(url, location.href);
+    if (destination.origin !== location.origin) return;
+    const controller = new AbortController();
+    const event = {signal:controller.signal, destination:{url:destination.href}, formData};
+    readerRequest = controller; activeNavigation = event;
+    document.documentElement.dataset.appNavigating = 'true';
+    try {
+      const prepared = await prepare(event, location.href);
+      event.signal.throwIfAborted();
+      window.dispatchEvent(new PageTransitionEvent('pagehide', {persisted:false}));
+      history.pushState(null, '', prepared.destination.href);
+      await render(prepared, event);
+    } catch (error) {
+      if (error.name !== 'AbortError') errorDialog(formData
+        ? 'The request could not be confirmed. Review the page before retrying.'
+        : 'This page could not be loaded. Check your connection and try again.');
+    } finally {
+      readerRequest = null; stopProgress(event);
+    }
+  };
+
+  if (!window.navigation || !window.NavigationPrecommitController) window.addEventListener('popstate', () => {
+    const previous = new URL(mountedURL);
+    if (document.querySelector('[data-student-reader]') &&
+        (previous.pathname !== location.pathname || previous.search !== location.search)) location.reload();
+  });
+
+  if (window.navigation && window.NavigationPrecommitController) navigation.addEventListener("navigate", event => {
+    if (readerRequest && !event.destination.sameDocument) readerRequest.abort();
     if (bypass) { bypass = false; return; }
     if (!ready || !event.canIntercept || event.hashChange || event.navigationType === "reload" ||
         event.downloadRequest !== null) return;

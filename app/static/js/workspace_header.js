@@ -39,7 +39,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope) {
     }
 
     function updateTitle() {
-      const candidates = Array.from(root.querySelectorAll("[data-workspace-page-heading],.st-page-heading h1,.agenda-greeting h1,.cockpit-greeting h1"))
+      const candidates = Array.from(root.querySelectorAll("[data-workspace-page-heading],.st-page-heading h1,.agenda-greeting h1,.cockpit-greeting h1,.rs-content h1"))
         .filter(node => !node.closest("dialog,[popover]"));
       const primary = candidates.find(node => node.hasAttribute("data-workspace-page-heading")) || candidates[0];
       const headings = candidates.filter(node => node === primary || node.closest(".st-page-heading"));
