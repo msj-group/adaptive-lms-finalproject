@@ -3,8 +3,7 @@
   --notice-accent:var(--ui-link);
   --notice-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v6m0-10v.2'/%3E%3C/svg%3E");
 }
-body .alert.alert,
-.figma-workspace .alert.alert {
+body .alert.alert {
   display:block; position:relative; min-width:0;
   padding:14px 18px; padding-inline-start:50px;
   border:1px solid color-mix(in srgb,var(--notice-accent) 14%,var(--ui-line));
