@@ -13946,7 +13946,8 @@ See [implementation and verification limits](CENTRE_HEADER_READER_NOTICES_202611
 
 The owner's latest correction replaces fixed-pixel/offset reader markers with
 centered, sheet-relative transparent markers; stored placement remains unchanged.
-Enlarge the header logo to a 44px slot on phone and desktop. Bells appear only on
+Enlarge the header logo to a 44px slot on phones only, following the owner's
+latest clarification; hide it in the header on larger screens. Bells appear only on
 main section entry pages, excluding Notifications and the reader. Android's
 installed app keeps fullscreen/standalone metadata, adds viewport-fit=cover and
 safe-area-aware controls, and paints exposed canvas with the app theme. Device

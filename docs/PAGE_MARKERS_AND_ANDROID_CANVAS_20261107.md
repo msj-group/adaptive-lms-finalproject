@@ -22,8 +22,10 @@ touch selection without painting over surrounding text. Stored coordinates,
 media identities and files are unchanged. This applies to Student/Workbook
 reading and shared reader previews, not Teacher placement controls.
 
-The header logo uses a 44px slot with a 40 by 44px contained image on desktop
-and phone. Remove the 24 by 30px phone override; title truncation and the right
+The owner clarified that the title-side header logo is for phones only. It uses
+a 44px slot with a 40 by 44px contained image up to the existing 639px phone
+breakpoint and is hidden on larger screens. Remove the 24 by 30px phone override;
+title truncation and the right
 Filters position remain native. A shared server section-root predicate now owns
 both main-page Back suppression and bell visibility. Notification APIs, records
 and recipient authorization are unchanged; the reader no longer renders a bell.

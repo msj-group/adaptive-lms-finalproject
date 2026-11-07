@@ -5180,7 +5180,7 @@ deployment receipts establish the actual hosted release and source hashes.
 ### Page-relative markers, logo size and Android canvas - 2026-11-07
 
 Prepared the owner corrections for proportional reader marker size/placement,
-larger shared header logo, and section-entry-only notification bells. Android
+larger phone-only shared header logo, and section-entry-only notification bells. Android
 viewport-fit=cover and safe-area layout now allow the app canvas to extend behind
 display cutouts while keeping controls safe. Manifest identity/display mode and
 private-content cache rules remain unchanged. No schema or business-data write is

@@ -2,7 +2,7 @@
 .yc-workspace .st-header { gap:12px; direction:ltr; }
 .yc-workspace .st-header-context { flex:1; direction:ltr; }
 .yc-workspace .workspace-page-context { display:flex; align-items:center; gap:12px; min-width:0; direction:ltr; }
-.yc-workspace .workspace-header-brand { display:flex; flex:0 0 auto; align-items:center; justify-content:center; width:44px; min-height:44px; }
+.yc-workspace .workspace-header-brand { display:none; flex:0 0 auto; align-items:center; justify-content:center; width:44px; min-height:44px; }
 .yc-workspace .workspace-header-brand img { display:block; width:40px; height:44px; object-fit:contain; }
 .yc-workspace .workspace-page-context[hidden], .yc-workspace .workspace-header-filters[hidden] { display:none; }
 .yc-workspace .workspace-header-title {
@@ -37,6 +37,7 @@
 }
 .yc-workspace [data-header-filter-panel] :is(.field,fieldset) { min-width:0; }
 @media (max-width:639px) {
+  .yc-workspace .workspace-header-brand { display:flex; }
   .yc-workspace[data-workspace-header-titles] .st-header { gap:8px; }
   .yc-workspace[data-workspace-header-titles] .st-header-context { gap:8px; }
   .yc-workspace .workspace-page-context { flex:1; gap:8px; }
