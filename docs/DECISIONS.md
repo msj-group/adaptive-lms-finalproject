@@ -13975,3 +13975,14 @@ table never changes academic/research history. Keep permission user-initiated,
 logout opt-out, native auth-version revocation, private file/cache boundaries, and
 source rollback without dropping subscriptions. VPS activation still requires the
 owner's standing service-impact approval. See [scope and checks](DEVICE_NOTIFICATIONS_20261107.md).
+
+
+## Independent teacher book publication and message confirmation - 2026-11-07
+
+The owner selected independent Student book and Workbook publication, simpler
+Teacher Home shortcuts, real device notification previews and reliable Messages
+acknowledgement. The additive migration preserves configured visibility and
+existing progress; native scope, CSRF, locks and stale checks remain. This
+supersedes shared Workbook publication and generic lock-screen previews.
+See [scope, preservation and verification boundaries](TEACHER_BOOKS_MESSAGES_20261107.md).
+Private operator receipts record actual migration and deployment results.

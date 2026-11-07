@@ -300,3 +300,9 @@ html[dir=rtl] .messenger-eyebrow { letter-spacing:normal; }
 @media (prefers-reduced-motion:reduce) { .messenger *,.messenger-action-sheet { animation:none !important; transition:none !important; } }
 @media (forced-colors:active) { .messenger-bubble,.messenger-action-menu,.messenger-composer__row { border-color:CanvasText; } .messenger-conversation--active { outline:2px solid Highlight; } }
 @media print { .messenger { display:block; height:auto; border:0; overflow:visible; } .messenger > .messenger-sidebar,.messenger-composer,.messenger-history,.messenger-message-actions,.messenger-header-actions { display:none; } .messenger-chat,.messenger-timeline { display:block; height:auto; overflow:visible; } .messenger-bubble { margin:10px 0; break-inside:avoid; background:Canvas; border-color:CanvasText; } .yc-messages .messenger-bubble :is(.messenger-bubble__body,.messenger-bubble__meta,time,span) { color:CanvasText; } }
+
+/* Delivery recovery stays beside the composer, never a global warning banner. */
+.messenger-send-recovery { display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; margin:8px 12px; padding:10px 12px; border:1px solid var(--ui-line); border-radius:12px; background:var(--ui-surface); color:var(--st-muted); font-size:12px; }
+.messenger-send-recovery[hidden] { display:none!important; }
+.messenger-send-recovery>span { flex:1 1 180px; }
+.messenger-send-recovery .btn { min-height:38px; padding:8px 12px; font-size:12px; }

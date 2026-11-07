@@ -210,12 +210,12 @@ def _change_completion(group_public_id, unit_public_id, lesson_public_id, action
     student_id = current_user.id
     actor_public_id = current_user.public_id
 
+    book = "workbook" if request.form.get("book") == "workbook" else "main"
     progress = student_lesson_progress(
-        student_id, group_public_id, unit_public_id, lesson_public_id
+        student_id, group_public_id, unit_public_id, lesson_public_id, book=book
     )
     if progress is None:
         abort(404)
-    book = "workbook" if request.form.get("book") == "workbook" else "main"
     if book == "workbook":
         from app.blueprints.student.books import workbook_context
         _, _, _, pages, _ = workbook_context(student_id, group_public_id)
@@ -239,7 +239,7 @@ def _change_completion(group_public_id, unit_public_id, lesson_public_id, action
             return redirect(lesson_url)
         destination = (_completion_destination(student_id, progress, book, next_unit=True)
                        if request.form.get("after_save") == "next_unit" else url_for("workspace.student_courses"))
-        outcome = progress_tx.complete_unit(student_id, group_public_id, unit_public_id, versions)
+        outcome = progress_tx.complete_unit(student_id, group_public_id, unit_public_id, versions, book=book)
         if outcome == progress_tx.UNAVAILABLE:
             abort(404)
         if outcome in (progress_tx.CHANGED, progress_tx.ALREADY):
@@ -275,7 +275,7 @@ def _change_completion(group_public_id, unit_public_id, lesson_public_id, action
         progress.unit_public_id,
         progress.lesson_public_id,
         action,
-        payload["progress_version"],
+        payload["progress_version"], book=book,
     )
     if outcome == progress_tx.UNAVAILABLE:
         abort(404)

@@ -113,6 +113,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
           });
         });
       }
+      if (isMessage && content.contains(recovery)) { recovery.hidden = true; surface.insertBefore(recovery, content); }
       release();
       if (isMessage) window.aelmsDisposeMessages();
       if (isMessage) {
@@ -140,7 +141,23 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       else animate(node);
       if (!isMessage) surface.scrollTop = 0;
     };
-    const failed = (post = false) => {
+    const failed = (post = false, confirmed = false) => {
+      if (isMessage) {
+        setStatus('');
+        const host = content.querySelector('[data-people-message-panel]') || content;
+        host.append(recovery);
+        recovery.classList.add('messenger-send-recovery');
+        recovery.setAttribute('role','status');
+        let copy = recovery.querySelector('[data-message-recovery-copy]');
+        if (!copy) { copy = document.createElement('span'); copy.dataset.messageRecoveryCopy = ''; recovery.prepend(copy); }
+        copy.textContent = t(scopeInvalid ? 'Your session changed. Sign in again to continue.' :
+          post ? confirmed ? 'Message sent. View conversation.' : 'View the conversation to check your message.' : 'The conversation could not load. Try again.');
+        recovery.hidden = false;
+        retry.hidden = post && !confirmed || scopeInvalid;
+        fallback.target = '_blank'; fallback.rel = 'noopener';
+        if (target) fallback.href = target.href;
+        return;
+      }
       setStatus(scopeInvalid ? 'Your session changed. Reload this page to continue.' : post ?
         'The result could not be confirmed. Your details remain here. Review the full page before trying again.' :
         'The form could not load. Retry or open the full page.', true);
@@ -226,13 +243,34 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       };
       const data = new FormData(form);
       if (event.submitter?.name) data.append(event.submitter.name, event.submitter.value);
+      const input = isMessage && form.querySelector('[data-message-input],textarea[name="body"]');
+      const wasReadOnly = input?.readOnly;
+      if (input) input.readOnly = true;
+      let sendConfirmed = false;
       const buttons = Array.from(form.querySelectorAll('[type="submit"]'));
       buttons.forEach((button) => { button.disabled = true; });
       if (closeButton) closeButton.disabled = true;
-      form.setAttribute('aria-busy','true'); setStatus(isMessage ? 'Sending…' : 'Saving…');
+      form.setAttribute('aria-busy','true'); setStatus(isMessage ? '' : 'Saving…');
       try {
-        const response = await pageScope.fetch(postURL.href, {method:'POST', body:data, credentials:'same-origin', cache:'no-store', headers:{Accept:'text/html'}});
+        const headers = isMessage ? {Accept:'application/json, text/html', 'X-Communication-Response':'json'} : {Accept:'text/html'};
+        const response = await pageScope.fetch(postURL.href, {method:'POST', body:data, credentials:'same-origin', cache:'no-store', headers});
         researchFinish('finished');
+        if (isMessage && response.ok && (response.headers.get('Content-Type') || '').includes('application/json')) {
+          const proof = await response.json();
+          const destination = new URL(proof.thread_url, location.href), shape = info(destination);
+          if (proof.status !== 'sent' || proof.actor !== actor || shape?.mode !== 'thread' ||
+              shape.id !== proof.thread_public_id || from.id && shape.id !== from.id) throw new Error('scope');
+          sendConfirmed = true;
+          if (input) input.value = '';
+          release(); validationDraft = false; uncertain = false;
+          target = destination;
+          const read = await pageScope.fetch(destination.href, {credentials:'same-origin', cache:'no-store', headers:{Accept:'text/html'}});
+          if (!read.ok) throw new Error([401,403].includes(read.status) ? 'scope' : 'unavailable');
+          const refreshed = await parsed(read);
+          if (refreshed.mode !== 'thread' || refreshed.id !== shape.id) throw new Error('unavailable');
+          if (isOpen()) install(refreshed, 'replace');
+          return;
+        }
         if (!response.ok && ![400,422].includes(response.status)) throw new Error([401,403].includes(response.status) ? 'scope' : 'unavailable');
         const loaded = await parsed(response);
         if (!isOpen()) return;
@@ -244,21 +282,22 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         }
         if (!response.ok || !response.redirected) throw new Error('unavailable');
         if (isMessage) {
-          const proof = loaded.node.querySelector('[data-people-message-panel]');
+          const proof = loaded.node;
           if (loaded.mode !== 'thread' || from.id && loaded.id !== from.id ||
               proof?.dataset.messageSent !== 'true' || proof.dataset.messageBlocked !== 'false') throw new Error('unavailable');
         } else if (loaded.id !== (from.id || loaded.id) || !['detail',from.mode].includes(loaded.mode)) throw new Error('unavailable');
         if (!isMessage && loaded.mode === 'detail') refreshNeeded = true;
         install(loaded, 'replace', loaded.mode === 'create' || loaded.mode === 'edit');
       } catch (error) {
-        researchFinish('network_unknown');
+        if (!sendConfirmed) researchFinish('network_unknown');
         if (!isOpen()) return;
         if (error.message === 'scope') scopeInvalid = true;
-        uncertain = true; failed(true);
+        uncertain = true; failed(true, sendConfirmed);
       } finally {
         posting = false;
         if (closeButton) closeButton.disabled = false;
         form.removeAttribute('aria-busy');
+        if (input) input.readOnly = wasReadOnly;
         buttons.forEach((button) => { button.disabled = uncertain || scopeInvalid; });
       }
     });

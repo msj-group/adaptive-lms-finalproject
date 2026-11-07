@@ -1,7 +1,7 @@
 /* Only public static UI assets enter CacheStorage. No private/offline lessons. */
 'use strict';
 const CACHE_PREFIX = 'youth-public-shell-';
-const CACHE = CACHE_PREFIX + 'v4';
+const CACHE = CACHE_PREFIX + 'v5';
 const OFFLINE = '/static/pwa/offline.html';
 const CORE = [OFFLINE, '/static/pwa/icon-clear-192.png', '/static/pwa/icon-clear-512.png'];
 const MAX_ASSETS = 80;
@@ -22,9 +22,12 @@ self.addEventListener('message', event => {
 });
 
 self.addEventListener('push', event => {
-  // The server sends no private message/course text to the lock screen.
-  event.waitUntil(self.registration.showNotification('Youth Learn', {
-    body:'You have a new update.', icon:'/static/pwa/icon-clear-192.png',
+  let notice = {};
+  try { notice = event.data?.json() || {}; } catch (_) { /* Keep an actionable fallback. */ }
+  const title = typeof notice.title === 'string' && notice.title.trim() ? notice.title.slice(0,150) : 'Youth Learn';
+  const body = typeof notice.body === 'string' && notice.body.trim() ? notice.body.slice(0,500) : 'Open Youth Learn to view your updates.';
+  event.waitUntil(self.registration.showNotification(title, {
+    body, icon:'/static/pwa/icon-clear-192.png',
     badge:'/static/pwa/icon-clear-192.png', tag:'youth-centre-updates',
     data:{url:'/notifications'}, renotify:false
   }));

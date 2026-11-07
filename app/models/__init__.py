@@ -57,7 +57,7 @@ from app.models.enrollment_history import EnrollmentMembership, EnrollmentEvent
 from app.models.group_teacher_assignment import GroupTeacherAssignment, GroupTeacherAssignmentStatus
 from app.models.schedule import Schedule
 from app.models.unit import Unit
-from app.models.curriculum_release import LessonRelease, MaterialRelease
+from app.models.curriculum_release import LessonRelease, MaterialRelease, WorkbookLessonRelease
 from app.models.lesson import Lesson
 from app.models.lesson_progress import LessonProgress
 from app.models.uploaded_file import UploadedFile

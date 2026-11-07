@@ -1,5 +1,4 @@
-"""Own-enrollment Workbook pages follow the same native Lesson releases."""
-from collections import defaultdict
+"""Own-enrollment Workbook pages use independent book publication."""
 
 from flask import abort, redirect, url_for
 from flask_login import current_user
@@ -8,12 +7,12 @@ from sqlalchemy.orm import joinedload
 from app.blueprints.student import student_bp
 from app.blueprints.student.routes import private_no_store
 from app.extensions import db
-from app.models import CourseReferenceBook, UploadedFile, WorkbookLessonPage, Lesson, Unit
+from app.models import UploadedFile
 from app.models.teaching_asset import TeachingAsset, TeachingAssetPin
 from app.security.decorators import roles_required
 from app.services.course_pdf import serve_pdf_page
 from app.services.material_serving import serve_uploaded_file
-from app.services.student_lessons import student_outline_group, outline_units
+from app.services.student_lessons import student_outline_group
 
 
 def workbook_context(student_id, group_public_id, document_id=None):
@@ -22,36 +21,13 @@ def workbook_context(student_id, group_public_id, document_id=None):
     group = student_outline_group(student_id, group_public_id)
     if group is None:
         abort(404)
-    book = (CourseReferenceBook.query.options(joinedload(CourseReferenceBook.uploaded_file))
-            .filter_by(course_id=group.course_id, kind="workbook").first())
-    if (book is None or book.uploaded_file.extension != "pdf"
-            or (document_id is not None and book.uploaded_file.public_id != document_id)):
+    from app.services.workbook_access import workbook_access
+    context = workbook_access(student_id, group)
+    if context is None:
         abort(404)
-    units = outline_units(group.id, student_id)
-    visible = {lesson["public_id"] for unit in units for lesson in unit["lessons"]}
-    rows = (db.session.query(WorkbookLessonPage.page_number, Lesson.public_id)
-            .join(Lesson, Lesson.id == WorkbookLessonPage.lesson_id)
-            .join(Unit, Unit.id == Lesson.unit_id)
-            .filter(WorkbookLessonPage.course_id == group.course_id,
-                    WorkbookLessonPage.book_kind == "workbook",
-                    WorkbookLessonPage.book_revision == book.revision,
-                    WorkbookLessonPage.page_number <= book.page_count,
-                    Unit.in_group(group.id, group.course_id)).all())
-    owners = defaultdict(set)
-    for page_number, lesson_id in rows:
-        owners[page_number].add(lesson_id)
-    # A shared physical page is withheld until ALL its mapped Lessons are
-    # visible. Rendering another part of that page must not bypass a release.
-    allowed = {page_number for page_number, lessons in owners.items() if lessons <= visible}
-    pages = defaultdict(list)
-    for page_number, lesson_id in rows:
-        if page_number in allowed:
-            pages[lesson_id].append(page_number)
-    for lesson_id in pages:
-        pages[lesson_id] = sorted(set(pages[lesson_id]))
-    outline = [dict(unit, lessons=[lesson for lesson in unit["lessons"] if pages[lesson["public_id"]]])
-               for unit in units]
-    outline = [unit for unit in outline if unit["lessons"]]
+    book, outline, pages, allowed = context
+    if document_id is not None and book.uploaded_file.public_id != document_id:
+        abort(404)
     return group, book, outline, pages, allowed
 
 

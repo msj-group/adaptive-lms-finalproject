@@ -5198,3 +5198,14 @@ checks and a bounded local MySQL read-only content audit are available; no real
 completion is fabricated and browser/device acceptance remains owner review.
 No schema/content import is required. See [implementation and evidence boundary](UNIT_READER_20261107.md);
 private deployment receipts establish the active VPS source release.
+
+
+## Independent teacher book publication and message confirmation - 2026-11-07
+
+The owner selected independent Student book and Workbook publication, simpler
+Teacher Home shortcuts, real device notification previews and reliable Messages
+acknowledgement. The additive migration preserves configured visibility and
+existing progress; native scope, CSRF, locks and stale checks remain. This
+supersedes shared Workbook publication and generic lock-screen previews.
+See [scope, preservation and verification boundaries](TEACHER_BOOKS_MESSAGES_20261107.md).
+Private operator receipts record actual migration and deployment results.

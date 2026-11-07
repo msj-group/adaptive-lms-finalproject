@@ -185,7 +185,7 @@ def _advance(identity, **values):
 
 
 def deliver_device(device_id):
-    """Deliver a coalesced generic update; never expose private text on a lock screen."""
+    """Deliver the recipient's latest unread notification title and message."""
     from pywebpush import webpush, WebPushException
     import requests
     device = db.session.get(Device, device_id)
@@ -197,18 +197,23 @@ def deliver_device(device_id):
             or user.role not in ROLES or device.expires_at <= now():
         _advance(identity, enabled=False)
         return
-    notices = db.session.execute(select(Notification.id, Notification.read_at).where(
+    notices = db.session.execute(select(Notification.id, Notification.read_at,
+        Notification.title, Notification.message).where(
         Notification.recipient_id == user.id, Notification.id > device.last_notification_id)
         .order_by(Notification.id).limit(50)).all()
     if not notices:
         db.session.rollback()
         return
     last_id = notices[-1].id
-    if not any(row.read_at is None for row in notices):
+    unread = [row for row in notices if row.read_at is None]
+    if not unread:
         _advance(identity, last_notification_id=last_id, failures=0, retry_at=None)
         return
     subscription = {"endpoint":device.endpoint, "keys":{"p256dh":device.p256dh,"auth":device.auth_key}}
     failures = device.failures
+    latest = unread[-1]
+    payload = json.dumps({"title":latest.title, "body":latest.message,
+                         "url":"/notifications", "tag":"youth-centre-updates"}, ensure_ascii=False)
     db.session.rollback()  # No database or domain lock across network I/O.
     enabled, _, private, subject = settings()
     if not enabled:
@@ -217,8 +222,6 @@ def deliver_device(device_id):
         def post(self, url, **kwargs):
             kwargs["allow_redirects"] = False
             return super().post(url, **kwargs)
-    payload = json.dumps({"title":"Youth Learn", "body":"You have a new update.",
-                         "url":"/notifications", "tag":"youth-centre-updates"})
     try:
         with NoRedirectSession() as http:
             http.trust_env = False

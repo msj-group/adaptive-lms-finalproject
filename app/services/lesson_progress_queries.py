@@ -168,7 +168,7 @@ def _local(tz_name, moment):
 # ---------------------------------------------------------------------------
 
 
-def student_lesson_progress(student_id, group_public_id, unit_public_id, lesson_public_id):
+def student_lesson_progress(student_id, group_public_id, unit_public_id, lesson_public_id, *, book="main"):
     """The Student's :class:`LessonProgressRef` for a Lesson they may open
     right now, else ``None`` -- identical for a malformed, unknown, draft,
     archived, cross-Group or mismatched identifier and for ended access.
@@ -197,7 +197,7 @@ def student_lesson_progress(student_id, group_public_id, unit_public_id, lesson_
         .outerjoin(LessonProgress, progress_join(student_id))
         .filter(
             Lesson.public_id == lesson_public_id,
-            lesson_is_released(),
+            lesson_is_released(book=book),
             Unit.public_id == unit_public_id,
             Unit.status == _ACTIVE,
             Group.public_id == group_public_id,

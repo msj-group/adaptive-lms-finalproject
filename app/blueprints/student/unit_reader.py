@@ -7,15 +7,21 @@ from app.services.unit_progress_tokens import make_unit_progress_token
 
 
 def unit_reader_context(student_id, group_public_id, unit_public_id, lesson_public_id, book='main', *, actor_public_id):
-    primary = student_lesson_detail(student_id, group_public_id, unit_public_id, lesson_public_id)
+    primary = student_lesson_detail(student_id, group_public_id, unit_public_id, lesson_public_id, book=book)
     if primary is None:
         abort(404)
-    outline = outline_units(primary.progress.group_id, student_id)
+    if book == 'workbook':
+        from app.blueprints.student.books import workbook_context, _workbook_media
+        group, workbook_document, outline, mappings, _ = workbook_context(student_id, group_public_id)
+        if not mappings.get(lesson_public_id):
+            abort(404)
+    else:
+        outline = outline_units(primary.progress.group_id, student_id)
     unit = next((item for item in outline if item['public_id'] == unit_public_id), None)
     if unit is None:
         abort(404)
     pages = [primary if item['public_id'] == lesson_public_id else
-             student_lesson_detail(student_id, group_public_id, unit_public_id, item['public_id'])
+             student_lesson_detail(student_id, group_public_id, unit_public_id, item['public_id'], book=book)
              for item in unit['lessons']]
     if any(page is None for page in pages):
         abort(404)  # Publication changed during composition; never broaden the page.
@@ -39,8 +45,7 @@ def unit_reader_context(student_id, group_public_id, unit_public_id, lesson_publ
                 pins.setdefault(material['pin_page'], []).append(material)
     reader_outline = outline
     if book == 'workbook':
-        from app.blueprints.student.books import workbook_context, _workbook_media
-        group, document, reader_outline, mappings, _ = workbook_context(student_id, group_public_id)
+        document = workbook_document
         mapped_unit = next((item for item in reader_outline if item['public_id'] == unit_public_id), None)
         if mapped_unit is None or not mappings.get(lesson_public_id):
             abort(404)

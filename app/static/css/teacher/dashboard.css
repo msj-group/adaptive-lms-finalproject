@@ -194,3 +194,20 @@ html[dir='rtl'] .teacher-cockpit :is(.cockpit-group-arrow,.cockpit-announcement-
   .teacher-cockpit .cockpit-review-extra { display:grid; }
   .teacher-cockpit :is(.cockpit-group,.cockpit-review,.cockpit-panel) { break-inside:avoid; margin-block:12px; }
 }
+
+/* Book and activity shortcuts remain available on phones. */
+.cockpit-group-actions { position:relative; gap:0; }
+.cockpit-tool { position:relative; min-width:0; border-inline-end:1px solid var(--ui-line); }
+.cockpit-tool>summary,.cockpit-tool-disabled { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; min-height:64px; padding:6px; color:var(--ui-link); font-size:11px; text-align:center; list-style:none; cursor:pointer; }
+.cockpit-tool>summary::-webkit-details-marker { display:none; }
+.cockpit-tool>summary>.figma-icon:last-child { position:absolute; inset-inline-end:5px; inset-block-start:8px; }
+.cockpit-tool[open]>summary,.cockpit-tool>summary:hover { background:var(--ui-soft); border-radius:9px; }
+.cockpit-tool[open] { z-index:3; }
+.cockpit-tool-disabled { opacity:.55; cursor:default; }
+.cockpit-tool-menu { position:absolute; inset-block-start:calc(100% + 10px); inset-inline-start:0; z-index:4; display:grid; min-width:185px; max-width:calc(100vw - 64px); padding:6px; border:1px solid var(--ui-line); border-radius:14px; background:var(--ui-surface); box-shadow:var(--ui-shadow-sm); }
+.cockpit-tool-menu :is(a,span) { display:flex; align-items:center; min-height:44px; padding:10px 12px; border-radius:9px; color:var(--ui-link); font-size:13px; text-decoration:none; overflow-wrap:anywhere; }
+.cockpit-tool-menu a:hover { background:var(--ui-soft); }
+.cockpit-tool-menu [aria-disabled] { color:var(--st-muted); }
+@container workspace (max-width:580px) { .cockpit-group-grid { grid-template-columns:minmax(0,1fr); } }
+
+.cockpit-group-actions { display:grid; }

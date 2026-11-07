@@ -1,21 +1,26 @@
 {% extends "teacher/studio/_base.html" %}
 {% set studio_page = 'publication' %}
 {% block title %}Course publication{% endblock %}
-{% block studio_heading %}{{ studio.heading('Course publication', group.name ~ ' · ' ~ group.course.title) }}{% endblock %}
+{% block studio_heading %}{{ studio.heading(book_label, group.name ~ ' · ' ~ group.course.title) }}{% endblock %}
 {% block studio_content %}
-{% include 'teacher/studio/_editor_actions.html' %}
+<nav class="cs-actions" aria-label="Manage course books">
+  <a class="btn btn--secondary" href="{{ url_for('teacher.curriculum_publication', group_public_id=group.public_id, book='main') }}"{% if book == 'main' %} aria-current="page"{% endif %}>Student book</a>
+  <a class="btn btn--secondary" href="{{ url_for('teacher.curriculum_publication', group_public_id=group.public_id, book='workbook') }}"{% if book == 'workbook' %} aria-current="page"{% endif %}>Workbook</a>
+</nav>
 {% if not operational %}
 <div class="alert alert--warning">This group is archived. Its publication settings are read-only.</div>
 {% endif %}
 <form class="yc-form" method="post">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="book" value="{{ book }}">
   <input type="hidden" name="snapshot" value="{{ snapshot }}">
   <section class="cs-panel">
-    <h2>Control what students see</h2>
-    <p>Select a unit to change all its lessons, or choose individual lessons and materials. A material appears only while its lesson is available.</p>
+    <h2>{{ _(book_label) }}</h2>
+    <p>Publish this book by unit or lesson. These choices do not change the other book.</p>
+    {% if book == 'workbook' %}<p>A page shared by several lessons appears after all those lessons are published. Answer pages remain private.</p>{% endif %}
     {% if operational %}
     <div class="cs-actions">
-      <button type="submit" class="btn btn--primary" name="action" value="publish_all">Publish full course now</button>
+      <button type="submit" class="btn btn--primary" name="action" value="publish_all">Publish full book now</button>
       <button type="submit" class="btn btn--secondary" name="action" value="publish">Publish selected now</button>
       <button type="submit" class="btn btn--secondary" name="action" value="hide">Hide selected</button>
     </div>
@@ -41,7 +46,7 @@
         <li>
           <label>{% if operational %}<input type="checkbox" name="lesson" value="{{ lesson.public_id }}"> {% endif %}<span dir="auto">{{ lesson.title }}</span></label>
           <span class="badge badge--neutral">{{ lesson_states[lesson.id] }}</span>
-          <a href="{{ url_for('teacher.lesson_materials', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">View lesson materials</a>
+          {% if book == 'main' %}<a href="{{ url_for('teacher.lesson_materials', group_public_id=group.public_id, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">View lesson materials</a>{% endif %}
           {% if materials %}
           <details>
             <summary>{{ materials|length }} materials</summary>

@@ -7,9 +7,9 @@ from sqlalchemy.orm import selectinload
 from werkzeug.datastructures import FileStorage
 
 from app.extensions import db
-from app.models import Lesson, LessonProgress, Material, Unit
+from app.models import Lesson, LessonProgress, Material, Unit, WorkbookLessonPage
 from app.models.course_document import CourseDocument
-from app.models.curriculum_release import LessonRelease, MaterialRelease
+from app.models.curriculum_release import LessonRelease, MaterialRelease, WorkbookLessonRelease
 from app.models.group_curriculum import GroupCurriculum
 from app.models.teaching_asset import GroupMaterialSource
 from app.services.file_storage import open_stored_file
@@ -116,6 +116,7 @@ def prepare_group_curriculum(scope):
                 uploaded_file_id=pdf["uploaded_file_id"] if pdf else None,
                 page_count=pdf["page_count"] if pdf else None))
             lesson_releases = {r.lesson_id: r for r in LessonRelease.query.filter_by(group_id=group.id)}
+            workbook_releases = {r.lesson_id: r for r in WorkbookLessonRelease.query.filter_by(group_id=group.id)}
             material_releases = {r.material_id: r for r in MaterialRelease.query.filter_by(group_id=group.id)}
             titles = {title.casefold() for (title,) in db.session.query(Unit.title).filter_by(group_id=group.id)}
             lesson_ids = {}
@@ -135,6 +136,14 @@ def prepare_group_curriculum(scope):
                     db.session.add(LessonRelease(group_id=group.id, lesson_id=copied_lesson.id,
                         opens_at=release.opens_at if release else None,
                         notice_key=release.notice_key if release else None))
+                    workbook_release = workbook_releases.get(lesson["id"])
+                    if workbook_release is not None:
+                        db.session.add(WorkbookLessonRelease(group_id=group.id, lesson_id=copied_lesson.id,
+                            opens_at=workbook_release.opens_at, notice_key=workbook_release.notice_key))
+                    for page in WorkbookLessonPage.query.filter_by(lesson_id=lesson["id"]):
+                        db.session.add(WorkbookLessonPage(lesson_id=copied_lesson.id,
+                            page_number=page.page_number, course_id=page.course_id,
+                            book_kind=page.book_kind, book_revision=page.book_revision))
                     for material in lesson["materials"]:
                         copied_material = Material(lesson_id=copied_lesson.id, creation_nonce=uuid4().hex,
                                                    **material["values"])

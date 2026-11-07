@@ -18,3 +18,15 @@ class MaterialRelease(db.Model):
     material_id = db.Column(db.BigInteger, db.ForeignKey("materials.id"), primary_key=True)
     opens_at = db.Column(db.DateTime, nullable=True)
     notice_key = db.Column(db.String(36), nullable=True)
+
+
+class WorkbookLessonRelease(db.Model):
+    """Workbook publication is independent of the Student book."""
+    __tablename__ = "workbook_lesson_releases"
+    __table_args__ = (db.Index("ix_workbook_release_due", "opens_at", "group_id"),
+                      {"mysql_engine": "InnoDB"})
+
+    group_id = db.Column(db.BigInteger, db.ForeignKey("groups.id"), primary_key=True)
+    lesson_id = db.Column(db.BigInteger, db.ForeignKey("lessons.id"), primary_key=True)
+    opens_at = db.Column(db.DateTime, nullable=True)
+    notice_key = db.Column(db.String(36), nullable=True)

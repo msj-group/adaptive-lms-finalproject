@@ -5159,5 +5159,20 @@
   "In a supported Firefox version on Windows, use the web apps button in the address bar.": "في إصدار Firefox الداعم على Windows، استخدم زر تطبيقات الويب في شريط العنوان.",
   "Follow Firefox to add the app to Start or the taskbar.": "اتبع خطوات Firefox لإضافة التطبيق إلى قائمة «ابدأ» أو شريط المهام.",
   "If the web apps button is unavailable, open this page in Chrome or Edge and use their install option.": "إذا لم يظهر زر تطبيقات الويب، افتح الصفحة في Chrome أو Edge واستخدم خيار التثبيت فيه.",
-  "In an in-app browser, open this page in Safari on iPhone or iPad, or Chrome on Android. Installation depends on your browser and device.": "إذا كانت الصفحة داخل متصفح تطبيق آخر، افتحها في Safari على iPhone أو iPad، أو Chrome على Android. يعتمد التثبيت على دعم المتصفح والجهاز."
+  "In an in-app browser, open this page in Safari on iPhone or iPad, or Chrome on Android. Installation depends on your browser and device.": "إذا كانت الصفحة داخل متصفح تطبيق آخر، افتحها في Safari على iPhone أو iPad، أو Chrome على Android. يعتمد التثبيت على دعم المتصفح والجهاز.",
+  "Manage course": "إدارة الكورس",
+  "Manage course books": "إدارة كتب الكورس",
+  "Add activity": "إضافة نشاط",
+  "Teacher book": "كتاب الأستاذ",
+  "Teacher book unavailable": "كتاب الأستاذ غير متاح",
+  "Student book unavailable": "كتاب الطالب غير متاح",
+  "Workbook unavailable": "كتاب العمل غير متاح",
+  "Publish full book now": "نشر الكتاب كاملًا الآن",
+  "Publish this book by unit or lesson. These choices do not change the other book.": "انشر وحدات هذا الكتاب أو دروسه. هذه الاختيارات لا تغيّر الكتاب الآخر.",
+  "A page shared by several lessons appears after all those lessons are published. Answer pages remain private.": "الصفحة المشتركة بين عدة دروس تظهر بعد نشرها جميعًا. تبقى صفحات الإجابات خاصة بالأستاذ.",
+  "View conversation": "عرض المحادثة",
+  "Your session changed. Sign in again to continue.": "تغيرت جلستك. سجّل الدخول مجددًا للمتابعة.",
+  "View the conversation to check your message.": "افتح المحادثة للتحقق من رسالتك.",
+  "The conversation could not load. Try again.": "تعذر تحميل المحادثة. حاول مجددًا.",
+  "Message sent. View conversation.": "أُرسلت الرسالة. افتح المحادثة."
 }

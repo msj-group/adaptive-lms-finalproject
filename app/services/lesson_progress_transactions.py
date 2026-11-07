@@ -163,7 +163,7 @@ def lock_progress_chain(target, student_id):
     return ProgressLocks(hierarchy, group, actor, enrollment, unit, lesson, progress)
 
 
-def access_proof_error(locks, target, student_id):
+def access_proof_error(locks, target, student_id, *, book="main"):
     """``None`` when the **locked** rows still prove that `student_id` may
     record progress on `target`'s Lesson through its Group, else a short
     internal reason (logged nowhere and never shown)."""
@@ -203,7 +203,7 @@ def access_proof_error(locks, target, student_id):
     lesson = locks.lesson
     if lesson is None or lesson.id != target.lesson_id or lesson.unit_id != unit.id:
         return "lesson"
-    if not lesson_is_released_locked(group, unit, lesson):
+    if not lesson_is_released_locked(group, unit, lesson, book=book):
         return "lesson"
     progress = locks.progress
     if progress is not None and (
@@ -215,7 +215,7 @@ def access_proof_error(locks, target, student_id):
     return None
 
 
-def _locked_access(student_id, group_public_id, unit_public_id, lesson_public_id):
+def _locked_access(student_id, group_public_id, unit_public_id, lesson_public_id, *, book="main"):
     """Preview, lock and prove; return the :class:`ProgressLocks` with the
     transaction still open and every lock held, or ``None`` after rolling
     back."""
@@ -228,7 +228,12 @@ def _locked_access(student_id, group_public_id, unit_public_id, lesson_public_id
             break
         previous = target
         locks = lock_progress_chain(target, student_id)
-        error = access_proof_error(locks, target, student_id)
+        error = access_proof_error(locks, target, student_id, book=book)
+        if error is None and book == "workbook":
+            from app.services.workbook_access import workbook_access
+            context = workbook_access(student_id, locks.group)
+            if context is None or not context[2].get(lesson_public_id):
+                error = "workbook_page"
         if error is None:
             return locks
         db.session.rollback()
@@ -239,7 +244,7 @@ def _locked_access(student_id, group_public_id, unit_public_id, lesson_public_id
 
 
 def set_completion(student_id, group_public_id, unit_public_id, lesson_public_id, action,
-                   expected_version):
+                   expected_version, *, book="main"):
     """Mark the Lesson complete (``complete``) or clear that mark
     (``undo``) for `student_id`, only while the locked rows still grant
     access and the locked version is still `expected_version`.
@@ -250,7 +255,7 @@ def set_completion(student_id, group_public_id, unit_public_id, lesson_public_id
     """
     if action not in (ACTION_COMPLETE, ACTION_UNDO):
         return UNAVAILABLE
-    locks = _locked_access(student_id, group_public_id, unit_public_id, lesson_public_id)
+    locks = _locked_access(student_id, group_public_id, unit_public_id, lesson_public_id, book=book)
     if locks is None:
         return UNAVAILABLE
 
@@ -346,7 +351,7 @@ def record_open(student_id, progress, now=None):
     return RECORDED
 
 
-def complete_unit(student_id, group_public_id, unit_public_id, expected_versions):
+def complete_unit(student_id, group_public_id, unit_public_id, expected_versions, *, book="main"):
     """Complete one signed published-Unit snapshot atomically, in native lock order.
 
     The academic/Group prefix serializes publication and membership changes.
@@ -373,13 +378,18 @@ def complete_unit(student_id, group_public_id, unit_public_id, expected_versions
         lessons = Lesson.query.filter_by(unit_id=target.unit_id).order_by(Lesson.id).with_for_update().all()
         first_lesson = next((item for item in lessons if item.public_id == first), None)
         base = ProgressLocks(hierarchy, group, actor, enrollment, unit, first_lesson, None)
-        error = access_proof_error(base, target, student_id)
+        error = access_proof_error(base, target, student_id, book=book)
         if error:
             db.session.rollback()
             if error == 'moved':
                 continue
             return UNAVAILABLE
-        visible = [item for item in lessons if lesson_is_released_locked(group, unit, item)]
+        visible = [item for item in lessons if lesson_is_released_locked(group, unit, item, book=book)]
+        if book == "workbook":
+            from app.services.workbook_access import workbook_access
+            context = workbook_access(student_id, group)
+            allowed = context[2] if context is not None else {}
+            visible = [item for item in visible if allowed.get(item.public_id)]
         if {item.public_id for item in visible} != set(expected_versions):
             db.session.rollback()
             return STALE

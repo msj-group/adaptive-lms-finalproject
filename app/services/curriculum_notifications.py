@@ -7,10 +7,10 @@ from sqlalchemy.dialects.mysql import insert
 
 from app.extensions import db
 from app.models import (
-    AcademicTerm, Course, Enrollment, Group, GroupTeacherAssignment, Lesson, Level,
-    Material, Notification, Unit, User,
+    AcademicTerm, Course, CourseReferenceBook, Enrollment, Group, GroupTeacherAssignment, Lesson, Level,
+    Material, Notification, Unit, User, WorkbookLessonPage,
 )
-from app.models.curriculum_release import LessonRelease, MaterialRelease
+from app.models.curriculum_release import LessonRelease, MaterialRelease, WorkbookLessonRelease
 from app.models.group_curriculum import GroupCurriculum
 from app.services.curriculum_visibility import lesson_is_released, material_is_released
 from app.services.notification_delivery import _deliver, _entry
@@ -31,21 +31,33 @@ def _student_groups(query):
 
 
 def _due_releases(recipient_id, model):
+    book = "workbook" if model is WorkbookLessonRelease else "main"
     material = Material.public_id if model is MaterialRelease else literal(None)
     query = select(model.notice_key, Group.public_id.label("group_public_id"),
                    Group.name.label("group_name"), Unit.public_id.label("unit_public_id"),
                    Lesson.public_id.label("lesson_public_id"),
-                   material.label("material_public_id")).select_from(model)
+                   material.label("material_public_id"), literal(book).label("book")).select_from(model)
     if model is MaterialRelease:
         query = (query.join(Material, Material.id == model.material_id)
                  .join(Lesson, Lesson.id == Material.lesson_id).where(Material.status == "active"))
     else:
         query = query.join(Lesson, Lesson.id == model.lesson_id)
+    if book == "workbook":
+        query = query.where(exists(select(1).select_from(WorkbookLessonPage)
+            .join(CourseReferenceBook,
+                  (CourseReferenceBook.course_id == WorkbookLessonPage.course_id)
+                  & (CourseReferenceBook.kind == WorkbookLessonPage.book_kind))
+            .where(WorkbookLessonPage.lesson_id == Lesson.id,
+                   WorkbookLessonPage.course_id == Group.course_id,
+                   WorkbookLessonPage.book_kind == "workbook",
+                   WorkbookLessonPage.book_revision == CourseReferenceBook.revision,
+                   WorkbookLessonPage.page_number <= CourseReferenceBook.page_count)
+            .correlate(Lesson, Group)))
     return _student_groups(
         query.join(Unit, Unit.id == Lesson.unit_id)
         .join(Group, Group.id == model.group_id)
         .where(Unit.in_group(Group.id, Group.course_id), Unit.status == "active",
-               lesson_is_released(), model.notice_key.is_not(None),
+               lesson_is_released(book=book), model.notice_key.is_not(None),
                model.opens_at <= func.utc_timestamp(), User.id == recipient_id)
     )
 
@@ -59,16 +71,17 @@ def sync_curriculum_notices(user, *, background=False):
     try:
         recipient_id = user.id
         due = union_all(_due_releases(recipient_id, LessonRelease),
-                        _due_releases(recipient_id, MaterialRelease)).subquery()
+                        _due_releases(recipient_id, MaterialRelease),
+                        _due_releases(recipient_id, WorkbookLessonRelease)).subquery()
         unseen = select(
-            due.c.notice_key, due.c.group_public_id, due.c.group_name, func.count().label("item_count"),
+            due.c.notice_key, due.c.group_public_id, due.c.group_name, due.c.book, func.count().label("item_count"),
             func.min(due.c.unit_public_id).label("unit_public_id"),
             func.min(due.c.lesson_public_id).label("lesson_public_id"),
             func.min(due.c.material_public_id).label("material_public_id"),
         ).where(~exists(
             select(1).where(Notification.recipient_id == recipient_id,
                             Notification.curriculum_notice_key == due.c.notice_key)
-        )).group_by(due.c.notice_key, due.c.group_public_id, due.c.group_name).limit(50)
+        )).group_by(due.c.notice_key, due.c.group_public_id, due.c.group_name, due.c.book).limit(50)
         # The page may have its own read transaction or pending form work.
         # Delivery owns a separate transaction and a unique recipient/key.
         with db.engine.begin() as connection:
@@ -77,7 +90,9 @@ def sync_curriculum_notices(user, *, background=False):
                 entries = []
                 for row in rows:
                     kind = "lesson_published"
-                    if row.item_count > 1:
+                    if row.book == "workbook":
+                        path = _build_path("student.workbook", group_public_id=row.group_public_id)
+                    elif row.item_count > 1:
                         path = _build_path("workspace.student_course", group_public_id=row.group_public_id)
                     elif row.material_public_id:
                         kind = "material_available"
@@ -85,8 +100,10 @@ def sync_curriculum_notices(user, *, background=False):
                                                        row.lesson_public_id, row.material_public_id)
                     else:
                         path = student_lesson_target(row.group_public_id, row.unit_public_id, row.lesson_public_id)
-                    entry = _entry(recipient_id, kind, "Course content available",
-                                   f"New course content is available for {row.group_name}.", path)
+                    entry = _entry(recipient_id, kind,
+                                   "Workbook content available" if row.book == "workbook" else "Course content available",
+                                   f"New workbook content is available for {row.group_name}." if row.book == "workbook"
+                                   else f"New course content is available for {row.group_name}.", path)
                     entries.append(dict(entry, curriculum_notice_key=row.notice_key,
                                         public_id=str(uuid4()), created_at=func.utc_timestamp()))
                 write = insert(Notification.__table__).values(entries)
@@ -151,15 +168,16 @@ def visible_curriculum_groups(course_ids, kind, item_id):
     return set(db.session.scalars(query.distinct()))
 
 
-def notify_curriculum_hidden(group_id):
+def notify_curriculum_hidden(group_id, *, book="main"):
     def entries():
         students = db.session.execute(_student_groups(
             select(User.id, Group.public_id, Group.name).select_from(Group).where(Group.id == group_id)
         ).distinct())
         return [
-            _entry(user_id, "material_available", "Course visibility updated",
-                   f"The teacher changed which course content is visible in {name}.",
-                   url_for("workspace.student_course", group_public_id=public_id))
+            _entry(user_id, "material_available", "Workbook visibility updated" if book == "workbook" else "Course visibility updated",
+                   f"The teacher changed which workbook content is visible in {name}." if book == "workbook"
+                   else f"The teacher changed which course content is visible in {name}.",
+                   url_for("student.workbook" if book == "workbook" else "workspace.student_course", group_public_id=public_id))
             for user_id, public_id, name in students
         ]
 

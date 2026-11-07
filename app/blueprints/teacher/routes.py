@@ -10,6 +10,7 @@ from app.services.announcement_queries import (
     teacher_dashboard_preview,
 )
 from app.services.dashboard_queries import teacher_dashboard
+from app.services.activity_queries import TYPES as ACTIVITY_TYPES
 from app.services.schedule_occurrences import app_now
 
 
@@ -37,6 +38,7 @@ def dashboard():
             announcement_cap=DASHBOARD_PREVIEW_CAP,
             pending_reviews=pending_reviews,
             review_has_more=review_has_more,
+            activity_types=ACTIVITY_TYPES,
             **data,
         )
     )

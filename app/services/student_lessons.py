@@ -99,7 +99,7 @@ def student_outline_group(student_id, group_public_id):
     )
 
 
-def outline_units(group_id, student_id, *, include_material_index=False):
+def outline_units(group_id, student_id, *, include_material_index=False, book="main"):
     """The learning outline body for a Group already authorized for
     `student_id`: every ACTIVE Unit in Unit display order, each carrying
     only its PUBLISHED Lessons in Lesson display order, as plain view dicts.
@@ -136,12 +136,12 @@ def outline_units(group_id, student_id, *, include_material_index=False):
             ),
         )
         .join(Unit, Unit.id == Lesson.unit_id)
-        .filter(Lesson.unit_id.in_(unit_ids), lesson_is_released(group_id))
+        .filter(Lesson.unit_id.in_(unit_ids), lesson_is_released(group_id, book=book))
         .order_by(Lesson.display_order, Lesson.id)
         .all()
     )
     material_index = {}
-    if include_material_index and lessons:
+    if include_material_index and lessons and book == "main":
         rows = (
             db.session.query(Material.lesson_id, Material.title, Material.public_id)
             .filter(Material.lesson_id.in_([row.id for row in lessons]),
@@ -167,7 +167,7 @@ def outline_units(group_id, student_id, *, include_material_index=False):
     ]
 
 
-def student_lesson_detail(student_id, group_public_id, unit_public_id, lesson_public_id):
+def student_lesson_detail(student_id, group_public_id, unit_public_id, lesson_public_id, *, book="main"):
     """One SQL query: a PUBLISHED Lesson plus its authorized hierarchy
     context and the Student's own progress on it, as a
     :class:`StudentLessonPage`, or ``None``.
@@ -210,7 +210,7 @@ def student_lesson_detail(student_id, group_public_id, unit_public_id, lesson_pu
             User.role == _STUDENT,
             User.status == _USER_ACTIVE,
             Lesson.public_id == lesson_public_id,
-            lesson_is_released(),
+            lesson_is_released(book=book),
             Unit.public_id == unit_public_id,
             Unit.status == _ACTIVE,
             Group.public_id == group_public_id,
@@ -242,8 +242,8 @@ def student_lesson_detail(student_id, group_public_id, unit_public_id, lesson_pu
         "lesson_description": lesson.description,
         "page_start": lesson.page_start,
         "page_end": lesson.page_end,
-        "course_document": lesson_document(lesson),
-        "materials": student_visible_materials(lesson.id, group.id),
+        "course_document": lesson_document(lesson) if book == "main" else None,
+        "materials": student_visible_materials(lesson.id, group.id) if book == "main" else [],
     }
     return StudentLessonPage(view, progress)
 

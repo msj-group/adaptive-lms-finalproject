@@ -28,6 +28,7 @@ from app.models import (
     AcademicStatus,
     AcademicTerm,
     Course,
+    CourseReferenceBook,
     Enrollment,
     EnrollmentStatus,
     Group,
@@ -38,7 +39,10 @@ from app.models import (
     User,
     UserRole,
     UserStatus,
+    UploadedFile,
 )
+from app.models.course_document import CourseDocument
+from app.models.group_curriculum import GroupCurriculum
 from app.services.schedule_occurrences import (
     current_or_next_occurrence,
     earliest_occurrence,
@@ -299,6 +303,23 @@ def teacher_dashboard(teacher_id, now):
     group_ids = [a.group_id for a in assignments]
     schedules_by_group = _active_schedules_by_group(group_ids)
     student_counts = _eligible_student_counts(group_ids)
+    # A Student belongs to the dashboard once, even across assigned Groups.
+    student_total = (db.session.query(func.count(func.distinct(Enrollment.student_id)))
+        .join(User, Enrollment.student_id == User.id)
+        .filter(Enrollment.group_id.in_(group_ids), Enrollment.status == _ENROLLMENT_ACTIVE,
+                User.role == UserRole.STUDENT.value, User.status == _USER_ACTIVE)
+        .scalar()) if group_ids else 0
+    course_ids = {assignment.group.course_id for assignment in assignments}
+    reference_books = set(db.session.query(CourseReferenceBook.course_id, CourseReferenceBook.kind)
+        .join(UploadedFile, CourseReferenceBook.uploaded_file_id == UploadedFile.id)
+        .filter(CourseReferenceBook.course_id.in_(course_ids), UploadedFile.extension == "pdf").all()) if course_ids else set()
+    main_books = {row[0] for row in db.session.query(CourseDocument.course_id)
+        .join(UploadedFile, CourseDocument.uploaded_file_id == UploadedFile.id)
+        .filter(CourseDocument.course_id.in_(course_ids), UploadedFile.extension == "pdf")} if course_ids else set()
+    group_books = {row.group_id: (row.course_id, row.extension == "pdf") for row in
+        db.session.query(GroupCurriculum.group_id, GroupCurriculum.course_id, UploadedFile.extension)
+        .outerjoin(UploadedFile, GroupCurriculum.uploaded_file_id == UploadedFile.id)
+        .filter(GroupCurriculum.group_id.in_(group_ids))} if group_ids else {}
 
     cards, operational_specs = _build_membership_cards(
         assignments,
@@ -309,10 +330,15 @@ def teacher_dashboard(teacher_id, now):
             "student_count": student_counts.get(a.group_id, 0),
             "course_public_id": a.group.course.public_id,
             "term_public_id": a.group.academic_term.public_id,
+            "teacher_book_available": (a.group.course_id, "teacher_book") in reference_books,
+            "workbook_available": (a.group.course_id, "workbook") in reference_books,
+            "student_book_available": (group_books[a.group_id] == (a.group.course_id, True)
+                                       if a.group_id in group_books else a.group.course_id in main_books),
         },
     )
     return {
         "cards": cards,
+        "student_total": student_total,
         "next_class": earliest_occurrence(operational_specs, now),
         "upcoming": upcoming_occurrences(operational_specs, now),
     }

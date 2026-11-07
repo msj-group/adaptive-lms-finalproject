@@ -36,7 +36,7 @@
     {% if filters_active %}<a href="{{ url_for('workspace.teacher_groups') }}">Clear filters</a>{% endif %}
   </div>
   {% if cards %}
-  <section class="teacher-groups-list" aria-label="{{ _('Teaching groups') }}">
+  <section class="teacher-groups-list" aria-label="{{ _('Groups') }}">
     {% for card in cards %}
     <details class="teacher-group"{% if loop.first %} open{% endif %}>
       <summary>

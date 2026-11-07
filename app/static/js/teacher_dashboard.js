@@ -6,6 +6,21 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   "use strict";
   var root = document.querySelector("[data-teacher-dashboard]");
   if (!root) return;
+  var menus = Array.from(root.querySelectorAll('[data-cockpit-menu]'));
+  menus.forEach(function (menu) {
+    pageScope.listen(menu, 'toggle', function () {
+      if (menu.open) menus.forEach(function (other) { if (other !== menu) other.open = false; });
+    });
+  });
+  pageScope.listen(document, 'click', function (event) {
+    menus.forEach(function (menu) { if (!menu.contains(event.target)) menu.open = false; });
+  });
+  pageScope.listen(root, 'keydown', function (event) {
+    if (event.key !== 'Escape') return;
+    menus.forEach(function (menu) { if (menu.open && menu.contains(event.target)) {
+      menu.open = false; menu.querySelector('summary').focus(); event.stopPropagation();
+    }});
+  });
   var tabs = root.querySelector("[data-cockpit-tabs]");
   var buttons = Array.from(root.querySelectorAll("[data-cockpit-tab]"));
   var panels = Array.from(root.querySelectorAll("[data-cockpit-panel]"));

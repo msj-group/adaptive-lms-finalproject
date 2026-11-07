@@ -12,6 +12,8 @@ from flask import (
     abort,
     current_app,
     flash,
+    get_flashed_messages,
+    jsonify,
     make_response,
     redirect,
     render_template,
@@ -106,6 +108,19 @@ def _private(template, **context):
     response.headers["Cache-Control"] = "private, no-store"
     response.vary.add("Cookie")
     return response
+
+
+def _sent_response(thread_public_id, message, category):
+    """A committed native outcome, independent of visible flash filtering."""
+    if request.headers.get("X-Communication-Response") == "json":
+        response = jsonify(status="sent", thread_public_id=thread_public_id,
+            thread_url=url_for("messages.thread", thread_public_id=thread_public_id),
+            actor=f"{current_user.public_id}:{current_user.auth_version}:{current_user.role}")
+        response.headers["Cache-Control"] = "private, no-store"
+        response.vary.add("Cookie")
+        return response
+    flash(message, category)
+    return redirect(url_for("messages.thread", thread_public_id=thread_public_id))
 
 
 def _audience_label(role):
@@ -247,8 +262,7 @@ def create_thread():
     if payload is not None:
         existing = thread_created_with_nonce(actor_id, payload["nonce"])
         if existing is not None:
-            flash("This message was already sent.", "info")
-            return redirect(url_for("messages.thread", thread_public_id=existing))
+            return _sent_response(existing, "This message was already sent.", "info")
 
     recipient = permitted_recipient(actor_id, actor_role, recipient_public_id)
     if recipient is None:
@@ -290,15 +304,11 @@ def create_thread():
     if outcome.status == message_transactions.SENT:
         if actor_role == _STUDENT_ROLE:
             note_outcome("message_send", "sent")
-        flash("Message sent.", "success")
-        response = redirect(
-            url_for("messages.thread", thread_public_id=outcome.thread_public_id)
-        )
+        response = _sent_response(outcome.thread_public_id, "Message sent.", "success")
         notify_message_received(outcome.message_id)
         return response
     if outcome.status == message_transactions.DUPLICATE:
-        flash("This message was already sent.", "info")
-        return redirect(url_for("messages.thread", thread_public_id=outcome.thread_public_id))
+        return _sent_response(outcome.thread_public_id, "This message was already sent.", "info")
     if outcome.status == message_transactions.UNAVAILABLE:
         return _to_picker()
     return _to_picker(_CONFLICT, "danger")
@@ -346,11 +356,20 @@ def _render_thread(thread, viewer_id, viewer_public_id, draft="", nonce=None,
         message["editing"] = can_manage and message["from_viewer"] and message["public_id"] == edit_id
         message["edit_body"] = edit_draft if message["editing"] and edit_draft is not None else message["body"]
     latest = message_management.latest_message_public_id(thread["id"]) if can_manage else None
+    # Delivery acknowledgement is protocol data, independent of visible banners.
+    outcomes = get_flashed_messages(with_categories=True)
+    sent = {"Message sent.", "Reply sent.", "This message was already sent.", "This reply was already sent."}
+    send_confirmed = any(category in {"success", "info"} and message in sent
+                         for category, message in outcomes)
+    send_blocked = bool(body_error or form_error or any(
+        category in {"warning", "danger", "error"} for category, _ in outcomes))
     return _private(
         "messages/thread.html",
         thread={"public_id": thread["public_id"], "subject": thread["subject"]},
         messages=message_views,
         can_manage=can_manage,
+        message_send_confirmed=send_confirmed,
+        message_send_blocked=send_blocked,
         clear_state=make_action_token(PURPOSE_CLEAR, viewer_public_id, thread["public_id"], thread["public_id"], latest) if latest else None,
         edit_error=edit_error,
         recipients=permitted_recipients(viewer_id, current_user.role),
@@ -403,8 +422,7 @@ def reply(thread_public_id):
         PURPOSE_REPLY, request.form.get("message_state"), actor_public_id, found["public_id"]
     )
     if payload is not None and reply_sent_with_nonce(actor_id, found["id"], payload["nonce"]):
-        flash("This reply was already sent.", "info")
-        return redirect(thread_url)
+        return _sent_response(found["public_id"], "This reply was already sent.", "info")
 
     state = reply_state(found["id"], actor_id)
     if state.relationship is None:
@@ -435,13 +453,11 @@ def reply(thread_public_id):
     if outcome.status == message_transactions.SENT:
         if actor_role == _STUDENT_ROLE:
             note_outcome("message_send", "sent")
-        flash("Reply sent.", "success")
-        response = redirect(thread_url)
+        response = _sent_response(found["public_id"], "Reply sent.", "success")
         notify_message_received(outcome.message_id)
         return response
     if outcome.status == message_transactions.DUPLICATE:
-        flash("This reply was already sent.", "info")
-        return redirect(thread_url)
+        return _sent_response(found["public_id"], "This reply was already sent.", "info")
     if outcome.status == message_transactions.UNAVAILABLE:
         flash(_READ_ONLY, "warning")
         return redirect(thread_url)
