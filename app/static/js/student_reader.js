@@ -207,8 +207,9 @@ window.aelmsModules.register(document.currentScript, function (scope) {
   if (!fullscreen) return;
   const fullscreenRoot = document.documentElement;
   const appDisplay = matchMedia('(display-mode: fullscreen)');
+  const canReuseFullscreen = () => appDisplay.matches && window.aelmsReaderNavigate?.supportsExpandedReader === true;
   const expandedReader = () => document.fullscreenElement === fullscreenRoot || fullscreenRoot.hasAttribute('data-reader-expanded');
-  fullscreen.hidden = !fullscreenRoot.requestFullscreen && !appDisplay.matches;
+  fullscreen.hidden = !fullscreenRoot.requestFullscreen && !canReuseFullscreen();
   let advancing = false;
   async function advance(url, data = null) {
     if (advancing) return;
@@ -247,7 +248,7 @@ window.aelmsModules.register(document.currentScript, function (scope) {
     if (outline) outline.open = false;
     if (fullscreenRoot.hasAttribute('data-reader-expanded')) {
       fullscreenRoot.removeAttribute('data-reader-expanded');
-    } else if (!document.fullscreenElement && appDisplay.matches) {
+    } else if (!document.fullscreenElement && canReuseFullscreen()) {
       // The installed app is already fullscreen. Focus the book without a
       // redundant browser fullscreen request and its browser-owned notice.
       fullscreenRoot.setAttribute('data-reader-expanded','');
@@ -266,7 +267,7 @@ window.aelmsModules.register(document.currentScript, function (scope) {
   });
   scope.listen(appDisplay, 'change', () => {
     if (!appDisplay.matches) fullscreenRoot.removeAttribute('data-reader-expanded');
-    fullscreen.hidden = !fullscreenRoot.requestFullscreen && !appDisplay.matches;
+    fullscreen.hidden = !fullscreenRoot.requestFullscreen && !canReuseFullscreen();
     fullscreenState(); document.dispatchEvent(new Event('aelms:reader-display-change'));
   });
   scope.listen(document, 'fullscreenchange', fullscreenState);

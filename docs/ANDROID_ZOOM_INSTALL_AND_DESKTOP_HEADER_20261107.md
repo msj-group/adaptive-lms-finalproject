@@ -30,6 +30,10 @@ button, Escape, safe areas, explicit Unit completion and same-group native
 reader transitions. Normal browser tabs still use native fullscreen and retain
 browser-controlled exit guidance. Never hide browser security UI or change
 browser settings. Do not promise that an OS-owned notice is removed everywhere.
+Gate the reused-app display path on the persistent navigator's explicit
+capability. Sessions retaining an older runtime continue through native
+fullscreen until their next full page load, rather than exposing inert Next
+actions. Do not force a reload during an active course or assessment.
 
 ## Installation
 

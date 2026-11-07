@@ -227,6 +227,7 @@
     }
   };
 
+  window.aelmsReaderNavigate.supportsExpandedReader = true;
   if (!window.navigation || !window.NavigationPrecommitController) window.addEventListener('popstate', () => {
     const previous = new URL(mountedURL);
     if (document.querySelector('[data-student-reader]') &&
