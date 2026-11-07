@@ -1,4 +1,5 @@
 {% import '_figma_ui.html' as ui %}
+{% import 'student/_learning_cards.html' as learning %}
 {% macro tabs(group_public_id, course_public_id, selected='overview') -%}
 <nav class="atlas-tabs" aria-label="Course sections">
   <a href="{{ url_for('workspace.student_course', group_public_id=group_public_id) }}"{% if selected == 'overview' %} aria-current="page"{% endif %}>Overview</a>
@@ -18,10 +19,5 @@
 </details>
 {%- endmacro %}
 {% macro course_card(card, progress=none, today=none, alternate=false) -%}
-<article class="atlas-course-card">
-  <div class="atlas-course-copy">
-    <h2 dir="auto">{{ card.course_title }}</h2><p class="atlas-course-meta" dir="auto">{{ card.group_name }}</p>
-    <div class="atlas-book-actions">{% if card.operational %}<a class="btn btn--primary" href="{{ url_for('workspace.student_course', group_public_id=card.group_public_id) }}" data-research-id="course_open">{{ ui.icon('book',18) }} {{ _('Student Book') }}</a>{% if card.has_workbook %}<a class="btn btn--secondary" href="{{ url_for('student.workbook', group_public_id=card.group_public_id) }}">{{ ui.icon('book',18) }} {{ _('Workbook') }}</a>{% else %}<button class="btn btn--secondary" disabled title="{{ _('Workbook not available yet') }}">{{ _('Workbook') }}</button>{% endif %}{% endif %}</div>
-  </div>
-</article>
+{{ learning.course_card(card, progress) }}
 {%- endmacro %}

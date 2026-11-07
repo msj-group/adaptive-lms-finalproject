@@ -13906,3 +13906,15 @@ upper right and activity type is inside Filters. A new additive page-map table
 is authorized locally and on the new VPS; no Railway operation is authorized.
 The owner explicitly authorized commit and push on a separate reviewed branch.
 See [scope and evidence](STUDENT_BOOKS_AND_ACTIVITIES_20261107.md).
+
+## Shared learning cards and PWA - 2026-11-07
+
+The owner approved the Student presentation and then PWA installation after
+reviewing its technique. Retain the existing header/title and Filter control
+positions; omit visible percentages and “Keep going”. Use native published
+Lesson progress and shared activity cards for Home and Activities. Install via
+the existing account menu, with fullscreen/standalone platform fallback and
+public-static-only Service Worker caching. Private content stays online.
+The owner accepted available static/HTTP checks while browser use is disabled.
+Master is now the single branch; the owner explicitly deleted the old Railway
+project and its data. See [implementation and boundaries](LEARNING_CARDS_AND_PWA_20261107.md).

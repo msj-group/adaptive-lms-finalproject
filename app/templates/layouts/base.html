@@ -3,6 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="manifest" href="{{ url_for('pwa.manifest') }}">
+  <meta name="theme-color" content="#144baa">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Youth LMS">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='pwa/icon-180.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pwa.css', v='pwa-1') }}">
+  <script src="{{ url_for('static', filename='js/pwa.js', v='pwa-1') }}" data-worker-url="{{ url_for('pwa.service_worker') }}" data-app-runtime defer></script>
   <title>{% block title %}Adaptive English LMS{% endblock %}</title>
   <meta name="aelms-workspace-scope" content="{{ workspace_navigation().scope if current_user.is_authenticated else '' }}">
   <script src="{{ url_for('static', filename='js/page_scope.js', v='app-1') }}" data-app-runtime></script>
@@ -36,6 +44,7 @@
     {% block content %}{% endblock %}
   </main>
   {% include 'appearance/_panels.html' %}
+  {% include 'pwa/_install.html' %}
   {% block body_scripts %}{% endblock %}
   {% if current_user.is_authenticated %}<script src="{{ url_for('static', filename='js/workspace_header.js', v='right-filters-3') }}" defer></script>{% endif %}
 </body>

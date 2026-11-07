@@ -1,24 +1,11 @@
 {% import '_figma_ui.html' as ui %}
 {% import 'activities/_ui.html' as activity_ui %}
+{% import 'student/_learning_cards.html' as learning %}
 <span hidden data-query-count="{{ items|length }}"></span>
-<header class="student-activity-list-heading"><h2>Your activities</h2></header>
 {% if items %}
-<div class="student-activity-columns" aria-hidden="true"><span>Activity</span><span>Due</span><span>Availability / progress</span><span></span></div>
-<div class="student-activity-list">
+<div class="learn-activity-list">
   {% for item in items %}
-  <article class="student-activity-row{% if item.state == 'in_progress' %} student-activity-row--running{% endif %}">
-    <div class="student-activity-identity">
-      <span class="student-activity-symbol" aria-hidden="true">{{ activity_ui.symbol(item.kind,20) }}</span>
-      <div class="student-activity-copy">
-        <h3><a href="{{ item.url }}" dir="auto" data-research-id="activity_open">{{ item.title }}</a></h3>
-        <p><span class="student-activity-kind">{{ _(item.type_label) }}</span><span aria-hidden="true"> · </span><a href="{{ item.course_url }}" dir="auto">{{ item.course_title }}</a></p>
-        <p dir="auto">{{ item.group_name }}</p>
-      </div>
-    </div>
-    <div class="student-activity-due"><span class="student-activity-phone-due">Due</span>{% if item.due_local %}<time datetime="{{ item.due_local.isoformat() }}"><span><bdi>{{ ui_date(item.due_local.strftime('%d %b %Y')) }}</bdi></span><small><bdi>{{ item.due_local.strftime('%H:%M') }}</bdi></small></time>{% else %}<span>Availability not set</span>{% endif %}</div>
-    <div class="student-activity-status"><span class="student-activity-window student-activity-window--{{ 'open' if item.window_label == 'Open' else 'upcoming' if item.window_label == 'Upcoming' else 'closed' }}">{{ _('Available' if item.window_label == 'Open' else item.window_label) }}</span><span class="student-activity-progress">{{ _(item.progress_label) }}</span>{% if item.result_available %}<small>Result available</small>{% endif %}</div>
-    <a class="btn student-activity-action{% if item.state == 'in_progress' %} btn--primary{% endif %}" href="{{ item.url }}" data-research-id="activity_open" aria-label="{{ _('%(action)s: %(title)s',action=_(item.action_label if item.state in ['in_progress','submitted'] else 'View activity'),title=item.title) }}">{{ _(item.action_label if item.state in ['in_progress','submitted'] else 'View activity') }}{{ ui.icon('arrow',15) }}</a>
-  </article>
+  {{ learning.activity_card(item) }}
   {% endfor %}
 </div>
 {% else %}<div class="student-activity-empty">{{ ui.icon('layers',26) }}<h3>No activities in this view</h3></div>{% endif %}

@@ -324,6 +324,7 @@ def teacher_dashboard(teacher_id, now):
 
 
 def student_dashboard(student_id, now):
+    from app.models import CourseReferenceBook
     enrollments = (
         Enrollment.query.join(Group, Enrollment.group_id == Group.id)
         .options(
@@ -347,6 +348,14 @@ def student_dashboard(student_id, now):
         schedules_by_group=schedules_by_group,
         extra=lambda e: {},
     )
+    # The same own-enrollment cards feed Home and Courses. Resolve book
+    # availability once, with no per-card lookup or change to file access.
+    public_ids = [card["group_public_id"] for card in cards]
+    workbook_groups = {row[0] for row in db.session.query(Group.public_id)
+        .join(CourseReferenceBook, CourseReferenceBook.course_id == Group.course_id)
+        .filter(Group.public_id.in_(public_ids), CourseReferenceBook.kind == "workbook").all()} if public_ids else set()
+    for card in cards:
+        card["has_workbook"] = card["group_public_id"] in workbook_groups
     return {
         "cards": cards,
         "next_class": earliest_occurrence(operational_specs, now),

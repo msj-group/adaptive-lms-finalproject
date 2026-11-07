@@ -5140,3 +5140,15 @@ VPS-only release scope and the bounded Test practice append are documented in
 [Student books and Activities](STUDENT_BOOKS_AND_ACTIVITIES_20261107.md).
 No automated tests ran. Final deployment receipts belong to the private operator
 workspace and must be checked before describing the VPS rollout as complete.
+
+### Learning cards and installable application - 2026-11-07
+
+The owner approved unified Student course/activity cards without a displayed
+percentage or “Keep going”, keeping the current shared header/title and Filters
+positions. Source now includes the native progress animation, shared Home
+activity cards, public install manifest/icons, account-menu installation and
+private-content-safe Service Worker policy. Local public HTTP endpoints and
+bounded static source checks were inspected. Browser use remains disabled and
+the owner chose actual device review themselves. No migration or business data
+write is required; deployment receipts establish the eventual hosting state.
+See [implementation, approved scope and evidence boundary](LEARNING_CARDS_AND_PWA_20261107.md).

@@ -1,0 +1,65 @@
+/* Shared Student cards. The existing workspace header owns titles and Filters. */
+.yc-workspace .learn-course-card { min-width:0; padding:28px; border:1px solid var(--ui-line); border-radius:23px; background:var(--ui-surface); box-shadow:0 6px 24px color-mix(in srgb,var(--ui-ink) 4%,transparent); }
+.yc-workspace .learn-course-top { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.yc-workspace :is(.learn-course-symbol,.learn-activity-symbol) { display:grid; place-items:center; flex-shrink:0; width:42px; height:42px; border-radius:13px; color:var(--ui-primary); background:var(--ui-soft); }
+.yc-workspace .learn-course-group { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:8px; font-size:12px; color:var(--ui-muted); }
+.yc-workspace .learn-course-group strong { border:1px solid var(--ui-line); border-radius:8px; padding:5px 10px; font-weight:650; color:var(--ui-text); }
+.yc-workspace .learn-course-title { display:flex; align-items:center; gap:20px; margin:18px 0 22px; }
+.yc-workspace .learn-course-title h2 { margin:0; min-width:0; overflow-wrap:anywhere; font-size:32px; font-weight:650; line-height:1.25; letter-spacing:-.7px; }
+.yc-workspace .learn-course-title > span { height:1px; flex:1; background:var(--ui-line); }
+.yc-workspace .learn-progress { margin-bottom:24px; }
+.yc-workspace .learn-progress-caption { font-size:12px; color:var(--ui-muted); margin-bottom:12px; }
+.yc-workspace .learn-progress-track { height:9px; border:0; overflow:hidden; border-radius:99px; background:color-mix(in srgb,var(--ui-primary) 12%,var(--ui-surface)); }
+.yc-workspace .learn-progress-fill { display:block; height:100%; width:var(--learn-progress-width); border:0; border-radius:inherit; transform-origin:left; background:linear-gradient(90deg,var(--ui-primary),color-mix(in srgb,var(--ui-primary) 66%,var(--ui-surface))); }
+[dir=rtl] .yc-workspace .learn-progress-fill { transform-origin:right; }
+.yc-workspace [data-progress-motion=waiting] .learn-progress-fill { transform:scaleX(0); }
+.yc-workspace [data-progress-motion=playing] .learn-progress-fill { animation:learn-progress-arrive 1.2s cubic-bezier(.2,.8,.2,1) both; }
+.yc-workspace .learn-progress-count { margin:12px 0 0; color:var(--ui-muted); font-size:12px; font-variant-numeric:tabular-nums; }
+.yc-workspace .learn-course-actions { display:flex; align-items:stretch; flex-wrap:wrap; gap:10px; }
+.yc-workspace .learn-course-actions > .btn { flex:1; min-height:46px; justify-content:center; gap:8px; border-radius:12px; font-size:12px; }
+.yc-workspace .learn-activity-list { display:grid; gap:12px; }
+.yc-workspace .learn-activity-card { min-width:0; display:grid; grid-template-columns:42px minmax(0,1fr) auto; align-items:center; gap:15px; padding:21px; border:1px solid var(--ui-line); border-radius:17px; background:var(--ui-surface); transition:transform 180ms ease,box-shadow 180ms ease; }
+.yc-workspace .learn-activity-card:hover { transform:translateY(-2px); box-shadow:0 8px 20px color-mix(in srgb,var(--ui-ink) 5%,transparent); }
+.yc-workspace .learn-activity-copy { min-width:0; }
+.yc-workspace .learn-activity-copy h3 { font-size:14px; font-weight:650; line-height:1.5; margin:0; overflow-wrap:anywhere; }
+.yc-workspace .learn-activity-copy h3 a { color:var(--ui-text); text-decoration:none; }
+.yc-workspace .learn-activity-copy h3 a:hover { text-decoration:underline; }
+.yc-workspace .learn-activity-meta { display:flex; align-items:center; flex-wrap:wrap; gap:7px; margin-top:6px; color:var(--ui-muted); font-size:12px; }
+.yc-workspace .learn-activity-state { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-top:8px; font-size:11px; color:var(--ui-muted); }
+.yc-workspace .learn-activity-progress { display:inline-flex; align-items:center; gap:6px; }
+.yc-workspace .learn-activity-progress::before { content:''; width:5px; height:5px; border-radius:50%; background:currentColor; flex-shrink:0; }
+.yc-workspace .learn-activity-card--running .learn-activity-progress { color:var(--ui-primary); }
+.yc-workspace .learn-activity-window { padding:3px 7px; border-radius:6px; background:var(--ui-soft); }
+.yc-workspace .learn-activity-action.btn { min-height:44px; padding:10px 13px; border-radius:11px; gap:8px; font-size:12px; }
+.yc-workspace .learn-activity-card--compact { padding:17px; gap:12px; }
+.yc-workspace .learn-activity-card--compact h3 { font-size:13px; }
+.yc-workspace .learn-home { max-width:1120px; margin:12px auto 32px; }
+.yc-workspace .learn-home-sections { display:grid; grid-template-columns:minmax(0,1fr) 230px; gap:26px; margin-top:28px; }
+.yc-workspace .learn-section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.yc-workspace .learn-section-heading h2 { margin:0; font-size:17px; font-weight:650; }
+.yc-workspace .learn-section-heading .btn { font-size:12px; gap:6px; min-height:40px; }
+.yc-workspace .learn-next-class { align-self:start; padding:22px; border:1px solid var(--ui-line); border-radius:17px; background:var(--ui-surface); }
+.yc-workspace .learn-next-class h2 { margin:0 0 18px; font-size:15px; font-weight:650; }
+.yc-workspace .learn-next-class p { margin:8px 0; font-size:13px; color:var(--ui-muted); }
+.yc-workspace .learn-next-class .btn { margin-top:14px; font-size:12px; }
+@keyframes learn-progress-arrive { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+@media(max-width:900px) { .yc-workspace .learn-home-sections { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:600px) {
+ .yc-workspace .learn-course-card { padding:22px; border-radius:20px; }
+ .yc-workspace .learn-course-title h2 { font-size:28px; }
+ .yc-workspace .learn-course-actions { flex-direction:column; }
+ .yc-workspace .learn-activity-card { grid-template-columns:36px minmax(0,1fr) auto; padding:16px; gap:10px; }
+ .yc-workspace .learn-activity-symbol { width:36px; height:38px; border-radius:11px; }
+ .yc-workspace .learn-activity-action.btn { min-width:44px; padding:10px; }
+ .yc-workspace .learn-activity-action span { display:none; }
+ .yc-workspace .learn-activity-copy h3 { font-size:13px; }
+ .yc-workspace .learn-section-heading { align-items:center; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .yc-workspace .learn-activity-card { transition:none; transform:none; }
+ .yc-workspace [data-progress-motion] .learn-progress-fill { animation:none; transform:none; }
+}
+@media(forced-colors:active) {
+ .yc-workspace .learn-progress-track { background:Canvas; outline:1px solid CanvasText; }
+ .yc-workspace .learn-progress-fill { background:Highlight; }
+}

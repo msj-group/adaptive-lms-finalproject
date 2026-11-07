@@ -1,0 +1,12 @@
+.pwa-install-dialog { width:min(460px,calc(100% - 32px)); max-height:calc(100dvh - 32px); margin:auto; overflow:auto; padding:28px; border:1px solid var(--ui-line); border-radius:22px; background:var(--ui-surface); color:var(--ui-text); box-shadow:var(--ui-shadow-lg); }
+.pwa-install-dialog::backdrop { background:color-mix(in srgb,var(--ui-ink) 45%,transparent); backdrop-filter:blur(5px); }
+.pwa-install-dialog header { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
+.pwa-install-icon { display:grid; place-items:center; width:52px; height:52px; border-radius:16px; background:var(--ui-soft); color:var(--ui-primary); }
+.pwa-install-dialog h2 { margin:0 0 12px; font-size:22px; }
+.pwa-install-dialog p,.pwa-install-dialog li { font-size:14px; line-height:1.7; }
+.pwa-install-dialog ol { padding-inline-start:23px; margin-block:22px; }
+.pwa-install-dialog li { padding-inline-start:5px; margin-bottom:12px; }
+.pwa-install-dialog .pwa-install-note { color:var(--ui-muted); font-size:12px; margin-bottom:22px; }
+.pwa-install-dialog [hidden] { display:none!important; }
+[data-pwa-install][hidden] { display:none!important; }
+@media (display-mode:standalone),(display-mode:fullscreen) { [data-pwa-install] { display:none!important; } }

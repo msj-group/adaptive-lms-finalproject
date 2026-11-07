@@ -1,21 +1,22 @@
 {% extends 'layouts/portal_base.html' %}
 {% import '_figma_ui.html' as ui %}
 {% import '_dashboard_macros.html' as dash %}
+{% import 'student/_learning_cards.html' as learning %}
 {% block title %}{{ _('My learning') }}{% endblock %}
-{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/student_focus.css', v='focus-reader-1') }}">{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/learning_cards.css', v='learning-cards-1') }}">{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/student_progress.js', v='learning-cards-1') }}" defer></script>{% endblock %}
 {% block portal_content %}
-<div class="sf-home">
-  <section class="sf-course-card">
+<div class="learn-home">
   {% if continue_lesson %}
-    <h2 dir="auto">{{ continue_lesson.course_title }}</h2>
-    <div class="sf-home-actions"><a class="btn btn--primary" href="{{ url_for('student.lesson_detail', group_public_id=continue_lesson.group_public_id, unit_public_id=continue_lesson.unit_public_id, lesson_public_id=continue_lesson.lesson_public_id) }}" data-research-id="lesson_open">{{ _('Continue course') if continue_lesson.resume else _('Start course') }} {{ ui.icon('arrow',18) }}</a></div>
-    {% for item in progress_groups if item.group_public_id == continue_lesson.group_public_id %}<p>{{ _('%(completed)d of %(total)d lessons marked complete', completed=item.completed, total=item.lesson_total) }}</p>{% if item.lesson_total %}<progress value="{{ item.completed }}" max="{{ item.lesson_total }}" aria-label="{{ _('Completed lessons in %(group)s', group=item.group_name) }}">{{ item.completed }} / {{ item.lesson_total }}</progress>{% endif %}{% endfor %}
-  {% elif cards %}<h2>{{ _('My courses') }}</h2><p>{{ _('Open your course to review available lessons.') }}</p><div class="sf-home-actions"><a class="btn btn--primary" href="{{ url_for('workspace.student_courses') }}">{{ _('Open my courses') }}</a></div>
-  {% else %}<h2>{{ _('No active enrollments') }}</h2><a class="btn btn--secondary" href="{{ url_for('student.records') }}">{{ _('View your records') }}</a>{% endif %}
-  </section>
-  <div class="sf-home-secondary">
-    <section><h2>{{ _('Course activities') }}</h2>{% if upcoming_deadlines %}{% for item in upcoming_deadlines[:2] %}<p><a href="{{ item.url }}" dir="auto">{{ item.title }}</a> · {{ ui_date(item.due_local.strftime('%d %b · %H:%M')) }}</p>{% endfor %}{% else %}<p>{{ _('No upcoming unfinished activities available.') }}</p>{% endif %}<a class="btn btn--secondary" href="{{ url_for('student.activities') }}">{{ _('Activities') }}</a></section>
-    <section><h2>{{ _('Next class') }}</h2>{% if next_class %}<p dir="auto">{{ next_class.ref.course_title }} · {{ next_class.ref.group_name }}</p><p>{{ ui_date(next_class.start.strftime('%d %b %Y')) }} · {{ dash.time_range(next_class.start,next_class.end) }}</p>{% else %}<p>{{ _('No upcoming class') }}</p>{% endif %}<a class="btn btn--secondary" href="{{ url_for('student.calendar') }}">{{ _('View calendar') }}</a></section>
+    {% set selected=namespace(card=none, progress=none) %}
+    {% for card in cards if card.group_public_id == continue_lesson.group_public_id %}{% set selected.card=card %}{% endfor %}
+    {% for item in progress_groups if item.group_public_id == continue_lesson.group_public_id %}{% set selected.progress=item %}{% endfor %}
+    {% if selected.card %}{{ learning.course_card(selected.card, selected.progress, continue_lesson) }}{% endif %}
+  {% elif cards %}<section class="learn-course-card"><h2>{{ _('My courses') }}</h2><p>{{ _('Open your course to review available lessons.') }}</p><a class="btn btn--primary" href="{{ url_for('workspace.student_courses') }}">{{ _('Open my courses') }}</a></section>
+  {% else %}<section class="learn-course-card"><h2>{{ _('No active enrollments') }}</h2><a class="btn btn--secondary" href="{{ url_for('student.records') }}">{{ _('View your records') }}</a></section>{% endif %}
+  <div class="learn-home-sections">
+    <section aria-labelledby="home-course-activities"><div class="learn-section-heading"><h2 id="home-course-activities">{{ _('Course activities') }}</h2><a class="btn btn--secondary" href="{{ url_for('student.activities') }}">{{ _('View all') }} {{ ui.icon('arrow',14) }}</a></div><div class="learn-activity-list">{% for item in upcoming_deadlines[:2] %}{{ learning.activity_card(item, compact=true) }}{% else %}<p>{{ _('No upcoming unfinished activities available.') }}</p>{% endfor %}</div></section>
+    <section class="learn-next-class"><h2>{{ _('Next class') }}</h2>{% if next_class %}<p dir="auto">{{ next_class.ref.course_title }} · {{ next_class.ref.group_name }}</p><p>{{ ui_date(next_class.start.strftime('%d %b %Y')) }}</p><p>{{ dash.time_range(next_class.start,next_class.end) }}</p>{% else %}<p>{{ _('No upcoming class') }}</p>{% endif %}<a class="btn btn--secondary" href="{{ url_for('student.calendar') }}">{{ _('View calendar') }}</a></section>
   </div>
 </div>
 {% endblock %}

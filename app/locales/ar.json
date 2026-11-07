@@ -5085,5 +5085,21 @@
   "Published exercises only for students": "التمارين المنشورة فقط للطلبة",
   "The full book is private. Students see only mapped exercise pages for published lessons. Replacing this PDF requires a new page map.": "الكتاب الكامل خاص بالأستاذ. تظهر للطلبة صفحات التمارين المرتبطة بالدروس المنشورة فقط. استبدال هذا الملف يحتاج إلى تقسيم جديد للصفحات.",
   "No published Workbook lessons are available yet.": "لا توجد دروس منشورة من كتاب العمل حتى الآن.",
-  "Your teacher publishes Workbook sections with their course lessons.": "ينشر الأستاذ أقسام كتاب العمل مع دروس الكورس."
+  "Your teacher publishes Workbook sections with their course lessons.": "ينشر الأستاذ أقسام كتاب العمل مع دروس الكورس.",
+  "Your progress": "تقدمك",
+  "%(completed)d of %(total)d lessons completed": "اكتمل %(completed)d من %(total)d درسًا",
+  "No published lessons yet": "لا توجد دروس منشورة حتى الآن",
+  "%(title)s — %(course)s, %(group)s": "%(title)s — %(course)s، %(group)s",
+  "Install app": "تثبيت التطبيق",
+  "Install Youth LMS": "تثبيت Youth LMS",
+  "Open Youth LMS from your device": "افتح المنصة من أيقونة على جهازك",
+  "Open your learning workspace from an icon on your device.": "افتح مساحة التعلّم من أيقونة على جهازك.",
+  "Open this page in Safari and tap Share.": "افتح هذه الصفحة في Safari واضغط مشاركة.",
+  "Choose Add to Home Screen, then tap Add.": "اختر إضافة إلى الشاشة الرئيسية، ثم اضغط إضافة.",
+  "Open this page in Chrome.": "افتح هذه الصفحة في Chrome.",
+  "Open the browser menu and choose Add to Home screen or Install app.": "افتح قائمة المتصفح واختر إضافة إلى الشاشة الرئيسية أو تثبيت التطبيق.",
+  "Confirm installation, then open Youth LMS from its icon.": "أكد التثبيت، ثم افتح Youth LMS من أيقونته.",
+  "Open this page in Chrome or Edge.": "افتح هذه الصفحة في Chrome أو Edge.",
+  "Use the install icon in the address bar, or choose Install app from the browser menu.": "استخدم أيقونة التثبيت في شريط العنوان، أو اختر تثبيت التطبيق من قائمة المتصفح.",
+  "Books, videos and personal pages need an internet connection.": "تحتاج الكتب والفيديو والصفحات الشخصية إلى اتصال بالإنترنت."
 }

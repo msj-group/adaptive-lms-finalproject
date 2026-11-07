@@ -52,16 +52,9 @@ def _tz():
 @workspace_bp.get("/student/courses")
 @roles_required("student")
 def student_courses():
-    from app.models import CourseReferenceBook
     from app.services.lesson_progress_queries import (student_group_progress,
         recently_opened, build_recent_view, DASHBOARD_GROUP_LIMIT, RECENTLY_OPENED_LIMIT)
     data = student_dashboard(current_user.id, app_now(_tz()))
-    group_ids = [card["group_public_id"] for card in data["cards"]]
-    workbooks = {row[0] for row in db.session.query(Group.public_id).join(CourseReferenceBook,
-        CourseReferenceBook.course_id == Group.course_id).filter(
-        Group.public_id.in_(group_ids), CourseReferenceBook.kind == "workbook").all()} if group_ids else set()
-    for card in data["cards"]:
-        card["has_workbook"] = card["group_public_id"] in workbooks
     progress, truncated = student_group_progress(current_user.id) if data["cards"] else ([], False)
     recent = build_recent_view(recently_opened(current_user.id,
         group_public_ids=[card["group_public_id"] for card in data["cards"]]), _tz()) if data["cards"] else []

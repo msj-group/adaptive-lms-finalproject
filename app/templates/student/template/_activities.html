@@ -1,14 +1,9 @@
 {% import '_figma_ui.html' as ui %}
-{% import 'student/courses/_ui.html' as atlas %}
 {% set active_filter_count = (1 if selected_type else 0) + (1 if selected_state else 0) + (1 if selected_course else 0) %}
-{% if hub_group %}{{ atlas.tabs(hub_group.public_id, selected_course, 'activities') }}{% endif %}
 <section class="student-activities" aria-labelledby="student-activities-title" data-student-activities>
   <div class="student-activity-sheet">
     <header class="student-activity-hero">
-      <p class="student-activity-eyebrow">Your learning, in one place</p>
-      <h1 id="student-activities-title" data-workspace-page-heading>Activities<span aria-hidden="true">.</span></h1>
-      <p>Find your next task. Keep your learning moving.</p>
-      {% if hub_group %}<p class="student-activity-group"><span>Group:</span> <bdi>{{ hub_group.name }}</bdi></p>{% endif %}
+      <h1 id="student-activities-title" data-workspace-page-heading>{{ _('Activities') }}</h1>
     </header>
     <form method="get" action="{{ url_for('student.activities') }}" class="student-activity-filter-form" data-query-form data-query-results="query-results" data-query-min="0" data-query-quiet-success>
       {% if selected_group %}<input type="hidden" name="group" value="{{ selected_group }}">{% endif %}

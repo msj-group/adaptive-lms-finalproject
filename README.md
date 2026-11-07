@@ -36,14 +36,14 @@ MySQL and the web process both need their own resource allowance.
 ### 1. Get the current source
 
 ```text
-git clone --branch preserve/st2-20261008 https://github.com/msj-group/adaptive-lms-finalproject.git AdaptiveEnglishLMS
+git clone --branch master https://github.com/msj-group/adaptive-lms-finalproject.git AdaptiveEnglishLMS
 cd AdaptiveEnglishLMS
 ```
 
-`preserve/st2-20261008` is the Railway release branch. `master` is retained
-history and is not the current deployment source. UI development is in the
-main workspace on `ui/platform-unification-20261009`; release updates must be
-reviewed and pushed deliberately. D1/ST2 tags are historical references.
+`master` is the single active branch. Deployment targets the Libyan Spider VPS
+at `https://102.203.203.125`; the former Railway project was explicitly deleted
+by the owner on 2026-11-07. D1/ST2 tags remain historical references. Releases
+must use a reviewed commit and the VPS deployment helper.
 
 ### 2. Install local Python dependencies
 
@@ -174,13 +174,13 @@ supports this Python/WSGI runtime, dependencies, private storage and operations.
 | Research | Keep `RESEARCH_DATA_PROVENANCE=development`, `RAILWAY_ALLOW_STUDY=0` and `RESEARCH_RETENTION_DAYS=15`. Research configurations remain paused until separately authorized. |
 | Operations | Monitor `/health/ready`, retain private count-only operational logs, maintain tested backups, and operate the approved daily 15-day retention job separately from web startup. |
 
-### Railway: existing controlled Development candidate
+### Railway: retired hosting configuration
 
-The committed `railpack.json` and `railway.toml` are the deployment source of
-truth. Use the existing GitHub-connected web service and release branch
-`preserve/st2-20261008`; keep its database, volume, accounts and data intact.
-Railway's environment name `production` describes hosting and does not grant
-Study approval.
+The following settings are historical only. The owner deleted the old Railway
+project, its services and storage and disconnected its GitHub source on
+2026-11-07. Do not reconnect or deploy it. The current source and runtime are
+`master` and the Libyan Spider VPS. Retained Railway scripts/configuration are
+historical code; they do not configure the active VPS.
 
 - Repository root: `/`; builder: **Railpack**; Python: **3.14.6**.
 - Build command: leave the dashboard override blank; `railpack.json` installs

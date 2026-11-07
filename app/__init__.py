@@ -142,6 +142,7 @@ def create_app(config_name=None, **config_overrides):
     from app.blueprints.collector import collector_bp
     from app.blueprints.workspace import workspace_bp
     from app.blueprints.appearance import appearance_bp
+    from app.blueprints.pwa import pwa_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
@@ -158,6 +159,7 @@ def create_app(config_name=None, **config_overrides):
     app.register_blueprint(workspace_bp)
     app.register_blueprint(account_bp)
     app.register_blueprint(appearance_bp)
+    app.register_blueprint(pwa_bp)
 
     # M14: the shared Student/Teacher portal header renders a
     # Notifications link and unread badge. This injects a *callable*, not

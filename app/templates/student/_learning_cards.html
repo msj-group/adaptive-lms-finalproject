@@ -1,0 +1,45 @@
+{% import '_figma_ui.html' as ui %}
+{% import 'activities/_ui.html' as activities %}
+
+{% macro progress_bar(progress, group_name) -%}
+{% if progress %}
+{% set total = progress.lesson_total %}
+{% set completed = [progress.completed, total]|min %}
+<div class="learn-progress">
+  <div class="learn-progress-caption">{{ _('Your progress') }}</div>
+  {% if total %}
+  <div class="learn-progress-track" role="progressbar" aria-label="{{ _('Completed lessons in %(group)s', group=group_name) }}" aria-valuemin="0" aria-valuemax="{{ total }}" aria-valuenow="{{ completed }}" aria-valuetext="{{ _('%(completed)d of %(total)d lessons completed', completed=completed, total=total) }}" data-learning-progress>
+    <span class="learn-progress-fill" style="--learn-progress-width:{{ (completed * 100 / total)|round(3) }}%"></span>
+  </div>
+  <p class="learn-progress-count">{{ _('%(completed)d of %(total)d lessons completed', completed=completed, total=total) }}</p>
+  {% else %}<p class="learn-progress-count">{{ _('No published lessons yet') }}</p>{% endif %}
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro course_card(card, progress=none, continue_lesson=none) -%}
+<article class="learn-course-card">
+  <div class="learn-course-top"><span class="learn-course-symbol" aria-hidden="true">{{ ui.icon('book',23) }}</span><span class="learn-course-group">{{ _('Group') }} <strong dir="auto">{{ card.group_name }}</strong></span></div>
+  <div class="learn-course-title"><h2 dir="auto">{{ card.course_title }}</h2><span aria-hidden="true"></span></div>
+  {{ progress_bar(progress, card.group_name) }}
+  <div class="learn-course-actions">
+    {% if continue_lesson %}
+    <a class="btn btn--primary" href="{{ url_for('student.lesson_detail', group_public_id=continue_lesson.group_public_id, unit_public_id=continue_lesson.unit_public_id, lesson_public_id=continue_lesson.lesson_public_id) }}" data-research-id="lesson_open">{{ _('Continue course') if continue_lesson.resume else _('Start course') }} {{ ui.icon('arrow-up',16) }}</a>
+    {% else %}<a class="btn btn--primary" href="{{ url_for('workspace.student_course', group_public_id=card.group_public_id) }}" data-research-id="course_open">{{ ui.icon('book',17) }} {{ _('Student Book') }} {{ ui.icon('arrow-up',15) }}</a>{% endif %}
+    {% if card.has_workbook %}<a class="btn btn--secondary" href="{{ url_for('student.workbook', group_public_id=card.group_public_id) }}">{{ ui.icon('pen',17) }} {{ _('Workbook') }}</a>{% else %}<button type="button" class="btn btn--secondary" disabled aria-label="{{ _('Workbook not available yet') }}">{{ _('Workbook') }}</button>{% endif %}
+  </div>
+</article>
+{%- endmacro %}
+
+{% macro activity_card(item, compact=false) -%}
+{% set action = item.action_label if item.state in ['in_progress','submitted'] else 'View activity' %}
+<article class="learn-activity-card{% if compact %} learn-activity-card--compact{% endif %}{% if item.state == 'in_progress' %} learn-activity-card--running{% endif %}" aria-label="{{ _('%(title)s — %(course)s, %(group)s', title=item.title, course=item.course_title, group=item.group_name) }}">
+  <span class="learn-activity-symbol" aria-hidden="true">{{ activities.symbol(item.kind,21) }}</span>
+  <div class="learn-activity-copy">
+    <h3><a href="{{ item.url }}" dir="auto" data-research-id="activity_open">{{ item.title }}</a></h3>
+    <div class="learn-activity-meta"><span>{{ _(item.type_label) }}</span>{% if item.due_local %}<span aria-hidden="true">·</span><time datetime="{{ item.due_local.isoformat() }}" aria-label="{{ _('Due') }} {{ item.due_local.strftime('%d %b %Y %H:%M') }}"><bdi>{{ ui_date(item.due_local.strftime('%d %b')) }}</bdi>{% if not compact %} · <bdi>{{ item.due_local.strftime('%H:%M') }}</bdi>{% endif %}</time>{% endif %}</div>
+    <div class="learn-activity-state"><span class="learn-activity-progress">{{ _(item.progress_label) }}</span>{% if item.window_label != 'Open' %}<span class="learn-activity-window">{{ _(item.window_label) }}</span>{% endif %}</div>
+  </div>
+  <a class="btn {{ 'btn--primary' if item.state == 'in_progress' else 'btn--secondary' }} learn-activity-action" href="{{ item.url }}" data-research-id="activity_open" aria-label="{{ _('%(action)s: %(title)s', action=_(action), title=item.title) }}"><span>{{ _(action) }}</span>{{ ui.icon('arrow-up',16) }}</a>
+</article>
+{%- endmacro %}
