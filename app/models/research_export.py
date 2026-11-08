@@ -18,6 +18,8 @@ copy never outlives its source. The description row is kept.
 The row never stores Student content, identity or any row values. Every
 creation and every download is also an audit event.
 """
+
+from app.services.research_storage_contract import DATASET_FORMAT
 from app.models.code_types import CODE_COLLATION
 
 import uuid
@@ -44,7 +46,7 @@ class ResearchExport(db.Model):
     __tablename__ = "research_exports"
     __table_args__ = (
         db.CheckConstraint(
-            f"export_format IN ('{EXPORT_FORMAT}','natural-use-v2-export.v1')", name="ck_research_exports_format_valid"
+            f"export_format IN ('{EXPORT_FORMAT}','{DATASET_FORMAT}')", name="ck_research_exports_format_valid"
         ),
         db.CheckConstraint(
             f"LENGTH(manifest_digest) = {EXPORT_DIGEST_LENGTH}",

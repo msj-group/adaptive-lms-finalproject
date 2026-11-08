@@ -1,37 +1,14 @@
-"""The natural-use research event dictionary (Phase 6 replacement).
+"""LMS page/action/outcome taxonomy and installed event constraints.
 
-This module is the **single source of truth** for what the research collector
-may record. The ingestion validator (``app/services/research_ingestion.py``),
-the server outcome recorder (``app/services/research_outcomes.py``), the
-database CHECK on ``research_events.event_type``, the export data dictionary
-and ``docs/PHASE6_NATURAL_USE_RESEARCH.md`` are all derived from, or tested
-against, the declarations below. An event type, field, page identifier,
-element identifier or detail code that is not declared here is rejected.
-
-Flask-independent and side-effect free: plain data and pure functions.
-
-**What an event may carry.** Every event is a small, typed record: an event
-type, a server-validated page identifier (a Flask endpoint name from an
-allowlist, never a URL), an optional allowlisted element identifier, an
-optional closed-set ``detail`` code, and at most three bounded integers
-(``count``, ``duration_ms``, ``position``). Client events add an idempotency
-id, the random page-view and tab references the collector generates, a
-per-page sequence number and the client clock reading.
-
-**What no event can carry**, because no field exists for it: typed text,
-keystrokes or key counts, passwords, answer content or option identity,
-search terms, message or discussion bodies, file names or contents, audio,
-grades, payment data, URLs or query strings, DOM text or HTML, screen
-coordinates, user-agent strings, IP addresses or any browser fingerprint.
+The live observation schema and client validator are in research_dictionary.
+This module maps Student endpoints and declared UI actions to semantic contexts,
+and supplies the closed server-outcome declarations used by collection hooks.
+Event-shape declarations also preserve installed table constraints; there is no
+collector route accepting that table's retired client batch shape.
+No typed content, URLs, credentials or identity are accepted as event details.
 """
 
 from dataclasses import dataclass, field
-
-#: The schema a configuration version and every client batch must name.
-EVENT_SCHEMA_VERSION = "natural-use-events.v1"
-EVENT_DICTIONARY_REVISION = "va-w7-r1"
-TRACKING_SCOPE_REVISION = "va-scope-r1"
-SUPPORTED_EVENT_SCHEMA_VERSIONS = (EVENT_SCHEMA_VERSION, "natural-use-events.v2")
 
 SOURCE_CLIENT = "client"
 SOURCE_SERVER = "server"
@@ -70,7 +47,7 @@ class EventSpec:
     duration_ms: IntField = _NO_INT
     position: IntField = _NO_INT
     #: Server outcome details that end a natural activity. Such an outcome
-    #: arms the activity-end sampling trigger (``research_sampling``).
+    #: describes whether the business outcome ends an activity.
     activity_end_details: frozenset = field(default_factory=frozenset)
 
 
@@ -124,6 +101,8 @@ PAGE_IDS = (
 #: POST endpoints that re-render a page on a validation failure, mapped to
 #: the page they show. The collector names the page, not the action.
 PAGE_ID_ALIASES = {
+    "student.workbook": "student.group_units",
+    "student.workbook_lesson": "student.lesson_detail",
     "account.password": "account.settings",
     "account.upload_photo": "account.settings",
     "student.assignment_submit": "student.assignment_detail",
@@ -165,6 +144,9 @@ SHARED_STUDENT_ENDPOINTS = (
 #: Observing them would add nothing but the download itself; the click that
 #: opened them is already a ``control_click``.
 TECHNICAL_EXCLUSIONS = {
+    "student.lesson_document_page": "Authorized rendered book image bytes, not an HTML page.",
+    "student.workbook_page": "Authorized Workbook image bytes, not an HTML page.",
+    "student.workbook_media": "Authorized Workbook media bytes, not an HTML page.",
     "student.episode_speaking_audio": "Authorized historical recording bytes, including Range requests.",
     "notifications.preview": "Bell-preview fragment/JSON on the host page, not a separate page view.",
     "student.assignment_file_download": "Private final assignment bytes, not a page.",

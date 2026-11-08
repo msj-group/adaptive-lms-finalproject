@@ -30,9 +30,11 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     else if (restoreFocus && previousFocus && previousFocus.isConnected) previousFocus.focus({preventScroll:true});
   }
   function syncLayout() {
-    setOpen(false, true);
+    if (!compact.matches) setOpen(false, true);
+    else document.body.dataset.moreOpen = String(!panel.hidden);
     if (sidebar) sidebar.inert = compact.matches || document.documentElement.dataset.workspaceSidebar === "collapsed";
-    toggles.forEach(function (button) { button.hidden = !compact.matches; });
+    // CSS owns the breakpoint; never leave More hidden after a page swap.
+    toggles.forEach(function (button) { button.hidden = false; });
     document.body.dataset.uiReady = 'true';
     measureNavigation();
   }
@@ -55,6 +57,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   if (window.ResizeObserver && bottomNav) pageScope.createObserver(ResizeObserver, measureNavigation).observe(bottomNav);
   pageScope.listen(window, 'pagehide', function () { setOpen(false, false); });
   pageScope.listen(window, 'pageshow', syncLayout);
+  pageScope.listen(document, 'aelms:page-ready', syncLayout);
   syncLayout();
 })();
 

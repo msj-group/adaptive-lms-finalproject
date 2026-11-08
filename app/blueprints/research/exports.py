@@ -40,8 +40,8 @@ def _provenance():
 
 def _form():
     form = ExportForm()
-    form.configuration.choices = [("", "Legacy v1 configurations only — select one version for v2")] + [
-        (row.public_id, f"Version {row.version_number} — {row.label}")
+    form.configuration.choices = [("", "Select collection settings")] + [
+        (row.public_id, f"Settings #{row.version_number} — {row.label}")
         for row in queries.configuration_choices()
     ]
     return form
@@ -71,7 +71,7 @@ def exports():
                 flash({
                 exporter.BAD_PERIOD: "Check the period: the end date is before the start date.",
                 exporter.TOO_LARGE: "This export is larger than the supported bound. Narrow "
-                                    "the period or the configuration version.",
+                                    "the period or select specific collection settings.",
                 exporter.UNAUTHORIZED: "Your account can no longer create exports.",
                 exporter.CLOCK_AHEAD: "Some saved research data carries a time later than "
                                       "this server's clock, so nothing was exported. Try "

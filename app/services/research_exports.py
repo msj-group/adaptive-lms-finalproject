@@ -1,117 +1,20 @@
-"""Immutable research exports (Phase 6 replacement, corrected).
-
-An export is a ZIP of CSV files plus a manifest:
-
-- ``sessions.csv`` -- one row per session;
-- ``events.csv`` -- one row per validated event (client and server);
-- ``prompts.csv`` -- one row per feedback prompt, with its raw 1-5 rating,
-  its exact observation window and its derived state at the cutoff;
-- ``data_dictionary.csv`` -- every column of every file, and every event type
-  of the event dictionary with the reason it is collected;
-- ``manifest.json`` -- format, event schema version, configuration versions,
-  filters, the snapshot cutoff and its time contract, exclusions, the
-  missing-label rule, the label transformation, row counts and the SHA-256 of
-  every file.
-
-**Source separation.** Study deployments export study sessions of study
-subjects only. Operational-review deployments export development sessions
-and retained historical non-study sessions, never study sessions. The source
-is selected by server configuration, recorded in the manifest, each session
-row and the append-only creation audit. The queries never join
-``users`` or ``research_subject_links``: there is no name, email address,
-account id, mapping key, secret or content. The pseudonymous
-``subject_code`` is the grouping key for participant-grouped evaluation in
-Phase 7.
-
-**Labels.** The raw 1-5 rating is preserved. No transformation is applied.
-Unrated windows are simply absent from the label columns: a dismissal, a
-nonresponse, an offer never shown or a late answer is exported as what it is
-and never as a label.
-
-**Immutability.** The ZIP is built once, when the export is created, and
-stored with its SHA-256 (``ResearchExportArchive``). Every download serves
-exactly those stored bytes after re-checking the digest; nothing is ever
-regenerated from rows that may have changed since (a later rating, event or
-session end, a retention purge, a different ``APP_TIMEZONE``). An archive
-removed by the retention rule is answered as gone, never rebuilt. Rows are
-ordered by id, and the ZIP uses fixed timestamps and sorted JSON.
-
-**Time contract.** Every file is read inside **one read transaction** whose
-snapshot is established by its first read (REPEATABLE READ on MySQL/InnoDB).
-``cutoff_ms`` is read from the server clock
-only **after** the snapshot exists. Hence:
-
-- every row and every value in the archive -- including the mutable ones:
-  session last activity, end and counters, prompt display, response,
-  rating, causes, deferrals and late flag -- is the committed state of one
-  database snapshot, and everything in it was committed before
-  ``cutoff_ms``;
-- a write still in progress at that moment is **not** included, even when
-  its own server moment is earlier than ``cutoff_ms``: the archive is the
-  state saved by the cutoff, not a reconstruction of every moment up to it;
-- derived prompt states (``no_response``, ``offer_expired``, ...) are
-  evaluated at ``cutoff_ms``;
-- as a check of that contract, no included server moment (session start,
-  last activity and end; event receipt; prompt offer, display and
-  response) may be later than ``cutoff_ms``. One can only be if a server
-  clock ran ahead of this one; the export is then **refused**
-  (:data:`CLOCK_AHEAD`) with nothing stored -- never clamped, filtered or
-  relabelled -- and a later export, whose cutoff has passed that moment,
-  includes it.
-
-The archive and its row are written afterwards, in a separate transaction
-that re-proves the Researcher, so the snapshot never has to be upgraded to a
-write.
-
-**CSV formula injection.** A text value that begins with ``=``, ``+``,
-``-``, ``@``, a tab or a carriage return is prefixed with ``'``. Integer
-columns are written as integers and are never altered.
-"""
-
+"""Create and serve immutable natural-use datasets under the Researcher gate."""
 import csv
 import hashlib
 import io
-import json
-import zipfile
 from datetime import datetime, time, timedelta, timezone
-
 from flask import current_app
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
-
 from app.extensions import db
-from app.models import (
-    CAUSE_COLUMNS,
-    EXPORT_FORMAT,
-    MAX_EXPORT_ARCHIVE_BYTES,
-    ResearchExportArchive,
-    ResearchAuditAction,
-    ResearchAuditChannel,
-    ResearchAuditEvent,
-    ResearchConfiguration,
-    ResearchEvent,
-    ResearchExport,
-    ResearchFeedbackPrompt,
-    ResearchProvenance,
-    ResearchSession,
-    ResearchSubject,
-    User,
-    UserRole,
-    UserStatus,
-    now_ms,
-)
+from app.models import (MAX_EXPORT_ARCHIVE_BYTES, ResearchExportArchive, ResearchAuditAction,
+    ResearchAuditChannel, ResearchAuditEvent, ResearchConfiguration, ResearchExport,
+    ResearchSession, ResearchSubject, User, UserRole, UserStatus, now_ms)
 from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
-from app.services.research_event_dictionary import (
-    EVENT_SCHEMA_VERSION, EVENT_DICTIONARY_REVISION, TRACKING_SCOPE_REVISION, dictionary_rows,
-)
-from app.services.research_workspace_queries import derived_prompt_state, export_scope_filter
+from app.services.research_workspace_queries import export_scope_filter
 from app.services.research_scope import EXPORT_SCOPE_DETAIL_CODES, export_session_provenances
 from app.services.schedule_occurrences import from_app_local
-
-#: A safety bound on one export's event rows. A pilot of 20-50 Students is
-#: far below it; reaching it refuses the export rather than exhausting memory.
-MAX_EXPORT_EVENTS = 2_000_000
-MAX_EXPORT_SESSIONS = 50_000
-MAX_EXPORT_PROMPTS = 200_000
+from app.services.research_storage_contract import COLLECTION_SCHEMA
 
 CREATED = "created"
 UNAUTHORIZED = "unauthorized"
@@ -123,97 +26,7 @@ NOT_FOUND = "not_found"
 EXPIRED = "expired"
 CORRUPT = "corrupt"
 CLOCK_AHEAD = "clock_ahead"
-
-#: The manifest's statement of what ``cutoff_ms`` means.
-TIME_CONTRACT = (
-    "Every file was read in one database read snapshot established before cutoff_ms "
-    "(server clock, epoch ms, UTC). Every row and value, including session last activity, "
-    "end and counters and prompt display, response, rating, causes, deferrals and late "
-    "flag, is the committed state of that snapshot; everything in it was saved before "
-    "cutoff_ms. Writes still in progress at cutoff_ms are not included even when their "
-    "own server moment is earlier. No included server moment is later than cutoff_ms. "
-    "Derived prompt states are evaluated at cutoff_ms."
-)
-
-_STUDY = ResearchProvenance.STUDY.value
-CSV_SCHEMA_VERSION = "natural-use-csv.v2"
 _FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
-
-SESSION_COLUMNS = (
-    ("session_id", "Pseudonymous session identifier (random UUID)."),
-    ("subject_code", "Pseudonymous subject code; the participant grouping key."),
-    ("configuration_version", "Collection configuration version number."),
-    ("event_schema_version", "Event dictionary version the session was collected under."),
-    ("started_at_ms", "Session start, server timescale, epoch milliseconds (UTC)."),
-    ("last_seen_at_ms", "Latest accepted activity saved by the snapshot cutoff, epoch ms "
-                        "(UTC)."),
-    ("ended_at_ms", "End saved by the snapshot cutoff, epoch ms (UTC); empty if the session "
-                    "was still open in the snapshot."),
-    ("end_reason", "logout, inactivity, configuration_changed, collection_stopped or "
-                   "subject_ineligible; empty if still open in the snapshot."),
-    ("batches_received", "Client batches accepted for processing. This and every counter "
-                         "below is the value saved in the export's snapshot (before "
-                         "cutoff_ms)."),
-    ("events_accepted", "Events stored (client and server)."),
-    ("events_duplicate", "Client events refused as duplicates of a stored event id in "
-                         "non-replay batches. Explicit replay batches do not add to "
-                         "this counter; replay-only redelivery adds no delivery counters."),
-    ("events_invalid", "Client events refused by the event dictionary."),
-    ("events_late", "Client events refused as too old or older than the session."),
-    ("events_dropped_client", "Events the browser reported dropping from a full buffer."),
-    ("sampling_eligible_checks", "Sampling checks at which a prompt could be offered."),
-    ("sampling_ineligible_checks", "Sampling checks at which no prompt could be offered."),
-    ("provenance", "Server-recorded session source: study, development, or historical demo. "
-                   "Development and demo are never study data."),
-)
-
-EVENT_COLUMNS = (
-    ("session_id", "Session identifier."),
-    ("subject_code", "Pseudonymous subject code."),
-    ("event_uid", "Idempotency identifier (client) or server-generated identifier."),
-    ("source", "client (browser observation) or server (confirmed outcome)."),
-    ("event_type", "See the event rows of this dictionary."),
-    ("page_id", "Allowlisted page identifier (Flask endpoint name), never a URL."),
-    ("element_id", "Allowlisted control identifier, or empty."),
-    ("detail_code", "Closed-set detail code for the event type, or empty."),
-    ("count_value", "Bounded count for the event type, or empty."),
-    ("duration_ms", "Bounded duration in milliseconds, or empty."),
-    ("position_value", "Bounded position for the event type, or empty."),
-    ("page_view_ref", "Random reference of one page view (client events)."),
-    ("tab_ref", "Random reference of one browser tab (client events)."),
-    ("sequence_number", "Per-page-view sequence number (client events)."),
-    ("client_ts_ms", "Raw client clock reading, epoch ms (client events)."),
-    ("clock_offset_ms", "Server receipt minus client send time for the batch, ms."),
-    ("occurred_at_ms", "Event time on the server timescale, epoch ms."),
-    ("received_at_ms", "Server receipt time, epoch ms."),
-)
-
-PROMPT_COLUMNS = (
-    ("prompt_id", "Pseudonymous prompt identifier."),
-    ("session_id", "Session identifier."),
-    ("subject_code", "Pseudonymous subject code."),
-    ("configuration_version", "Configuration version the prompt was sampled under."),
-    ("sampling_reason", "random (eligible moment) or activity_end (natural ending)."),
-    ("stored_status", "offered, displayed, answered or dismissed."),
-    ("derived_state", "answered, dismissed, no_response, awaiting_response, offer_expired "
-                      "or awaiting_display, evaluated at the export's cutoff_ms."),
-    ("offered_at_ms", "Sampling moment, epoch ms."),
-    ("deferral_count", "Times the browser deferred showing it."),
-    ("last_deferral_reason", "timed_activity, recording, uploading or hidden_tab."),
-    ("displayed_at_ms", "Display grant moment, epoch ms; ends the window."),
-    ("prompt_day", "Local calendar day of the display (APP_TIMEZONE)."),
-    ("window_start_ms", "Start of the lookback window, epoch ms."),
-    ("window_end_ms", "End of the lookback window (= displayed_at_ms)."),
-    ("observed_ms", "Continuously observed milliseconds inside the window."),
-    ("responded_at_ms", "Answer or dismissal moment, epoch ms."),
-    ("response_delay_ms", "responded_at_ms - displayed_at_ms."),
-    ("rating", "Raw self-reported frustration 1-5, only when answered. "
-               "1 Not frustrated at all, 2 Slightly, 3 Moderately, 4 Very, 5 Extremely."),
-    *((column, f"Optional cause selected (1/0), only when answered: {label}.")
-      for _code, column, label in CAUSE_COLUMNS),
-    ("late_response", "1 when an answer arrived after the response window and was not stored."),
-)
-
 
 def _safe(value):
     """Neutralise a text cell against spreadsheet formula injection."""
@@ -241,221 +54,9 @@ def _bounds(period_from, period_to, tz_name):
     return lower, upper
 
 
-def selection_summary(configuration_public_id, period_from, period_to, tz_name):
-    """Aggregate preview only; creation establishes its own authoritative snapshot."""
-    from sqlalchemy import func, select
-    if period_from and period_to and period_to < period_from:
-        raise ValueError("Invalid period")
-    provenance = current_app.config["RESEARCH_DATA_PROVENANCE"]
-    lower, upper = _bounds(period_from, period_to, tz_name)
-    query = select(ResearchSession.id, ResearchSession.subject_id).join(
-        ResearchSubject, ResearchSubject.id == ResearchSession.subject_id).join(
-        ResearchConfiguration, ResearchConfiguration.id == ResearchSession.configuration_id).where(
-        ResearchSession.provenance.in_(export_session_provenances(provenance)))
-    if provenance == _STUDY:
-        query = query.where(ResearchSubject.provenance == _STUDY)
-    if configuration_public_id:
-        query = query.where(ResearchConfiguration.public_id == configuration_public_id)
-        schema = db.session.query(ResearchConfiguration.event_schema_version).filter_by(public_id=configuration_public_id).scalar()
-    else:
-        schema = EVENT_SCHEMA_VERSION
-        query = query.where(ResearchConfiguration.event_schema_version == EVENT_SCHEMA_VERSION)
-    if schema == "natural-use-events.v2":
-        if not current_app.config.get("RESEARCH_V2_ENABLED", False):
-            raise ValueError("V2 is not enabled")
-        from app.models.research_v2 import ResearchV2EvaluationPartition as Partition
-        query = query.join(Partition, Partition.subject_id == ResearchSession.subject_id).where(
-            Partition.partition_code.in_(("development", "prospective_monitor")))
-    if lower is not None:
-        query = query.where(ResearchSession.started_at_ms >= lower)
-    if upper is not None:
-        query = query.where(ResearchSession.started_at_ms < upper)
-    scope = query.subquery()
-    sessions, subjects = db.session.execute(select(func.count(scope.c.id), func.count(func.distinct(scope.c.subject_id)))).one()
-    if schema == "natural-use-events.v2":
-        from app.models.research_v2 import ResearchV2Event as VEvent, ResearchV2Prompt as VPrompt, ResearchV2SamplingOpportunity as Opportunity
-        events = db.session.execute(select(func.count(VEvent.id)).join(scope, scope.c.id == VEvent.session_id)).scalar()
-        prompts = db.session.execute(select(func.count(VPrompt.id)).join(Opportunity, VPrompt.opportunity_id == Opportunity.id).join(scope, scope.c.id == Opportunity.session_id)).scalar()
-    else:
-        events = db.session.execute(select(func.count(ResearchEvent.id)).join(scope, scope.c.id == ResearchEvent.session_id)).scalar()
-        prompts = db.session.execute(select(func.count(ResearchFeedbackPrompt.id)).join(scope, scope.c.id == ResearchFeedbackPrompt.session_id)).scalar()
-    return {"sessions": int(sessions), "subjects": int(subjects), "events": int(events), "prompts": int(prompts)}
-
-
 def _local_midnight_ms(day, tz_name):
     utc = from_app_local(tz_name, datetime.combine(day, time.min))
     return int(utc.replace(tzinfo=timezone.utc).timestamp() * 1000)
-
-
-def _sessions(configuration_id, lower, upper, provenance):
-    query = (
-        db.session.query(
-            ResearchSession.id,
-            ResearchSession.public_id,
-            ResearchSubject.subject_code,
-            ResearchConfiguration.version_number,
-            ResearchConfiguration.event_schema_version,
-            ResearchSession.started_at_ms,
-            ResearchSession.last_seen_at_ms,
-            ResearchSession.ended_at_ms,
-            ResearchSession.end_reason,
-            ResearchSession.batches_received,
-            ResearchSession.events_accepted,
-            ResearchSession.events_duplicate,
-            ResearchSession.events_invalid,
-            ResearchSession.events_late,
-            ResearchSession.events_dropped_client,
-            ResearchSession.sampling_eligible_checks,
-            ResearchSession.sampling_ineligible_checks,
-            ResearchSession.provenance,
-        )
-        .join(ResearchSubject, ResearchSubject.id == ResearchSession.subject_id)
-        .join(ResearchConfiguration, ResearchConfiguration.id == ResearchSession.configuration_id)
-        .filter(ResearchSession.provenance.in_(export_session_provenances(provenance)),
-                ResearchConfiguration.event_schema_version == EVENT_SCHEMA_VERSION)
-    )
-    if provenance == _STUDY:
-        query = query.filter(ResearchSubject.provenance == _STUDY)
-    if configuration_id is not None:
-        query = query.filter(ResearchSession.configuration_id == configuration_id)
-    if lower is not None:
-        query = query.filter(ResearchSession.started_at_ms >= lower)
-    if upper is not None:
-        query = query.filter(ResearchSession.started_at_ms < upper)
-    rows = query.order_by(ResearchSession.id.asc()).limit(MAX_EXPORT_SESSIONS + 1).all()
-    if len(rows) > MAX_EXPORT_SESSIONS:
-        raise ExportTooLarge()
-    return rows
-
-
-def build_export(configuration_id, period_from, period_to, cutoff_ms, tz_name):
-    """``(zip_bytes, manifest, counts, manifest_digest)`` from the current read
-    snapshot, or raise :class:`ExportTooLarge` or :class:`ClockAhead`.
-    Read-only; the caller owns the snapshot (see the time contract)."""
-    provenance = current_app.config["RESEARCH_DATA_PROVENANCE"]
-    lower, upper = _bounds(period_from, period_to, tz_name)
-    sessions = _sessions(configuration_id, lower, upper, provenance)
-    latest = max((moment for row in sessions for moment in (row[5], row[6], row[7])
-                  if moment is not None), default=None)
-    session_ids = [row[0] for row in sessions]
-    codes = {row[0]: (row[1], row[2]) for row in sessions}
-    configuration_versions = sorted({row[3] for row in sessions})
-
-    event_rows, prompt_rows = [], []
-    for chunk_start in range(0, len(session_ids), 500):
-        chunk = session_ids[chunk_start:chunk_start + 500]
-        events = (
-            db.session.query(
-                ResearchEvent.session_id, ResearchEvent.event_uid, ResearchEvent.source,
-                ResearchEvent.event_type, ResearchEvent.page_id, ResearchEvent.element_id,
-                ResearchEvent.detail_code, ResearchEvent.count_value, ResearchEvent.duration_ms,
-                ResearchEvent.position_value, ResearchEvent.page_view_ref, ResearchEvent.tab_ref,
-                ResearchEvent.sequence_number, ResearchEvent.client_ts_ms,
-                ResearchEvent.clock_offset_ms, ResearchEvent.occurred_at_ms,
-                ResearchEvent.received_at_ms,
-            )
-            .filter(ResearchEvent.session_id.in_(chunk))
-            .order_by(ResearchEvent.id.asc())
-            .limit(MAX_EXPORT_EVENTS - len(event_rows) + 1)
-            .all()
-        )
-        for row in events:
-            public_id, code = codes[row[0]]
-            event_rows.append((public_id, code) + tuple(row[1:]))
-            latest = row[16] if latest is None else max(latest, row[16])
-        if len(event_rows) > MAX_EXPORT_EVENTS:
-            raise ExportTooLarge()
-        prompts = (
-            db.session.query(
-                ResearchFeedbackPrompt, ResearchConfiguration.version_number,
-                ResearchConfiguration.offer_ttl_seconds,
-                ResearchConfiguration.response_window_seconds,
-            )
-            .join(ResearchConfiguration,
-                  ResearchConfiguration.id == ResearchFeedbackPrompt.configuration_id)
-            .filter(ResearchFeedbackPrompt.session_id.in_(chunk))
-            .order_by(ResearchFeedbackPrompt.id.asc())
-            .limit(MAX_EXPORT_PROMPTS - len(prompt_rows) + 1)
-            .all()
-        )
-        for prompt, version, ttl, window in prompts:
-            for moment in (prompt.offered_at_ms, prompt.displayed_at_ms, prompt.responded_at_ms):
-                if moment is not None:
-                    latest = moment if latest is None else max(latest, moment)
-            prompt_rows.append(_prompt_row(prompt, version, ttl, window, codes, cutoff_ms))
-        if len(prompt_rows) > MAX_EXPORT_PROMPTS:
-            raise ExportTooLarge()
-
-    if latest is not None and latest > cutoff_ms:
-        # Only a server clock running ahead of this one can store a moment
-        # after a cutoff taken once the snapshot existed. Refuse rather than
-        # clamp, filter or relabel it.
-        raise ClockAhead()
-
-    files = {
-        "sessions.csv": _csv([c for c, _d in SESSION_COLUMNS], [row[1:] for row in sessions]),
-        "events.csv": _csv([c for c, _d in EVENT_COLUMNS], event_rows),
-        "prompts.csv": _csv([c for c, _d in PROMPT_COLUMNS], prompt_rows),
-        "data_dictionary.csv": _dictionary_csv(),
-    }
-    counts = {
-        "subjects": len({row[2] for row in sessions}),
-        "sessions": len(sessions),
-        "events": len(event_rows),
-        "prompts": len(prompt_rows),
-        "labelled_prompts": sum(1 for row in prompt_rows if row[6] == "answered"),
-        "oldest_last_seen_ms": min((row[6] for row in sessions), default=None),
-        "_session_refs": [row[1] for row in sessions],
-    }
-    manifest = {
-        "format": EXPORT_FORMAT,
-        "csv_schema_version": CSV_SCHEMA_VERSION,
-        "dataset_kind": "study" if provenance == _STUDY else "operational_review",
-        "event_schema_version": EVENT_SCHEMA_VERSION,
-        "generator_dictionary_revision": EVENT_DICTIONARY_REVISION,
-        "generator_tracking_scope_revision": TRACKING_SCOPE_REVISION,
-        "position_semantics_notice": (
-            "Version A W7 search_result position is the global ordinal across the actual "
-            "rendered grouped result list (1..500); larger positions are absent. Historical "
-            "pre-W7 positions may restart inside groups. Generator revision does not "
-            "reclassify historical observations. Select a configuration started after the "
-            "documented baseline for homogeneous post-freeze analysis."
-        ),
-        "configuration_versions": configuration_versions,
-        "filters": {
-            "configuration_version": _version_of(configuration_id),
-            "session_start_local_from": period_from.isoformat() if period_from else None,
-            "session_start_local_to": period_to.isoformat() if period_to else None,
-            "timezone": tz_name,
-            "provenance": provenance,
-            "included_session_provenances": sorted({row[-1] for row in sessions}),
-        },
-        "cutoff_ms": cutoff_ms,
-        "time_contract": TIME_CONTRACT,
-        "exclusions": [
-            ("Development and historical demonstration provenance are excluded from "
-             "study exports, as are sessions of demonstration subjects."
-             if provenance == _STUDY else
-             "Study sessions are excluded. This archive is operational review data; "
-             "it must not be used or reported as a real study dataset."),
-            "Excluded Students are never collected; events refused at ingestion "
-            "(invalid, duplicate, late) are never stored. Recorded session counters "
-            "exclude explicit replay duplicates and replay-only redelivery counts.",
-            "No name, email address, account identifier, subject-to-account mapping or "
-            "content is present in any file.",
-        ],
-        "missing_label_rule": (
-            "Only answered prompts carry a label, and each labels only its own window "
-            "[window_start_ms, window_end_ms]. Dismissed, unanswered, never-shown and late "
-            "prompts, and every unprompted interval, are unlabeled."
-        ),
-        "label_transformation": "none; raw 1-5 ratings preserved",
-        "counts": counts,
-        "files": {name: hashlib.sha256(data).hexdigest() for name, data in sorted(files.items())},
-    }
-    manifest_bytes = json.dumps(manifest, sort_keys=True, indent=2).encode("utf-8")
-    files["manifest.json"] = manifest_bytes
-    return _zip(files, cutoff_ms), manifest, counts, hashlib.sha256(manifest_bytes).hexdigest()
 
 
 class ExportTooLarge(Exception):
@@ -464,71 +65,6 @@ class ExportTooLarge(Exception):
 
 class ClockAhead(Exception):
     """A stored server moment is later than the snapshot cutoff."""
-
-
-def _version_of(configuration_id):
-    if configuration_id is None:
-        return None
-    return db.session.query(ResearchConfiguration.version_number).filter(
-        ResearchConfiguration.id == configuration_id).scalar()
-
-
-def _prompt_row(prompt, version, ttl, window, codes, cutoff_ms):
-    session_public_id, code = codes[prompt.session_id]
-    state = derived_prompt_state(prompt.status, prompt.offered_at_ms, prompt.displayed_at_ms,
-                                 ttl, window, cutoff_ms, prompt.responded_at_ms)
-    answered = state == "answered"
-    delay = None
-    if prompt.responded_at_ms is not None and prompt.displayed_at_ms is not None:
-        delay = prompt.responded_at_ms - prompt.displayed_at_ms
-    return (
-        prompt.public_id, session_public_id, code, version, prompt.sampling_reason,
-        prompt.status, state, prompt.offered_at_ms, prompt.deferral_count,
-        prompt.last_deferral_reason, prompt.displayed_at_ms,
-        prompt.prompt_day.isoformat() if prompt.prompt_day else None,
-        prompt.window_start_ms, prompt.window_end_ms, prompt.observed_ms,
-        prompt.responded_at_ms, delay,
-        prompt.rating if answered else None,
-        *((1 if getattr(prompt, column) else 0) if answered else None
-          for _code, column, _label in CAUSE_COLUMNS),
-        1 if prompt.late_response else 0,
-    )
-
-
-def _dictionary_csv():
-    rows = []
-    for file_name, columns in (("sessions.csv", SESSION_COLUMNS), ("events.csv", EVENT_COLUMNS),
-                               ("prompts.csv", PROMPT_COLUMNS)):
-        rows.extend((file_name, column, description) for column, description in columns)
-    for entry in dictionary_rows():
-        rows.append((
-            "events.csv", f"event_type={entry['event_type']}",
-            f"[{entry['source']}/{entry['category']}] {entry['reason']} "
-            f"element: {entry['element']}; details: {entry['details'] or '-'}; "
-            f"count: {entry['count'] or '-'}; duration_ms: {entry['duration_ms'] or '-'}; "
-            f"position: {entry['position'] or '-'}",
-        ))
-    return _csv(["file", "column", "description"], rows)
-
-
-def _zip(files, cutoff_ms):
-    stamp = datetime.fromtimestamp(cutoff_ms / 1000, tz=timezone.utc)
-    date_time = (max(stamp.year, 1980), stamp.month, stamp.day, stamp.hour, stamp.minute,
-                 stamp.second)
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for name in ("manifest.json", "data_dictionary.csv", "sessions.csv", "events.csv",
-                     "prompts.csv"):
-            info = zipfile.ZipInfo(name, date_time=date_time)
-            info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = 0o644 << 16
-            archive.writestr(info, files[name])
-    return buffer.getvalue()
-
-
-# ---------------------------------------------------------------------------
-# Transactions: read one snapshot, store it once, audit a download
-# ---------------------------------------------------------------------------
 
 
 def open_read_snapshot():
@@ -566,34 +102,53 @@ def _lock_researcher(actor_id):
     return actor
 
 
+def selection_summary(configuration_public_id, period_from, period_to, tz_name):
+    """Count the exact supported source/partition scope; creation takes a fresh snapshot."""
+    from app.models.research_observations import ResearchObservation, ResearchQuestion, ResearchSamplingOpportunity, ResearchEvaluationGroup
+    if period_from and period_to and period_to < period_from:
+        raise ValueError("Invalid period")
+    config = db.session.query(ResearchConfiguration.id).filter(
+        ResearchConfiguration.public_id == configuration_public_id,
+        ResearchConfiguration.event_schema_version == COLLECTION_SCHEMA).scalar()
+    if config is None:
+        raise ValueError("Select collection settings.")
+    lower, upper = _bounds(period_from, period_to, tz_name)
+    provenance = current_app.config["RESEARCH_DATA_PROVENANCE"]
+    query = db.session.query(ResearchSession.id, ResearchSession.subject_id).join(
+        ResearchSubject, ResearchSubject.id == ResearchSession.subject_id).join(
+        ResearchEvaluationGroup, ResearchEvaluationGroup.subject_id == ResearchSession.subject_id).filter(
+            ResearchSession.configuration_id == config,
+            ResearchSession.provenance.in_(export_session_provenances(provenance)),
+            ResearchEvaluationGroup.partition_code.in_(("development", "prospective_monitor")))
+    if provenance == "study":
+        query = query.filter(ResearchSubject.provenance == "study")
+    if lower is not None: query = query.filter(ResearchSession.started_at_ms >= lower)
+    if upper is not None: query = query.filter(ResearchSession.started_at_ms < upper)
+    scope = query.subquery()
+    sessions, subjects = db.session.execute(select(func.count(), func.count(func.distinct(scope.c.subject_id))).select_from(scope)).one()
+    events = db.session.execute(select(func.count(ResearchObservation.id)).join(scope, scope.c.id == ResearchObservation.session_id)).scalar()
+    prompts = db.session.execute(select(func.count(ResearchQuestion.id)).join(
+        ResearchSamplingOpportunity, ResearchQuestion.opportunity_id == ResearchSamplingOpportunity.id).join(
+        scope, scope.c.id == ResearchSamplingOpportunity.session_id)).scalar()
+    return {"sessions": int(sessions), "subjects": int(subjects), "events": int(events), "prompts": int(prompts)}
+
 def create_export(actor_id, configuration_public_id, period_from, period_to, tz_name):
-    """Read one snapshot, build the archive once and store it with its
-    description. ``(status, export_public_id)``."""
+    """Build one read snapshot, then recheck authorization/retention under locks."""
     if period_from and period_to and period_to < period_from:
         return BAD_PERIOD, None
     cutoff = open_read_snapshot()
     if not _researcher_is_active(actor_id):
         db.session.rollback()
         return UNAUTHORIZED, None
-    configuration_id = None
-    if configuration_public_id:
-        configuration_id = db.session.query(ResearchConfiguration.id).filter(
-            ResearchConfiguration.public_id == configuration_public_id).scalar()
-        if configuration_id is None:
-            db.session.rollback()
-            return BAD_PERIOD, None
+    configuration_id = db.session.query(ResearchConfiguration.id).filter(
+        ResearchConfiguration.public_id == configuration_public_id,
+        ResearchConfiguration.event_schema_version == COLLECTION_SCHEMA).scalar()
+    if configuration_id is None or not current_app.config.get("RESEARCH_COLLECTION_ENABLED", False):
+        db.session.rollback()
+        return CONFLICT, None
     try:
-        schema = db.session.query(ResearchConfiguration.event_schema_version).filter(
-            ResearchConfiguration.id == configuration_id).scalar() if configuration_id else EVENT_SCHEMA_VERSION
-        if schema == "natural-use-events.v2":
-            if not current_app.config.get("RESEARCH_V2_ENABLED", False):
-                db.session.rollback()
-                return CONFLICT, None
-            from app.services.research_v2_exports import build_export as build_v2
-            data, _manifest, counts, digest = build_v2(configuration_id, period_from, period_to, cutoff, tz_name)
-        else:
-            data, _manifest, counts, digest = build_export(
-                configuration_id, period_from, period_to, cutoff, tz_name)
+        from app.services.research_dataset_exports import build_export
+        data, manifest, counts, digest = build_export(configuration_id, period_from, period_to, cutoff, tz_name)
     except ExportTooLarge:
         db.session.rollback()
         return TOO_LARGE, None
@@ -603,85 +158,57 @@ def create_export(actor_id, configuration_public_id, period_from, period_to, tz_
     except ValueError:
         db.session.rollback()
         return CONFLICT, None
-    # The snapshot ends here; nothing above wrote anything.
     db.session.rollback()
     if len(data) > MAX_EXPORT_ARCHIVE_BYTES:
         return TOO_LARGE, None
-
     actor = _lock_researcher(actor_id)
-    if actor is None:
-        return UNAUTHORIZED, None
+    if actor is None: return UNAUTHORIZED, None
     from app.services.research_control_gate import lock_research_control
     from app.models.research_storage import ResearchExportSession
+    from app.models.research_observations import ResearchEvaluationGroup
     lock_research_control()
-    if schema == "natural-use-events.v2":
-        for subject_id in counts.get("_subject_ids", []):
-            db.session.query(ResearchSubject).filter_by(id=subject_id).with_for_update().one()
-    # A snapshot may be older than a concurrently completed cleanup. Never
-    # republish the removed rows in a new archive after that cleanup commits.
+    for subject_id in counts.get("_subject_ids", []):
+        db.session.query(ResearchSubject).filter_by(id=subject_id).with_for_update().one()
     refs = counts["_session_refs"]
     retained = 0
     for start in range(0, len(refs), 500):
-        retained += len(db.session.query(ResearchSession.id).filter(ResearchSession.public_id.in_(refs[start:start+500])).with_for_update().all())
+        retained += len(db.session.query(ResearchSession.id).filter(
+            ResearchSession.public_id.in_(refs[start:start+500])).with_for_update().all())
     if retained != len(refs):
         db.session.rollback()
         return CONFLICT, None
-    if schema == "natural-use-events.v2":
-        from app.models.research_v2 import ResearchV2EvaluationPartition
-        # Recheck the participant partition under the same subject locks used
-        # by assignment. Never publish a snapshot after a final-test reservation.
-        subjects = counts.get("_subject_ids", [])
-        for subject_id in subjects:
-            part = db.session.get(ResearchV2EvaluationPartition, subject_id)
-            if part is None or part.partition_code not in {"development", "prospective_monitor"}:
-                db.session.rollback()
-                return CONFLICT, None
-            if part.partition_code == "development" and part.development_exposed_at_ms is None:
-                part.development_exposed_at_ms = now_ms()
-                part.version += 1
-        if counts["_expiry_at_ms"] <= now_ms():
+    for subject_id in counts.get("_subject_ids", []):
+        part = db.session.get(ResearchEvaluationGroup, subject_id)
+        if part is None or part.partition_code not in {"development", "prospective_monitor"}:
             db.session.rollback()
-            return EXPIRED, None
-    export = ResearchExport(
-        export_format=_manifest["format"],
-        event_schema_version=schema,
-        configuration_id=configuration_id,
-        period_from=period_from,
-        period_to=period_to,
-        timezone=tz_name,
-        cutoff_ms=cutoff,
-        oldest_last_seen_ms=counts["oldest_last_seen_ms"],
-        subjects_count=counts["subjects"],
-        sessions_count=counts["sessions"],
-        events_count=counts["events"],
-        prompts_count=counts["prompts"],
-        manifest_digest=digest,
-        created_by_id=actor.id,
-    )
+            return CONFLICT, None
+        if part.partition_code == "development" and part.development_exposed_at_ms is None:
+            part.development_exposed_at_ms = now_ms()
+            part.version += 1
+    if counts["_expiry_at_ms"] <= now_ms():
+        db.session.rollback()
+        return EXPIRED, None
+    export = ResearchExport(export_format=manifest["format"], event_schema_version=COLLECTION_SCHEMA,
+        configuration_id=configuration_id, period_from=period_from, period_to=period_to,
+        timezone=tz_name, cutoff_ms=cutoff, oldest_last_seen_ms=counts["oldest_last_seen_ms"],
+        subjects_count=counts["subjects"], sessions_count=counts["sessions"], events_count=counts["events"],
+        prompts_count=counts["prompts"], manifest_digest=digest, created_by_id=actor.id)
     db.session.add(export)
     db.session.flush()
-    db.session.add_all(ResearchExportSession(export_id=export.id, session_public_id=public_id) for public_id in refs)
-    archive_values = dict(export_id=export.id, archive_sha256=hashlib.sha256(data).hexdigest(),
-                          byte_size=len(data), content=data)
-    if schema == "natural-use-events.v2":
-        archive_values["expiry_at_ms"] = counts["_expiry_at_ms"]
-    # Explicit Core columns keep legacy inserts compatible before migration.
-    db.session.execute(ResearchExportArchive.__table__.insert().values(**archive_values))
-    db.session.add(ResearchAuditEvent(
-        action=ResearchAuditAction.EXPORT_CREATED.value,
-        channel=ResearchAuditChannel.WORKSPACE.value,
-        actor_id=actor.id, export_id=export.id, configuration_id=configuration_id,
-        detail_code=EXPORT_SCOPE_DETAIL_CODES[_manifest["filters"]["provenance"]],
-        count_value=counts["sessions"],
-    ))
+    db.session.add_all(ResearchExportSession(export_id=export.id, session_public_id=ref) for ref in refs)
+    db.session.execute(ResearchExportArchive.__table__.insert().values(export_id=export.id,
+        archive_sha256=hashlib.sha256(data).hexdigest(), byte_size=len(data), content=data,
+        expiry_at_ms=counts["_expiry_at_ms"]))
+    db.session.add(ResearchAuditEvent(action=ResearchAuditAction.EXPORT_CREATED.value,
+        channel=ResearchAuditChannel.WORKSPACE.value, actor_id=actor.id, export_id=export.id,
+        configuration_id=configuration_id, detail_code=EXPORT_SCOPE_DETAIL_CODES[manifest["filters"]["provenance"]],
+        count_value=counts["sessions"]))
     public_id = export.public_id
-    try:
-        db.session.commit()
+    try: db.session.commit()
     except IntegrityError:
         db.session.rollback()
         return CONFLICT, None
     return CREATED, public_id
-
 
 def download_export(actor_id, export_public_id):
     """``(status, zip_bytes)``: the stored bytes of exactly this export.
@@ -729,14 +256,5 @@ def archive_available(export_id):
 
 
 def archive_is_expired(export, archive):
-    """Refuse expired bytes even if a scheduled purge has missed its run."""
-    if export.event_schema_version == "natural-use-events.v2" and archive.expiry_at_ms is not None:
-        return archive.expiry_at_ms <= now_ms()
-    from sqlalchemy import func
-    # Old archives lack a stored expiry. The shortest recorded configuration
-    # retention is conservative for mixed legacy archives and never extends it.
-    days = db.session.query(func.min(ResearchConfiguration.retention_days)).scalar()
-    if days is None:
-        days = current_app.config.get("RESEARCH_RETENTION_DAYS")
-    return days is None or (export.oldest_last_seen_ms is not None and
-                           export.oldest_last_seen_ms + days * 86400000 <= now_ms())
+    """Refuse expired archives even if a scheduled cleanup missed its run."""
+    return archive.expiry_at_ms is None or archive.expiry_at_ms <= now_ms()

@@ -38,7 +38,7 @@ from app.extensions import db
 from app.models.enums import ResearchConfigurationStatus
 from app.models.research_common import ID_TYPE, ResearchDataError, changed_columns, in_list_sql
 from app.models.submission_feedback import whole_second_utc
-from app.services.research_event_dictionary import SUPPORTED_EVENT_SCHEMA_VERSIONS
+from app.services.research_storage_contract import COLLECTION_SCHEMA, INSTALLED_CONFIGURATION_SCHEMAS
 
 CONFIGURATION_LABEL_MAX_LENGTH = 80
 CONFIGURATION_CURRENT_MARKER = 1
@@ -107,7 +107,7 @@ class ResearchConfiguration(db.Model):
             name="ck_research_configurations_status_valid",
         ),
         db.CheckConstraint(
-            in_list_sql("event_schema_version", SUPPORTED_EVENT_SCHEMA_VERSIONS),
+            in_list_sql("event_schema_version", INSTALLED_CONFIGURATION_SCHEMAS),
             name="ck_research_configurations_schema_valid",
         ),
         db.CheckConstraint("version_number > 0", name="ck_research_configurations_number_positive"),
@@ -179,7 +179,7 @@ class ResearchConfiguration(db.Model):
 
     @validates("event_schema_version")
     def validate_schema(self, _key, value):
-        if value not in SUPPORTED_EVENT_SCHEMA_VERSIONS:
+        if value != COLLECTION_SCHEMA:
             raise ValueError(f"Unsupported event schema version: {value}")
         return value
 

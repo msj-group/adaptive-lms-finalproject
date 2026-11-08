@@ -6,6 +6,7 @@
   <a class="portal-nav__link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
 {% endblock %}
 {% block portal_content %}
+{% include 'teacher/activities/_branch_bar.html' %}
 <div class="activity-surface activity-review-list">
 
 {#- Phase 4 / M02 + M03, read only. `assignment` and every entry of
@@ -55,7 +56,7 @@
 </div>
 
 <div class="ds-row yc-actions" style="margin-bottom: var(--space-6)">
-  <a class="btn btn--secondary" href="{{ url_for('teacher.activities', group=group.public_id) }}">Back to Activities</a>
+
 </div>
 
 <section class="dash-section yc-section" style="margin-top: 0">

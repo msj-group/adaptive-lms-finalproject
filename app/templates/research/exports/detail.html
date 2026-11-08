@@ -10,9 +10,9 @@
 <section class="rs-card"><header class="rs-card-head"><h2>Snapshot details</h2><span class="badge {{ 'badge--success' if available else 'badge--neutral' }}">{{ 'ZIP available' if available else 'ZIP unavailable' }}</span></header>
 <table class="dash-table" style="width:100%">
   <tbody>
-    <tr><th scope="row" style="text-align:left">Format</th><td>{{ export.export_format }}</td></tr>
-    <tr><th scope="row" style="text-align:left">Event schema</th><td>{{ export.event_schema_version }}</td></tr>
-    <tr><th scope="row" style="text-align:left">Configuration version</th><td>{{ version if version is not none else "All versions" }}</td></tr>
+    <tr><th scope="row" style="text-align:left">Format</th><td>CSV dataset and manifest</td></tr>
+    <tr><th scope="row" style="text-align:left">Event schema</th><td>Natural-use observations</td></tr>
+    <tr><th scope="row" style="text-align:left">Collection settings</th><td>{{ version if version is not none else "All settings" }}</td></tr>
     <tr><th scope="row" style="text-align:left">Session start period ({{ export.timezone }})</th><td>{{ export.period_from or "unbounded" }} &ndash; {{ export.period_to or "unbounded" }}</td></tr>
     <tr><th scope="row" style="text-align:left">Provenance</th><td>{{ provenance_labels[provenance] }}</td></tr>
     <tr><th scope="row" style="text-align:left">Snapshot cutoff</th><td>{{ to_local(export.cutoff_ms).strftime("%d %b %Y, %H:%M:%S") }}</td></tr>
@@ -31,5 +31,5 @@
   <a class="btn btn--secondary" href="{{ url_for('research.exports') }}">Back to exports</a>
 </div>
 </section>
-<dialog class="rs-dialog" id="export-manifest" aria-labelledby="manifest-title"><header class="rs-dialog-head"><h2 id="manifest-title">Manifest verification</h2><button type="button" class="st-icon-button" data-rs-close aria-label="Close manifest">{{ icons.icon('close') }}</button></header><dl class="rs-facts"><dt>Format</dt><dd>{{ export.export_format }}</dd><dt>Event schema</dt><dd>{{ export.event_schema_version }}</dd><dt>Source</dt><dd>{{ provenance_labels[provenance] }}</dd><dt>Snapshot cutoff</dt><dd>{{ to_local(export.cutoff_ms).strftime('%Y-%m-%d %H:%M:%S') }}</dd></dl><p class="workspace-meta">Manifest SHA-256</p><code class="workspace-digest">{{ export.manifest_digest }}</code><div class="rs-actions" style="margin-top:18px"><button type="button" class="btn btn--primary" data-copy="{{ export.manifest_digest }}">Copy SHA-256</button><button type="button" class="btn btn--secondary" data-rs-close>Close</button></div></dialog>
+<dialog class="rs-dialog" id="export-manifest" aria-labelledby="manifest-title"><header class="rs-dialog-head"><h2 id="manifest-title">Manifest verification</h2><button type="button" class="st-icon-button" data-rs-close aria-label="Close manifest">{{ icons.icon('close') }}</button></header><dl class="rs-facts"><dt>Format</dt><dd>CSV dataset and manifest</dd><dt>Event schema</dt><dd>Natural-use observations</dd><dt>Source</dt><dd>{{ provenance_labels[provenance] }}</dd><dt>Snapshot cutoff</dt><dd>{{ to_local(export.cutoff_ms).strftime('%Y-%m-%d %H:%M:%S') }}</dd></dl><p class="workspace-meta">Manifest SHA-256</p><code class="workspace-digest">{{ export.manifest_digest }}</code><div class="rs-actions" style="margin-top:18px"><button type="button" class="btn btn--primary" data-copy="{{ export.manifest_digest }}">Copy SHA-256</button><button type="button" class="btn btn--secondary" data-rs-close>Close</button></div></dialog>
 {% endblock %}

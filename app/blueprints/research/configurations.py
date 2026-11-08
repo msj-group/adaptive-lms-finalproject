@@ -16,6 +16,8 @@ these pages is an ethics approval or a consent document, and the pages say
 so.
 """
 
+from app.services.research_storage_contract import COLLECTION_SCHEMA
+
 from flask import abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 
@@ -46,7 +48,7 @@ _MESSAGES = {
     tx.NOT_ACTIVE: ("Only the active configuration can be paused or resumed.", "warning"),
     tx.NO_RETENTION: ("The deployment has not supplied RESEARCH_RETENTION_DAYS, so no "
                       "configuration can be activated.", "danger"),
-    tx.V2_NOT_READY: ("V2 needs the reviewed database update, an enabled release gate and the approved 45-day retention before activation.", "danger"),
+    tx.COLLECTION_NOT_READY: ("Collection requires the installed schema, collection enabled and the approved 45-day retention before activation.", "danger"),
     tx.PERIOD_ENDED: ("The collection period of this configuration has already ended.",
                       "warning"),
     tx.UNCHANGED: ("Nothing changed.", "info"),
@@ -75,14 +77,10 @@ def _or_404(public_id):
 
 
 def _defaults(form):
-    for column, (_low, _high, default) in POLICY_BOUNDS.items():
-        getattr(form, column).data = default
-    form.event_schema_version.data = "natural-use-events.v1"
-    if current_app.config.get("RESEARCH_V2_ENABLED", False):
-        from app.services.research_v2_policy import POLICY
-        form.event_schema_version.data = "natural-use-events.v2"
-        for column, value in POLICY.items():
-            getattr(form, column).data = value
+    from app.services.research_policy import POLICY
+    form.event_schema_version.data = COLLECTION_SCHEMA
+    for column, value in POLICY.items():
+        getattr(form, column).data = value
 
 
 def _fill(form, configuration):
@@ -205,7 +203,7 @@ def configuration_activate(configuration_public_id):
                          configuration_public_id=configuration.public_id)
     form = ActivateForm()
     if not form.validate_on_submit():
-        flash("Tick the confirmation box to activate this version.", "warning")
+        flash("Tick the confirmation box to activate these settings.", "warning")
         return redirect(detail_url)
     payload = tokens.load_token(tokens.PURPOSE_ACTIVATE, form.state.data,
                                 current_user.public_id, configuration.public_id)

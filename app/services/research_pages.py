@@ -3,6 +3,10 @@ from app.services.research_event_dictionary import page_id_for_endpoint
 
 
 def page_code(endpoint):
+    # Workbook HTML was added after the original page dictionary. Reuse the
+    # existing reader code; do not collect private image/media responses.
+    if endpoint in {"student.workbook", "student.workbook_lesson"}:
+        return "reader"
     if endpoint == "workspace.search":
         return "search"
     if endpoint == "workspace.help_page":

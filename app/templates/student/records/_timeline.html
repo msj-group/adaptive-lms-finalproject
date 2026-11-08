@@ -1,3 +1,4 @@
+{% import 'curriculum/_media.html' as custom_media %}
 {% if items %}
 <ol class="record-timeline">
   {% set dates = namespace(previous=none) %}
@@ -20,7 +21,7 @@
       {% if item.changes is defined %}<dl class="record-corrections">{% for label,before,after in item.changes %}<div><dt>{{ _(label) }}</dt><dd><span dir="auto">{{ before if before is not none else _('Empty') }}</span><span aria-hidden="true"> → </span><span class="sr-only">{{ _('Changed to') }} </span><strong dir="auto">{{ after if after is not none else _('Empty') }}</strong></dd></div>{% endfor %}</dl>
       {% elif item.kind in ['grades', 'attendance', 'progress'] %}{% if item.text %}<p class="record-text" dir="auto">{{ _(item.text) if item.kind in ['attendance', 'progress'] else item.text }}</p>{% endif %}{% if item.note %}<p class="record-text ds-section__desc" dir="auto">{{ _(item.note) if item.kind == 'progress' else item.note }}</p>{% endif %}
       {% endif %}
-      {% if item.audio_url|default(none) %}<div class="record-audio"><span>Submitted recording</span><audio controls preload="none" aria-label="{{ _('Submitted recording') }}: {{ item.title }}" src="{{ item.audio_url }}"></audio><a href="{{ item.audio_url }}?download=yes">Download recording</a></div>{% endif %}
+      {% if item.audio_url|default(none) %}<div class="record-audio"><span>Submitted recording</span>{{ custom_media.inline_player(item.audio_url,'audio',label=_('Submitted recording'),preload='none') }}<a href="{{ item.audio_url }}?download=yes">Download recording</a></div>{% endif %}
       {% if item.kind in ['assignments', 'speaking'] and (item.text or item.note) %}<details class="record-receipt"><summary>Submission details {{ ui.icon('chevron-down', 15) }}</summary>{% if item.text %}<div class="record-text" dir="auto">{{ item.text }}</div>{% endif %}{% if item.note %}<h4>Teacher feedback</h4><div class="record-text" dir="auto">{{ item.note }}</div>{% endif %}</details>{% endif %}
     </article>
   </li>

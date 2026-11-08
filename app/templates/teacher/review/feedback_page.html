@@ -1,4 +1,5 @@
-{% extends 'layouts/portal_base.html' %}
+{% extends 'layouts/activity_base.html' %}
+{% set activity_phase = 'review' %}
 {% block title %}Feedback — {{ submission.student_name }}{% endblock %}
 {% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/review.css', v='review-feedback-flow-20261018') }}">{% endblock %}
 {% block portal_content %}<div class="teacher-review review-standalone">{% include 'teacher/review/_feedback_editor.html' %}</div>{% endblock %}

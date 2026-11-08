@@ -26,6 +26,8 @@ or two activations racing for the current marker) is rolled back and
 reported as :data:`CONFLICT`; no SQL or driver text reaches a page.
 """
 
+from app.services.research_storage_contract import COLLECTION_SCHEMA
+
 from sqlalchemy import func
 from flask import current_app
 from sqlalchemy.exc import IntegrityError
@@ -47,7 +49,6 @@ from app.models import (
 from app.models.submission_feedback import whole_second_utc
 from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
 from app.services.research_collection import close_open_sessions
-from app.services.research_event_dictionary import EVENT_SCHEMA_VERSION
 
 CREATED = "created"
 UPDATED = "updated"
@@ -63,7 +64,7 @@ UNAUTHORIZED = "unauthorized"
 NOT_DRAFT = "not_draft"
 NOT_ACTIVE = "not_active"
 NO_RETENTION = "no_retention"
-V2_NOT_READY = "v2_not_ready"
+COLLECTION_NOT_READY = "collection_not_ready"
 PERIOD_ENDED = "period_ended"
 
 _RESEARCHER = UserRole.RESEARCHER.value
@@ -137,11 +138,11 @@ def _commit(success):
 
 def create_draft(actor_id, values):
     """``(status, public_id)``. The version number is the next free one."""
-    schema = values.get("event_schema_version", EVENT_SCHEMA_VERSION)
-    if schema not in (EVENT_SCHEMA_VERSION, "natural-use-events.v2"):
+    schema = values.get("event_schema_version", COLLECTION_SCHEMA)
+    if schema != COLLECTION_SCHEMA:
         return CONFLICT, None
-    if schema == "natural-use-events.v2" and not current_app.config.get("RESEARCH_V2_ENABLED", False):
-        return CONFLICT, None
+    if not current_app.config.get("RESEARCH_COLLECTION_ENABLED", False):
+        return COLLECTION_NOT_READY, None
     actor = _lock_researcher(actor_id)
     if actor is None:
         return UNAUTHORIZED, None
@@ -152,6 +153,9 @@ def create_draft(actor_id, values):
         raise ValueError("The configuration version number capacity has been reached.")
     sequence.last_number += 1
     now = whole_second_utc()
+    from app.models.research_observations import ResearchProtocol
+    from app.services.research_policy import POLICY, PROTOCOL
+    values = {**values, **POLICY}
     configuration = ResearchConfiguration(
         version_number=number + 1,
         event_schema_version=schema,
@@ -164,12 +168,7 @@ def create_draft(actor_id, values):
     )
     db.session.add(configuration)
     db.session.flush()
-    if schema == "natural-use-events.v2":
-        from app.models.research_v2 import ResearchV2Protocol
-        from app.services.research_v2_policy import POLICY, PROTOCOL
-        for column, value in POLICY.items():
-            setattr(configuration, column, value)
-        db.session.add(ResearchV2Protocol(configuration_id=configuration.id, created_at_ms=now_ms(), **PROTOCOL))
+    db.session.add(ResearchProtocol(configuration_id=configuration.id, created_at_ms=now_ms(), **PROTOCOL))
     _audit(ResearchAuditAction.CONFIGURATION_CREATED.value, actor.id, configuration.id)
     public_id = configuration.public_id
     result = _commit(CREATED)
@@ -191,15 +190,17 @@ def update_draft(actor_id, public_id, expected_version, values):
     if configuration.version != expected_version:
         db.session.rollback()
         return STALE
+    if configuration.event_schema_version != COLLECTION_SCHEMA:
+        db.session.rollback()
+        return NOT_DRAFT
     if values.get("event_schema_version", configuration.event_schema_version) != configuration.event_schema_version:
         db.session.rollback()
         return CONFLICT
-    if configuration.event_schema_version == "natural-use-events.v2":
-        if not current_app.config.get("RESEARCH_V2_ENABLED", False):
-            db.session.rollback()
-            return CONFLICT
-        from app.services.research_v2_policy import POLICY
-        values = {**values, **POLICY}
+    if not current_app.config.get("RESEARCH_COLLECTION_ENABLED", False):
+        db.session.rollback()
+        return COLLECTION_NOT_READY
+    from app.services.research_policy import POLICY
+    values = {**values, **POLICY}
     changed = [c for c in EDITABLE_COLUMNS if getattr(configuration, c) != values[c]]
     if not changed:
         db.session.rollback()
@@ -235,15 +236,17 @@ def activate(actor_id, public_id, expected_version, retention_days):
     if target.version != expected_version:
         db.session.rollback()
         return STALE
+    if target.event_schema_version != COLLECTION_SCHEMA:
+        db.session.rollback()
+        return COLLECTION_NOT_READY
     if retention_days is None:
         db.session.rollback()
         return NO_RETENTION
-    if target.event_schema_version == "natural-use-events.v2":
-        from app.models.research_v2 import ResearchV2Protocol
-        if (not current_app.config.get("RESEARCH_V2_ENABLED", False) or retention_days != 45
-                or db.session.get(ResearchV2Protocol, target.id) is None):
-            db.session.rollback()
-            return V2_NOT_READY
+    from app.models.research_observations import ResearchProtocol
+    if (not current_app.config.get("RESEARCH_COLLECTION_ENABLED", False) or retention_days != 45
+            or db.session.get(ResearchProtocol, target.id) is None):
+        db.session.rollback()
+        return COLLECTION_NOT_READY
     now = whole_second_utc()
     if target.collection_ends_at <= now:
         db.session.rollback()
@@ -293,7 +296,7 @@ def set_collecting(actor_id, public_id, expected_version, collecting):
     if configuration.status != _ACTIVE:
         db.session.rollback()
         return NOT_ACTIVE
-    if collecting and configuration.event_schema_version == "natural-use-events.v2" and not current_app.config.get("RESEARCH_V2_ENABLED", False):
+    if collecting and (configuration.event_schema_version != COLLECTION_SCHEMA or not current_app.config.get("RESEARCH_COLLECTION_ENABLED", False)):
         db.session.rollback()
         return CONFLICT
     if configuration.version != expected_version:

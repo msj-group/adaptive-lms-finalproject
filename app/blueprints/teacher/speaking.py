@@ -987,6 +987,8 @@ def speaking_create(group_public_id):
     genuinely concurrent replay loses at the database and is turned into
     the existing activity rather than a second one.
     """
+    if request.method == "GET":
+        return redirect(url_for("teacher.activity_start",group=group_public_id,type="speaking"))
     preview_group = _teacher_group_or_404(group_public_id)
     actor_id = current_user.id
     actor_public_id = current_user.public_id

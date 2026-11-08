@@ -109,3 +109,17 @@ html[dir='rtl'] .notif-preview-all svg,html[dir='rtl'] .notif-open svg { transfo
 @media(prefers-reduced-motion:reduce) { .yc-workspace .notif-preview { animation:none; } }
 @media(forced-colors:active) { .yc-workspace :is(.notif-inbox,.notif-preview,.notif-item--unread,.notif-filter[aria-current]) { border:1px solid CanvasText; } .yc-workspace .notif-status i { background:CanvasText; } }
 @media print { .notif-bell,.notif-toolbar,.notif-mark-all,.notif-item__actions,.notif-pagination { display:none; } .yc-workspace .notif-inbox { background:transparent; box-shadow:none; } .yc-workspace .notif-item { break-inside:avoid; } }
+
+/* All preview actions share the title bar; the body contains notices only. */
+.notif-preview .notif-preview-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; }
+.notif-preview-heading>h2 { min-width:0; margin:0; font-size:17px; }
+.notif-preview-actions { display:flex; align-items:center; gap:3px; flex-shrink:0; }
+.notif-preview .notif-preview-mark-all { margin:0; padding:0; border:0; }
+.notif-preview .notif-preview-actions .figma-icon-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; width:auto; min-width:40px; height:40px; padding:8px; font-size:11px; text-decoration:none; flex-shrink:0; }
+.notif-preview-actions svg { width:18px; height:18px; flex-shrink:0; }
+.notif-preview-actions [hidden] { display:none!important; }
+.notif-action-label { display:none; }
+@media(min-width:1024px) { .notif-preview .notif-preview-heading { flex-wrap:wrap; }.notif-preview-actions { margin-inline-start:auto; }.notif-action-label { display:inline; } }
+
+.notif-preview-heading>h2 { overflow-wrap:anywhere; }
+.notif-preview-actions>a .notif-action-label { display:inline; }

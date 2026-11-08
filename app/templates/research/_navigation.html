@@ -4,9 +4,9 @@
 {% set destinations = [
   ('Overview','research.dashboard','dashboard',endpoint == 'research.dashboard',{}),
   ('Sessions','research.sessions','activity',endpoint in ['research.sessions','research.session_detail'],{}),
-  ('Collection quality','research.v2_review','chart',endpoint == 'research.v2_review' and not group_view,{}),
+  ('Collection quality','research.collection_quality','chart',endpoint == 'research.collection_quality' and not group_view,{}),
   ('Configuration','research.configurations','settings','research.configuration' in endpoint,{}),
-  ('Evaluation groups','research.v2_review','users',endpoint == 'research.v2_review' and group_view,{'view':'groups'}),
+  ('Evaluation groups','research.collection_quality','users',endpoint == 'research.collection_quality' and group_view,{'view':'groups'}),
   ('Export center','research.exports','file',endpoint in ['research.exports','research.export_create'] and request.args.get('view') != 'archive',{}),
   ('Archive','research.exports','layers',endpoint == 'research.export_detail' or endpoint == 'research.exports' and request.args.get('view') == 'archive',{'view':'archive'}),
   ('Storage','research.storage','room',endpoint == 'research.storage',{}),

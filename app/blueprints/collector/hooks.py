@@ -6,14 +6,14 @@
   on every Student page of an eligible Student, or ``None``. The eligibility
   preview is memoised per request, and it **fails closed**: any error means
   "render nothing", never a broken page. It renders no visible research
-  notice or indicator of any kind; v2 additionally prepares server presence
+  notice or indicator of any kind; collection prepares server presence
   in an isolated transaction before signing its scope. The only Student-facing
   research element is the feedback question itself, shown only when sampled.
 - :func:`note_outcome` -- a Student route states a server-confirmed outcome.
   It only appends to a per-request list: no query, no write, nothing that can
   fail an academic operation.
 - :func:`flush_outcomes` -- an ``after_request`` hook that hands the noted
-  outcomes to ``research_collection.record_outcomes`` after the route has
+  outcomes to ``research_observation_collection.record_outcomes`` after the route has
   already committed or rolled back. It never raises and never changes the
   response.
 
@@ -22,29 +22,24 @@ from a possibly expired ``current_user``, so none of this reloads a user row
 or opens a read ahead of a route's locks.
 """
 
+from app.services.research_storage_contract import COLLECTION_SCHEMA
+
 from flask import current_app, g, request, session, url_for
 from flask_wtf.csrf import generate_csrf
 
 from app.models import CAUSE_COLUMNS, RATING_ANCHORS, User, UserRole
 from app.services import research_collection as collection
 from app.services.research_event_dictionary import (
-    EVENT_SCHEMA_VERSION,
     EVENT_SPECS,
-    MAX_BATCH_EVENTS,
-    PROGRESS_PAGE_IDS,
     SOURCE_SERVER,
     page_id_for_endpoint,
 )
-from app.services.research_delivery_scope import issue_delivery_scope
-from app.services.research_event_validation import is_uuid
 from app.services.research_scope import collection_context
 
 #: The signed-cookie key naming the browser's research session.
 SESSION_REF_KEY = "research_session_ref"
 
-HEARTBEAT_MS = 30_000
 FLUSH_MS = 15_000
-MAX_BUFFER = 200
 MAX_NOTED_OUTCOMES = 5
 
 _STUDENT = UserRole.STUDENT.value
@@ -84,13 +79,13 @@ def tz_name():
     return current_app.config.get("APP_TIMEZONE", "UTC")
 
 
-def _prepare_v2_presence(context):
+def _prepare_collection_presence(context):
     """Isolate the presence write from the route's SQLAlchemy transaction."""
-    if "research.v2.prepared_ref" in request.environ:
-        return request.environ["research.v2.prepared_ref"]
+    if "research.collection.prepared_ref" in request.environ:
+        return request.environ["research.collection.prepared_ref"]
     from app.extensions import db
-    from app.services.research_v2_collection import prepare_presence
-    from app.blueprints.collector.routes_v2 import source_release
+    from app.services.research_observation_collection import prepare_presence
+    from app.blueprints.collector.routes import source_release
 
     # Capture primitives while the parent context is active. In particular,
     # use the login's accepted auth version, not a later unlocked DB value.
@@ -112,8 +107,8 @@ def _prepare_v2_presence(context):
             ref = prepare_presence(**values)
         except Exception as exc:
             db.session.rollback()
-            app.logger.warning("V2 presence preparation unavailable (%s)", type(exc).__name__)
-    request.environ["research.v2.prepared_ref"] = ref
+            app.logger.warning("Collection presence preparation unavailable (%s)", type(exc).__name__)
+    request.environ["research.collection.prepared_ref"] = ref
     return ref
 
 
@@ -129,90 +124,39 @@ def collector_view(progress_position=None, progress_total=None):
         context = cached_context(user_id)
         if context is None:
             return None
-        if context.event_schema_version == "natural-use-events.v2":
-            if not current_app.config.get("RESEARCH_V2_ENABLED", False):
+        if context.event_schema_version == COLLECTION_SCHEMA:
+            if not current_app.config.get("RESEARCH_COLLECTION_ENABLED", False):
                 return None
-            from app.services.research_v2_pages import page_code
-            from app.services.research_delivery_scope import issue_v2_scope
+            from app.services.research_pages import page_code
+            from app.services.research_delivery_scope import issue_collection_scope
             from app.i18n import ui_language
             code = page_code(request.endpoint)
             if code is None:
                 return None
-            ref = _prepare_v2_presence(context)
+            ref = _prepare_collection_presence(context)
             if ref is None:
                 return None
             # Resolve inactivity/configuration successors before HMAC signing;
             # otherwise the first client batch would carry a stale reference.
             session[SESSION_REF_KEY] = ref
-            return {"v2": True, "anchors": RATING_ANCHORS, "causes": CAUSE_COLUMNS,
+            return {"collecting": True, "anchors": RATING_ANCHORS, "causes": CAUSE_COLUMNS,
                     "config": {"schema_version": context.event_schema_version,
-                        "scope_token": issue_v2_scope(current_app.config["SECRET_KEY"],
+                        "scope_token": issue_collection_scope(current_app.config["SECRET_KEY"],
                             context.user_public_id, context.auth_version, context.configuration_public_id,
                             context.configuration_version, session[SESSION_REF_KEY]),
                         "page_code": code, "context_code": code, "activity_code": code,
                         "locale": ui_language(), "csrf": generate_csrf(),
-                        "batch_url": url_for("collector.events_v2"), "sample_url": url_for("collector.sample_v2"),
-                        "clock_url": url_for("collector.clock_v2"),
-                        "prompt_url": url_for("collector.prompt_action_v2", prompt_ref="PROMPT", action="ACTION"),
+                        "batch_url": url_for("collector.events"), "sample_url": url_for("collector.sample"),
+                        "clock_url": url_for("collector.clock"),
+                        "prompt_url": url_for("collector.prompt_action", prompt_ref="PROMPT", action="ACTION"),
                         "policy": {"batch_size": 30, "max_buffer": 200, "flush_ms": FLUSH_MS}}}
-        if context.event_schema_version != EVENT_SCHEMA_VERSION:
-            return None
-        page_id = page_id_for_endpoint(request.endpoint)
-        if page_id is None:
-            return None
-        if not is_uuid(session.get(SESSION_REF_KEY)):
-            session[SESSION_REF_KEY] = collection.new_session_ref()
-        progress = None
-        if page_id in PROGRESS_PAGE_IDS and _positive(progress_position) \
-                and _positive(progress_total) and progress_position <= progress_total:
-            progress = {"position": progress_position, "count": progress_total}
-        view = {
-            "lookback_phrase": lookback_phrase(context.policy["lookback_seconds"]),
-            "anchors": RATING_ANCHORS,
-            "causes": CAUSE_COLUMNS,
-        }
-        view["config"] = {
-            "schema": EVENT_SCHEMA_VERSION,
-            "deliveryScope": issue_delivery_scope(
-                current_app.config["SECRET_KEY"], context.user_public_id,
-                context.auth_version, context.configuration_public_id,
-                context.configuration_version,
-            ),
-            "page": page_id,
-            "progress": progress,
-            "csrf": generate_csrf(),
-            "eventsUrl": url_for("collector.events"),
-            "promptUrl": url_for("collector.prompt_action", prompt_public_id="PROMPT",
-                                 action="ACTION"),
-            "heartbeatMs": HEARTBEAT_MS,
-            "flushMs": FLUSH_MS,
-            "batchSize": MAX_BATCH_EVENTS,
-            "maxBuffer": MAX_BUFFER,
-        }
-        return view
+        return None
     except Exception:
         current_app.logger.exception("The research collector could not be prepared")
         return None
 
 
-def lookback_phrase(seconds):
-    """How the question names its window, from the versioned configuration
-    value -- so the wording always matches the window actually stored."""
-    if seconds % 60 == 0:
-        minutes = seconds // 60
-        return "minute" if minutes == 1 else f"{_WORDS.get(minutes, minutes)} minutes"
-    return f"{seconds} seconds"
-
-
-_WORDS = {2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight",
-          9: "nine", 10: "ten"}
-
-
-def _positive(value):
-    return isinstance(value, int) and not isinstance(value, bool) and value > 0
-
-
-def note_outcome(event_type, detail, count=None, position=None):
+def note_outcome(event_type, detail, count=None, position=None, *, unit_completion=False):
     """Remember one server-confirmed outcome for :func:`flush_outcomes`.
 
     An undeclared type or detail is dropped (and logged), never stored.
@@ -221,6 +165,10 @@ def note_outcome(event_type, detail, count=None, position=None):
     if spec is None or spec.source != SOURCE_SERVER or detail not in spec.details:
         current_app.logger.warning("Undeclared research outcome %r/%r ignored", event_type, detail)
         return
+    # Set only by the Unit transaction owner, after it establishes the result.
+    # Browser hints never authorize the semantic scope of a confirmed outcome.
+    if unit_completion and event_type == "lesson_completion":
+        request.environ["research.unit_completion"] = True
     outcomes = request.environ.setdefault("research.outcomes", [])
     if len(outcomes) < MAX_NOTED_OUTCOMES:
         outcomes.append(
@@ -240,28 +188,28 @@ def flush_outcomes(response):
         if user_id is None or cached_context(user_id) is None:
             return response
         context = cached_context(user_id)
-        if context.event_schema_version == "natural-use-events.v2":
-            if not current_app.config.get("RESEARCH_V2_ENABLED", False):
+        if context.event_schema_version == COLLECTION_SCHEMA:
+            if not current_app.config.get("RESEARCH_COLLECTION_ENABLED", False):
                 return response
-            from app.services import research_v2_collection
-            from app.services.research_v2_dictionary import is_opaque_ref
-            from app.services.research_v2_dictionary import CONTEXT_CODES
-            from app.blueprints.collector.routes_v2 import source_release
+            from app.services import research_observation_collection
+            from app.services.research_dictionary import is_opaque_ref
+            from app.services.research_dictionary import CONTEXT_CODES
+            from app.blueprints.collector.routes import source_release
             hints = {}
             for key in ("action_ref", "attempt_ref", "context_ref"):
-                value = request.form.get("research_v2_" + key)
+                value = request.form.get("research_" + key)
                 if is_opaque_ref(value):
                     hints[key] = value
-            code = request.form.get("research_v2_context_code")
+            code = request.form.get("research_context_code")
             if code in CONTEXT_CODES:
                 hints["context_code"] = code
-            from app.services.research_delivery_scope import V2DeliveryProof
-            proof = V2DeliveryProof(request.form.get("research_v2_scope_token"), current_app.config["SECRET_KEY"], session.get(SESSION_REF_KEY))
-            ref = research_v2_collection.record_outcomes(user_id, session.get(SESSION_REF_KEY),
-                outcomes, deployment_provenance(), source_release(), hints, proof=proof)
+            from app.services.research_delivery_scope import CollectionDeliveryProof
+            proof = CollectionDeliveryProof(request.form.get("research_scope_token"), current_app.config["SECRET_KEY"], session.get(SESSION_REF_KEY))
+            ref = research_observation_collection.record_outcomes(user_id, session.get(SESSION_REF_KEY),
+                outcomes, deployment_provenance(), source_release(), hints, proof=proof,
+                unit_completion=request.environ.get("research.unit_completion", False))
         else:
-            ref = collection.record_outcomes(
-                user_id, session.get(SESSION_REF_KEY), outcomes, deployment_provenance())
+            return response
         if ref and ref != session.get(SESSION_REF_KEY):
             session[SESSION_REF_KEY] = ref
     except Exception as exc:

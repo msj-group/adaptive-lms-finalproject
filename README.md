@@ -11,6 +11,13 @@ The approved repair preserves this architecture and improves it in stages;
 it is not a rewrite. Interface text, code and repository documentation are
 English. Reports to the project owners are Arabic.
 
+Research collection has one current natural-use method for phone and computer
+browsers. Its source names are descriptive; Overview, Sessions, quality and exports
+read the same observations. The single gate is `RESEARCH_COLLECTION_ENABLED`
+(default false). Enable it deliberately after schema/deployment review; configure
+45-day retention, then activate settings and start through the Researcher UI.
+See [the collection guide](docs/RESEARCH_COLLECTION_UNIFICATION_20261108.md).
+
 ## Requirements for local development
 
 These requirements apply to a **new installation**. An existing configured
@@ -96,7 +103,7 @@ APP_TIMEZONE=Africa/Tripoli
 MATERIAL_STORAGE_ROOT=storage/materials
 PAYMENT_PROVIDER_MODE=disabled
 RESEARCH_DATA_PROVENANCE=development
-RESEARCH_RETENTION_DAYS=15
+RESEARCH_RETENTION_DAYS=45
 RAILWAY_ALLOW_STUDY=0
 ```
 
@@ -171,7 +178,7 @@ supports this Python/WSGI runtime, dependencies, private storage and operations.
 | Private uploads | Persistent writable storage outside public assets. Back up both the database and private files. Ephemeral container storage alone loses uploads during redeploys. |
 | Request limits | Books/documents and video accept up to 500 MiB per file; images remain 10 MiB and audio 50 MiB. Allow multipart overhead at the proxy (501m in the Nginx example). PDFs retain a 1,000-page bound. |
 | Rate limiting | `RATELIMIT_STORAGE_URI=memory://` is process-local. Additional workers/replicas require a separately reviewed shared limiter backend first. |
-| Research | Keep `RESEARCH_DATA_PROVENANCE=development`, `RAILWAY_ALLOW_STUDY=0` and `RESEARCH_RETENTION_DAYS=15`. Research configurations remain paused until separately authorized. |
+| Research | Keep `RESEARCH_DATA_PROVENANCE=development`, `RAILWAY_ALLOW_STUDY=0` and `RESEARCH_RETENTION_DAYS=45`. Research configurations remain paused until separately authorized. |
 | Operations | Monitor `/health/ready`, retain private count-only operational logs, maintain tested backups, and operate the approved daily 15-day retention job separately from web startup. |
 
 ### Railway: retired hosting configuration
@@ -344,7 +351,7 @@ research decision.
 
 The current approved storage policy is **15-day retention with a daily purge**.
 There is no pressure-only replacement in the approved repair contract.
-The runtime expects an explicit `RESEARCH_RETENTION_DAYS=15` setting; it does
+The runtime expects an explicit `RESEARCH_RETENTION_DAYS=45` setting; it does
 not obtain that value from this README. The recorded local daily job uses
 `scripts/run_research_retention.py`. It expires research sessions by last
 activity and removes their events, prompts and expired archive bytes while

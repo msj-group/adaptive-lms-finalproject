@@ -237,9 +237,9 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       if (!isMessage && (from.mode === 'detail' ? !['publish','withdraw'].includes(post.mode) || post.id !== from.id : postURL.href !== current.href)) return;
       cancelRead(); posting = true; validationDraft = true;
       let researchAttempt = null;
-      try { if (isMessage && window.researchV2) researchAttempt = window.researchV2.beginRequest({form, action_code:'send'}); } catch (_) {}
+      try { if (isMessage && window.researchCollector) researchAttempt = window.researchCollector.beginRequest({form, action_code:'send'}); } catch (_) {}
       const researchFinish = (detail) => {
-        try { if (window.researchV2) window.researchV2.finishRequest(researchAttempt, detail); } catch (_) {}
+        try { if (window.researchCollector) window.researchCollector.finishRequest(researchAttempt, detail); } catch (_) {}
       };
       const data = new FormData(form);
       if (event.submitter?.name) data.append(event.submitter.name, event.submitter.value);

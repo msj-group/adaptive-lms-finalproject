@@ -1,4 +1,5 @@
 {% from '_file_input.html' import file_input %}
+{% import 'curriculum/_media.html' as custom_media %}
   <div class="speaking-recorder" data-speaking-recorder data-recorder-state="ready">
     <div class="speaking-recorder-controls" data-recorder-controls hidden>
       <button type="button" class="speaking-mic-toggle" data-recorder-toggle
@@ -20,9 +21,9 @@
         as soon as it is replaced or discarded. -#}
     <div data-recorder-preview-block hidden style="margin-top: var(--space-4)">
       <div class="card__title" style="margin-bottom: var(--space-2)">Listen to your recording</div>
-      <audio data-recorder-preview data-research-media="speaking_playback" controls preload="metadata" style="width:100%"
+      <div class="course-media" data-course-media data-media-kind="audio"><audio data-recorder-preview data-research-media="speaking_playback" controls preload="metadata" style="width:100%"
              aria-label="Your recording, before you submit it">
-</audio>
+</audio>{{ custom_media.controls() }}</div>
     </div>
 
     <div class="alert alert--danger" style="margin-top: var(--space-4)" data-recorder-error hidden>

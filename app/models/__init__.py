@@ -405,10 +405,10 @@ from app.models.group_curriculum import GroupCurriculum
 from app.models.teaching_asset import CourseContentImport, GroupMaterialSource, TeachingAsset, TeachingAssetPin
 from app.models.attempt_submission_receipt import AttemptSubmissionReceipt
 from app.models.research_storage import ResearchConfigurationSequence, ResearchDataGap, ResearchExportSession
-from app.models.research_v2 import (
-    ResearchV2Protocol, ResearchV2SamplingState, ResearchV2SamplingOpportunity,
-    ResearchV2Event, ResearchV2Prompt, ResearchV2FeatureMembership,
-    ResearchV2DeliveryReceipt, ResearchV2EvaluationPartition,
+from app.models.research_observations import (
+    ResearchProtocol, ResearchSamplingState, ResearchSamplingOpportunity,
+    ResearchObservation, ResearchQuestion, ResearchFeatureMembership,
+    ResearchDeliveryReceipt, ResearchEvaluationGroup,
     ResearchQualityRun, ResearchQualityReport, ResearchQualityIncident,
 )
 from app.services import history_write_guards

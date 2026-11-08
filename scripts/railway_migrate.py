@@ -1,8 +1,8 @@
-"""Exact research-v2 migration with a cooperative lease and bounded checks.
+"""Exact research collection migration with a cooperative lease and bounded checks.
 
 An approved external backup and quiescent writers are execution prerequisites.
 The named lease coordinates migrators, never ordinary application writes.
-In-memory fingerprints are not a backup. Already-current releases preserve v2 data.
+In-memory fingerprints are not a backup. Already-current releases preserve collection data.
 """
 import hashlib
 import os
@@ -154,57 +154,57 @@ def _verify_schema(connection, metadata, *, newly_applied):
         options = inspector.get_table_options(name)
         _require(options.get("mysql_engine", "").lower() == "innodb"
                  and options.get("mysql_row_format", "").upper() == "DYNAMIC"
-                 and options.get("mysql_collate") == "utf8mb4_0900_bin", "Unexpected v2 storage options")
+                 and options.get("mysql_collate") == "utf8mb4_0900_bin", "Unexpected collection storage options")
         if newly_applied:
             _require(connection.exec_driver_sql("SELECT 1 FROM `" + name + "` LIMIT 1").first() is None,
-                     "New v2 tables must be empty")
+                     "New collection tables must be empty")
         columns = inspector.get_columns(name)
-        _require([column["name"] for column in columns] == list(model.columns.keys()), "Unexpected v2 columns")
+        _require([column["name"] for column in columns] == list(model.columns.keys()), "Unexpected collection columns")
         _require(inspector.get_pk_constraint(name)["constrained_columns"]
-                 == list(model.primary_key.columns.keys()), "Unexpected v2 primary key")
+                 == list(model.primary_key.columns.keys()), "Unexpected collection primary key")
         expected_unique = {tuple(column.name for column in constraint.columns)
                            for constraint in model.constraints if isinstance(constraint, sa.UniqueConstraint)}
         actual_unique = {tuple(constraint["column_names"])
                          for constraint in inspector.get_unique_constraints(name)}
-        _require(actual_unique == expected_unique, "Unexpected v2 unique keys")
+        _require(actual_unique == expected_unique, "Unexpected collection unique keys")
         for column in columns:
             expected = model.columns[column["name"]]
             reflected = sa.Column(column["name"], column["type"], nullable=column["nullable"])
             _require(not comparison.impl.compare_type(reflected, expected)
-                     and column["nullable"] == expected.nullable, "Unexpected v2 column type")
+                     and column["nullable"] == expected.nullable, "Unexpected collection column type")
             if isinstance(expected.type, sa.BigInteger):
-                _require(not getattr(column["type"], "unsigned", False), "Unexpected unsigned v2 integer")
+                _require(not getattr(column["type"], "unsigned", False), "Unexpected unsigned collection integer")
             if isinstance(expected.type, sa.String):
                 collation = connection.execute(sa.text(
                     "SELECT COLLATION_NAME FROM information_schema.COLUMNS "
                     "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=:table AND COLUMN_NAME=:column"
                 ), {"table": name, "column": column["name"]}).scalar_one()
-                _require(collation == "utf8mb4_0900_bin", "Unexpected v2 code collation")
+                _require(collation == "utf8mb4_0900_bin", "Unexpected collection code collation")
         expected_fks = {(tuple(item.parent.name for item in fk.elements), fk.elements[0].column.table.name,
                          tuple(item.column.name for item in fk.elements)) for fk in model.foreign_key_constraints}
         actual_fks = set()
         for fk in inspector.get_foreign_keys(name):
             _require(fk.get("referred_schema") in (None, connection.engine.url.database)
                      and all(value in (None, "RESTRICT", "NO ACTION")
-                             for value in fk.get("options", {}).values()), "Unexpected v2 foreign-key action")
+                             for value in fk.get("options", {}).values()), "Unexpected collection foreign-key action")
             actual_fks.add((tuple(fk["constrained_columns"]), fk["referred_table"], tuple(fk["referred_columns"])))
-        _require(actual_fks == expected_fks, "Unexpected v2 foreign keys")
+        _require(actual_fks == expected_fks, "Unexpected collection foreign keys")
         foreign_key_count += len(actual_fks)
         actual_indexes = {index["name"]: index for index in inspector.get_indexes(name)}
         for index in model.indexes:
             actual = actual_indexes.get(index.name, {})
             _require(actual.get("column_names") == [column.name for column in index.columns]
-                     and bool(actual.get("unique")) == bool(index.unique), "Unexpected v2 index")
+                     and bool(actual.get("unique")) == bool(index.unique), "Unexpected collection index")
             index_count += 1
         expected_checks = {str(check.name): str(check.sqltext)
                            for check in model.constraints if isinstance(check, sa.CheckConstraint)}
         actual_checks = {check["name"]: check["sqltext"] for check in inspector.get_check_constraints(name)}
-        _require(set(actual_checks) == set(expected_checks), "Unexpected v2 CHECK inventory")
+        _require(set(actual_checks) == set(expected_checks), "Unexpected collection CHECK inventory")
         for check_name, expression in expected_checks.items():
             _require(_normalized_check(actual_checks[check_name]) == _normalized_check(expression)
-                     and states.get((name, check_name)) == "YES", "Unexpected or unenforced v2 CHECK")
+                     and states.get((name, check_name)) == "YES", "Unexpected or unenforced collection CHECK")
         check_count += len(actual_checks)
-    _require((foreign_key_count, index_count, check_count) == (16, 12, 70), "Unexpected v2 constraint totals")
+    _require((foreign_key_count, index_count, check_count) == (16, 12, 70), "Unexpected collection constraint totals")
     old_checks = (
         ("research_export_archives", "ck_research_export_archives_expiry_ms", "expiry_at_ms IS NULL OR expiry_at_ms>0"),
         ("research_configurations", "ck_research_configurations_schema_valid",
@@ -261,7 +261,7 @@ def main():
                 _require(graph.get_heads() == [EXPECTED_HEAD]
                          and graph.get_revision(EXPECTED_HEAD).down_revision == PARENT_HEAD
                          and len(list(graph.walk_revisions())) == 49, "Unexpected source migration graph")
-                migration = ROOT / "migrations/versions/a6f2c9d84e71_research_v2_collection.py"
+                migration = ROOT / "migrations/versions/a6f2c9d84e71_research_observation_collection.py"
                 _require(hashlib.sha256(migration.read_bytes()).hexdigest() == MIGRATION_SHA256,
                          "Reviewed migration bytes changed")
                 with db.engine.connect() as connection:
@@ -277,7 +277,7 @@ def main():
                         before = _snapshot(connection)
                 if before is not None:
                     phase = "exact_upgrade"
-                    print("Applying reviewed research-v2 transition: " + PARENT_HEAD + " -> " + EXPECTED_HEAD,
+                    print("Applying reviewed research collection transition: " + PARENT_HEAD + " -> " + EXPECTED_HEAD,
                           flush=True)
                     # Never substitute reset/stamp/downgrade or repair partial DDL.
                     command.upgrade(config, EXPECTED_HEAD)
@@ -304,7 +304,7 @@ def main():
             finally:
                 lease.execute(text("SELECT RELEASE_LOCK(:name)"), {"name": LEASE})
                 lease.commit()
-        print("Research-v2 head, enforced constraints and model schema verified: " + EXPECTED_HEAD, flush=True)
+        print("Research collection head, enforced constraints and model schema verified: " + EXPECTED_HEAD, flush=True)
         return 0
     except (Exception, SystemExit) as error:
         # Never print SQL/values, driver messages, URLs, credentials or row digests.

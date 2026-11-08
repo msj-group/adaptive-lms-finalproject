@@ -35,4 +35,4 @@ from app.blueprints.research import workspace  # noqa: E402,F401
 from app.blueprints.research import configurations  # noqa: E402,F401
 from app.blueprints.research import exports  # noqa: E402,F401
 from app.blueprints.research import storage  # noqa: E402,F401
-from app.blueprints.research import v2  # noqa: E402,F401
+from app.blueprints.research import collection_review  # noqa: E402,F401

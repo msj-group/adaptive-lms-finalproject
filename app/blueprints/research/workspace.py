@@ -62,7 +62,7 @@ def readiness(active):
         },
         {
             "label": "An active configuration is collecting within its period",
-            "ok": bool(active and active.is_collecting and within_period(
+            "ok": bool(config.get("RESEARCH_COLLECTION_ENABLED", False) and active and active.is_collecting and within_period(
                 active.collection_starts_at, active.collection_ends_at, utcnow_naive())),
             "detail": "See Configurations.",
         },
@@ -83,44 +83,22 @@ def index():
 @research_bp.get("/dashboard")
 @roles_required(_RESEARCHER)
 def dashboard():
-    from app.services.research_analytics import dashboard_analytics, dashboard_filters
+    from app.services.research_analytics import dashboard_filters
+    from app.services.research_observation_queries import dashboard_summary
     provenance = deployment_provenance()
     active = queries.active_configuration()
     moment = now_ms()
-    try:
-        analytics_filters = dashboard_filters(request.args, moment)
-    except (ValueError, OverflowError):
-        abort(400)
+    try: filters = dashboard_filters(request.args, moment)
+    except (ValueError, OverflowError): abort(400)
     period_state = None
     if active is not None:
         now = utcnow_naive()
-        if now < active.collection_starts_at:
-            period_state = "not_started"
-        elif now >= active.collection_ends_at:
-            period_state = "ended"
-        else:
-            period_state = "open"
-    return render_template(
-        "research/dashboard.html",
-        active_nav="dashboard",
-        provenance=provenance,
-        provenance_labels=queries.PROVENANCE_LABELS,
-        active=active,
-        period_state=period_state,
-        readiness=readiness(active),
-        analytics=dashboard_analytics(provenance, analytics_filters, moment),
-        analytics_filters=analytics_filters,
-        configurations=queries.configuration_choices(),
-        subjects=queries.subject_totals(),
-        sessions=queries.session_totals(provenance),
-        prompts=queries.prompt_summary(provenance, moment),
-        prompt_state_labels=queries.PROMPT_STATE_LABELS,
-        event_types=queries.event_type_counts(provenance),
-        devices=queries.device_coverage(provenance),
-        areas=queries.area_coverage(provenance),
-        coverage_areas=("core",) + REPORTING_AREAS,
-        tz_name=tz_name(),
-    )
+        period_state = "not_started" if now < active.collection_starts_at else "ended" if now >= active.collection_ends_at else "open"
+    return render_template("research/dashboard.html", active_nav="dashboard", provenance=provenance,
+        provenance_labels=queries.PROVENANCE_LABELS, active=active, period_state=period_state,
+        collection_enabled=current_app.config.get("RESEARCH_COLLECTION_ENABLED", False),
+        readiness=readiness(active), analytics=dashboard_summary(provenance, filters),
+        analytics_filters=filters, configurations=queries.configuration_choices(), tz_name=tz_name())
 
 
 @research_bp.get("/sessions")
@@ -132,7 +110,8 @@ def sessions():
         filters, filter_values = research_filters(request.args, tz_name())
     except (ValueError, OverflowError):
         abort(400)
-    rows, total, page = queries.sessions_page(
+    from app.services.research_observation_queries import sessions_page
+    rows, total, page = sessions_page(
         provenance, queries.normalize_page(request.args.get("page")), filters)
     first = (page - 1) * queries.PAGE_SIZE + 1 if rows else 0
     last = (page - 1) * queries.PAGE_SIZE + len(rows)
@@ -160,31 +139,14 @@ def sessions():
 @research_bp.get("/sessions/<session_public_id>")
 @roles_required(_RESEARCHER)
 def session_detail(session_public_id):
-    row = queries.session_detail(session_public_id)
-    if row is None:
-        abort(404)
-    moment = now_ms()
-    prompts = [
-        {
-            "row": prompt,
-            "state": queries.derived_prompt_state(prompt[0], prompt[2], prompt[5], prompt[11],
-                                                  prompt[12], moment, prompt[8]),
-        }
-        for prompt in queries.session_prompts(row.id)
-    ]
-    return render_template(
-        "research/sessions/detail.html",
-        active_nav="sessions",
-        session=row,
-        timeline=queries.session_timeline(row.id),
-        timeline_cap=queries.TIMELINE_CAP,
-        prompts=prompts,
-        prompt_state_labels=queries.PROMPT_STATE_LABELS,
-        end_reason_labels=queries.END_REASON_LABELS,
-        provenance_labels=queries.PROVENANCE_LABELS,
-        to_local=lambda ms: queries.ms_to_local(tz_name(), ms),
-        tz_name=tz_name(),
-    )
+    from app.services import research_observation_queries as observations
+    row = observations.session_detail(session_public_id, deployment_provenance())
+    if row is None: abort(404)
+    return render_template("research/sessions/detail.html", active_nav="sessions", session=row,
+        timeline=observations.session_timeline(row.id), timeline_cap=observations.TIMELINE_CAP,
+        questions=observations.session_questions(row.id, now_ms()),
+        end_reason_labels=queries.END_REASON_LABELS, provenance_labels=queries.PROVENANCE_LABELS,
+        to_local=lambda ms: queries.ms_to_local(tz_name(), ms), tz_name=tz_name())
 
 
 @research_bp.get("/exclusions")

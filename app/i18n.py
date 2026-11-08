@@ -63,6 +63,11 @@ def gettext(text, **values):
     return translated % values if values else translated
 
 
+def ui_arabic(text):
+    """Arabic copy for a component whose language is fixed by its own contract."""
+    return arabic_catalog().get(normalize(text), text) if isinstance(text, str) else text
+
+
 def ngettext(singular, plural, count, **values):
     """Translate a complete count phrase, avoiding English plural suffixes in Arabic."""
     values.setdefault("count", count)
@@ -382,4 +387,4 @@ class OwnedUIExtension(Extension):
 
 def init_ui(app):
     app.jinja_env.add_extension(OwnedUIExtension)
-    app.jinja_env.globals.update(_=gettext, _n=ngettext, ui_language=ui_language, ui_theme=ui_theme, ui_date=ui_date)
+    app.jinja_env.globals.update(_=gettext, _n=ngettext, ui_language=ui_language, ui_theme=ui_theme, ui_date=ui_date, ui_arabic=ui_arabic)

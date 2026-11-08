@@ -1,5 +1,38 @@
 # Repair status
 
+## Single collection workspace prepared — 2026-11-08
+
+The owner requests one current method and descriptive source/asset names, with no
+previous research data requiring a historical UI. The discarded browser/sampling
+path and method selector are removed. Overview, Sessions, quality and new exports
+use one observation schema, preserving partition/source scope, fixed policy and
+native security/locking guards. RESEARCH_COLLECTION_ENABLED is the single gate;
+quality is at /research/collection-quality. Installed storage identifiers and the
+Alembic revision/DDL are unchanged. No live collection, database, scheduler, release
+or Git operation is claimed. See
+[scope and first-start requirements](RESEARCH_COLLECTION_UNIFICATION_20261108.md).
+
+## Collection coverage and assistance context prepared — 2026-11-08
+
+The owner requested collection corrections for recent platform changes, with a
+February 2027 discussion target and 27 potential Students. Source now covers
+Workbook HTML, continuous reader context, explicit Unit completion, native async
+request correlation and new reader/media controls. Additive pre-grant context and
+separate optional assistance-preference exports preserve original detector features,
+labels, sampling, timing, retention and final-test quarantine. The collection quality page
+adds current seven-day eligible-answer/participant yield without reading ratings
+or relying on a scheduler. Static verification is distinct from MySQL, phone,
+collection/export and deployment acceptance. No migration, automated tests, live
+data, scheduler or Git mutation. See
+[scope and boundaries](RESEARCH_COVERAGE_AND_ASSISTANCE_20261108.md).
+
+The owner's desktop clarification is included: activation remains mouse/touch/
+keyboard independent, coarse viewport declarations update on resize, and new
+quality computations respect same-batch declaration order. Report captions and
+manifest metadata distinguish viewport width from hardware. Desktop mouse and
+keyboard journeys are explicit acceptance/model-evaluation requirements alongside
+phone touch; actual device/browser round trips remain unexecuted.
+
 ## Scrolling and Lesson completion presentation deployed - 2026-11-07
 
 The owner's People phone-scroll and platform scrolling correction is implemented

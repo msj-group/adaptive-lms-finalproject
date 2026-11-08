@@ -1,5 +1,23 @@
 # Repair implementation plan
 
+## Single collection method — 2026-11-08
+
+The owner's new instruction supersedes the earlier historical-view proposal: one
+natural-use method, descriptive files and a common observation source for overview,
+sessions, quality and exports. No previous research data needs migration/history
+screens. Source unification retains the installed schema; live first-start,
+device/export acceptance and deployment remain distinct. See
+[implementation and boundaries](RESEARCH_COLLECTION_UNIFICATION_20261108.md).
+
+## Collection coverage and assistance context — 2026-11-08
+
+Owner-requested source corrections cover recent Workbook/Unit reader and async
+request changes, plus separately versioned context features, optional preference
+exports and current usable-label yield. February 2027 and 27 potential Students
+guide early review; sampling/labels are not changed to manufacture outcomes.
+No adaptive treatment, migration, live collection or deployment is activated.
+See [implementation and verification boundary](RESEARCH_COVERAGE_AND_ASSISTANCE_20261108.md).
+
 ## Requested Researcher presentation follow-up implemented locally — 2026-10-31
 
 The owner requested execution of the approved light Figma concept. The existing

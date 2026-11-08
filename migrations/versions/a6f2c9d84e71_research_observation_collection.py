@@ -1,4 +1,4 @@
-"""PROPOSAL ONLY: separate research-v2 measurements and aggregate monitoring.
+"""Natural-use research measurements and aggregate monitoring.
 
 Revision ID: a6f2c9d84e71
 Revises: 8e5f3b0d7124

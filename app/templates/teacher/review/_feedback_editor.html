@@ -1,4 +1,5 @@
 {% import "_figma_ui.html" as review_ui %}
+{% import "curriculum/_media.html" as custom_media %}
 {% set is_speaking = review_kind == 'speaking' %}
 {% set task = activity if is_speaking else assignment %}
 {% set feedback_url = url_for('teacher.speaking_submission_feedback', group_public_id=group.public_id, speaking_public_id=activity.public_id, submission_public_id=submission.public_id) if is_speaking else url_for('teacher.submission_feedback', group_public_id=group.public_id, assignment_public_id=assignment.public_id, submission_public_id=submission.public_id) %}
@@ -13,7 +14,7 @@
   <section class="review-answer-section">
     <h3>{{ _('Student recording' if is_speaking else 'Student answer') }}</h3>
     {% if is_speaking %}
-    <div class="review-answer"><audio controls preload="metadata" src="{{ player.src }}" aria-label="{{ _('Audio recording for %(name)s', name=player.label) }}" data-research-media="listening_audio">Your browser cannot play audio here. <a href="{{ player.src }}">Open the recording</a>.</audio><a href="{{ download_url }}" download>Download recording</a></div>
+    <div class="review-answer">{{ custom_media.inline_player(player.src,'audio',label=_('Audio recording for %(name)s',name=player.label),research_media='listening_audio') }}<a href="{{ download_url }}" download>Download recording</a></div>
     {% else %}<div class="review-answer" dir="auto">{% include 'activities/_assignment_payload.html' %}</div>{% endif %}
     <p class="review-help">{{ _('The recording is final and read only.' if is_speaking else 'The answer is final and read only.') }}</p>
   </section>

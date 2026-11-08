@@ -6,6 +6,8 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   var t = window.aelmsUI ? window.aelmsUI.t : function (text) { return text; };
   var bell = document.querySelector("[data-notification-bell]");
   if (!bell || !window.fetch || !window.AbortController) return;
+  var retry = bell.querySelector('[data-notification-retry]');
+  if (retry) pageScope.listen(retry,'click',load);
   var toggle = bell.querySelector("[data-notification-toggle]");
   var panel = bell.querySelector("[data-notification-preview]");
   var content = bell.querySelector("[data-notification-preview-body]");
@@ -37,6 +39,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     if (controller) controller.abort();
     var request = new AbortController();
     controller = request;
+    if (retry) retry.hidden = true;
     message(t("Loading your updates…"));
     content.setAttribute("aria-busy", "true");
     try {
@@ -58,12 +61,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     } catch (error) {
       if (request.signal.aborted) return;
       message(t("Updates could not load. Try again or open all notifications."));
-      var retry = document.createElement("button");
-      retry.type = "button";
-      retry.className = "btn btn--secondary";
-      retry.textContent = t("Try again");
-      pageScope.listen(retry, "click", load);
-      content.appendChild(retry);
+      if (retry) retry.hidden = false;
     } finally {
       if (controller === request) content.removeAttribute("aria-busy");
     }

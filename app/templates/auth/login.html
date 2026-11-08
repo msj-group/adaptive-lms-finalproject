@@ -4,20 +4,17 @@
 {% block body_class %}figma-login eclipse-login{% endblock %}
 {% block protected_styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css', v='placement-entry-20261013') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/login_eclipse.css', v='neutral-fields-20261030') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login_eclipse.css', v='clean-signin-1') }}">
 {% endblock %}
 {% block content %}
 <div class="ec-page" data-eclipse-login>
-  <div class="ec-backdrop" aria-hidden="true"></div>
   <header class="ec-header">
     <div class="ec-brand">{{ ui.brand_logo(alt='Youth Centre logo', width=43, height=46) }}<span>Youth Centre</span></div>
     <button class="ec-theme" type="button" data-login-theme aria-label="Switch appearance" hidden>{{ ui.icon('moon', 18) }}</button>
   </header>
   <div class="ec-main">
-    <div class="ec-orbit" aria-hidden="true"></div>
-    <div class="ec-art" aria-hidden="true"><img src="{{ url_for('static', filename='images/login_eclipse_glass.webp') }}" alt="" width="740" height="740" decoding="async" fetchpriority="high"></div>
     <section class="ec-card" aria-labelledby="login-title">
-      <div class="ec-title-row"><h1 id="login-title">Sign in</h1><span class="ec-title-icon">{{ ui.icon('lock', 18) }}</span></div>
+      <div class="ec-title-row"><h1 id="login-title">Sign in</h1></div>
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}<div class="ec-notice ec-notice--{{ category }}" role="alert">{{ message }}</div>{% endfor %}
       {% endwith %}

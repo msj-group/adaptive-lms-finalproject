@@ -46,12 +46,7 @@
                 {% if card.workbook_available %}<a href="{{ url_for('teacher.curriculum_publication', group_public_id=card.group_public_id, book='workbook') }}">Workbook</a>{% else %}<span aria-disabled="true">Workbook unavailable</span>{% endif %}
               </div>
             </details>
-            {% if card.operational %}
-            <details class="cockpit-tool" data-cockpit-menu>
-              <summary>{{ ui.icon('activity', 18) }}<span>Add activity</span>{{ ui.icon('chevron-down', 12) }}</summary>
-              <div class="cockpit-tool-menu">{% for kind, label in activity_types.items() %}<a href="{{ url_for('teacher.activity_start', group=card.group_public_id, type=kind) }}">{{ _(label) }}</a>{% endfor %}</div>
-            </details>
-            {% else %}<span class="cockpit-tool-disabled" aria-disabled="true">{{ ui.icon('activity', 18) }}<span>Add activity</span></span>{% endif %}
+            {% if card.operational %}<a href="{{ url_for('teacher.activity_start',group=card.group_public_id) }}">{{ ui.icon('activity',18) }}<span>Add activity</span></a>{% else %}<span class="cockpit-tool-disabled" aria-disabled="true">{{ ui.icon('activity',18) }}<span>Add activity</span></span>{% endif %}
             {% if card.teacher_book_available %}<a href="{{ url_for('teacher.course_book_read', group_public_id=card.group_public_id, kind='teacher_book') }}">{{ ui.icon('file', 18) }}<span>Teacher book</span></a>{% else %}<span class="cockpit-tool-disabled" aria-disabled="true" title="Teacher book unavailable">{{ ui.icon('file', 18) }}<span>Teacher book</span></span>{% endif %}
           </nav>
         </article>

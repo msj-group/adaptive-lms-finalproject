@@ -889,6 +889,8 @@ def listening_create(group_public_id):
     can never exist without its recording's metadata, and a recording's
     metadata never exists without the activity that owns it.
     """
+    if request.method == "GET":
+        return redirect(url_for("teacher.activity_start",group=group_public_id,type="listening"))
     preview_group = _teacher_group_or_404(group_public_id)
     actor_id = current_user.id
     actor_public_id = current_user.public_id

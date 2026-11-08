@@ -4,13 +4,13 @@
 {% import "_figma_ui.html" as icons %}
 {% block title %}Collection configurations{% endblock %}
 {% block research_content %}
-{% call rs.heading('Configuration','Versioned collection periods, sampling settings and collection controls.','Collection policy') %}<a class="btn btn--primary" href="{{ url_for('research.configuration_new') }}">{{ icons.icon('pen',17) }} New draft</a>{% endcall %}
-<div class="rs-split"><section class="rs-card"><header class="rs-card-head"><h2>Collection versions</h2><span class="badge badge--neutral">{{ pagination.total }} configurations</span></header>
+{% call rs.heading('Configuration','Collection periods, sampling settings and collection controls.','Collection policy') %}<a class="btn btn--primary" href="{{ url_for('research.configuration_new') }}">{{ icons.icon('pen',17) }} New draft</a>{% endcall %}
+<div class="rs-split"><section class="rs-card"><header class="rs-card-head"><h2>Saved collection settings</h2><span class="badge badge--neutral">{{ pagination.total }} configurations</span></header>
 {% if rows %}
 <div class="rs-table-wrap">
 <table class="dash-table" style="width:100%">
   <thead>
-    <tr><th scope="col">Version</th><th scope="col">Label</th><th scope="col">Status</th>
+    <tr><th scope="col">Settings number</th><th scope="col">Label</th><th scope="col">Status</th>
         <th scope="col">Period</th><th scope="col"><span class="ds-section__desc" style="margin:0">Detail</span></th></tr>
   </thead>
   <tbody>
@@ -34,5 +34,5 @@
 {% else %}
 {{ rs.empty('No configurations','Create a draft to define a collection period and review its saved policy. A draft collects nothing.','settings') }}
 {% endif %}
-</section><aside class="rs-card"><p class="rs-eyebrow">Version lifecycle</p><h2>Collection controls</h2><div class="rs-task"><span class="rs-task-icon">{{ icons.icon('pen',18) }}</span><span><strong>Draft</strong><small>Edit and review before activation.</small></span></div><div class="rs-task"><span class="rs-task-icon">{{ icons.icon('lock',18) }}</span><span><strong>Active</strong><small>Activation freezes a version. Starting collection is a separate action.</small></span></div><div class="rs-task"><span class="rs-task-icon">{{ icons.icon('layers',18) }}</span><span><strong>Retired</strong><small>Retained as historical collection policy.</small></span></div><p class="workspace-meta">Settings are neither consent nor ethics approval. Review the collection method and retention before activating a version.</p><a href="{{ url_for('research.v2_review') }}">Review collection quality →</a></aside></div>
+</section><aside class="rs-card"><p class="rs-eyebrow">Settings lifecycle</p><h2>Collection controls</h2><div class="rs-task"><span class="rs-task-icon">{{ icons.icon('pen',18) }}</span><span><strong>Draft</strong><small>Edit and review before activation.</small></span></div><div class="rs-task"><span class="rs-task-icon">{{ icons.icon('lock',18) }}</span><span><strong>Active</strong><small>Activation freezes the settings. Starting collection is a separate action.</small></span></div><div class="rs-task"><span class="rs-task-icon">{{ icons.icon('layers',18) }}</span><span><strong>Retired</strong><small>Saved settings for a finished collection period.</small></span></div><p class="workspace-meta">Settings are neither consent nor ethics approval. Review the collection policy and retention before activation.</p><a href="{{ url_for('research.collection_quality') }}">Review collection quality →</a></aside></div>
 {% endblock %}

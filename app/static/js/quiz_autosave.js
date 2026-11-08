@@ -143,20 +143,20 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     var data;
     var researchAttempt = null;
     try {
-      if (window.researchV2) {
-        researchAttempt = window.researchV2.beginRequest({form: researchForm, action_code: "save"});
+      if (window.researchCollector) {
+        researchAttempt = window.researchCollector.beginRequest({form: researchForm, action_code: "save"});
         ["action_ref", "attempt_ref", "context_ref", "scope_token", "context_code"].forEach(function (key) {
-          var field = researchForm.querySelector("[name='research_v2_" + key + "']");
-          if (field) body.set("research_v2_" + key, field.value);
+          var field = researchForm.querySelector("[name='research_" + key + "']");
+          if (field) body.set("research_" + key, field.value);
         });
       }
     } catch (_) { /* Research never changes the save workflow. */ }
     try {
       response = await pageScope.fetch(url, {method:"POST",body:body,credentials:"same-origin",redirect:"error",cache:"no-store",headers:{"Accept":"application/json","X-Quiz-Autosave":"1"}});
-      try { if (window.researchV2) window.researchV2.finishRequest(researchAttempt, "finished"); } catch (_) {}
+      try { if (window.researchCollector) window.researchCollector.finishRequest(researchAttempt, "finished"); } catch (_) {}
       if ((response.headers.get("Content-Type") || "").includes("application/json")) data = await response.json();
     } catch (_) {
-      try { if (window.researchV2) window.researchV2.finishRequest(researchAttempt, "network_unknown"); } catch (_) {}
+      try { if (window.researchCollector) window.researchCollector.finishRequest(researchAttempt, "network_unknown"); } catch (_) {}
       throw new Error(t("Could not save. Check your connection or session, then retry before leaving."));
     }
     if (!(response.headers.get("Content-Type") || "").includes("application/json")) throw new Error(t("Could not save. Check your connection or session, then retry before leaving."));

@@ -1,7 +1,7 @@
-"""Versioned v2 measurements and bounded aggregate quality records.
+"""Natural-use measurements and bounded aggregate quality records.
 
-The schema mirrors the inactive reviewed research-v2 proposal; importing these
-models performs no DDL and is not authority to activate the protocol. Closed
+The schema uses the installed storage contract; importing these
+models performs no DDL and does not activate collection. Closed
 CHECK expressions remain literal/versioned, independently of migration code.
 All IDs use the shared signed BIGINT type. There are no relationship cascades.
 
@@ -9,6 +9,8 @@ ORM guards protect ordinary writes. Deliberate retention uses its explicitly
 scoped bulk deletion in FK order, not ORM mutation of recorded history; bulk
 SQL callers remain responsible for this authorization boundary.
 """
+
+from app.services.research_storage_contract import COLLECTION_PROTOCOL, COLLECTION_SCHEMA, FEATURE_SCHEMA, QUALITY_SCHEMA
 
 import sqlalchemy as sa
 from sqlalchemy import event, inspect
@@ -25,16 +27,16 @@ _TABLE_OPTIONS = {"mysql_engine": "InnoDB", "mysql_charset": "utf8mb4",
                   "mysql_collate": _COLLATION, "mysql_row_format": "DYNAMIC"}
 
 
-_SCHEMA_V2 = "natural-use-events.v2"
+_COLLECTION_SCHEMA = COLLECTION_SCHEMA
 
 
-_PROTOCOL = "natural-use-protocol.v2"
+_PROTOCOL = COLLECTION_PROTOCOL
 
 
-_FEATURES = "recent-frustration-features.v1"
+_FEATURES = FEATURE_SCHEMA
 
 
-_MONITOR = "research-quality.v1"
+_MONITOR = QUALITY_SCHEMA
 
 
 _EVENT_TYPES = (
@@ -161,7 +163,7 @@ def _quality_group_columns():
 def _quality_group_checks(prefix):
     digest = "SHA2(CONCAT_WS('|'," + ",".join(_QUALITY_GROUP[:-1]) + "),256)"
     return (
-        _ck(prefix + "_versions", "schema_version='" + _SCHEMA_V2
+        _ck(prefix + "_versions", "schema_version='" + _COLLECTION_SCHEMA
             + "' AND monitor_version='" + _MONITOR + "' AND protocol_version='" + _PROTOCOL
             + "' AND feature_version='" + _FEATURES + "'"),
         _ck(prefix + "_provenance", _in("provenance", ("demo", "development", "study"))),
@@ -179,7 +181,7 @@ def _quality_group_checks(prefix):
     )
 
 
-class ResearchV2Protocol(db.Model):
+class ResearchProtocol(db.Model):
     __table__ = db.Table(
         "research_v2_protocols", db.metadata,
         _fk("configuration_id", "research_configurations.id", primary_key=True),
@@ -207,7 +209,7 @@ class ResearchV2Protocol(db.Model):
     )
 
 
-class ResearchV2SamplingState(db.Model):
+class ResearchSamplingState(db.Model):
     __table__ = db.Table(
         "research_v2_sampling_state", db.metadata,
         _fk("session_id", "research_sessions.id", primary_key=True),
@@ -228,7 +230,7 @@ class ResearchV2SamplingState(db.Model):
     )
 
 
-class ResearchV2SamplingOpportunity(db.Model):
+class ResearchSamplingOpportunity(db.Model):
     __table__ = db.Table(
         "research_v2_sampling_opportunities", db.metadata, _id(),
         _fk("session_id", "research_sessions.id"),
@@ -265,7 +267,7 @@ class ResearchV2SamplingOpportunity(db.Model):
     )
 
 
-class ResearchV2Event(db.Model):
+class ResearchObservation(db.Model):
     __table__ = db.Table(
         "research_v2_events", db.metadata, _id(), _ref("event_uid"),
         _fk("session_id", "research_sessions.id"),
@@ -332,7 +334,7 @@ class ResearchV2Event(db.Model):
     )
 
 
-class ResearchV2Prompt(db.Model):
+class ResearchQuestion(db.Model):
     __table__ = db.Table(
         "research_v2_prompts", db.metadata, _id(), _ref("public_id"),
         sa.Column("opportunity_id", sa.BigInteger(), nullable=False),
@@ -410,7 +412,7 @@ class ResearchV2Prompt(db.Model):
     )
 
 
-class ResearchV2FeatureMembership(db.Model):
+class ResearchFeatureMembership(db.Model):
     """Exact committed observations visible to a prompt's decision snapshot."""
 
     __table__ = db.Table(
@@ -422,7 +424,7 @@ class ResearchV2FeatureMembership(db.Model):
     )
 
 
-class ResearchV2DeliveryReceipt(db.Model):
+class ResearchDeliveryReceipt(db.Model):
     __table__ = db.Table(
         "research_v2_delivery_receipts", db.metadata, _id(), _ref("receipt_uid"),
         _fk("session_id", "research_sessions.id", nullable=True),
@@ -450,7 +452,7 @@ class ResearchV2DeliveryReceipt(db.Model):
     )
 
 
-class ResearchV2EvaluationPartition(db.Model):
+class ResearchEvaluationGroup(db.Model):
     __table__ = db.Table(
         "research_v2_evaluation_partitions", db.metadata,
         _fk("subject_id", "research_subjects.id", primary_key=True),
@@ -588,7 +590,7 @@ class ResearchQualityIncident(db.Model):
             "delivery_stopped", "invalid_rate", "clock_alignment", "coverage_gap",
             "prompt_delivery", "response_rate", "expiry_backlog", "checker_failure", "device_gap"))),
         _ck("ck_rquality_incident_scope", _in("scope_code", _SCOPES)),
-        _ck("ck_rquality_incident_versions", "schema_version='" + _SCHEMA_V2
+        _ck("ck_rquality_incident_versions", "schema_version='" + _COLLECTION_SCHEMA
             + "' AND monitor_version='" + _MONITOR + "'"),
         _ck("ck_rquality_incident_severity", _in("severity", ("info", "warning", "critical"))),
         _ck("ck_rquality_incident_times", "first_seen_at_ms>=0 AND last_seen_at_ms>=first_seen_at_ms "
@@ -629,18 +631,18 @@ def _stored(connection, target):
     return connection.execute(sa.select(table).where(predicate)).mappings().one()
 
 
-@event.listens_for(ResearchV2Protocol, "before_insert")
+@event.listens_for(ResearchProtocol, "before_insert")
 def _protocol_requires_draft_configuration(_mapper, connection, target):
     configuration = connection.execute(sa.text(
         "SELECT status,event_schema_version FROM research_configurations "
         "WHERE id=:configuration_id"
     ), {"configuration_id": target.configuration_id}).mappings().one_or_none()
     if (configuration is None or configuration["status"] != "draft"
-            or configuration["event_schema_version"] != _SCHEMA_V2):
+            or configuration["event_schema_version"] != _COLLECTION_SCHEMA):
         raise ResearchDataError("A v2 protocol must be attached to its matching draft configuration")
 
 
-@event.listens_for(ResearchV2Protocol, "before_update")
+@event.listens_for(ResearchProtocol, "before_update")
 def _activated_protocol_is_frozen(_mapper, connection, target):
     changed = _changed(target)
     if changed & {"configuration_id", "protocol_version", "feature_version", "created_at_ms"}:
@@ -652,7 +654,7 @@ def _activated_protocol_is_frozen(_mapper, connection, target):
         raise ResearchDataError("An activated protocol is frozen")
 
 
-@event.listens_for(ResearchV2SamplingOpportunity, "before_update")
+@event.listens_for(ResearchSamplingOpportunity, "before_update")
 def _opportunity_decision_is_final(_mapper, connection, target):
     changed = _changed(target)
     if not changed:
@@ -666,7 +668,7 @@ def _opportunity_decision_is_final(_mapper, connection, target):
         raise ResearchDataError("A selected opportunity can be reserved only once")
 
 
-@event.listens_for(ResearchV2SamplingState, "before_update")
+@event.listens_for(ResearchSamplingState, "before_update")
 def _session_release_is_immutable(_mapper, _connection, target):
     if _changed(target) & {"session_id", "release_ref"}:
         raise ResearchDataError("A sampling session's identity and recorded application release never change")
@@ -677,7 +679,7 @@ def _record_is_append_only(_mapper, _connection, target):
         raise ResearchDataError("A recorded research observation or aggregate is never edited")
 
 
-for _append_only_model in (ResearchV2Event, ResearchV2FeatureMembership, ResearchV2DeliveryReceipt, ResearchQualityReport):
+for _append_only_model in (ResearchObservation, ResearchFeatureMembership, ResearchDeliveryReceipt, ResearchQualityReport):
     event.listen(_append_only_model, "before_update", _record_is_append_only)
 
 
@@ -690,7 +692,7 @@ _PROMPT_RENDER = frozenset({
 })
 
 
-@event.listens_for(ResearchV2Prompt, "before_update")
+@event.listens_for(ResearchQuestion, "before_update")
 def _prompt_history_is_final(_mapper, connection, target):
     changed = _changed(target)
     if not changed:
@@ -714,7 +716,7 @@ def _prompt_history_is_final(_mapper, connection, target):
         raise ResearchDataError("An answer received after no-response classification must remain late")
 
 
-@event.listens_for(ResearchV2EvaluationPartition, "before_update")
+@event.listens_for(ResearchEvaluationGroup, "before_update")
 def _evaluation_exposure_is_not_erased(_mapper, connection, target):
     changed = _changed(target)
     if not changed:
@@ -748,9 +750,9 @@ def _ordinary_delete_is_refused(_mapper, _connection, _target):
 
 
 for _retained_model in (
-    ResearchV2Protocol, ResearchV2SamplingState, ResearchV2SamplingOpportunity,
-    ResearchV2Event, ResearchV2Prompt, ResearchV2FeatureMembership, ResearchV2DeliveryReceipt,
-    ResearchV2EvaluationPartition, ResearchQualityRun, ResearchQualityReport,
+    ResearchProtocol, ResearchSamplingState, ResearchSamplingOpportunity,
+    ResearchObservation, ResearchQuestion, ResearchFeatureMembership, ResearchDeliveryReceipt,
+    ResearchEvaluationGroup, ResearchQualityRun, ResearchQualityReport,
     ResearchQualityIncident,
 ):
     event.listen(_retained_model, "before_delete", _ordinary_delete_is_refused)

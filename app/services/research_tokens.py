@@ -20,7 +20,7 @@ PURPOSE_ACTIVATE = "research-configuration-activate"
 PURPOSE_COLLECTING = "research-configuration-collecting"
 PURPOSES = (PURPOSE_EDIT, PURPOSE_ACTIVATE, PURPOSE_COLLECTING)
 
-_SALTS = {purpose: f"research.{purpose}.phase6-natural-use.v1" for purpose in PURPOSES}
+_SALTS = {purpose: f"research.configuration.{purpose}" for purpose in PURPOSES}
 _FIELDS = {
     PURPOSE_EDIT: ("purpose", "actor", "configuration", "version"),
     PURPOSE_ACTIVATE: ("purpose", "actor", "configuration", "version"),

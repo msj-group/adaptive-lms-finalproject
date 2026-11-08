@@ -109,5 +109,18 @@ def activity_view(rows, tz_name, url_builder):
             updated_local=to_app_local(tz_name, item["updated_at"]),
             course_url=url_builder("workspace.teacher_group", group_public_id=item["group_public_id"]),
             url=url_builder(endpoint, **params))
+        kind = item["kind"]
+        edit_endpoints = {"assignment":("teacher.assignment_edit","assignment_public_id"),
+            "quiz":("teacher.quiz_edit","quiz_public_id"),
+            "listening":("teacher.listening_edit","listening_public_id"),
+            "speaking":("teacher.speaking_edit","speaking_public_id")}
+        response_endpoints = {"assignment":("teacher.assignment_submissions","assignment_public_id"),
+            "quiz":("teacher.quiz_attempts","quiz_public_id"),
+            "listening":("teacher.listening_attempts","listening_public_id"),
+            "speaking":("teacher.speaking_submissions","speaking_public_id")}
+        edit,key = edit_endpoints[kind]
+        responses,response_key = response_endpoints[kind]
+        item["edit_url"] = url_builder(edit,group_public_id=item["group_public_id"],**{key:item["public_id"]})
+        item["responses_url"] = url_builder(responses,group_public_id=item["group_public_id"],**{response_key:item["public_id"]})
         items.append(item)
     return items

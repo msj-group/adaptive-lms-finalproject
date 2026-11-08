@@ -61,16 +61,9 @@ def activities(group_public_id=None):
         tz_name=tz_name, teacher=True, active_nav="activities")
 
 
-@teacher_bp.get("/activities/new")
+@teacher_bp.route("/activities/new", methods=["GET","POST"])
 @roles_required("teacher")
 def activity_start():
-    """Choose context only; the destination owns CSRF, locks and draft creation."""
-    kind = request.args.get("type", "")
-    group_public_id = request.args.get("group", "")
-    if kind not in CREATE_ENDPOINTS or not group_public_id or len(group_public_id) > 36:
-        abort(400)
-    group = _teacher_group_or_404(group_public_id)
-    if not _group_is_operational(group):
-        flash("This group is read only. Choose an active group to create an activity.", "warning")
-        return redirect(url_for("teacher.activities", group=group.public_id))
-    return redirect(url_for(CREATE_ENDPOINTS[kind], group_public_id=group.public_id))
+    """One native composer owns all four create-and-publish workflows."""
+    from app.blueprints.teacher.activity_composer import compose_activity
+    return compose_activity()

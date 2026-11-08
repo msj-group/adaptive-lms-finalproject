@@ -67,22 +67,54 @@
   }
 
   async function prepare(event, from) {
+    // Capture the owner before a successful navigation replaces its page scope.
+    // A finished HTTP exchange is transport evidence, never a business outcome.
+    let research = null, researchAttempt = null;
+    if (event.formData) {
+      const source = event.researchForm || event.sourceElement;
+      const form = source?.matches?.('form') ? source : source?.form || source?.closest?.('form');
+      try {
+        if (form && window.researchCollector) {
+          research = window.researchCollector;
+          researchAttempt = research.beginRequest({form, reuse_reserved:true});
+          if (researchAttempt) for (const key of ['action_ref','attempt_ref','context_ref','scope_token','context_code']) {
+            const field = form.querySelector(`input[name="research_${key}"]`);
+            if (field) event.formData.set(`research_${key}`, field.value);
+          }
+        }
+      } catch (_) { /* Research cannot interrupt the native request. */ }
+    }
     const options = {credentials: "same-origin", cache: "no-store", signal: event.signal,
       referrer: from, headers: {Accept: "text/html"}};
     if (event.formData) {
       options.method = "POST";
       options.body = event.formData;
     }
-    const response = await request(event.destination.url, options);
+    let response;
+    try {
+      response = await request(event.destination.url, options);
+    } catch (error) {
+      try { research?.finishRequest(researchAttempt, 'network_unknown'); } catch (_) {}
+      throw error;
+    }
     const destination = new URL(response.url);
     destination.hash = new URL(event.destination.url).hash;
     if (destination.origin !== location.origin ||
         !(response.headers.get("Content-Type") || "").includes("text/html") ||
         response.headers.get("Content-Disposition")?.includes("attachment")) {
+      try { research?.finishRequest(researchAttempt, 'finished'); } catch (_) {}
       hardVisit(destination.href);
       throw new DOMException("Native destination", "AbortError");
     }
-    const page = new DOMParser().parseFromString(await response.text(), "text/html");
+    let html;
+    try {
+      html = await response.text();
+      try { research?.finishRequest(researchAttempt, 'finished'); } catch (_) {}
+    } catch (error) {
+      try { research?.finishRequest(researchAttempt, 'network_unknown'); } catch (_) {}
+      throw error;
+    }
+    const page = new DOMParser().parseFromString(html, "text/html");
     const scope = document.querySelector(scopeSelector)?.content;
     if (!scope || page.querySelector(scopeSelector)?.content !== scope) {
       hardVisit(destination.href);
@@ -150,7 +182,7 @@
       window.aelmsPage.dispose();
       document.documentElement.removeAttribute("data-workspace-restoring");
       for (const key of Object.keys(window)) {
-        if (/^(aelms(?!CreatePageScope$|Page$|Modules$|ReaderNavigate$|InstallApp$|DevicePush$)|researchV2$|AELMS_AR$)/.test(key)) delete window[key];
+        if (/^(aelms(?!CreatePageScope$|Page$|Modules$|ReaderNavigate$|InstallApp$|DevicePush$)|researchCollector$|AELMS_AR$)/.test(key)) delete window[key];
       }
       window.aelmsPage = window.aelmsCreatePageScope();
       for (const item of Array.from(document.head.children)) {
@@ -202,14 +234,14 @@
   // The root document stays fullscreen while an authorized reader page changes.
   // This path also works in browsers without Navigation API interception.
   let readerRequest = null;
-  window.aelmsReaderNavigate = async function (url, formData = null) {
+  window.aelmsReaderNavigate = async function (url, formData = null, researchForm = null) {
     if (readerRequest || (document.fullscreenElement !== document.documentElement &&
         !document.documentElement.hasAttribute('data-reader-expanded')) ||
         !document.querySelector('[data-student-reader]')) return;
     const destination = new URL(url, location.href);
     if (destination.origin !== location.origin) return;
     const controller = new AbortController();
-    const event = {signal:controller.signal, destination:{url:destination.href}, formData};
+    const event = {signal:controller.signal, destination:{url:destination.href}, formData, researchForm};
     readerRequest = controller; activeNavigation = event;
     document.documentElement.dataset.appNavigating = 'true';
     try {

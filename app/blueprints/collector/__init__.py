@@ -5,4 +5,3 @@ from flask import Blueprint
 collector_bp = Blueprint("collector", __name__, url_prefix="/collect")
 
 from app.blueprints.collector import routes  # noqa: E402,F401
-from app.blueprints.collector import routes_v2  # noqa: E402,F401

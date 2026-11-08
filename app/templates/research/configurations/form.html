@@ -2,15 +2,15 @@
 {% import "research/_ui.html" as rs %}
 {% block title %}{{ "Edit draft" if configuration else "New draft" }}{% endblock %}
 {% block research_content %}
-{{ rs.heading('Edit draft v' ~ configuration.version_number if configuration else 'New configuration draft','Versioned pilot settings, not validated constants. Saving a draft collects nothing.','Collection policy') }}
+{{ rs.heading('Edit draft #' ~ configuration.version_number if configuration else 'New configuration draft','Reviewed collection settings. Saving a draft collects nothing.','Collection policy') }}
 <form method="post" novalidate class="yc-form research-configuration-form rs-card">
   {{ form.csrf_token }}
   {{ form.state }}
   <div class="field">
-    {{ form.event_schema_version.label(class_="field__label") }}
+    <span class="field__label">Natural-use collection</span>
     {{ form.event_schema_version(class_="field__input") }}
     {% for error in form.event_schema_version.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
-    <p class="workspace-meta">A saved draft keeps its collection method. V2 uses the reviewed fixed pilot settings: a 120-second window, 90 observed seconds, 10% per eligible minute, 10-minute spacing, at most 2 questions per session and 3 per day, and a 60-second answer window. Activation requires the approved 45-day retention. Changes to policy fields below apply to legacy v1 only.</p>
+    <p class="workspace-meta">Collection uses the reviewed policy: a 120-second window, 90 observed seconds, 10% per eligible minute, 10-minute spacing, at most 2 questions per session and 3 per day, and a 60-second answer window. Activation requires the approved 45-day retention. The saved policy is shown below for review.</p>
   </div>
   <div class="field">
     {{ form.label.label(class_="field__label") }}
@@ -42,7 +42,7 @@
       <label class="field__label" for="{{ column }}">{{ label }}
         <span class="ds-section__desc">({{ policy_bounds[column][0] }}&ndash;{{ policy_bounds[column][1] }})</span></label>
       {% if 'permille' in column %}{{ form[column](class_="field__input", min=policy_bounds[column][0], max=policy_bounds[column][1], aria_describedby="configuration-sampling-help") }}{% else %}{{ form[column](class_="field__input", min=policy_bounds[column][0], max=policy_bounds[column][1]) }}{% endif %}
-      {% if baseline %}<p class="workspace-meta">Active v{{ baseline.version_number }}: {{ baseline[column] }}. Separate draft.</p>{% endif %}
+      {% if baseline %}<p class="workspace-meta">Active {{ baseline.version_number }}: {{ baseline[column] }}. Separate draft.</p>{% endif %}
       {% for error in form[column].errors %}<span class="field__error">{{ error }}</span>{% endfor %}
     </div>
     {% endfor %}

@@ -1,4 +1,4 @@
-"""Private v2 quality/partition review; never expose reserved test labels."""
+"""Private collection quality/partition review; never expose reserved test labels."""
 from flask import abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 from itsdangerous import BadData, URLSafeTimedSerializer
@@ -9,9 +9,9 @@ from app.i18n import LocalizedFlaskForm
 from app.blueprints.research import research_bp
 from app.extensions import db
 from app.models import ResearchSubject, now_ms
-from app.models.research_v2 import ResearchV2EvaluationPartition as Partition
+from app.models.research_observations import ResearchEvaluationGroup as Partition
 from app.security.decorators import roles_required
-from app.services.research_v2_quality import read_latest_reports
+from app.services.research_quality import read_latest_reports
 
 
 class PartitionForm(LocalizedFlaskForm):
@@ -22,20 +22,28 @@ class PartitionForm(LocalizedFlaskForm):
 
 
 def _signer():
-    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt="research.v2.partition.v1")
+    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt="research.evaluation-group")
 
 
-@research_bp.get("/v2")
+@research_bp.get("/collection-quality")
 @roles_required("researcher")
-def v2_review():
-    enabled = current_app.config.get("RESEARCH_V2_ENABLED", False)
+def collection_quality():
+    enabled = current_app.config.get("RESEARCH_COLLECTION_ENABLED", False)
     reports, development_reports, participants = [], [], []
     forms = {}
+    live_readiness = None
     page = request.args.get("page", "1")
     if not page.isascii() or not page.isdigit() or not 1 <= int(page) <= 10000:
         abort(400)
     page = int(page)
     if enabled:
+        from app.services.research_workspace_queries import active_configuration, ms_to_local
+        from app.services.research_collection_readiness import collection_readiness
+        live_readiness = collection_readiness(active_configuration(),
+            current_app.config["RESEARCH_DATA_PROVENANCE"], now_ms())
+        if live_readiness:
+            live_readiness["since"] = ms_to_local(current_app.config["APP_TIMEZONE"], live_readiness["since_ms"])
+            live_readiness["cutoff"] = ms_to_local(current_app.config["APP_TIMEZONE"], live_readiness["cutoff_ms"])
         reports = read_latest_reports(db.session.connection(), now_ms=now_ms(), limit=10)
         development_reports = read_latest_reports(db.session.connection(), now_ms=now_ms(), limit=5, scope_code="development")
         participants = db.session.query(ResearchSubject.subject_code, Partition.partition_code, Partition.version,
@@ -45,16 +53,16 @@ def v2_review():
             form = PartitionForm()
             form.state.data = _signer().dumps([current_user.public_id, row.subject_code, row.version])
             forms[row.subject_code] = form
-    return render_template("research/v2.html", active_nav="v2", enabled=enabled, reports=reports,
+    return render_template("research/collection_quality.html", active_nav="quality", enabled=enabled, reports=reports,
         development_reports=development_reports,
         participants=participants[:50], forms=forms, page=page, has_next=len(participants) > 50,
-        now=now_ms())
+        now=now_ms(), live_readiness=live_readiness)
 
 
-@research_bp.post("/v2/participants/<subject_code>/partition")
+@research_bp.post("/participants/<subject_code>/evaluation-group")
 @roles_required("researcher")
-def v2_partition(subject_code):
-    if not current_app.config.get("RESEARCH_V2_ENABLED", False):
+def assign_evaluation_group(subject_code):
+    if not current_app.config.get("RESEARCH_COLLECTION_ENABLED", False):
         abort(404)
     form = PartitionForm()
     if not form.validate_on_submit():
@@ -79,7 +87,7 @@ def v2_partition(subject_code):
     if part.version != token[2] or part.partition_code != "unassigned":
         db.session.rollback()
         flash("This participant already has a group or the form is stale. Reload the page.", "warning")
-        return redirect(url_for("research.v2_review", view="groups"))
+        return redirect(url_for("research.collection_quality", view="groups"))
     if form.partition.data == "locked_final_test" and part.development_exposed_at_ms is not None:
         abort(409)
     moment = now_ms()
@@ -95,4 +103,4 @@ def v2_partition(subject_code):
         flash("The group could not be saved. Reload and try again.", "danger")
     else:
         flash("Evaluation group recorded. Final-test data stays quarantined.", "success")
-    return redirect(url_for("research.v2_review", view="groups"))
+    return redirect(url_for("research.collection_quality", view="groups"))

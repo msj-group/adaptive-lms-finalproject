@@ -12,7 +12,7 @@ import json
 import re
 import uuid
 
-_PURPOSE = b"research.browser.delivery.v1\x00"
+_PURPOSE = b"research.browser.identity\x00"
 _TOKEN = re.compile(r"[0-9a-f]{64}\Z", flags=re.ASCII)
 
 
@@ -78,16 +78,16 @@ class DeliveryProof:
         return hmac.compare_digest(token, expected)
 
 
-def issue_v2_scope(secret, user_public_id, auth_version, configuration_public_id,
+def issue_collection_scope(secret, user_public_id, auth_version, configuration_public_id,
                    configuration_version, browser_ref):
     base = issue_delivery_scope(secret, user_public_id, auth_version,
                                 configuration_public_id, configuration_version)
-    payload = b"research.browser.delivery.v2\x00" + base.encode("ascii") + _identity(browser_ref).encode("ascii")
+    payload = b"research.browser.session\x00" + base.encode("ascii") + _identity(browser_ref).encode("ascii")
     return hmac.new(_secret_bytes(secret), payload, hashlib.sha256).hexdigest()
 
 
 @dataclass(frozen=True)
-class V2DeliveryProof(DeliveryProof):
+class CollectionDeliveryProof(DeliveryProof):
     browser_ref: str = field(repr=False)
 
     def matches(self, token, user_public_id, auth_version,
@@ -95,7 +95,7 @@ class V2DeliveryProof(DeliveryProof):
         if not is_delivery_scope(token) or not is_delivery_scope(self.token):
             return False
         try:
-            expected = issue_v2_scope(self.secret, user_public_id, auth_version,
+            expected = issue_collection_scope(self.secret, user_public_id, auth_version,
                                       configuration_public_id, configuration_version,
                                       self.browser_ref)
         except (ValueError, TypeError, UnicodeError):

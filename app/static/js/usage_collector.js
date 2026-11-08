@@ -1,845 +1,648 @@
 /* Page resource scope. */
 window.aelmsModules.register(document.currentScript, function (pageScope, pageScript) {
-/* Natural-use collector -- Phase 6 research collection.
- * No dependency, no build step.
- *
- * WHEN IT RUNS
- *   In the background on every Student page, but only when the page carries
- *   #research-collector-config, which the server renders only for an eligible
- *   Student (an active, non-excluded Student account) while a configuration
- *   is collecting inside its period. It shows nothing on the page; the only
- *   visible element is the optional feedback question, and only when the
- *   server sampled and granted one.
- *
- * WHAT IT SENDS (natural-use-events.v1, see research_event_dictionary.py)
- *   Event types, allowlisted page/element identifiers, closed-set detail
- *   codes and bounded integers: page views and visible time, visibility
- *   changes, 30-second heartbeats while visible (active / idle /
- *   media_playing -- whether any input happened, never which), control
- *   clicks by declared identifier or structural kind, bounded repeated-click
- *   bursts, clicks on non-controls (no target, no position), the fact that
- *   an answer option, filter or file field changed, form submission attempts
- *   and client-side invalid-field counts, media play/pause/seek/ended/rate
- *   changes with a whole-second position, and speaking-recorder states.
- *
- * WHAT IT NEVER READS OR SENDS
- *   Typed text, key identities or key counts, field values, option
- *   identities, answers, search terms, message text, file names or
- *   contents, audio, URLs or query strings, DOM text or HTML, coordinates,
- *   user-agent strings or any fingerprint.
- *
- * DELIVERY
- *   Batched POSTs to the server with the CSRF token in X-CSRFToken, every
- *   one sent with pageScope.fetch(..., {keepalive: true}) so that a navigation -- a
- *   submitted form, a followed link, a closed tab -- never cancels a batch
- *   already handed to the browser. There is no sendBeacon and no CSRF
- *   exemption. Each batch is written to a small per-tab outbox
- *   (sessionStorage) before it is sent and removed once the server answers;
- *   a batch whose answer never arrived (a network failure, a server error,
- *   or a page that navigated away first) is re-sent from the outbox with the
- *   same event ids, marked as a replay, at most three times. The server
- *   stores each event id at most once. The buffer and the outbox are
- *   bounded; overflow drops the oldest events and reports how many were
- *   dropped. When the server says collection is off, everything stops and
- *   the outbox is cleared.
- *
- * FAILURE ISOLATION
- *   Every handler is wrapped: an error here is swallowed, never prevents a
- *   default action, never blocks the page, and never affects a form
- *   submission. With JavaScript disabled nothing is collected and the LMS
- *   works exactly the same.
+/* Versioned research observations for desktop, tablet and phone browsers.
+ * Native click/change/submit activation covers mouse, touch and keyboard.
+ * No business request is intercepted.
+ * Closed semantic codes only: never read text, answers, URLs, key identities,
+ * coordinates, file names, recordings or account/message field values.
+ * Research questionnaire interactions are excluded from the observation stream.
+ * The bounded acknowledgement outbox is best-effort; phone delivery is not assured.
  */
 (function () {
   "use strict";
-
   var configNode = document.getElementById("research-collector-config");
-  if (!configNode || !window.fetch || !window.JSON) {
-    return;
-  }
   var config;
-  try {
-    config = JSON.parse(configNode.textContent);
-  } catch (error) {
-    return;
-  }
-  if (!config || !config.page || !config.eventsUrl ||
-      typeof config.deliveryScope !== "string" || config.deliveryScope.length !== 64 ||
-      !/^[0-9a-f]{64}$/.test(config.deliveryScope)) {
-    return;
-  }
+  try { config = configNode ? JSON.parse(configNode.textContent) : window.researchCollectorConfig; }
+  catch (_) { return; }
+  if (!config || typeof config.schema_version !== "string" ||
+      typeof config.scope_token !== "string" || !config.scope_token ||
+      !window.fetch || !window.crypto || !window.crypto.getRandomValues) return;
 
-  var stopped = false;
-  var buffer = [];
-  var dropped = 0;
-  var sequence = 0;
-  var sending = false;
-  var inFlight = {};
-  var OUTBOX_KEY = "usageResearchOutbox";
-  var SCOPE_KEY = "usageResearchDeliveryScope";
-  var MAX_OUTBOX = 4;
-  var MAX_ATTEMPTS = 3;
-  var REPEAT_WINDOW_MS = 1000;
-  var dialog = document.getElementById("research-feedback");
-  var handlingOffer = false;
+  var CONTEXTS = ["dashboard", "course_list", "course", "settings", "activity_list", "records",
+    "lesson", "reader", "search", "assignment", "quiz", "listening", "speaking", "attendance",
+    "grades", "announcement", "calendar", "discussion", "messaging", "notifications", "help", "unknown"];
+  var ACTIONS = ["navigate", "open", "close", "search", "save", "submit", "answer", "complete",
+    "undo_complete", "start", "next", "previous", "retry", "upload", "download", "play", "pause",
+    "replay", "seek", "record", "send", "help", "revise", "unknown"];
+  var DETAILS = ["visible", "hidden", "busy", "idle", "playing", "buffering", "paused", "ended",
+    "started", "finished", "timeout", "network_unknown", "unknown", "changed", "opened", "replay",
+    "playback_error", "background", "delivery_gap", "clock_unknown", "phone", "tablet", "desktop",
+    "device_unknown", "pointer_supported", "pointer_unsupported", "media_supported", "media_unsupported",
+    "visible_supported", "visible_unsupported"];
+  var TYPES = ["context_enter", "context_leave", "visible_interval", "action_intent", "request_start",
+    "request_finish", "revision_count", "ordinary_help", "media_interval", "media_action",
+    "observation_gap", "measurement_support"];
+  var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+  var OUTBOX = "researchCollectorOutbox", SCOPE = "researchCollectorScope", TAB = "researchCollectorTab";
+  var SAMPLING = "researchCollectorSampling";
+  var policy = config.policy || {};
+  var BATCH_SIZE = bounded(policy.batch_size, 1, 50, 30);
+  var MAX_BUFFER = bounded(policy.max_buffer, BATCH_SIZE, 200, 200);
+  var MAX_BATCHES = 4, MAX_ATTEMPTS = 4, MAX_AGE_MS = 1800000;
+  var stopped = false, sequence = 0, buffer = [], dropped = 0;
+  var sending = false, memoryOutbox = [], storageAvailable = true;
+  var pageRef = uuid(), tabRef = uuid(), contextRef = uuid();
+  var card = document.getElementById("research-feedback");
+  var page = code(config.page_code, CONTEXTS), context = code(config.context_code, CONTEXTS);
+  var activity = code(config.activity_code, CONTEXTS);
+  var clock = null, clockBusy = false;
+  var viewportTimer = null, declaredViewport = null;
+  var visibleStart = document.visibilityState === "visible" ? Date.now() : null;
+  var observableMs = 0, nextSampleMs = 60000, sampleBusy = false, deliveryReady = false;
+  var pendingPrompt = null, promptBusy = false, activePrompt = null;
+  var activeContextNode = null;
+  var formActions = new WeakMap(), formReservations = new WeakMap(), nodeContexts = new WeakMap(), mediaStates = new WeakMap();
+  var pendingRequests = new Map(), revisionTimers = new WeakMap();
 
+  function bounded(value, low, high, fallback) {
+    return Number.isInteger(value) && value >= low && value <= high ? value : fallback;
+  }
+  function code(value, list) { return list.indexOf(value) >= 0 ? value : "unknown"; }
   function uuid() {
-    if (window.crypto && typeof window.crypto.randomUUID === "function") {
-      return window.crypto.randomUUID();
-    }
-    var bytes = new Uint8Array(16);
-    window.crypto.getRandomValues(bytes);
-    bytes[6] = (bytes[6] & 0x0f) | 0x40;
-    bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    var hex = Array.prototype.map.call(bytes, function (b) {
-      return (b + 0x100).toString(16).slice(1);
-    }).join("");
-    return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" +
-      hex.slice(16, 20) + "-" + hex.slice(20);
+    if (window.crypto.randomUUID) return window.crypto.randomUUID();
+    var bytes = new Uint8Array(16); window.crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
+    var text = Array.prototype.map.call(bytes, function (n) { return (n + 256).toString(16).slice(1); }).join("");
+    return text.slice(0, 8) + "-" + text.slice(8, 12) + "-" + text.slice(12, 16) + "-" + text.slice(16, 20) + "-" + text.slice(20);
   }
-
-  function tabRef() {
+  function guard(fn) { return function (event) { try { fn(event); } catch (_) { /* LMS remains usable. */ } }; }
+  function ownScope() {
+    try { return !storageAvailable || window.sessionStorage.getItem(SCOPE) === config.scope_token; }
+    catch (_) { return true; }
+  }
+  function readOutbox() {
+    if (!storageAvailable) return memoryOutbox;
     try {
-      var existing = window.sessionStorage.getItem("usageResearchTab");
-      if (existing && existing.length === 36) {
-        return existing;
-      }
-      var fresh = uuid();
-      window.sessionStorage.setItem("usageResearchTab", fresh);
-      return fresh;
-    } catch (error) {
-      return uuid();
+      var list = JSON.parse(window.sessionStorage.getItem(OUTBOX) || "[]");
+      return Array.isArray(list) ? list : [];
+    } catch (_) { storageAvailable = false; return memoryOutbox; }
+  }
+  function writeOutbox(list) {
+    memoryOutbox = list;
+    if (storageAvailable) {
+      try { window.sessionStorage.setItem(OUTBOX, JSON.stringify(list)); }
+      catch (_) { storageAvailable = false; }
     }
   }
-
-  var pageView = uuid();
-  var tab = tabRef();
-
-  function record(type, fields) {
-    if (stopped) {
-      return;
-    }
-    sequence += 1;
-    var event = { id: uuid(), type: type, t: Date.now(), page: config.page, view: pageView,
-                  tab: tab, seq: sequence };
-    if (fields) {
-      for (var key in fields) {
-        if (Object.prototype.hasOwnProperty.call(fields, key) && fields[key] !== undefined &&
-            fields[key] !== null) {
-          event[key] = fields[key];
-        }
-      }
-    }
-    buffer.push(event);
-    while (buffer.length > config.maxBuffer) {
-      buffer.shift();
-      dropped += 1;
-    }
-    if (buffer.length >= config.batchSize) {
-      flush(false);
-    }
+  function ownEntry(entry) {
+    return entry && entry.scope === config.scope_token && UUID.test(entry.batch_ref) &&
+      Array.isArray(entry.events) && entry.events.length <= BATCH_SIZE &&
+      Number.isInteger(entry.created_at_ms) && Number.isInteger(entry.attempts);
   }
-
+  function restoreSamplingProgress() {
+    if (!storageAvailable) return;
+    try {
+      var saved = JSON.parse(window.sessionStorage.getItem(SAMPLING) || "null");
+      var age = saved && Date.now() - saved.updated_at_ms;
+      if (saved && saved.scope === config.scope_token && Number.isInteger(saved.updated_at_ms) &&
+          age >= 0 && age <= MAX_AGE_MS && Number.isSafeInteger(saved.observed_ms) && saved.observed_ms >= 0 &&
+          saved.observed_ms <= Number.MAX_SAFE_INTEGER - 60000 &&
+          Number.isSafeInteger(saved.next_sample_ms) && saved.next_sample_ms >= 60000) {
+        observableMs = saved.observed_ms; nextSampleMs = saved.next_sample_ms;
+      }
+    } catch (_) { /* A malformed or unavailable checkpoint starts a fresh local cadence. */ }
+  }
+  function saveSamplingProgress() {
+    if (!storageAvailable || !ownScope()) return;
+    try {
+      window.sessionStorage.setItem(SAMPLING, JSON.stringify({scope: config.scope_token,
+        observed_ms: observableMs, next_sample_ms: nextSampleMs, updated_at_ms: Date.now()}));
+    } catch (_) { /* Server-side observation time and burden limits remain authoritative. */ }
+  }
   function stop() {
-    stopped = true;
-    buffer = [];
-    dropped = 0;
-    // A late answer for an earlier page must preserve a newer scope's data.
+    stopped = true; buffer = []; dropped = 0;
+    // Late responses must never erase a newer login/configuration's outbox.
     writeOutbox(readOutbox().filter(function (entry) { return !ownEntry(entry); }));
+    if (card) card.hidden = true;
   }
-
-  // ---------------------------------------------------------------- delivery
-
+  function envelope(fields) {
+    return Object.assign({schema_version: config.schema_version, scope_token: config.scope_token}, fields || {});
+  }
+  function sameOriginPath(url) {
+    try { var parsed = new URL(url, window.location.href); return parsed.origin === window.location.origin; }
+    catch (_) { return false; }
+  }
   function post(url, body, keepalive) {
-    return pageScope.fetch(url, {
-      method: "POST",
-      credentials: "same-origin",
-      keepalive: !!keepalive,
-      headers: { "Content-Type": "application/json", "X-CSRFToken": config.csrf },
-      body: JSON.stringify(body)
+    if (!sameOriginPath(url)) return Promise.reject(new Error("invalid_endpoint"));
+    var controller = window.AbortController ? new AbortController() : null;
+    var timer = controller ? pageScope.setTimeout(function () { controller.abort(); }, 15000) : null;
+    return pageScope.fetch(url, {method: "POST", credentials: "same-origin", keepalive: !!keepalive,
+      signal: controller ? controller.signal : undefined,
+      headers: {"Content-Type": "application/json", "X-CSRFToken": config.csrf}, body: JSON.stringify(body)})
+      .then(function (response) { if (timer) pageScope.clearTimeout(timer); return response; }, function (error) {
+        if (timer) pageScope.clearTimeout(timer); throw error;
+      });
+  }
+  function jsonPost(url, body, terminalErrors) {
+    return post(url, envelope(body), false).then(function (response) {
+      return response.json().then(function (data) {
+        if (data.scope_valid === false || data.collecting === false) stop();
+        if (!response.ok && !(terminalErrors && response.status < 500 && response.status !== 429)) throw new Error("request_unconfirmed");
+        return data;
+      });
     });
   }
-
-  function readOutbox() {
-    try {
-      var list = JSON.parse(window.sessionStorage.getItem(OUTBOX_KEY) || "[]");
-      return Array.isArray(list) ? list : [];
-    } catch (error) {
-      return [];
+  function clockFields() {
+    if (clock && Math.abs((Date.now() - clock.wall) - (window.performance.now() - clock.mono)) > 100) clock = null;
+    return clock ? {clock_offset_ms: clock.offset, clock_uncertainty_ms: clock.uncertainty} : {};
+  }
+  function calibrateClock() {
+    if (clockBusy || stopped || !config.clock_url) return;
+    clockBusy = true;
+    var before = Date.now(), started = window.performance.now();
+    jsonPost(config.clock_url, {client_at_ms: before}).then(function (data) {
+      var elapsed = window.performance.now() - started, after = Date.now();
+      if (Number.isInteger(data.server_now_ms) && elapsed < 10000 && Math.abs(after - before - elapsed) <= 100) {
+        clockFields();
+        var recovered = clock === null;
+        clock = {offset: Math.round(data.server_now_ms - (before + after) / 2), uncertainty: Math.ceil(elapsed / 2) + 1,
+          wall: after, mono: window.performance.now()};
+        if (recovered) {
+          // Fresh measurements after recovery; never rewrite a previously queued batch's clock.
+          declareMeasurementSupport();
+          record("context_enter", {detail_code: "visible"});
+        }
+      } else { clock = null; }
+    }).catch(function () { clock = null; }).then(function () { clockBusy = false; });
+  }
+  function record(type, fields) {
+    if (stopped || !ownScope() || TYPES.indexOf(type) < 0) return;
+    fields = fields || {};
+    var event = {event_uid: uuid(), event_type: type, page_code: page, context_code: context,
+      activity_code: activity, context_ref: contextRef, client_at_ms: Date.now(),
+      client_sequence: ++sequence, page_ref: pageRef, tab_ref: tabRef};
+    ["action_ref", "attempt_ref"].forEach(function (key) { if (UUID.test(fields[key])) event[key] = fields[key]; });
+    if (ACTIONS.indexOf(fields.action_code) >= 0) event.action_code = fields.action_code;
+    if (DETAILS.indexOf(fields.detail_code) >= 0) event.detail_code = fields.detail_code;
+    if (Number.isInteger(fields.count) && fields.count >= 1 && fields.count <= 1000) event.count = fields.count;
+    if (Number.isInteger(fields.client_at_ms)) event.client_at_ms = fields.client_at_ms;
+    if (Number.isInteger(fields.interval_started_at_ms) && fields.interval_started_at_ms <= event.client_at_ms &&
+        event.client_at_ms - fields.interval_started_at_ms <= 45000) event.interval_started_at_ms = fields.interval_started_at_ms;
+    buffer.push(event);
+    while (buffer.length > MAX_BUFFER) { buffer.shift(); dropped += 1; }
+    if (buffer.length >= BATCH_SIZE) flush(false);
+  }
+  function viewportClass() {
+    var width = window.innerWidth || 0;
+    return width > 0 ? (width < 640 ? "phone" : width < 1024 ? "tablet" : "desktop") : "device_unknown";
+  }
+  function declareViewport(force) {
+    var next = viewportClass();
+    if (force || next !== declaredViewport) {
+      declaredViewport = next;
+      record("measurement_support", {detail_code: next});
     }
   }
-
-  function writeOutbox(list) {
-    try {
-      window.sessionStorage.setItem(OUTBOX_KEY, JSON.stringify(list));
-    } catch (error) { /* no storage: delivery is then best-effort only */ }
+  function declareMeasurementSupport() {
+    record("measurement_support", {detail_code: document.visibilityState ? "visible_supported" : "visible_unsupported"});
+    // API availability is not evidence of a physical mouse. Semantic action
+    // collection does not require PointerEvent or record pressed keys.
+    record("measurement_support", {detail_code: window.PointerEvent ? "pointer_supported" : "pointer_unsupported"});
+    record("measurement_support", {detail_code: typeof document.createElement("audio").canPlayType === "function" ? "media_supported" : "media_unsupported"});
+    // These are coarse viewport classes, not physical device identification.
+    // A narrow desktop window can report phone; never use this as a fingerprint.
+    declareViewport(true);
   }
-
-  function ownEntry(entry) {
-    return !!(entry && entry.body && entry.body.delivery_scope === config.deliveryScope &&
-              Array.isArray(entry.body.events));
-  }
-
-  function currentScope() {
-    try {
-      return window.sessionStorage.getItem(SCOPE_KEY) === config.deliveryScope;
-    } catch (error) {
-      return true; // Without storage, server verification still binds delivery.
-    }
-  }
-
-  function adoptOutboxScope() {
-    try {
-      window.sessionStorage.setItem(SCOPE_KEY, config.deliveryScope);
-    } catch (error) { /* Storage is optional, scope verification is not. */ }
-    // No old-scope event or dropped count belongs to this new page's scope.
-    writeOutbox(readOutbox().filter(ownEntry));
-  }
-
-  function remember(entry) {
-    if (!currentScope()) {
-      stop();
-      return false;
-    }
+  function rememberBatch() {
+    if (!buffer.length) return;
     var list = readOutbox().filter(ownEntry);
-    list.push(entry);
-    while (list.length > MAX_OUTBOX) {
-      dropped += list.shift().body.events.length;
-    }
+    list.push({scope: config.scope_token, batch_ref: uuid(), events: buffer.splice(0, BATCH_SIZE),
+      created_at_ms: Date.now(), attempts: 0, dropped: Math.min(dropped, 100000), clock: clockFields()});
+    dropped = 0;
+    while (list.length > MAX_BATCHES) dropped += list.shift().events.length;
     writeOutbox(list);
-    return true;
   }
-
-  function forget(key) {
+  function settleEntry(batchRef, data) {
+    var acknowledged = [];
+    [data.accepted_event_uids, data.rejected_event_uids].forEach(function (list) {
+      if (Array.isArray(list)) acknowledged = acknowledged.concat(list.filter(function (id) { return UUID.test(id); }));
+    });
     writeOutbox(readOutbox().filter(function (entry) {
-      return !(ownEntry(entry) && entry.key === key);
+      if (!ownEntry(entry) || entry.batch_ref !== batchRef) return true;
+      entry.events = entry.events.filter(function (event) { return acknowledged.indexOf(event.event_uid) < 0; });
+      return entry.events.length > 0;
     }));
   }
-
-  function failedAttempt(key) {
+  function deliver(entry, keepalive) {
+    if (!ownScope() || stopped) { stop(); return Promise.resolve(); }
+    entry.attempts += 1;
     var list = readOutbox();
-    list.forEach(function (entry) {
-      if (ownEntry(entry) && entry.key === key) {
-        entry.attempts += 1;
-      }
-    });
-    writeOutbox(list.filter(function (entry) {
-      if (ownEntry(entry) && entry.attempts >= MAX_ATTEMPTS) {
-        dropped += entry.body.events.length;
-        return false;
+    list.forEach(function (stored) { if (ownEntry(stored) && stored.batch_ref === entry.batch_ref) stored.attempts = entry.attempts; });
+    writeOutbox(list);
+    var body = envelope(Object.assign({batch_ref: entry.batch_ref, attempt_ref: uuid(), client_now_ms: Date.now(),
+      events: entry.events, dropped_client: entry.dropped}, entry.clock || {}));
+    return post(config.batch_url, body, keepalive).then(function (response) {
+      return response.json().then(function (data) {
+        if (data.scope_valid === false || data.collecting === false) { stop(); return; }
+        if (response.ok && ownScope()) {
+          deliveryReady = deliveryReady || Array.isArray(data.accepted_event_uids) &&
+            data.accepted_event_uids.some(function (id) {
+              return entry.events.some(function (event) { return event.event_uid === id; });
+            });
+          settleEntry(entry.batch_ref, data);
+        }
+      });
+    }).catch(function () { /* Retain unacknowledged events; bounded retries only. */ });
+  }
+  function flush(keepalive) {
+    if (stopped || !ownScope()) return Promise.resolve();
+    while (buffer.length) rememberBatch();
+    if (sending) return Promise.resolve();
+    var list = readOutbox().filter(function (entry) {
+      if (!ownEntry(entry)) return false;
+      if (entry.attempts >= MAX_ATTEMPTS || Date.now() - entry.created_at_ms > MAX_AGE_MS) {
+        dropped += entry.events.length; return false;
       }
       return true;
-    }));
-  }
-
-  function handleAnswer(answer) {
-    if (!currentScope()) {
-      stop();
-      return;
-    }
-    if (!answer) {
-      return;
-    }
-    if (answer.collecting === false) {
-      stop();
-      return;
-    }
-    if (answer.prompt && answer.prompt.id) {
-      handleOffer(answer.prompt.id);
-    }
-  }
-
-  /* Send one outbox entry. The entry leaves the outbox when the server
-     answers -- accepted, or refused for good (a 4xx other than 409/429,
-     which a resend could not change). */
-  function deliver(entry, replay) {
-    if (!ownEntry(entry) || !currentScope()) {
-      stop();
-      return Promise.resolve();
-    }
-    if (stopped || inFlight[entry.key]) {
-      return Promise.resolve();
-    }
-    inFlight[entry.key] = true;
-    var body = entry.body;
-    body.sent_at = Date.now();
-    if (replay) {
-      body.replay = true;
-    }
-    var request;
-    try {
-      request = post(config.eventsUrl, body, true);
-    } catch (error) {
-      delete inFlight[entry.key];
-      failedAttempt(entry.key);
-      return Promise.resolve();
-    }
-    return request
-      .then(function (response) {
-        if (response.status === 409 || response.status === 429 || response.status >= 500) {
-          throw new Error("retry");
-        }
-        forget(entry.key);
-        if (response.ok) {
-          return response.json();
-        }
-        return response.json().then(function (answer) {
-          if (answer && answer.error === "stale_delivery_scope") {
-            stop();
-          }
-          return null;
-        }, function () { return null; });
-      })
-      .then(function (answer) {
-        delete inFlight[entry.key];
-        handleAnswer(answer);
-      })
-      .catch(function () {
-        delete inFlight[entry.key];
-        failedAttempt(entry.key);
-      });
-  }
-
-  function flush(unloading) {
-    if (stopped || buffer.length === 0 || (sending && !unloading)) {
-      return;
-    }
-    var body = { schema: config.schema, sent_at: Date.now(),
-                 delivery_scope: config.deliveryScope,
-                 events: buffer.splice(0, config.batchSize) };
-    if (dropped) {
-      body.dropped = Math.min(dropped, 10000);
-      dropped = 0;
-    }
-    var entry = { key: uuid(), attempts: 0, body: body };
-    if (!remember(entry)) {
-      return;
-    }
-    if (unloading) {
-      deliver(entry, false);
-      return;
-    }
+    });
+    writeOutbox(list);
+    if (!list.length) return Promise.resolve();
     sending = true;
-    deliver(entry, false).then(function () { sending = false; });
-  }
-
-  /* Re-send what an earlier page (or an earlier failure) left unanswered. */
-  function replayOutbox() {
-    if (stopped) {
-      return;
-    }
-    readOutbox().filter(ownEntry).forEach(function (entry) { deliver(entry, true); });
-  }
-
-  adoptOutboxScope();
-
-  // ----------------------------------------------------------- observations
-
-  function viewportClass() {
-    var width = window.innerWidth || document.documentElement.clientWidth || 0;
-    return width < 640 ? "narrow" : (width < 1024 ? "medium" : "wide");
-  }
-
-  var visibleSince = document.visibilityState === "visible" ? Date.now() : null;
-  var visibleMs = 0;
-  var inputSeen = false;
-  var pendingHidden = null;
-
-  function mediaPlaying() {
-    var media = document.querySelectorAll("audio, video");
-    for (var i = 0; i < media.length; i += 1) {
-      if (!media[i].paused && !media[i].ended) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function markInput() { inputSeen = true; }
-
-  function heartbeat() {
-    if (document.visibilityState !== "visible") {
-      return;
-    }
-    var detail = inputSeen ? "active" : (mediaPlaying() ? "media_playing" : "idle");
-    inputSeen = false;
-    record("heartbeat", { detail: detail });
-  }
-
-  function onVisibility() {
-    if (document.visibilityState === "hidden") {
-      endBurst();
-      if (visibleSince !== null) {
-        visibleMs += Date.now() - visibleSince;
-        visibleSince = null;
-      }
-      record("visibility_hidden");
-      pendingHidden = pageScope.setTimeout(function () { pendingHidden = null; flush(false); }, 300);
-    } else {
-      visibleSince = Date.now();
-      record("visibility_visible");
-      considerPendingOffer();
-    }
-  }
-
-  function onPageHide() {
-    endBurst();
-    if (pendingHidden !== null) {
-      /* The page is unloading, not being hidden: a navigation must not end
-         the observation run. Drop the hidden event that unloading caused. */
-      pageScope.clearTimeout(pendingHidden);
-      pendingHidden = null;
-      var last = buffer[buffer.length - 1];
-      if (last && last.type === "visibility_hidden" && Date.now() - last.t < 1000) {
-        buffer.pop();
-      }
-    }
-    if (visibleSince !== null) {
-      visibleMs += Date.now() - visibleSince;
-      visibleSince = null;
-    }
-    record("page_leave", { duration_ms: Math.min(Math.max(0, visibleMs), 86400000) });
-    while (buffer.length) {
-      flush(true);
-    }
-  }
-
-  function insideDialog(node) {
-    return !!(dialog && node && dialog.contains(node));
-  }
-
-  function researchId(node) {
-    var marked = node.closest ? node.closest("[data-research-id]") : null;
-    return marked ? marked.getAttribute("data-research-id") : null;
-  }
-
-  var CONTROL_SELECTOR = "a[href], button, input, select, textarea, label, summary, [role='button']";
-  var lastClick = { node: null, at: 0, count: 0, element: null, timer: null };
-
-  function endBurst() {
-    pageScope.clearTimeout(lastClick.timer);
-    if (lastClick.count >= 2) {
-      record("repeated_click", { element: lastClick.element, count: Math.min(lastClick.count, 50) });
-    }
-    lastClick = { node: null, at: 0, count: 0, element: null, timer: null };
-  }
-
-  function onClick(event) {
-    var target = event.target;
-    if (!target || insideDialog(target)) {
-      return;
-    }
-    var control = target.closest ? target.closest(CONTROL_SELECTOR) : null;
-    if (!control) {
-      record("non_interactive_click");
-      return;
-    }
-    var tag = control.tagName.toLowerCase();
-    if (tag === "input" || tag === "select" || tag === "textarea" || tag === "label") {
-      /* Inputs are observed through `change`; typing fields are never observed. */
-      var kind = (control.getAttribute("type") || "").toLowerCase();
-      if (tag !== "input" || (kind !== "submit" && kind !== "button")) {
-        return;
-      }
-    }
-    var element = researchId(control) ||
-      (tag === "a" ? "other_link" : (tag === "button" || tag === "input" ? "other_button" : "other_control"));
-    var now = Date.now();
-    if (lastClick.node === control && now - lastClick.at < REPEAT_WINDOW_MS) {
-      lastClick.count += 1;
-      lastClick.at = now;
-      pageScope.clearTimeout(lastClick.timer);
-      lastClick.timer = pageScope.setTimeout(endBurst, REPEAT_WINDOW_MS);
-      return;
-    }
-    if (lastClick.node) {
-      pageScope.clearTimeout(lastClick.timer);
-      endBurst();
-    }
-    var fields = { element: element };
-    if (element === "search_result") {
-      var position = parseInt(control.getAttribute("data-research-position"), 10);
-      if (position > 0 && position <= 500) {
-        fields.position = position;
-      }
-    }
-    record("control_click", fields);
-    lastClick = { node: control, at: now, count: 1, element: element,
-                  timer: pageScope.setTimeout(endBurst, REPEAT_WINDOW_MS) };
-  }
-
-  var INPUT_IDS = { quiz_option: 1, listening_option: 1, quiz_submit_confirm: 1,
-                    listening_submit_confirm: 1, speaking_file_select: 1, search_filter: 1,
-                    activity_filter: 1, assignment_file_select: 1 };
-
-  function onChange(event) {
-    var target = event.target;
-    if (!target || insideDialog(target)) {
-      return;
-    }
-    var element = researchId(target);
-    if (element && INPUT_IDS[element]) {
-      record("input_change", { element: element });
-    }
-  }
-
-  function formId(form) {
-    return (form && form.getAttribute("data-research-form")) || "other_form";
-  }
-
-  var invalidCounts = {};
-
-  function onInvalid(event) {
-    var target = event.target;
-    if (!target || !target.form || insideDialog(target)) {
-      return;
-    }
-    var id = formId(target.form);
-    if (!invalidCounts[id]) {
-      invalidCounts[id] = 0;
-      pageScope.setTimeout(function () {
-        record("form_invalid", { element: id, count: Math.min(invalidCounts[id], 50) });
-        delete invalidCounts[id];
-      }, 0);
-    }
-    invalidCounts[id] += 1;
-  }
-
-  function onSubmit(event) {
-    var form = event.target;
-    if (!form || insideDialog(form) || form.hasAttribute("data-research-resuming-submit")) {
-      return;
-    }
-    endBurst();
-    record("form_submit", { element: formId(form) });
-    /* The form is about to navigate: hand the batch to the browser now, with
-       keepalive, so the navigation cannot cancel it. The submission itself
-       is never delayed or prevented. */
-    flush(true);
-  }
-
-  function watchMedia() {
-    var media = document.querySelectorAll("audio[data-research-media], video[data-research-media]");
-    Array.prototype.forEach.call(media, function (node) {
-      var kind = node.getAttribute("data-research-media");
-      function note(detail) {
-        return function () {
-          var fields = { element: kind, detail: detail };
-          if (isFinite(node.currentTime)) {
-            fields.position = Math.max(0, Math.min(86400, Math.floor(node.currentTime)));
-          }
-          record("media_event", fields);
-        };
-      }
-      pageScope.listen(node, "play", note("play"));
-      pageScope.listen(node, "pause", note("pause"));
-      pageScope.listen(node, "ended", note("ended"));
-      pageScope.listen(node, "seeked", note("seek"));
-      pageScope.listen(node, "ratechange", note("rate_change"));
+    return deliver(list[0], keepalive).then(function () {
+      sending = false;
+      // A successor page can use acknowledged intervals left by the previous page.
+      if (!keepalive && deliveryReady) sample();
     });
   }
 
-  var RECORDER_STATES = { requesting: 1, recording: 1, preview: 1, uploading: 1, error: 1 };
-  var RECORDER_FAILURES = { permission_denied: 1, unsupported: 1, recorder_error: 1 };
-
-  function watchRecorder() {
-    var root = document.querySelector("[data-speaking-recorder]");
-    if (!root || typeof window.MutationObserver !== "function") {
-      return;
+  function insideResearch(node) { return !!(card && node && card.contains(node)); }
+  function visible(node) { return node && !node.hidden && node.getClientRects().length > 0; }
+  function detectContext() {
+    var declared = document.querySelector("[data-research-context]:not([hidden])");
+    var next = declared && visible(declared) ? code(declared.getAttribute("data-research-context"), CONTEXTS) : code(config.context_code, CONTEXTS);
+    var node = declared && visible(declared) ? declared : null;
+    var announcement = document.querySelector("[data-announcement-popup][open] [data-announcement-reader]");
+    var reader = document.querySelector("[data-atlas-reader]");
+    var search = document.querySelector("[data-workspace-search][open]");
+    if (visible(search)) { next = "search"; node = search; }
+    else if (visible(announcement)) { next = "announcement"; node = announcement; }
+    else if (visible(reader)) { next = "reader"; node = reader; }
+    else if (visible(document.querySelector("[data-student-reader]"))) {
+      next = "reader"; node = document.querySelector("[data-student-reader]");
     }
-    pageScope.createObserver(MutationObserver, function (mutations) {
-      mutations.forEach(function (mutation) {
-        var value = root.getAttribute(mutation.attributeName);
-        if (mutation.attributeName === "data-recorder-state" && RECORDER_STATES[value]) {
-          record("recorder_state", { element: "speaking_recorder", detail: value });
-        } else if (mutation.attributeName === "data-recorder-failure" && RECORDER_FAILURES[value]) {
-          record("recorder_failure", { element: "speaking_recorder", detail: value });
-        }
-      });
-    }).observe(root, { attributes: true,
-                       attributeFilter: ["data-recorder-state", "data-recorder-failure"] });
+    if (next === context && node === activeContextNode) return;
+    closeVisibleInterval();
+    mediaTick();
+    record("context_leave", {detail_code: "finished"});
+    context = next; activity = next === "reader" ? code(config.activity_code, CONTEXTS) : next;
+    contextRef = node && nodeContexts.get(node) || uuid(); activeContextNode = node;
+    if (node) nodeContexts.set(node, contextRef);
+    record("context_enter", {detail_code: "started"});
   }
-
-  // ---------------------------------------------------------- feedback prompt
-
-  var pendingOffer = null;
-  var lastDeferral = null;
-
-  function promptUrl(id, action) {
-    return config.promptUrl.replace("PROMPT", encodeURIComponent(id)).replace("ACTION", action);
-  }
-
-  function deferralReason() {
-    if (document.visibilityState !== "visible") {
-      return "hidden_tab";
-    }
-    if (document.querySelector("[data-quiz-timer]")) {
-      return "timed_activity";
-    }
+  function criticalDeferral() {
+    if (document.visibilityState !== "visible") return "hidden_tab";
+    if (visible(document.querySelector("[data-quiz-timer]"))) return "timed_activity";
     var recorder = document.querySelector("[data-speaking-recorder]");
-    var state = recorder ? recorder.getAttribute("data-recorder-state") : null;
-    if (state === "recording" || state === "requesting") {
-      return "recording";
-    }
-    if (state === "uploading") {
-      return "uploading";
-    }
+    var state = recorder && recorder.getAttribute("data-recorder-state");
+    if (state === "requesting" || state === "recording") return "recording";
+    if (state === "uploading" || Array.from(pendingRequests.values()).some(function (item) { return item.action_code === "upload"; })) return "uploading";
+    var dialogs = document.querySelectorAll("dialog[open], [aria-modal='true']:not([hidden])");
+    for (var i = 0; i < dialogs.length; i += 1) if (dialogs[i] !== card && visible(dialogs[i])) return "blocking_dialog";
     return null;
   }
-
-  /* A prompt is shown at most once by this page, whatever the server says. */
-  var handledPrompts = {};
-
-  function handleOffer(id) {
-    if (!dialog || handlingOffer || !dialog.hidden || handledPrompts[id]) {
+  function closeVisibleInterval() {
+    if (visibleStart === null) return;
+    var now = Date.now(), elapsed = now - visibleStart;
+    if (elapsed > 0 && elapsed <= 45000) {
+      record("visible_interval", {interval_started_at_ms: visibleStart, client_at_ms: now, detail_code: "visible"});
+      observableMs += elapsed;
+      saveSamplingProgress();
+    } else if (elapsed > 45000 || elapsed < 0) {
+      record("observation_gap", {detail_code: elapsed < 0 ? "clock_unknown" : "background"});
+      if (elapsed < 0) clock = null;
+    }
+    visibleStart = document.visibilityState === "visible" ? now : null;
+  }
+  var ACTION_MAP = {
+    lesson_complete: "complete", lesson_undo_complete: "undo_complete", lesson_open: "open", course_open: "open",
+    course_outline: "navigate", activity_open: "open", activity_filter: "search", search_submit: "search", search_result: "open",
+    quiz_start: "start", listening_start: "start", quiz_save: "save", listening_save: "save",
+    quiz_submit: "submit", listening_submit: "submit", quiz_previous: "previous", listening_previous: "previous",
+    quiz_next: "next", listening_next: "next", listening_save_next: "next", quiz_question_jump: "navigate",
+    quiz_bookmark: "save", assignment_submit: "submit", speaking_submit: "upload", speaking_file_select: "upload",
+    speaking_record_start: "record", speaking_record_stop: "record", speaking_record_again: "retry",
+    material_download: "download", material_external_link: "open", discussion_reply: "send", message_send: "send",
+    help_open: "help", nav_help: "help", nav_search: "search", notification_read_all: "save"
+  };
+  function actionCode(node) {
+    if (!node) return null;
+    if (node.matches("[data-media-play]")) {
+      var host = node.closest("[data-course-media]");
+      var media = host && host.querySelector("audio:not([hidden]),video:not([hidden])");
+      return media && !media.paused ? "pause" : "play";
+    }
+    if (node.matches("[data-media-skip],[data-media-seek]")) return "seek";
+    if (node.matches("[data-play-pin],[data-reader-next]")) return "open";
+    if (node.matches("[data-close-player],[data-close-outline]")) return "close";
+    if (node.matches("[data-reader-fullscreen],[data-media-fullscreen],[data-media-pip]")) return "open";
+    if (node.matches("[data-quiz-save-retry]")) return "retry";
+    var explicit = node.getAttribute("data-research-action");
+    if (ACTIONS.indexOf(explicit) >= 0) return explicit;
+    var identity = node.getAttribute("data-research-id") || node.getAttribute("data-research-form");
+    if (Object.prototype.hasOwnProperty.call(ACTION_MAP, identity)) return ACTION_MAP[identity];
+    if (/^nav_(dashboard|courses|activities|records|calendar|messages|settings|notifications|account|display|more|assignments|quizzes|listening|speaking|attendance|grades|announcements|discussions|logout)$/.test(identity || "")) return "navigate";
+    return null;
+  }
+  function activate(action) {
+    var ref = uuid(); record("action_intent", {action_ref: ref, action_code: action});
+    if (action === "help") record("ordinary_help", {action_ref: ref, action_code: "help", detail_code: "opened"});
+    return {action_ref: ref, action_code: action, at: Date.now()};
+  }
+  function hiddenReference(form, name, value) {
+    var field = form.querySelector("input[type='hidden'][name='" + name + "']");
+    if (!field) { field = document.createElement("input"); field.type = "hidden"; field.name = name; form.appendChild(field); }
+    field.value = value;
+  }
+  function beginRequest(options) {
+    options = options || {};
+    var form = options.form;
+    var action = form && formActions.get(form);
+    if (!action && UUID.test(options.action_ref) && ACTIONS.indexOf(options.action_code) >= 0) {
+      action = {action_ref: options.action_ref, action_code: options.action_code};
+    }
+    if (!action && form && actionCode(form)) {
+      action = activate(actionCode(form)); formActions.set(form, action);
+    }
+    if (!action && ACTIONS.indexOf(options.action_code) >= 0) action = activate(options.action_code);
+    if (!action) return null;
+    var reserved = form && formReservations.get(form);
+    if (options.reuse_reserved && reserved && reserved.used && pendingRequests.has(reserved.attempt_ref)) {
+      return reserved.attempt_ref;
+    }
+    var attempt = reserved && !reserved.used && reserved.action_ref === action.action_ref ? reserved.attempt_ref : uuid();
+    if (reserved) reserved.used = true;
+    pendingRequests.set(attempt, {action_ref: action.action_ref, action_code: action.action_code, at: Date.now()});
+    record("request_start", {action_ref: action.action_ref, attempt_ref: attempt, action_code: action.action_code, detail_code: "started"});
+    if (form && (form.getAttribute("method") || "get").toLowerCase() === "post") {
+      hiddenReference(form, "research_action_ref", action.action_ref);
+      hiddenReference(form, "research_attempt_ref", attempt);
+      hiddenReference(form, "research_context_ref", contextRef);
+      hiddenReference(form, "research_scope_token", config.scope_token);
+      hiddenReference(form, "research_context_code", context);
+    }
+    return attempt;
+  }
+  function finishRequest(attempt, detail) {
+    var request = pendingRequests.get(attempt);
+    if (!request || ["finished", "timeout", "network_unknown", "unknown"].indexOf(detail) < 0) return;
+    record("request_finish", {action_ref: request.action_ref, attempt_ref: attempt, action_code: request.action_code, detail_code: detail});
+    pendingRequests.delete(attempt);
+  }
+  function onClick(event) {
+    if (!event.target || insideResearch(event.target)) return;
+    var target = event.target.closest("a, button, input[type='submit'], input[type='button'], [data-research-action]");
+    if (!target || target.disabled) return;
+    var action = actionCode(target);
+    if (!action) return;
+    var logical = activate(action);
+    var form = target.form;
+    if (form) formActions.set(form, logical);
+  }
+  function onSubmit(event) {
+    var form = event.target;
+    if (!form || insideResearch(form)) return;
+    var action = actionCode(form);
+    if (!action) return;
+    var logical = formActions.get(form);
+    if (!logical || Date.now() - logical.at > 1000) { logical = activate(action); formActions.set(form, logical); }
+    // Prepare join hints before a progressive owner constructs FormData. A
+    // cancelled/confirmation-delayed submit is not an observed request start.
+    var reservation = {action_ref: logical.action_ref, attempt_ref: uuid(), used: false};
+    formReservations.set(form, reservation);
+    if ((form.getAttribute("method") || "get").toLowerCase() === "post") {
+      hiddenReference(form, "research_action_ref", reservation.action_ref);
+      hiddenReference(form, "research_attempt_ref", reservation.attempt_ref);
+      hiddenReference(form, "research_context_ref", contextRef);
+      hiddenReference(form, "research_scope_token", config.scope_token);
+      hiddenReference(form, "research_context_code", context);
+    }
+    Promise.resolve().then(guard(function () {
+      if (!event.defaultPrevented && !reservation.used) beginRequest({form: form});
+      flush(true);
+    }));
+  }
+  var REVISIONS = {quiz_option: 1, listening_option: 1, search_filter: 1, activity_filter: 1};
+  function onChange(event) {
+    var target = event.target;
+    if (target && !insideResearch(target) && target.matches("[data-media-seek],[data-media-speed],[data-audio-speed-select]")) {
+      var action = target.matches("[data-media-seek]") ? "seek" : "revise";
+      var logicalMedia = activate(action);
+      record("media_action", {action_ref: logicalMedia.action_ref, action_code: action, detail_code: "started"});
       return;
     }
-    var reason = deferralReason();
-    if (reason) {
-      /* Report each deferral once per offer and reason, not once per batch. */
-      if (pendingOffer !== id || lastDeferral !== reason) {
-        post(promptUrl(id, "defer"), { reason: reason }, false).catch(function () {});
-      }
-      pendingOffer = id;
-      lastDeferral = reason;
+    if (!target || insideResearch(target) || !REVISIONS[target.getAttribute("data-research-id")]) return;
+    // Whitelist controls, never inspect values or infer which option was selected.
+    if (!target.matches("select, input[type='radio'], input[type='checkbox']")) return;
+    var logical = activate(target.getAttribute("data-research-id") === "quiz_option" || target.getAttribute("data-research-id") === "listening_option" ? "answer" : "search");
+    if (target.form) formActions.set(target.form, logical);
+    var pending = revisionTimers.get(target) || {count: 0, timer: null};
+    if (pending.timer) pageScope.clearTimeout(pending.timer);
+    pending.count = Math.min(1000, pending.count + 1);
+    pending.timer = pageScope.setTimeout(guard(function () {
+      record("revision_count", {action_ref: logical.action_ref, action_code: "revise", detail_code: "changed", count: pending.count});
+      revisionTimers.delete(target);
+    }), 250);
+    revisionTimers.set(target, pending);
+  }
+
+  function mediaInterval(node, now) {
+    var state = mediaStates.get(node);
+    if (!state) return;
+    if (state.since === null) {
+      // Resuming a visible tab does not necessarily fire play/playing again.
+      // Start a fresh interval, never bridge time while the tab was hidden.
+      if (document.visibilityState === "visible" && !node.paused && !node.ended) state.since = now;
       return;
     }
-    lastDeferral = null;
-    handlingOffer = true;
-    post(promptUrl(id, "display"), {}, false)
-      .then(function (response) { return response.ok ? response.json() : null; })
-      .then(function (answer) {
-        handlingOffer = false;
-        if (answer && answer.granted) {
-          pendingOffer = null;
-          handledPrompts[id] = true;
-          showDialog(id);
-        }
-      })
-      .catch(function () { handlingOffer = false; });
-  }
-
-  function considerPendingOffer() {
-    if (pendingOffer && !deferralReason()) {
-      var id = pendingOffer;
-      pendingOffer = null;
-      handleOffer(id);
+    var elapsed = now - state.since;
+    if (elapsed > 0 && elapsed <= 45000) {
+      record("media_interval", {interval_started_at_ms: state.since, client_at_ms: now, detail_code: state.kind});
     }
+    state.since = document.visibilityState === "visible" && !node.paused && !node.ended ? now : null;
   }
-
-  function message(kind) {
-    var templates = dialog.querySelector("[data-feedback-messages]");
-    var node = templates && templates.content ?
-      templates.content.querySelector('[data-message="' + kind + '"]') : null;
-    return node ? node.textContent : "";
-  }
-
-  function showDialog(id) {
-    var focusOrigin = document.activeElement;
-    var form = dialog.querySelector("[data-feedback-form]");
-    var submit = dialog.querySelector("[data-feedback-submit]");
-    var skip = dialog.querySelector("[data-feedback-skip]");
-    var status = dialog.querySelector("[data-feedback-status]");
-    var title = dialog.querySelector("#research-feedback-title");
-    var inputs = form.querySelectorAll("input");
-    var done = false;
-    var waiting = false;
-    /* The one response this card has sent and the server has not settled
-       yet. Once set it never changes: every retry sends exactly it. */
-    var pending = null;
-
-    [submit, skip].forEach(function (button) {
-      if (!button.hasAttribute("data-default-label")) {
-        button.setAttribute("data-default-label", button.textContent);
-      }
-      button.textContent = button.getAttribute("data-default-label");
+  function bindMedia() {
+    document.querySelectorAll("audio[data-research-media],video[data-research-media]").forEach(function (node) {
+      if (mediaStates.has(node)) return;
+      var state = {since: null, kind: "playing", hadPlayback: false, ended: false}; mediaStates.set(node, state);
+      ["play", "playing", "waiting", "stalled", "pause", "ended", "error", "seeked"].forEach(function (type) {
+        pageScope.listen(node, type, guard(function () {
+          var now = Date.now(); mediaInterval(node, now);
+          if (type === "play") {
+            record("media_action", {action_code: state.ended ? "replay" : "play", detail_code: state.ended ? "replay" : "started"});
+            state.hadPlayback = true; state.ended = false;
+          } else if (type === "error") record("media_action", {detail_code: "playback_error"});
+          else if (type === "seeked") record("media_action", {action_code: "seek", detail_code: "started"});
+          else if (type === "pause" || type === "ended") record("media_action", {action_code: "pause", detail_code: type === "ended" ? "ended" : "paused"});
+          // Seeking a stalled player is not evidence that playback recovered.
+          if (type === "waiting" || type === "stalled") state.kind = "buffering";
+          else if (type === "playing") state.kind = "playing";
+          state.ended = type === "ended" || state.ended;
+          state.since = document.visibilityState === "visible" && !node.paused && !node.ended ? now : null;
+        }));
+      });
     });
-    form.reset();
-    setInputs(true);
-    submit.disabled = true;
-    skip.disabled = false;
-    status.textContent = "";
-    dialog.hidden = false;
-    if (title) {
-      title.focus();
-    }
+  }
+  function mediaTick() {
+    document.querySelectorAll("audio[data-research-media],video[data-research-media]").forEach(function (node) { mediaInterval(node, Date.now()); });
+  }
 
-    function setInputs(enabled) {
-      Array.prototype.forEach.call(inputs, function (input) { input.disabled = !enabled; });
-    }
-
-    function hideAndRestore() {
-      var returnFocus = dialog.contains(document.activeElement) || document.activeElement === document.body;
-      dialog.hidden = true;
-      // This remains a non-modal optional card. Never reclaim focus after
-      // the Student intentionally continued using the background page.
-      if (returnFocus) {
-        var target = focusOrigin && focusOrigin !== document.body && focusOrigin !== document.documentElement && focusOrigin.isConnected && !focusOrigin.disabled && focusOrigin.getClientRects().length ? focusOrigin : document.getElementById("workspace-content");
-        if (target && typeof target.focus === "function") target.focus({preventScroll:true});
-      }
-    }
-
-    function finish(kind, delay) {
-      done = true;
-      status.textContent = message(kind);
-      setInputs(false);
-      submit.disabled = true;
-      skip.disabled = true;
-      form.removeEventListener("change", onRating);
-      form.removeEventListener("submit", onAnswer);
-      skip.removeEventListener("click", onSkip);
-      dialog.removeEventListener("keydown", onKey);
-      pageScope.setTimeout(hideAndRestore, delay);
-    }
-
-    /* The response may or may not have been saved: the request failed, or
-       its answer never came back. Keep the choice that was sent, frozen and
-       visible, until the server settles it. "Try again" resends exactly that
-       choice; "Close" leaves without sending anything and claims nothing. */
-    function uncertain() {
-      status.textContent = message("failed");
-      setInputs(false);
-      submit.textContent = message("retry_label");
-      skip.textContent = message("close_label");
-      submit.disabled = false;
-      skip.disabled = false;
-    }
-
-    /* Say "Thank you" only when the server confirms that this exact choice
-       is the stored one. The server keeps the first stored response of a
-       prompt and never replaces it, so a retry can neither create a second
-       one nor change the first. */
-    function send(body) {
-      if (done || waiting) {
-        return;
-      }
-      if (pending === null) {
-        pending = body;
-      }
-      var dismissed = pending.dismissed === true;
-      waiting = true;
-      setInputs(false);
-      submit.disabled = true;
-      skip.disabled = true;
-      status.textContent = "";
-      post(promptUrl(id, "respond"), pending, false)
-        .then(function (response) {
-          return response.json()
-            .catch(function () { return null; })
-            .then(function (answer) { return { code: response.status, answer: answer || {} }; });
-        })
-        .then(function (result) {
-          waiting = false;
-          var answer = result.answer;
-          if (result.code === 200 && answer.recorded) {
-            finish(dismissed ? "dismissed" : "recorded", dismissed ? 0 : 1500);
-          } else if (answer.collecting === false) {
-            finish("unavailable", 3000);
-          } else if (result.code === 409 && answer.status === "already") {
-            finish(dismissed ? "dismissed" : "recorded", dismissed ? 0 : 1500);
-          } else if (result.code === 409 && answer.status === "different") {
-            finish("kept", 3000);
-          } else if (result.code === 409 && answer.status === "late") {
-            finish("expired", 3000);
-          } else if (result.code === 409 || result.code === 404 || result.code === 400) {
-            finish("unavailable", 3000);
-          } else {
-            uncertain();
-          }
-        })
-        .catch(function () {
-          waiting = false;
-          uncertain();
-        });
-    }
-
+  function promptUrl(id, action) {
+    return config.prompt_url.replace("PROMPT", encodeURIComponent(id)).replace("ACTION", action);
+  }
+  function sample() {
+    if (stopped || !ownScope() || !deliveryReady || sampleBusy || pendingPrompt || activePrompt || document.visibilityState !== "visible" || observableMs < nextSampleMs) return;
+    // One opportunity after accumulated observed time; never replay missed draws.
+    nextSampleMs = observableMs + 60000; sampleBusy = true; saveSamplingProgress();
+    flush(false).then(function () { return jsonPost(config.sample_url, {client_at_ms: Date.now(), critical_deferral: criticalDeferral()}); })
+      .then(function (data) { if (data.prompt && data.prompt.id) pendingPrompt = data.prompt; })
+      .catch(function () {})
+      .then(function () { sampleBusy = false; considerPrompt(); });
+  }
+  function considerPrompt() {
+    if (!card || stopped || !pendingPrompt || promptBusy || activePrompt || criticalDeferral()) return;
+    var prompt = pendingPrompt; promptBusy = true;
+    jsonPost(promptUrl(prompt.id, "grant"), {client_at_ms: Date.now(), critical_deferral: null})
+      .then(function (data) {
+        if (data.status === "granted" && data.prompt && !criticalDeferral()) {
+          pendingPrompt = null; showPrompt(data.prompt);
+        } else if (data.status !== "deferred") pendingPrompt = null;
+      }).catch(function () {})
+      .then(function () { promptBusy = false; });
+  }
+  function message(name) {
+    var messages = card.querySelector("template");
+    var node = messages && messages.content.querySelector("[data-research-feedback-message='" + name + "']"); return node ? node.textContent : "";
+  }
+  function showPrompt(prompt) {
+    var form = card.querySelector("[data-research-feedback-form]"), submit = card.querySelector("[data-research-feedback-submit]");
+    var skip = card.querySelector("[data-research-feedback-skip]"), status = card.querySelector("[data-research-feedback-status]");
+    var helpGroup = card.querySelector("[data-research-feedback-help-question]");
+    var scrollBody = card.querySelector("[data-research-feedback-body]");
+    var pending = null, waiting = false, renderConfirmed = false;
+    activePrompt = prompt; form.reset(); status.textContent = "";
+    submit.textContent = message("submit"); skip.textContent = message("skip");
+    helpGroup.hidden = prompt.help_question_shown !== true;
+    form.querySelectorAll("input").forEach(function (node) { node.disabled = false; });
+    submit.disabled = true; skip.disabled = true;
+    var focusOrigin = document.activeElement;
+    card.hidden = false;
+    if (scrollBody) scrollBody.scrollTop = 0;
+    // Non-modal: retain the Student's focus and let ordinary platform work continue.
+    // Two animation frames give the visible card one paint opportunity. This
+    // acknowledges reported rendering, never human attention or comprehension.
+    pageScope.requestAnimationFrame(function () { pageScope.requestAnimationFrame(function () {
+      if (card.hidden || document.visibilityState !== "visible") { close(); return; }
+      var renderedBody = Object.assign({client_at_ms: Date.now(), locale: card.lang === "ar" ? "ar" : "en",
+        help_question_shown: !helpGroup.hidden}, clockFields());
+      jsonPost(promptUrl(prompt.id, "render"), renderedBody).then(function (data) {
+        if (data.rendered || data.status === "rendered" || data.recorded) {
+          renderConfirmed = true; skip.disabled = false; onChangeRating();
+        } else close();
+      }).catch(function () { status.textContent = message("unavailable"); pageScope.setTimeout(close, 3000); });
+    }); });
     function close() {
-      done = true;
-      status.textContent = "";
-      setInputs(false);
-      form.removeEventListener("change", onRating);
-      form.removeEventListener("submit", onAnswer);
-      skip.removeEventListener("click", onSkip);
-      dialog.removeEventListener("keydown", onKey);
-      hideAndRestore();
+      var hadFocus = card.contains(document.activeElement);
+      form.removeEventListener("submit", onAnswer); form.removeEventListener("change", onChangeRating);
+      skip.removeEventListener("click", onSkip); card.removeEventListener("keydown", onEscape);
+      card.hidden = true; activePrompt = null;
+      if (hadFocus && focusOrigin && focusOrigin.isConnected && typeof focusOrigin.focus === "function") focusOrigin.focus({preventScroll: true});
     }
-
-    function onRating() {
-      if (!waiting && pending === null) {
-        submit.disabled = !form.querySelector("input[name='rating']:checked");
-      }
+    function onChangeRating() { submit.disabled = !renderConfirmed || waiting || (!pending && !form.querySelector("input[name='research-rating']:checked")); }
+    function freeze() { form.querySelectorAll("input").forEach(function (node) { node.disabled = true; }); }
+    function send(body) {
+      if (!renderConfirmed || waiting) return;
+      if (!pending) pending = body;
+      waiting = true; freeze(); submit.disabled = true; skip.disabled = true;
+      jsonPost(promptUrl(prompt.id, "respond"), pending, true).then(function (data) {
+        waiting = false;
+        if (data.recorded || data.status === "already") {
+          status.textContent = message("recorded"); pageScope.setTimeout(close, pending.skipped ? 0 : 1200);
+        } else if (data.status === "different") {
+          status.textContent = message("kept"); pageScope.setTimeout(close, 2500);
+        } else { status.textContent = message("unavailable"); pageScope.setTimeout(close, 2500); }
+      }).catch(function () {
+        waiting = false; status.textContent = message("failed");
+        submit.textContent = message("retry"); skip.textContent = message("close");
+        submit.disabled = false; skip.disabled = false;
+      });
     }
-
     function onAnswer(event) {
       event.preventDefault();
-      if (pending !== null) {
-        send(pending);
-        return;
-      }
-      var checked = form.querySelector("input[name='rating']:checked");
-      if (!checked) {
-        return;
-      }
-      var causes = Array.prototype.map.call(
-        form.querySelectorAll("input[name='cause']:checked"), function (box) { return box.value; });
-      send({ rating: parseInt(checked.value, 10), causes: causes });
+      if (pending) { send(pending); return; }
+      var rating = form.querySelector("input[name='research-rating']:checked"); if (!rating) return;
+      var causes = Array.prototype.map.call(form.querySelectorAll("input[name='research-cause']:checked"), function (node) { return node.value; });
+      var help = helpGroup.hidden ? null : form.querySelector("input[name='research-help']:checked");
+      send({response_ref: uuid(), rating: Number(rating.value), causes: causes,
+        help_requested: help ? help.value === "yes" : null, skipped: false});
     }
-
     function onSkip() {
-      if (waiting) {
-        return;
-      }
-      if (pending !== null) {
-        close();
-        return;
-      }
-      send({ dismissed: true });
+      if (waiting) return;
+      if (pending) { close(); return; }
+      send({response_ref: uuid(), skipped: true});
     }
-
-    function onKey(event) {
-      if (event.key === "Escape") {
-        onSkip();
-      }
-    }
-
-    pageScope.listen(form, "change", onRating);
-    pageScope.listen(form, "submit", onAnswer);
-    pageScope.listen(skip, "click", onSkip);
-    pageScope.listen(dialog, "keydown", onKey);
+    function onEscape(event) { if (event.key === "Escape") onSkip(); }
+    pageScope.listen(form, "submit", onAnswer); pageScope.listen(form, "change", onChangeRating);
+    pageScope.listen(skip, "click", onSkip); pageScope.listen(card, "keydown", onEscape);
   }
 
-  // ------------------------------------------------------------------- start
-
-  function guard(handler) {
-    return function (event) {
-      try { handler(event); } catch (error) { /* never affect the page */ }
-    };
-  }
-
-  try {
-    var fields = { detail: viewportClass() };
-    if (config.progress) {
-      fields.position = config.progress.position;
-      fields.count = config.progress.count;
-    }
-    record("page_view", fields);
-    pageScope.listen(document, "click", guard(onClick), true);
-    pageScope.listen(document, "change", guard(onChange), true);
-    pageScope.listen(document, "invalid", guard(onInvalid), true);
-    pageScope.listen(document, "submit", guard(onSubmit), true);
-    ["pointerdown", "keydown", "wheel", "touchstart", "scroll"].forEach(function (type) {
-      pageScope.listen(document, type, markInput, { capture: true, passive: true });
+  function heartbeat() {
+    if (stopped || !ownScope()) { stop(); return; }
+    closeVisibleInterval(); mediaTick();
+    pendingRequests.forEach(function (request, attempt) {
+      if (Date.now() - request.at > 120000) finishRequest(attempt, "timeout");
     });
-    pageScope.listen(document, "visibilitychange", guard(onVisibility));
-    pageScope.listen(window, "pagehide", guard(onPageHide));
-    watchMedia();
-    watchRecorder();
-    pageScope.setInterval(guard(heartbeat), config.heartbeatMs);
-    pageScope.setInterval(guard(function () { flush(false); replayOutbox(); }), config.flushMs);
-    pageScope.setInterval(guard(considerPendingOffer), 5000);
-    pageScope.setTimeout(guard(function () { replayOutbox(); flush(false); }), 1000);
-  } catch (error) {
-    stop();
+    sample(); considerPrompt(); flush(false);
   }
-})();
+  try {
+    try {
+      window.sessionStorage.setItem(SCOPE, config.scope_token);
+      var existingTab = window.sessionStorage.getItem(TAB);
+      if (UUID.test(existingTab)) tabRef = existingTab;
+      else window.sessionStorage.setItem(TAB, tabRef);
+    } catch (_) { storageAvailable = false; }
+    restoreSamplingProgress();
+    writeOutbox(readOutbox().filter(ownEntry));
+    declareMeasurementSupport();
+    record("context_enter", {detail_code: "started"});
+    pageScope.listen(document, "click", guard(onClick), true);
+    pageScope.listen(document, "toggle", guard(function (event) {
+      if (event.target && event.target.matches("[data-focus-outline]")) activate(event.target.open ? "open" : "close");
+    }), true);
+    pageScope.listen(document, "change", guard(onChange), true);
+    pageScope.listen(document, "submit", guard(onSubmit), true);
+    pageScope.listen(window, "resize", guard(function () {
+      if (viewportTimer) pageScope.clearTimeout(viewportTimer);
+      viewportTimer = pageScope.setTimeout(guard(function () {
+        viewportTimer = null; declareViewport(false);
+      }), 250);
+    }));
+    pageScope.listen(document, "visibilitychange", guard(function () {
+      closeVisibleInterval(); mediaTick();
+      if (document.visibilityState === "visible") { visibleStart = Date.now(); calibrateClock(); considerPrompt(); }
+      else { visibleStart = null; flush(true); }
+    }));
+    pageScope.listen(window, "pagehide", guard(function () {
+      closeVisibleInterval(); mediaTick(); record("context_leave", {detail_code: "finished"}); visibleStart = null; flush(true);
+    }));
+    pageScope.listen(window, "pageshow", guard(function (event) {
+      if (event.persisted) { visibleStart = Date.now(); record("context_enter", {detail_code: "started"}); calibrateClock(); }
+    }));
+    bindMedia(); detectContext(); calibrateClock();
+    if (window.MutationObserver) {
+      var mutationPending = false;
+      pageScope.createObserver(MutationObserver, guard(function () {
+        if (mutationPending) return; mutationPending = true;
+        pageScope.setTimeout(guard(function () { mutationPending = false; detectContext(); bindMedia(); considerPrompt(); }), 100);
+      })).observe(document.getElementById("workspace-content") || document.body,
+        {childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "open", "data-research-context", "data-recorder-state"]});
+    }
+    window.researchCollector = Object.freeze({beginRequest: beginRequest, finishRequest: finishRequest,
+      actionFor: function (form) { var action = formActions.get(form); return action ? action.action_ref : null; }});
+    pageScope.setInterval(guard(heartbeat), 30000);
+    pageScope.setInterval(guard(function () { flush(false); }), bounded(policy.flush_ms, 5000, 30000, 15000));
+    pageScope.setInterval(guard(calibrateClock), 300000);
+    pageScope.setTimeout(guard(function () { flush(false); }), 1000);
+  } catch (_) { stop(); }
+}());
 
 });

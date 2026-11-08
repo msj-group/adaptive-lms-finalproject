@@ -1,0 +1,7 @@
+{% import '_figma_ui.html' as activity_nav_icon %}
+{% set library_group = group.public_id if group is defined and group else '' %}
+<nav class="ta-branch-bar" aria-label="Activity workspace">
+  <a href="{{ url_for('teacher.activities',group=library_group,type=activity_kind if activity_kind in ['assignment','quiz','listening','speaking'] else '') }}">{{ activity_nav_icon.icon('layers',17) }}<span>Activities</span></a>
+  {% if activity_kind in ['assignment','quiz','listening','speaking'] %}<span>{{ _({'assignment':'Assignment','quiz':'Quiz','listening':'Listening','speaking':'Speaking'}[activity_kind]) }}</span>{% endif %}
+  {% if group is defined and group %}<bdi>{{ group.name }}</bdi>{% endif %}
+</nav>

@@ -1,4 +1,4 @@
-"""V2 collection writes. Ordinary account/configuration/subject locks are reused.
+"""Natural-use collection writes. Ordinary account/configuration/subject locks are reused.
 
 No emotion is inferred here. Browser observations, committed workflow outcomes,
 sampling decisions and optional answers retain distinct provenance. All writes
@@ -16,17 +16,17 @@ from sqlalchemy import func
 
 from app.extensions import db
 from app.models import ResearchSession, now_ms
-from app.models.research_v2 import (
-    ResearchV2Protocol as Protocol, ResearchV2SamplingState as State,
-    ResearchV2SamplingOpportunity as Opportunity, ResearchV2Event as Event,
-    ResearchV2Prompt as Prompt, ResearchV2FeatureMembership as Membership,
-    ResearchV2DeliveryReceipt as Receipt, ResearchV2EvaluationPartition as Partition,
+from app.models.research_observations import (
+    ResearchProtocol as Protocol, ResearchSamplingState as State,
+    ResearchSamplingOpportunity as Opportunity, ResearchObservation as Event,
+    ResearchQuestion as Prompt, ResearchFeatureMembership as Membership,
+    ResearchDeliveryReceipt as Receipt, ResearchEvaluationGroup as Partition,
 )
-from app.services import research_collection as legacy
-from app.services.research_v2_dictionary import (
+from app.services import research_collection as session_control
+from app.services.research_dictionary import (
     EVENT_SCHEMA_VERSION, CAUSE_BITS, is_integer, is_opaque_ref, validate_client_event,
 )
-from app.services.research_v2_features import build_features, interval_length, render_alignment_code
+from app.services.research_features import build_features, interval_length, render_alignment_code
 
 MAX_SNAPSHOT = 10000
 _OFFER_NAMESPACE = uuid.UUID("9bd4c5e2-40cb-4332-a6cb-af13031e677a")
@@ -63,7 +63,7 @@ def prepare_presence(*, user_id, user_public_id, auth_version, configuration_id,
     if not isinstance(release_ref, str) or not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", release_ref):
         return None
     moment = now_ms()
-    chain, refused = legacy.lock_collection_chain(
+    chain, refused = session_control.lock_collection_chain(
         user_id, moment, required_schema=EVENT_SCHEMA_VERSION)
     if refused:
         return None
@@ -78,7 +78,7 @@ def prepare_presence(*, user_id, user_public_id, auth_version, configuration_id,
     if protocol is None:
         db.session.rollback()
         return None
-    session, ref = legacy.resolve_session(chain, session_ref, moment, provenance)
+    session, ref = session_control.resolve_session(chain, session_ref, moment, provenance)
     state = db.session.get(State, session.id)
     if state is not None and state.release_ref != release_ref:
         db.session.rollback()
@@ -98,27 +98,27 @@ def prepare_presence(*, user_id, user_public_id, auth_version, configuration_id,
 
 def _chain(user_id, session_ref, body, proof, provenance, release_ref, *, provision=True):
     moment = now_ms()
-    chain, refused = legacy.lock_collection_chain(
+    chain, refused = session_control.lock_collection_chain(
         user_id, moment, provision=provision, delivery_proof=proof,
         delivery_scope=body["scope_token"], required_schema=EVENT_SCHEMA_VERSION,
     )
     if refused:
-        return None, None, None, _off(refused != legacy.STALE_DELIVERY_SCOPE), session_ref
+        return None, None, None, _off(refused != session_control.STALE_DELIVERY_SCOPE), session_ref
     protocol = db.session.get(Protocol, chain.configuration.id)
     if protocol is None:
         db.session.rollback()
         return None, None, None, _off(), session_ref
-    old = legacy._lock_session(session_ref) if is_opaque_ref(session_ref) else None
+    old = session_control._lock_session(session_ref) if is_opaque_ref(session_ref) else None
     if old is not None and (old.subject_id != chain.subject.id
-                            or not legacy._usable(old, chain.configuration, moment)):
+                            or not session_control._usable(old, chain.configuration, moment)):
         if old.subject_id == chain.subject.id:
-            legacy.close_session(old, chain.configuration, moment)
+            session_control.close_session(old, chain.configuration, moment)
         db.session.commit()
-        return None, None, None, _off(False), legacy.successor_ref(session_ref)
+        return None, None, None, _off(False), session_control.successor_ref(session_ref)
     if not provision and old is None:
         db.session.rollback()
         return None, None, None, _off(False), session_ref
-    session, ref = legacy.resolve_session(chain, session_ref, moment, provenance)
+    session, ref = session_control.resolve_session(chain, session_ref, moment, provenance)
     state = db.session.get(State, session.id)
     if state is not None and state.release_ref != release_ref:
         # Deployments must pause/close collection before changing source. Never
@@ -470,15 +470,16 @@ _OUTCOMES = {
 }
 
 
-def record_outcomes(user_id, session_ref, outcomes, provenance, release_ref, hints, *, proof=None):
+def record_outcomes(user_id, session_ref, outcomes, provenance, release_ref, hints, *, proof=None,
+                    unit_completion=False):
     moment = now_ms()
-    chain, refusal = legacy.lock_collection_chain(user_id, moment, required_schema=EVENT_SCHEMA_VERSION)
+    chain, refusal = session_control.lock_collection_chain(user_id, moment, required_schema=EVENT_SCHEMA_VERSION)
     if refusal:
         return session_ref
     if proof is None or not proof.matches(proof.token, chain.user.public_id, chain.user.auth_version,
                                           chain.configuration.public_id, chain.configuration.version_number):
         hints = {}  # Preserve authoritative outcome; correlation is unavailable.
-    session, ref = legacy.resolve_session(chain, session_ref, moment, provenance)
+    session, ref = session_control.resolve_session(chain, session_ref, moment, provenance)
     protocol = db.session.get(Protocol, chain.configuration.id)
     if protocol is None:
         db.session.rollback()
@@ -497,6 +498,9 @@ def record_outcomes(user_id, session_ref, outcomes, provenance, release_ref, hin
         if outcome.event_type not in _OUTCOMES:
             continue
         activity, action = _OUTCOMES[outcome.event_type]
+        if unit_completion and outcome.event_type == "lesson_completion":
+            # One explicit Unit transaction, never fabricated sibling Lesson events.
+            activity = "reader"
         detail = ("committed" if outcome.detail in {"submitted", "completed", "saved", "started", "resumed", "sent", "posted", "results", "no_results"}
                   else "already_completed" if outcome.detail in {"already_completed", "already_submitted", "duplicate", "unchanged"}
                   else "rejected" if outcome.detail in {"rejected", "invalid", "unavailable", "closed", "refused", "expired"} or outcome.detail.startswith("rejected_")

@@ -557,9 +557,9 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       var upload = new XMLHttpRequest();
       upload.open("POST", form.action);
       var researchAttempt = null;
-      try { if (window.researchV2) researchAttempt = window.researchV2.beginRequest({form: form, action_code: "upload"}); } catch (_) {}
+      try { if (window.researchCollector) researchAttempt = window.researchCollector.beginRequest({form: form, action_code: "upload"}); } catch (_) {}
       function researchFinish(detail) {
-        try { if (window.researchV2) window.researchV2.finishRequest(researchAttempt, detail); } catch (_) {}
+        try { if (window.researchCollector) window.researchCollector.finishRequest(researchAttempt, detail); } catch (_) {}
       }
       pageScope.listen(upload.upload, "progress", function (update) {
         if (update.lengthComputable) {

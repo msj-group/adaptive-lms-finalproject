@@ -1,82 +1,19 @@
-{% extends "layouts/research_base.html" %}
-{% from "research/_macros.html" import ms_time %}
-{% import "research/_ui.html" as rs %}
-{% import "_figma_ui.html" as icons %}
+{% extends 'layouts/research_base.html' %}
+{% import 'research/_ui.html' as rs %}
+{% from 'research/_macros.html' import ms_time %}
 {% block title %}Session {{ session.subject_code }}{% endblock %}
 {% block research_content %}
-{{ rs.heading(session.subject_code,'Recorded session activity, delivery counters and feedback prompts.','Session detail · Legacy v1') }}
-{{ rs.scope(session.provenance,provenance_labels,legacy=true) }}
-<div class="rs-metrics">{{ rs.metric('Stored events',session.events_accepted,'Accepted events','layers') }}{{ rs.metric('Feedback prompts',prompts|length,'Offered in this session','message') }}{{ rs.metric('Batches received',session.batches_received,'Recorded delivery counter','activity') }}{{ rs.metric('Configuration','v' ~ session.version_number,'Saved collection policy','settings') }}</div>
-
-<details class="rs-card"><summary>Session times and delivery counters</summary>
-<table class="dash-table" style="width:100%">
-  <tbody>
-    <tr><th scope="row" style="text-align:left">Started</th><td>{{ ms_time(to_local, session.started_at_ms) }}</td></tr>
-    <tr><th scope="row" style="text-align:left">Last activity</th><td>{{ ms_time(to_local, session.last_seen_at_ms) }}</td></tr>
-    <tr><th scope="row" style="text-align:left">End</th><td>{% if session.ended_at_ms is not none %}{{ ms_time(to_local, session.ended_at_ms) }} &mdash; {{ end_reason_labels.get(session.end_reason, session.end_reason) }}{% else %}Open (ends after {{ session.session_inactivity_minutes }} minutes without activity){% endif %}</td></tr>
-    {% for key, label in [('batches_received', 'Batches'), ('events_accepted', 'Events stored'), ('events_duplicate', 'Duplicates refused'),
-                          ('events_invalid', 'Invalid refused'), ('events_late', 'Late refused'), ('events_dropped_client', 'Dropped in browser'),
-                          ('sampling_eligible_checks', 'Eligible sampling checks'), ('sampling_ineligible_checks', 'Ineligible sampling checks')] %}
-    <tr><th scope="row" style="text-align:left">{{ label }}</th><td>{{ session[key] }}</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
-</details>
-
-<div class="dash-section yc-section">
-  <h2>Feedback prompts</h2>
-  {% if prompts %}
-  <table class="dash-table research-dense-table" style="width:100%">
-    <thead><tr><th scope="col">Reason</th><th scope="col">State</th><th scope="col">Offered</th><th scope="col">Deferrals</th>
-      <th scope="col">Shown</th><th scope="col">Observed in window</th><th scope="col">Rating (1&ndash;5)</th><th scope="col">Window</th></tr></thead>
-    <tbody>
-    {% for item in prompts %}{% set p = item.row %}
-      <tr data-prompt>
-        <td>{{ p[1]|replace('_', ' ') }}</td>
-        <td>{{ prompt_state_labels[item.state] }}{% if p[10] %} (late answer not stored){% endif %}</td>
-        <td>{{ ms_time(to_local, p[2]) }}</td>
-        <td>{{ p[3] }}{% if p[4] %} ({{ p[4]|replace('_', ' ') }}){% endif %}</td>
-        <td>{{ ms_time(to_local, p[5]) }}</td>
-        <td>{% if p[7] is not none %}{{ (p[7] / 1000)|round|int }} s{% else %}&mdash;{% endif %}</td>
-        <td>{% if item.state == 'answered' %}{{ p[9] }}{% else %}&mdash;{% endif %}</td>
-        <td><button type="button" class="btn btn--secondary" data-rs-dialog="prompt-window-{{ loop.index }}" hidden>Details</button></td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  {% for item in prompts %}{% set p=item.row %}<dialog class="rs-dialog" id="prompt-window-{{ loop.index }}" aria-labelledby="prompt-title-{{ loop.index }}"><header class="rs-dialog-head"><h2 id="prompt-title-{{ loop.index }}">Feedback window</h2><button type="button" class="st-icon-button" data-rs-close aria-label="Close window details">{{ icons.icon('close') }}</button></header><span class="badge badge--neutral">{{ prompt_state_labels[item.state] }}</span><dl class="rs-facts"><dt>Sampling reason</dt><dd>{{ p[1]|replace('_',' ') }}</dd><dt>Offered</dt><dd>{{ ms_time(to_local,p[2]) }}</dd><dt>Shown</dt><dd>{{ ms_time(to_local,p[5]) }}</dd><dt>Window start</dt><dd>{{ ms_time(to_local,p[6]) }}</dd><dt>Observed duration</dt><dd>{{ ((p[7]/1000)|round|int) ~ ' s' if p[7] is not none else 'Unavailable' }}</dd><dt>Response</dt><dd>{{ ms_time(to_local,p[8]) }}</dd><dt>Recorded rating</dt><dd>{{ p[9] if item.state == 'answered' else 'Unlabeled' }}</dd><dt>Late response</dt><dd>{{ 'Not stored' if p[10] else 'None recorded' }}</dd></dl><p class="workspace-meta">Legacy v1 window. Missing ratings remain unlabeled; no frustration score is inferred.</p><button class="btn btn--secondary" type="button" data-rs-close>Close details</button></dialog>{% endfor %}
-  {% else %}
-  <div class="empty-state"><div class="empty-state__title">No prompts</div><div>This session was not sampled. It is unlabeled.</div></div>
-  {% endif %}
-</div>
-
-<div class="dash-section yc-section">
-  <h2>Event timeline</h2>
-  <p class="ds-section__desc">Up to {{ timeline_cap }} events, in order of occurrence (server timescale). No content is stored for any event.</p>
-  {% if timeline|length == timeline_cap %}<div class="alert alert--warning" role="status">The display limit of {{ timeline_cap }} events has been reached. Later events may be omitted from this view; use an available export to inspect the selected data.</div>{% endif %}<div class="field"><label for="timeline-type">Filter displayed events</label><select class="field__input" id="timeline-type" data-timeline-filter><option value="">All displayed event types</option>{% for row in timeline|unique(attribute=1) %}<option value="{{ row[1] }}">{{ row[1]|replace('_',' ') }}</option>{% endfor %}</select></div><p class="workspace-meta" data-timeline-count>{{ timeline|length }} events displayed</p>
-{% if timeline %}
-  <div style="overflow-x: auto">
-  <table class="dash-table research-dense-table" style="width:100%">
-    <thead><tr><th scope="col">Time</th><th scope="col">Source</th><th scope="col">Event</th><th scope="col">Page</th>
-      <th scope="col">Element</th><th scope="col">Detail</th><th scope="col">Values</th></tr></thead>
-    <tbody>
-    {% for e in timeline %}
-      <tr data-event="{{ e[1] }}">
-        <td style="white-space: nowrap">{{ ms_time(to_local, e[8]) }}</td>
-        <td>{{ e[0] }}</td>
-        <td>{{ e[1] }}</td>
-        <td>{{ e[2] or "—" }}</td>
-        <td>{{ e[3] or "—" }}</td>
-        <td>{{ e[4] or "—" }}</td>
-        <td>{% if e[5] is not none %}count {{ e[5] }} {% endif %}{% if e[6] is not none %}{{ e[6] }} ms {% endif %}{% if e[7] is not none %}position {{ e[7] }}{% endif %}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  </div>
-  {% else %}
-  <div class="empty-state"><div class="empty-state__title">No events</div><div>No event was stored for this session.</div></div>
-  {% endif %}
-</div>
-<p><a class="btn btn--secondary" href="{{ url_for('research.sessions') }}">Back to sessions</a></p>
+{{ rs.heading(session.subject_code,'Recorded activity, delivery and optional feedback.','Session detail') }}
+{{ rs.scope(session.provenance,provenance_labels) }}
+<div class="rs-metrics">{{ rs.metric('Stored events',session.events_accepted,'Accepted observations','layers') }}{{ rs.metric('Feedback questions',questions|length,'Reserved questions','message') }}{{ rs.metric('Batches received',session.batches_received,'Recorded delivery counter','activity') }}{{ rs.metric('Collection settings','#' ~ session.version_number,'Saved collection policy','settings') }}</div>
+<details class="rs-card"><summary>Session times and delivery counters</summary><dl class="rs-facts"><dt>Started</dt><dd>{{ ms_time(to_local,session.started_at_ms) }}</dd><dt>Last accepted activity</dt><dd>{{ ms_time(to_local,session.last_seen_at_ms) }}</dd><dt>End</dt><dd>{{ ms_time(to_local,session.ended_at_ms) }} · {{ end_reason_labels.get(session.end_reason,session.end_reason) if session.ended_at_ms is not none else _('Open') }}</dd>{% for key,label in [('events_duplicate','Duplicates refused'),('events_invalid','Invalid refused'),('events_late','Late refused'),('events_dropped_client','Dropped in browser'),('sampling_eligible_checks','Eligible sampling checks'),('sampling_ineligible_checks','Ineligible sampling checks')] %}<dt>{{ _(label) }}</dt><dd>{{ session[key] }}</dd>{% endfor %}</dl><p class="workspace-meta">Delivery counters do not establish complete receipt. Transport duplicates are not repeated user clicks.</p></details>
+<section class="rs-card"><h2>Feedback questions</h2>
+{% for item in questions %}{% set q=item.question %}<details><summary>{{ _(item.state_label) }} · {{ ms_time(to_local,q.granted_at_ms) }}</summary><dl class="rs-facts"><dt>Window start</dt><dd>{{ ms_time(to_local,q.reference_start_ms) }}</dd><dt>Window end</dt><dd>{{ ms_time(to_local,q.reference_end_ms) }}</dd><dt>Observed duration</dt><dd>{{ ((item.observed_ms / 1000)|round(1)|string ~ ' s') if item.observed_ms is not none else _('Unavailable') }}</dd><dt>Reported display</dt><dd>{{ ms_time(to_local,q.rendered_at_ms) }}</dd><dt>Response deadline</dt><dd>{{ ms_time(to_local,q.response_deadline_ms) }}</dd><dt>Response received</dt><dd>{{ ms_time(to_local,q.response_received_at_ms) }}</dd><dt>Raw rating (1–5)</dt><dd>{{ q.rating if q.status == 'answered' else _('Unlabeled') }}</dd><dt>Answer within the deadline</dt><dd>{{ _('Yes') if q.answer_timely is sameas true else _('No') if q.answer_timely is sameas false else _('Unavailable') }}</dd><dt>Recorded quality</dt><dd>{{ q.quality_code }}</dd><dt>Eligible training label</dt><dd>{{ _('Yes') if item.eligible else _('No') }}</dd></dl><p class="workspace-meta">Missing, skipped, late and poor-quality answers never become negative training labels. Raw ratings are self-reports, not model predictions.</p></details>{% else %}{{ rs.empty('No feedback questions','This session has no reserved question. Its behavior remains unlabeled.','message') }}{% endfor %}
+</section>
+<section class="rs-card"><h2>Event timeline</h2><p class="workspace-meta">Up to {{ timeline_cap }} events, ordered by recorded occurrence. Clock uncertainty remains explicit.</p>
+{% if timeline|length == timeline_cap %}<p class="alert alert--warning">The display limit has been reached. Use an available export for the complete selected dataset.</p>{% endif %}
+<label for="timeline-type">Filter displayed events</label><select class="field__input" id="timeline-type" data-timeline-filter><option value="">All displayed event types</option>{% for row in timeline|unique(attribute=1) %}<option value="{{ row[1] }}">{{ row[1] }}</option>{% endfor %}</select><p data-timeline-count>{{ timeline|length }} events displayed</p>
+<div class="rs-table-wrap"><table class="dash-table"><thead><tr><th>Time</th><th>Source</th><th>Event</th><th>Page / context</th><th>Action / detail</th><th>Measurements</th></tr></thead><tbody>{% for row in timeline %}<tr data-event="{{ row[1] }}"><td>{{ ms_time(to_local,row[7]) }}</td><td>{{ row[0] }}</td><td>{{ row[1] }}</td><td>{{ row[2] }} / {{ row[3] }}</td><td>{{ row[4] or '—' }} / {{ row[5] or '—' }}</td><td>{% if row[6] is not none %}{{ _('Count') }} {{ row[6] }} {% endif %}{% if row[8] is not none %}{{ row[7]-row[8] }} ms {% endif %}{% if row[0] == 'client' %}{{ _('Clock uncertainty') }}: {{ (row[9]|string ~ ' ms') if row[9] is not none else _('Unknown') }}{% endif %}</td></tr>{% else %}<tr><td colspan="6">No events</td></tr>{% endfor %}</tbody></table></div>
+</section>
+<a class="btn btn--secondary" href="{{ url_for('research.sessions') }}">Back to sessions</a>
 {% endblock %}

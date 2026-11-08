@@ -29,7 +29,7 @@ from sqlalchemy.pool import NullPool
 
 ROOT = Path(__file__).resolve().parent.parent
 _spec = importlib.util.spec_from_file_location(
-    "research_quality_runtime", ROOT / "app" / "services" / "research_v2_quality.py")
+    "research_quality_runtime", ROOT / "app" / "services" / "research_quality.py")
 quality = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(quality)
 MAX_JSON_BYTES = 524_288
@@ -354,7 +354,7 @@ def _notify(state, active_keys, now, *, snapshot_succeeded):
                        "راجعوا التقرير؛ هذا لا يعني تأكيد دقة النموذج.")
         link = os.environ.get("RESEARCH_QUALITY_WORKSPACE_URL", "")
         parsed = urlsplit(link)
-        if parsed.scheme == "https" and parsed.hostname and parsed.path == "/research/v2" and not (parsed.username or parsed.password or parsed.query or parsed.fragment):
+        if parsed.scheme == "https" and parsed.hostname and parsed.path == "/research/collection-quality" and not (parsed.username or parsed.password or parsed.query or parsed.fragment):
             message += "\n" + link
         try:
             _telegram(message)
@@ -414,20 +414,20 @@ def _quality_incidents(state, snapshot, now, *, daily_snapshot=None):
     investigation triggers, never evidence of emotion or model failure.
     """
     active = {issue["rule_code"] + ":" + issue["aggregate_scope_key"] for issue in quality.critical_issues(snapshot)}
-    global_key = "invalid_rate:" + sha256(b"v2-global-technical-delivery").hexdigest()
+    global_key = "invalid_rate:" + sha256(b"collection-global-technical-delivery").hexdigest()
     delivery = snapshot.get("global_delivery")
     if (global_key in state["incidents"] and state["incidents"][global_key]["active"]
             and (delivery is None or delivery["attempts"] < 20
                  or delivery.get("accepted_client_attempts", 0) == 0
                  or delivery["rejected_attempts"] / delivery["attempts"] >= .95)):
         active.add(global_key)
-    presence_key = "delivery_stopped:" + sha256(b"v2-global-server-presence").hexdigest()
+    presence_key = "delivery_stopped:" + sha256(b"collection-global-server-presence").hexdigest()
     if (presence_key in state["incidents"] and state["incidents"][presence_key]["active"]
             and (delivery is None or delivery.get("recovery_evidence") != "clean_matured_cohort")):
         # No recent sessions, only server outcomes or an immature cohort cannot
         # turn an active client-silence alert into a false recovery message.
         active.add(presence_key)
-    retention_key = "expiry_backlog:" + sha256(b"v2-global-retention").hexdigest()
+    retention_key = "expiry_backlog:" + sha256(b"collection-global-retention").hexdigest()
     retention = snapshot.get("global_retention")
     if (retention_key in state["incidents"] and state["incidents"][retention_key]["active"]
             and (retention is None or retention.get("due_sessions") != 0)):

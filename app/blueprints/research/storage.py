@@ -22,7 +22,7 @@ class CleanupForm(FlaskForm):
 
 
 def _serializer():
-    return URLSafeSerializer(current_app.config["SECRET_KEY"], salt="research.cleanup.preview.v1")
+    return URLSafeSerializer(current_app.config["SECRET_KEY"], salt="research.cleanup.preview")
 
 
 @research_bp.route("/storage", methods=["GET", "POST"])

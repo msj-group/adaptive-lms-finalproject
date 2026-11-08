@@ -8,12 +8,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sqlalchemy import text
 from app import create_app
 from app.extensions import db
-from app.services.research_event_dictionary import EVENT_SCHEMA_VERSION, EVENT_DICTIONARY_REVISION
+from app.services.research_dictionary import EVENT_SCHEMA_VERSION, PROTOCOL_VERSION, FEATURE_VERSION
 
 
 def main():
     app = create_app()
-    result = {"schema": EVENT_SCHEMA_VERSION, "dictionary": EVENT_DICTIONARY_REVISION,
+    result = {"schema": EVENT_SCHEMA_VERSION, "protocol": PROTOCOL_VERSION, "features": FEATURE_VERSION,
+              "collection_enabled": app.config["RESEARCH_COLLECTION_ENABLED"],
               "provenance": app.config["RESEARCH_DATA_PROVENANCE"],
               "retention_days": app.config["RESEARCH_RETENTION_DAYS"],
               "csrf_enabled": app.config["WTF_CSRF_ENABLED"],

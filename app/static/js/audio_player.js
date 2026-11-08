@@ -8,7 +8,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     var audio = root.querySelector("[data-audio-element]");
     if (!audio) return;
     var panel = root.querySelector("[data-audio-controls]");
-    var select = root.querySelector("[data-audio-speed-select]");
+    var select = root.querySelector("[data-audio-speed-select],[data-media-speed]");
     var rates = select ? Array.from(select.options, function (option) { return Number(option.value); }) : [1];
     function syncRate() {
       if (!rates.includes(audio.playbackRate)) audio.playbackRate = 1;
@@ -20,7 +20,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         if (rates.includes(rate)) audio.playbackRate = rate;
         syncRate();
       });
-      panel.hidden = false;
+      if (panel) panel.hidden = false;
     }
     pageScope.listen(audio, "ratechange", syncRate);
     syncRate();

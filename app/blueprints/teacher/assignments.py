@@ -292,6 +292,8 @@ def assignment_detail(group_public_id, assignment_public_id):
 @teacher_bp.route("/groups/<group_public_id>/assignments/new", methods=["GET", "POST"])
 @roles_required(UserRole.TEACHER.value)
 def assignment_create(group_public_id):
+    if request.method == "GET":
+        return redirect(url_for("teacher.activity_start",group=group_public_id,type="assignment"))
     preview_group = _teacher_group_or_404(group_public_id)
 
     if not _group_is_operational(preview_group):

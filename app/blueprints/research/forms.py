@@ -10,10 +10,12 @@ retention, actors, moments) is absent from every form: a forged field has
 nowhere to land.
 """
 
+from app.services.research_storage_contract import COLLECTION_SCHEMA
+
 from app.i18n import LocalizedFlaskForm as FlaskForm
 from wtforms import BooleanField, HiddenField, IntegerField, SelectField, StringField, SubmitField
 from wtforms.fields import DateField, DateTimeLocalField
-from wtforms.validators import DataRequired, Length, NumberRange, Optional
+from wtforms.validators import AnyOf, DataRequired, Length, NumberRange, Optional
 
 from app.models import CONFIGURATION_LABEL_MAX_LENGTH, POLICY_BOUNDS
 from app.services.schedule_occurrences import LocalTimeError, from_app_local
@@ -35,16 +37,13 @@ POLICY_LABELS = {
 def _policy_field(column):
     low, high, _default = POLICY_BOUNDS[column]
     return IntegerField(
-        POLICY_LABELS[column], validators=[DataRequired() if low > 0 else Optional(),
+        POLICY_LABELS[column], render_kw={"readonly": True}, validators=[DataRequired() if low > 0 else Optional(),
                                            NumberRange(min=low, max=high)]
     )
 
 
 class ConfigurationForm(FlaskForm):
-    event_schema_version = SelectField("Collection method", choices=[
-        ("natural-use-events.v1", "Legacy collection v1"),
-        ("natural-use-events.v2", "Collection v2 — phone and desktop pilot"),
-    ], validators=[DataRequired()])
+    event_schema_version = HiddenField(default=COLLECTION_SCHEMA, validators=[DataRequired(), AnyOf([COLLECTION_SCHEMA])])
     label = StringField(
         "Label", validators=[DataRequired(), Length(max=CONFIGURATION_LABEL_MAX_LENGTH)]
     )
@@ -71,9 +70,6 @@ class ConfigurationForm(FlaskForm):
         self._tz_name = tz_name
         self.starts_utc = None
         self.ends_utc = None
-        from flask import current_app
-        if not current_app.config.get("RESEARCH_V2_ENABLED", False):
-            self.event_schema_version.choices = self.event_schema_version.choices[:1]
 
     def _to_utc(self, field):
         try:
@@ -121,12 +117,12 @@ class ConfigurationForm(FlaskForm):
 
 class ActivateForm(FlaskForm):
     confirm = BooleanField(
-        "I understand that activation freezes this version and retires the active one. "
+        "I understand that activation freezes these settings and replaces the active settings. "
         "It does not start collection.",
         validators=[DataRequired(message="Tick the box to confirm.")],
     )
     state = HiddenField()
-    submit = SubmitField("Activate version")
+    submit = SubmitField("Activate settings")
 
 
 class CollectingForm(FlaskForm):
@@ -135,7 +131,7 @@ class CollectingForm(FlaskForm):
 
 
 class ExportForm(FlaskForm):
-    configuration = SelectField("Configuration version", choices=[], default="",
+    configuration = SelectField("Collection settings", choices=[], default="", validators=[DataRequired()],
                                 validate_choice=True)
     period_from = DateField("Sessions starting from (local date)", validators=[Optional()])
     period_to = DateField("Sessions starting until (local date)", validators=[Optional()])

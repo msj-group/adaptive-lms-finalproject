@@ -639,7 +639,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     }
     pageScope.listen(viewer, "click", (event) => {
       const pin = event.target.closest("[data-play-pin]");
-      if (!pin || dialog.open) return;
+      if (!pin) return;
       stopPlayback();
       const media = pin.dataset.category === "video" ? video : audio;
       playing = media;
@@ -647,7 +647,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       error.hidden = true;
       dialog.querySelector("[data-player-title]").textContent = pin.dataset.mediaTitle;
       media.src = pin.dataset.mediaSrc;
-      dialog.showModal();
+      if (!dialog.open) dialog.show();
       media.play().catch((failure) => {
         if (dialog.open && playing === media && !["AbortError", "NotAllowedError"].includes(failure.name)) {
           error.hidden = false;
@@ -657,7 +657,12 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     for (const media of [audio, video]) {
       pageScope.listen(media, "error", () => { if (dialog.open && playing === media) error.hidden = false; });
     }
-    dialog.querySelector("[data-close-player]").addEventListener("click", () => dialog.close());
+    pageScope.listen(dialog.querySelector("[data-close-player]"), "click", () => dialog.close());
+    pageScope.listen(dialog, "keydown", event => {
+      if (event.key !== "Escape" || dialog.contains(document.fullscreenElement)) return;
+      event.preventDefault();
+      dialog.close();
+    });
     pageScope.listen(dialog, "click", (event) => {
       const rect = dialog.getBoundingClientRect();
       if (event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right

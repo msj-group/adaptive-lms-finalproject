@@ -471,7 +471,7 @@ def workspace_is_section_root():
         "workspace.review_queue", "teacher.attendance_overview", "teacher.gradebook_overview",
         "teacher.calendar", "teacher.announcements_feed", "teacher.discussions_overview",
         "research.dashboard", "research.sessions", "research.exports", "research.configurations",
-        "research.exclusions", "research.storage", "research.activity_log", "research.v2_review",
+        "research.exclusions", "research.storage", "research.activity_log", "research.collection_quality",
         "admin.dashboard", "messages.inbox", "notifications.inbox", "account.settings", "workspace.search",
     }
     if role == "administrator":

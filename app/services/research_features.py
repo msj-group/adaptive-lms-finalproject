@@ -1,15 +1,25 @@
-"""Shared, I/O-free v2 reconstruction at a decision cutoff.
+"""Shared feature reconstruction at a decision cutoff.
 
 Inputs are already validated event mappings or model objects. No prompt answer,
 identity, future arrival or response-time metadata is accepted as a predictor.
 The result is JSON-compatible; unavailable values are None with a reason.
 Quantiles use linear interpolation at (n-1)*q (Hyndman/Fan type 7).
 """
+
+if __package__ == "app.services":
+    from app.services.research_storage_contract import FEATURE_SCHEMA
+else:
+    import importlib.util
+    from pathlib import Path
+    _contract_spec = importlib.util.spec_from_file_location("research_storage_contract", Path(__file__).with_name("research_storage_contract.py"))
+    _contract = importlib.util.module_from_spec(_contract_spec)
+    _contract_spec.loader.exec_module(_contract)
+    FEATURE_SCHEMA = _contract.FEATURE_SCHEMA
 from collections.abc import Mapping
 from math import floor
 
 
-FEATURE_VERSION = "recent-frustration-features.v1"
+FEATURE_VERSION = FEATURE_SCHEMA
 RENDER_TIMING_SEMANTICS = "causal-receipt-clock-bounds.v1"
 WINDOW_MS = 120_000
 CONFIRMED_PROGRESS_ACTIONS = frozenset({

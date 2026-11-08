@@ -2,16 +2,20 @@
 import hashlib
 import json
 from flask import current_app
-from sqlalchemy import bindparam, func, or_, select, text
+from sqlalchemy import bindparam, func, select, text
 from app.extensions import db
-from app.models import ResearchAuditEvent, ResearchConfiguration, ResearchEvent, ResearchExport, ResearchExportArchive, ResearchFeedbackPrompt, ResearchSession, User, now_ms
+from app.models import ResearchAuditEvent, ResearchExport, ResearchExportArchive, ResearchSession
+from app.models.research_observations import ResearchObservation, ResearchQuestion
 from app.models.research_storage import ResearchDataGap, ResearchExportSession
 from app.services.research_control_gate import lock_research_control
 from app.services.research_exports import _bounds
 
-TABLES = ("research_subjects", "research_subject_links", "research_configurations", "research_sessions", "research_events",
-    "research_feedback_prompts", "research_exports", "research_export_archives", "research_audit_events",
-    "research_export_sessions", "research_data_gaps", "research_configuration_sequence")
+TABLES = ("research_subjects", "research_subject_links", "research_configurations", "research_sessions",
+    "research_exports", "research_export_archives", "research_audit_events", "research_export_sessions",
+    "research_data_gaps", "research_configuration_sequence", "research_v2_protocols", "research_v2_sampling_state",
+    "research_v2_sampling_opportunities", "research_v2_events", "research_v2_prompts", "research_v2_feature_memberships",
+    "research_v2_delivery_receipts", "research_v2_evaluation_partitions", "research_quality_runs",
+    "research_quality_reports", "research_quality_incidents")
 
 
 def _researcher(actor_id):
@@ -23,16 +27,9 @@ def storage_usage():
     query = text("SELECT COALESCE(SUM(DATA_LENGTH+INDEX_LENGTH),0) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN :tables").bindparams(bindparam("tables", expanding=True))
     allocated = int(db.session.execute(query, {"tables": TABLES}).scalar() or 0)
     archives, archive_bytes = db.session.query(func.count(ResearchExportArchive.id), func.coalesce(func.sum(ResearchExportArchive.byte_size), 0)).one()
-    counts = {"sessions": int(ResearchSession.query.count()), "events": int(ResearchEvent.query.count()),
-              "prompts": int(ResearchFeedbackPrompt.query.count()), "archives": int(archives), "archive_bytes": int(archive_bytes),
+    counts = {"sessions": int(ResearchSession.query.count()), "events": int(db.session.query(ResearchObservation).count()),
+              "prompts": int(db.session.query(ResearchQuestion).count()), "archives": int(archives), "archive_bytes": int(archive_bytes),
               "estimated_allocated_bytes": allocated}
-    from app.services import research_v2_storage as v2
-    if v2.schema_present():
-        from app.models.research_v2 import ResearchV2Event, ResearchV2Prompt
-        counts["events"] += db.session.query(ResearchV2Event).count()
-        counts["prompts"] += db.session.query(ResearchV2Prompt).count()
-        new_allocated = db.session.execute(text("SELECT COALESCE(SUM(DATA_LENGTH+INDEX_LENGTH),0) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND (TABLE_NAME LIKE 'research\\_v2\\_%' OR TABLE_NAME LIKE 'research\\_quality\\_%')")).scalar()
-        counts["estimated_allocated_bytes"] += int(new_allocated or 0)
     return counts
 
 
@@ -70,11 +67,8 @@ def _cohort_digest(query):
 def _affected_archives(query):
     refs = query.with_entities(ResearchSession.public_id).statement
     exports = select(ResearchExportSession.export_id).where(ResearchExportSession.session_public_id.in_(refs))
-    # Old exports with missing membership metadata are removed conservatively;
-    # the preview includes them, while the description/digest remains intact.
-    unknown = ~select(ResearchExportSession.id).where(ResearchExportSession.export_id == ResearchExport.id).exists()
     return ResearchExportArchive.query.join(ResearchExport, ResearchExport.id == ResearchExportArchive.export_id).filter(
-        or_(ResearchExport.id.in_(exports), (ResearchExport.sessions_count > 0) & unknown))
+        ResearchExport.id.in_(exports))
 
 
 def cleanup_preview(start, end, all_data=False, provenance="all"):
@@ -82,12 +76,11 @@ def cleanup_preview(start, end, all_data=False, provenance="all"):
     selected = query.with_entities(ResearchSession.id).statement
     count = int(query.count())
     archives = _affected_archives(query) if count else ResearchExportArchive.query.filter(False)
-    from app.services import research_v2_storage as v2
-    extra_events, extra_prompts = v2.raw_counts(selected) if v2.schema_present() else (0, 0)
+    from app.services import research_observation_storage as observations
+    events, prompts = observations.raw_counts(selected)
     return {"start": start.isoformat() if start and not all_data else None, "end": end.isoformat() if end and not all_data else None,
         "all_data": bool(all_data), "provenance": provenance, "timezone": current_app.config["APP_TIMEZONE"],
-        "sessions": count, "events": int(ResearchEvent.query.filter(ResearchEvent.session_id.in_(selected)).count()) + extra_events,
-        "prompts": int(ResearchFeedbackPrompt.query.filter(ResearchFeedbackPrompt.session_id.in_(selected)).count()) + extra_prompts,
+        "sessions": count, "events": int(events), "prompts": int(prompts),
         "archives": int(archives.count()), "open_sessions": int(query.filter(ResearchSession.ended_at_ms.is_(None)).count()),
         "selection_digest": _cohort_digest(query)}
 
@@ -107,8 +100,7 @@ def cleanup_data(actor_id, expected, start, end, all_data=False, provenance="all
     if not actual["sessions"]:
         return actual
     query = _sessions(start, end, all_data, provenance)
-    from app.services import research_v2_storage as v2
-    has_v2 = v2.schema_present()
+    from app.services import research_observation_storage as observations
     # The control gate and all configuration locks exclude collection and
     # concurrent retention/export removal while whole sessions are removed.
     while True:
@@ -120,10 +112,7 @@ def cleanup_data(actor_id, expected, start, end, all_data=False, provenance="all
         ids = [row[0] for row in query.with_entities(ResearchSession.id).order_by(ResearchSession.id).limit(500).with_for_update().all()]
         if not ids:
             break
-        if has_v2:
-            v2.delete_session_children(ids)
-        ResearchEvent.query.filter(ResearchEvent.session_id.in_(ids)).delete(synchronize_session=False)
-        ResearchFeedbackPrompt.query.filter(ResearchFeedbackPrompt.session_id.in_(ids)).delete(synchronize_session=False)
+        observations.delete_session_children(ids)
         ResearchSession.query.filter(ResearchSession.id.in_(ids)).delete(synchronize_session=False)
     db.session.add(ResearchDataGap(actor_id=actor.id, reason_code="manual_all" if all_data else "manual_range",
         period_from=start if not all_data else None, period_to=end if not all_data else None,

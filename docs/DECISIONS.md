@@ -13986,3 +13986,39 @@ existing progress; native scope, CSRF, locks and stale checks remain. This
 supersedes shared Workbook publication and generic lock-screen previews.
 See [scope, preservation and verification boundaries](TEACHER_BOOKS_MESSAGES_20261107.md).
 Private operator receipts record actual migration and deployment results.
+
+## Collection coverage and assistance context — 2026-11-08
+
+The owner requests correction of recent platform instrumentation and preparation
+of useful detection/assistance features, accounting for February 2027 and 27
+potential Students. Reuse the installed v2 vocabulary for Workbook, Unit reader
+and controls; preserve native workflows and server authority. Unit completion
+is one server-declared reader outcome, never invented Lesson observations.
+Keep original detector features/labels, sampling, timing and quarantine. Add
+separately versioned pre-grant context and separate optional preference outcomes;
+historical instrumentation support stays unknown unless established. Current
+technical yield may show eligible counts without exposing reserved test ratings.
+Help preference is not intervention effectiveness. These source changes activate
+no treatment, migration, study, scheduler or deployment. See
+[implementation and acceptance limits](RESEARCH_COVERAGE_AND_ASSISTANCE_20261108.md).
+
+The owner explicitly clarified phone AND computer use. Shared semantic activation
+must include mouse, touch and keyboard. Viewport width is not physical device
+identity; retain existing schema codes but label/report them honestly, update
+coarse declarations after resize and preserve same-batch event order. Acceptance
+and eventual model evaluation must cover both desktop and phone journeys, keeping
+all devices of each person in one participant-level partition. No desktop/device
+behavioral acceptance or production activation is implied by static source review.
+
+
+## One collection method before first Study use — 2026-11-08
+
+The owner explicitly requests a single method with descriptive source names and
+confirms that no previous research data needs historical review. Remove the old
+collector/sampler and old workspace query path; overview, sessions, quality and
+exports use one observation source. Keep the reviewed sampling/label/window policy,
+participant quarantine and native security/locks. Installed storage identifiers
+remain unchanged; source/asset/migration-descriptor renames do not execute DDL.
+RESEARCH_COLLECTION_ENABLED is the sole gate, false by default. This source work
+activates no collection, deployment, scheduler or database mutation. See
+[scope and verification](RESEARCH_COLLECTION_UNIFICATION_20261108.md).

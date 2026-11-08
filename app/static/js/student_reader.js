@@ -1,7 +1,7 @@
 /* Book-only zoom and explicit end-of-Unit actions, including fullscreen. */
 window.aelmsModules.register(document.currentScript, function (scope) {
   'use strict';
-  const reader = document.querySelector('[data-student-reader]');
+  const reader = document.querySelector('[data-student-reader],[data-teacher-reader]');
   if (!reader) return;
   const outline = reader.querySelector('[data-focus-outline]');
   if (outline) {
@@ -207,16 +207,16 @@ window.aelmsModules.register(document.currentScript, function (scope) {
   if (!fullscreen) return;
   const fullscreenRoot = document.documentElement;
   const appDisplay = matchMedia('(display-mode: fullscreen)');
-  const canReuseFullscreen = () => appDisplay.matches && window.aelmsReaderNavigate?.supportsExpandedReader === true;
+  const canReuseFullscreen = () => appDisplay.matches && (reader.hasAttribute('data-teacher-reader') || window.aelmsReaderNavigate?.supportsExpandedReader === true);
   const expandedReader = () => document.fullscreenElement === fullscreenRoot || fullscreenRoot.hasAttribute('data-reader-expanded');
   fullscreen.hidden = !fullscreenRoot.requestFullscreen && !canReuseFullscreen();
   let advancing = false;
-  async function advance(url, data = null) {
+  async function advance(url, data = null, form = null) {
     if (advancing) return;
     advancing = true;
     const buttons = [...reader.querySelectorAll('[data-completion-panel] button')];
     buttons.forEach(button => { button.disabled = true; });
-    try { await window.aelmsReaderNavigate(url, data); }
+    try { await window.aelmsReaderNavigate(url, data, form); }
     finally { advancing = false; buttons.forEach(button => { button.disabled = false; }); }
   }
   scope.listen(reader, 'submit', event => {
@@ -226,7 +226,7 @@ window.aelmsModules.register(document.currentScript, function (scope) {
     if (!['next_lesson','next_unit'].includes(submitter?.value)) return;
     const data = new FormData(event.target, submitter);
     event.preventDefault();
-    advance(event.target.action, data);
+    advance(event.target.action, data, event.target);
   });
   scope.listen(reader, 'click', event => {
     const link = event.target.closest('[data-reader-next]');

@@ -1,8 +1,8 @@
 {% extends "layouts/research_base.html" %}
 {% import "research/_ui.html" as rs %}
-{% block title %}Configuration version {{ configuration.version_number }}{% endblock %}
+{% block title %}Collection settings {{ configuration.version_number }}{% endblock %}
 {% block research_content %}
-{{ rs.heading('Configuration v' ~ configuration.version_number,configuration.label ~ ' · ' ~ configuration.event_schema_version,'Collection policy') }}
+{{ rs.heading('Collection settings #' ~ configuration.version_number,configuration.label ~ ' · Natural-use collection','Collection policy') }}
 
 <p data-configuration-status>
   {% if configuration.status == 'active' %}
@@ -12,11 +12,11 @@
   {% else %}<span class="badge badge--neutral">Retired</span>{% endif %}
 </p>
 <p class="ds-section__desc">
-  Activating a version freezes it inside this application. It is not a consent document, not an
+  Activation freezes these collection settings. It is not a consent document, not an
   ethics approval, and it does not start collection by itself.
 </p>
 
-<div class="rs-split"><section class="rs-card"><header class="rs-card-head"><h2>Saved policy</h2><span class="badge badge--neutral">Version {{ configuration.version_number }}</span></header><div class="rs-table-wrap"><table class="dash-table" style="width:100%">
+<div class="rs-split"><section class="rs-card"><header class="rs-card-head"><h2>Saved policy</h2><span class="badge badge--neutral">Settings #{{ configuration.version_number }}</span></header><div class="rs-table-wrap"><table class="dash-table" style="width:100%">
   <tbody>
     <tr><th scope="row" style="text-align:left">Collection period</th>
         <td>{{ local(configuration.collection_starts_at).strftime("%Y-%m-%d %H:%M") }} &ndash; {{ local(configuration.collection_ends_at).strftime("%Y-%m-%d %H:%M") }}</td></tr>
@@ -30,7 +30,7 @@
     {% if configuration.retired_at %}<tr><th scope="row" style="text-align:left">Retired</th><td>{{ local(configuration.retired_at).strftime("%Y-%m-%d %H:%M") }}</td></tr>{% endif %}
   </tbody>
 </table>
-</div></section><aside class="rs-card"><p class="rs-eyebrow">Collection lifecycle</p><h2>Version controls</h2><p class="workspace-meta">Review the saved collection period and policy before changing the collection state.</p>
+</div></section><aside class="rs-card"><p class="rs-eyebrow">Collection lifecycle</p><h2>Collection controls</h2><p class="workspace-meta">Review the saved collection period and policy before changing the collection state.</p>
 
 {% if configuration.status == 'draft' %}
 <div class="ds-row yc-actions" style="gap: var(--space-3); margin-top: var(--space-6); flex-wrap: wrap">
@@ -41,7 +41,7 @@
   {% if retention_days is none %}
   <div class="alert alert--danger">The deployment has not supplied RESEARCH_RETENTION_DAYS. No configuration can be activated until it does.</div>
   {% else %}
-  <p class="ds-section__desc">The deployment retention of {{ retention_days }} days will be recorded with this version.</p>
+  <p class="ds-section__desc">The deployment retention of {{ retention_days }} days will be recorded with these settings.</p>
   {% endif %}
   <form method="post" action="{{ url_for('research.configuration_activate', configuration_public_id=configuration.public_id) }}" class="yc-form">
     {{ activate_form.csrf_token }}

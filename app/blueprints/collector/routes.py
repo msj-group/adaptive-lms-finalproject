@@ -1,188 +1,116 @@
-"""The Student-side research collector endpoints (Phase 6 replacement)::
-
-    POST  /collect/events
-    POST  /collect/prompts/<prompt_public_id>/<action>    display | defer | respond
-
-**Authentication and eligibility.** Every rule needs an authenticated, active
-Student (JSON 401 / 403 otherwise -- never a login redirect a script would
-follow). The acting Student comes from the session; the research session
-comes from the signed session cookie; no request body can name either, and a
-body that tries (an unknown field) is refused.
-
-**CSRF.** These are ordinary CSRF-protected POSTs: the collector sends the
-token in the ``X-CSRFToken`` header, including on unload through
-``fetch(..., {keepalive: true})``. There is no CSRF exemption and no
-``sendBeacon`` path.
-
-**Bounds.** A body larger than the batch limit is refused before it is read;
-the content type must be JSON; the endpoints are rate limited per account
-(not per address: Students at the centre may share one public IP).
-
-**Honesty of the answer.** When nothing may be collected for the Student
-(excluded, no active configuration, paused, outside the period, suspended in
-the meantime), the answer is ``{"collecting": false}`` with nothing stored,
-and the collector stops. Responses are ``private, no-store``.
-"""
-
+"""CSRF protected, account-scoped research JSON endpoints. No database activation."""
 import json
-from functools import wraps
-
-from flask import current_app, jsonify, request, session
-from flask_limiter.util import get_remote_address
+import uuid
+from flask import current_app, session
 from flask_login import current_user
-
+from sqlalchemy.exc import IntegrityError
 from app.blueprints.collector import collector_bp
-from app.blueprints.collector.hooks import (
-    SESSION_REF_KEY,
-    deployment_provenance,
-    tz_name,
-)
-from app.extensions import limiter
-from app.models import UserRole
-from app.services import research_collection as collection
-from app.services import research_sampling as sampling
-from app.services.research_delivery_scope import DeliveryProof
-from app.services.research_event_dictionary import MAX_BATCH_BYTES
-from app.services.research_event_validation import parse_batch
-
-_STUDENT = UserRole.STUDENT.value
-#: A prompt action body is tiny: a rating and at most five cause codes.
-MAX_PROMPT_BODY_BYTES = 1024
-PROMPT_ACTIONS = ("display", "defer", "respond")
+from app.blueprints.collector.request_support import _account_key, _json, _read_json_body, _student_json
+from app.blueprints.collector.hooks import SESSION_REF_KEY, cached_context, deployment_provenance, tz_name
+from app.extensions import db, limiter
+from app.services.research_delivery_scope import CollectionDeliveryProof
+from app.services import research_observation_collection as collection
+from app.services.research_dictionary import EVENT_SCHEMA_VERSION, MAX_BATCH_BYTES
 
 
-def _account_key():
-    """Rate-limit per signed-in account, not per address: Students at the
-    centre may share one public IP, and a shared budget would silently drop
-    everyone's data. Anonymous requests (refused anyway) fall back to the
-    address."""
-    raw = session.get("_user_id")
-    return f"account:{str(raw).split('.', 1)[0]}" if raw else get_remote_address()
+def _unresolved(code, body=None):
+    """Bounded technical receipt only; no actor, subject, content or IP stored."""
+    from app.models.research_observations import ResearchDeliveryReceipt
+    from app.services.research_dictionary import is_opaque_ref
+    body = body if isinstance(body, dict) else {}
+    events = body.get("events")
+    count = min(len(events), 100000) if isinstance(events, list) else 0
+    try:
+        db.session.rollback()
+        db.session.add(ResearchDeliveryReceipt(receipt_uid=str(uuid.uuid4()),
+            scope_code="unresolved", result_code=code, received_at_ms=collection.now_ms(),
+            batch_ref=body.get("batch_ref") if is_opaque_ref(body.get("batch_ref")) else None,
+            attempt_ref=body.get("attempt_ref") if is_opaque_ref(body.get("attempt_ref")) else None,
+            events_received=count, events_accepted=0, events_duplicate=0, events_invalid=count,
+            events_late=0, events_dropped_client=0))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 
-def _json(payload, status=200):
-    response = jsonify(payload)
-    response.status_code = status
-    response.headers["Cache-Control"] = "private, no-store"
-    response.vary.add("Cookie")
-    return response
+def source_release():
+    key = "research_source_digest"
+    if key not in current_app.extensions:
+        current_app.extensions[key] = collection.release_digest(current_app.root_path)
+    return current_app.extensions[key]
 
 
-def _student_json(view_func):
-    @wraps(view_func)
-    def wrapped(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return _json({"error": "authentication_required"}, 401)
-        if current_user.role != _STUDENT:
-            return _json({"error": "forbidden"}, 403)
-        return view_func(*args, **kwargs)
-
-    return wrapped
-
-
-def _read_json_body(limit):
-    """``(bytes, None)`` or ``(None, response)`` for a bounded JSON body."""
-    if not request.is_json:
-        return None, _json({"error": "unsupported_media_type"}, 415)
-    length = request.content_length
-    if length is None:
-        return None, _json({"error": "length_required"}, 411)
-    if length > limit:
-        return None, _json({"error": "too_large"}, 413)
-    request.max_content_length = limit
-    return request.get_data(cache=False), None
-
-
-def _user_id():
-    return current_user.id
+def _dispatch(operation, prompt_ref=None, action=None):
+    if not current_app.config.get("RESEARCH_COLLECTION_ENABLED", False):
+        return _json({"collecting": False})
+    raw, refusal = _read_json_body(MAX_BATCH_BYTES if operation == "events" else 2048)
+    if refusal is not None:
+        if operation == "events":
+            _unresolved("oversized" if refusal.status_code == 413 else "invalid")
+        return refusal
+    body = None
+    try:
+        body = json.loads(raw)
+        if not isinstance(body, dict) or body.get("schema_version") != EVENT_SCHEMA_VERSION:
+            raise ValueError("invalid_version")
+        proof = CollectionDeliveryProof(body.get("scope_token"), current_app.config["SECRET_KEY"], session.get(SESSION_REF_KEY))
+        if operation == "clock":
+            if set(body) - {"schema_version", "scope_token", "client_at_ms"}:
+                raise ValueError("invalid_clock")
+            context = cached_context(current_user.id)
+            valid = context is not None and context.event_schema_version == EVENT_SCHEMA_VERSION and proof.matches(
+                body.get("scope_token"), context.user_public_id, context.auth_version,
+                context.configuration_public_id, context.configuration_version)
+            return _json({"collecting": bool(valid), "scope_valid": bool(valid), "server_now_ms": collection.now_ms()})
+        args = (current_user.id, session.get(SESSION_REF_KEY), body, proof, deployment_provenance(), source_release())
+        if operation == "events":
+            result, ref = collection.ingest(*args)
+        elif operation == "sample":
+            result, ref = collection.sample(*args, tz_name())
+        else:
+            result, ref = collection.prompt_action(args[0], args[1], prompt_ref, action, *args[2:], tz_name())
+        if ref and ref != session.get(SESSION_REF_KEY):
+            session[SESSION_REF_KEY] = ref
+        if operation == "events" and result.get("collecting") is False:
+            _unresolved("version_mismatch" if result.get("scope_valid") is False else "ineligible", body)
+        return _json(result)
+    except (ValueError, TypeError, UnicodeError):
+        db.session.rollback()
+        if operation == "events":
+            _unresolved("invalid", body)
+        return _json({"error": "invalid_request"}, 400)
+    except IntegrityError:
+        db.session.rollback()
+        return _json({"collecting": True, "retry": True}, 409)
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.warning("Research collector unavailable (%s)", type(exc).__name__)
+        return _json({"error": "temporarily_unavailable"}, 503)
 
 
 @collector_bp.post("/events")
 @limiter.limit("120 per minute", key_func=_account_key)
 @_student_json
 def events():
-    raw, refusal = _read_json_body(MAX_BATCH_BYTES)
-    if refusal is not None:
-        return refusal
-    batch, error = parse_batch(raw)
-    if error is not None:
-        return _json({"error": error}, 413 if error == "too_large" else 400)
-    result = collection.ingest_batch(
-        _user_id(), session.get(SESSION_REF_KEY), batch, deployment_provenance(), tz_name(),
-        delivery_proof=DeliveryProof(batch.delivery_scope, current_app.config["SECRET_KEY"]),
-    )
-    if result.status == collection.STALE_DELIVERY_SCOPE:
-        return _json({"error": collection.STALE_DELIVERY_SCOPE}, 403)
-    if result.status == collection.NOT_COLLECTING:
-        return _json({"collecting": False})
-    if result.status == collection.RETRY:
-        return _json({"collecting": True, "retry": True}, 409)
-    if result.session_ref != session.get(SESSION_REF_KEY):
-        session[SESSION_REF_KEY] = result.session_ref
-    return _json(
-        {
-            "collecting": True,
-            "accepted": result.accepted,
-            "duplicates": result.duplicates,
-            "invalid": result.invalid,
-            "late": result.late,
-            "prompt": {"id": result.prompt_public_id} if result.prompt_public_id else None,
-        }
-    )
+    return _dispatch("events")
 
 
-@collector_bp.post("/prompts/<prompt_public_id>/<action>")
+@collector_bp.post("/sample")
+@limiter.limit("20 per minute", key_func=_account_key)
+@_student_json
+def sample():
+    return _dispatch("sample")
+
+
+@collector_bp.post("/clock")
+@limiter.limit("20 per minute", key_func=_account_key)
+@_student_json
+def clock():
+    return _dispatch("clock")
+
+
+@collector_bp.post("/prompts/<prompt_ref>/<action>")
 @limiter.limit("30 per minute", key_func=_account_key)
 @_student_json
-def prompt_action(prompt_public_id, action):
-    if action not in PROMPT_ACTIONS:
-        return _json({"error": "not_found"}, 404)
-    raw, refusal = _read_json_body(MAX_PROMPT_BODY_BYTES)
-    if refusal is not None:
-        return refusal
-    try:
-        body = json.loads(raw) if raw else {}
-    except (ValueError, UnicodeDecodeError):
-        return _json({"error": "malformed"}, 400)
-    ref = session.get(SESSION_REF_KEY)
-
-    if action == "display":
-        if body != {}:
-            return _json({"error": "malformed"}, 400)
-        status, reason = sampling.grant_display(_user_id(), ref, prompt_public_id, tz_name())
-        return _prompt_response(status, {"granted": status == sampling.GRANTED, "reason": reason})
-
-    if action == "defer":
-        if not isinstance(body, dict) or set(body) != {"reason"}:
-            return _json({"error": "malformed"}, 400)
-        reason = body["reason"]
-        if reason not in sampling.DEFERRAL_REASONS:
-            return _json({"error": "malformed"}, 400)
-        status = sampling.defer_display(_user_id(), ref, prompt_public_id, reason)
-        return _prompt_response(status, {"deferred": status == sampling.DEFERRED})
-
-    answer = sampling.parse_answer(body)
-    if answer is None:
-        return _json({"error": "malformed"}, 400)
-    status = sampling.respond(_user_id(), ref, prompt_public_id, answer)
-    return _prompt_response(status, {"recorded": status in (sampling.ANSWERED,
-                                                            sampling.DISMISSED)})
-
-
-def _prompt_response(status, payload):
-    if status == sampling.NOT_COLLECTING:
-        return _json({"collecting": False})
-    if status == sampling.NOT_FOUND:
-        return _json({"error": "not_found"}, 404)
-    if status in (sampling.ALREADY, sampling.DIFFERENT, sampling.LATE, sampling.UNAVAILABLE):
-        payload = dict(payload, status=status)
-        return _json(dict(payload, collecting=True), 409)
-    return _json(dict(payload, collecting=True, status=status))
-
-
-@collector_bp.after_request
-def _private_answers(response):
-    """``private, no-store`` on every answer of this blueprint's rules."""
-    response.headers["Cache-Control"] = "private, no-store"
-    response.vary.add("Cookie")
-    return response
+def prompt_action(prompt_ref, action):
+    return _dispatch("prompt", prompt_ref, action)

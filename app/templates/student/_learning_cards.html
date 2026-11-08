@@ -26,7 +26,7 @@
     {% if continue_lesson %}
     <a class="btn btn--primary" href="{{ url_for('student.lesson_detail', group_public_id=continue_lesson.group_public_id, unit_public_id=continue_lesson.unit_public_id, lesson_public_id=continue_lesson.lesson_public_id) }}" data-research-id="lesson_open">{{ _('Continue course') if continue_lesson.resume else _('Start course') }} {{ ui.icon('arrow-up',16) }}</a>
     {% else %}<a class="btn btn--primary" href="{{ url_for('workspace.student_course', group_public_id=card.group_public_id) }}" data-research-id="course_open">{{ ui.icon('book',17) }} {{ _('Student Book') }} {{ ui.icon('arrow-up',15) }}</a>{% endif %}
-    {% if card.has_workbook %}<a class="btn btn--secondary" href="{{ url_for('student.workbook', group_public_id=card.group_public_id) }}">{{ ui.icon('pen',17) }} {{ _('Workbook') }}</a>{% else %}<button type="button" class="btn btn--secondary" disabled aria-label="{{ _('Workbook not available yet') }}">{{ _('Workbook') }}</button>{% endif %}
+    {% if card.has_workbook %}<a class="btn btn--secondary" data-research-action="open" href="{{ url_for('student.workbook', group_public_id=card.group_public_id) }}">{{ ui.icon('pen',17) }} {{ _('Workbook') }}</a>{% else %}<button type="button" class="btn btn--secondary" disabled aria-label="{{ _('Workbook not available yet') }}">{{ _('Workbook') }}</button>{% endif %}
   </div>
 </article>
 {%- endmacro %}

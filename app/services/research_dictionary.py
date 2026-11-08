@@ -1,19 +1,21 @@
-"""Closed, versioned research-v2 vocabulary and pure event-shape validation.
+"""Closed, versioned research observation vocabulary and pure event-shape validation.
 
 No Flask, ORM, file/network access or arbitrary payload fields. These versioned
-codes match the reviewed v2 schema. Adding a signal requires a new documented
+codes match the installed collection schema. Adding a signal requires a new documented
 version and reviewed schema/collector integration; never expand an allowlist
 from browser-provided data. A valid client report is not a confirmed outcome.
 """
 
+from app.services.research_storage_contract import COLLECTION_PROTOCOL, COLLECTION_SCHEMA, DATASET_FORMAT, FEATURE_SCHEMA, QUALITY_SCHEMA
+
 import uuid
 from types import MappingProxyType
 
-EVENT_SCHEMA_VERSION = "natural-use-events.v2"
-PROTOCOL_VERSION = "natural-use-protocol.v2"
-FEATURE_VERSION = "recent-frustration-features.v1"
-EXPORT_FORMAT = "natural-use-v2-export.v1"
-MONITOR_VERSION = "research-quality.v1"
+EVENT_SCHEMA_VERSION = COLLECTION_SCHEMA
+PROTOCOL_VERSION = COLLECTION_PROTOCOL
+FEATURE_VERSION = FEATURE_SCHEMA
+EXPORT_FORMAT = DATASET_FORMAT
+MONITOR_VERSION = QUALITY_SCHEMA
 SOURCE_CLIENT = "client"
 SOURCE_SERVER = "server"
 MAX_EPOCH_MS = 2**53 - 1

@@ -1,17 +1,12 @@
 """Explicit FK-order removal shared by authorized retention/manual cleanup."""
-from sqlalchemy import select, text
+from sqlalchemy import select
 from app.extensions import db
-from app.models.research_v2 import (
-    ResearchV2Event as Event, ResearchV2Prompt as Prompt, ResearchV2SamplingOpportunity as Opportunity,
-    ResearchV2SamplingState as State, ResearchV2FeatureMembership as Membership,
-    ResearchV2DeliveryReceipt as Receipt, ResearchQualityIncident as Incident,
+from app.models.research_observations import (
+    ResearchObservation as Event, ResearchQuestion as Prompt, ResearchSamplingOpportunity as Opportunity,
+    ResearchSamplingState as State, ResearchFeatureMembership as Membership,
+    ResearchDeliveryReceipt as Receipt, ResearchQualityIncident as Incident,
     ResearchQualityReport as Report, ResearchQualityRun as Run,
 )
-
-
-def schema_present():
-    # Read only; works while collection is disabled, including before migration.
-    return bool(db.session.execute(text("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='research_v2_feature_memberships'")).scalar())
 
 
 def raw_counts(selected):

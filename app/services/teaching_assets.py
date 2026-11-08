@@ -32,10 +32,12 @@ def asset_or_404(course_id, public_id):
             .filter_by(course_id=course_id, public_id=public_id).first_or_404())
 
 
-def reference_pins(course_id, page, *, book_kind=None, document_asset=None):
+def reference_pins(course_id, page=None, *, book_kind=None, document_asset=None):
     query = (TeachingAssetPin.query.join(TeachingAsset,
         (TeachingAsset.id == TeachingAssetPin.asset_id) & (TeachingAsset.course_id == TeachingAssetPin.course_id))
-        .filter(TeachingAssetPin.course_id == course_id, TeachingAssetPin.page_number == page))
+        .filter(TeachingAssetPin.course_id == course_id))
+    if page is not None:
+        query = query.filter(TeachingAssetPin.page_number == page)
     if book_kind is not None:
         query = query.filter(TeachingAssetPin.book_kind == book_kind, TeachingAssetPin.document_asset_id.is_(None))
     elif document_asset is not None and document_asset.course_id == course_id:
@@ -48,7 +50,8 @@ def reference_pins(course_id, page, *, book_kind=None, document_asset=None):
         uploaded = asset.uploaded_file
         if uploaded.category not in {"audio", "video"}:
             continue
-        result.append(dict(public_id=asset.public_id, category=uploaded.category,
+        result.append(dict(public_id=asset.public_id, category=uploaded.category, pin_page=pin.page_number,
+            anchor_id=f"{asset.public_id}-{pin.page_number}-{pin.pin_x}-{pin.pin_y}",
             original_filename=asset.title, pin_x=pin.pin_x, pin_y=pin.pin_y))
     return result
 

@@ -3,7 +3,7 @@ from datetime import datetime
 from hashlib import sha256
 from uuid import uuid4
 
-from flask import abort, current_app, flash, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
@@ -108,7 +108,7 @@ def _save_release(model, key, item_id, rows, group_id, opens_at, now, notice_key
     return 1
 
 
-def _apply(group, catalogue, release_rows, action, tz_name, book):
+def _apply(group, catalogue, release_rows, action, tz_name, book, command=None):
     now = curriculum_now()
     opens_at = now
     if action == "hide":
@@ -128,14 +128,21 @@ def _apply(group, catalogue, release_rows, action, tz_name, book):
     available_units = {unit.public_id for unit, entries in catalogue if entries}
     available_lessons = {lesson.public_id for _, entries in catalogue for lesson, _ in entries}
     available_materials = {m.public_id for _, entries in catalogue for _, children in entries for m in children}
-    if action != "publish_all" and not (
+    all_items = action == "publish_all"
+    if command:
+        _, target, identifier = command
+        if target == "all":
+            all_items = True
+        elif target != "selected":
+            selected_units, selected_lessons, selected_materials = set(), set(), set()
+            {"unit": selected_units, "lesson": selected_lessons, "material": selected_materials}[target].add(identifier)
+    if not all_items and not (
         (selected_units or selected_lessons or selected_materials)
         and selected_units <= available_units and selected_lessons <= available_lessons
         and selected_materials <= available_materials
     ):
         raise ValueError("Select units, lessons or materials in this group.")
 
-    all_items = action == "publish_all"
     lesson_rows, material_rows = release_rows
     notice_key = str(uuid4())
     count = 0
@@ -152,6 +159,55 @@ def _apply(group, catalogue, release_rows, action, tz_name, book):
     return count
 
 
+def _release_view(row, now, tz_name, fallback="Hidden"):
+    label = _state(row, now, tz_name, fallback)
+    code = "scheduled" if label.startswith("Scheduled for ") else "published" if label in {"Published", "Follows lesson"} else "hidden"
+    return dict(code=code, label="Scheduled" if code == "scheduled" else label,
+                date=to_app_local(tz_name, row.opens_at).strftime("%d %b %Y · %H:%M")
+                     if row and row.opens_at is not None and code == "scheduled" else "")
+
+
+def _publication_context(group, book, tz_name):
+    catalogue = _catalogue(group, book)
+    rows = _release_rows(group.id, book)
+    now = curriculum_now()
+    units = []
+    for unit, entries in catalogue:
+        if not entries:
+            continue
+        lessons = []
+        for lesson, children in entries:
+            state = _release_view(rows[0].get(lesson.id), now, tz_name,
+                "Published" if book == "main" and unit.group_id is not None else "Hidden")
+            materials = [dict(public_id=m.public_id, title=m.title,
+                state=_release_view(rows[1].get(m.id), now, tz_name, "Follows lesson")) for m in children]
+            lessons.append(dict(public_id=lesson.public_id, title=lesson.title, state=state, materials=materials))
+        visible = sum(item["state"]["code"] == "published" for item in lessons)
+        units.append(dict(public_id=unit.public_id, title=unit.title, lessons=lessons,
+                          published=visible, all_published=visible == len(lessons)))
+    from app.services.course_books import books_for_course
+    books = books_for_course(group.course_id, group)
+    states = [lesson["state"]["code"] for unit in units for lesson in unit["lessons"]]
+    return dict(group=group, book=book, book_label="Workbook" if book == "workbook" else "Student book",
+        publication_units=units, books=books, snapshot=_snapshot(catalogue, rows, book, group),
+        operational=_group_is_operational(group), tz_name=tz_name, total_lessons=len(states),
+        visible_lessons=states.count("published"), scheduled_lessons=states.count("scheduled"),
+        hidden_lessons=states.count("hidden"))
+
+
+def _response(group, book, tz_name, *, message="", ok=True, status=200):
+    context = _publication_context(group, book, tz_name)
+    if request.headers.get("X-Publication-Request") == "1":
+        response = jsonify(ok=ok, message=message,
+                           html=render_template("teacher/_publication_panel.html", **context))
+        response.status_code = status
+    else:
+        response = current_app.make_response(render_template("teacher/curriculum_publication.html", **context))
+    response.headers["Cache-Control"] = "private, no-store"
+    response.vary.add("Cookie")
+    return response
+
+
 @teacher_bp.route("/groups/<group_public_id>/curriculum/publication", methods=["GET", "POST"])
 @roles_required(UserRole.TEACHER.value)
 def curriculum_publication(group_public_id):
@@ -162,7 +218,13 @@ def curriculum_publication(group_public_id):
     tz_name = current_app.config["APP_TIMEZONE"]
     if request.method == "POST":
         destination = url_for("teacher.curriculum_publication", group_public_id=group_public_id, book=book)
-        action = request.form.get("action")
+        command = None
+        if request.form.get("command"):
+            command = request.form["command"].split("|", 2)
+            if (len(command) != 3 or command[0] not in {"publish", "hide", "schedule"}
+                    or command[1] not in {"all", "selected", "unit", "lesson", "material"}):
+                abort(400)
+        action = command[0] if command else request.form.get("action")
         if action not in {"publish_all", "publish", "schedule", "hide"}:
             abort(400)
         term_id, level_id, course_id = group.academic_term_id, group.course.level_id, group.course_id
@@ -180,30 +242,22 @@ def curriculum_publication(group_public_id):
             rows = _release_rows(group.id, book)
             if request.form.get("snapshot") != _snapshot(catalogue, rows, book, group):
                 raise ValueError("Publication changed while this page was open. Review the current selections.")
-            count = _apply(group, catalogue, rows, action, tz_name, book)
+            count = _apply(group, catalogue, rows, action, tz_name, book, command)
             saved_group_id = group.id
             db.session.commit()
         except (ValueError, IntegrityError) as error:
             db.session.rollback()
-            flash(str(error) if isinstance(error, ValueError) else "The publication could not be saved.", "danger")
+            message = str(error) if isinstance(error, ValueError) else "The publication could not be saved."
+            if request.headers.get("X-Publication-Request") == "1":
+                return _response(group, book, tz_name, message=message, ok=False, status=409)
+            flash(message, "danger")
         else:
             if count and action == "hide":
                 notify_curriculum_hidden(saved_group_id, book=book)
+            if request.headers.get("X-Publication-Request") == "1":
+                return _response(group, book, tz_name, message="Saved" if count else "Already up to date")
             flash(f"Updated visibility for {count} items." if count else "The selected visibility is already set.",
                   "success")
         return redirect(destination)
 
-    catalogue = _catalogue(group, book)
-    rows = _release_rows(group.id, book)
-    now = curriculum_now()
-    lesson_states = {
-        lesson.id: _state(rows[0].get(lesson.id), now, tz_name,
-                          "Published" if book == "main" and unit.group_id is not None and lesson.status == "published" else "Hidden")
-        for unit, entries in catalogue for lesson, _ in entries
-    }
-    material_states = {m.id: _state(rows[1].get(m.id), now, tz_name, "Follows lesson")
-                       for _, entries in catalogue for _, children in entries for m in children}
-    return render_template("teacher/curriculum_publication.html", group=group, catalogue=catalogue, book=book,
-                           book_label="Workbook" if book == "workbook" else "Student book",
-                           snapshot=_snapshot(catalogue, rows, book, group), operational=_group_is_operational(group),
-                           lesson_states=lesson_states, material_states=material_states, tz_name=tz_name)
+    return _response(group, book, tz_name)

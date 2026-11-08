@@ -1,4 +1,4 @@
-"""Separate bounded v2 archive. Final-test/unassigned participants are quarantined.
+"""Separate bounded dataset. Final-test/unassigned participants are quarantined.
 
 Reads only the caller's consistent snapshot. Features use exact grant membership;
 raw answers and predictor columns are separate files. No identity links are read.
@@ -11,14 +11,15 @@ import zipfile
 from flask import current_app
 from app.extensions import db
 from app.models import ResearchConfiguration, ResearchSession, ResearchSubject
-from app.models.research_v2 import (
-    ResearchV2Event as Event, ResearchV2Prompt as Prompt, ResearchV2SamplingState as State,
-    ResearchV2SamplingOpportunity as Opportunity, ResearchV2FeatureMembership as Membership,
-    ResearchV2EvaluationPartition as Partition, ResearchV2Protocol as Protocol,
-    ResearchV2DeliveryReceipt as Receipt,
+from app.models.research_observations import (
+    ResearchObservation as Event, ResearchQuestion as Prompt, ResearchSamplingState as State,
+    ResearchSamplingOpportunity as Opportunity, ResearchFeatureMembership as Membership,
+    ResearchEvaluationGroup as Partition, ResearchProtocol as Protocol,
+    ResearchDeliveryReceipt as Receipt,
 )
-from app.services.research_v2_dictionary import EVENT_SCHEMA_VERSION, EXPORT_FORMAT, PROTOCOL_VERSION, FEATURE_VERSION
-from app.services.research_v2_features import build_features, RENDER_TIMING_SEMANTICS
+from app.services.research_dictionary import EVENT_SCHEMA_VERSION, EXPORT_FORMAT, PROTOCOL_VERSION, FEATURE_VERSION
+from app.services.research_features import build_features, RENDER_TIMING_SEMANTICS
+from app.services.research_context_features import build_context_features, CONTEXT_FEATURE_VERSION
 
 
 def build_export(configuration_id, period_from, period_to, cutoff_ms, tz_name):
@@ -28,7 +29,7 @@ def build_export(configuration_id, period_from, period_to, cutoff_ms, tz_name):
     configuration = db.session.get(ResearchConfiguration, configuration_id)
     protocol = db.session.get(Protocol, configuration_id)
     if configuration is None or protocol is None:
-        raise ValueError("Select a prepared v2 configuration.")
+        raise ValueError("Select a prepared collection configuration.")
     lower, upper = _bounds(period_from, period_to, tz_name)
     query = db.session.query(ResearchSession, ResearchSubject.subject_code, State.release_ref,
                              Partition.partition_code).join(ResearchSubject, ResearchSubject.id == ResearchSession.subject_id).join(
@@ -75,7 +76,8 @@ def build_export(configuration_id, period_from, period_to, cutoff_ms, tz_name):
 
     def add(name, header, rows):
         files[name] = _csv(header, rows)
-        dictionary.extend((name, key, "Server source metadata; never a predictor." if key in {
+        dictionary.extend((name, key, "Optional questionnaire outcome; never a detector predictor or proof of help effectiveness. Missing is not no; unselected causes do not prove absence."
+            if name == "assistance_preferences.csv" else "Server source metadata; never a predictor." if key in {
             "rating", "cause_mask", "help_requested", "quality_code", "answer_timely", "derived_status",
             "rendered_at_ms", "response_received_at_ms"} else "See the versioned data contract and feature missing/support metadata.") for key in header)
 
@@ -89,7 +91,7 @@ def build_export(configuration_id, period_from, period_to, cutoff_ms, tz_name):
     receipt_columns = [c.name for c in Receipt.__table__.columns if c.name not in {"id", "session_id"}]
     add("delivery.csv", ["session_ref", *receipt_columns],
         [(session_map[r.session_id][0], *(getattr(r, c) for c in receipt_columns)) for r in receipts])
-    labels, feature_rows, membership_rows = [], [], []
+    labels, feature_rows, membership_rows, context_rows, assistance_rows = [], [], [], [], []
     for p in prompts:
         session_ref, code, release, partition = session_map[opp_map[p.opportunity_id].session_id]
         derived = ("expired" if p.status == "reserved" and cutoff_ms >= p.expires_at_ms else
@@ -106,12 +108,24 @@ def build_export(configuration_id, period_from, period_to, cutoff_ms, tz_name):
             maximum_clock_uncertainty_ms=protocol.maximum_clock_uncertainty_ms)
         feature_rows.append((p.public_id, code, partition, release, p.granted_at_ms,
                              json.dumps(feature, sort_keys=True, separators=(",", ":"))))
+        context_feature = build_context_features(selected, cutoff_ms=p.granted_at_ms, base_features=feature)
+        context_rows.append((p.public_id, code, partition, release, p.granted_at_ms,
+                             json.dumps(context_feature, sort_keys=True, separators=(",", ":"))))
+        # Optional preferences are outcomes of the questionnaire, not predictors.
+        answered = p.status == "answered"
+        mask = p.cause_mask if answered else None
+        assistance_rows.append((p.public_id, partition, bool(eligible), p.help_question_shown,
+            p.help_requested if answered else None,
+            *(bool(mask & bit) if mask is not None else None for bit in (1, 2, 4, 8, 16))))
         membership_rows.extend((p.public_id, e.event_uid) for e in selected)
     add("labels.csv", ["prompt_ref", "session_ref", "subject_code", "analysis_partition", "derived_status", "granted_at_ms", "rendered_at_ms",
         "reference_start_ms", "reference_end_ms", "response_received_at_ms", "rating", "cause_mask", "help_requested", "answer_timely", "quality_code", "primary_label_eligible",
         "moderate_or_higher_label", "display_locale", "help_question_shown", "render_clock_uncertainty_ms", "render_received_at_ms", "response_deadline_ms", "expires_at_ms"], labels)
     add("features.csv", ["prompt_ref", "subject_code", "analysis_partition", "release_ref", "cutoff_ms", "feature_payload_json"], feature_rows)
     add("membership.csv", ["prompt_ref", "event_uid"], membership_rows)
+    add("context_features.csv", ["prompt_ref", "subject_code", "analysis_partition", "release_ref", "cutoff_ms", "feature_payload_json"], context_rows)
+    add("assistance_preferences.csv", ["prompt_ref", "analysis_partition", "primary_label_eligible", "help_question_shown",
+        "help_requested", "cause_interface", "cause_technical", "cause_content", "cause_other", "cause_unsure"], assistance_rows)
     files["data_dictionary.csv"] = _csv(["file", "column", "description"], dictionary)
     expiry = min((s.last_seen_at_ms + configuration.retention_days * 86400000 for s, *_ in sessions), default=cutoff_ms + configuration.retention_days * 86400000)
     counts = {"subjects": len({code for _, code, *_ in sessions}), "sessions": len(sessions), "events": len(events),
@@ -120,6 +134,20 @@ def build_export(configuration_id, period_from, period_to, cutoff_ms, tz_name):
               "_expiry_at_ms": expiry}
     manifest = {"format": EXPORT_FORMAT, "event_schema_version": EVENT_SCHEMA_VERSION,
         "protocol_version": PROTOCOL_VERSION, "feature_version": FEATURE_VERSION,
+        "context_feature_version": CONTEXT_FEATURE_VERSION,
+        "collection_instrumentation_revision": "reader-workbook-context.20261108",
+        "cross_device_contract": {
+            "activation": "Native semantic click/change/submit events cover touch, mouse and keyboard activation. No key identities or typed text are collected.",
+            "viewport": "Closed phone/tablet/desktop codes mean narrow/medium/wide viewport classes, not hardware identity; a resized desktop can change class.",
+            "capabilities": "PointerEvent availability does not establish a physical mouse and is not required for semantic action features. Unsupported or unknown channels remain missing, never emotional labels.",
+            "evaluation": "Keep every session/device of one participant in the same train/test partition. Review delivery, eligible-label yield and model performance across supported viewport/input journeys; viewport alone cannot establish physical-device fairness.",
+        },
+        "assistance_contract": {
+            "context": "context_features.csv uses frozen pre-grant membership only; labels and preferences are separate.",
+            "preferences": "help_requested and reported causes are optional labels. Missing is not no; unselected causes do not prove absence.",
+            "effectiveness": "Not measured by this baseline. No adaptive intervention is delivered by collection.",
+            "future_evaluation": "Record model/policy version, offered help type, offer/render/accept/decline/use, pre-intervention context, outcomes and an appropriate comparison. Keep intervention data separate from baseline detector training.",
+        },
         "dataset_kind": "study" if provenance == "study" else "operational_review", "cutoff_ms": cutoff_ms,
         "configuration_version": configuration.version_number, "retention_days": configuration.retention_days,
         "configuration_policy": {k: getattr(configuration, k) for k in (
@@ -134,7 +162,7 @@ def build_export(configuration_id, period_from, period_to, cutoff_ms, tz_name):
         "time_contract": "One committed read snapshot before export cutoff. Each prompt uses only immutable event membership frozen at grant G; W=[G-120000,G). Browser render T is separate; late/uncertain/misaligned answers never primary labels.",
         "render_timing_semantics": {"version": RENDER_TIMING_SEMANTICS,
             "new_validation": "Keep E unchanged. Known 0<=u<=protocol maximum and R>=G are required; J=[E-u,E+u] intersect [G,R] must be nonempty with max(J)<=G+5000.",
-            "recorded_eligibility": "Stored quality and primary eligibility are preserved, including earlier source releases. This metadata does not reclassify existing rows.",
+            "recorded_eligibility": "Stored quality and primary eligibility record the decision made at collection. Export does not reclassify them.",
             "answer_deadline": "Unchanged: stored rendered_at_ms plus the recorded response window."},
         "predictor_allowlist": "Only feature_payload_json.values with its missing/support/denominator metadata. Never label fields, identities, subject/session IDs, render/response timing, causes, help preference, partition, sampling decisions or quality metadata.",
         "missing_label_rule": "Only primary_label_eligible=true may supply a training target. Skip, nonresponse, unprompted, late and poor-quality windows are not negatives. Raw 1–5 answers remain unchanged.",

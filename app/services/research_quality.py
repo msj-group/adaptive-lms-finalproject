@@ -3,8 +3,9 @@
 collect_quality_snapshot accepts a SQLAlchemy Connection already inside a
 REPEATABLE READ, READ ONLY consistent snapshot. The dedicated runner owns that
 transaction. A web reader can instead own its short snapshot explicitly.
-No LMS account link, users table, survey free text or v1 counters are queried.
+No LMS account link, users table, survey free text or discarded counters are queried.
 """
+
 from collections import defaultdict
 from hashlib import sha256
 import re
@@ -12,7 +13,8 @@ import re
 from sqlalchemy import text
 
 if __package__ == "app.services":
-    from app.services.research_v2_features import (
+    from app.services.research_storage_contract import COLLECTION_PROTOCOL, COLLECTION_SCHEMA, FEATURE_SCHEMA, QUALITY_SCHEMA
+    from app.services.research_features import (
         build_features, linear_quantile, render_alignment_code, RENDER_TIMING_SEMANTICS,
     )
 else:
@@ -21,7 +23,12 @@ else:
     import importlib.util
     from pathlib import Path
     _spec = importlib.util.spec_from_file_location(
-        "research_quality_features", Path(__file__).with_name("research_v2_features.py"))
+        "research_quality_features", Path(__file__).with_name("research_features.py"))
+    _contract_spec = importlib.util.spec_from_file_location("research_storage_contract", Path(__file__).with_name("research_storage_contract.py"))
+    _contract = importlib.util.module_from_spec(_contract_spec)
+    _contract_spec.loader.exec_module(_contract)
+    COLLECTION_PROTOCOL, COLLECTION_SCHEMA = _contract.COLLECTION_PROTOCOL, _contract.COLLECTION_SCHEMA
+    FEATURE_SCHEMA, QUALITY_SCHEMA = _contract.FEATURE_SCHEMA, _contract.QUALITY_SCHEMA
     _features = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_features)
     build_features, linear_quantile = _features.build_features, _features.linear_quantile
@@ -29,7 +36,7 @@ else:
     RENDER_TIMING_SEMANTICS = _features.RENDER_TIMING_SEMANTICS
 
 
-MONITOR_VERSION = "research-quality.v1"
+MONITOR_VERSION = QUALITY_SCHEMA
 # Source semantics are explicit without changing the installed CHECK identity.
 DENOMINATOR_SEMANTICS = "server-presence-client-delivery.v1"
 LABEL_YIELD_SEMANTICS = "stored-primary-label-yield.v1"
@@ -39,9 +46,9 @@ _LABEL_EXCLUSION_REASONS = (
     "not_assessed", "coverage_low", "clock_unknown", "clock_uncertain",
     "alignment_invalid", "late_answer", "unsupported",
 )
-SCHEMA_VERSION = "natural-use-events.v2"
-PROTOCOL_VERSION = "natural-use-protocol.v2"
-FEATURE_VERSION = "recent-frustration-features.v1"
+SCHEMA_VERSION = COLLECTION_SCHEMA
+PROTOCOL_VERSION = COLLECTION_PROTOCOL
+FEATURE_VERSION = FEATURE_SCHEMA
 MAX_PERIOD_MS = 86_400_000
 # Engineering investigation margins, not research observation or label rules.
 CLIENT_START_GRACE_MS = 180_000
@@ -114,7 +121,7 @@ def collect_quality_snapshot(connection, *, period_start_ms, period_end_ms, cuto
     Technical scope never SELECTs the rating column. Scientific scopes select
     only their explicitly assigned development/prospective participants; final
     test and unassigned labels never enter the query. Immutable release metadata
-    is read from the session's v2 sampling-state row, never the current server.
+    is read from the session's collection sampling-state row, never the current server.
 
     Source-row and group limits fail the entire snapshot, never return a
     misleading partial denominator. Large studies must use shorter periods or
@@ -261,7 +268,8 @@ def collect_quality_snapshot(connection, *, period_start_ms, period_end_ms, cuto
                       "e.session_id,e.event_uid,e.source,e.event_type,e.page_code,e.context_code,"
                       "e.activity_code,e.action_code,e.detail_code,e.context_ref,e.action_ref,"
                       "e.attempt_ref,e.outcome_ref,e.count,e.confirmed_progress,e.interval_started_at_ms,"
-                      "e.occurred_at_ms,e.received_at_ms,e.clock_uncertainty_ms"
+                      "e.occurred_at_ms,e.received_at_ms,e.clock_uncertainty_ms,"
+                      "e.page_ref,e.tab_ref,e.client_sequence"
                       + joins + "JOIN research_v2_events e ON e.session_id=s.id WHERE " + filters
                       + " AND s.started_at_ms<:end AND s.last_seen_at_ms>=:start"
                       " AND e.received_at_ms<:cutoff AND (e.occurred_at_ms>=:event_start"
@@ -326,9 +334,16 @@ def collect_quality_snapshot(connection, *, period_start_ms, period_end_ms, cuto
             state["observed"].add(session_id)
             state["subjects"].add(session["subject_id"])
             declarations = {}
-            for event in sorted(events, key=lambda r: (r["received_at_ms"], r["occurred_at_ms"])):
+            # Several declarations can arrive in the same batch. Preserve their
+            # client order within a page rather than preferring a device label
+            # merely because it appears first in the Python dictionary.
+            ordered = sorted(events, key=lambda r: (
+                r["received_at_ms"], r["occurred_at_ms"], str(r.get("tab_ref") or ""),
+                str(r.get("page_ref") or ""), r.get("client_sequence") or 0,
+                str(r.get("event_uid") or "")))
+            for order, event in enumerate(ordered):
                 if event["event_type"] == "measurement_support":
-                    declarations[event["detail_code"]] = event["received_at_ms"]
+                    declarations[event["detail_code"]] = order
             devices = {"phone": "phone_sessions", "tablet": "tablet_sessions", "desktop": "desktop_sessions"}
             device = max((d for d in devices if d in declarations), key=lambda d: declarations[d], default=None)
             metrics[devices.get(device, "unknown_device_sessions")] += 1
@@ -500,14 +515,14 @@ def critical_issues(snapshot):
             and delivery["rejected_attempts"] / delivery["attempts"] >= .95
             and any(c["collecting"] for c in snapshot["collection"])):
         issues.append({"rule_code": "invalid_rate", "severity": "critical",
-                       "aggregate_scope_key": sha256(b"v2-global-technical-delivery").hexdigest()})
+                       "aggregate_scope_key": sha256(b"collection-global-technical-delivery").hexdigest()})
     if delivery and delivery.get("missing_client_sessions", 0):
         issues.append({"rule_code": "delivery_stopped", "severity": "critical",
-                       "aggregate_scope_key": sha256(b"v2-global-server-presence").hexdigest()})
+                       "aggregate_scope_key": sha256(b"collection-global-server-presence").hexdigest()})
     retention = snapshot.get("global_retention")
     if retention and retention["prolonged_overdue_sessions"]:
         issues.append({"rule_code": "expiry_backlog", "severity": "critical",
-                       "aggregate_scope_key": sha256(b"v2-global-retention").hexdigest()})
+                       "aggregate_scope_key": sha256(b"collection-global-retention").hexdigest()})
     for group in snapshot["groups"]:
         m = group["metrics"]
         if (m["prompts_matured"] != m["prompts_answered_matured"] + m["prompts_unanswered_matured"]

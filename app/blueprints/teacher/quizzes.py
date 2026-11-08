@@ -855,6 +855,8 @@ def quiz_create(group_public_id):
     the POST body has nowhere to land. The form carries only ``title`` and
     ``instructions``.
     """
+    if request.method == "GET":
+        return redirect(url_for("teacher.activity_start",group=group_public_id,type="quiz"))
     preview_group = _teacher_group_or_404(group_public_id)
 
     if not _group_is_operational(preview_group):

@@ -234,7 +234,7 @@ def _change_completion(group_public_id, unit_public_id, lesson_public_id, action
         from app.services.unit_progress_tokens import load_unit_progress_token
         versions = load_unit_progress_token(unit_token, actor_public_id, group_public_id, unit_public_id, book)
         if versions is None:
-            note_outcome("lesson_completion", "rejected")
+            note_outcome("lesson_completion", "rejected", unit_completion=True)
             flash("Unit completion could not be verified. Reload the unit and try again.", "warning")
             return redirect(lesson_url)
         destination = (_completion_destination(student_id, progress, book, next_unit=True)
@@ -243,9 +243,9 @@ def _change_completion(group_public_id, unit_public_id, lesson_public_id, action
         if outcome == progress_tx.UNAVAILABLE:
             abort(404)
         if outcome in (progress_tx.CHANGED, progress_tx.ALREADY):
-            note_outcome("lesson_completion", "completed" if outcome == progress_tx.CHANGED else "unchanged")
+            note_outcome("lesson_completion", "completed" if outcome == progress_tx.CHANGED else "unchanged", unit_completion=True)
             return redirect(destination or url_for("workspace.student_courses"))
-        note_outcome("lesson_completion", "rejected")
+        note_outcome("lesson_completion", "rejected", unit_completion=True)
         flash("The unit content or your progress changed. Reload the unit and try again."
               if outcome == progress_tx.STALE else _CONFLICT, "warning")
         return redirect(lesson_url)

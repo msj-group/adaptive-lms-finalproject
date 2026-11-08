@@ -50,6 +50,25 @@ def read_book(course, kind, urls, group=None):
     if page is None or not 1 <= page <= book.page_count:
         abort(404)
     from app.services.teaching_assets import reference_pins
+    if group is not None:
+        from collections import defaultdict
+        from app.services.course_pdf import pdf_page_sizes
+        pages = defaultdict(list)
+        if kind == "main":
+            pins = _main_materials(course.id, group).filter(Material.pin_page.is_not(None)).all()
+            for pin in pins:
+                if 1 <= pin.pin_page <= book.page_count:
+                    pages[pin.pin_page].append(pin)
+            endpoint = "teacher.course_book_material_file"
+        else:
+            for pin in reference_pins(course.id, book_kind=kind):
+                if 1 <= pin["pin_page"] <= book.page_count:
+                    pages[pin["pin_page"]].append(pin)
+            endpoint = "teacher.teaching_asset_file"
+        return private_render("teacher/book_reader.html", course=course, group=group,
+            book=book, kind=kind, label=BOOK_LABELS[kind], page=page,
+            book_sizes=pdf_page_sizes(book), page_pins=pages, pin_endpoint=endpoint,
+            pin_args={"group_public_id":group.public_id}, book_urls=urls)
     if kind == "main":
         pins = _main_materials(course.id, group).filter(Material.pin_page == page).all()
         pin_endpoint = ("teacher" if group else "admin") + ".course_book_material_file"

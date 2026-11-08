@@ -12,5 +12,5 @@
 </section>
 <nav class="workspace-mobile-nav" aria-label="Mobile workspace">
   {% for label, target, symbol, research_id, selected in shortcuts %}<a href="{{ url_for(target) }}"{% if label == 'Config' %} aria-label="Configurations"{% endif %}{% if research_id %} data-research-id="{{ research_id }}"{% endif %}{% if selected %} aria-current="page"{% endif %}>{{ ui.icon(symbol) }}<span>{{ label }}</span></a>{% endfor %}
-  <button type="button" aria-label="More navigation" aria-controls="workspace-more-panel" aria-expanded="false" aria-haspopup="dialog" data-more-toggle data-research-id="nav_more" hidden>{{ ui.icon('menu') }}<span>More</span></button>
+  <button type="button" aria-label="More navigation" aria-controls="workspace-more-panel" aria-expanded="false" aria-haspopup="dialog" data-more-toggle data-research-id="nav_more">{{ ui.icon('menu') }}<span>More</span></button>
 </nav>

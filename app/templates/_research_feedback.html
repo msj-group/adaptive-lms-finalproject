@@ -1,55 +1,59 @@
-{#- Phase 6: the optional frustration question. Rendered hidden, only for an
-    eligible Student, and shown by usage_collector.js only after the server
-    granted a display. It asks exactly what it says -- how frustrated the
-    Student felt during recent use of the platform -- keeps the full 1-5 scale
-    and its anchors, has a clear Skip, and collects no free text. It claims no
-    other purpose (not grades, not support). Its own interaction is outside the
-    window it asks about. -#}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/research.css') }}">
-<section class="research-feedback" id="research-feedback" hidden
-         role="dialog" aria-modal="false" aria-labelledby="research-feedback-title"
-         aria-describedby="research-feedback-note">
-  <form class="research-feedback__form" data-feedback-form novalidate>
-    <h2 class="research-feedback__title" id="research-feedback-title" tabindex="-1">A quick question</h2>
-    <p class="research-feedback__note" id="research-feedback-note">
-      Answering is optional. Skipping does not affect your grades or your access.
-    </p>
-    <fieldset class="research-feedback__group">
-      <legend>Thinking about the last {{ research.lookback_phrase }} on this platform, how frustrated did you feel?</legend>
-      {% for value, label in research.anchors %}
-      <label class="research-feedback__choice">
-        <input type="radio" name="rating" value="{{ value }}" required>
-        <span><strong>{{ value }}</strong> &mdash; {{ label }}</span>
-      </label>
-      {% endfor %}
-    </fieldset>
-    <fieldset class="research-feedback__group">
-      <legend>What contributed to that feeling? <span class="research-feedback__optional">(optional, choose any)</span></legend>
-      {% for code, _column, label in research.causes %}
-      <label class="research-feedback__choice">
-        <input type="checkbox" name="cause" value="{{ code }}">
-        <span>{{ label }}</span>
-      </label>
-      {% endfor %}
-    </fieldset>
-    <div class="research-feedback__actions">
-      <button type="submit" class="btn btn--primary" data-feedback-submit disabled>Submit</button>
-      <button type="button" class="btn btn--secondary" data-feedback-skip>Skip</button>
+{# Optional Collection self-report. Its inputs are never part of the predictor stream. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/research_feedback.css', v='survey-layout-5') }}">
+<section id="research-feedback" class="research-question-card" lang="ar" dir="rtl" hidden role="dialog" aria-modal="false"
+         aria-labelledby="research-question-title">
+  <form data-research-feedback-form novalidate>
+    <div class="research-question-header">
+      <span class="research-question-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.6-3.3A7.5 7.5 0 1 1 20 11.5Z"/>
+          <path d="M9 10h6m-6 3h4"/>
+        </svg>
+      </span>
+      <h2 id="research-question-title">{{ ui_arabic('Quick survey') }}</h2>
     </div>
-    <p class="research-feedback__status" data-feedback-status role="status" aria-live="polite"></p>
-    {#- The browser shows exactly one of these, by the server's answer.
-        "Thank you." only when the server confirms the exact choice sent;
-        after an unconfirmed attempt the sent choice stays frozen, the
-        buttons become "Try again" (resend it unchanged) and "Close"
-        (send nothing, claim nothing). -#}
-    <template data-feedback-messages>
-      <span data-message="recorded">Thank you.</span>
-      <span data-message="failed">We could not confirm that your response was saved. Please try again.</span>
-      <span data-message="kept">Your earlier response to this question was already saved. It has not been changed.</span>
-      <span data-message="expired">This question has expired. Nothing was recorded.</span>
-      <span data-message="unavailable">This question is no longer available.</span>
-      <span data-message="retry_label">Try again</span>
-      <span data-message="close_label">Close</span>
+    <div class="research-question-body" data-research-feedback-body>
+      <fieldset class="research-question-rating">
+        <legend>{{ ui_arabic('In the two minutes before this question was sent, how frustrated did you feel on this platform?') }}</legend>
+        <div class="research-question-scale">
+          {% for value, label in research.anchors %}
+          <label class="research-question-score">
+            <input type="radio" name="research-rating" value="{{ value }}" required>
+            <span class="research-question-score-tile"><strong>{{ value }}</strong><span>{{ ui_arabic(label) }}</span></span>
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      <fieldset class="research-question-extra">
+        <legend>{{ ui_arabic('What contributed to that feeling?') }} <span>{{ ui_arabic('Optional.') }}</span></legend>
+        <div class="research-question-choices">
+          {% for code, _column, label in research.causes %}
+          <label class="research-question-choice"><input type="checkbox" name="research-cause" value="{{ code }}"><span>{{ ui_arabic(label) }}</span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      <fieldset class="research-question-help" data-research-feedback-help-question hidden>
+        <legend>{{ ui_arabic('Would you have wanted help at that moment?') }} <span>{{ ui_arabic('Optional.') }}</span></legend>
+        <div class="research-question-choices">
+          <label class="research-question-choice"><input type="radio" name="research-help" value="yes"><span>{{ ui_arabic('Yes') }}</span></label>
+          <label class="research-question-choice"><input type="radio" name="research-help" value="no"><span>{{ ui_arabic('No') }}</span></label>
+        </div>
+      </fieldset>
+    </div>
+    <div class="research-question-footer">
+      <p data-research-feedback-status role="status" aria-live="polite"></p>
+      <div class="research-question-actions">
+        <button type="submit" class="btn btn--primary" data-research-feedback-submit disabled>{{ ui_arabic('Submit') }}</button>
+        <button type="button" class="btn btn--secondary" data-research-feedback-skip>{{ ui_arabic('I prefer not to answer') }}</button>
+      </div>
+    </div>
+    <template>
+      <span data-research-feedback-message="submit">{{ ui_arabic('Submit') }}</span><span data-research-feedback-message="skip">{{ ui_arabic('I prefer not to answer') }}</span>
+      <span data-research-feedback-message="recorded">{{ ui_arabic('Thank you.') }}</span>
+      <span data-research-feedback-message="failed">{{ ui_arabic('We could not confirm that your response was saved. Please try again.') }}</span>
+      <span data-research-feedback-message="kept">{{ ui_arabic('Your earlier response to this question was already saved. It has not been changed.') }}</span>
+      <span data-research-feedback-message="unavailable">{{ ui_arabic('This question is no longer available.') }}</span>
+      <span data-research-feedback-message="retry">{{ ui_arabic('Try again') }}</span><span data-research-feedback-message="close">{{ ui_arabic('Close') }}</span>
     </template>
   </form>
 </section>
