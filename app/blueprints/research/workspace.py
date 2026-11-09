@@ -93,10 +93,12 @@ def dashboard():
     if active is not None:
         now = utcnow_naive()
         period_state = "not_started" if now < active.collection_starts_at else "ended" if now >= active.collection_ends_at else "open"
+    from app.services.research_charts import activity_chart
+    analytics = dashboard_summary(provenance, filters)
     return render_template("research/dashboard.html", active_nav="dashboard", provenance=provenance,
         provenance_labels=queries.PROVENANCE_LABELS, active=active, period_state=period_state,
         collection_enabled=current_app.config.get("RESEARCH_COLLECTION_ENABLED", False),
-        readiness=readiness(active), analytics=dashboard_summary(provenance, filters),
+        readiness=readiness(active), analytics=analytics, chart=activity_chart(analytics['daily']),
         analytics_filters=filters, configurations=queries.configuration_choices(), tz_name=tz_name())
 
 
@@ -141,9 +143,18 @@ def session_detail(session_public_id):
     from app.services import research_observation_queries as observations
     row = observations.session_detail(session_public_id, deployment_provenance())
     if row is None: abort(404)
+    from app.extensions import db
+    from app.models import ResearchSession
+    from app.models.research_observations import ResearchEvaluationGroup as Partition
+    part = db.session.query(Partition.partition_code, ResearchSession.subject_id).select_from(ResearchSession).outerjoin(
+        Partition, ResearchSession.subject_id == Partition.subject_id).filter(ResearchSession.id == row.id).first()
+    reviewable = bool(part and part.partition_code in observations.REVIEW_GROUPS)
+    operational = bool(part and part.partition_code in ('unassigned', None))
+    from app.services.research_live import session_activity
     return render_template("research/sessions/detail.html", active_nav="sessions", session=row,
-        timeline=observations.session_timeline(row.id), timeline_cap=observations.TIMELINE_CAP,
-        questions=observations.session_questions(row.id, now_ms()),
+        reviewable=reviewable, timeline=observations.session_timeline(row.id) if reviewable else [], timeline_cap=observations.TIMELINE_CAP,
+        operational=operational, recent_actions=session_activity(row.id, part.subject_id, row.subject_code) if operational else [],
+        questions=observations.session_questions(row.id, now_ms()) if reviewable else [],
         end_reason_labels=queries.END_REASON_LABELS, provenance_labels=queries.PROVENANCE_LABELS,
         to_local=lambda ms: queries.ms_to_local(tz_name(), ms), tz_name=tz_name())
 
@@ -166,7 +177,7 @@ def manage():
         from app.blueprints.research.collection_review import collection_quality
         return collection_quality()
     if section == "exclusions":
-        return exclusions()
+        return redirect(url_for('research.manage'), code=303)
     if section == "audit":
         return activity_log()
     if section == "storage":
@@ -182,23 +193,7 @@ def manage():
 @research_bp.get("/exclusions")
 @roles_required(_RESEARCHER)
 def exclusions():
-    if request.endpoint == "research.exclusions":
-        return management_redirect("exclusions")
-    rows, total, page = queries.excluded_subjects_page(
-        queries.normalize_page(request.args.get("page")))
-    first = (page - 1) * queries.PAGE_SIZE + 1 if rows else 0
-    last = (page - 1) * queries.PAGE_SIZE + len(rows)
-    return render_template(
-        "research/exclusions.html",
-        active_nav="exclusions",
-        rows=rows,
-        basis_labels=queries.EXCLUSION_BASIS_LABELS,
-        pagination={
-            "first": first, "last": last, "total": total,
-            "prev_url": url_for("research.exclusions", page=page - 1) if page > 1 else None,
-            "next_url": url_for("research.exclusions", page=page + 1) if last < total else None,
-        },
-    )
+    return redirect(url_for('research.manage'), code=303)
 
 
 @research_bp.get("/activity-log")

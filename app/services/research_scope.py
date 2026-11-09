@@ -7,11 +7,8 @@ collected while all of these hold:
 
 1. the account is a **Student** and **active** (a suspended account cannot
    hold a session at all, and is refused here too);
-2. the account is **not excluded**: either it has no research subject yet
-   (one is provisioned automatically, by the server, at its first collection
-   write) or its subject is ``included``. An explicit exclusion -- recorded
-   by an operator, or carried over from a legacy refusal or withdrawal -- is
-   never reversed by logging in or visiting a page;
+2. an existing subject has Study provenance. The owner-approved collect-all
+   policy has no individual exclusion control; historical status rows are kept;
 3. a configuration is ``active`` **and collecting**;
 4. the server moment lies inside that configuration's collection period.
 
@@ -43,7 +40,6 @@ from datetime import datetime, timezone
 
 from app.extensions import db
 from app.models import (
-    ResearchCollectionStatus,
     ResearchConfiguration,
     ResearchConfigurationStatus,
     ResearchProvenance,
@@ -56,7 +52,6 @@ from app.models import (
 
 _STUDENT = UserRole.STUDENT.value
 _USER_ACTIVE = UserStatus.ACTIVE.value
-_INCLUDED = ResearchCollectionStatus.INCLUDED.value
 _ACTIVE = ResearchConfigurationStatus.ACTIVE.value
 _STUDY = ResearchProvenance.STUDY.value
 
@@ -111,7 +106,7 @@ def collection_context(user_id):
     authenticated account id -- so a caller never has to touch a possibly
     expired ``current_user`` to ask.
 
-    ``None`` for any non-Student, a suspended account, an excluded Student,
+    ``None`` for any non-Student, a suspended account, incompatible provenance,
     no active configuration, a paused one, and a moment outside the period.
     A Student with no subject yet is eligible: the subject is provisioned by
     the first collection write, never here.
@@ -145,8 +140,8 @@ def collection_context(user_id):
     )
     if row is None or row[0] != _STUDENT or row[1] != _USER_ACTIVE:
         return None
-    subject_id, status, provenance = row[2], row[3], row[4]
-    if subject_id is not None and (status != _INCLUDED or provenance != _STUDY):
+    subject_id, provenance = row[2], row[4]
+    if subject_id is not None and provenance != _STUDY:
         return None
     context = CollectionContext(
         user_id=user_id,
@@ -195,6 +190,5 @@ def account_is_eligible_student(user):
 
 
 def subject_is_included(subject):
-    """Rule 2 against a (locked) subject row."""
-    return (subject is not None and subject.collection_status == _INCLUDED
-            and subject.provenance == _STUDY)
+    """The owner's collect-all population; historical status is not an opt-out."""
+    return subject is not None and subject.provenance == _STUDY

@@ -1,0 +1,12 @@
+<div class="rs-chart" data-activity-chart data-url="{{ url_for('research.activity_chart', **{'from':analytics_filters['from'],'to':analytics_filters['to']}) }}">
+ <svg viewBox="0 0 640 210" role="img" aria-label="{{ _('Recorded events by day') }}" preserveAspectRatio="xMidYMid meet">
+  <defs><linearGradient id="rs-activity-gradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#2762d9" stop-opacity=".22"/><stop offset="100%" stop-color="#2762d9" stop-opacity=".02"/></linearGradient></defs>
+  {% for y in [32,103,174] %}<line x1="36" x2="620" y1="{{ y }}" y2="{{ y }}" class="rs-chart-grid"/>{% endfor %}
+  <text x="26" y="36" class="rs-chart-label" text-anchor="end" data-chart-max>{{ chart.maximum }}</text><text x="26" y="178" class="rs-chart-label" text-anchor="end">0</text>
+  <polygon points="{{ chart.area }}" fill="url(#rs-activity-gradient)" data-chart-area/>
+  <polyline points="{{ chart.line }}" class="rs-chart-line" data-chart-line/>
+  <g data-chart-points>{% for point in chart.points %}<circle cx="{{ point.x }}" cy="{{ point.y }}" r="3" class="rs-chart-dot"><title>{{ point.label }} · {{ point.count }}</title></circle>{% endfor %}</g>
+  <g data-chart-ticks>{% for tick in chart.ticks %}<text x="{{ tick.x }}" y="201" text-anchor="{{ 'start' if loop.first else 'end' if loop.last else 'middle' }}" class="rs-chart-label">{{ tick.label[5:] }}</text>{% endfor %}</g>
+ </svg>
+ <p class="rs-muted">{{ _('Recorded events by day') }}</p>
+</div>

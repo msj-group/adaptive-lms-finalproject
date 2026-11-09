@@ -6,11 +6,20 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   if (!document.body.classList.contains('rs-suite')) return;
   var live = document.querySelector('[data-research-live]');
   if (live) {
-    var pending = false, stopped = false, timer = 0, failures = 0;
-    var peopleSignature = '', eventSignature = '';
+    var pending = false, stopped = false, timer = 0, failures = 0, chartUpdated = 0;
+    var peopleSignature = '', eventSignature = '', recentSignature = '';
     var status = live.querySelector('[data-live-status]');
     var people = live.querySelector('[data-live-students]');
     var events = live.querySelector('[data-live-events]');
+    var recent = live.querySelector('[data-recent-students]');
+    var locale = document.documentElement.lang || undefined;
+    var formatTime = function (node, at, withDate) {
+      var date = new Date(at);
+      node.dateTime = date.toISOString();
+      node.textContent = date.toLocaleString(locale, withDate
+        ? {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}
+        : {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    };
     var empty = function (container, message) {
       var node = document.createElement('p');
       node.className = 'rs-live-empty'; node.textContent = message;
@@ -20,7 +29,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       live.querySelector('[data-live-count]').textContent = data.active_count;
       var limit = live.querySelector('[data-live-limit]');
       limit.hidden = !data.capped; limit.textContent = live.dataset.limited;
-      var nextPeople = JSON.stringify(data.students.map(function (row) {
+      var nextPeople = String(data.collecting) + JSON.stringify(data.students.map(function (row) {
         return [row.code, row.groups, row.context, row.detail_available];
       }));
       if (nextPeople !== peopleSignature) {
@@ -46,14 +55,37 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
           item.querySelector('[data-code]').textContent = row.code;
           item.querySelector('[data-action]').textContent = row.action + (row.detail ? ' · ' + row.detail : '');
           item.querySelector('[data-context]').textContent = row.context;
-          var time = item.querySelector('time'), date = new Date(row.at_ms);
-          time.dateTime = date.toISOString();
-          time.textContent = date.toLocaleTimeString(document.documentElement.lang || undefined,
-            {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+          formatTime(item.querySelector('time'), row.at_ms, false);
           return item;
         });
         events.replaceChildren.apply(events, items);
         if (!items.length) empty(events, live.dataset.noEvents);
+      }
+      var latest = data.recent_students || [];
+      var nextRecent = JSON.stringify(latest);
+      if (recent && nextRecent !== recentSignature) {
+        recentSignature = nextRecent;
+        var visits = latest.map(function (row) {
+          var card = live.querySelector('[data-recent-student]').content.firstElementChild.cloneNode(true);
+          card.querySelector('[data-code]').textContent = row.code;
+          card.querySelector('[data-groups]').textContent = row.groups.join(' · ');
+          formatTime(card.querySelector('time'), row.opened_at_ms, true);
+          var note = card.querySelector('[data-visit-note]');
+          note.hidden = row.actions.length > 0;
+          note.textContent = row.detail_available ? live.dataset.noVisitActions : live.dataset.protected;
+          var list = card.querySelector('[data-student-actions]');
+          row.actions.forEach(function (action) {
+            var item = document.createElement('li'), time = document.createElement('time');
+            var label = document.createElement('span');
+            label.textContent = [action.context, action.detail || action.action].join(' · ');
+            formatTime(time, action.at_ms, false);
+            item.append(label, time);
+            list.append(item);
+          });
+          return card;
+        });
+        recent.replaceChildren.apply(recent, visits);
+        if (!visits.length) empty(recent, live.dataset.noVisits);
       }
     };
     var poll = async function () {
@@ -72,6 +104,24 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         var data = await response.json();
         if (!Array.isArray(data.students) || !Array.isArray(data.activities)) throw new Error('payload');
         render(data); failures = 0;
+        var chart = document.querySelector('[data-activity-chart]');
+        if (chart && Date.now() - chartUpdated > 30000) {
+          var chartResponse = await pageScope.fetch(chart.dataset.url, {credentials:'same-origin', cache:'no-store', signal:timeout.signal});
+          if (chartResponse.ok && (chartResponse.headers.get('content-type') || '').includes('application/json')) {
+            var shape = await chartResponse.json();
+            chart.querySelector('[data-chart-line]').setAttribute('points', shape.line);
+            chart.querySelector('[data-chart-area]').setAttribute('points', shape.area);
+            chart.querySelector('[data-chart-max]').textContent = shape.maximum;
+            var dots = shape.points.map(function (point) {
+              var dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+              dot.setAttribute('cx',point.x); dot.setAttribute('cy',point.y); dot.setAttribute('r','3'); dot.setAttribute('class','rs-chart-dot');
+              var title = document.createElementNS('http://www.w3.org/2000/svg','title');
+              title.textContent = point.label + ' · ' + point.count; dot.append(title); return dot;
+            });
+            chart.querySelector('[data-chart-points]').replaceChildren.apply(chart.querySelector('[data-chart-points]'), dots);
+            chartUpdated = Date.now();
+          }
+        }
         status.textContent = data.collecting ? live.dataset.online : live.dataset.paused;
         status.dataset.state = data.collecting ? 'online' : 'paused';
       } catch (error) {

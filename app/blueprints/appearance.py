@@ -50,6 +50,8 @@ def update():
     theme = request.form.get("theme")
     if language not in LANGUAGES or theme not in THEMES:
         abort(400)
+    from app.services.device_push import update_language
+    update_language(language)
     response = redirect(safe_return_path(request.form.get("next")))
     response.set_cookie(LANGUAGE_COOKIE, language, max_age=31536000, secure=request.is_secure,
                         httponly=True, samesite="Lax", path="/")

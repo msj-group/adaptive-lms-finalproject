@@ -1,0 +1,11 @@
+{% import '_figma_ui.html' as device_ui %}
+<div class="workspace-device-actions" aria-label="{{ _('App and device settings') }}">
+  <button type="button" class="workspace-device-action" data-pwa-install data-research-action="open" hidden aria-haspopup="dialog" aria-controls="pwa-install-help">
+    {{ device_ui.icon('graduation', 17) }}<span>{{ _('Install app') }}</span>
+  </button>
+  {% if current_user.is_authenticated and config['DEVICE_PUSH_ENABLED'] %}
+  <button type="button" class="workspace-device-action" data-device-header data-research-action="open" hidden popovertarget="workspace-notifications-panel" aria-haspopup="dialog" aria-controls="workspace-notifications-panel">
+    {{ device_ui.icon('bell', 17) }}<span data-device-header-label>{{ _('Enable notifications') }}</span>
+  </button>
+  {% endif %}
+</div>

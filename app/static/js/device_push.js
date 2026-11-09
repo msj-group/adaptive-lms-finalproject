@@ -4,6 +4,7 @@
   if (window.aelmsDevicePush) return;
   const urls = {...document.currentScript.dataset};
   const remembered = new Set();
+  const synced = new Map();
   const t = value => window.aelmsUI?.t(value) || value;
   let busy = false;
   let state;
@@ -32,6 +33,11 @@
     catch (_) { /* Native sign-in remains available if storage is restricted. */ }
   }
   function paint(message, enabled = false, disabled = false) {
+    document.querySelectorAll('[data-device-header]').forEach(button => {
+      button.hidden = false;
+      button.querySelector('[data-device-header-label]').textContent = t(enabled ? 'Device notifications on' : 'Enable notifications');
+      button.dataset.enabled = String(enabled);
+    });
     document.querySelectorAll('[data-device-notifications]').forEach(panel => {
       panel.querySelector('[data-device-status]').textContent = t(message);
       const button = panel.querySelector('[data-device-toggle]');
@@ -45,16 +51,29 @@
     const checkbox = document.querySelector('[data-remember-device]');
     if (checkbox && installed() && preference()) checkbox.checked = true;
     remember();
-    if (!document.querySelector('[data-device-notifications]')) return;
     if (!supported()) { paint('Device notifications are not supported in this browser.', false, true); return; }
     const actor = account()?.content;
     if (!actor) { state = undefined; stateActor = undefined; return; }
+    const language = document.documentElement.lang === 'ar' ? 'ar' : 'en';
+    if (synced.get(actor) === language && state && !state.renew) {
+      paint(state.subscribed ? 'Notifications are enabled on this device.' : 'Turn on device notifications to receive your updates.', state.subscribed,
+        Notification.permission === 'denied' && !state.subscribed);
+      return;
+    }
     try {
       const response = await fetch(urls.statusUrl, {credentials:'same-origin', cache:'no-store'});
       const result = await response.json();
       if (actor !== account()?.content) return;
       state = result; stateActor = actor;
       if (!response.ok || !state.enabled) { paint('Device notifications are not available yet.', false, true); return; }
+      if (state.subscribed && state.language !== language) await send(urls.languageUrl, {});
+      if (state.subscribed && state.renew && Notification.permission === 'granted') {
+        const registration = await navigator.serviceWorker.getRegistration('/');
+        const subscription = await registration?.pushManager.getSubscription();
+        if (subscription && actor === account()?.content) await send(urls.subscribeUrl, subscription.toJSON());
+      }
+      if (actor !== account()?.content) return;
+      synced.set(actor, language);
       if (Notification.permission === 'denied') { paint('Notifications are blocked. Allow them in your browser or device settings.', state.subscribed, !state.subscribed); return; }
       paint(state.subscribed ? 'Notifications are enabled on this device.' : 'Turn on device notifications to receive your updates.', state.subscribed);
     } catch (_) { if (actor === account()?.content) paint('Could not check notifications. Reopen this page to try again.', false, true); }
@@ -114,6 +133,7 @@
         }
       }
       busy = false;
+      synced.delete(actor);
       await refresh();
     } catch (error) {
       busy = false;
@@ -127,7 +147,10 @@
   });
   document.addEventListener('aelms:page-ready', refresh);
   document.addEventListener('beforetoggle', event => {
-    if (event.target.id === 'workspace-notifications-panel' && event.newState === 'open') refresh();
+    if (event.target.id === 'workspace-notifications-panel' && event.newState === 'open') {
+      synced.delete(account()?.content);
+      refresh();
+    }
   }, true);
   window.addEventListener('pageshow', refresh);
   window.addEventListener('appinstalled', remember);

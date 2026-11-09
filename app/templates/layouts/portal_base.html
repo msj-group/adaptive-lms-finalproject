@@ -6,7 +6,7 @@
 {% block body_class %}figma-workspace {{ 'figma-student' if current_user.role == 'student' else 'figma-teacher' }} yc-workspace{{ ' yc-messages' if template_messages else (' st-workspace' if template_student else ' yc-operations yc-teacher') }}{% endblock %}
 {% block extra_head %}
   {# Capture intentions before Quiz's async navigation guards; never block them. #}
-  {% if research %}<script type="application/json" id="research-collector-config">{{ research.config|tojson }}</script><script src="{{ url_for('static', filename='js/usage_collector.js', v='collection-survey-layout-2') }}" defer></script>
+  {% if research %}<script type="application/json" id="research-collector-config">{{ research.config|tojson }}</script><script src="{{ url_for('static', filename='js/usage_collector.js', v='study-journey-3') }}" defer></script>
   {% endif %}
 {% endblock %}
 {% block product_styles %}

@@ -5,7 +5,7 @@ from flask_wtf.csrf import generate_csrf
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.extensions import db, limiter
-from app.services.device_push import COOKIE, SubscriptionConflict, current_device, device_cookie, save_subscription, settings
+from app.services.device_push import COOKIE, SubscriptionConflict, current_device, device_cookie, save_subscription, settings, update_language, now
 
 device_push_bp = Blueprint("device_push", __name__, url_prefix="/device-notifications")
 
@@ -31,11 +31,26 @@ def status():
         enabled, public, _, _ = settings()
         device = current_device(current_user.id) if enabled else None
         subscribed = bool(device and device.enabled and device.auth_version == current_user.auth_version)
-        return jsonify(enabled=enabled, publicKey=public if enabled else "", subscribed=subscribed,
-                       csrfToken=generate_csrf())
+        from datetime import timedelta
+        response = jsonify(enabled=enabled, publicKey=public if enabled else "", subscribed=subscribed,
+            language=device.language if device else None,
+            renew=bool(subscribed and device.expires_at <= now() + timedelta(days=7)), csrfToken=generate_csrf())
+        if subscribed:
+            response.set_cookie(COOKIE, device_cookie(device), max_age=90 * 86400, httponly=True,
+                secure=current_app.config['SESSION_COOKIE_SECURE'], samesite='Lax', path='/')
+        return response
     except (ValueError, SQLAlchemyError):
         db.session.rollback()
         return jsonify(enabled=False, subscribed=False), 503
+
+
+@device_push_bp.post('/language')
+@login_required
+@limiter.limit('30 per minute')
+def language():
+    from app.i18n import ui_language
+    update_language(ui_language(), current_user.id)
+    return jsonify(saved=True)
 
 
 @device_push_bp.post("")

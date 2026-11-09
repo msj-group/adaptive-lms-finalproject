@@ -60,18 +60,35 @@ def device_cookie(device):
     return _serializer().dumps([device.public_id, device.user_id, device.auth_version])
 
 
-def current_device(user_id):
+def device_launch_ref(token, user):
+    """Recognize a device notification launch for its signed-in recipient."""
+    if not token or len(token) > 250:
+        return None
+    try:
+        device_id, launch_ref = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='push-launch').loads(token, max_age=86400)
+    except (BadSignature, TypeError, ValueError):
+        return None
+    from app.services.research_dictionary import is_opaque_ref
+    if not is_opaque_ref(launch_ref):
+        return None
+    device = current_device(user.id)
+    if device and device.public_id == device_id and device.auth_version == user.auth_version:
+        return launch_ref
+    return None
+
+
+def current_device(user_id=None):
     raw = request.cookies.get(COOKIE)
     if not raw:
         return None
     try:
         public_id, owner, version = _serializer().loads(raw, max_age=90 * 86400)
-        if owner != user_id:
+        if user_id is not None and owner != user_id:
             return None
     except (BadSignature, ValueError, TypeError):
         return None
     return db.session.scalar(select(Device).where(Device.public_id == public_id,
-        Device.user_id == user_id, Device.auth_version == version))
+        Device.user_id == owner, Device.auth_version == version))
 
 
 def validate_subscription(body):
@@ -152,6 +169,8 @@ def save_subscription(actor, body):
     elif active and owned_id != device.id:
         raise SubscriptionConflict("Enable notifications again from this device's account settings.")
     device.auth_version = user.auth_version
+    from app.i18n import ui_language
+    device.language = ui_language()
     device.p256dh, device.auth_key, device.expires_at = public, auth, expires
     device.enabled, device.failures, device.retry_at = True, 0, None
     device.last_seen_at = now()
@@ -163,18 +182,32 @@ def save_subscription(actor, body):
     return device
 
 
-def revoke_current_device(user_id):
-    if not current_app.config["DEVICE_PUSH_ENABLED"]:
+def update_language(language, user_id=None):
+    """A signed device binding can change its caption language, never its owner."""
+    if language not in ('en', 'ar') or not current_app.config['DEVICE_PUSH_ENABLED']:
         return
     try:
         device = current_device(user_id)
-        if device:
+        if device and device.language != language:
+            device.language = language
+            device.version += 1
+            db.session.commit()
+    except Exception as error:
+        db.session.rollback()
+        current_app.logger.warning('Device language sync deferred type=%s', type(error).__name__)
+
+
+def detach_other_account(user_id):
+    """A shared browser must stop the previous account's private notifications."""
+    try:
+        device = current_device()
+        if device and device.user_id != user_id and device.enabled:
             device.enabled = False
             device.version += 1
             db.session.commit()
     except Exception as error:
         db.session.rollback()
-        current_app.logger.warning("Device notification revoke failed type=%s", type(error).__name__)
+        current_app.logger.warning('Device account switch deferred type=%s', type(error).__name__)
 
 
 def _advance(identity, **values):
@@ -212,8 +245,11 @@ def deliver_device(device_id):
     subscription = {"endpoint":device.endpoint, "keys":{"p256dh":device.p256dh,"auth":device.auth_key}}
     failures = device.failures
     latest = unread[-1]
-    payload = json.dumps({"title":latest.title, "body":latest.message,
-                         "url":"/notifications", "tag":"youth-centre-updates"}, ensure_ascii=False)
+    from app.services.notification_previews import preview
+    from uuid import uuid4
+    launch = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='push-launch').dumps([device.public_id, str(uuid4())])
+    payload = json.dumps(dict(preview(latest.title, latest.message, device.language),
+                             url='/notifications?device_launch=' + launch, tag='youth-centre-updates'), ensure_ascii=False)
     db.session.rollback()  # No database or domain lock across network I/O.
     enabled, _, private, subject = settings()
     if not enabled:

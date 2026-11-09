@@ -179,6 +179,7 @@
 
       window.aelmsDisposeMessages?.();
       document.querySelectorAll("audio,video").forEach(media => media.pause());
+      document.dispatchEvent(new Event('aelms:page-leaving'));
       window.aelmsPage.dispose();
       document.documentElement.removeAttribute("data-workspace-restoring");
       for (const key of Object.keys(window)) {

@@ -55,6 +55,8 @@ def login():
             and verify_password(user.password_hash, form.password.data)
         ):
             login_user(user, remember=bool(form.remember_device.data))
+            from app.services.device_push import detach_other_account
+            detach_other_account(user.id)
             session.pop("workspace_opening_target", None)
             return redirect(login_target_for(user, request.args.get("next")))
         flash("Invalid email or password.", "danger")
@@ -100,9 +102,7 @@ def logout():
     # it never raises, so research can never prevent a logout.
     end_session_on_logout(authenticated_user_id())
     session.pop("workspace_opening_target", None)
-    from app.services.device_push import revoke_current_device
-    revoke_current_device(current_user.id)
+    # Device opt-in persists independently of this login session.
     logout_user()
     response = redirect(url_for("auth.login"))
-    response.delete_cookie("aelms_push_device", path="/")
     return response

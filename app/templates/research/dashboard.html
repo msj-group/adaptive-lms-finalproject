@@ -11,7 +11,7 @@
 <div class="rs-metrics">{{ rs.metric('Participants',analytics.subjects,'','users') }}{{ rs.metric('Sessions',analytics.sessions,'','activity') }}{{ rs.metric('Recorded events',analytics.events,'','layers') }}{{ rs.metric('Recorded answers',analytics.answered,'','message') }}</div>
 <div class="rs-split">
 <section class="rs-card"><header class="rs-card-head"><h2>{{ _('Activity over time') }}</h2></header>
-{% if analytics.events %}<div class="rs-activity-bars">{% for row in analytics.daily %}<div><time>{{ row.label }}</time><meter min="0" max="{{ analytics.maximum }}" value="{{ row.count }}" aria-label="{{ row.label }}">{{ row.count }}</meter><strong>{{ row.count }}</strong></div>{% endfor %}</div>{% else %}{{ rs.empty('No activity recorded yet','Data will appear when eligible students use the platform.','chart') }}{% endif %}
+{% include 'research/_activity_chart.html' %}
 </section>
 <section class="rs-card"><h2>{{ _('Next actions') }}</h2><div class="rs-quick-links"><a href="{{ url_for('research.sessions') }}">{{ icons.icon('activity',20) }}{{ _('View sessions') }}{{ icons.icon('arrow',17) }}</a><a href="{{ url_for('research.exports') }}">{{ icons.icon('file',20) }}{{ _('Export data') }}{{ icons.icon('arrow',17) }}</a><a href="{{ url_for('research.manage',section='quality') }}">{{ icons.icon('chart',20) }}{{ _('Check data quality') }}{{ icons.icon('arrow',17) }}</a></div><dl class="rs-facts"><dt>{{ _('Questions shown') }}</dt><dd>{{ analytics.rendered }}</dd><dt>{{ _('Usable answers') }}</dt><dd>{{ analytics.eligible }}</dd></dl></section>
 </div>

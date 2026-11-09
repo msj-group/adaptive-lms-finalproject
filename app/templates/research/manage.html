@@ -8,7 +8,6 @@
 {% for label,description,symbol,section in [
 ('Evaluation groups','Organize real participants for model training and the final test.','users','groups'),
 ('Data quality','Check delivery, questions and technical reports.','chart','quality'),
-('Excluded accounts','View accounts excluded from collection.','lock','exclusions'),
 ('Activity log','Review collection controls and other changes.','clock','audit'),
 ('Storage','Review retained data and storage use.','layers','storage')
 ] %}<a class="rs-management-link rs-card" href="{{ url_for('research.manage',section=section) }}"><span class="rs-task-icon">{{ icons.icon(symbol,22) }}</span><span><strong>{{ _(label) }}</strong><small>{{ _(description) }}</small></span>{{ icons.icon('arrow',18) }}</a>{% endfor %}

@@ -122,3 +122,18 @@ body.rs-suite::before,body.rs-suite::after{display:none}
 .rs-live-events { list-style:none; margin:0; padding:0; align-content:start; }
 .rs-live-empty { padding:1rem; margin:0; font-size:.85rem; color:#61718a; background:#f8faff; border-radius:1rem; }
 @media(max-width:699px) { .rs-live-columns { grid-template-columns:1fr; } .rs-live-students,.rs-live-events { max-height:20rem; } }
+.rs-chart svg { display:block; width:100%; height:auto; min-height:150px; overflow:visible; direction:ltr; }
+.rs-chart-grid { stroke:var(--st-divider,#e2e9f3); stroke-dasharray:3 5; }
+.rs-chart-line { fill:none; stroke:#2762d9; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+.rs-chart-dot { fill:#2762d9; stroke:var(--st-solid,#fff); stroke-width:1.5; }
+.rs-chart-label { fill:var(--st-muted,#61718a); font:11px sans-serif; }
+.rs-chart>p { margin:4px 0 0; font-size:12px; }
+.rs-recent-visits { margin-block-start:20px; }
+.rs-recent-visits h3 { font-size:.95rem; margin:0 0 .75rem; }
+.rs-recent-visits .rs-live-students { grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
+.rs-visit-card time { font-size:.75rem; color:var(--st-muted); white-space:nowrap; }
+.rs-visit-card ol { list-style:none; margin:8px 0 0; padding:0; }
+.rs-visit-card ol:empty { display:none; }
+.rs-visit-card li { display:flex; justify-content:space-between; gap:8px; padding-block:6px; border-block-start:1px solid var(--st-divider); }
+.rs-visit-card [data-visit-note][hidden] { display:none; }
+@media(max-width:699px) { .rs-recent-visits .rs-live-students { grid-template-columns:1fr; } }

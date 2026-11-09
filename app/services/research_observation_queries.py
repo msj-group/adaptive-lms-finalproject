@@ -82,7 +82,9 @@ def dashboard_summary(provenance, filters):
 
 
 def sessions_page(provenance, page, filters=None):
-    terms = session_conditions(provenance, filters, review=True)
+    # Session metadata is visible for the whole Study population. Raw detail
+    # remains protected until an explicit review records exposure.
+    terms = session_conditions(provenance, filters)
     total = db.session.query(func.count(ResearchSession.id)).filter(*terms).scalar() or 0
     if page > 1 and (page - 1) * PAGE_SIZE >= total: page = 1
     counts = db.session.query(Opportunity.session_id.label("session_id"), func.count(Question.id).label("prompts")).join(
@@ -110,7 +112,7 @@ def session_detail(public_id, provenance):
         *(getattr(ResearchSession, key) for key in counters)).join(
             ResearchSubject, ResearchSubject.id == ResearchSession.subject_id).join(
             ResearchConfiguration, ResearchConfiguration.id == ResearchSession.configuration_id).filter(
-                *session_conditions(provenance, review=True), ResearchSession.public_id == public_id).first()
+                *session_conditions(provenance), ResearchSession.public_id == public_id).first()
 
 
 def session_timeline(session_id):

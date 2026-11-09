@@ -6,20 +6,13 @@ web page: no Administrator, Teacher, Student or Researcher view can do what
 it does, because each command either names a Student account or deletes
 research data.
 
-    python scripts/research_operator.py exclude EMAIL
     python scripts/research_operator.py reinstate EMAIL [--lift-legacy-exclusion]
     python scripts/research_operator.py status EMAIL
     python scripts/research_operator.py list-excluded
     python scripts/research_operator.py purge-expired [--execute]
 
-Collection needs no operator step: while a configuration collects, every
-active Student account is collected automatically unless it is excluded.
-This tool records the exceptions.
-
-``exclude`` records an exclusion decided through the centre's external
-process. It works before the Student was ever collected, and it closes any
-open session at once. Logging in or opening a page never re-enrols an
-excluded Student.
+While collection runs, every active Student is eligible. This tool maintains
+historical subject status and retention.
 
 ``reinstate`` lifts an exclusion. A legacy exclusion (carried over from a
 refusal or withdrawal in the removed consent workflow) is lifted only with
@@ -70,8 +63,6 @@ def _parser():
     parser = argparse.ArgumentParser(description="Natural-use research operator tool.")
     parser.add_argument("--researcher", required=True, help="Email of the actual Researcher operator; password is prompted privately.")
     commands = parser.add_subparsers(dest="command", required=True)
-    exclude = commands.add_parser("exclude")
-    exclude.add_argument("email")
     reinstate = commands.add_parser("reinstate")
     reinstate.add_argument("email")
     reinstate.add_argument("--lift-legacy-exclusion", action="store_true")
@@ -104,18 +95,12 @@ def main(argv=None, app=None, out=None, err=None):
         from app.extensions import db
         db.session.info["research_operator_auth"] = (actor.id, actor.auth_version)
         del password
-        if args.command == "exclude":
-            result, code = operator.exclude(args.email, actor_id=actor_id)
-            if result != operator.EXCLUDED:
-                return _refused(result, err)
-            print(f"Excluded: {code}. Open sessions were closed.", file=out)
-            return 0
         if args.command == "reinstate":
             result, code = operator.reinstate(
                 args.email, allow_legacy_override=args.lift_legacy_exclusion, actor_id=actor_id)
             if result != operator.REINSTATED:
                 return _refused(result, err)
-            print(f"Reinstated: {code}. The Student is collected again from the next page.",
+            print(f"Historical status updated: {code}.",
                   file=out)
             return 0
         if args.command == "status":

@@ -10,14 +10,7 @@
     <div class="rs-sidebar-foot">{{ ui.icon('lock',16) }}<span>Pseudonymous records<br><a href="{{ url_for('research.manage') }}">Management</a></span></div>
   </aside>
   <div class="st-body rs-body" data-workspace-body>
-    <header class="st-header rs-header" data-workspace-dashboard="{{ 'true' if endpoint == 'research.dashboard' else 'false' }}">
-      <div class="st-header-context">
-        {% include 'layouts/_workspace_sidebar_toggle.html' %}
-        {% include 'layouts/_workspace_back.html' %}
-        {% include 'layouts/_workspace_identity.html' %}
-      </div>
-      <div class="st-header-actions"><div class="workspace-header-filters" data-workspace-header-filters hidden></div>{% if endpoint == 'research.dashboard' %}<a class="rs-search" href="{{ url_for('workspace.search') }}" data-workspace-search-open aria-haspopup="dialog" aria-controls="workspace-search-dialog" aria-label="Search your workspace">{{ ui.icon('search',17) }}<span>Search workspace</span><kbd>Ctrl K</kbd></a>{% endif %}{% if notif and workspace_is_section_root() and request.blueprint != 'notifications' %}{% include 'notifications/_bell.html' %}{% endif %}{{ ui.account(current_user,url_for('research.logout'),csrf_token(),photo_url=account_photo_url()) }}<button class="st-icon-button rs-menu-toggle" type="button" data-more-toggle aria-label="Open navigation" aria-controls="workspace-more-panel" aria-expanded="false" aria-haspopup="dialog" hidden>{{ ui.icon('menu') }}</button></div>
-    </header>
+    {% include 'layouts/_workspace_header.html' %}
     <noscript><details class="rs-noscript-navigation"><summary>Research navigation</summary><nav aria-label="All research destinations">{% include 'research/_navigation.html' %}<a class="st-nav-link" href="{{ url_for('account.settings') }}">Account settings</a></nav><form method="post" action="{{ url_for('research.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn--secondary">Sign out</button></form></details></noscript>
     <div class="st-content rs-content {{ portal_blocks.workspace_content_class() }}" id="workspace-content" tabindex="-1">
       {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="rs-flashes" aria-live="polite">{% for category,message in messages %}<div class="alert alert--{{ category }}">{{ message }}</div>{% endfor %}</div>{% endif %}{% endwith %}

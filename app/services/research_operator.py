@@ -3,19 +3,16 @@
 These run only from ``scripts/research_operator.py`` on the server, by the
 project owners. Collection itself needs **no** operator step: every eligible
 Student is collected automatically under the population rule
-(``research_scope``). The operator tool exists for the genuine exceptions,
-which need an identity that no product view may show:
+(``research_scope``). Individual exclusions are retired. The private operator
+maintains historical records and can perform these bounded actions:
 
-- ``exclude`` -- the centre's external process excludes a Student. Recorded
-  even before the Student was ever collected, enforced on every write, and
-  audited; open sessions are closed at once.
 - ``reinstate`` -- an operator lifts an exclusion. Audited. A legacy
   exclusion (carried over from a refusal or withdrawal in the superseded
   consent workflow) is lifted only with ``allow_legacy_override``: a
   deliberate statement that the external process changed it.
 - ``status`` / ``excluded_accounts`` -- a Student's research code and
   state, or every excluded account: identity recovery, for the operator
-  only. The Researcher workspace lists exclusions by subject code alone.
+  only.
 - ``retention_report`` -- what the deployment's retention expires, deleted
   only with an explicit ``execute``.
 
@@ -28,9 +25,7 @@ by an email address or domain: the operator names one existing account.
 """
 
 from collections import namedtuple
-from datetime import timedelta
 
-from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
@@ -39,26 +34,15 @@ from app.models import (
     ResearchAuditChannel,
     ResearchAuditEvent,
     ResearchCollectionStatus,
-    ResearchConfiguration,
-    ResearchEvent,
-    ResearchExport,
-    ResearchExportArchive,
-    ResearchFeedbackPrompt,
-    ResearchProvenance,
-    ResearchSession,
-    ResearchSessionEndReason,
     ResearchStatusBasis,
     ResearchSubject,
     ResearchSubjectLink,
     User,
     UserRole,
-    generate_subject_code,
-    now_ms,
 )
 from app.models.submission_feedback import whole_second_utc
 from app.services.academic_hierarchy_transactions import lock_academic_hierarchy
 
-EXCLUDED = "excluded"
 REINSTATED = "reinstated"
 UNCHANGED = "unchanged"
 NO_ACCOUNT = "no_account"
@@ -98,18 +82,6 @@ def _lock_subject(user_id):
         ResearchSubject.id == subject_id).with_for_update().first()
 
 
-def _new_subject(user_id, status, basis, provenance):
-    now = whole_second_utc()
-    subject = ResearchSubject(
-        subject_code=generate_subject_code(), collection_status=status, status_basis=basis,
-        provenance=provenance, status_changed_at=now, created_at=now, updated_at=now,
-    )
-    db.session.add(subject)
-    db.session.flush()
-    db.session.add(ResearchSubjectLink(subject_id=subject.id, user_id=user_id))
-    return subject
-
-
 def _audit(action, subject_id, detail, count=None, *, actor_id):
     db.session.add(ResearchAuditEvent(
         action=action, channel=ResearchAuditChannel.OPERATOR.value, actor_id=actor_id,
@@ -139,35 +111,6 @@ def _student_or_refusal(email, actor_id):
     return user, None
 
 
-def exclude(email, *, actor_id):
-    """Record an exclusion through the external process. ``(status, code)``.
-
-    A Student with no subject yet gets an excluded one, so the population
-    rule can never collect them later; open sessions close at once.
-    """
-    user, refusal = _student_or_refusal(email, actor_id)
-    if refusal:
-        return refusal, None
-    basis = ResearchStatusBasis.EXTERNAL_EXCLUSION.value
-    subject = _lock_subject(user.id)
-    closed = 0
-    if subject is None:
-        subject = _new_subject(user.id, _EXCLUDED, basis, ResearchProvenance.STUDY.value)
-        db.session.flush()
-    else:
-        if subject.collection_status == _EXCLUDED:
-            db.session.rollback()
-            return UNCHANGED, subject.subject_code
-        now = whole_second_utc()
-        subject.collection_status = _EXCLUDED
-        subject.status_basis = basis
-        subject.status_changed_at = now
-        subject.updated_at = now
-        closed = _close_subject_sessions(subject.id)
-    _audit(ResearchAuditAction.SUBJECT_EXCLUDED.value, subject.id, basis, closed, actor_id=actor_id)
-    return _commit(EXCLUDED, subject.subject_code)
-
-
 def reinstate(email, allow_legacy_override=False, *, actor_id):
     """Lift an exclusion. ``(status, code)``."""
     user, refusal = _student_or_refusal(email, actor_id)
@@ -191,24 +134,6 @@ def reinstate(email, allow_legacy_override=False, *, actor_id):
     subject.updated_at = now
     _audit(ResearchAuditAction.SUBJECT_REINSTATED.value, subject.id, f"lifted:{lifted}", actor_id=actor_id)
     return _commit(REINSTATED, subject.subject_code)
-
-
-def _close_subject_sessions(subject_id):
-    from app.services.research_collection import close_session
-
-    moment = now_ms()
-    sessions = (
-        db.session.query(ResearchSession)
-        .filter(ResearchSession.subject_id == subject_id, ResearchSession.ended_at_ms.is_(None))
-        .order_by(ResearchSession.id.asc())
-        .with_for_update()
-        .all()
-    )
-    for session in sessions:
-        configuration = db.session.get(ResearchConfiguration, session.configuration_id)
-        close_session(session, configuration, moment,
-                      ResearchSessionEndReason.SUBJECT_INELIGIBLE.value)
-    return len(sessions)
 
 
 def status(email, *, actor_id):

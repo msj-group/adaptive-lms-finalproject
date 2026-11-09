@@ -13,4 +13,5 @@
     {% if notif and workspace_is_section_root() and request.blueprint != 'notifications' %}{% include 'notifications/_bell.html' %}{% endif %}
     {{ ui.account(current_user, url_for('research.logout' if role == 'researcher' else 'auth.logout'), csrf_token(), photo_url=account_photo_url()) }}
   </div>
+  {% include 'layouts/_device_header_actions.html' %}
 </header>

@@ -48,16 +48,21 @@ def arabic_catalog():
 
 
 def gettext(text, **values):
+    return gettext_in_language(text, ui_language(), **values)
+
+
+def gettext_in_language(text, language, **values):
+    """Translate owned captions without requiring a browser request (Web Push)."""
     if not isinstance(text, str):
         return text
     translated = text
-    if ui_language() == "ar":
+    if language == "ar":
         key = normalize(text)
         translated = arabic_catalog().get(key, _label_aliases().get(key.lower().replace("_", " "), text))
         if translated == text and " · " in text:
             role, suffix = text.split(" · ", 1)
             if role.lower() in {"student", "teacher", "administrator", "researcher"}:
-                translated = gettext(role) + " · " + suffix
+                translated = gettext_in_language(role, language) + " · " + suffix
         if translated == text:
             translated = _formatted_label(text)
     return translated % values if values else translated

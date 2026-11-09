@@ -1,6 +1,7 @@
 """Per-device opt-in Web Push subscriptions; no private content cache."""
 import uuid
 from datetime import datetime, timezone
+from sqlalchemy.dialects.mysql import VARCHAR
 from app.extensions import db
 
 
@@ -12,11 +13,13 @@ class DevicePushSubscription(db.Model):
         db.Index("ix_device_push_user", "user_id", "enabled"),
         db.CheckConstraint("auth_version >= 1 AND version >= 1", name="ck_device_push_versions"),
         db.CheckConstraint("last_notification_id >= 0 AND failures >= 0", name="ck_device_push_cursor"),
+        db.CheckConstraint("language IN ('en','ar')", name="ck_device_push_language"),
     )
     id = db.Column(db.BigInteger, primary_key=True)
     public_id = db.Column(db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4()))
     user_id = db.Column(db.BigInteger, db.ForeignKey("users.id"), nullable=False)
     auth_version = db.Column(db.Integer, nullable=False)
+    language = db.Column(VARCHAR(2, charset='ascii', collation='ascii_bin'), nullable=False, default='en', server_default='en')
     endpoint_hash = db.Column(db.String(64, collation="ascii_bin"), nullable=False)
     endpoint = db.Column(db.Text, nullable=False)
     p256dh = db.Column(db.String(100, collation="ascii_bin"), nullable=False)

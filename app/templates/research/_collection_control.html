@@ -1,6 +1,6 @@
 {% if collection_control is defined %}
 <section class="rs-collection-control" aria-label="{{ _('Collection control') }}">
-<div class="rs-control-state" role="status"><span class="rs-status-dot{% if collection_control.running %} is-running{% endif %}" aria-hidden="true"></span><span><strong>{{ _(collection_control.status) }}</strong><small>{{ _('Study data only') }}</small></span></div>
+<div class="rs-control-state" role="status"><span class="rs-status-dot{% if collection_control.running %} is-running{% endif %}" aria-hidden="true"></span><span><strong>{{ _(collection_control.status) }}</strong><small>{{ _('All active students · Study') }}</small></span></div>
 <form method="post" action="{{ url_for('research.collection_control') }}" data-collection-control>
 {{ collection_control.form.csrf_token(id='collection-control-csrf') }}{{ collection_control.form.state(id='collection-control-state') }}
 <input type="hidden" name="return_to" value="{{ request.endpoint if request.endpoint in ['research.dashboard','research.sessions','research.exports','research.manage'] else 'research.dashboard' }}">

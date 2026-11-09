@@ -41,6 +41,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   var MAX_BATCHES = 4, MAX_ATTEMPTS = 4, MAX_AGE_MS = 1800000;
   var stopped = false, sequence = 0, buffer = [], dropped = 0;
   var sending = false, memoryOutbox = [], storageAvailable = true;
+  var inFlightBatches = new Set();
   var pageRef = uuid(), tabRef = uuid(), contextRef = uuid();
   var card = document.getElementById("research-feedback");
   var page = code(config.page_code, CONTEXTS), context = code(config.context_code, CONTEXTS);
@@ -168,7 +169,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   function record(type, fields) {
     if (stopped || !ownScope() || TYPES.indexOf(type) < 0) return;
     fields = fields || {};
-    var event = {event_uid: uuid(), event_type: type, page_code: page, context_code: context,
+    var event = {event_uid: UUID.test(fields.event_uid) ? fields.event_uid : uuid(), event_type: type, page_code: page, context_code: context,
       activity_code: activity, context_ref: contextRef, client_at_ms: Date.now(),
       client_sequence: ++sequence, page_ref: pageRef, tab_ref: tabRef};
     ["action_ref", "attempt_ref"].forEach(function (key) { if (UUID.test(fields[key])) event[key] = fields[key]; });
@@ -225,6 +226,8 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   }
   function deliver(entry, keepalive) {
     if (!ownScope() || stopped) { stop(); return Promise.resolve(); }
+    if (inFlightBatches.has(entry.batch_ref)) return Promise.resolve();
+    inFlightBatches.add(entry.batch_ref);
     entry.attempts += 1;
     var list = readOutbox();
     list.forEach(function (stored) { if (ownEntry(stored) && stored.batch_ref === entry.batch_ref) stored.attempts = entry.attempts; });
@@ -242,12 +245,14 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
           settleEntry(entry.batch_ref, data);
         }
       });
-    }).catch(function () { /* Retain unacknowledged events; bounded retries only. */ });
+    }).catch(function () { /* Retain unacknowledged events; bounded retries only. */ }).finally(function () {
+      inFlightBatches.delete(entry.batch_ref);
+    });
   }
   function flush(keepalive) {
     if (stopped || !ownScope()) return Promise.resolve();
     while (buffer.length) rememberBatch();
-    if (sending) return Promise.resolve();
+    if (sending && !keepalive) return Promise.resolve();
     var list = readOutbox().filter(function (entry) {
       if (!ownEntry(entry)) return false;
       if (entry.attempts >= MAX_ATTEMPTS || Date.now() - entry.created_at_ms > MAX_AGE_MS) {
@@ -257,8 +262,12 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     });
     writeOutbox(list);
     if (!list.length) return Promise.resolve();
+    if (keepalive) {
+      // The final batch contains the departure even if another send is in flight.
+      return deliver(list[list.length - 1], true);
+    }
     sending = true;
-    return deliver(list[0], keepalive).then(function () {
+    return deliver(list[0], false).then(function () {
       sending = false;
       // A successor page can use acknowledged intervals left by the previous page.
       if (!keepalive && deliveryReady) sample();
@@ -322,6 +331,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     quiz_bookmark: "save", assignment_submit: "submit", speaking_submit: "upload", speaking_file_select: "upload",
     speaking_record_start: "record", speaking_record_stop: "record", speaking_record_again: "retry",
     material_download: "download", material_external_link: "open", discussion_reply: "send", message_send: "send",
+    notification_open: "open", notification_read: "save", nav_logout: "close",
     help_open: "help", nav_help: "help", nav_search: "search", notification_read_all: "save"
   };
   function actionCode(node) {
@@ -341,6 +351,9 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     var identity = node.getAttribute("data-research-id") || node.getAttribute("data-research-form");
     if (Object.prototype.hasOwnProperty.call(ACTION_MAP, identity)) return ACTION_MAP[identity];
     if (/^nav_(dashboard|courses|activities|records|calendar|messages|settings|notifications|account|display|more|assignments|quizzes|listening|speaking|attendance|grades|announcements|discussions|logout)$/.test(identity || "")) return "navigate";
+    if (node.matches('a[href],summary')) return node.matches('summary') ? 'open' : 'navigate';
+    if (node.matches('button,input[type="button"],input[type="submit"]')) return 'unknown';
+    if (node.matches('form')) return 'submit';
     return null;
   }
   function activate(action) {
@@ -390,7 +403,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   }
   function onClick(event) {
     if (!event.target || insideResearch(event.target)) return;
-    var target = event.target.closest("a, button, input[type='submit'], input[type='button'], [data-research-action]");
+    var target = event.target.closest("a, button, summary, input[type='submit'], input[type='button'], [data-research-action]");
     if (!target || target.disabled) return;
     var action = actionCode(target);
     if (!action) return;
@@ -430,9 +443,10 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       record("media_action", {action_ref: logicalMedia.action_ref, action_code: action, detail_code: "started"});
       return;
     }
-    if (!target || insideResearch(target) || !REVISIONS[target.getAttribute("data-research-id")]) return;
+    if (!target || insideResearch(target)) return;
     // Whitelist controls, never inspect values or infer which option was selected.
     if (!target.matches("select, input[type='radio'], input[type='checkbox']")) return;
+    if (!REVISIONS[target.getAttribute('data-research-id')]) { activate('revise'); return; }
     var logical = activate(target.getAttribute("data-research-id") === "quiz_option" || target.getAttribute("data-research-id") === "listening_option" ? "answer" : "search");
     if (target.form) formActions.set(target.form, logical);
     var pending = revisionTimers.get(target) || {count: 0, timer: null};
@@ -604,6 +618,14 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     writeOutbox(readOutbox().filter(ownEntry));
     declareMeasurementSupport();
     record("context_enter", {detail_code: "started"});
+    if (page === 'notifications' && UUID.test(config.device_launch_ref)) {
+      record('context_enter', {event_uid:config.device_launch_ref, detail_code:'opened'});
+      var launchURL = new URL(location.href);
+      if (launchURL.searchParams.has('device_launch')) {
+        launchURL.searchParams.delete('device_launch');
+        history.replaceState(history.state, '', launchURL);
+      }
+    }
     pageScope.listen(document, "click", guard(onClick), true);
     pageScope.listen(document, "toggle", guard(function (event) {
       if (event.target && event.target.matches("[data-focus-outline]")) activate(event.target.open ? "open" : "close");
@@ -619,11 +641,13 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     pageScope.listen(document, "visibilitychange", guard(function () {
       closeVisibleInterval(); mediaTick();
       if (document.visibilityState === "visible") { visibleStart = Date.now(); calibrateClock(); considerPrompt(); }
-      else { visibleStart = null; flush(true); }
+      else { visibleStart = null; record('observation_gap', {detail_code:'background'}); flush(true); }
     }));
-    pageScope.listen(window, "pagehide", guard(function () {
+    var leavePage = guard(function () {
       closeVisibleInterval(); mediaTick(); record("context_leave", {detail_code: "finished"}); visibleStart = null; flush(true);
-    }));
+    });
+    pageScope.listen(window, 'pagehide', leavePage);
+    pageScope.listen(document, 'aelms:page-leaving', leavePage);
     pageScope.listen(window, "pageshow", guard(function (event) {
       if (event.persisted) { visibleStart = Date.now(); record("context_enter", {detail_code: "started"}); calibrateClock(); }
     }));

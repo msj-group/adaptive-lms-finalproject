@@ -140,12 +140,17 @@ def collector_view(progress_position=None, progress_total=None):
             # Resolve inactivity/configuration successors before HMAC signing;
             # otherwise the first client batch would carry a stale reference.
             session[SESSION_REF_KEY] = ref
+            launch_ref = None
+            if request.endpoint == 'notifications.inbox' and request.args.get('device_launch'):
+                from app.services.device_push import device_launch_ref
+                launch_ref = device_launch_ref(request.args['device_launch'], user)
             return {"collecting": True, "anchors": RATING_ANCHORS, "causes": CAUSE_COLUMNS,
                     "config": {"schema_version": context.event_schema_version,
                         "scope_token": issue_collection_scope(current_app.config["SECRET_KEY"],
                             context.user_public_id, context.auth_version, context.configuration_public_id,
                             context.configuration_version, session[SESSION_REF_KEY]),
                         "page_code": code, "context_code": code, "activity_code": code,
+                        "device_launch_ref": launch_ref,
                         "locale": ui_language(), "csrf": generate_csrf(),
                         "batch_url": url_for("collector.events"), "sample_url": url_for("collector.sample"),
                         "clock_url": url_for("collector.clock"),

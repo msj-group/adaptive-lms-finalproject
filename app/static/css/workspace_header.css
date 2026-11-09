@@ -40,6 +40,10 @@
 }
 .yc-workspace [data-header-filter-panel] :is(.field,fieldset) { min-width:0; }
 @media (max-width:639px) {
+  /* Keep the brand at the physical left edge, ahead of back/sidebar controls. */
+  .yc-workspace .st-header { padding-left:max(12px,env(safe-area-inset-left)); }
+  .yc-workspace .st-header-context { position:relative; padding-left:52px; min-height:44px; }
+  .yc-workspace .workspace-header-brand { position:absolute; left:0; top:50%; transform:translateY(-50%); }
   .yc-workspace .workspace-header-brand { display:flex; }
   .yc-workspace[data-workspace-header-titles] .st-header { gap:8px; }
   .yc-workspace[data-workspace-header-titles] .st-header-context { gap:8px; }
