@@ -1,0 +1,17 @@
+{% extends 'layouts/research_base.html' %}
+{% import 'research/_ui.html' as rs %}
+{% import '_figma_ui.html' as icons %}
+{% block title %}Research management{% endblock %}
+{% block research_content %}
+{{ rs.heading('Management','Manage access, data protection and study records.') }}
+<div class="rs-management-grid">
+{% for label,description,symbol,section in [
+('Evaluation groups','Organize real participants for model training and the final test.','users','groups'),
+('Data quality','Check delivery, questions and technical reports.','chart','quality'),
+('Excluded accounts','View accounts excluded from collection.','lock','exclusions'),
+('Activity log','Review collection controls and other changes.','clock','audit'),
+('Storage','Review retained data and storage use.','layers','storage')
+] %}<a class="rs-management-link rs-card" href="{{ url_for('research.manage',section=section) }}"><span class="rs-task-icon">{{ icons.icon(symbol,22) }}</span><span><strong>{{ _(label) }}</strong><small>{{ _(description) }}</small></span>{{ icons.icon('arrow',18) }}</a>{% endfor %}
+</div>
+<details class="rs-card rs-policy"><summary>{{ _('Collection details') }}</summary><dl class="rs-facts"><dt>{{ _('Data classification') }}</dt><dd>Study</dd><dt>{{ _('Retention') }}</dt><dd>{{ _('%(count)s days',count=retention_days) }}</dd>{% if study_end %}<dt>{{ _('Study ends') }}</dt><dd>{{ study_end }}</dd>{% endif %}</dl><p>{{ _('Start collection takes effect immediately. Stop collection closes the current research sessions and keeps saved data.') }}</p></details>
+{% endblock %}

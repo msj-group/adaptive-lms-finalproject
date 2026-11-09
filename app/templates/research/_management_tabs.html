@@ -1,0 +1,3 @@
+{% if request.endpoint == 'research.manage' and request.args.get('section') %}
+<nav class="rs-management-tabs" aria-label="{{ _('Management sections') }}"><a href="{{ url_for('research.manage') }}">{{ _('Management') }}</a>
+{% for key,label in [('groups','Evaluation groups'),('quality','Data quality'),('exclusions','Excluded accounts'),('audit','Activity log'),('storage','Storage')] %}<a href="{{ url_for('research.manage',section=key) }}"{% if request.args.get('section') == key %} aria-current="page"{% endif %}>{{ _(label) }}</a>{% endfor %}</nav>{% endif %}

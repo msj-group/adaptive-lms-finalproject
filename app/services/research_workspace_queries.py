@@ -53,8 +53,6 @@ _MAX_PAGE = 100_000
 
 PROVENANCE_LABELS = {
     "study": "Study data",
-    "development": "Operational review data — excluded from study exports",
-    "demo": "Historical data — excluded from study exports",
 }
 
 PROMPT_STATES = ("awaiting_display", "offer_expired", "awaiting_response", "no_response",

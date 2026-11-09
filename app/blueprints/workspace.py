@@ -37,7 +37,7 @@ def search():
     from app.services.workspace_search import search_records
     norm = normalize_query(request.args.get("q", ""))
     sections = search_records(current_user.role, current_user.id, norm,
-        current_app.config.get("RESEARCH_DATA_PROVENANCE", "development"), url_for)
+        current_app.config.get("RESEARCH_DATA_PROVENANCE", "study"), url_for)
     template = "workspace/_search_results.html" if request.args.get("preview") == "1" \
         else "workspace/search.html"
     return private_page(template, search_query=norm.text, search_sections=sections,
@@ -265,7 +265,7 @@ def mobile_shortcuts():
         "researcher": [("Home", "research.dashboard", "dashboard", None),
             ("Sessions", "research.sessions", "activity", None),
             ("Exports", "research.exports", "file", None),
-            ("Config", "research.configurations", "settings", None)],
+            ("Management", "research.manage", "settings", None)],
     }
     finance_registers = {"admin.invoice_register", "admin.payments_overview",
         "admin.deleted_financial_records", "admin.financial_reports_index"}
@@ -340,8 +340,7 @@ def workspace_breadcrumbs(context, page_title):
             ("Gradebook", "teacher.gradebook_overview"), ("Calendar", "teacher.calendar"),
             ("Announcements", "teacher.announcements_feed"), ("Discussions", "teacher.discussions_overview")],
         "researcher": [("Sessions", "research.sessions"), ("Exports", "research.exports"),
-            ("Configurations", "research.configurations"), ("Exclusions", "research.exclusions"),
-            ("Storage and gaps", "research.storage"), ("Audit log", "research.activity_log")],
+            ("Management", "research.manage")],
     }
     if role == "administrator":
         from app.blueprints.admin.navigation import ADMIN_NAV_SECTIONS
@@ -471,7 +470,7 @@ def workspace_is_section_root():
         "workspace.review_queue", "teacher.attendance_overview", "teacher.gradebook_overview",
         "teacher.calendar", "teacher.announcements_feed", "teacher.discussions_overview",
         "research.dashboard", "research.sessions", "research.exports", "research.configurations",
-        "research.exclusions", "research.storage", "research.activity_log", "research.collection_quality",
+        "research.exclusions", "research.storage", "research.activity_log", "research.collection_quality", "research.manage",
         "admin.dashboard", "messages.inbox", "notifications.inbox", "account.settings", "workspace.search",
     }
     if role == "administrator":

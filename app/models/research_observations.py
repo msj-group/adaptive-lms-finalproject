@@ -166,7 +166,7 @@ def _quality_group_checks(prefix):
         _ck(prefix + "_versions", "schema_version='" + _COLLECTION_SCHEMA
             + "' AND monitor_version='" + _MONITOR + "' AND protocol_version='" + _PROTOCOL
             + "' AND feature_version='" + _FEATURES + "'"),
-        _ck(prefix + "_provenance", _in("provenance", ("demo", "development", "study"))),
+        _ck(prefix + "_provenance", _in("provenance", ("study",))),
         _ck(prefix + "_release", "(release_ref='unknown' AND scope_code='technical') OR "
             "(CHAR_LENGTH(release_ref) IN (40,64) AND UNHEX(release_ref) IS NOT NULL "
             "AND release_ref=LOWER(HEX(UNHEX(release_ref))))"),

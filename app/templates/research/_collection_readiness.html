@@ -1,15 +1,6 @@
 {% if live_readiness %}
-<section class="rs-card">
-  <header class="rs-card-head"><div><h2>{{ _('Current collection yield') }}</h2><p>{{ live_readiness.version }} · {{ live_readiness.since.strftime('%Y-%m-%d %H:%M') }} — {{ live_readiness.cutoff.strftime('%Y-%m-%d %H:%M') }}</p></div></header>
-  <p class="workspace-meta">{{ _('Sessions started in the last seven days, in the active configuration and deployment source scope. These current technical counts include all evaluation groups without exposing ratings. They are independent of saved checker reports and do not establish model readiness.') }}</p>
-  <div class="rs-metrics">
-    {{ rs.metric('Sessions with client observations',live_readiness.client_sessions,_('%(count)s server-prepared sessions',count=live_readiness.sessions),'activity') }}
-    {{ rs.metric('Rendered questions',live_readiness.rendered,_('%(count)s reserved questions',count=live_readiness.reserved),'message') }}
-    {{ rs.metric('Timely eligible answers',live_readiness.eligible,_('%(count)s raw recorded answers',count=live_readiness.answered),'check') }}
-    {{ rs.metric('People with eligible answers',live_readiness.eligible_subjects,'Distinct pseudonymous participants','users') }}
-  </div>
-  <dl class="rs-facts"><dt>{{ _('Late answers') }}</dt><dd>{{ live_readiness.late }}</dd><dt>{{ _('Skipped questions') }}</dt><dd>{{ live_readiness.skipped }}</dd><dt>{{ _('Participants awaiting a group') }}</dt><dd>{{ live_readiness.unassigned_subjects }}</dd></dl>
-  {% if live_readiness.unassigned_subjects %}<p class="alert alert--warning">{{ _('Assign evaluation groups using the study plan. Unassigned participants are excluded from ordinary exports.') }}</p>{% endif %}
-  <details><summary>{{ _('Sampling decisions and reasons') }}</summary><div class="rs-table-wrap"><table class="dash-table"><thead><tr><th>{{ _('Decision') }}</th><th>{{ _('Reason') }}</th><th>{{ _('Count') }}</th></tr></thead><tbody>{% for decision,reason,count in live_readiness.sampling_reasons %}<tr><td>{{ decision }}</td><td>{{ reason }}</td><td>{{ count }}</td></tr>{% else %}<tr><td colspan="3">{{ _('No sampling decisions in this cohort.') }}</td></tr>{% endfor %}</tbody></table></div></details>
-</section>
-{% endif %}
+<section class="rs-card"><header class="rs-card-head"><h2>{{ _('Current collection') }}</h2><span>{{ _('Last seven days') }}</span></header>
+<div class="rs-metrics">{{ rs.metric('Sessions with observations',live_readiness.client_sessions,'','activity') }}{{ rs.metric('Questions shown',live_readiness.rendered,'','message') }}{{ rs.metric('Usable answers',live_readiness.eligible,'','check') }}{{ rs.metric('Participants with usable answers',live_readiness.eligible_subjects,'','users') }}</div>
+{% if live_readiness.unassigned_subjects %}<a class="rs-quick-note" href="{{ url_for('research.manage',section='groups') }}">{{ _('%(count)s participants need an evaluation group',count=live_readiness.unassigned_subjects) }} {{ icons.icon('arrow',16) }}</a>{% endif %}
+<details><summary>{{ _('More collection details') }}</summary><dl class="rs-facts"><dt>{{ _('Sessions') }}</dt><dd>{{ live_readiness.sessions }}</dd><dt>{{ _('Reserved questions') }}</dt><dd>{{ live_readiness.reserved }}</dd><dt>{{ _('Recorded answers') }}</dt><dd>{{ live_readiness.answered }}</dd><dt>{{ _('Late answers') }}</dt><dd>{{ live_readiness.late }}</dd><dt>{{ _('Skipped questions') }}</dt><dd>{{ live_readiness.skipped }}</dd></dl></details>
+</section>{% endif %}

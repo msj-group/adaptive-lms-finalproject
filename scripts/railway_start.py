@@ -16,9 +16,8 @@ def prepare_runtime():
         raise ValueError("Python 3.14.6 is required")
     if os.environ.get("FLASK_ENV") != "production":
         raise ValueError("FLASK_ENV must be production")
-    provenance = os.environ.get("RESEARCH_DATA_PROVENANCE", "development")
-    if provenance != "development" and os.environ.get("RAILWAY_ALLOW_STUDY", "0") != "1":
-        raise ValueError("Candidate startup requires development research provenance")
+    if os.environ.get("RESEARCH_DATA_PROVENANCE", "study") != "study":
+        raise ValueError("Only Study research provenance is supported")
     try:
         port = int(os.environ["PORT"])
     except (KeyError, ValueError):

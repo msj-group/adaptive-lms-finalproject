@@ -102,7 +102,7 @@ def _lock_researcher(actor_id):
     return actor
 
 
-def selection_summary(configuration_public_id, period_from, period_to, tz_name):
+def selection_summary(configuration_public_id, period_from, period_to, tz_name, group_public_ids=None):
     """Count the exact supported source/partition scope; creation takes a fresh snapshot."""
     from app.models.research_observations import ResearchObservation, ResearchQuestion, ResearchSamplingOpportunity, ResearchEvaluationGroup
     if period_from and period_to and period_to < period_from:
@@ -120,8 +120,8 @@ def selection_summary(configuration_public_id, period_from, period_to, tz_name):
             ResearchSession.configuration_id == config,
             ResearchSession.provenance.in_(export_session_provenances(provenance)),
             ResearchEvaluationGroup.partition_code.in_(("development", "prospective_monitor")))
-    if provenance == "study":
-        query = query.filter(ResearchSubject.provenance == "study")
+    from app.services.research_export_groups import group_condition
+    query = query.filter(ResearchSubject.provenance == "study", group_condition(group_public_ids))
     if lower is not None: query = query.filter(ResearchSession.started_at_ms >= lower)
     if upper is not None: query = query.filter(ResearchSession.started_at_ms < upper)
     scope = query.subquery()
@@ -132,7 +132,7 @@ def selection_summary(configuration_public_id, period_from, period_to, tz_name):
         scope, scope.c.id == ResearchSamplingOpportunity.session_id)).scalar()
     return {"sessions": int(sessions), "subjects": int(subjects), "events": int(events), "prompts": int(prompts)}
 
-def create_export(actor_id, configuration_public_id, period_from, period_to, tz_name):
+def create_export(actor_id, configuration_public_id, period_from, period_to, tz_name, group_public_ids=None):
     """Build one read snapshot, then recheck authorization/retention under locks."""
     if period_from and period_to and period_to < period_from:
         return BAD_PERIOD, None
@@ -148,7 +148,8 @@ def create_export(actor_id, configuration_public_id, period_from, period_to, tz_
         return CONFLICT, None
     try:
         from app.services.research_dataset_exports import build_export
-        data, manifest, counts, digest = build_export(configuration_id, period_from, period_to, cutoff, tz_name)
+        data, manifest, counts, digest = build_export(configuration_id, period_from, period_to, cutoff, tz_name,
+            group_public_ids=group_public_ids)
     except ExportTooLarge:
         db.session.rollback()
         return TOO_LARGE, None

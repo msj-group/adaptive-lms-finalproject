@@ -39,7 +39,8 @@ from app.services.research_scope import collection_context
 #: The signed-cookie key naming the browser's research session.
 SESSION_REF_KEY = "research_session_ref"
 
-FLUSH_MS = 15_000
+# Transport latency only; heartbeat, sampling windows and policy are unchanged.
+FLUSH_MS = 5_000
 MAX_NOTED_OUTCOMES = 5
 
 _STUDENT = UserRole.STUDENT.value
@@ -72,7 +73,7 @@ def cached_context(user_id):
 
 
 def deployment_provenance():
-    return current_app.config.get("RESEARCH_DATA_PROVENANCE", "development")
+    return current_app.config.get("RESEARCH_DATA_PROVENANCE", "study")
 
 
 def tz_name():

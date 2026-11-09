@@ -27,8 +27,7 @@ prompt, so selection and delivery limitations are measurable rather than
 invisible.
 
 ``provenance`` is set by the server when the session starts and never
-changes: ``demo`` for a demonstration subject, otherwise the deployment's
-``RESEARCH_DATA_PROVENANCE``.
+changes. Only ``study`` is accepted. Excluded accounts never receive a session.
 """
 from app.models.code_types import CODE_COLLATION
 

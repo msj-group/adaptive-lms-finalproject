@@ -1,41 +1,17 @@
-{% extends "layouts/research_base.html" %}
-{% from "research/_macros.html" import pager, provenance_notice %}
-{% import "research/_ui.html" as rs %}
-{% import "_figma_ui.html" as icons %}
+{% extends 'layouts/research_base.html' %}
+{% import 'research/_ui.html' as rs %}
+{% import '_figma_ui.html' as icons %}
+{% from 'research/_macros.html' import pager %}
 {% block title %}Research exports{% endblock %}
 {% block research_content %}
-{% call rs.heading('Archive' if request.args.get('view') == 'archive' else 'Export center','Review export descriptions and available snapshot archives.','Research exports') %}<a class="btn btn--primary" href="{{ url_for('research.export_create') }}">{{ icons.icon('file',17) }} Prepare export</a>{% endcall %}
-{{ rs.scope(provenance,provenance_labels) }}
-<nav class="rs-tabs" aria-label="Export sections"><a href="{{ url_for('research.exports') }}"{% if request.args.get('view') != 'archive' %} aria-current="page"{% endif %}>Export center</a><a href="{{ url_for('research.exports',view='archive') }}"{% if request.args.get('view') == 'archive' %} aria-current="page"{% endif %}>Archive</a><a href="{{ url_for('research.export_create') }}">New selection</a></nav>
-<details class="rs-card"><summary>Export contents and privacy</summary><p class="ds-section__desc">
-  Exports contain {{ "study data only" if provenance == 'study' else "operational review data only" }},
-  grouped by pseudonymous subject code, with a data dictionary and a manifest recording the source.
-  They never contain names, email addresses, account identifiers, the
-  subject-to-account mapping or any content. Raw 1&ndash;5 ratings are preserved and unrated data
-  stays unlabeled.
-</p></details>
-
-{% if rows %}
-<div class="rs-table-wrap">
-<table class="dash-table" style="width:100%">
-  <thead><tr><th scope="col">Created</th><th scope="col">Configuration</th><th scope="col">Period</th>
-    <th scope="col">Subjects</th><th scope="col">Sessions</th><th scope="col">Events</th><th scope="col">Prompts</th>
-    <th scope="col"><span class="ds-section__desc" style="margin:0">Detail</span></th></tr></thead>
-  <tbody>
-  {% for row in rows %}
-    <tr data-export>
-      <td style="white-space: nowrap">{{ workspace_local(row[1]).strftime("%Y-%m-%d %H:%M") }}</td>
-      <td>{{ row[4] if row[4] is not none else "All" }}</td>
-      <td>{{ row[2] or "…" }} &ndash; {{ row[3] or "…" }}</td>
-      <td>{{ row[5] }}</td><td>{{ row[6] }}</td><td>{{ row[7] }}</td><td>{{ row[8] }}</td>
-      <td><div class="ds-row yc-actions">{% if row[10] %}<a class="btn btn--primary" href="{{ url_for('research.export_download', export_public_id=row[0]) }}">Download ZIP</a>{% else %}<span class="badge badge--neutral">Archive removed under the retention rule</span>{% endif %}<a class="btn btn--secondary" href="{{ url_for('research.export_detail', export_public_id=row[0]) }}">Details</a></div></td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-</div>
-{{ pager(pagination, "Exports") }}
-{% else %}
-{% call rs.empty('No exports yet','Saved export descriptions will appear here after a reviewed selection is created.','file') %}<p style="margin-top:16px"><a class="btn btn--primary" href="{{ url_for('research.export_create') }}">Prepare an export</a></p>{% endcall %}
-{% endif %}
+{{ rs.heading('Exports','Create a Study dataset or download a saved copy.') }}
+<section class="rs-card"><form method="post" action="{{ url_for('research.exports') }}" class="rs-simple-export" data-research-export>{{ form.csrf_token }}
+<div><h2>{{ _('Export Study data') }}</h2><p>{{ _('The current collection is selected. You can narrow the dates when needed.') }}</p></div>
+<fieldset class="rs-export-groups"><legend>{{ _('Groups') }}</legend><p>{{ _('Choose one or more groups. Leave all unchecked to export all groups.') }}</p><div>{% for value,label in form.groups.choices %}<label><input type="checkbox" name="groups" value="{{ value }}"{% if value in (form.groups.data or []) %} checked{% endif %}><span>{{ label }}</span></label>{% endfor %}</div>{% for error in form.groups.errors %}<span class="field__error">{{ error }}</span>{% endfor %}</fieldset>
+<details{% if form.errors %} open{% endif %}><summary>{{ _('Choose dates or collection') }}</summary><div class="workspace-filter-grid">{% for field in [form.configuration,form.period_from,form.period_to] %}<div class="field">{{ field.label }}{{ field(class_='field__input') }}{% for error in field.errors %}<span class="field__error">{{ error }}</span>{% endfor %}</div>{% endfor %}</div></details>
+{{ form.submit(class_='btn btn--primary',disabled=form.configuration.choices|length < 2) }}
+</form></section>
+<section class="rs-card"><header class="rs-card-head"><h2>{{ _('Saved exports') }}</h2><span>{{ pagination.total }}</span></header>
+{% if rows %}<div class="rs-export-list">{% for row in rows %}<article class="rs-export-item"><div><strong>{{ workspace_local(row[1]).strftime('%d %b %Y · %H:%M') }}</strong><p>{{ _('%(sessions)s sessions · %(events)s events',sessions=row[6],events=row[7]) }}</p></div><div class="rs-actions">{% if row[10] %}<a class="btn btn--primary" href="{{ url_for('research.export_download',export_public_id=row[0]) }}">{{ icons.icon('download',17) }}{{ _('Download ZIP') }}</a>{% else %}<span>{{ _('File expired') }}</span>{% endif %}<a class="btn btn--secondary" href="{{ url_for('research.export_detail',export_public_id=row[0]) }}">{{ _('Details') }}</a></div></article>{% endfor %}</div>{{ pager(pagination,'Exports') }}{% else %}{{ rs.empty('No exports yet','Create an export above when real Study data is available.','file') }}{% endif %}
+</section>
 {% endblock %}

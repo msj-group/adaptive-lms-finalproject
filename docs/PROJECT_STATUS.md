@@ -1,5 +1,27 @@
 # Repair status
 
+## Study-only simplified Researcher workspace prepared - 2026-11-09
+
+The owner requests Study-only provenance and a fully simplified Researcher UI,
+with immediate one-click Start/Stop, no draft/publish/scheduling workflow, and
+one consistent visual/navigation system on phones and computers. Real-data model
+training/test organization is explicitly preserved. The implementation removes
+non-Study provenance branches, manual configuration forms/routes and the separate
+export review wizard. Four primary destinations contain all tasks; management
+subsections have one canonical /research/manage path. Atomic audited controls
+preserve fixed collection policy and the approved study end. The narrow schema
+revision e7f9012abc34 refuses non-Study history before DDL. No hosted activation
+has occurred for this change yet. See STUDY_ONLY_COLLECTION_20261109.md.
+
+The later owner clarification includes Test through audited operator reinstatement,
+general multi-group export selection and automatic live presence/actions. The
+overview uses bounded three-second polling and five-second event transport while
+preserving heartbeat/sampling and participant review quarantine. Static checks
+passed 434 Python files, 321 templates, 96 MySQL DDL compilations and the 23-route
+Researcher blueprint. A zero-data, loopback-only template preview was reviewed at
+320/390/768/1366 pixels, including live polling and group checkboxes; it is not a
+hosted authenticated workflow or actual Student activity test.
+
 ## Single collection workspace prepared — 2026-11-08
 
 The owner requests one current method and descriptive source/asset names, with no

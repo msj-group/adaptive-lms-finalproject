@@ -1,0 +1,13 @@
+<section class="rs-card rs-live" data-research-live data-url="{{ url_for('research.live') }}"
+ data-waiting="{{ _('Connecting…') }}" data-online="{{ _('Live') }}" data-offline="{{ _('Connection interrupted. Reconnecting…') }}"
+ data-expired="{{ _('Sign in again to continue live monitoring.') }}" data-paused="{{ _('Collection stopped') }}"
+ data-empty="{{ _('No students active right now') }}" data-no-events="{{ _('New actions will appear here automatically.') }}"
+ data-protected="{{ _('Detailed activity is protected by the participant review group.') }}"
+ data-limited="{{ _('Showing the 200 most recently active participants.') }}">
+ <header class="rs-live-heading"><h2>{{ _('Live activity') }}</h2><span class="rs-live-status" data-live-status role="status">{{ _('Connecting…') }}</span></header>
+ <p class="rs-live-note">{{ _('Updates automatically. Active means contact within the last 90 seconds.') }}</p>
+ <div class="rs-live-columns"><section><h3>{{ _('Active students') }} <span class="rs-live-count" data-live-count>0</span></h3><div data-live-students class="rs-live-students"></div><p class="rs-muted" data-live-limit hidden></p></section>
+ <section><h3>{{ _('Recent actions') }}</h3><ol data-live-events class="rs-live-events"></ol></section></div>
+ <template data-live-student><article class="rs-live-student"><div><strong data-code dir="ltr"></strong><span data-groups></span></div><p data-context></p><small data-protected-note hidden></small></article></template>
+ <template data-live-event><li><div><strong data-code dir="ltr"></strong><time></time></div><p data-action></p><small data-context></small></li></template>
+</section>

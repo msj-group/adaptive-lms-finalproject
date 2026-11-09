@@ -9,14 +9,6 @@
 </nav>
 {%- endmacro %}
 
-{% macro provenance_notice(provenance, labels) -%}
-{% if provenance != 'study' %}
-<div class="alert alert--warning" style="margin-bottom: var(--space-4)">
-  {{ labels[provenance] }}. These sessions must not be reported as study findings.
-</div>
-{% endif %}
-{%- endmacro %}
-
 {% macro ms_time(to_local, ms) -%}
 {%- if ms is not none %}{{ to_local(ms).strftime("%Y-%m-%d %H:%M:%S") }}{% else %}&mdash;{% endif -%}
 {%- endmacro %}

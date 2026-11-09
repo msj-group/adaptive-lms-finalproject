@@ -408,7 +408,7 @@ def _daily_label_yield_incidents(state, snapshot, now, active):
 
 
 def _quality_incidents(state, snapshot, now, *, daily_snapshot=None):
-    """Optional pilot thresholds: hourly rates and populated-day label yield.
+    """Optional study-quality thresholds: hourly rates and populated-day label yield.
 
     Missing/small cohorts cannot certify recovery. Thresholds are engineering
     investigation triggers, never evidence of emotion or model failure.

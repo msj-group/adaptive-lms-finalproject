@@ -144,7 +144,7 @@ def collect_quality_snapshot(connection, *, period_start_ms, period_end_ms, cuto
               "presence_start": max(0, period_start_ms - CLIENT_START_GRACE_MS),
               "presence_end": max(0, period_end_ms - CLIENT_START_GRACE_MS),
               "retention_overdue_cutoff": cutoff_ms - RETENTION_JOB_GRACE_MS}
-    filters = "c.event_schema_version=:schema"
+    filters = "c.event_schema_version=:schema AND s.provenance='study'"
     if configuration_id is not None:
         filters += " AND c.id=:configuration_id"
         params["configuration_id"] = configuration_id

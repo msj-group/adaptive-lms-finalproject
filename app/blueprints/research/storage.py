@@ -28,6 +28,9 @@ def _serializer():
 @research_bp.route("/storage", methods=["GET", "POST"])
 @roles_required("researcher")
 def storage():
+    if request.endpoint == "research.storage" and request.method == "GET":
+        from app.blueprints.research.workspace import management_redirect
+        return management_redirect("storage")
     form = CleanupForm()
     preview = None
     if form.validate_on_submit():
@@ -39,7 +42,7 @@ def storage():
                 cleanup_data(current_user.id, expected, form.start.data, form.end.data, form.all_data.data)
                 db.session.commit()
                 flash("Selected raw sessions removed. Subject links, exclusions, configuration, export descriptions and audit history are preserved.", "success")
-                return redirect(url_for("research.storage"))
+                return redirect(url_for("research.manage", section="storage"))
             preview = cleanup_preview(form.start.data, form.end.data, form.all_data.data)
             form.preview_token.data = _serializer().dumps(preview)
             db.session.add(ResearchAuditEvent(action="data_cleanup_previewed", channel="workspace", actor_id=current_user.id,
@@ -71,4 +74,4 @@ def export_remove_archive(export_public_id):
     except (ValueError, IntegrityError):
         db.session.rollback()
         flash("The archive could not be removed. Reload its record.", "danger")
-    return redirect(url_for("research.storage"))
+    return redirect(url_for("research.manage", section="storage"))

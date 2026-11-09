@@ -1,0 +1,9 @@
+{% if collection_control is defined %}
+<section class="rs-collection-control" aria-label="{{ _('Collection control') }}">
+<div class="rs-control-state" role="status"><span class="rs-status-dot{% if collection_control.running %} is-running{% endif %}" aria-hidden="true"></span><span><strong>{{ _(collection_control.status) }}</strong><small>{{ _('Study data only') }}</small></span></div>
+<form method="post" action="{{ url_for('research.collection_control') }}" data-collection-control>
+{{ collection_control.form.csrf_token(id='collection-control-csrf') }}{{ collection_control.form.state(id='collection-control-state') }}
+<input type="hidden" name="return_to" value="{{ request.endpoint if request.endpoint in ['research.dashboard','research.sessions','research.exports','research.manage'] else 'research.dashboard' }}">
+<input type="hidden" name="return_section" value="{{ request.args.get('section','') if request.endpoint == 'research.manage' else '' }}">
+<button class="btn {{ 'btn--primary' if collection_control.intended else 'rs-stop-button' }}" type="submit"{% if collection_control.intended and not collection_control.enabled %} disabled{% endif %}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">{% if collection_control.intended %}<path d="m8 5 11 7-11 7Z"/>{% else %}<path d="M8 5v14M16 5v14"/>{% endif %}</svg><span>{{ _('Start collection' if collection_control.intended else 'Stop collection') }}</span></button>
+</form></section>{% endif %}

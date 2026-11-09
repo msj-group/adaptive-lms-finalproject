@@ -2,11 +2,9 @@
 (Phase 6 replacement). Fail closed: an invalid value refuses to start the
 application rather than run with a guessed setting.
 
-- ``RESEARCH_DATA_PROVENANCE`` -- ``study`` or ``development``. What a
-  session collected by this deployment is labelled; only ``study`` data is
-  ever exported. Every environment defaults to ``development``. Running an
-  operational review on a production server cannot create study data unless
-  an actual study is explicitly configured.
+- ``RESEARCH_DATA_PROVENANCE`` -- only ``study`` is accepted. Invalid values
+  refuse startup instead of silently relabelling data. The independent
+  collection release gate remains disabled by default.
 - ``RESEARCH_RETENTION_DAYS`` -- the retention the deployment supplies, as a
   whole number of days (1-3650), or unset. **There is no default**: while it
   is unset no configuration can be activated, so collection cannot start with
@@ -59,5 +57,13 @@ def resolve_research_settings(config):
     config["RESEARCH_DATA_PROVENANCE"] = provenance
     config["RESEARCH_RETENTION_DAYS"] = parse_retention_days(config.get("RESEARCH_RETENTION_DAYS"))
     config["RESEARCHER_EMAIL_ALLOWLIST"] = parse_allowlist(config.get("RESEARCHER_EMAIL_ALLOWLIST"))
+    if config.get("RESEARCH_COLLECTION_ENDS_AT"):
+        from datetime import datetime
+        try:
+            end = datetime.fromisoformat(config["RESEARCH_COLLECTION_ENDS_AT"])
+            if end.tzinfo is not None:
+                raise ValueError
+        except (ValueError, TypeError):
+            raise ResearchSettingsError("RESEARCH_COLLECTION_ENDS_AT must be a naive UTC ISO date-time") from None
     if type(config.get("RESEARCH_COLLECTION_ENABLED", False)) is not bool:
         raise ResearchSettingsError("RESEARCH_COLLECTION_ENABLED must be boolean")

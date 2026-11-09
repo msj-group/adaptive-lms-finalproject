@@ -17,16 +17,5 @@
   {% import 'admin/_atlas_navigation.html' as admin_nav with context %}
   {{ admin_nav.rail(atlas.section if atlas is defined else '', mobile_more, primary_targets) }}
 {% elif current_user.role == 'researcher' %}
-  <p class="st-nav-label">Communication</p>
-  {{ ui.nav_link('Messages','messages.inbox','message',request.blueprint == 'messages',link_class='st-nav-link') }}
-  {{ ui.nav_link('Notifications','notifications.inbox','bell',request.blueprint == 'notifications',link_class='st-nav-link') }}
-  {% for heading, links in [
-    ('Workspace', [('dashboard','Dashboard','research.dashboard','dashboard'), ('configurations','Configurations','research.configurations','settings')]),
-    ('Data & review', [('quality','Collection quality','research.collection_quality','activity'), ('sessions','Sessions','research.sessions','activity'), ('exports','Exports','research.exports','file'), ('exclusions','Exclusions','research.exclusions','users')]),
-    ('Governance', [('storage','Storage and gaps','research.storage','layers'), ('audit','Audit log','research.activity_log','lock')])] %}
-  <p class="st-nav-label">{{ heading }}</p>
-  {% for key, label, target, symbol in links %}
-  {% if not mobile_more or target not in primary_targets %}{{ ui.nav_link(label, target, symbol, active_nav|default('') == key, link_class='st-nav-link') }}{% endif %}
-  {% endfor %}
-  {% endfor %}
+  {% include 'research/_navigation.html' %}
 {% endif %}

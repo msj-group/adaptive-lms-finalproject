@@ -22,10 +22,12 @@ from app.services.research_features import build_features, RENDER_TIMING_SEMANTI
 from app.services.research_context_features import build_context_features, CONTEXT_FEATURE_VERSION
 
 
-def build_export(configuration_id, period_from, period_to, cutoff_ms, tz_name):
+def build_export(configuration_id, period_from, period_to, cutoff_ms, tz_name, group_public_ids=None):
     from app.services.research_exports import _bounds, _csv, ExportTooLarge, ClockAhead
     from app.services.research_scope import export_session_provenances
     provenance = current_app.config["RESEARCH_DATA_PROVENANCE"]
+    from app.services.research_export_groups import normalize_groups, group_condition
+    selected_groups = normalize_groups(group_public_ids)
     configuration = db.session.get(ResearchConfiguration, configuration_id)
     protocol = db.session.get(Protocol, configuration_id)
     if configuration is None or protocol is None:
@@ -37,8 +39,7 @@ def build_export(configuration_id, period_from, period_to, cutoff_ms, tz_name):
         ResearchSession.configuration_id == configuration_id,
         ResearchSession.provenance.in_(export_session_provenances(provenance)),
         Partition.partition_code.in_(("development", "prospective_monitor")))
-    if provenance == "study":
-        query = query.filter(ResearchSubject.provenance == "study")
+    query = query.filter(ResearchSubject.provenance == "study", group_condition(selected_groups))
     if lower is not None:
         query = query.filter(ResearchSession.started_at_ms >= lower)
     if upper is not None:
@@ -148,14 +149,16 @@ def build_export(configuration_id, period_from, period_to, cutoff_ms, tz_name):
             "effectiveness": "Not measured by this baseline. No adaptive intervention is delivered by collection.",
             "future_evaluation": "Record model/policy version, offered help type, offer/render/accept/decline/use, pre-intervention context, outcomes and an appropriate comparison. Keep intervention data separate from baseline detector training.",
         },
-        "dataset_kind": "study" if provenance == "study" else "operational_review", "cutoff_ms": cutoff_ms,
+        "dataset_kind": "study", "cutoff_ms": cutoff_ms,
         "configuration_version": configuration.version_number, "retention_days": configuration.retention_days,
         "configuration_policy": {k: getattr(configuration, k) for k in (
             "session_inactivity_minutes", "max_prompts_per_session", "max_prompts_per_day", "lookback_seconds",
             "min_observed_seconds", "random_prompt_permille", "activity_end_prompt_permille", "offer_ttl_seconds", "response_window_seconds")},
         "protocol_policy": {k: getattr(protocol, k) for k in ("study_timezone", "first_opportunity_seconds", "opportunity_step_seconds",
             "minimum_spacing_seconds", "heartbeat_seconds", "maximum_gap_seconds", "maximum_clock_uncertainty_ms")},
-        "filters": {"provenance": provenance, "timezone": tz_name, "session_start_local_from": str(period_from) if period_from else None,
+        "filters": {"provenance": provenance, "group_public_ids": list(selected_groups),
+                    "group_filter_basis": "active_enrollment_at_export_snapshot" if selected_groups else "all_groups",
+                    "timezone": tz_name, "session_start_local_from": str(period_from) if period_from else None,
                     "session_start_local_to": str(period_to) if period_to else None},
         "counts": {k: v for k, v in counts.items() if not k.startswith("_")},
         "quarantine": "Unassigned and locked-final-test participants are excluded from all normal review files, including events and ratings.",
@@ -166,10 +169,10 @@ def build_export(configuration_id, period_from, period_to, cutoff_ms, tz_name):
             "answer_deadline": "Unchanged: stored rendered_at_ms plus the recorded response window."},
         "predictor_allowlist": "Only feature_payload_json.values with its missing/support/denominator metadata. Never label fields, identities, subject/session IDs, render/response timing, causes, help preference, partition, sampling decisions or quality metadata.",
         "missing_label_rule": "Only primary_label_eligible=true may supply a training target. Skip, nonresponse, unprompted, late and poor-quality windows are not negatives. Raw 1–5 answers remain unchanged.",
-        "primary_label_mapping": "Predeclared pilot moderate-or-higher reported frustration: raw 3–5 -> 1; raw 1–2 -> 0, only for eligible windows. This is an operational self-report target, not a diagnosis or proof of helpful intervention.",
-        "evaluation": "Split by participant before model fitting/tuning. Development and prospective-monitor groups remain separate. Final-test release requires a separate frozen-model approval.",
+        "primary_label_mapping": "Predeclared study moderate-or-higher reported frustration: raw 3–5 -> 1; raw 1–2 -> 0, only for eligible windows. This is an operational self-report target, not a diagnosis or proof of helpful intervention.",
+        "evaluation": "Split by participant before model fitting/tuning. Model-training and prospective-monitor groups remain separate. Final-test release requires a separate frozen-model approval.",
         "question": "In the two minutes before this question was sent, how frustrated did you feel on this platform?",
-        "limitations": ["Viewport class is not physical device identity.", "Browser delivery/render reports do not prove attention.", "Manual phone/pilot validation remains required."],
+        "limitations": ["Viewport class is not physical device identity.", "Browser delivery/render reports do not prove attention.", "Actual device and data-quality verification remains required."],
         "files": {name: hashlib.sha256(data).hexdigest() for name, data in sorted(files.items())}}
     raw_manifest = json.dumps(manifest, sort_keys=True, indent=2, ensure_ascii=True).encode("utf-8")
     files["manifest.json"] = raw_manifest

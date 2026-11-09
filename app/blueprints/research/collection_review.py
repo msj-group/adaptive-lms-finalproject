@@ -16,7 +16,7 @@ from app.services.research_quality import read_latest_reports
 
 class PartitionForm(LocalizedFlaskForm):
     state = HiddenField(validators=[DataRequired()])
-    partition = SelectField("Evaluation group", choices=[("development", "Development / pilot"),
+    partition = SelectField("Evaluation group", choices=[("development", "Model training"),
         ("locked_final_test", "Reserved final test"), ("prospective_monitor", "Future monitoring")], validators=[DataRequired()])
     submit = SubmitField("Assign group")
 
@@ -28,6 +28,9 @@ def _signer():
 @research_bp.get("/collection-quality")
 @roles_required("researcher")
 def collection_quality():
+    if request.endpoint == "research.collection_quality":
+        from app.blueprints.research.workspace import management_redirect
+        return management_redirect("groups" if request.args.get("view") == "groups" else "quality")
     enabled = current_app.config.get("RESEARCH_COLLECTION_ENABLED", False)
     reports, development_reports, participants = [], [], []
     forms = {}
@@ -56,7 +59,8 @@ def collection_quality():
     return render_template("research/collection_quality.html", active_nav="quality", enabled=enabled, reports=reports,
         development_reports=development_reports,
         participants=participants[:50], forms=forms, page=page, has_next=len(participants) > 50,
-        now=now_ms(), live_readiness=live_readiness)
+        now=now_ms(), live_readiness=live_readiness,
+        to_local=lambda value: ms_to_local(current_app.config["APP_TIMEZONE"], value))
 
 
 @research_bp.post("/participants/<subject_code>/evaluation-group")
@@ -87,7 +91,7 @@ def assign_evaluation_group(subject_code):
     if part.version != token[2] or part.partition_code != "unassigned":
         db.session.rollback()
         flash("This participant already has a group or the form is stale. Reload the page.", "warning")
-        return redirect(url_for("research.collection_quality", view="groups"))
+        return redirect(url_for("research.manage", section="groups"))
     if form.partition.data == "locked_final_test" and part.development_exposed_at_ms is not None:
         abort(409)
     moment = now_ms()
@@ -103,4 +107,4 @@ def assign_evaluation_group(subject_code):
         flash("The group could not be saved. Reload and try again.", "danger")
     else:
         flash("Evaluation group recorded. Final-test data stays quarantined.", "success")
-    return redirect(url_for("research.collection_quality", view="groups"))
+    return redirect(url_for("research.manage", section="groups"))

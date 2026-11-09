@@ -832,18 +832,9 @@ class ResearchStatusBasis(str, enum.Enum):
 
 
 class ResearchProvenance(str, enum.Enum):
-    """Server-controlled data provenance. A client can never set it.
-
-    - ``study`` -- real research data. The only provenance ever exported.
-    - ``demo`` -- a subject an operator marked as a demonstration account;
-      everything collected for it is demo data.
-    - ``development`` -- collected by an application not configured as a
-      study deployment (``RESEARCH_DATA_PROVENANCE``).
-    """
+    """Study is the sole data provenance; collection still needs its release gate."""
 
     STUDY = "study"
-    DEMO = "demo"
-    DEVELOPMENT = "development"
 
 
 class ResearchConfigurationStatus(str, enum.Enum):
@@ -913,7 +904,6 @@ class ResearchAuditAction(str, enum.Enum):
     COLLECTION_RESUMED = "collection_resumed"
     SUBJECT_EXCLUDED = "subject_excluded"
     SUBJECT_REINSTATED = "subject_reinstated"
-    SUBJECT_MARKED_DEMO = "subject_marked_demo"
     EXPORT_CREATED = "export_created"
     EXPORT_DOWNLOADED = "export_downloaded"
     RETENTION_PURGED = "retention_purged"

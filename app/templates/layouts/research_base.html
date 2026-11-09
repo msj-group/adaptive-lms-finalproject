@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/search.css', v='st2-density-20261010') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/notifications.css', v='preview-toolbar-1') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/research_interface.css', v='sidebar-layout-1') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/research_simple.css', v='study-workspace-1') }}">
 {% endblock %}
 {% block content %}
 {% set notif = notification_header() %}
@@ -21,4 +22,4 @@
 {% block workspace_page_label %}{{ ui.page_heading(self.title()) }}{% endblock %}
 {% block workspace_content_class %}{% endblock %}
 {% block research_content %}{% endblock %}
-{% block body_scripts %}<script src="{{ url_for('static', filename='js/query_filters.js', v='quiet-success-20261011') }}" defer></script><script src="{{ url_for('static', filename='js/mobile_navigation.js', v='stable-more-2') }}" defer></script><script src="{{ url_for('static', filename='js/workspace_search.js') }}" defer></script><script src="{{ url_for('static', filename='js/live_query.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js', v='message-guards-2') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js', v='workspace-theme-20261030') }}" defer></script><script src="{{ url_for('static', filename='js/notifications.js', v='preview-toolbar-1') }}" defer></script><script src="{{ url_for('static', filename='js/research_interface.js', v='20261031') }}" defer></script>{% endblock %}
+{% block body_scripts %}<script src="{{ url_for('static', filename='js/query_filters.js', v='quiet-success-20261011') }}" defer></script><script src="{{ url_for('static', filename='js/mobile_navigation.js', v='stable-more-2') }}" defer></script><script src="{{ url_for('static', filename='js/workspace_search.js') }}" defer></script><script src="{{ url_for('static', filename='js/live_query.js') }}" defer></script><script src="{{ url_for('static', filename='js/workspace.js', v='message-guards-2') }}" defer></script><script src="{{ url_for('static', filename='js/figma_ui.js', v='workspace-theme-20261030') }}" defer></script><script src="{{ url_for('static', filename='js/notifications.js', v='preview-toolbar-1') }}" defer></script><script src="{{ url_for('static', filename='js/research_interface.js', v='study-workspace-1') }}" defer></script>{% endblock %}

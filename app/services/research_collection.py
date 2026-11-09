@@ -232,6 +232,7 @@ def resolve_session(chain, session_ref, moment, deployment_provenance, start_ms=
     else (a copied cookie, a reference minted for another account) is never
     adopted, and a fresh random reference replaces it.
     """
+    provenance = session_provenance(chain.subject.provenance, deployment_provenance)
     ref = session_ref if is_uuid(session_ref) else new_session_ref()
     for _ in range(_MAX_CHAIN):
         session = _lock_session(ref)
@@ -240,6 +241,8 @@ def resolve_session(chain, session_ref, moment, deployment_provenance, start_ms=
         if session.subject_id != chain.subject.id:
             ref = new_session_ref()
             continue
+        if session.provenance != provenance:
+            raise ValueError("An existing research session must retain Study provenance.")
         if _usable(session, chain.configuration, moment):
             return session, ref
         close_session(session, chain.configuration, moment)
@@ -252,7 +255,7 @@ def resolve_session(chain, session_ref, moment, deployment_provenance, start_ms=
         public_id=ref,
         subject_id=chain.subject.id,
         configuration_id=chain.configuration.id,
-        provenance=session_provenance(chain.subject.provenance, deployment_provenance),
+        provenance=provenance,
         started_at_ms=started,
         last_seen_at_ms=moment,
     )

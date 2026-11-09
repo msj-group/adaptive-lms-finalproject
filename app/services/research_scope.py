@@ -58,29 +58,23 @@ _STUDENT = UserRole.STUDENT.value
 _USER_ACTIVE = UserStatus.ACTIVE.value
 _INCLUDED = ResearchCollectionStatus.INCLUDED.value
 _ACTIVE = ResearchConfigurationStatus.ACTIVE.value
-_DEMO = ResearchProvenance.DEMO.value
 _STUDY = ResearchProvenance.STUDY.value
 
 #: The provenances a deployment may declare for what it collects.
-DEPLOYMENT_PROVENANCES = (ResearchProvenance.STUDY.value, ResearchProvenance.DEVELOPMENT.value)
+DEPLOYMENT_PROVENANCES = (_STUDY,)
 
 # Export creation records its server-selected scope in the existing,
 # append-only audit. This survives archive expiry without a schema change.
 EXPORT_SCOPE_DETAIL_CODES = {
     "study": "export_study",
-    "development": "export_development",
 }
 
 
 def export_session_provenances(provenance):
     """The deployment's export population, never a browser-selectable mode."""
-    scopes = {
-        "study": ("study",),
-        "development": ("development", "demo"),
-    }
-    if provenance not in scopes:
-        raise ValueError("Exports require the deployment's configured provenance.")
-    return scopes[provenance]
+    if provenance != _STUDY:
+        raise ValueError("Research exports require Study provenance.")
+    return (_STUDY,)
 
 
 CollectionContext = namedtuple(
@@ -152,7 +146,7 @@ def collection_context(user_id):
     if row is None or row[0] != _STUDENT or row[1] != _USER_ACTIVE:
         return None
     subject_id, status, provenance = row[2], row[3], row[4]
-    if subject_id is not None and status != _INCLUDED:
+    if subject_id is not None and (status != _INCLUDED or provenance != _STUDY):
         return None
     context = CollectionContext(
         user_id=user_id,
@@ -177,14 +171,10 @@ def collection_context(user_id):
 
 
 def session_provenance(subject_provenance, deployment_provenance):
-    """``demo`` for a demonstration subject; otherwise what the deployment
-    declares. An unknown deployment value fails safe to ``development``, so a
-    misconfiguration can never mark data as study data."""
-    if subject_provenance == _DEMO:
-        return _DEMO
-    if deployment_provenance in DEPLOYMENT_PROVENANCES:
-        return deployment_provenance
-    return ResearchProvenance.DEVELOPMENT.value
+    """Reject incompatible input rather than relabelling it as Study."""
+    if subject_provenance != _STUDY or deployment_provenance != _STUDY:
+        raise ValueError("Research collection requires Study provenance.")
+    return _STUDY
 
 
 def configuration_is_live(configuration, moment):
@@ -206,4 +196,5 @@ def account_is_eligible_student(user):
 
 def subject_is_included(subject):
     """Rule 2 against a (locked) subject row."""
-    return subject is not None and subject.collection_status == _INCLUDED
+    return (subject is not None and subject.collection_status == _INCLUDED
+            and subject.provenance == _STUDY)

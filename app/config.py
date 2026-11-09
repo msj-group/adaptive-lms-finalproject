@@ -71,8 +71,9 @@ class Config:
     # app.services.research_settings.resolve_research_settings (fail-closed).
     # RESEARCH_RETENTION_DAYS has no default on purpose: until the deployment
     # supplies one, no collection configuration can be activated.
-    RESEARCH_DATA_PROVENANCE = os.environ.get("RESEARCH_DATA_PROVENANCE", "development")
+    RESEARCH_DATA_PROVENANCE = os.environ.get("RESEARCH_DATA_PROVENANCE", "study")
     RESEARCH_RETENTION_DAYS = os.environ.get("RESEARCH_RETENTION_DAYS")
+    RESEARCH_COLLECTION_ENDS_AT = os.environ.get("RESEARCH_COLLECTION_ENDS_AT")
     # Release gate: enable only after the reviewed collection schema and pilot checks.
     RESEARCH_COLLECTION_ENABLED = os.environ.get("RESEARCH_COLLECTION_ENABLED", "false").lower() == "true"
     RESEARCHER_EMAIL_ALLOWLIST = os.environ.get("RESEARCHER_EMAIL_ALLOWLIST", "")
@@ -96,7 +97,7 @@ class TestingConfig(Config):
     PAYMENT_PROVIDER_MODE = "disabled"
     # Pinned for the same reason: a test opts in to "study" data or a
     # retention value explicitly.
-    RESEARCH_DATA_PROVENANCE = "development"
+    RESEARCH_DATA_PROVENANCE = "study"
     RESEARCH_RETENTION_DAYS = None
     RESEARCHER_EMAIL_ALLOWLIST = ""
 

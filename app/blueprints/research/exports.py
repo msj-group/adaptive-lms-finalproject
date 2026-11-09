@@ -10,7 +10,7 @@ with its description and an audit event. Every download serves exactly
 those stored bytes -- never regenerated -- after re-checking their SHA-256,
 and is audited too. An archive the retention rule removed is answered as
 gone (410); a corrupted one is refused. The server selects the deployment's
-export scope, with operational review kept separate from study data.
+Study-only export scope.
 No file carries a name, email address, account id, mapping or
 content (``research_exports``).
 """
@@ -40,10 +40,16 @@ def _provenance():
 
 def _form():
     form = ExportForm()
+    from app.services.research_export_groups import group_choices
+    form.groups.choices = group_choices()
     form.configuration.choices = [("", "Select collection settings")] + [
         (row.public_id, f"Settings #{row.version_number} — {row.label}")
         for row in queries.configuration_choices()
     ]
+    if request.method == "GET":
+        active = queries.active_configuration()
+        if active:
+            form.configuration.data = active.public_id
     return form
 
 
@@ -51,33 +57,27 @@ def _form():
 @research_bp.route("/exports/new", methods=["GET", "POST"], endpoint="export_create")
 @roles_required(_RESEARCHER)
 def exports():
+    if request.endpoint == "research.export_create" and request.method == "GET":
+        return redirect(url_for("research.exports"), code=303)
     form = _form()
-    selection = None
     if request.method == "POST":
         if form.validate_on_submit():
-            if request.form.get("preview"):
-                try:
-                    selection = exporter.selection_summary(form.configuration.data or None,
-                        form.period_from.data, form.period_to.data, _tz_name())
-                except (ValueError, OverflowError):
-                    flash("Check the date range and configuration.", "warning")
-            else:
-                status, public_id = exporter.create_export(
+            status, public_id = exporter.create_export(
                 current_user.id, form.configuration.data or None, form.period_from.data,
-                form.period_to.data, _tz_name())
-                if status == exporter.CREATED:
-                    flash("Export created.", "success")
-                    return redirect(url_for("research.export_detail", export_public_id=public_id))
-                flash({
-                exporter.BAD_PERIOD: "Check the period: the end date is before the start date.",
-                exporter.TOO_LARGE: "This export is larger than the supported bound. Narrow "
-                                    "the period or select specific collection settings.",
-                exporter.UNAUTHORIZED: "Your account can no longer create exports.",
-                exporter.CLOCK_AHEAD: "Some saved research data carries a time later than "
-                                      "this server's clock, so nothing was exported. Try "
-                                      "again in a minute, and check the server clocks if "
-                                      "this repeats.",
-                }.get(status, "The export could not be created. Nothing was written."), "danger")
+                form.period_to.data, _tz_name(), group_public_ids=form.groups.data)
+            if status == exporter.CREATED:
+                flash("Export created.", "success")
+                return redirect(url_for("research.export_detail", export_public_id=public_id))
+            flash({
+            exporter.BAD_PERIOD: "Check the period: the end date is before the start date.",
+            exporter.TOO_LARGE: "This export is larger than the supported bound. Narrow "
+                                "the period or select specific collection settings.",
+            exporter.UNAUTHORIZED: "Your account can no longer create exports.",
+            exporter.CLOCK_AHEAD: "Some saved research data carries a time later than "
+                                  "this server's clock, so nothing was exported. Try "
+                                  "again in a minute, and check the server clocks if "
+                                  "this repeats.",
+            }.get(status, "The export could not be created. Nothing was written."), "danger")
         else:
             flash("Check the export filters.", "warning")
     provenance = _provenance()
@@ -86,10 +86,9 @@ def exports():
     first = (page - 1) * queries.PAGE_SIZE + 1 if rows else 0
     last = (page - 1) * queries.PAGE_SIZE + len(rows)
     return render_template(
-        "research/exports/create.html" if request.endpoint == "research.export_create" or request.method == "POST" else "research/exports/list.html",
+        "research/exports/list.html",
         active_nav="exports",
         form=form,
-        selection=selection,
         rows=rows,
         tz_name=_tz_name(),
         provenance=provenance,

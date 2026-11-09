@@ -4,9 +4,11 @@
 **The only place a research identity meets an LMS account.** Collection
 resolves the acting Student's subject through this row (creating both at
 the first collection write, under the population rule), and the operator
-tool (``scripts/research_operator.py``) uses it to exclude, reinstate or mark
-a Student as demonstration data. No Researcher page, Researcher query or
-export reads this table, and nothing else joins research data to ``users``.
+tool (``scripts/research_operator.py``) uses it to exclude or reinstate
+a Student. Owner-approved export group filtering and live presence may resolve
+cohort membership through this table on the server. They return group metadata
+and research codes only, never names, email addresses or account identifiers.
+No ordinary research content view joins research data to ``users``.
 
 **A foreign key to ``users`` proves the row exists, never that it is an
 active Student.** Every collection write re-proves role and status against

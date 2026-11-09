@@ -6,7 +6,9 @@ truthful basis of that status, and a server-controlled provenance.
 
 **This table holds no account reference.** The link to ``users`` lives in
 :class:`~app.models.research_subject_link.ResearchSubjectLink`, which no
-Researcher-facing query and no export ever reads. That is pseudonymization,
+ordinary content query reads. Owner-approved group filtering and live presence
+resolve cohort names privately through that link; account identities never leave
+those services. That is pseudonymization,
 not anonymization: the link exists and anyone with database access can follow
 it.
 
@@ -28,8 +30,7 @@ Database invariants (final defense only):
 - ``ck_research_subjects_code_format`` and ``ck_research_subjects_timestamps_ordered``.
 
 A subject is never deleted, and its code, public id and creation moment never
-change (ORM guards below). ``provenance`` changes only through the audited
-operator action that marks a demonstration account.
+change (ORM guards below). The sole provenance is ``study`` and is immutable.
 """
 from app.models.code_types import CODE_COLLATION
 
@@ -52,7 +53,7 @@ from app.models.submission_feedback import whole_second_utc
 
 COLLECTION_STATUSES = tuple(s.value for s in ResearchCollectionStatus)
 STATUS_BASES = tuple(b.value for b in ResearchStatusBasis)
-SUBJECT_PROVENANCES = (ResearchProvenance.STUDY.value, ResearchProvenance.DEMO.value)
+SUBJECT_PROVENANCES = (ResearchProvenance.STUDY.value,)
 
 #: Which bases each status may carry.
 BASES_BY_STATUS = {
@@ -71,7 +72,7 @@ _STATUS_BASIS_SQL = " OR ".join(
     for status, bases in BASES_BY_STATUS.items()
 )
 
-SUBJECT_IDENTITY_COLUMNS = frozenset({"public_id", "subject_code", "created_at"})
+SUBJECT_IDENTITY_COLUMNS = frozenset({"public_id", "subject_code", "created_at", "provenance"})
 
 
 class ResearchSubject(db.Model):

@@ -15,7 +15,7 @@ are real counts with explicit empty states; nothing is predicted, and no
 page presents a rating distribution or a chart as measured emotion.
 
 The deployment controls the displayed provenance. A browser parameter cannot
-switch it, and operational review sessions remain outside study exports.
+switch it. Only Study data is accepted.
 """
 
 from flask import abort, current_app, redirect, render_template, request, url_for
@@ -57,8 +57,7 @@ def readiness(active):
             "ok": config.get("RESEARCH_DATA_PROVENANCE") == "study",
             "detail": ("Study exports are enabled for eligible study sessions."
                        if config.get("RESEARCH_DATA_PROVENANCE") == "study"
-                       else "Operational review exports are available separately; "
-                            "their data is excluded from study exports."),
+                       else "Study provenance is required before collection can run."),
         },
         {
             "label": "An active configuration is collecting within its period",
@@ -149,9 +148,42 @@ def session_detail(session_public_id):
         to_local=lambda ms: queries.ms_to_local(tz_name(), ms), tz_name=tz_name())
 
 
+def management_redirect(section):
+    values = request.args.to_dict()
+    values["section"] = section
+    return redirect(url_for("research.manage", **values), code=303)
+
+
+@research_bp.route("/manage", methods=["GET", "POST"])
+@roles_required(_RESEARCHER)
+def manage():
+    section = request.args.get("section", "")
+    if section not in {"", "groups", "quality", "exclusions", "audit", "storage"}:
+        abort(404)
+    if request.method == "POST" and section != "storage":
+        abort(405)
+    if section in {"groups", "quality"}:
+        from app.blueprints.research.collection_review import collection_quality
+        return collection_quality()
+    if section == "exclusions":
+        return exclusions()
+    if section == "audit":
+        return activity_log()
+    if section == "storage":
+        from app.blueprints.research.storage import storage
+        return storage()
+    from app.services.schedule_occurrences import to_app_local
+    active = queries.active_configuration()
+    return render_template("research/manage.html", active_nav="manage",
+        retention_days=current_app.config["RESEARCH_RETENTION_DAYS"],
+        study_end=to_app_local(tz_name(), active.collection_ends_at).strftime("%d %b %Y %H:%M") if active else None)
+
+
 @research_bp.get("/exclusions")
 @roles_required(_RESEARCHER)
 def exclusions():
+    if request.endpoint == "research.exclusions":
+        return management_redirect("exclusions")
     rows, total, page = queries.excluded_subjects_page(
         queries.normalize_page(request.args.get("page")))
     first = (page - 1) * queries.PAGE_SIZE + 1 if rows else 0
@@ -172,6 +204,8 @@ def exclusions():
 @research_bp.get("/activity-log")
 @roles_required(_RESEARCHER)
 def activity_log():
+    if request.endpoint == "research.activity_log":
+        return management_redirect("audit")
     from app.services.workspace_filters import research_filters
     try:
         filters, filter_values = research_filters(request.args, tz_name())

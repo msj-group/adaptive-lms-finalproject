@@ -38,17 +38,15 @@ def _sessions(start, end, all_data, provenance):
         raise ValueError("Select both dates for a session-start range, or choose all data.")
     if start and end and end < start:
         raise ValueError("The end date must not precede the start date.")
-    if provenance not in {"all", "study", "development", "demo"}:
-        raise ValueError("Select a valid provenance.")
-    query = ResearchSession.query
+    if provenance != "study":
+        raise ValueError("Research storage requires Study provenance.")
+    query = ResearchSession.query.filter(ResearchSession.provenance == "study")
     if not all_data:
         try:
             lower, upper = _bounds(start, end, current_app.config["APP_TIMEZONE"])
         except (ValueError, OverflowError) as exc:
             raise ValueError("Select a valid date interval in the center timezone.") from exc
         query = query.filter(ResearchSession.started_at_ms >= lower, ResearchSession.started_at_ms < upper)
-    if provenance != "all":
-        query = query.filter(ResearchSession.provenance == provenance)
     return query
 
 
@@ -71,7 +69,7 @@ def _affected_archives(query):
         ResearchExport.id.in_(exports))
 
 
-def cleanup_preview(start, end, all_data=False, provenance="all"):
+def cleanup_preview(start, end, all_data=False, provenance="study"):
     query = _sessions(start, end, all_data, provenance)
     selected = query.with_entities(ResearchSession.id).statement
     count = int(query.count())
@@ -85,7 +83,7 @@ def cleanup_preview(start, end, all_data=False, provenance="all"):
         "selection_digest": _cohort_digest(query)}
 
 
-def cleanup_data(actor_id, expected, start, end, all_data=False, provenance="all"):
+def cleanup_data(actor_id, expected, start, end, all_data=False, provenance="study"):
     db.session.rollback()
     actor = _researcher(actor_id)
     lock_research_control()

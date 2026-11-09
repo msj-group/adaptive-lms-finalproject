@@ -1,39 +1,19 @@
 {% extends 'layouts/research_base.html' %}
 {% import 'research/_ui.html' as rs %}
-{% block title %}Research dashboard{% endblock %}
+{% import '_figma_ui.html' as icons %}
+{% block title %}Research overview{% endblock %}
 {% block research_content %}
-{{ rs.heading('Overview','Collection status, recorded observations and optional feedback.','Research workspace') }}
-{{ rs.scope(provenance,provenance_labels) }}
-<section class="rs-card rs-hero">
-  <div>
-    <div class="rs-scope">{% if not collection_enabled %}<span class="badge badge--neutral">Collection disabled</span>{% elif active and active.is_collecting and period_state == 'open' %}<span class="badge badge--success">Collecting</span>{% elif active and active.is_collecting %}<span class="badge badge--warning">Outside collection period</span>{% elif active %}<span class="badge badge--neutral">Paused</span>{% else %}<span class="badge badge--neutral">Collection inactive</span>{% endif %}</div>
-    <h2>{{ active.label if active else _('No active configuration') }}</h2>
-    <p>Natural-use collection · Phone and computer browsers · Optional self-reports</p>
-    <div class="rs-actions"><a class="btn btn--primary" href="{{ url_for('research.collection_quality') }}">Review collection</a><a class="btn btn--secondary" href="{{ url_for('research.configuration_detail',configuration_public_id=active.public_id) if active else url_for('research.configurations') }}">Collection settings</a></div>
-  </div>
-</section>
-<section class="rs-card">
-  <header class="rs-card-head"><div><h2>Collection evidence</h2><p>Stored observations; no causal conclusions.</p></div></header>
-  <form method="get" class="workspace-filter-grid yc-filter-form">
-    <div class="field"><label for="from">From (UTC)</label><input class="field__input" id="from" name="from" type="date" value="{{ analytics_filters.from }}" required></div>
-    <div class="field"><label for="to">Through (UTC)</label><input class="field__input" id="to" name="to" type="date" value="{{ analytics_filters.to }}" required></div>
-    <div class="field"><label for="version">Collection settings</label><select class="field__input" id="version" name="version"><option value="">All settings</option>{% for row in configurations %}<option value="{{ row.version_number }}"{% if analytics_filters.version == row.version_number|string %} selected{% endif %}>#{{ row.version_number }} · {{ row.label }}</option>{% endfor %}</select></div>
-    <div class="rs-actions"><button class="btn btn--primary">Apply range</button><a href="{{ url_for('research.dashboard') }}">Reset</a></div>
-  </form>
-  <p class="workspace-meta">Up to 90 days. Sessions and participants use session start; events use occurrence; feedback uses the question reservation time. Counts describe retained records and may be affected by delivery or retention.</p>
-</section>
-<div class="rs-metrics">
-  {{ rs.metric('Sessions',analytics.sessions,'Server-prepared sessions started in the range','activity') }}
-  {{ rs.metric('Stored events',analytics.events,'Accepted observations occurring in the range','layers') }}
-  {{ rs.metric('Recorded answers',analytics.answered,'Current answers to questions reserved in the range','message') }}
-  {{ rs.metric('Participants',analytics.subjects,'People with sessions started in the range','users') }}
-</div>
+{% call rs.heading('Overview','Follow real Study activity and control collection from one place.') %}
+<details class="rs-range-filter"><summary class="btn btn--secondary">{{ icons.icon('settings',18) }}{{ _('Filter') }}</summary><form method="get" class="workspace-filter-grid">{% for key,label in [('from','From'),('to','Through')] %}<div class="field"><label for="overview-{{ key }}">{{ _(label) }}</label><input class="field__input" type="date" name="{{ key }}" id="overview-{{ key }}" value="{{ analytics_filters[key] }}"></div>{% endfor %}<button class="btn btn--primary" type="submit">{{ _('Apply') }}</button><a href="{{ url_for('research.dashboard') }}">{{ _('Reset') }}</a></form></details>
+{% endcall %}
+{% include 'research/_live.html' %}
+<p class="rs-period">{{ analytics_filters.from }} - {{ analytics_filters.to }} <span>UTC</span></p>
+<div class="rs-metrics">{{ rs.metric('Participants',analytics.subjects,'','users') }}{{ rs.metric('Sessions',analytics.sessions,'','activity') }}{{ rs.metric('Recorded events',analytics.events,'','layers') }}{{ rs.metric('Recorded answers',analytics.answered,'','message') }}</div>
 <div class="rs-split">
-  <section class="rs-card"><header class="rs-card-head"><h2>Stored events by UTC day</h2><span>{{ analytics_filters.from }} — {{ analytics_filters.to }}</span></header>
-    {% if analytics.events %}<div class="rs-table-wrap"><table class="dash-table"><thead><tr><th>UTC day</th><th>Retained events</th></tr></thead><tbody>{% for row in analytics.daily %}<tr><th>{{ row.label }}</th><td><meter min="0" max="{{ analytics.maximum }}" value="{{ row.count }}" aria-label="{{ row.label }}">{{ row.count }}</meter> {{ row.count }}</td></tr>{% endfor %}</tbody></table></div>{% else %}{{ rs.empty('No recorded observations','No events are retained in this range. This does not prove that no use occurred.','chart') }}{% endif %}
-  </section>
-  <section class="rs-card"><h2>Review tools</h2><div class="rs-actions"><a class="btn btn--secondary" href="{{ url_for('research.sessions') }}">Inspect sessions</a><a class="btn btn--secondary" href="{{ url_for('research.collection_quality',view='groups') }}">Evaluation groups</a><a class="btn btn--secondary" href="{{ url_for('research.export_create') }}">Prepare export</a></div><dl class="rs-facts"><dt>Rendered questions</dt><dd>{{ analytics.rendered }}</dd><dt>Timely eligible answers</dt><dd>{{ analytics.eligible }}</dd></dl><p class="workspace-meta">Technical counts cover all evaluation groups without exposing rating values. Detailed review and ordinary exports protect reserved-final-test participants.</p></section>
+<section class="rs-card"><header class="rs-card-head"><h2>{{ _('Activity over time') }}</h2></header>
+{% if analytics.events %}<div class="rs-activity-bars">{% for row in analytics.daily %}<div><time>{{ row.label }}</time><meter min="0" max="{{ analytics.maximum }}" value="{{ row.count }}" aria-label="{{ row.label }}">{{ row.count }}</meter><strong>{{ row.count }}</strong></div>{% endfor %}</div>{% else %}{{ rs.empty('No activity recorded yet','Data will appear when eligible students use the platform.','chart') }}{% endif %}
+</section>
+<section class="rs-card"><h2>{{ _('Next actions') }}</h2><div class="rs-quick-links"><a href="{{ url_for('research.sessions') }}">{{ icons.icon('activity',20) }}{{ _('View sessions') }}{{ icons.icon('arrow',17) }}</a><a href="{{ url_for('research.exports') }}">{{ icons.icon('file',20) }}{{ _('Export data') }}{{ icons.icon('arrow',17) }}</a><a href="{{ url_for('research.manage',section='quality') }}">{{ icons.icon('chart',20) }}{{ _('Check data quality') }}{{ icons.icon('arrow',17) }}</a></div><dl class="rs-facts"><dt>{{ _('Questions shown') }}</dt><dd>{{ analytics.rendered }}</dd><dt>{{ _('Usable answers') }}</dt><dd>{{ analytics.eligible }}</dd></dl></section>
 </div>
-<details class="rs-card"><summary>Event types and observed contexts</summary><div class="rs-table-wrap"><table class="dash-table"><thead><tr><th>Source</th><th>Event</th><th>Count</th></tr></thead><tbody>{% for source,kind,count in analytics.types %}<tr><td>{{ source }}</td><td>{{ kind }}</td><td>{{ count }}</td></tr>{% else %}<tr><td colspan="3">No events</td></tr>{% endfor %}</tbody></table><table class="dash-table"><thead><tr><th>Observed context</th><th>Context entries</th></tr></thead><tbody>{% for context,count in analytics.contexts %}<tr><td>{{ context }}</td><td>{{ count }}</td></tr>{% endfor %}</tbody></table></div></details>
-<details class="rs-card"><summary>Operational checks</summary><div class="rs-table-wrap"><table class="dash-table"><tbody>{% for item in readiness %}<tr><th>{{ item.label }}</th><td>{{ 'External' if item.ok is none else 'Yes' if item.ok else 'No' }}</td><td>{{ item.detail }}</td></tr>{% endfor %}</tbody></table></div></details>
+<details class="rs-card"><summary>{{ _('Activity details') }}</summary><div class="rs-table-wrap"><table class="dash-table"><thead><tr><th>{{ _('Source') }}</th><th>{{ _('Event') }}</th><th>{{ _('Count') }}</th></tr></thead><tbody>{% for source,kind,count in analytics.types %}<tr><td>{{ source }}</td><td>{{ kind }}</td><td>{{ count }}</td></tr>{% else %}<tr><td colspan="3">{{ _('No events') }}</td></tr>{% endfor %}</tbody></table></div></details>
 {% endblock %}
