@@ -5401,5 +5401,9 @@
   "Paused media": "أوقف وسيطًا مؤقتًا",
   "Replayed media": "أعاد تشغيل وسيط",
   "Moved in media": "تنقّل داخل وسيط",
-  "Opened help": "فتح المساعدة"
+  "Opened help": "فتح المساعدة",
+  "%(count)s days": "%(count)s يومًا",
+  "Choose one or more groups. Leave all unchecked to export all groups.": "اختر مجموعة أو أكثر. اتركها دون تحديد لتصدير جميع المجموعات.",
+  "Participant": "المشارك",
+  "Participants": "المشاركون"
 }
