@@ -1,3 +1,4 @@
+<div data-live-part="announcements" data-live-url="{{ request.full_path.rstrip('?') }}">
 {% import "_announcement_macros.html" as ann %}
 {% import "_figma_ui.html" as ui %}
 {% set filter_count = (1 if selected_status else 0) + (1 if since else 0) + (1 if until else 0) + (1 if q else 0) %}
@@ -60,4 +61,5 @@
       {% if has_next %}<a href="{{ url_for('teacher.announcements_feed', view=view, group=selected_group or None, page=page+1, q=raw_q or None, status=selected_status or None, **{'from':since or None,'to':until or None}) }}">Next</a>{% endif %}
     </nav>
   </section>
+</div>
 </div>

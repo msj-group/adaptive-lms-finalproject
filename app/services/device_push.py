@@ -12,11 +12,12 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 from sqlalchemy import func, select, update
 
 from app.extensions import db
-from app.models import Notification, User
+from app.models import Notification, NotificationKind, User
 from app.models.device_push import DevicePushSubscription as Device
 
 COOKIE = "aelms_push_device"
 ROLES = ("student", "teacher", "administrator", "researcher")
+MESSAGE_FOREGROUND_GRACE = timedelta(seconds=4)
 
 
 class SubscriptionConflict(ValueError):
@@ -231,9 +232,18 @@ def deliver_device(device_id):
         _advance(identity, enabled=False)
         return
     notices = db.session.execute(select(Notification.id, Notification.read_at,
-        Notification.title, Notification.message).where(
+        Notification.title, Notification.message, Notification.kind, Notification.created_at).where(
         Notification.recipient_id == user.id, Notification.id > device.last_notification_id)
         .order_by(Notification.id).limit(50)).all()
+    # A foreground chat can acknowledge a newly displayed reply before
+    # it generates a second alert on the device. Leave the cursor before
+    # deferred notices so an unread reply is still sent on a later cycle.
+    cutoff = now() - MESSAGE_FOREGROUND_GRACE
+    for index, notice in enumerate(notices):
+        if (notice.kind == NotificationKind.MESSAGE_RECEIVED.value
+                and notice.read_at is None and notice.created_at > cutoff):
+            notices = notices[:index]
+            break
     if not notices:
         db.session.rollback()
         return

@@ -1,7 +1,7 @@
 {% extends "layouts/portal_base.html" %}
 {% import "_figma_ui.html" as ui %}
 {% block title %}Review queue{% endblock %}
-{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/review.css', v='review-feedback-flow-20261018') }}">{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/review.css', v='review-live-feedback-1') }}">{% endblock %}
 {% block portal_content %}
 <div class="teacher-review" data-review-workbench>
   {% set active_filter_count = (1 if selected_group else 0) + (1 if selected_type else 0) + (1 if selected_state != 'pending' else 0) + (1 if since else 0) + (1 if until else 0) %}
@@ -50,4 +50,4 @@
   <p class="review-footnote">Written feedback does not release a grade.</p>
 </div>
 {% endblock %}
-{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_review.js', v='review-feedback-flow-20261018') }}" defer></script>{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_review.js', v='review-live-feedback-1') }}" defer></script>{% endblock %}

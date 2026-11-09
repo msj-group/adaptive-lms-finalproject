@@ -1,0 +1,4 @@
+{% from "student/announcements/_index.html" import announcement_index %}
+<div data-live-part="announcements" data-live-url="{{ request.full_path.rstrip('?') }}">
+{{ announcement_index(announcements, page, has_prev, has_next, page_size) }}
+</div>

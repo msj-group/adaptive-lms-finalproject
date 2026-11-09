@@ -6,6 +6,7 @@
 {% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_discussions.js', v='dialogs-inline-20261022') }}" defer></script>{% endblock %}
 {% block workspace_content_class %}tdisc-content{{ ' tdisc-content-reading' if topic|default(none) else '' }}{% endblock %}
 {% block portal_content %}
+{% set discussion_live_url = request.full_path.rstrip('?') %}
 <div class="tdisc" data-teacher-discussions data-tdisc-actor="{{ current_user.public_id }}"{% if group %} data-tdisc-group="{{ group.public_id }}" data-tdisc-group-url="{{ url_for('teacher.discussions_group', group_public_id=group.public_id) }}" data-tdisc-new-url="{{ url_for('teacher.discussions_new', group_public_id=group.public_id) }}"{% endif %}{% if topic|default(none) %} data-tdisc-topic="{{ topic.public_id }}"{% endif %}>
   <header class="tdisc-heading">
     <div><p class="tdisc-eyebrow">{{ ui.icon('message', 16) }}<span>A space to connect</span></p><h1 data-workspace-page-heading>{% block discussion_heading %}Discussions<span class="figma-brand-dot">.</span>{% endblock %}</h1><p class="tdisc-subtitle">{% block discussion_subtitle %}Good questions. Better conversations.{% endblock %}</p></div>
@@ -17,18 +18,13 @@
   {% block discussion_content %}
   {% if group %}
     <div class="tdisc-layout{{ ' has-topic' if topic|default(none) else '' }}">
-      <section class="tdisc-board" aria-label="Discussion topics">
-        <header class="tdisc-board-heading"><div><h2>Group conversations</h2><span>{{ _n('%(count)d topic', '%(count)d topics', topic_total_count) }}</span></div><p><span>All topics</span><span>{{ _('%(count)d open', count=topic_open_count) }}</span><span>Newest first</span></p></header>
-        {{ disc.topic_list(topics, group, topic|default(none), topic_page) }}
-        {{ disc.topic_pager(group, topic|default(none), topic_page, topics_has_prev, topics_has_next, page|default(1)) }}
-        {% if topic|default(none) and topic.public_id not in topics|map(attribute='public_id')|list %}<p class="tdisc-page-note">The current topic is outside this topic list page.</p>{% endif %}
-      </section>
+      {% include 'teacher/discussions/_topic_board.html' %}
       {% if topic|default(none) %}
       <section class="tdisc-reader" aria-label="Discussion">
         <div class="tdisc-reader-bar"><a href="{{ url_for('teacher.discussions_group', group_public_id=group.public_id, page=topic_page) }}" class="tdisc-back">{{ ui.icon('arrow', 16) }}<span>All topics</span></a>{{ disc.status(topic.is_locked) }}</div>
         {{ disc.topic_header(topic, group) }}
         {{ disc.moderation(group, topic, moderation_action, moderation_state, topic_page, page) }}
-        {{ disc.reply_timeline(replies, group, topic, page, has_prev, has_next, topic_page, reply_total_count) }}
+        {% include 'teacher/discussions/_reply_board.html' %}
         {{ disc.reply_form(can_reply, group, topic, reply_state, draft, body_error, form_error, body_max, topic_page, page) }}
       </section>
       {% endif %}

@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='pwa/icon-clear-180.png') }}">
   <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='pwa/icon-clear-192.png') }}">
   <script src="{{ url_for('static', filename='js/pwa.js', v='install-guides-3') }}" data-worker-url="{{ url_for('pwa.service_worker') }}" data-app-runtime defer></script>
-  <script src="{{ url_for('static', filename='js/device_push.js', v='device-language-3') }}" data-status-url="{{ url_for('device_push.status') }}" data-subscribe-url="{{ url_for('device_push.subscribe') }}" data-disable-url="{{ url_for('device_push.disable') }}" data-language-url="{{ url_for('device_push.language') }}" data-remember-url="{{ url_for('auth.remember_device') }}" data-app-runtime defer></script>
+  <script src="{{ url_for('static', filename='js/device_push.js', v='device-menu-4') }}" data-status-url="{{ url_for('device_push.status') }}" data-subscribe-url="{{ url_for('device_push.subscribe') }}" data-disable-url="{{ url_for('device_push.disable') }}" data-language-url="{{ url_for('device_push.language') }}" data-remember-url="{{ url_for('auth.remember_device') }}" data-app-runtime defer></script>
   <title>{% block title %}Youth Learn{% endblock %}</title>
   <meta name="aelms-workspace-scope" content="{{ workspace_navigation().scope if current_user.is_authenticated else '' }}">
   <script src="{{ url_for('static', filename='js/page_scope.js', v='app-1') }}" data-app-runtime></script>
@@ -54,6 +54,7 @@
   {% include 'pwa/_install.html' %}
   <script src="{{ url_for('static', filename='js/course_media.js', v='compact-player-3') }}" defer></script>
   {% block body_scripts %}{% endblock %}
+  {% if current_user.is_authenticated %}<script src="{{ url_for('static', filename='js/communication_live.js', v='3') }}" defer></script>{% endif %}
   {% if current_user.is_authenticated %}<script src="{{ url_for('static', filename='js/workspace_header.js', v='centre-header-4') }}" defer></script>{% endif %}
 </body>
 </html>

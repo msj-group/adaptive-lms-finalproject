@@ -1,5 +1,6 @@
 """Opt-in GET result fragments; existing views retain all query/auth decisions."""
 from flask import current_app, render_template, request
+from app.services.communication_presentation import LIVE_HEADER, render_communication_fragment
 
 # Explicit presentation allowlist. No POST, endpoint, query or permission shortcut.
 FRAGMENTS = {
@@ -25,6 +26,9 @@ FRAGMENTS = {
 
 
 def render_query_page(template, **context):
+    live = render_communication_fragment(template, context)
+    if live is not None:
+        return live
     fragment = request.method == "GET" and request.headers.get("X-AELMS-Query") == "results"
     selected = FRAGMENTS.get(template) if fragment else None
     response = current_app.make_response(render_template(selected or template, **context))
@@ -33,4 +37,5 @@ def render_query_page(template, **context):
     response.headers["Cache-Control"] = "private, no-store"
     response.vary.add("Cookie")
     response.vary.add("X-AELMS-Query")
+    response.vary.add(LIVE_HEADER)
     return response

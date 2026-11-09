@@ -1,3 +1,4 @@
+<div data-live-part="announcements" data-live-url="{{ request.full_path.rstrip('?') }}">
 {% import "_announcement_macros.html" as ann %}
 {% import "_figma_ui.html" as ui %}
 {% set scopes = [('', 'All announcements', 'All scopes', 'layers'), ('center', 'Centre announcements', 'Everybody at the centre', 'megaphone'), ('course', 'Course announcements', 'Course audience', 'book'), ('group', 'Group announcements', 'Group members', 'users')] %}
@@ -38,4 +39,5 @@
       {% if has_prev %}<a data-query-page href="{{ url_for('admin.announcements_overview', page=page-1, scope=filter_scope or None, status=filter_status or None) }}">Previous</a>{% endif %}<span>{{ _('Page %(page)d · %(count)d shown', page=page, count=announcements|length) }}</span>{% if has_next %}<a data-query-page href="{{ url_for('admin.announcements_overview', page=page+1, scope=filter_scope or None, status=filter_status or None) }}">Next</a>{% endif %}
     </nav>
   </section>
+</div>
 </div>

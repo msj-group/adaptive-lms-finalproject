@@ -1,3 +1,4 @@
+<div data-live-part="notification-inbox" data-live-url="{{ request.full_path.rstrip('?') }}">
 {% import "_notification_macros.html" as notice %}
 {% import "_figma_ui.html" as ui %}
 <span hidden data-query-count="{{ notifications|length }}"></span>
@@ -20,3 +21,4 @@
     </div>
     {% endif %}
     {% if has_prev or has_next %}<nav class="notif-pagination" aria-label="Notification pages">{% if has_prev %}<a class="btn" href="{{ url_for('notifications.inbox', filter=filter_name, kind=selected_kind, page=page - 1) }}">Previous</a>{% endif %}<span class="notif-pagination__page">Page {{ page }}</span>{% if has_next %}<a class="btn" href="{{ url_for('notifications.inbox', filter=filter_name, kind=selected_kind, page=page + 1) }}">Next</a>{% endif %}</nav>{% endif %}
+</div>

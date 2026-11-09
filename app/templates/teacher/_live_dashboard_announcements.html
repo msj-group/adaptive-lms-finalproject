@@ -1,0 +1,5 @@
+{% import "_figma_ui.html" as ui %}
+{% import "_announcement_macros.html" as ann %}
+<div data-live-part="dashboard-announcements" data-live-url="{{ url_for('teacher.dashboard') }}" data-live-interval="5000">
+      {% for item in announcements[:1] %}<a class="cockpit-announcement" href="{{ url_for('teacher.announcement_detail', announcement_public_id=item.public_id) }}"><span class="cockpit-announcement-icon" aria-hidden="true">{{ ui.icon('megaphone', 22) }}</span><div><h3 dir="auto">{{ item.title }}</h3><p><bdi>{{ item.context }}</bdi> {{ ann.scope_badge(item) }}</p>{% if item.published_local %}<time datetime="{{ item.published_local.isoformat() }}">{{ ui_date(item.published_local.strftime('%d %b %Y · %H:%M')) }}</time>{% endif %}</div><span class="cockpit-announcement-arrow" aria-hidden="true">{{ ui.icon('chevron', 16) }}</span></a>{% else %}<p class="cockpit-announcements-empty">No announcements yet.</p>{% endfor %}
+</div>

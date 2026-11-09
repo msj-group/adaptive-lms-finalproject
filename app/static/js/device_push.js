@@ -9,6 +9,7 @@
   let busy = false;
   let state;
   let stateActor;
+  let refreshId = 0;
   const account = () => document.querySelector('meta[name="aelms-device-account"]');
   const installed = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
   const supported = () => isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -34,9 +35,7 @@
   }
   function paint(message, enabled = false, disabled = false) {
     document.querySelectorAll('[data-device-header]').forEach(button => {
-      button.hidden = false;
-      button.querySelector('[data-device-header-label]').textContent = t(enabled ? 'Device notifications on' : 'Enable notifications');
-      button.dataset.enabled = String(enabled);
+      button.hidden = enabled;
     });
     document.querySelectorAll('[data-device-notifications]').forEach(panel => {
       panel.querySelector('[data-device-status]').textContent = t(message);
@@ -47,36 +46,48 @@
       panel.dataset.subscribed = String(enabled);
     });
   }
+  function paintSubscription(subscribed) {
+    if (Notification.permission === 'denied') {
+      paint('Notifications are blocked. Allow them in your browser or device settings.', subscribed, !subscribed);
+      return;
+    }
+    paint(subscribed ? 'Notifications are enabled on this device.' : 'Turn on device notifications to receive your updates.', subscribed);
+  }
   async function refresh() {
+    if (busy) return;
+    const requestId = ++refreshId;
     const checkbox = document.querySelector('[data-remember-device]');
     if (checkbox && installed() && preference()) checkbox.checked = true;
     remember();
     if (!supported()) { paint('Device notifications are not supported in this browser.', false, true); return; }
     const actor = account()?.content;
     if (!actor) { state = undefined; stateActor = undefined; return; }
+    const isCurrent = () => requestId === refreshId && actor === account()?.content;
     const language = document.documentElement.lang === 'ar' ? 'ar' : 'en';
-    if (synced.get(actor) === language && state && !state.renew) {
-      paint(state.subscribed ? 'Notifications are enabled on this device.' : 'Turn on device notifications to receive your updates.', state.subscribed,
-        Notification.permission === 'denied' && !state.subscribed);
+    if (synced.get(actor) === language && stateActor === actor && state && !state.renew) {
+      paintSubscription(state.subscribed);
       return;
     }
     try {
       const response = await fetch(urls.statusUrl, {credentials:'same-origin', cache:'no-store'});
       const result = await response.json();
-      if (actor !== account()?.content) return;
+      if (!isCurrent()) return;
+      if (!response.ok) throw new Error('Device subscription status unavailable');
       state = result; stateActor = actor;
-      if (!response.ok || !state.enabled) { paint('Device notifications are not available yet.', false, true); return; }
+      if (!state.enabled) { paint('Device notifications are not available yet.', false, true); return; }
       if (state.subscribed && state.language !== language) await send(urls.languageUrl, {});
       if (state.subscribed && state.renew && Notification.permission === 'granted') {
         const registration = await navigator.serviceWorker.getRegistration('/');
         const subscription = await registration?.pushManager.getSubscription();
-        if (subscription && actor === account()?.content) await send(urls.subscribeUrl, subscription.toJSON());
+        if (subscription && isCurrent()) await send(urls.subscribeUrl, subscription.toJSON());
       }
-      if (actor !== account()?.content) return;
+      if (!isCurrent()) return;
       synced.set(actor, language);
-      if (Notification.permission === 'denied') { paint('Notifications are blocked. Allow them in your browser or device settings.', state.subscribed, !state.subscribed); return; }
-      paint(state.subscribed ? 'Notifications are enabled on this device.' : 'Turn on device notifications to receive your updates.', state.subscribed);
-    } catch (_) { if (actor === account()?.content) paint('Could not check notifications. Reopen this page to try again.', false, true); }
+      paintSubscription(state.subscribed);
+    } catch (_) {
+      if (isCurrent()) paint('Could not check notifications. Reopen this page to try again.',
+        stateActor === actor && !!state?.subscribed, true);
+    }
   }
   function publicKey(value) {
     const raw = atob(value.replace(/-/g,'+').replace(/_/g,'/') + '='.repeat((4-value.length%4)%4));
@@ -104,15 +115,19 @@
     };
     const panel = button.closest('[data-device-notifications]');
     const disabling = panel.dataset.subscribed === 'true';
+    refreshId += 1;
     busy = true;
     paint(disabling ? 'Turning off notifications…' : 'Preparing device notifications…', disabling);
     try {
       if (disabling) {
         await send(urls.disableUrl, {}, token);
         checkActor();
-        const registration = await navigator.serviceWorker.getRegistration('/');
-        const subscription = await registration?.pushManager.getSubscription();
-        if (subscription) await subscription.unsubscribe().catch(() => {});
+        try {
+          const registration = await navigator.serviceWorker.getRegistration('/');
+          const subscription = await registration?.pushManager.getSubscription();
+          checkActor();
+          if (subscription) await subscription.unsubscribe();
+        } catch (_) { /* Delivery is already disabled on the server. */ }
       } else {
         // Keep the permission request inside the user's click, before async work.
         const permission = await Notification.requestPermission();
@@ -132,7 +147,10 @@
           await send(urls.subscribeUrl, subscription.toJSON(), token);
         }
       }
+      checkActor();
+      state.subscribed = !disabling;
       busy = false;
+      paintSubscription(state.subscribed);
       synced.delete(actor);
       await refresh();
     } catch (error) {

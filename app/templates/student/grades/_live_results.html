@@ -1,0 +1,48 @@
+{% import "_grade_macros.html" as gr %}
+{% import "_figma_ui.html" as ui %}
+<div data-live-part="grade-comments" data-live-url="{{ request.full_path.rstrip('?') }}">
+<section class="grade-overall st-panel" aria-labelledby="grade-overall-heading">
+  {% if overall_display is not none %}<strong class="grade-overall-value" dir="ltr">{{ overall_display }}<span>%</span></strong>{% endif %}
+  <div><h2 id="grade-overall-heading">Overall grade</h2>
+  {% if overall_display is not none %}
+  <p>
+    Calculated from every released result below, weighted by how much each part of the course
+    is worth.
+  </p>
+  {% else %}
+  <span class="badge badge--neutral">Not available yet</span>
+  <p>{{ _(overall_message) }}</p>
+  {% endif %}
+  </div>
+</section>
+
+<div class="grade-categories">
+{% for category in categories %}
+<details class="grade-category st-panel" data-live-disclosure="category-{{ loop.index0 }}-{{ category.title }}"{% if loop.first %} open{% endif %}>
+  <summary><span><span class="grade-category-title" dir="auto">{{ category.title }}</span><span class="grade-category-weight">{{ _('Worth %(weight)s of the course', weight=category.weight_display ~ '%') }}</span></span><span class="grade-category-result"><strong>{{ gr.percentage(category.percentage_display) }}</strong>{{ ui.icon('chevron-down', 18) }}</span></summary>
+
+  {% if not category.complete %}
+  <p class="ds-section__desc grade-category-note">{{ _n('Result available for %(scored)d of %(count)d released item.', 'Results available for %(scored)d of %(count)d released items.', category.released_item_count, scored=category.scored_item_count) }}</p>
+  {% endif %}
+
+  {% set category_index = loop.index0 %}
+  {% if category.grade_items %}
+  <div class="grade-items">
+      {% for item in category.grade_items %}
+      <article class="grade-item">
+        <div class="grade-item-heading"><h3 dir="auto">{{ item.item_title }}</h3><span class="grade-item-kind">{{ _(item.source_label) }}</span></div>
+        <dl class="grade-item-result"><div><dt>Score</dt><dd dir="ltr">{{ gr.points(item.score_display) }} <span class="grade-item-max"><span aria-label="{{ _('Out of') }}">/</span> {{ gr.points(item.max_points_display) }}</span></dd></div><div><dt>Percent</dt><dd dir="ltr">{{ gr.percentage(item.percentage_display) }}</dd></div></dl>
+        {% if item.comment %}<details class="grade-comment" data-live-disclosure="comment-{{ category_index }}-{{ loop.index0 }}-{{ item.item_title }}"><summary>{{ ui.icon('message', 15) }}<span>Your teacher's comment</span>{{ ui.icon('chevron-down', 14) }}</summary><div dir="auto">{{ gr.comment_block(item.comment) }}</div></details>{% endif %}
+      </article>
+      {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">Nothing released in this part yet</div>
+    <div>Results appear here as your teacher releases them.</div>
+  </div>
+  {% endif %}
+</details>
+{% endfor %}
+</div>
+</div>

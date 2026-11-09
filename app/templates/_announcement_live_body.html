@@ -1,0 +1,2 @@
+{% import "_announcement_macros.html" as ann %}
+<div data-live-part="announcement-body" data-live-url="{{ request.full_path.rstrip('?') }}">{{ ann.body_block(announcement) }}</div>

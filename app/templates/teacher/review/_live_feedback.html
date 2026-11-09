@@ -1,0 +1,8 @@
+{% set feedback_url = url_for(request.endpoint, **request.view_args) %}
+<div data-live-part="saved-feedback" data-live-url="{{ feedback_url }}">
+  {% if feedback.state == 'present' %}
+  <p class="review-feedback-attribution">{{ _('Last changed by %(name)s on %(date)s.', name=feedback.reviewer_name, date=ui_date(feedback.updated_local.strftime('%d %b %Y · %H:%M'))) }}</p>
+  <div class="review-answer review-saved-comment" dir="auto">{{ feedback.text }}</div>
+  {% elif feedback.state == 'invalid' %}<p>{{ _('Feedback is currently unavailable.') }}</p>
+  {% else %}<p>{{ _('No feedback yet') }}</p>{% endif %}
+</div>

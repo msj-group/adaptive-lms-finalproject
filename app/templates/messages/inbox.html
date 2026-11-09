@@ -5,14 +5,8 @@
 {{ msg.flash_messages() }}
 <div class="messenger messenger--inbox">
   <div class="messenger-inbox-list">
-    {{ msg.sidebar(conversations, recipients=recipients, audience=audience, inbox_query=query_text|default('')) }}
-    {% if has_prev or has_next %}
-    <nav class="messenger-pagination" aria-label="Conversation pages">
-      {% if has_prev %}<a href="{{ url_for('messages.inbox', q=query_text|default(''), page=page - 1) }}">{{ msg.icon('back', 16) }} Newer</a>{% endif %}
-      <span>Page {{ page }}</span>
-      {% if has_next %}<a href="{{ url_for('messages.inbox', q=query_text|default(''), page=page + 1) }}">Older {{ msg.icon('arrow', 16) }}</a>{% endif %}
-    </nav>
-    {% endif %}
+    {{ msg.sidebar(conversations, recipients=recipients, audience=audience, inbox_query=query_text|default(''), live_url=url_for('messages.inbox', q=query_text or None) if page == 1 else None) }}
+    {% include 'messages/_inbox_pager.html' %}
   </div>
   <section class="messenger-welcome" aria-labelledby="message-welcome-title">
     <div class="messenger-welcome__art" aria-hidden="true">{{ msg.icon('message', 30) }}</div>

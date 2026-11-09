@@ -1,0 +1,10 @@
+{% import "_message_macros.html" as msg %}
+<div data-conversation-pager{% if page == 1 %} data-live-part="conversation-pager" data-live-url="{{ url_for('messages.inbox', q=query_text or None) }}"{% endif %}>
+{% if has_prev or has_next %}
+    <nav class="messenger-pagination" aria-label="Conversation pages">
+      {% if has_prev %}<a href="{{ url_for('messages.inbox', q=query_text|default(''), page=page - 1) }}">{{ msg.icon('back', 16) }} Newer</a>{% endif %}
+      <span>Page {{ page }}</span>
+      {% if has_next %}<a href="{{ url_for('messages.inbox', q=query_text|default(''), page=page + 1) }}">Older {{ msg.icon('arrow', 16) }}</a>{% endif %}
+    </nav>
+    {% endif %}
+</div>

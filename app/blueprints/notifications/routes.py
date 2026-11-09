@@ -6,15 +6,14 @@ producer. Every row remains recipient-scoped; Open is a CSRF-protected POST and
 canonical thread destinations re-prove membership. Other role namespaces stay closed.
 """
 
+from app.services.communication_presentation import live_requested
 from app.services.query_presentation import render_query_page
 
 from flask import (
     abort,
     current_app,
     flash,
-    make_response,
     redirect,
-    render_template,
     request,
     url_for,
 )
@@ -80,7 +79,8 @@ def inbox():
     page = normalize_page(request.args.get("page"))
     tz_name = current_app.config.get("APP_TIMEZONE", "UTC")
 
-    sync_curriculum_notices(current_user)
+    if not live_requested():
+        sync_curriculum_notices(current_user)
     rows, has_next = inbox_page(current_user.id, filter_name, page, kind)
     if not rows and page > 1:
         # A page past the end (a stale bookmark, or everything on the
@@ -89,38 +89,38 @@ def inbox():
         page = 1
         rows, has_next = inbox_page(current_user.id, filter_name, page, kind)
 
-    response = make_response(
-        render_query_page(
-            "notifications/inbox.html",
-            notifications=build_inbox_view(rows, tz_name),
-            filter_name=filter_name,
-            selected_kind=kind,
-            kind_choices=KIND_FILTERS,
-            page=page,
-            has_next=has_next,
-            has_prev=page > 1,
-            page_size=PAGE_SIZE,
-            unread_total=unread_count(current_user.id),
-            tz_name=tz_name,
-        )
+    return render_query_page(
+        "notifications/inbox.html",
+        notifications=build_inbox_view(rows, tz_name),
+        filter_name=filter_name,
+        selected_kind=kind,
+        kind_choices=KIND_FILTERS,
+        page=page,
+        has_next=has_next,
+        has_prev=page > 1,
+        page_size=PAGE_SIZE,
+        unread_total=unread_count(current_user.id),
+        tz_name=tz_name,
     )
-    response.headers["Cache-Control"] = "private, no-store"
-    response.vary.add("Cookie")
-    return response
 
 
 @notifications_bp.get("/preview")
 @roles_required(*_RECIPIENT_ROLES)
 def preview():
     """Render the escaped desktop bell after checking for due notices."""
-    sync_curriculum_notices(current_user)
+    if not live_requested():
+        sync_curriculum_notices(current_user)
+    return _preview_response()
+
+
+def _preview_response():
     tz_name = current_app.config.get("APP_TIMEZONE", "UTC")
-    response = make_response(render_template("notifications/_preview.html",
+    return render_query_page(
+        "notifications/_preview.html",
         notifications=build_inbox_view(preview_rows(current_user.id), tz_name),
-        unread_total=unread_count(current_user.id), tz_name=tz_name))
-    response.headers["Cache-Control"] = "private, no-store"
-    response.vary.add("Cookie")
-    return response
+        unread_total=unread_count(current_user.id),
+        tz_name=tz_name,
+    )
 
 
 @notifications_bp.post("/<public_id>/open")
@@ -178,6 +178,10 @@ def read_all():
     """
     changed = mark_all_read(current_user.id)
     db.session.commit()
+    if request.headers.get("X-AELMS-Notification-Preview") == "1":
+        response = _preview_response()
+        response.headers["X-AELMS-Notification-Preview"] = "1"
+        return response
     if changed:
         flash(f"{changed} notification(s) marked as read.", "success")
     else:

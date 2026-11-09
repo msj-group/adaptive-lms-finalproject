@@ -61,12 +61,13 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   syncLayout();
 })();
 
-/* Direction-aware header, including the Messages surface's internal scroll areas. */
+/* Direction-aware header. Messages keeps its platform toolbar visible. */
 (function () {
   "use strict";
   var header = document.querySelector('.yc-workspace .st-header');
   if (!header) return;
   var body = document.body;
+  var keepHeader = body.classList.contains('figma-messages');
   var compact = window.matchMedia('(max-width:1023px)');
   var positions = new WeakMap();
   var hasScrollIntent = false;
@@ -93,6 +94,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     if (!target || (target !== document.scrollingElement && !target.matches('.messenger-sidebar__list,.messenger-timeline,.messenger-welcome,.messenger-greeting'))) return;
     var position = Math.max(0, Math.min(target.scrollTop, target.scrollHeight - target.clientHeight));
     body.dataset.headerScrolled = String(position > 12);
+    if (keepHeader) return;
     var state = positions.get(target) || {position:0, anchor:0, direction:0};
     var delta = position - state.position;
     var direction = Math.sign(delta);

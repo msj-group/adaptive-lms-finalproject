@@ -1,0 +1,26 @@
+<section data-live-part="teacher-feedback" data-live-url="{{ request.full_path.rstrip('?') }}">
+  <h2>Teacher Feedback</h2>
+  {% if feedback and feedback.state == "present" %}
+  <div class="alert alert--info" style="margin-bottom: var(--space-4)">
+    Written by {{ feedback.reviewer_name }} on {{ feedback.updated_local.strftime("%Y-%m-%d %H:%M") }}.
+    This is your teacher's written comment on your answer &mdash; it is not a grade or a pass mark.
+  </div>
+  <div class="st-panel">
+    {# Plain text, autoescaped, line breaks preserved by CSS. Never |safe --
+       feedback is Teacher-typed text, never stored HTML or Markdown. #}
+    <div dir="auto" style="white-space: pre-wrap; word-break: break-word;">{{ feedback.text }}</div>
+  </div>
+
+  {% elif feedback and feedback.state == "invalid" %}
+  {#- Fails closed: the stored text is deliberately NOT rendered, and this
+      state is never shown as "no feedback yet". -#}
+  <div class="alert alert--warning">
+    Feedback on this submission cannot be shown right now. Nothing has been deleted. Please contact the center.
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state__title">No teacher feedback yet</div>
+  </div>
+  {% endif %}
+</section>

@@ -22,8 +22,8 @@
     {% if feedback.state == 'invalid' %}
     <h3>Current feedback</h3><div class="alert alert--danger">The saved feedback is linked to an account that is no longer a teacher. It cannot be shown or changed here. Please ask an administrator to review this record.</div>
     {% else %}
-    {% if feedback.state == 'present' %}<p class="review-feedback-attribution">{{ _('Last changed by %(name)s on %(date)s.', name=feedback.reviewer_name, date=ui_date(feedback.updated_local.strftime('%d %b %Y · %H:%M'))) }}</p>{% endif %}
     {% if can_write and editing %}
+    {% include 'teacher/review/_live_feedback.html' %}
     <form method="post" action="{{ feedback_url }}" novalidate data-review-form data-form-ui>
       {{ form.hidden_tag() }}<input type="hidden" name="feedback_state" value="{{ feedback_state_token }}">
       <div class="review-feedback-label"><label for="feedback_text">Your feedback</label><span class="review-draft-state" data-review-draft role="status" hidden>Not saved yet</span></div>
@@ -34,7 +34,7 @@
       <details class="review-feedback-policy"><summary>About shared feedback</summary><p>Saving replaces the current comment. Every teacher actively assigned to this group can change it. Changes are preserved in academic revision history. Feedback does not mark the activity completed.</p><p>{{ _('Plain text; up to %(count)d characters.', count=form.FEEDBACK_MAX) }}</p></details>
     </form>
     {% else %}
-    <h3>Current feedback</h3>{% if feedback.state == 'present' %}<div class="review-answer review-saved-comment" dir="auto">{{ feedback.text }}</div>{% else %}<p>No feedback yet</p>{% endif %}
+    <h3>Current feedback</h3>{% include 'teacher/review/_live_feedback.html' %}
     {% if can_write %}<div class="review-editor-actions"><a class="btn btn--primary" href="{{ feedback_url }}?edit=1" data-review-edit>Edit</a></div>
     {% else %}<div class="alert alert--info">Feedback is read only because this academic context is archived. {% for label in archived_labels %}{{ _(label) }}{% if not loop.last %} · {% endif %}{% endfor %}</div>{% endif %}
     {% endif %}{% endif %}

@@ -131,9 +131,37 @@ def inbox_page(recipient_id, filter_name, page, kind=""):
 
 
 def preview_rows(recipient_id):
-    """The five newest owned rows. Viewing this list never stamps read_at."""
-    return Notification.query.filter(Notification.recipient_id == recipient_id).order_by(
+    """The five newest unread rows for the current recipient."""
+    return Notification.query.filter(
+        Notification.recipient_id == recipient_id, Notification.read_at.is_(None),
+    ).order_by(
         Notification.created_at.desc(), Notification.id.desc()).limit(PREVIEW_SIZE).all()
+
+
+def _conversation_notices(recipient_id, target):
+    return Notification.query.filter(
+        Notification.recipient_id == recipient_id,
+        Notification.kind == NotificationKind.MESSAGE_RECEIVED.value,
+        Notification.target_path == target,
+    )
+
+
+def conversation_notice_cursor(recipient_id, target):
+    """Return the latest unread notice for the thread about to be rendered."""
+    row = _conversation_notices(recipient_id, target).filter(Notification.read_at.is_(None)).with_entities(
+        Notification.public_id
+    ).order_by(Notification.id.desc()).first()
+    return row.public_id if row else None
+
+
+def acknowledge_conversation_notices(recipient_id, target, cursor):
+    """Acknowledge only notices in this conversation through the supplied cursor."""
+    notices = _conversation_notices(recipient_id, target)
+    through = notices.filter(Notification.public_id == cursor).with_entities(Notification.id).scalar()
+    if through is not None:
+        notices.filter(Notification.read_at.is_(None), Notification.id <= through).update(
+            {Notification.read_at: datetime.now(timezone.utc)}, synchronize_session=False,
+        )
 
 
 def own_notification(recipient_id, public_id):

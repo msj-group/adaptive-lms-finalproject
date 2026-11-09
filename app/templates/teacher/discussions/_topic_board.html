@@ -1,0 +1,7 @@
+{% import "teacher/discussions/_ui.html" as disc with context %}
+<section class="tdisc-board" data-live-part="discussion-topics" data-live-url="{{ discussion_live_url }}" aria-label="Discussion topics">
+        <header class="tdisc-board-heading"><div><h2>Group conversations</h2><span>{{ _n('%(count)d topic', '%(count)d topics', topic_total_count) }}</span></div><p><span>All topics</span><span>{{ _('%(count)d open', count=topic_open_count) }}</span><span>Newest first</span></p></header>
+        {{ disc.topic_list(topics, group, topic|default(none), topic_page) }}
+        {{ disc.topic_pager(group, topic|default(none), topic_page, topics_has_prev, topics_has_next, page|default(1)) }}
+        {% if topic|default(none) and topic.public_id not in topics|map(attribute='public_id')|list %}<p class="tdisc-page-note">The current topic is outside this topic list page.</p>{% endif %}
+      </section>

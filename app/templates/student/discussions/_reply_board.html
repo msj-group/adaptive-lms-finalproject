@@ -1,0 +1,4 @@
+{% import "student/discussions/_focus_macros.html" as disc with context %}
+<div data-live-part="discussion-replies"{% if not has_next %} data-live-tail="true"{% endif %} data-live-url="{{ url_for('student.discussions_topic', group_public_id=group.public_id, topic_public_id=topic.public_id, page=page, topic_page=topic_page) }}">
+{{ disc.reply_timeline(replies, group, topic, page, has_prev, has_next, topic_page, reply_total_count) }}
+</div>

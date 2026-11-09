@@ -5,6 +5,6 @@
   <header class="announcement-page-heading"><h1 data-workspace-page-heading>Announcements</h1></header>
   {{ ann.flash_messages() }}
   <a class="announcement-back announcement-page-back" href="{{ url_for('student.announcements_list', page=page) }}">{{ ui.icon('arrow', 17) }}<span>All announcements</span></a>
-  <div class="announcement-read-page">{% include "student/announcements/_reader.html" %}</div>
+  {% include 'student/announcements/_live_detail.html' %}
 </div>
 {% endblock %}

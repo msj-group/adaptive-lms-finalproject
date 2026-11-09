@@ -32,7 +32,7 @@
     <h2 id="group-outline-title">{{ _('Course outline') }}</h2>
     {% for unit in units %}
     {% set lessons = lessons_by_unit.get(unit.id, []) %}
-    <details class="cs-outline-unit" id="studio-unit-{{ unit.public_id }}"{% if loop.first %} open{% endif %}>
+    <details class="cs-outline-unit" id="studio-unit-{{ unit.public_id }}">
       <summary>
         <span class="cs-outline-number" aria-hidden="true">{{ loop.index }}</span>
         <span class="cs-outline-unit-name"><strong dir="auto">{{ unit.title }}</strong><small>{{ _n('%(count)d lesson', '%(count)d lessons', lessons|length) }}{% if unit.status == 'archived' %} · {{ _('Archived') }}{% endif %}</small></span>

@@ -1,0 +1,7 @@
+{% import "student/discussions/_focus_macros.html" as disc with context %}
+<aside class="discussion-sidebar" data-live-part="discussion-topics" data-live-url="{{ discussion_live_url }}" aria-label="Discussion topics">
+        <div class="discussion-list-heading"><h2>{{ _n('%(count)d topic', '%(count)d topics', topic_total_count) }}<span aria-hidden="true"> · </span> {{ _('%(count)d open', count=topic_open_count) }}</h2><span>Newest first</span></div>
+        {{ disc.topic_list(topics, group, topic, topic_page, list_view) }}
+        {{ disc.topic_pager(group, topic, topic_page, topics_has_prev, topics_has_next, page|default(1), list_view) }}
+        {% if topic and not list_view and topic.public_id not in topics|map(attribute='public_id')|list %}<p class="discussion-page-note">The current topic is outside this topic list page.</p>{% endif %}
+      </aside>

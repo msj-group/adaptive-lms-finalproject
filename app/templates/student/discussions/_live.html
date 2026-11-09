@@ -1,0 +1,3 @@
+{% set discussion_live_url = request.full_path.rstrip('?') %}
+{% include 'student/discussions/_topic_board.html' %}
+{% if topic %}{% include 'student/discussions/_reply_board.html' %}{% endif %}

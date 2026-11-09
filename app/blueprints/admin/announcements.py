@@ -49,7 +49,7 @@ able to hand it to somebody else.
 
 from app.services.query_presentation import render_query_page
 
-from flask import abort, current_app, flash, make_response, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, redirect, request, url_for
 from flask_login import current_user
 from sqlalchemy.exc import IntegrityError
 
@@ -119,7 +119,7 @@ def _private_no_store(template, **context):
     than imported across blueprints, matching how every other module in
     this project already sets it.
     """
-    response = make_response(render_template(template, **context))
+    response = render_query_page(template, **context)
     response.headers["Cache-Control"] = "private, no-store"
     response.vary.add("Cookie")
     return response

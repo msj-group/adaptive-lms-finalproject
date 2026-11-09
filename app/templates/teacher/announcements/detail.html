@@ -29,6 +29,6 @@
   <div class="card__body" style="margin-top: var(--space-2); color: var(--color-text-secondary)">
     {{ ann.published_line(announcement, tz_name) }}
   </div>
-  {{ ann.body_block(announcement) }}
+  {% include '_announcement_live_body.html' %}
 </div>
 {% endblock %}

@@ -124,6 +124,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         if (historyMode !== 'pop' && displayURL.href !== location.href) history[historyMode === 'replace' ? 'replaceState' : 'pushState'](null, '', displayURL.href);
         committed = location.href;
         window.aelmsEnhanceMessages(content);
+        document.dispatchEvent(new Event('aelms:communication-mounted'));
       } else content.replaceChildren(node);
       current = displayURL;
       target = current;

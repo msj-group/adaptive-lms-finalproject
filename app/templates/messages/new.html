@@ -4,7 +4,7 @@
 {% block message_content %}
 {{ msg.flash_messages() }}
 <div class="messenger {{ 'messenger--thread' if mode == 'compose' else 'messenger--inbox' }}">
-  {{ msg.sidebar(conversations, recipients=recipients, audience=audience, contacts_active=true, query_text=query_text if mode == 'picker' else '') }}
+  {{ msg.sidebar(conversations, recipients=recipients, audience=audience, contacts_active=true, query_text=query_text if mode == 'picker' else '', live_url=url_for('messages.inbox')) }}
   {% if mode == 'compose' %}
   <section class="messenger-chat" aria-labelledby="conversation-title">
     <header class="messenger-chat__header"><a class="messenger-icon-button messenger-chat__back" href="{{ url_for('messages.new_thread') }}" aria-label="Choose another recipient">{{ msg.icon('back') }}</a>{{ msg.avatar(recipient.full_name, recipient.role_label) }}<div class="messenger-chat__person"><h2 id="conversation-title" dir="auto">{{ recipient.full_name }}</h2><p>{{ recipient.role_label }} · Private conversation</p></div><a class="messenger-icon-button" href="{{ url_for('messages.new_thread') }}" aria-label="Choose another recipient" title="Choose another recipient">{{ msg.icon('users') }}</a></header>

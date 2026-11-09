@@ -3,7 +3,7 @@
 {% import "_figma_ui.html" as ui %}
 {% import "_announcement_macros.html" as ann %}
 {% block title %}Teacher Dashboard{% endblock %}
-{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/dashboard.css', v='book-shortcuts-1') }}">{% endblock %}
+{% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher/dashboard.css', v='dashboard-live-announcements-1') }}">{% endblock %}
 {% block portal_content %}
 {% set class_active = next_class and next_class.start <= now and now < next_class.end %}
 {% set review_count_label = _('At least %(count)d submissions awaiting feedback', count=pending_reviews|length) if review_has_more else _n('%(count)d submission awaiting feedback', '%(count)d submissions awaiting feedback', pending_reviews|length) %}
@@ -73,9 +73,9 @@
     </section>
     <section class="cockpit-announcements cockpit-panel" data-cockpit-announcements aria-labelledby="cockpit-announcements-title">
       <header class="cockpit-section-heading"><h2 id="cockpit-announcements-title">Announcements</h2><a href="{{ url_for('teacher.announcements_feed', view='received') }}">View all{{ ui.icon('arrow', 16) }}</a></header>
-      {% for item in announcements[:1] %}<a class="cockpit-announcement" href="{{ url_for('teacher.announcement_detail', announcement_public_id=item.public_id) }}"><span class="cockpit-announcement-icon" aria-hidden="true">{{ ui.icon('megaphone', 22) }}</span><div><h3 dir="auto">{{ item.title }}</h3><p><bdi>{{ item.context }}</bdi> {{ ann.scope_badge(item) }}</p>{% if item.published_local %}<time datetime="{{ item.published_local.isoformat() }}">{{ ui_date(item.published_local.strftime('%d %b %Y · %H:%M')) }}</time>{% endif %}</div><span class="cockpit-announcement-arrow" aria-hidden="true">{{ ui.icon('chevron', 16) }}</span></a>{% else %}<p class="cockpit-announcements-empty">No announcements yet.</p>{% endfor %}
+      {% include 'teacher/_live_dashboard_announcements.html' %}
     </section>
   </div>
 </div>
 {% endblock %}
-{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_dashboard.js', v='book-shortcuts-1') }}" defer></script>{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/teacher_dashboard.js', v='dashboard-live-announcements-1') }}" defer></script>{% endblock %}

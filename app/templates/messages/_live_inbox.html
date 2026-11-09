@@ -1,0 +1,3 @@
+{% import "_message_macros.html" as msg %}
+{{ msg.live_conversations(conversations, inbox_query=query_text, live_url=url_for('messages.inbox', q=query_text or None)) }}
+{% include 'messages/_inbox_pager.html' %}

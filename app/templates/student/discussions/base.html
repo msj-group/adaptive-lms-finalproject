@@ -7,6 +7,7 @@
 {% block product_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/student/discussions.css', v='focus-20261016') }}">{% endblock %}
 {% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/student_discussions.js', v='focus-20261016') }}" defer></script>{% endblock %}
 {% block portal_content %}
+{% set discussion_live_url = request.full_path.rstrip('?') %}
 <div class="discussion-workspace {{ 'is-list-view' if list_view|default(true) else 'is-topic-view' }}" data-discussions-workspace>
   <header class="discussion-heading">
     <div>
@@ -21,23 +22,18 @@
     {{ disc.group_picker(groups, group, truncated, group_limit) }}
     {% if topics or topic %}
     <div class="discussion-layout">
-      <aside class="discussion-sidebar" aria-label="Discussion topics">
-        <div class="discussion-list-heading"><h2>{{ _n('%(count)d topic', '%(count)d topics', topic_total_count) }}<span aria-hidden="true"> · </span> {{ _('%(count)d open', count=topic_open_count) }}</h2><span>Newest first</span></div>
-        {{ disc.topic_list(topics, group, topic, topic_page, list_view) }}
-        {{ disc.topic_pager(group, topic, topic_page, topics_has_prev, topics_has_next, page|default(1), list_view) }}
-        {% if topic and not list_view and topic.public_id not in topics|map(attribute='public_id')|list %}<p class="discussion-page-note">The current topic is outside this topic list page.</p>{% endif %}
-      </aside>
+      {% include 'student/discussions/_topic_board.html' %}
       {% if topic %}
       <section class="discussion-reading" aria-label="Discussion">
         <a class="discussion-back" href="{{ url_for('student.discussions_group', group_public_id=group.public_id, page=topic_page) }}">{{ ui.icon('arrow', 17) }}<span>All topics</span></a>
         {{ disc.topic_header(topic, group, list_view) }}
-        {{ disc.reply_timeline(replies, group, topic, page, has_prev, has_next, topic_page, reply_total_count) }}
+        {% include 'student/discussions/_reply_board.html' %}
         {{ disc.reply_section(can_reply, url_for('student.discussions_reply', group_public_id=group.public_id, topic_public_id=topic.public_id, topic_page=topic_page, page=page), reply_state, draft, body_error, form_error, body_max) }}
       </section>
       {% endif %}
     </div>
     {% else %}
-      <div class="discussion-empty empty-state"><h2>No topics yet</h2><p>Your teachers have not started a discussion for this group yet.</p></div>
+      {% include 'student/discussions/_topic_board.html' %}
     {% endif %}
   {% else %}
     <div class="discussion-empty empty-state"><h2>No discussion groups</h2><p>Groups you are actively enrolled in appear here while their term, level, course and group are all active.</p></div>

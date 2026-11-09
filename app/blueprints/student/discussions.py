@@ -184,7 +184,7 @@ def _render_group_workspace(group, groups=None, truncated=False):
     if topic is not None:
         return _render_topic(
             group, topic, current_user.id, current_user.public_id,
-            workspace=workspace, template="student/discussions/list.html", reply_page=1,
+            workspace=workspace, template="student/discussions/list.html",
         )
     return private_no_store(
         "student/discussions/list.html", group=public_group(group), topic=None,
@@ -202,17 +202,13 @@ def discussions_group(group_public_id):
 
 def _render_topic(group, topic, viewer_id, viewer_public_id, draft="", nonce=None,
                   body_error=None, form_error=None, *, workspace=None,
-                  template="student/discussions/detail.html", reply_page=None):
+                  template="student/discussions/detail.html"):
     """The topic page. The reply form -- and its token -- exist only while
     the topic is open."""
     tz_name = _tz_name()
     if workspace is None:
         workspace = _workspace_context(group, normalize_page(request.args.get("topic_page")))
-    page = reply_page if reply_page is not None else normalize_page(request.args.get("page"))
-    rows, has_next = replies_page(topic["id"], page)
-    if not rows and page > 1:
-        page = 1
-        rows, has_next = replies_page(topic["id"], page)
+    page = normalize_page(request.args.get("page"))
     can_reply = topic["status"] == _OPEN
     reply_total = next(
         (item["reply_count"] for item in workspace["topics"]
@@ -220,6 +216,14 @@ def _render_topic(group, topic, viewer_id, viewer_public_id, draft="", nonce=Non
     )
     if reply_total is None:
         reply_total = reply_counts([topic["id"]]).get(topic["id"], 0)
+    from app.services.communication_presentation import following_replies
+    show_latest = request.method == "GET" and (template == "student/discussions/list.html" or "page" not in request.args)
+    if following_replies() or show_latest:
+        page = max(1, (reply_total - 1) // REPLY_PAGE_SIZE + 1)
+    rows, has_next = replies_page(topic["id"], page)
+    if not rows and page > 1:
+        page = 1
+        rows, has_next = replies_page(topic["id"], page)
     return private_no_store(
         template,
         group=public_group(group),

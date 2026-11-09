@@ -3,7 +3,7 @@
 {% block title %}Messages{% endblock %}
 {% block message_content %}
 <div class="messenger messenger--thread" data-messenger>
-  {{ msg.sidebar(conversations, thread.public_id, recipients=recipients, audience=audience) }}
+  {{ msg.sidebar(conversations, thread.public_id, recipients=recipients, audience=audience, live_url=url_for('messages.thread', thread_public_id=thread.public_id)) }}
   <section class="messenger-chat" aria-labelledby="conversation-title">
     <header class="messenger-chat__header">
       <a class="messenger-icon-button messenger-chat__back" href="{{ url_for('messages.inbox') }}" aria-label="Back to messages" title="Back to messages">{{ msg.icon('back') }}</a>
@@ -24,29 +24,8 @@
     <div id="thread-search" class="messenger-thread-search" data-thread-search hidden><label class="messenger-sr-only" for="thread-query">Search messages on this page</label><input id="thread-query" type="search" placeholder="Search messages on this page" data-thread-query><span role="status" data-thread-search-status></span></div>
     {{ msg.flash_messages() }}
     <div class="messenger-timeline-wrap">
-      <div class="messenger-timeline" tabindex="0" role="region" aria-label="Conversation messages" data-message-timeline data-latest-page="{{ 'true' if page == 1 else 'false' }}">
-        {% if has_older %}<nav class="messenger-history" aria-label="Older messages"><a href="{{ url_for('messages.thread', thread_public_id=thread.public_id, page=page + 1) }}">{{ msg.icon('clock', 16) }} Older messages</a></nav>{% endif %}
-        {% set dates = namespace(previous=none) %}
-        {% if not messages %}<div class="messenger-greeting"><div>{{ msg.avatar(other.full_name if other else 'Member', other.role_label if other else 'Member') }}<h2>Your conversation starts here.</h2><p>Write a new message below.</p></div></div>{% endif %}
-        {% for message in messages %}
-        {% set day = message.created_local.strftime('%Y-%m-%d') %}
-        {% if dates.previous != day %}<div class="messenger-date"><time datetime="{{ day }}">{{ message.created_local.strftime('%d %b %Y') }}</time></div>{% set dates.previous = day %}{% endif %}
-        <article class="messenger-bubble{{ ' messenger-bubble--outgoing' if message.from_viewer else ' messenger-bubble--incoming' }}" id="message-{{ message.public_id }}" aria-label="{{ 'You' if message.from_viewer else message.sender_name }}, {{ message.created_local.strftime('%d %b %Y %H:%M') }}">
-          <span class="messenger-sr-only">{{ message.sender_name }}{{ ' (you)' if message.from_viewer else '' }}</span>
-          {% if message.hide_state and not message.editing %}<details class="messenger-message-actions"><summary aria-label="Message actions" title="Message actions">{{ msg.icon('more', 17) }}</summary><div class="messenger-action-menu"><a href="{{ url_for('messages.thread', thread_public_id=thread.public_id, page=page, edit=message.public_id) }}#message-{{ message.public_id }}">{{ msg.icon('edit', 16) }} Edit message</a><form method="post" action="{{ url_for('messages.hide_message', thread_public_id=thread.public_id, message_public_id=message.public_id, page=page) }}" data-confirm="Delete this message for both participants? It will no longer appear in either conversation."><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="message_state" value="{{ message.hide_state }}"><button type="submit" class="messenger-danger">{{ msg.icon('trash', 16) }} Delete for everyone</button></form></div></details>{% endif %}
-          {% if message.editing %}
-          <form class="messenger-edit-form" method="post" action="{{ url_for('messages.edit_message', thread_public_id=thread.public_id, message_public_id=message.public_id, page=page) }}" data-message-form novalidate>
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="message_state" value="{{ message.edit_state }}">
-            <label for="edit-body" class="field__label">Edit your message</label><textarea id="edit-body" name="body" class="field__input messenger-input" rows="3" maxlength="{{ body_max }}" dir="auto" data-message-input{% if edit_error %} aria-invalid="true" aria-describedby="edit-error"{% endif %}>{{ message.edit_body }}</textarea>
-            {% if edit_error %}<p id="edit-error" class="field__error" role="alert">{{ edit_error }}</p>{% endif %}
-            <div class="messenger-edit-actions"><a class="messenger-text-link" href="{{ url_for('messages.thread', thread_public_id=thread.public_id, page=page) }}#message-{{ message.public_id }}">Cancel</a><button class="messenger-primary" type="submit">Save changes</button></div>
-          </form>
-          {% else %}<div class="messenger-bubble__body" dir="auto">{{ message.body }}</div>{% endif %}
-          <div class="messenger-bubble__meta">{% if message.edited %}<span class="messenger-edited">Edited</span>{% endif %}<time datetime="{{ message.created_local.isoformat() }}" title="{{ message.created_local.strftime('%Y-%m-%d %H:%M %Z') }}">{{ message.created_local.strftime('%H:%M') }}</time>{% if message.from_viewer %}<span title="Sent" aria-label="Sent">{{ msg.icon('check', 14) }}</span>{% endif %}</div>
-        </article>
-        {% endfor %}
-        {% if has_newer %}<nav class="messenger-history" aria-label="Newer messages"><a href="{{ url_for('messages.thread', thread_public_id=thread.public_id, page=page - 1) }}">Newer messages {{ msg.icon('arrow', 16) }}</a><a href="{{ url_for('messages.thread', thread_public_id=thread.public_id) }}">Latest messages</a></nav>{% endif %}
-      </div>
+      {% include 'messages/_timeline.html' %}
+      {% if page == 1 %}<button type="button" class="messenger-new-messages" data-message-latest hidden>{{ _('New messages') }} {{ msg.icon('chevron-down', 16) }}</button>{% endif %}
     </div>
     <div class="messenger-composer" id="reply" data-people-message-panel data-message-mode="reply" data-thread-id="{{ thread.public_id }}" data-people-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}" data-message-sent="{{ 'true' if message_send_confirmed else 'false' }}" data-message-blocked="{{ 'true' if message_send_blocked else 'false' }}">
       {% if can_reply %}

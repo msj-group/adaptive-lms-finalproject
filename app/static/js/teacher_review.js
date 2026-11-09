@@ -102,6 +102,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     pauseAudio();
     content.replaceChildren(document.importNode(editor, true));
     bindEditor(content.querySelector("[data-review-editor]"));
+    document.dispatchEvent(new Event("aelms:communication-mounted"));
     root.dataset.reviewLoaded = "true";
     detail.scrollTop = 0;
     if (activeForm && (focus === "feedback" || forceDirty)) {

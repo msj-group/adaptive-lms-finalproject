@@ -61,6 +61,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         }
         if (window.history && window.history.replaceState) history.replaceState(null, "", url.href);
         status.textContent = t("Results updated.");
+        document.dispatchEvent(new Event("aelms:communication-mounted"));
       } catch (error) {
         if (!request.signal.aborted && revision === sequence) status.textContent = t("Search could not load. Try again.");
       } finally {

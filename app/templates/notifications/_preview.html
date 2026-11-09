@@ -1,5 +1,5 @@
 {% import "_notification_macros.html" as notice %}
 {% import "_figma_ui.html" as ui %}
-<div data-notification-fragment>
-{% if notifications %}<ul class="notif-list">{% for item in notifications %}{{ notice.row(item, tz_name, compact=true) }}{% endfor %}</ul>{% else %}<div class="notif-preview-empty"><span class="notif-empty-icon" aria-hidden="true">{{ ui.icon('bell', 28) }}</span><strong>No notifications yet</strong><p>Your updates will appear here.</p></div>{% endif %}
+<div data-notification-fragment data-live-part="notification-preview" data-live-url="{{ url_for('notifications.preview') }}" data-live-unread="{{ unread_total }}">
+{% if notifications %}<ul class="notif-list">{% for item in notifications %}{{ notice.row(item, tz_name, compact=true) }}{% endfor %}</ul>{% else %}<div class="notif-preview-empty"><span class="notif-empty-icon" aria-hidden="true">{{ ui.icon('bell', 28) }}</span><strong>{{ _("No unread notifications.") }}</strong></div>{% endif %}
 </div>

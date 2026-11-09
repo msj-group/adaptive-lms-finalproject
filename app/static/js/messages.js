@@ -87,6 +87,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       tabs.forEach(function (tab) { tab.setAttribute("aria-selected", String(tab.dataset.chatTab === name)); tab.tabIndex = tab.dataset.chatTab === name ? 0 : -1; });
       panel.querySelectorAll("[data-chat-panel]").forEach(function (section) { section.hidden = section.dataset.chatPanel !== name; section.setAttribute("role", "tabpanel"); });
       filter();
+      document.dispatchEvent(new Event('aelms:communication-mounted'));
       if (name === "contacts" && input.value.trim() && window.fetch) loadContacts();
     }
     tabs.forEach(function (tab, index) {
@@ -104,6 +105,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         cancelContactSearch(); contactTimer = pageScope.setTimeout(loadContacts, 250);
       }
     });
+    pageScope.listen(panel, 'aelms:communication-updated', filter);
     pageScope.listen(input, "keydown", function (event) { if (event.key === "Enter" && current === "chats" && !event.isComposing) { event.preventDefault(); filter(); } });
     pageScope.listen(search, "submit", function (event) {
       if (current === "chats") { event.preventDefault(); filter(); }
@@ -113,6 +115,8 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   });
 
   var timeline = root.querySelector("[data-message-timeline]");
+  var latestButton = root.querySelector('[data-message-latest]');
+  var unseenMessages = false;
   var followTimeline = false;
   function nearBottom() {
     return !timeline || timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight < 100;
@@ -120,7 +124,49 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   function scrollToBottom() {
     if (timeline) timeline.scrollTop = timeline.scrollHeight;
   }
+  function updateBottomButton() {
+    if (latestButton) latestButton.hidden = !unseenMessages || !!root.querySelector('[data-thread-query]')?.value.trim();
+  }
+  if (latestButton) pageScope.listen(latestButton, 'click', function () {
+    scrollToBottom();
+    unseenMessages = false;
+    updateBottomButton();
+    timeline.focus({preventScroll:true});
+  });
   if (timeline) {
+    var acknowledgedCursor, ackPending = false, retryAcknowledgement;
+    async function acknowledgeNotices() {
+      var marker = timeline.querySelector('[data-notification-cursor]');
+      var csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+      var cursor = marker?.dataset.notificationCursor;
+      if (!cursor || !csrf || cursor === acknowledgedCursor || ackPending || document.hidden ||
+          !timeline.isConnected || !timeline.getClientRects().length || !nearBottom() ||
+          root.querySelector('[data-thread-query]')?.value.trim()) return;
+      ackPending = true;
+      pageScope.clearTimeout(retryAcknowledgement);
+      try {
+        var response = await pageScope.fetch(marker.dataset.notificationAckUrl, {
+          method: 'POST', credentials: 'same-origin', cache: 'no-store',
+          body: new URLSearchParams({cursor, csrf_token: csrf})
+        });
+        if (response.redirected || [400, 401, 403, 404].includes(response.status)) return;
+        if (!response.ok) throw new Error('Acknowledgement unavailable');
+        var result = await response.json();
+        acknowledgedCursor = cursor;
+        document.dispatchEvent(new CustomEvent('aelms:notification-count', {detail: result.unread_count}));
+        document.dispatchEvent(new Event('aelms:communication-mounted'));
+        if (timeline.querySelector('[data-notification-cursor]')?.dataset.notificationCursor !== cursor) {
+          retryAcknowledgement = pageScope.setTimeout(acknowledgeNotices, 0);
+        }
+      } catch (_) {
+        retryAcknowledgement = pageScope.setTimeout(acknowledgeNotices, 5000);
+      } finally {
+        ackPending = false;
+      }
+    }
+    listen(document, 'visibilitychange', acknowledgeNotices);
+    listen(window, 'online', acknowledgeNotices);
+    cleanup.push(function () { pageScope.clearTimeout(retryAcknowledgement); });
     // Respect message deep links and older-page reading positions.
     if (location.hash) {
       var linkedMessage = null;
@@ -132,7 +178,14 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     followTimeline = nearBottom();
     pageScope.listen(timeline, "scroll", function () {
       followTimeline = nearBottom();
+      if (followTimeline) { unseenMessages = false; updateBottomButton(); acknowledgeNotices(); }
     }, {passive:true});
+    pageScope.listen(timeline, 'aelms:communication-updated', function (event) {
+      if (event.detail?.newMessages && !event.detail.following) unseenMessages = true;
+      updateBottomButton();
+      acknowledgeNotices();
+    });
+    acknowledgeNotices();
   }
 
   root.querySelectorAll("[data-message-form]").forEach(function (form) {
@@ -282,6 +335,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     searchToggle.hidden = false;
     pageScope.listen(searchToggle, "click", function () { searchPanel.hidden = !searchPanel.hidden; searchToggle.setAttribute("aria-expanded", String(!searchPanel.hidden)); if (!searchPanel.hidden) threadQuery.focus(); else { threadQuery.value = ""; filterMessages(); } });
     pageScope.listen(threadQuery, "input", filterMessages);
+    pageScope.listen(timeline, 'aelms:communication-updated', filterMessages);
   }
   var infoToggle = root.querySelector("[data-thread-info-toggle]");
   if (infoToggle) { infoToggle.hidden = false; pageScope.listen(infoToggle, "click", function () { var info = root.querySelector("[data-thread-info]"); info.hidden = !info.hidden; infoToggle.setAttribute("aria-expanded", String(!info.hidden)); }); }
@@ -313,8 +367,9 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   });
   var mobileActions = window.matchMedia("(max-width:760px)");
   listen(mobileActions, "change", closeActions);
-  root.querySelectorAll(".messenger-message-actions, .messenger-header-actions").forEach(function (details) {
-    pageScope.listen(details, "toggle", function () {
+  listen(root, "toggle", function (event) {
+      var details = event.target;
+      if (!details.matches('.messenger-message-actions,.messenger-header-actions')) return;
       if (!details.open) return;
       root.querySelectorAll(".messenger-message-actions[open], .messenger-header-actions[open]").forEach(function (other) { if (other !== details) other.open = false; });
       if (mobileActions.matches && typeof actionSheet.showModal === "function") {
@@ -325,10 +380,10 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         return;
       }
       if (timeline && details.matches(".messenger-message-actions")) { var menu = details.querySelector(".messenger-action-menu"); details.toggleAttribute("data-menu-below", details.getBoundingClientRect().top - menu.offsetHeight < timeline.getBoundingClientRect().top + 8); }
-    });
-    pageScope.listen(details, "keydown", function (event) {
-      if (event.key === "Escape" && details.open && !actionSheet.open) { event.preventDefault(); details.open = false; details.querySelector("summary").focus(); }
-    });
+  }, true);
+  listen(root, "keydown", function (event) {
+    var details = event.target.closest('.messenger-message-actions,.messenger-header-actions');
+    if (event.key === "Escape" && details?.open && !actionSheet.open) { event.preventDefault(); details.open = false; details.querySelector("summary").focus(); }
   });
   listen(document, "click", function (event) { if (actionSheet.open) return; root.querySelectorAll(".messenger-message-actions[open], .messenger-header-actions[open]").forEach(function (details) { if (!details.contains(event.target)) details.open = false; }); });
   disposeMessages = function () {

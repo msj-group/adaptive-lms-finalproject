@@ -48,7 +48,7 @@
     </div>
   </div>
 
-  {{ ann.body_block(announcement) }}
+  {% include '_announcement_live_body.html' %}
 
   <dl style="display:grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: var(--space-4) 0 0;">
     <dt style="color: var(--color-text-secondary); font-size: var(--font-size-sm)">Created</dt>

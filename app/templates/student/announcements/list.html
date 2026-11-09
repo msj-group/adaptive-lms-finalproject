@@ -5,7 +5,7 @@
   {# Only the bounded, currently authorized feed reaches this index. #}
   <header class="announcement-page-heading"><h1 data-workspace-page-heading>Announcements</h1>{% if announcements %}<span>Newest first</span>{% endif %}</header>
   {{ ann.flash_messages() }}
-  {{ announcement_index(announcements, page, has_prev, has_next, page_size) }}
-  {% if announcements %}{% include "student/announcements/_popup.html" %}{% endif %}
+  {% include 'student/announcements/_live_list.html' %}
+  {% include "student/announcements/_popup.html" %}
 </div>
 {% endblock %}

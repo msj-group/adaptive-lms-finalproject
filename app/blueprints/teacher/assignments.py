@@ -57,7 +57,6 @@ from flask import (
     abort,
     current_app,
     flash,
-    make_response,
     redirect,
     render_template,
     request,
@@ -142,7 +141,8 @@ def _private_no_store(template, **context):
     here rather than imported across blueprints, matching how
     ``student/search.py`` and ``notifications/routes.py`` already set it.
     """
-    response = make_response(render_template(template, **context))
+    from app.services.query_presentation import render_query_page
+    response = render_query_page(template, **context)
     response.headers["Cache-Control"] = "private, no-store"
     response.vary.add("Cookie")
     return response

@@ -359,10 +359,6 @@ def _render_topic(group, topic, viewer_id, viewer_public_id, draft="", nonce=Non
     tz_name = _tz_name()
     workspace = _workspace_context(group, normalize_page(request.args.get("topic_page")))
     page = normalize_page(request.args.get("page"))
-    rows, has_next = replies_page(topic["id"], page)
-    if not rows and page > 1:
-        page = 1
-        rows, has_next = replies_page(topic["id"], page)
     can_reply = topic["status"] == _OPEN
     moderation_action = ACTION_LOCK if can_reply else ACTION_REOPEN
     reply_total = next(
@@ -371,6 +367,13 @@ def _render_topic(group, topic, viewer_id, viewer_public_id, draft="", nonce=Non
     )
     if reply_total is None:
         reply_total = reply_counts([topic["id"]]).get(topic["id"], 0)
+    from app.services.communication_presentation import following_replies
+    if following_replies() or (request.method == 'GET' and 'page' not in request.args):
+        page = max(1, (reply_total - 1) // REPLY_PAGE_SIZE + 1)
+    rows, has_next = replies_page(topic["id"], page)
+    if not rows and page > 1:
+        page = 1
+        rows, has_next = replies_page(topic["id"], page)
     return _private_no_store(
         "teacher/discussions/detail.html",
         group=public_group(group),

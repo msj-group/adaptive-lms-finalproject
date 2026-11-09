@@ -6,7 +6,7 @@
 <div class="ad-page aan-page aan-detail" data-announcement-view="detail" data-announcement-id="{{ announcement.public_id }}" data-communication-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}">
 <header class="ad-page-head"><div><p class="ad-eyebrow">Communication / Announcement</p><h1 data-workspace-page-heading>{{ announcement.title }}</h1><p class="ad-subtitle">{{ announcement.context or "Everybody at the centre" }} · Written by {{ announcement.author_name }}</p></div><div class="ad-actions">{{ ann.status_badge(announcement) }}{{ ann.scope_badge(announcement) }}</div></header>
 {{ macros.flash_messages() }}
-<div class="ad-grid"><section class="ad-card"><div class="ad-card-top"><h2>Message</h2></div>{{ ann.body_block(announcement) }}</section>
+<div class="ad-grid"><section class="ad-card"><div class="ad-card-top"><h2>Message</h2></div>{% include '_announcement_live_body.html' %}</section>
 <aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Publication details</h2></div><dl class="ad-definition">
 <dt>State</dt><dd>{{ ann.status_badge(announcement) }}</dd><dt>Audience</dt><dd>{{ announcement.context or "Everybody at the centre" }}</dd><dt>Author</dt><dd>{{ announcement.author_name }}</dd>
 <dt>Created</dt><dd>{{ announcement.created_local.strftime("%Y-%m-%d %H:%M") }}</dd><dt>Last changed</dt><dd>{{ announcement.updated_local.strftime("%Y-%m-%d %H:%M") }}</dd>

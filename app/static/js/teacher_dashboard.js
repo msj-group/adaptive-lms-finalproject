@@ -43,7 +43,10 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       }
       panel.hidden = hidden;
     });
-    if (announcements) announcements.hidden = mobile && selected === "feedback";
+    if (announcements) {
+      announcements.hidden = mobile && selected === "feedback";
+      if (!announcements.hidden) document.dispatchEvent(new Event("aelms:communication-mounted"));
+    }
   }
 
   function layout(width) {

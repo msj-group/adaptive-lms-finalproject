@@ -30,6 +30,8 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     controller = request;
     var revision = sequence;
     var selected = current;
+    delete content.dataset.livePart;
+    delete content.dataset.liveUrl;
     content.replaceChildren();
     content.setAttribute("aria-busy", "true");
     loading.hidden = false;
@@ -51,6 +53,9 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       if (!incoming || incoming.dataset.announcementId !== selected.id) throw new Error("load");
       // This server-owned fragment escapes the authored title/body as plain text.
       content.replaceChildren(document.importNode(incoming, true));
+      content.dataset.livePart = 'announcement-detail';
+      content.dataset.liveUrl = selected.href;
+      document.dispatchEvent(new Event('aelms:communication-mounted'));
     } catch (error) {
       if (request.signal.aborted || revision !== sequence || !popup.open) return;
       errorMessage.textContent = t(error.message === "unavailable" ?
@@ -93,6 +98,8 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   pageScope.listen(popup, "close", function () {
     if (popup.open) return;
     cancelLoad();
+    delete content.dataset.livePart;
+    delete content.dataset.liveUrl;
     content.replaceChildren();
     content.setAttribute("aria-busy", "false");
     errorBox.hidden = true;

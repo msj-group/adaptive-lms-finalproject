@@ -14,15 +14,16 @@ from flask import (
     flash,
     get_flashed_messages,
     jsonify,
-    make_response,
     redirect,
-    render_template,
     request,
     url_for,
 )
 from flask_login import current_user
 
 from app.blueprints.collector.hooks import note_outcome
+from app.extensions import db
+from app.services.communication_presentation import live_requested
+from app.services.query_presentation import render_query_page
 from app.blueprints.messages import messages_bp
 from app.models import MESSAGE_BODY_MAX_LENGTH, MESSAGE_SUBJECT_MAX_LENGTH, UserRole
 from app.security.decorators import roles_required
@@ -66,6 +67,9 @@ from app.services.message_tokens import (
     make_token,
 )
 from app.services.notification_delivery import notify_message_received
+from app.services.notification_queries import (
+    acknowledge_conversation_notices, conversation_notice_cursor, unread_count,
+)
 
 _MEMBER_ROLES = MESSAGE_ROLES
 
@@ -104,7 +108,7 @@ def _tz_name():
 
 
 def _private(template, **context):
-    response = make_response(render_template(template, **context))
+    response = render_query_page(template, **context)
     response.headers["Cache-Control"] = "private, no-store"
     response.vary.add("Cookie")
     return response
@@ -157,7 +161,7 @@ def inbox():
         has_prev=page > 1,
         page_size=PAGE_SIZE,
         audience=_audience_label(current_user.role),
-        recipients=permitted_recipients(current_user.id, current_user.role),
+        recipients=() if live_requested() else permitted_recipients(current_user.id, current_user.role),
         query_text=query_text,
         tz_name=tz_name,
     )
@@ -332,6 +336,13 @@ def _render_thread(thread, viewer_id, viewer_public_id, draft="", nonce=None,
     longer allows a reply; a reply token is minted only when it does."""
     tz_name = _tz_name()
     page = normalize_page(request.args.get("page"))
+    # Capture the notice cursor before reading messages, so a concurrent
+    # arrival can only be acknowledged by a response that includes it.
+    cursor = None
+    if request.method == "GET" and page == 1:
+        cursor = conversation_notice_cursor(
+            viewer_id, url_for("messages.thread", thread_public_id=thread["public_id"]),
+        )
     rows, has_older = conversation_page(thread["id"], page, viewer_id)
     if not rows and page > 1:
         page = 1
@@ -346,7 +357,8 @@ def _render_thread(thread, viewer_id, viewer_public_id, draft="", nonce=None,
         }
     can_manage = message_management.available()
     message_views = build_conversation_view(rows, viewer_id, tz_name)
-    edit_id = edit_id or request.args.get("edit")
+    live = live_requested()
+    edit_id = None if live else edit_id or request.args.get("edit")
     for message in message_views:
         message["edit_state"] = None
         message["hide_state"] = None
@@ -357,7 +369,7 @@ def _render_thread(thread, viewer_id, viewer_public_id, draft="", nonce=None,
         message["edit_body"] = edit_draft if message["editing"] and edit_draft is not None else message["body"]
     latest = message_management.latest_message_public_id(thread["id"]) if can_manage else None
     # Delivery acknowledgement is protocol data, independent of visible banners.
-    outcomes = get_flashed_messages(with_categories=True)
+    outcomes = () if live else get_flashed_messages(with_categories=True)
     sent = {"Message sent.", "Reply sent.", "This message was already sent.", "This reply was already sent."}
     send_confirmed = any(category in {"success", "info"} and message in sent
                          for category, message in outcomes)
@@ -367,12 +379,13 @@ def _render_thread(thread, viewer_id, viewer_public_id, draft="", nonce=None,
         "messages/thread.html",
         thread={"public_id": thread["public_id"], "subject": thread["subject"]},
         messages=message_views,
+        notification_cursor=cursor,
         can_manage=can_manage,
         message_send_confirmed=send_confirmed,
         message_send_blocked=send_blocked,
         clear_state=make_action_token(PURPOSE_CLEAR, viewer_public_id, thread["public_id"], thread["public_id"], latest) if latest else None,
         edit_error=edit_error,
-        recipients=permitted_recipients(viewer_id, current_user.role),
+        recipients=() if live else permitted_recipients(viewer_id, current_user.role),
         audience=_audience_label(current_user.role),
         conversations=build_inbox_view(recent_conversations(viewer_id, cap=8), viewer_id, tz_name),
         other=other,
@@ -404,6 +417,22 @@ def thread(thread_public_id):
     never write."""
     found = _thread_or_404(current_user.id, thread_public_id)
     return _render_thread(found, current_user.id, current_user.public_id)
+
+
+@messages_bp.post("/threads/<thread_public_id>/notifications/read")
+@roles_required(*_MEMBER_ROLES)
+def read_thread_notifications(thread_public_id):
+    """A foreground timeline acknowledges its displayed conversation."""
+    found = _thread_or_404(current_user.id, thread_public_id)
+    cursor = canonical_public_id(request.form.get("cursor"))
+    if cursor is None:
+        abort(400)
+    target = url_for("messages.thread", thread_public_id=found["public_id"])
+    acknowledge_conversation_notices(current_user.id, target, cursor)
+    db.session.commit()
+    response = jsonify(unread_count=unread_count(current_user.id))
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
 
 
 @messages_bp.post("/threads/<thread_public_id>/reply")
