@@ -27,7 +27,7 @@
           </li>{% endfor %}
         </ol></div>
       </article>
-    {% else %}<div class="pub-empty">{{ ui.icon('book',32) }}<h2>No lessons ready yet</h2><p>The book's prepared units and lessons will appear here.</p><a href="{{ url_for('teacher.group_units',group_public_id=group.public_id) }}">Open curriculum</a></div>{% endfor %}
+    {% else %}<div class="pub-empty">{{ ui.icon('book',32) }}<h2>No lessons ready yet</h2><p>The book's prepared units and lessons will appear here.</p><a href="{{ url_for('workspace.teacher_group',group_public_id=group.public_id,_anchor='group-content') }}">Open curriculum</a></div>{% endfor %}
     </div>
     <p class="pub-empty" data-search-empty hidden>No units or lessons match your search.</p>
     {% if operational %}<section class="pub-scheduler" data-publication-scheduler aria-labelledby="publication-schedule-title" hidden><header><div><h2 id="publication-schedule-title">Schedule visibility</h2><p data-schedule-context></p></div><button class="pub-icon-button" type="button" data-close-schedule aria-label="Close">{{ ui.icon('close',18) }}</button></header><div class="pub-schedule-fields"><label><span>Opening date and time</span><input type="datetime-local" name="opens_at" data-publication-date disabled></label><span class="pub-hint">{{ tz_name }}</span><button type="submit" class="btn btn--primary" name="command" value="schedule|selected|" data-schedule-submit>Schedule</button></div></section>{% endif %}

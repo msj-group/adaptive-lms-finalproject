@@ -1,5 +1,4 @@
 {% extends "teacher/studio/_base.html" %}
-{% set studio_page = 'overview' %}
 {% block title %}{{ _('Course books') }}{% endblock %}
 {% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/course_books.css', v='interactive-books-3') }}">{% endblock %}
 {% block studio_heading %}{{ studio.heading(_('Course books'), group.name ~ ' آ· ' ~ course.title) }}{% endblock %}

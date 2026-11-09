@@ -1,5 +1,5 @@
 """Read-only course outline and group access helpers for teacher routes."""
-from flask import abort, render_template
+from flask import abort, redirect, url_for
 from flask_login import current_user
 from sqlalchemy.orm import joinedload
 
@@ -154,15 +154,5 @@ def _hierarchy_active_error(hierarchy, group, term_id, level_id, course_id):
 @roles_required(UserRole.TEACHER.value)
 def group_units(group_public_id):
     group = _teacher_group_or_404(group_public_id)
-    operational = _group_is_operational(group)
-    units = Unit.query.filter(Unit.in_group(group.id, group.course_id)).order_by(
-        Unit.display_order, Unit.id
-    ).all()
-    return render_template(
-        "teacher/units/list.html",
-        group=group,
-        active_units=[unit for unit in units if unit.status == _ACTIVE],
-        archived_units=[unit for unit in units if unit.status != _ACTIVE],
-        operational=operational,
-        archived_labels=[] if operational else _archived_chain_labels(group),
-    )
+    return redirect(url_for("workspace.teacher_group", group_public_id=group.public_id,
+                            _anchor="group-content"))

@@ -8,6 +8,7 @@ FRAGMENTS = {
     "admin/groups/enrollment_operation.html": "admin/groups/_selection_results.html",
     "student/activities.html": "student/template/_activity_results.html",
     "teacher/activities.html": "teacher/activities/_results.html",
+    "teacher/groups.html": "teacher/_group_results.html",
     "student/search.html": "student/_search_results.html",
     "student/announcements/detail.html": "student/announcements/_reader.html",
     "admin/groups/list.html": "admin/groups/_query_results.html",

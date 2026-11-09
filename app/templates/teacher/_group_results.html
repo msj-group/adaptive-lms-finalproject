@@ -1,0 +1,30 @@
+{% import "_figma_ui.html" as ui %}
+{% if cards %}
+  <section class="teacher-groups-list" aria-label="{{ _('Groups') }}">
+    {% for card in cards %}
+    <details class="teacher-group"{% if loop.first %} open{% endif %}>
+      <summary>
+        <strong class="teacher-group-name" dir="auto">{{ card.group_name }}</strong>
+        <span class="teacher-group-count">{{ _n('%(count)d student', '%(count)d students', card.student_count) }}</span>
+        <span class="teacher-group-arrow">{{ ui.icon('chevron-down', 18) }}</span>
+      </summary>
+      <div class="teacher-group-body">
+        <dl class="teacher-group-facts">
+          <div><dt>Next class</dt><dd>{% if card.next_class %}<time datetime="{{ card.next_class.start.isoformat() }}">{{ ui_date(card.next_class.start.strftime('%a %d %b %Y · %H:%M')) }}</time>{% if card.next_class.ref.location %}<span class="teacher-group-location" dir="auto">{{ card.next_class.ref.location }}</span>{% endif %}{% else %}{{ _('No upcoming class') }}{% endif %}</dd></div>
+          <div><dt>Weekly schedule</dt><dd>{% for schedule in card.schedules %}<span class="teacher-group-slot"><span>{{ _(['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][schedule.day_of_week]) }} · <bdi>{{ schedule.start_time.strftime('%H:%M') }}–{{ schedule.end_time.strftime('%H:%M') }}</bdi></span>{% if schedule.location %}<span class="teacher-group-location" dir="auto">{{ schedule.location }}</span>{% endif %}</span>{% else %}{{ _('No active schedule') }}{% endfor %}</dd></div>
+          <div><dt>Term dates</dt><dd><time datetime="{{ card.term_start.isoformat() }}">{{ ui_date(card.term_start.strftime('%d %b %Y')) }}</time> – <time datetime="{{ card.term_end.isoformat() }}">{{ ui_date(card.term_end.strftime('%d %b %Y')) }}</time></dd></div>
+        </dl>
+        {% if not card.operational %}<p class="teacher-group-archive-note">{{ _('Archived context') }}: {% for label in card.archived_labels %}{{ _(label) }}{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+        <nav class="teacher-group-actions" aria-label="{{ _('Tools for %(group)s', group=card.group_name) }}">
+          <a class="btn btn--primary" href="{{ url_for('workspace.teacher_group', group_public_id=card.group_public_id) }}">Open workspace {{ ui.icon('arrow-up', 16) }}</a>
+          <a class="btn" href="{{ url_for('teacher.group_attendance', group_public_id=card.group_public_id) }}">{{ ui.icon('check', 16) }} Attendance</a>
+          <a class="btn" href="{{ url_for('teacher.group_gradebook', group_public_id=card.group_public_id) }}">{{ ui.icon('graduation', 16) }} Gradebook</a>
+          <a class="btn" href="{{ url_for('teacher.group_activities', group_public_id=card.group_public_id) }}">{{ ui.icon('activity', 16) }} Activities</a>
+        </nav>
+      </div>
+    </details>
+    {% endfor %}
+  </section>
+  {% else %}
+  <div class="empty-state"><h2>{{ _('No groups match your filters.' if filters_active else 'No current teaching groups') }}</h2>{% if filters_active %}<a href="{{ url_for('workspace.teacher_groups') }}">Clear filters</a>{% else %}<p>Assigned groups will appear here when the administrator adds them.</p>{% endif %}</div>
+  {% endif %}

@@ -6,9 +6,9 @@
 {% import "admin/curriculum/_page_jump.html" as navigation with context %}
 {% block editor_content %}
 <div class="ce-workspace" data-curriculum-editor>
-  <h1 class="sr-only">{{ _('Student preview') if preview else _('Edit content') }}</h1>
+  {{ navigation.editor_header('Student preview' if preview else 'Edit content',
+                              switch_to=none if preview else 'division', preview_return=editor_url if preview else none) }}
   {{ macros.flash_messages() }}
-  {% if not editor_is_group and not preview %}<div class="ce-actions"><a class="btn btn--secondary" href="{{ url_for('admin.course_book_list', public_id=course.public_id) }}">{{ _('Back to course content') }}</a></div>{% endif %}
   <p class="ce-notice" role="status" data-editor-offline hidden>{{ _('Connection lost. The last saved position is kept. Reconnect to save this change.') }}</p>
   {% if not preview %}
     <form method="post" enctype="multipart/form-data" id="curriculum-media-form" data-media-form
@@ -37,24 +37,21 @@
     </div>
   {% endif %}
   <div class="ce-content-layout ce-reader-layout" data-book-browser data-open-page="{{ page }}">
-    <section class="ad-card ce-content-outline ce-index" data-index-panel>
-      {{ navigation.index_header(first, last, page) }}
+    <section class="ad-card ce-content-outline ce-index">
       <button class="ce-index-toggle" type="button" data-index-toggle data-workspace-disclosure aria-expanded="true" aria-controls="lesson-index">{{ _('Course outline') }}</button>
       <div class="ce-index-body" id="lesson-index" data-index-body data-ui-reveal>
-      <nav class="ce-index-scroll" id="ce-page-index" data-image-scroll data-index-scroll aria-label="{{ _('Course outline') }}">
+      <nav class="ce-index-scroll" id="ce-page-index" data-index-scroll aria-label="{{ _('Course outline') }}">
         {% for unit in units if not preview or unit.id == lesson.unit_id %}
-        <details class="ce-tree-unit" id="ce-unit-{{ unit.public_id }}" open>
+        <details class="ce-tree-unit" id="ce-unit-{{ unit.public_id }}"{% if unit.page_start <= page <= unit.page_end %} open{% endif %}>
           <summary dir="auto">{{ unit.title }}</summary>
+          <ul class="ce-lesson-index">
           {% for row in lesson_order(unit) if not preview or row.id == lesson.id %}
-          <details class="ce-tree-lesson" id="ce-lesson-{{ row.public_id }}">
-            <summary><span dir="auto">{{ row.title }}</span><small>{{ row.page_start }}–{{ row.page_end }}</small></summary>
-            <div class="ce-thumb-grid ce-page-thumbnails">
-              {% for number in range(row.page_start, row.page_end + 1) %}
-                {{ navigation.thumbnail(course, document, number, page) }}
-              {% endfor %}
-            </div>
-          </details>
+          <li><a class="ce-lesson-jump" id="ce-lesson-{{ row.public_id }}" href="#pdf-page-{{ row.page_start }}"
+                 data-page-target="{{ row.page_start }}" data-page-last="{{ row.page_end }}"{% if row.page_start <= page <= row.page_end %} aria-current="location"{% endif %}>
+            <span dir="auto">{{ row.title }}</span><small dir="ltr">{{ row.page_start }}–{{ row.page_end }}</small>
+          </a></li>
           {% endfor %}
+          </ul>
         </details>
         {% endfor %}
         {% if not preview and page_owners|length < document.page_count %}
@@ -62,7 +59,8 @@
           <summary>{{ _('Unassigned pages') }}</summary>
           <div class="ce-thumb-grid ce-page-thumbnails">
             {% for number in range(first, last + 1) if number not in page_owners %}
-              {{ navigation.thumbnail(course, document, number, page) }}
+                <a class="ce-thumb" href="#pdf-page-{{ number }}" data-page-target="{{ number }}"
+                   aria-label="{{ _('Page') }} {{ number }}">{{ number }}</a>
             {% endfor %}
           </div>
         </details>
@@ -81,17 +79,15 @@
     </section>
     <section class="ce-content-viewer ce-reader-panel" aria-label="{{ _('PDF pages') }}">
       <div class="ce-preview-tools ce-content-toolbar">
-        <span dir="auto">{{ _('Page') }} <strong data-current-page>{{ page }}</strong> / {{ document.page_count }}</span>
+        {{ navigation.page_jump(first, last, page, 'content') }}
+        {% if not preview %}
         <div class="ce-actions ce-content-actions">
-          {% if preview %}
-          <a class="btn btn--secondary" href="{{ editor_url }}#pdf-page-{{ page }}" data-editor-return>{{ _('Back to editor') }}</a>
-          {% else %}
           <a class="btn btn--secondary" role="link" data-preview-link
              data-unassigned-label="{{ _('Preview is available only on pages assigned to a lesson.') }}"
              {% if preview_url %}href="{{ preview_url }}#pdf-page-{{ page }}"{% else %}aria-disabled="true" title="{{ _('Preview is available only on pages assigned to a lesson.') }}"{% endif %}>{{ _('Student preview') }}</a>
           <button class="btn btn--primary" type="button" data-add-media>{{ _('Add file') }}</button>
-          {% endif %}
         </div>
+        {% endif %}
       </div>
       {{ reader.pages(document, first, last, materials, editor_page_endpoint,
                       editor_route_values, editor_file_endpoint, editor_route_values,

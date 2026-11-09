@@ -76,9 +76,10 @@ class EditorScope:
         return dict(
             book_upload_limit=DOCUMENT_MAX_BYTES,
             curriculum_url=self.url, editor_is_group=bool(self.group_id),
+            editor_context_name=self.group.name if self.group_id else self.course.title,
             editor_back_url=(url_for("workspace.teacher_group", group_public_id=self.group_public_id)
-                             if self.group_id else url_for("admin.courses_list")),
-            editor_back_label="Back to group" if self.group_id else "Back to courses",
+                             if self.group_id else url_for("admin.course_book_list", public_id=self.public_id)),
+            editor_back_label="Back to group" if self.group_id else "Back to course content",
             editor_file_endpoint=self.endpoint("file"), editor_page_endpoint=self.endpoint("document_page"),
             editor_route_values=self.route_values,
         )

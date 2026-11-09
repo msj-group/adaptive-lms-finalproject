@@ -1,6 +1,6 @@
 {% extends "layouts/admin_base.html" %}
 {% import 'curriculum/_media.html' as custom_media %}
 {% block body_class %}{{ super() }} ce-focused{% endblock %}
-{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='group-editors-1') }}">{% endblock %}
-{% block body_scripts %}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='focus-media-1') }}" defer></script><script src="{{ url_for('static', filename='js/file_upload_limits.js') }}" defer></script>{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='book-editor-2') }}">{% endblock %}
+{% block body_scripts %}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='book-editor-2') }}" defer></script><script src="{{ url_for('static', filename='js/file_upload_limits.js') }}" defer></script>{% endblock %}
 {% block content %}{% block editor_content %}{% endblock %}{% endblock %}

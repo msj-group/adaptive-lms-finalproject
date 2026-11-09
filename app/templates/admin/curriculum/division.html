@@ -4,13 +4,11 @@
 {% import "curriculum/_pages.html" as reader with context %}
 {% block title %}{{ _('Edit division') }}{% endblock %}
 {% block editor_content %}
-<div class="ce-workspace" data-curriculum-editor>
-  <h1 class="sr-only">{{ _('Edit division') }}</h1>
+<div class="ce-workspace ce-division-workspace" data-curriculum-editor>
+  {{ navigation.editor_header('Edit division', switch_to='content' if document and ready else none) }}
   {{ macros.flash_messages() }}
-  {% if not editor_is_group %}<div class="ce-actions"><a class="btn btn--secondary" href="{{ url_for('admin.course_book_list', public_id=course.public_id) }}">{{ _('Back to course content') }}</a></div>{% endif %}
   <p class="ce-notice" role="status" data-editor-offline hidden>{{ _('Connection lost. The last saved division is kept. Reconnect to save this change.') }}</p>
   {% if not document %}
-  {% if editor_is_group %}<div class="ce-actions"><a class="btn btn--secondary" href="{{ editor_back_url }}" data-workspace-return>{{ _(editor_back_label) }}</a></div>{% endif %}
   <section class="ad-card ce-source">
     {% if editor_is_group %}
     <h2>{{ _('Choose the main course PDF') }}</h2>
@@ -23,28 +21,27 @@
   </section>
   {% else %}
   <div class="ce-division ce-reader-layout" data-book-browser data-division-browser data-open-page="{{ page }}">
-    <section class="ad-card ce-thumbnails ce-index" data-index-panel>
-      {{ navigation.index_header(1, document.page_count, page, division=true) }}
-      <div class="ce-index-body" id="pdf-index" data-index-body data-ui-reveal>
+    <section class="ce-preview ce-reader-panel" aria-label="{{ _('PDF preview') }}">
+      <div class="ce-preview-tools">
+        {{ navigation.page_jump(1, document.page_count, page, 'division') }}
+        <button class="btn btn--secondary" type="button" data-index-toggle data-workspace-disclosure
+                aria-expanded="false" aria-controls="pdf-index">{{ _('PDF pages') }}</button>
+      </div>
+      <div class="ce-page-strip ce-index-body" id="pdf-index" data-index-body data-ui-reveal hidden>
         <nav class="ce-thumb-list ce-thumb-grid" id="ce-page-index" data-image-scroll data-index-scroll aria-label="{{ _('PDF pages') }}">
           {% for number in range(1, document.page_count + 1) %}
             {{ navigation.thumbnail(course, document, number, page) }}
           {% endfor %}
         </nav>
       </div>
-    </section>
-    <section class="ce-preview ce-reader-panel" aria-label="{{ _('PDF preview') }}">
-      <div class="ce-preview-tools">
-        <span>{{ _('Page') }} <strong data-current-page>{{ page }}</strong> / {{ document.page_count }}</span>
-        <div class="ce-actions" data-range-controls data-ui-reveal{% if not kind %} hidden{% endif %}>
-          <button class="btn btn--secondary" type="button" data-select-bound="start">{{ _('Set as first page') }}</button>
-          <button class="btn btn--secondary" type="button" data-select-bound="end">{{ _('Set as last page') }}</button>
-        </div>
-      </div>
       {{ reader.pages(document, 1, document.page_count, [], editor_page_endpoint,
                       editor_route_values, none, {}, book_sizes=sizes, page_pins={}) }}
     </section>
     <aside class="ad-card ce-division-form" id="ce-division-panel" data-division-panel>
+      <div class="ce-panel-heading">
+        <h2>{{ _('Saved division') }}</h2>
+        <a class="btn btn--primary" data-edit-range href="{{ curriculum_url('division', kind='unit') }}">{{ _('Add unit') }}</a>
+      </div>
       <div class="ce-division-top">
       {% if editor_is_group %}<details class="ce-source-menu" id="ce-source-menu">
         <summary class="btn btn--secondary">{{ _('Change main PDF') }}</summary>
@@ -53,11 +50,6 @@
           {% include "admin/curriculum/_source.html" %}
         </div>
       </details>{% else %}<p class="ce-source-name" dir="auto">{{ document.uploaded_file.original_filename }}</p>{% endif %}
-      {% if ready %}<a class="btn btn--primary" href="{{ curriculum_url('content') }}">{{ _('Continue to edit content') }}</a>{% endif %}
-      </div>
-      <div class="ce-panel-heading">
-        <h2>{{ _('Saved division') }}</h2>
-        <a class="btn btn--primary" data-edit-range href="{{ curriculum_url('division', kind='unit') }}">{{ _('Add unit') }}</a>
       </div>
       <p class="ce-notice" data-range-load-error role="status" hidden>{{ _('Could not open the form. Try again.') }}</p>
       <div data-range-slot>{% if kind %}{% include "admin/curriculum/_range_form.html" %}{% endif %}</div>
@@ -66,19 +58,20 @@
       <ul class="ce-outline">
         {% for unit in units %}
         <li class="ce-division-unit">
-          <div class="ce-division-unit-title"><strong dir="auto">{{ unit.title }}</strong><span>{{ unit.page_start ~ '–' ~ unit.page_end if unit.page_start else _('No page range') }}</span></div>
-          {% if unit.status == 'archived' %}<p>{{ _('Archived') }}</p>{% endif %}
-          <div class="ce-actions">
+          <details class="ce-division-unit-details"{% if (parent and parent.id == unit.id) or (kind == 'unit' and item and item.id == unit.id) or (not item and not parent and loop.first) %} open{% endif %}>
+          <summary class="ce-division-unit-title"><strong dir="auto">{{ unit.title }}</strong><span><bdi dir="ltr">{{ unit.page_start ~ '–' ~ unit.page_end if unit.page_start else _('No page range') }}</bdi>{% if unit.status == 'archived' %} · {{ _('Archived') }}{% endif %}</span></summary>
+          <div class="ce-actions ce-division-unit-actions">
             <a class="btn btn--secondary ce-small-action" data-edit-range href="{{ curriculum_url('division', kind='unit', item=unit.public_id) }}">{{ _('Edit unit') }}</a>
             {% if unit.page_start and unit.status == 'active' %}<a class="btn btn--secondary ce-small-action" data-edit-range href="{{ curriculum_url('division', kind='lesson', parent=unit.public_id) }}">{{ _('Add lesson') }}</a>{% endif %}
           </div>
           {% if unit.lessons %}<ul class="ce-lesson-actions">
             {% for lesson in lesson_order(unit) %}
               <li><a class="btn btn--secondary ce-outline-action" data-edit-range href="{{ curriculum_url('division', kind='lesson', item=lesson.public_id) }}">
-                <span dir="auto">{{ lesson.title }}</span><small>{{ lesson.page_start ~ '–' ~ lesson.page_end if lesson.page_start else _('No page range') }}</small>
+                <span dir="auto">{{ lesson.title }}</span><small dir="ltr">{{ lesson.page_start ~ '–' ~ lesson.page_end if lesson.page_start else _('No page range') }}</small>
               </a></li>
             {% endfor %}
           </ul>{% endif %}
+          </details>
         </li>
         {% endfor %}
       </ul>

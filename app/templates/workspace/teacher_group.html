@@ -1,28 +1,83 @@
 {% extends "teacher/studio/_base.html" %}
-{% set studio_page='overview' %}
-{% block title %}{{ group.name }} — Course studio{% endblock %}
-{% block studio_heading %}{% set operational = group.status=='active' and group.academic_term.status=='active' and group.course.status=='active' and group.course.level.status=='active' %}
-{% call studio.heading(group.name,group.course.title ~ ' · ' ~ group.academic_term.name) %}<span class="badge badge--{{ 'success' if operational else 'neutral' }}">{{ _('Operational' if operational else 'Archived context') }}</span>{% endcall %}{% endblock %}
+{% set gp = group.public_id %}
+{% block title %}{{ group.name }} · {{ _('Group workspace') }}{% endblock %}
+{% block studio_heading %}
+  {{ studio.heading(group.name, group.course.title ~ ' · ' ~ group.academic_term.name) }}
+{% endblock %}
+{% macro tool(label, icon, destination) %}
+  <a class="cs-group-tool" href="{{ destination }}">{{ ui.icon(icon, 18) }}<span>{{ _(label) }}</span></a>
+{% endmacro %}
 {% block studio_content %}
-{% set operational = group.status=='active' and group.academic_term.status=='active' and group.course.status=='active' and group.course.level.status=='active' %}
-{% include 'teacher/studio/_editor_actions.html' %}
-<div class="cs-editor-actions"><a class="btn btn--secondary" href="{{ url_for('teacher.course_book_list', group_public_id=group.public_id) }}">{{ _('Course books') }}</a></div>
-{% set totals=namespace(lessons=0) %}{% for unit in units %}{% set totals.lessons=totals.lessons+lessons_by_unit.get(unit.id,[])|length %}{% endfor %}
+{% if not operational %}
+<p class="alert alert--warning">{{ _('This group is archived. Its publication settings are read-only.') }}</p>
+{% endif %}
+<div class="cs-group-desk">
+  <section class="cs-panel cs-group-course" aria-labelledby="group-course-title">
+    <h2 id="group-course-title">{{ _('Course content') }}</h2>
+    <div class="cs-group-tools">
+      {% if operational %}
+      {% for mode, label, icon in [('division', 'Edit division', 'layers'), ('content', 'Edit content', 'pen')] %}
+      <form method="post" action="{{ url_for('teacher.curriculum_begin', group_public_id=gp) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="cs-group-tool" name="editor" value="{{ mode }}">{{ ui.icon(icon, 18) }}<span>{{ _(label) }}</span></button>
+      </form>
+      {% endfor %}
+      {% endif %}
+      {{ tool('Course publication', 'eye', url_for('teacher.curriculum_publication', group_public_id=gp)) }}
+      {{ tool('Course books', 'book', url_for('teacher.course_book_list', group_public_id=gp)) }}
+    </div>
+  </section>
 
-<section class="cs-hero">
-  <div><p class="cs-eyebrow" dir="auto">{{ group.course.level.name }}</p><h2 dir="auto">{{ group.course.title }}</h2><p class="cs-meta" dir="auto">{{ group.academic_term.name }} · {{ ui_date(group.academic_term.start_date.strftime('%d %b %Y')) }} – {{ ui_date(group.academic_term.end_date.strftime('%d %b %Y')) }}</p><a class="btn" href="{{ url_for('teacher.curriculum_publication',group_public_id=group.public_id) }}">Course publication {{ ui.icon('arrow-up',16) }}</a></div>
-  <dl class="cs-hero-facts"><div><dt>Teaching group</dt><dd dir="auto">{{ group.name }}</dd></div><div><dt>Course structure</dt><dd>{{ _n('%(count)d unit','%(count)d units',units|length) }} · {{ _n('%(count)d lesson','%(count)d lessons',totals.lessons) }}</dd></div><div><dt>Student visibility</dt><dd>{{ _('Set in Course publication' if operational else 'Hidden while context is archived') }}</dd></div></dl>
-</section>
-{% if not operational %}<div class="alert alert--warning">This group is not operational. Content and publication statuses are preserved; students cannot open its lessons right now.</div>{% endif %}
-<div class="cs-section-head"><h2>Your teaching content</h2><a class="cs-text-link" href="{{ url_for('teacher.group_units',group_public_id=group.public_id) }}">All units {{ ui.icon('arrow',15) }}</a></div>
-{% if units %}<div class="cs-split" id="group-content" data-studio-selection>
-  <aside class="cs-panel"><h2>Course outline</h2><nav class="cs-outline" aria-label="Course units">{% for unit in units %}{% set lessons=lessons_by_unit.get(unit.id,[]) %}<a href="#studio-unit-{{ unit.public_id }}" data-studio-target="studio-unit-{{ unit.public_id }}"><span class="cs-number">{{ '%02d'|format(loop.index) }}</span><span><strong dir="auto">{{ unit.title }}</strong><small>{{ _n('%(count)d lesson','%(count)d lessons',lessons|length) }} · {{ _(unit.status|capitalize) }}</small></span>{{ ui.icon('chevron',15) }}</a>{% endfor %}</nav></aside>
-  <div>{% for unit in units %}<section class="cs-panel cs-unit-pane" id="studio-unit-{{ unit.public_id }}" data-studio-pane>
-    <p class="cs-eyebrow">{{ _('Unit %(count)d',count=loop.index) }}</p><div class="cs-section-head"><h2 dir="auto">{{ unit.title }}</h2>{{ studio.status(unit.status) }}{% if unit.course_id %}<span class="badge badge--neutral">Shared curriculum</span>{% endif %}</div>{% if unit.description %}<p class="cs-unit-description" dir="auto">{{ unit.description }}</p>{% endif %}
-    {% if unit.status!='active' %}<p class="cs-note">This unit is archived. Its lessons are hidden from students; publication statuses are preserved.</p>{% endif %}
-    {% for lesson in lessons_by_unit.get(unit.id,[]) %}<article class="cs-lesson"><h3 dir="auto">{{ lesson.title }}</h3>{{ studio.status(lesson.status) }}<div class="cs-actions"><a class="cs-text-link" href="{{ url_for('teacher.lesson_materials',group_public_id=group.public_id,unit_public_id=unit.public_id,lesson_public_id=lesson.public_id) }}">Materials</a><a class="cs-text-link" href="{{ url_for('workspace.lesson_preview',group_public_id=group.public_id,unit_public_id=unit.public_id,lesson_public_id=lesson.public_id) }}">{{ ui.icon('eye',15) }} Student preview</a></div></article>{% else %}<p class="cs-meta">No lessons in this unit.</p>{% endfor %}
-    <div class="cs-actions"><a class="btn" href="{{ url_for('teacher.group_lessons',group_public_id=group.public_id,unit_public_id=unit.public_id) }}">View lessons {{ ui.icon('arrow-up',15) }}</a></div>
-  </section>{% endfor %}</div>
-</div>{% else %}<div class="empty-state"><h2>No units yet</h2><p class="cs-meta">Shared units appear after an administrator adds them.</p></div>{% endif %}
-<p class="cs-note">{{ ui.icon('lock',15) }}Use Course publication to choose what students see in this group.</p>
+  <section class="cs-panel cs-group-outline" id="group-content" aria-labelledby="group-outline-title">
+    <h2 id="group-outline-title">{{ _('Course outline') }}</h2>
+    {% for unit in units %}
+    {% set lessons = lessons_by_unit.get(unit.id, []) %}
+    <details class="cs-outline-unit" id="studio-unit-{{ unit.public_id }}"{% if loop.first %} open{% endif %}>
+      <summary>
+        <span class="cs-outline-number" aria-hidden="true">{{ loop.index }}</span>
+        <span class="cs-outline-unit-name"><strong dir="auto">{{ unit.title }}</strong><small>{{ _n('%(count)d lesson', '%(count)d lessons', lessons|length) }}{% if unit.status == 'archived' %} · {{ _('Archived') }}{% endif %}</small></span>
+        {{ ui.icon('chevron-down', 16) }}
+      </summary>
+      {% if unit.description %}<p class="cs-unit-description" dir="auto">{{ unit.description }}</p>{% endif %}
+      <ol class="cs-outline-lessons">
+        {% for lesson in lessons %}
+        <li>
+          <a class="cs-outline-lesson-link" href="{{ url_for('teacher.lesson_materials', group_public_id=gp, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}">
+            <span dir="auto">{{ lesson.title }}</span>
+            {% if lesson.status != 'published' %}{{ studio.status(lesson.status) }}{% endif %}
+          </a>
+          <a class="cs-outline-preview" href="{{ url_for('workspace.lesson_preview', group_public_id=gp, unit_public_id=unit.public_id, lesson_public_id=lesson.public_id) }}"
+             aria-label="{{ _('Student preview') }} · {{ lesson.title }}" title="{{ _('Student preview') }}">{{ ui.icon('eye', 17) }}</a>
+        </li>
+        {% else %}<li class="cs-meta">{{ _('No lessons in this unit.') }}</li>{% endfor %}
+      </ol>
+    </details>
+    {% else %}<p class="cs-meta">{{ _('No units yet') }}</p>{% endfor %}
+  </section>
+
+  <div class="cs-group-support">
+    <section class="cs-panel" aria-labelledby="group-activities-title">
+      <h2 id="group-activities-title">{{ _('Activities') }}</h2>
+      <div class="cs-group-tools">
+        {% if operational %}{{ tool('New activity', 'pen', url_for('teacher.activity_start', group=gp, type='assignment')) }}{% endif %}
+        {{ tool('Activity library', 'activity', url_for('teacher.group_activities', group_public_id=gp)) }}
+      </div>
+    </section>
+    <section class="cs-panel" aria-labelledby="group-records-title">
+      <h2 id="group-records-title">{{ _('Class records') }}</h2>
+      <div class="cs-group-tools">
+        {{ tool('Attendance', 'calendar', url_for('teacher.group_attendance', group_public_id=gp)) }}
+        {{ tool('Gradebook', 'graduation', url_for('teacher.group_gradebook', group_public_id=gp)) }}
+        {{ tool('Lesson completion', 'check', url_for('teacher.group_progress', group_public_id=gp)) }}
+      </div>
+    </section>
+    <section class="cs-panel" aria-labelledby="group-communication-title">
+      <h2 id="group-communication-title">{{ _('Communication') }}</h2>
+      <div class="cs-group-tools">
+        {{ tool('Announcements', 'megaphone', url_for('teacher.group_announcements', group_public_id=gp)) }}
+        {{ tool('Discussions', 'message', url_for('teacher.discussions_group', group_public_id=gp)) }}
+      </div>
+    </section>
+  </div>
+</div>
 {% endblock %}

@@ -1,23 +1,34 @@
-{% import "_figma_ui.html" as ui %}
-{% macro index_header(first, last, current, division=false) %}
-<div class="ce-index-header">
-  <div class="ce-index-actions">
-    <a class="btn btn--secondary" href="{{ editor_back_url }}" data-workspace-return>{{ _(editor_back_label) }}</a>
-    <div class="ce-index-icons">
-      <button class="btn btn--secondary ce-icon-action" type="button" data-jump-toggle aria-expanded="false"
-              aria-controls="ce-jump-page" aria-label="{{ _('Go to page') }}" title="{{ _('Go to page') }}">{{ ui.icon('search', 18) }}</button>
-      {% if division %}
-      <button class="btn btn--secondary ce-icon-action" type="button" data-index-toggle data-workspace-disclosure aria-expanded="true"
-              aria-controls="pdf-index" aria-label="{{ _('PDF pages') }}" title="{{ _('PDF pages') }}">{{ ui.icon('dashboard', 18) }}</button>
-      {% endif %}
-    </div>
+{% macro editor_header(title, switch_to=none, preview_return=none) %}
+<header class="ce-editor-heading">
+  <div>
+    <h1>{{ _(title) }}</h1>
+    <p dir="auto">{{ editor_context_name }}</p>
   </div>
-  <form class="ce-jump-page" id="ce-jump-page" data-jump-page data-ui-reveal hidden>
-    <label class="sr-only" for="ce-page-number">{{ _('Go to page') }}</label>
+  <div class="ce-actions">
+    {% if switch_to %}
+    <a class="btn btn--secondary" href="{{ curriculum_url(switch_to) }}">{{ _('Edit content' if switch_to == 'content' else 'Edit division') }}</a>
+    {% endif %}
+    {% if preview_return %}
+    <a class="btn btn--secondary" href="{{ preview_return }}#pdf-page-{{ page }}" data-editor-return>{{ _('Back to editor') }}</a>
+    {% else %}
+    <a class="btn btn--secondary" href="{{ editor_back_url }}" data-workspace-return>{{ _(editor_back_label) }}</a>
+    {% endif %}
+  </div>
+</header>
+{% endmacro %}
+
+{% macro page_jump(first, last, current, mode) %}
+  <form class="ce-jump-page" method="get" action="{{ curriculum_url(mode) }}" data-jump-page>
+    {% for name in (('kind', 'item', 'parent') if mode == 'division' else ('lesson', 'preview', 'return_lesson', 'return_page')) %}
+    {% if request.args.get(name) %}<input type="hidden" name="{{ name }}" value="{{ request.args.get(name) }}">{% endif %}
+    {% endfor %}
+    <label for="ce-page-number">{{ _('Page') }}</label>
     <input class="field__input" id="ce-page-number" name="page" type="number" inputmode="numeric"
-           min="{{ first }}" max="{{ last }}" value="{{ current }}" placeholder="{{ _('Go to page') }}" required>
+           min="{{ first }}" max="{{ last }}" value="{{ current }}" aria-label="{{ _('Go to page') }}" required>
+    <span dir="ltr" aria-hidden="true">/ {{ last }}</span>
+    <span class="sr-only" data-current-page>{{ current }}</span>
+    <button type="submit" class="btn btn--secondary">{{ _('Go') }}</button>
   </form>
-</div>
 {% endmacro %}
 
 {% macro thumbnail(course, document, number, current) %}

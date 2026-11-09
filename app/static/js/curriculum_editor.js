@@ -30,7 +30,6 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     const pages = Array.from(viewer.querySelectorAll("[data-book-page]"));
     const pageByNumber = new Map(pages.map(page => [Number(page.dataset.bookPage), page]));
     const jump = browser.querySelector("[data-jump-page]");
-    const jumpToggle = browser.querySelector("[data-jump-toggle]");
     const jumpInput = jump.elements.namedItem("page");
     const current = browser.querySelector("[data-current-page]");
     const indexScroll = browser.querySelector("[data-index-scroll]");
@@ -38,25 +37,36 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     const editorReturn = root.querySelector("[data-editor-return]");
     const thumbs = new Map(Array.from(browser.querySelectorAll(".ce-thumb[data-page-target]"))
       .map(link => [Number(link.dataset.pageTarget), link]));
-    const index = browser.querySelector("[data-index-panel]");
-    const indexToggle = index.querySelector("[data-index-toggle]");
-    const indexBody = index.querySelector("[data-index-body]");
+    const lessonLinks = Array.from(browser.querySelectorAll("[data-page-last]"));
+    const indexToggle = browser.querySelector("[data-index-toggle]");
+    const indexBody = browser.querySelector("[data-index-body]");
+    const division = browser.hasAttribute("data-division-browser");
     const narrow = window.matchMedia("(max-width: 840px)");
     let active = null;
-    let matched = null;
     let scrollFrame = 0;
+
+    function lessonForPage(number) {
+      return lessonLinks.find(link => Number(link.dataset.pageTarget) <= number && number <= Number(link.dataset.pageLast));
+    }
+
+    function showPageInIndex(number) {
+      const link = thumbs.get(number) || lessonForPage(number);
+      const unit = link?.closest(".ce-tree-unit");
+      if (unit && !indexBody.hidden) unit.open = true;
+      revealThumb(link);
+    }
 
     function showIndex(open) {
       indexBody.hidden = !open;
       indexToggle.setAttribute("aria-expanded", String(open));
-      if (open && active !== null) revealThumb(matched || thumbs.get(active));
+      if (open && active !== null) showPageInIndex(active);
     }
-    showIndex(!narrow.matches);
+    showIndex(!division && !narrow.matches);
     pageScope.listen(indexToggle, "click", () => showIndex(indexBody.hidden));
-    pageScope.listen(narrow, "change", () => showIndex(!narrow.matches));
+    pageScope.listen(narrow, "change", () => showIndex(!division && !narrow.matches));
     for (const scroller of browser.querySelectorAll("[data-image-scroll]")) loadNearbyImages(scroller);
 
-    function revealThumb(thumb, userJump = false) {
+    function revealThumb(thumb) {
       if (!thumb || indexBody.hidden || !thumb.getClientRects().length) return;
       const bounds = thumb.getBoundingClientRect();
       const list = indexScroll.getBoundingClientRect();
@@ -69,28 +79,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         left += bounds.left - list.left - (list.width - bounds.width) / 2;
       }
       if (top !== indexScroll.scrollTop || left !== indexScroll.scrollLeft) {
-        indexScroll.scrollTo({top, left, behavior: userJump && allowsMotion() ? "smooth" : "instant"});
-      }
-    }
-
-    function matchThumb() {
-      matched?.removeAttribute("data-page-match");
-      matched = jumpInput.validity.valid ? thumbs.get(jumpInput.valueAsNumber) : null;
-      if (!matched) return;
-      if (indexBody.hidden) showIndex(true);
-      for (let node = matched.parentElement; node !== indexScroll; node = node.parentElement) {
-        if (node.tagName === "DETAILS") node.open = true;
-      }
-      matched.setAttribute("data-page-match", "");
-      revealThumb(matched, true);
-    }
-
-    function showJump(open) {
-      jump.hidden = !open;
-      jumpToggle.setAttribute("aria-expanded", String(open));
-      if (open) {
-        jumpInput.focus({preventScroll: true});
-        jumpInput.select();
+        indexScroll.scrollTo({top, left, behavior: "instant"});
       }
     }
 
@@ -99,12 +88,14 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       if (number === active) return;
       active = number;
       current.textContent = number;
-      if (!matched && document.activeElement !== jumpInput) jumpInput.value = number;
+      if (document.activeElement !== jumpInput) jumpInput.value = number;
       for (const link of browser.querySelectorAll("[data-page-target][aria-current]")) link.removeAttribute("aria-current");
-      for (const link of browser.querySelectorAll('[data-page-target="' + number + '"]')) {
+      for (const link of browser.querySelectorAll('[data-page-target="' + number + '"]:not([data-page-last])')) {
         link.setAttribute("aria-current", "page");
       }
-      if (!matched && !keepIndex) revealThumb(thumbs.get(number));
+      const lessonLink = lessonForPage(number);
+      lessonLink?.setAttribute("aria-current", "location");
+      if (!keepIndex) revealThumb(thumbs.get(number) || lessonLink);
       if (preview) {
         const pagePreview = page.querySelector("[data-sheet]").dataset.lessonPreview;
         if (pagePreview) {
@@ -144,6 +135,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       if (animate && distant) viewer.animate([{opacity: .65}, {opacity: 1}], {duration: 120, easing: "ease-out"});
       jumpInput.value = number;
       if (instant) activate(page);
+      if (!indexBody.hidden) showPageInIndex(Number(number));
     }
 
     pageScope.listen(viewer, "scroll", () => {
@@ -154,25 +146,16 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         activate(visiblePage(), restoring);
       });
     }, {passive: true});
-    (preview || editorReturn)?.addEventListener("click", () => activate(visiblePage()));
-    pageScope.listen(jumpToggle, "click", () => showJump(jump.hidden));
-    pageScope.listen(jumpInput, "input", matchThumb);
-    pageScope.listen(jump, "keydown", event => {
-      if (event.key !== "Escape") return;
-      showJump(false);
-      jumpToggle.focus();
-    });
+    if (preview || editorReturn) pageScope.listen(preview || editorReturn, "click", () => activate(visiblePage()));
     pageScope.listen(jump, "submit", event => {
       event.preventDefault();
-      matchThumb();
+      goTo(jumpInput.valueAsNumber);
     });
     pageScope.listen(root, "click", event => {
       const link = event.target.closest("[data-page-target]");
       if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
-      matched?.removeAttribute("data-page-match");
-      matched = null;
-      showJump(false);
+      if (narrow.matches && indexBody.contains(link)) showIndex(false);
       goTo(link.dataset.pageTarget);
     });
     pageScope.requestAnimationFrame(() => {
@@ -181,8 +164,8 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       goTo(number, true);
     });
 
-    if (browser.hasAttribute("data-division-browser")) {
-      prepareRangeEditor(browser, () => active);
+    if (division) {
+      prepareRangeEditor(browser, () => active, goTo);
     }
   }
 
@@ -206,7 +189,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     }, {root: scroller, rootMargin: "160px"});
     function load() {
       while (loading < 3 && waiting.size) {
-        const image = Array.from(waiting).find(item => item.closest("[data-page-match],[aria-current=page]"))
+        const image = Array.from(waiting).find(item => item.closest("[aria-current=page]"))
           || waiting.values().next().value;
         waiting.delete(image);
         observer.unobserve(image);
@@ -225,9 +208,8 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     for (const image of images) observer.observe(image);
   }
 
-  function prepareRangeEditor(browser, currentPage) {
+  function prepareRangeEditor(browser, currentPage, goTo) {
     const slot = browser.querySelector("[data-range-slot]");
-    const controls = browser.querySelector("[data-range-controls]");
     const panel = browser.querySelector("[data-division-panel]");
     const errorMessage = panel.querySelector("[data-range-load-error]");
     let pending = null;
@@ -243,7 +225,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         const number = currentPage();
         if (input && number >= Number(input.min) && number <= Number(input.max)) {
           input.value = number;
-          input.focus({preventScroll: true});
+          input.dispatchEvent(new Event("input", {bubbles: true}));
         }
       }
       if (cancel) {
@@ -263,7 +245,6 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         } else {
           finish();
         }
-        controls.hidden = true;
         errorMessage.hidden = true;
         trigger?.focus({preventScroll: true});
       }
@@ -288,11 +269,10 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         trigger = link;
         returnTop = originTop;
         slot.replaceChildren(card);
-        controls.hidden = false;
-        const paneBounds = panel.getBoundingClientRect();
-        if (card.getBoundingClientRect().top < paneBounds.top) {
-          panel.scrollTo({top: 0, behavior: allowsMotion() ? "smooth" : "instant"});
+        if (card.querySelector('[name="item"]')) {
+          goTo(card.querySelector('[name="page_start"]').value, true);
         }
+        card.scrollIntoView({block: "nearest", behavior: allowsMotion() ? "smooth" : "instant"});
         card.querySelector('[name="title"]').focus({preventScroll: true});
       } catch (error) {
         if (error.name !== "AbortError" && !controller.signal.aborted) errorMessage.hidden = false;

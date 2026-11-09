@@ -41,7 +41,7 @@
     {# Archive and Reactivate own status changes. #}
     <div class="ds-row yc-actions" style="margin-top: var(--space-6)">
       {{ form.submit(class_="btn btn--primary") }}
-      <a class="btn btn--secondary" href="{{ url_for('teacher.group_units', group_public_id=group.public_id) }}">Cancel</a>
+      <a class="btn btn--secondary" href="{{ url_for('workspace.teacher_group', group_public_id=group.public_id, _anchor='group-content') }}">Cancel</a>
     </div>
   </form>
 </div>

@@ -3,7 +3,7 @@
 <section class="ce-range-card" aria-labelledby="range-card-title">
   <div class="ce-range-heading">
     <h2 id="range-card-title">{{ _('Edit unit') if kind == 'unit' and item else _('Add unit') if kind == 'unit' else _('Edit lesson') if item else _('Add lesson') }}</h2>
-    {% if parent %}<p dir="auto">{{ parent.title }} · {{ low }}–{{ high }}</p>{% endif %}
+    {% if parent %}<p dir="auto">{{ parent.title }} · <bdi dir="ltr">{{ low }}–{{ high }}</bdi></p>{% endif %}
   </div>
   <form method="post" action="{{ curriculum_url('division') }}" data-range-form>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -13,8 +13,14 @@
     {% if parent %}<input type="hidden" name="parent" value="{{ parent.public_id }}">{% endif %}
     <label class="field">{{ _('Title') }}<input class="field__input" name="title" maxlength="150" value="{{ item.title if item else '' }}" required></label>
     <div class="ce-range-fields">
-      <label class="field">{{ _('First page') }}<input class="field__input" type="number" name="page_start" min="{{ low }}" max="{{ high }}" value="{{ item.page_start if item and item.page_start else low }}" required></label>
-      <label class="field">{{ _('Last page') }}<input class="field__input" type="number" name="page_end" min="{{ low }}" max="{{ high }}" value="{{ item.page_end if item and item.page_end else high }}" required></label>
+      <div>
+        <label class="field">{{ _('First page') }}<input class="field__input" type="number" name="page_start" inputmode="numeric" min="{{ low }}" max="{{ high }}" value="{{ item.page_start if item and item.page_start else low }}" required></label>
+        <button type="button" class="btn btn--secondary" data-select-bound="start" aria-label="{{ _('Set as first page') }}">{{ _('Use open page') }}</button>
+      </div>
+      <div>
+        <label class="field">{{ _('Last page') }}<input class="field__input" type="number" name="page_end" inputmode="numeric" min="{{ low }}" max="{{ high }}" value="{{ item.page_end if item and item.page_end else high }}" required></label>
+        <button type="button" class="btn btn--secondary" data-select-bound="end" aria-label="{{ _('Set as last page') }}">{{ _('Use open page') }}</button>
+      </div>
     </div>
     {% if item %}
       <label class="field">{{ _('Status') }}<select class="field__input" name="status">

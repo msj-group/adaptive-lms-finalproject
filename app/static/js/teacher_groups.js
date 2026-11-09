@@ -6,13 +6,6 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   var root = document.querySelector("[data-teacher-groups]");
   if (!root) return;
   var filters = root.querySelector("[data-group-filters]");
-  var form = root.querySelector("[data-group-filter-form]");
-  var search = root.querySelector("[data-group-search]");
-  if (form && search) {
-    pageScope.listen(form, "submit", function () {
-      form.querySelector("[data-group-filter-query]").value = search.value;
-    });
-  }
   if (filters) {
     pageScope.listen(document, "click", function (event) {
       if (filters.open && !filters.contains(event.target)) filters.open = false;

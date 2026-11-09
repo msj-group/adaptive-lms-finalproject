@@ -104,7 +104,7 @@ def teacher_groups():
 @workspace_bp.get("/teacher/groups/<group_public_id>/workspace")
 @roles_required("teacher")
 def teacher_group(group_public_id):
-    from app.blueprints.teacher.units import _teacher_group_or_404
+    from app.blueprints.teacher.units import _group_is_operational, _teacher_group_or_404
     from app.models import Lesson
     group = _teacher_group_or_404(group_public_id)
     units = Unit.query.filter(Unit.in_group(group.id, group.course_id)).order_by(Unit.display_order, Unit.id).all()
@@ -114,7 +114,7 @@ def teacher_group(group_public_id):
     for lesson in lessons:
         by_unit.setdefault(lesson.unit_id, []).append(lesson)
     return private_page("workspace/teacher_group.html", group=group, units=units,
-                        lessons_by_unit=by_unit, active_nav="groups")
+                        lessons_by_unit=by_unit, operational=_group_is_operational(group), active_nav="groups")
 
 
 @workspace_bp.get("/teacher/groups/<group_public_id>/units/<unit_public_id>/lessons/<lesson_public_id>/preview")
@@ -635,8 +635,7 @@ def navigation_context():
                 ("Communication", "teacher.group_announcements")]
             tabs = {
                 "Overview": [],
-                "Content": [("Content outline", "workspace.teacher_group", {"_anchor": "group-content"}),
-                            ("Units & lessons", "teacher.group_units", {})],
+                "Content": [("Course outline", "workspace.teacher_group", {"_anchor": "group-content"})],
                 "Activities": [],
                 "Class records": [("Attendance", "teacher.group_attendance", {}), ("Gradebook", "teacher.group_gradebook", {}),
                                   ("Progress", "teacher.group_progress", {})],
