@@ -15,7 +15,7 @@
 <p class="st-nav-label">{{ _(heading) }}</p>
 {% for key,label,short,target,symbol in destinations if key in keys %}
 {% if not mobile_more or target not in primary_targets %}
-{{ atlas_ui.nav_link({'groups':'Groups','calendar':'Calendar'}.get(key,label), target, symbol, section == key if section else workspace_nav_active(target), link_class='st-nav-link') }}
+{{ atlas_ui.nav_link({'groups':'Groups','calendar':'Schedules & calendar'}.get(key,label), target, symbol, section == key if section else workspace_nav_active(target), link_class='st-nav-link') }}
 {% endif %}
 {% endfor %}
 {% endfor %}

@@ -29,7 +29,7 @@
     its title, text, scope and target can never be changed — only withdrawn.
   </div>
 
-  <div class="ad-form-layout"><form method="post" class="card yc-panel yc-form aan-draft-form" novalidate>
+  <div class="ad-form-layout"><form method="post" class="card yc-panel yc-form aan-draft-form" data-announcement-audience novalidate>
     {{ form.hidden_tag() }}
     <input type="hidden" name="announcement_state" value="{{ announcement_state }}">
 
@@ -42,7 +42,7 @@
       <div class="ds-section__desc" style="margin: var(--space-1) 0 0">Select the matching course or group. Centre notices need neither.</div>
     </div>
 
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" data-announcement-target="course" style="margin-top: var(--space-4)">
       <label class="field__label" for="{{ form.course.id }}">{{ form.course.label.text }}</label>
       {{ form.course(class="field__input") }}
       {% for error in form.course.errors %}
@@ -54,7 +54,7 @@
       </div>
     </div>
 
-    <div class="field" style="margin-top: var(--space-4)">
+    <div class="field" data-announcement-target="group" style="margin-top: var(--space-4)">
       <label class="field__label" for="{{ form.group.id }}">{{ form.group.label.text }}</label>
       {{ form.group(class="field__input") }}
       {% for error in form.group.errors %}

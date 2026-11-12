@@ -6,12 +6,7 @@
 <div class="ad-page aan-page aan-detail" data-announcement-view="detail" data-announcement-id="{{ announcement.public_id }}" data-communication-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}">
 <header class="ad-page-head"><div><p class="ad-eyebrow">Communication / Announcement</p><h1 data-workspace-page-heading>{{ announcement.title }}</h1><p class="ad-subtitle">{{ announcement.context or "Everybody at the centre" }} · Written by {{ announcement.author_name }}</p></div><div class="ad-actions">{{ ann.status_badge(announcement) }}{{ ann.scope_badge(announcement) }}</div></header>
 {{ macros.flash_messages() }}
-<div class="ad-grid"><section class="ad-card"><div class="ad-card-top"><h2>Message</h2></div>{% include '_announcement_live_body.html' %}</section>
-<aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Publication details</h2></div><dl class="ad-definition">
-<dt>State</dt><dd>{{ ann.status_badge(announcement) }}</dd><dt>Audience</dt><dd>{{ announcement.context or "Everybody at the centre" }}</dd><dt>Author</dt><dd>{{ announcement.author_name }}</dd>
-<dt>Created</dt><dd>{{ announcement.created_local.strftime("%Y-%m-%d %H:%M") }}</dd><dt>Last changed</dt><dd>{{ announcement.updated_local.strftime("%Y-%m-%d %H:%M") }}</dd>
-<dt>Published</dt><dd>{{ announcement.published_local.strftime("%Y-%m-%d %H:%M") if announcement.published_local else '—' }}</dd><dt>Withdrawn</dt><dd>{{ announcement.withdrawn_local.strftime("%Y-%m-%d %H:%M") if announcement.withdrawn_local else '—' }}</dd></dl></section>
-  {% if announcement.status == 'draft' %}
+{% if announcement.status == 'draft' %}
   <div class="card yc-panel ad-card" style="margin-top: var(--space-4)">
     <div class="card__title">This is a draft</div>
     <div class="card__body" style="margin-top: var(--space-2)">
@@ -37,7 +32,13 @@
       {% endif %}
     </div>
   </div>
-  {% elif announcement.status == 'published' %}
+{% endif %}
+<div class="ad-grid"><section class="ad-card"><div class="ad-card-top"><h2>Message</h2></div>{% include '_announcement_live_body.html' %}</section>
+<aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Publication details</h2></div><dl class="ad-definition">
+<dt>State</dt><dd>{{ ann.status_badge(announcement) }}</dd><dt>Audience</dt><dd>{{ announcement.context or "Everybody at the centre" }}</dd><dt>Author</dt><dd>{{ announcement.author_name }}</dd>
+<dt>Created</dt><dd>{{ announcement.created_local.strftime("%Y-%m-%d %H:%M") }}</dd><dt>Last changed</dt><dd>{{ announcement.updated_local.strftime("%Y-%m-%d %H:%M") }}</dd>
+<dt>Published</dt><dd>{{ announcement.published_local.strftime("%Y-%m-%d %H:%M") if announcement.published_local else '—' }}</dd><dt>Withdrawn</dt><dd>{{ announcement.withdrawn_local.strftime("%Y-%m-%d %H:%M") if announcement.withdrawn_local else '—' }}</dd></dl></section>
+  {% if announcement.status == 'published' %}
   <div class="card yc-panel ad-card" style="margin-top: var(--space-4)">
     <div class="card__title">Withdraw this announcement</div>
     <div class="card__body" style="margin-top: var(--space-2)">
@@ -58,7 +59,7 @@
       </div>
     </form>
   </div>
-  {% else %}
+  {% elif announcement.status == 'withdrawn' %}
   <div class="alert alert--info" style="margin-top: var(--space-4)">
     This announcement was withdrawn and is permanent. It cannot be edited, published again,
     or restored, and nobody can read it any more. It is kept as a record of what was posted

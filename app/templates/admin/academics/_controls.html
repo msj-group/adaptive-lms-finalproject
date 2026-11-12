@@ -1,13 +1,20 @@
 {% macro status_control(kind, record) -%}
 {% set endpoint = {'courses':'course','terms':'academic_term','levels':'level','rooms':'room'}[kind] %}
-<form method="post" action="{{ url_for('admin.' ~ endpoint ~ '_toggle_status', public_id=record.public_id) }}" class="yc-form ah-status-form" data-academic-status-form>
+{% set name = record.title if kind == 'courses' else record.name %}
+{% set archiving = record.status == 'active' %}
+{% set effects = {
+  'courses': 'Active groups must be archived first. Existing enrollments, invoices and learning history are retained.',
+  'terms': 'Active groups in this term must be archived first. Existing records and teaching history are retained.',
+  'levels': 'Active courses and groups under this level must be archived first. Existing learning history is retained.',
+  'rooms': 'Active schedules using this room must be reassigned or archived first. Earlier schedules are retained.'
+} %}
+{% set message = ('Archive "' ~ name ~ '"? ' ~ effects[kind]) if archiving else ('Reactivate "' ~ name ~ '"? It will be available for new setup again, subject to the current academic and scheduling checks.') %}
+<form method="post" action="{{ url_for('admin.' ~ endpoint ~ '_toggle_status', public_id=record.public_id) }}" class="yc-form ah-status-form" data-academic-status-form data-confirm="{{ _(message) }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="current_status" value="{{ record.status }}">
+  <input type="hidden" name="status" value="{{ 'archived' if archiving else 'active' }}">
   {% if kind == 'rooms' %}<input type="hidden" name="snapshot" value="{{ room_token(record) }}">{% endif %}
-  <select name="status" class="field__input ah-status-select" aria-label="{{ _('Status') }}: {{ record.title if kind == 'courses' else record.name }}">
-    <option value="active" {{ 'selected' if record.status == 'active' }}>Active</option>
-    <option value="archived" {{ 'selected' if record.status == 'archived' }}>Archived</option>
-  </select>
-  <button type="submit" class="btn btn--secondary" data-academic-status-apply>Apply</button>
+  <span class="badge {{ 'badge--success' if archiving else 'badge--neutral' }}">{{ _('Active') if archiving else _('Archived') }}</span>
+  <button type="submit" class="btn {{ 'btn--danger-outline' if archiving else 'btn--secondary' }}" aria-label="{{ _('Archive') if archiving else _('Reactivate') }}: {{ name }}">{{ _('Archive') if archiving else _('Reactivate') }}</button>
 </form>
 {%- endmacro %}

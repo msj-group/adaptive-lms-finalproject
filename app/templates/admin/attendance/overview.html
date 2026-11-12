@@ -14,5 +14,5 @@
 </div>
 {% if filter_group_unknown %}<div class="alert alert--warning">No group has that public ID, so nothing is listed.</div>{% elif filter_group_row %}<p class="al-filter-context"><bdi>{{ filter_group_row.name }} · {{ filter_group_row.course_title }} · {{ filter_group_row.level_name }} · {{ filter_group_row.term_name }}</bdi></p>{% endif %}
 {% if sessions %}{{ lens.attendance_summary(sessions) }}{{ lens.session_list(sessions) }}{{ lens.attendance_pager() }}{% else %}<div class="al-panel al-empty"><h3>No attendance to review</h3></div>{% endif %}
-<p class="al-note">{{ learning_ui.icon('lock',14) }}<span>Read-only attendance. The original class details are retained.</span></p>
+<p class="al-note">{{ learning_ui.icon('lock',14) }}<span>Review class records here. Open a finalized session to correct a mark and preserve its history.</span></p>
 {% endblock %}

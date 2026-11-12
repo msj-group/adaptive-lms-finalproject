@@ -1,14 +1,20 @@
 {% import 'admin/_macros.html' as schedule_ui %}
 {% import '_figma_ui.html' as schedule_icons %}
 <span hidden data-query-count="{{ schedules|length }}"></span>
-{% if schedules %}<div class="fp-schedule-list">
-{% for schedule in schedules %}{% set group=schedule.group %}{% set parent_archived=group.status != 'active' or group.academic_term.status != 'active' or group.course.status != 'active' or group.course.level.status != 'active' %}
+{% if schedules %}
+{% for day, slots in schedules|sort(attribute='start_time')|groupby('day_of_week') %}
+<section class="fp-schedule-day" aria-labelledby="schedule-weekday-{{ day }}">
+<h3 id="schedule-weekday-{{ day }}">{{ _(weekday_names[day]) }}</h3>
+<div class="fp-schedule-list">
+{% for schedule in slots %}{% set group=schedule.group %}{% set parent_archived=group.status != 'active' or group.academic_term.status != 'active' or group.course.status != 'active' or group.course.level.status != 'active' %}
 <article class="fp-schedule{{ ' fp-schedule--historical' if schedule.status != 'active' or parent_archived else '' }}">
   <header class="fp-schedule-top"><div><h3 dir="auto">{{ group.name }}</h3><p class="fp-meta" dir="auto">{{ group.course.title }} · {{ group.course.level.name }}</p></div>{{ schedule_ui.status_badge(schedule.status) }}</header>
-  <div class="fp-recurrence"><div class="fp-weekday-chips" aria-label="{{ _(weekday_names[schedule.day_of_week]) }}">{% for value,name in weekday_choices %}<span title="{{ _(name) }}"{% if value == schedule.day_of_week %} class="is-selected"{% endif %}>{{ _(name[:3] ~ '.') }}</span>{% endfor %}</div><time dir="ltr">{{ schedule.start_time.strftime('%H:%M') }} – {{ schedule.end_time.strftime('%H:%M') }}</time></div>
+  <div class="fp-recurrence"><time dir="ltr">{{ schedule.start_time.strftime('%H:%M') }} – {{ schedule.end_time.strftime('%H:%M') }}</time></div>
   <div class="fp-schedule-footer"><div><p class="fp-meta" dir="auto">{{ schedule.location or '—' }} · {{ group.academic_term.name }}</p><p class="fp-meta">{{ _('Effective dates') }}: <bdi>{{ schedule.effective_start_date.isoformat() }} → {{ schedule.effective_end_date.isoformat() }}</bdi></p></div><a class="fp-link" data-planner-open-group data-group-public-id="{{ group.public_id }}" href="{{ url_for('admin.group_schedules',group_public_id=group.public_id) }}">Open group schedules {{ schedule_icons.icon('arrow-up',14) }}</a></div>
   {% if schedule.status == 'active' and parent_archived %}<p class="fp-schedule-warning"><span class="badge badge--warning">Not operational</span></p>{% endif %}
 </article>
 {% endfor %}</div>
+</section>
+{% endfor %}
 {% elif has_filters %}<div class="fp-empty"><strong>No schedules match your filters</strong><p>Try another group, location, weekday or status.</p></div>
 {% else %}<div class="fp-empty"><strong>No schedules yet</strong><p>Open a group to add its first recurring teaching slot.</p><a class="fp-link" data-planner-choose-group href="{{ url_for('admin.groups_list') }}">Choose a group</a></div>{% endif %}

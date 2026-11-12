@@ -86,7 +86,10 @@
 .admin-atlas .ff-stage .ff-native-content>.ad-page-head { gap:15px; flex-wrap:wrap; align-items:start; }
 .admin-atlas .ff-native-content>.ad-page-head h2 { font-size:23px; line-height:1.4; margin:0; }
 .admin-atlas .ff-stage .ad-grid { grid-template-columns:minmax(0,1fr); }
+.admin-atlas .ff-desk--accounts.ff-enabled.ff-open:has(.ff-stage form[data-finance-form]) { grid-template-columns:minmax(0,1fr); }
+.admin-atlas .ff-desk--accounts.ff-open:has(.ff-stage form[data-finance-form])>.ff-origin { display:none; }
 .admin-atlas .ff-stage .ad-form-workspace { grid-template-columns:minmax(0,1fr); }
+.admin-atlas .ff-stage .ad-form-workspace>:is(.ad-field-panel,aside,.ad-save-panel) { grid-column:1; grid-row:auto; }
 .admin-atlas .ff-stage .ad-form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 .admin-atlas .ff-stage .ad-save-panel { grid-column:1/-1; position:static; }
 .admin-atlas .ff-stage .ad-definition dd { overflow-wrap:anywhere; }
@@ -156,3 +159,5 @@ html[dir='rtl'] .admin-atlas .ff-heading h1,html[dir='rtl'] .admin-atlas .ff-bal
  body.ff-print-reader .ff-reader,body.ff-print-reader .ff-stage { display:block!important; }
  body.ff-print-reader .ff-stage [hidden] { display:none!important; }
 }
+
+.admin-atlas .ff-page :is(.badge,.ad-tag) { white-space:nowrap; }

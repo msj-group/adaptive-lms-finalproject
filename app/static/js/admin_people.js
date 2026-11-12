@@ -22,23 +22,6 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   const base = new URL(form.action || location.href, location.href);
   if (base.origin !== location.origin || !actor || !['student', 'teacher'].includes(kind)) return;
   const phone = window.matchMedia('(max-width: 767px)');
-  const filterToggle = desk.querySelector('[data-people-filter-toggle]');
-  if (filterToggle) {
-    filterToggle.hidden = false;
-    form.dataset.peopleFilterReady = 'true';
-    pageScope.listen(filterToggle, 'click', () => {
-      const expanded = filterToggle.getAttribute('aria-expanded') !== 'true';
-      filterToggle.setAttribute('aria-expanded', String(expanded));
-      form.dataset.peopleFilterOpen = String(expanded);
-      if (expanded) form.querySelector('input')?.focus({preventScroll: true});
-    });
-    pageScope.listen(form, 'keydown', (event) => {
-      if (event.key !== 'Escape' || !phone.matches) return;
-      filterToggle.setAttribute('aria-expanded', 'false');
-      form.dataset.peopleFilterOpen = 'false';
-      filterToggle.focus();
-    });
-  }
   let controller = null;
   let revision = 0;
   let active = true;

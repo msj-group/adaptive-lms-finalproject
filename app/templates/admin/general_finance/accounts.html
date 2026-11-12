@@ -13,5 +13,9 @@
   </form>
   <div id="query-results">{% include "admin/general_finance/_account_results.html" %}</div>
 </section>
+<nav class="ff-account-tools" aria-label="{{ _('Finance shortcuts') }}">
+  <a href="{{ url_for('admin.payments_overview', state='pending') }}">{{ ui.icon('clock', 15) }} {{ _('Pending transfers') }}</a>
+  <a href="{{ url_for('admin.financial_reports_index') }}">{{ ui.icon('chart', 15) }} {{ _('Financial reports') }}</a>
+</nav>
 <p class="ff-directory-note">One signed balance: obligations − confirmed collections + payouts. Pending collections are excluded.</p>
 {% endblock %}

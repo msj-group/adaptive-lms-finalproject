@@ -1,6 +1,6 @@
 {% extends 'layouts/admin_base.html' %}
 {% import '_figma_ui.html' as finance_ui %}
-{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static',filename='css/admin/finance_focus.css',v='account-focus-20261026') }}">{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static',filename='css/admin/finance_focus.css',v='admin-finance-review-20261112') }}">{% endblock %}
 {% block admin_content %}
 <div class="ff-page" data-finance-workspace data-finance-root="{{ finance_view|default('accounts') }}" data-finance-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}"
  data-finance-index-url="{{ url_for('admin.student_accounts') }}"

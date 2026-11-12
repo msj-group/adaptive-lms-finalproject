@@ -165,6 +165,7 @@
 }
 @media(max-width:639px) {
   .al-page { gap:20px; }
+  .al-page,.al-content,.al-page #query-results,.al-reader { grid-template-columns:minmax(0,1fr); }
   .al-page .al-heading h1 { font-size:27px; }
   .al-page .al-description { font-size:13px; }
   .al-page .al-tabs { gap:24px; }

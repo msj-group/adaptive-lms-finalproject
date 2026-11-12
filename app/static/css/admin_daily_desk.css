@@ -11,6 +11,8 @@
 .admin-atlas .dd-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
 .admin-atlas .dd-stat { display:flex; align-items:center; gap:13px; padding:19px; border:1px solid var(--ad-line); border-radius:20px; background:var(--ad-panel); min-width:0; }
 .admin-atlas .dd-stat-icon { display:grid; place-items:center; padding:10px; border-radius:12px; background:var(--ad-soft); color:var(--ad-accent); }
+.admin-atlas a.dd-stat { color:var(--ad-ink); text-decoration:none; }
+.admin-atlas a.dd-stat:hover { border-color:var(--ad-accent); }
 .admin-atlas .dd-stat strong { display:block; font-size:28px; font-weight:500; line-height:1.25; font-variant-numeric:tabular-nums; }
 .admin-atlas .dd-stat span:not(.dd-stat-icon) { display:block; margin-block-start:4px; font-size:11px; color:var(--ad-muted); }
 .admin-atlas .dd-workboard { grid-template-columns:minmax(0,1.3fr) minmax(0,.85fr); gap:20px; }
@@ -39,11 +41,25 @@
 .admin-atlas .ad-enrollment-picker { display:grid; gap:18px; }
 .admin-atlas .ad-enrollment-picker .field { display:grid; gap:8px; margin:0; }
 .admin-atlas .ad-enrollment-picker .ad-meta { margin:0; }
-.admin-atlas .ad-enrollment-search { padding-block-end:17px; border-block-end:1px solid var(--ad-line); }
+.admin-atlas .ad-enrollment-search { display:flex; flex-wrap:wrap; align-items:end; gap:12px; padding-block-end:17px; border-block-end:1px solid var(--ad-line); }
+.admin-atlas .ad-enrollment-search .ad-enrollment-fields { flex:1; margin:0; min-width:min(100%,260px); }
 .admin-atlas .ad-enrollment-search summary { color:var(--ad-muted); font-size:12px; cursor:pointer; }
 .admin-atlas .ad-enrollment-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-block:16px; }
 .admin-atlas .ad-enrollment-picker-foot { display:flex; justify-content:space-between; align-items:center; gap:15px; flex-wrap:wrap; }
 .admin-atlas .ad-enrollment-picker select { width:100%; }
+.admin-atlas .ad-enrollment-unavailable { border:1px solid var(--ad-line); border-radius:12px; padding:16px; }
+.admin-atlas .ad-enrollment-unavailable>summary { cursor:pointer; font-weight:600; }
+.admin-atlas .ad-enrollment-readiness { padding-block:14px; border-block-end:1px solid var(--ad-line); }
+.admin-atlas .ad-enrollment-readiness:last-of-type { border-block-end:0; }
+.admin-atlas .ad-enrollment-readiness h3 { margin:0 0 5px; font-size:14px; }
+.admin-atlas .ad-enrollment-readiness ul { margin:9px 0 0; padding-inline-start:20px; }
+.admin-atlas .ad-enrollment-readiness a { display:inline-block; padding-block:4px; }
+.admin-atlas .ad-field-panel>.yc-form>.workspace-impact { grid-column:1/-1; }
+.admin-atlas .ad-stepper { display:flex; flex-wrap:wrap; gap:12px 24px; padding:0; margin:0; list-style:none; color:var(--ad-muted); }
+.admin-atlas .ad-stepper li { display:flex; align-items:center; gap:8px; }
+.admin-atlas .ad-stepper li>span { display:grid; place-items:center; width:28px; height:28px; border-radius:50%; background:var(--ad-soft); }
+.admin-atlas .ad-stepper li.active { color:var(--ad-accent); font-weight:600; }
+.admin-atlas .ad-stepper li.active>span { background:var(--ad-accent); color:white; }
 @media(max-width:767px) {
  .admin-atlas .dd-workboard { display:grid; grid-template-columns:minmax(0,1fr); }
  .admin-atlas .dd-workboard .ax-agenda { order:0; }

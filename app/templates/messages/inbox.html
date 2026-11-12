@@ -12,7 +12,7 @@
     <div class="messenger-welcome__art" aria-hidden="true">{{ msg.icon('message', 30) }}</div>
     <h2 id="message-welcome-title">Your conversations</h2>
     <p>Select a conversation to read your messages.</p>
-    <a class="messenger-primary" href="{{ url_for('messages.new_thread') }}">{{ msg.icon('message', 18) }} Start a conversation</a>
+    {% if current_user.role != 'administrator' %}<a class="messenger-primary" href="{{ url_for('messages.new_thread') }}">{{ msg.icon('message', 18) }} Start a conversation</a>{% endif %}
     <div class="messenger-welcome__note">{{ msg.icon('lock', 16) }} Only the two participants can access a conversation.</div>
   </section>
 </div>

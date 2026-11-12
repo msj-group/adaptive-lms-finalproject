@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product/search.css', v='st2-density-20261010') }}">
   <link rel="stylesheet" href="{{ url_for('static',filename='css/product/notifications.css',v='preview-toolbar-live-2') }}">
 {% endblock %}
-{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static',filename='css/admin_atlas.css',v='section-toolbar-1') }}"><link rel="stylesheet" href="{{ url_for('static',filename='css/admin_daily_desk.css',v='neutral-backdrop-1') }}">{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static',filename='css/admin_atlas.css',v='admin-usability-6') }}"><link rel="stylesheet" href="{{ url_for('static',filename='css/admin_daily_desk.css',v='admin-usability-3') }}">{% endblock %}
 {% block content %}
 {% set notif = notification_header() %}
 {% set portal_blocks = self %}

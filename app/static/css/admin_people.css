@@ -4,7 +4,6 @@
 .admin-atlas .pf-heading { flex-wrap:nowrap; }
 .admin-atlas .pf-heading .btn { flex-shrink:0; }
 .admin-atlas .pf-heading-actions { display:flex; align-items:center; gap:10px; }
-.admin-atlas .pf-filter-toggle { display:none; }
 .admin-atlas .pf-sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 .admin-atlas .pf-filters { display:flex; align-items:center; gap:12px; margin:0; min-width:0; }
 .admin-atlas .pf-filters .field { margin:0; min-width:0; }
@@ -134,7 +133,6 @@ html[dir='rtl'] .admin-atlas .pf-expand[open]>summary>.figma-icon:last-child { t
   .admin-atlas .pf-heading { align-items:stretch; flex-direction:column; gap:14px; }
   .admin-atlas .pf-heading-actions { width:100%; }
   .admin-atlas .pf-heading-actions>.btn { flex:1; padding:0 8px; font-size:12px; height:44px; min-height:44px; }
-  .admin-atlas .pf-filter-toggle { display:inline-flex; }
   .admin-atlas .pf-heading .ad-eyebrow { font-size:10px; letter-spacing:.08em; }
   .admin-atlas .pf-heading .ad-subtitle { display:none; }
   .admin-atlas .pf-heading>.btn { padding:10px 11px; font-size:11px; min-height:42px; }
@@ -142,7 +140,6 @@ html[dir='rtl'] .admin-atlas .pf-expand[open]>summary>.figma-icon:last-child { t
   .admin-atlas .pf-page .pf-role-tabs { gap:27px; }
   .admin-atlas .pf-page .pf-role-tabs>a { font-size:13px; }
   .admin-atlas .pf-filters { flex-wrap:wrap; gap:10px; }
-  .admin-atlas .pf-filters[data-people-filter-ready]:not([data-people-filter-open='true']) { display:none; }
   .admin-atlas .pf-search { flex-basis:100%; }
   .admin-atlas .pf-filters .field__input { min-height:44px; font-size:16px; }
   .admin-atlas .pf-filters .pf-status-filter { width:150px; flex-basis:150px; }

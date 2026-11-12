@@ -1,7 +1,7 @@
 {% extends "layouts/admin_base.html" %}
 {% import "admin/_macros.html" as macros %}
 {% import "_figma_ui.html" as ui %}
-{% block feature_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin/academics.css', v='app-navigation-1') }}">{% endblock %}
+{% block feature_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin/academics.css', v='academic-review-20261111') }}">{% endblock %}
 {% block workspace_content_class %}ax-academics{% endblock %}
 {% block admin_content %}
 <div class="ad-page ax-academics-page" data-academic-workspace data-academic-kind="{{ academic_section }}" data-academic-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}">
@@ -27,4 +27,4 @@
   <div class="ad-actions" data-academic-editor-recovery hidden><button type="button" class="btn btn--secondary" data-academic-editor-retry>Retry</button><a class="ad-row-link" href="{{ request.full_path }}">Reload page</a></div>
 </dialog>
 {% endblock %}
-{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/admin_academic_editor.js', v='app-navigation-1') }}" defer></script>{% endblock %}
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/admin_academic_editor.js', v='academic-review-20261111') }}" defer></script>{% endblock %}

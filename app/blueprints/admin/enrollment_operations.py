@@ -7,7 +7,7 @@ from flask import abort, current_app, flash, jsonify, redirect, render_template,
 from flask_login import current_user
 from app.i18n import LocalizedFlaskForm as FlaskForm
 from itsdangerous import BadSignature, URLSafeSerializer
-from sqlalchemy import func, or_
+from sqlalchemy import and_, false, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased, joinedload
 from wtforms import BooleanField, DateField, HiddenField, SelectField, StringField, SubmitField, TextAreaField
@@ -24,7 +24,7 @@ from app.blueprints.admin.financial_http import _financial_response
 from app.services.search_terms import escape_like
 
 
-def _entry_groups(student=None):
+def _entry_groups(student=None, *, unavailable=False):
     """Advisory choices only; the existing signed write rechecks under locks."""
     occupied = db.session.query(func.count(Enrollment.id)).join(
         User, Enrollment.student_id == User.id
@@ -37,10 +37,11 @@ def _entry_groups(student=None):
              User.status == "active").correlate(Group).exists()
     query = Group.query.join(Course).join(Level).join(
         AcademicTerm, Group.academic_term_id == AcademicTerm.id
-    ).options(joinedload(Group.course).joinedload(Course.level), joinedload(Group.academic_term)).filter(
-        Group.status == "active", Course.status == "active", Level.status == "active",
+    ).options(joinedload(Group.course).joinedload(Course.level), joinedload(Group.academic_term))
+    available = and_(Group.status == "active", Course.status == "active", Level.status == "active",
         AcademicTerm.status == "active", Group.study_starts_at.isnot(None),
         Course.price.isnot(None), occupied < Group.capacity, teacher)
+    conflict = false()
     if student is not None:
         other = aliased(Group)
         conflict = db.session.query(Enrollment.id).join(
@@ -48,8 +49,10 @@ def _entry_groups(student=None):
         ).filter(Enrollment.student_id == student.id, Enrollment.status == "active",
                  other.status == "active", other.course_id == Group.course_id,
                  other.academic_term_id == Group.academic_term_id).correlate(Group).exists()
-        query = query.filter(~conflict)
-    return query
+        available = and_(available, ~conflict)
+    if unavailable:
+        return query.add_columns(occupied, teacher, conflict).filter(~available)
+    return query.filter(available)
 
 
 @admin_bp.get("/enrollments/new")
@@ -80,6 +83,34 @@ def enrollment_start():
     more_groups, groups = len(groups) > 50, groups[:50]
     if group is not None and all(row.public_id != group.public_id for row in groups):
         groups.insert(0, group)
+    unavailable_query = _entry_groups(student, unavailable=True)
+    if group_search:
+        unavailable_query = unavailable_query.filter(or_(Group.name.ilike(term, escape="\\"),
+            Group.code.ilike(term, escape="\\"), Course.title.ilike(term, escape="\\")))
+    unavailable_rows = unavailable_query.order_by(Group.name, Group.id).limit(11).all()
+    unavailable_groups = []
+    for row, occupied, has_teacher, duplicate in unavailable_rows[:10]:
+        reasons = []
+        if row.status != "active":
+            reasons.append(("Group is archived", url_for("admin.groups_list", q=row.name)))
+        if row.academic_term.status != "active":
+            reasons.append(("Academic term is archived", url_for("admin.academic_terms_list")))
+        if row.course.status != "active":
+            reasons.append(("Course is archived", url_for("admin.courses_list")))
+        if row.course.level.status != "active":
+            reasons.append(("Level is archived", url_for("admin.levels_list")))
+        if row.study_starts_at is None:
+            reasons.append(("Study start is not set", url_for("admin.group_edit", public_id=row.public_id)))
+        if not has_teacher:
+            reasons.append(("No active teacher assigned", url_for("admin.group_members", group_public_id=row.public_id)))
+        if row.course.price is None:
+            reasons.append(("Course price is not set", url_for("admin.course_edit", public_id=row.course.public_id)))
+        if occupied >= row.capacity:
+            reasons.append(("Group is full", url_for("admin.group_members", group_public_id=row.public_id)))
+        if duplicate:
+            reasons.append(("Student is already enrolled in this course and term; review a transfer instead",
+                url_for("admin.student_enrollment_history", student_public_id=student.public_id)))
+        unavailable_groups.append({"group": row, "occupied": occupied, "reasons": reasons})
     error = None
     if request.args.get("step") == "details":
         if student is None or group is None:
@@ -89,7 +120,8 @@ def enrollment_start():
                                     action="enroll", student=student.public_id))
     return render_template("admin/groups/enrollment_start.html", students=students, groups=groups,
         selected_student=student, selected_group=group, student_search=student_search,
-        group_search=group_search, more_students=more_students, more_groups=more_groups, error=error)
+        group_search=group_search, more_students=more_students, more_groups=more_groups, error=error, unavailable_groups=unavailable_groups,
+        more_unavailable=len(unavailable_rows) > 10)
 
 
 class EnrollmentOperationForm(FlaskForm):
@@ -151,7 +183,7 @@ def enrollment_impact_preview(group_public_id, action):
                 if confirmed:
                     delta -= collection
         return jsonify(before=format_amount(balance), after=format_amount(balance + delta),
-            note=f"Charge {format_amount(charge)} · Discount {format_amount(discount)} · Cancelled obligation {format_amount(cancelled)} · Initial collection {format_amount(collection)} LYD. Pending bank collections do not reduce the balance. No money is returned by this operation. Saving rechecks eligibility, capacity, dates, price and the signed snapshot.")
+            note=f"Charge {format_amount(charge)} · Discount {format_amount(discount)} · Cancelled obligation {format_amount(cancelled)} · Initial collection {format_amount(collection)} LYD. Pending bank collections do not reduce the balance. This operation does not record a refund.")
     except (ValueError, TypeError) as exc:
         return jsonify(error=str(exc) if isinstance(exc, ValueError) else "Configure the course price before continuing."), 400
 

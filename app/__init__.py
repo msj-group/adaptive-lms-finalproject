@@ -32,10 +32,10 @@ def create_app(config_name=None, **config_overrides):
     app = Flask(__name__)
     from app.i18n import init_ui
 
-    init_ui(app)
     app.config.from_object(config_by_name[config_name])
     if config_overrides:
         app.config.update(config_overrides)
+    init_ui(app)
 
     # The dedicated test runner supplies no deployment dotenv/credentials.
     # Even a pure factory check selecting production/development must not
@@ -218,12 +218,18 @@ def create_app(config_name=None, **config_overrides):
 
     @app.get("/health/ready")
     def health_ready():
+        from alembic.script import ScriptDirectory
         from sqlalchemy import text
         try:
+            expected_revisions = set(
+                ScriptDirectory(os.path.join(project_root, "migrations")).get_heads()
+            )
             with db.engine.connect() as connection:
                 connection.execute(text("SELECT 1"))
-                revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
-            ready = revision == "a6f2c9d84e71"
+                revisions = set(connection.execute(
+                    text("SELECT version_num FROM alembic_version")
+                ).scalars())
+            ready = bool(expected_revisions) and revisions == expected_revisions
         except Exception as error:
             app.logger.warning("Database readiness unavailable type=%s", type(error).__name__)
             ready = False

@@ -86,6 +86,12 @@
 @media (max-width:639px) {
   .admin-atlas #workspace-content .workspace-section-toolbar { gap:8px; }
   .admin-atlas #workspace-content .workspace-section-toolbar > .ad-tabs { gap:16px; }
+  .admin-atlas #workspace-content .workspace-section-toolbar:has(> .ad-tabs[aria-label="Group workspace"]) {
+    flex-wrap:wrap; justify-content:flex-end;
+  }
+  .admin-atlas #workspace-content .workspace-section-toolbar > .ad-tabs[aria-label="Group workspace"] {
+    flex-basis:100%;
+  }
   .admin-atlas #workspace-content .workspace-section-toolbar .pf-heading-actions > .btn { flex:0 0 auto; padding:8px 10px; }
   .admin-atlas #workspace-content .workspace-section-toolbar .pf-filter-toggle { width:44px; padding:0; }
   .admin-atlas #workspace-content .workspace-section-toolbar .pf-filter-toggle > span:not(.figma-icon) { display:none; }
@@ -272,7 +278,7 @@ html[dir='rtl'] .admin-atlas .ax-briefing h1 { font-family:var(--st-display); fo
 .admin-atlas .visually-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 .admin-atlas .ax-report-scope { margin-block-end:24px; }
 .admin-atlas .ax-correction-history .ad-card { margin-block-end:20px; }
-.admin-atlas .messenger { grid-template-columns:260px minmax(0,1fr); height:640px; min-height:520px; border-color:var(--ad-line); border-radius:20px; box-shadow:var(--ui-shadow-sm); }
+.admin-atlas .messenger { grid-template-columns:260px minmax(0,1fr); height:clamp(360px,calc(100dvh - 190px),800px); min-height:360px; border-color:var(--ad-line); border-radius:20px; box-shadow:var(--ui-shadow-sm); }
 .admin-atlas .messenger-sidebar { background:var(--ad-soft); }
 .admin-atlas .messenger-chat,.admin-atlas .messenger-welcome { background:var(--ad-panel); }
 .admin-atlas .messenger-conversation { border:0; border-bottom:1px solid var(--ad-line); margin:0; padding:20px 18px; border-radius:0; align-items:flex-start; min-height:96px; }
@@ -316,7 +322,7 @@ html[dir] .admin-atlas .messenger-bubble { border-radius:20px; }
  .admin-atlas .ad-form-workspace>.ad-save-panel { grid-column:1; grid-row:3; }
 }
 @media(max-width:767px) {
- .admin-atlas .messenger { grid-template-columns:minmax(0,1fr); min-height:560px; height:clamp(560px,75svh,840px); }
+ .admin-atlas .messenger { grid-template-columns:minmax(0,1fr); min-height:300px; height:clamp(300px,calc(100dvh - 260px),700px); }
  .admin-atlas .messenger--thread>.messenger-sidebar { display:none; }
  .admin-atlas .messenger--inbox>.messenger-welcome { display:none; }
  .admin-atlas .messenger-chat__back { display:inline-flex; }
@@ -402,3 +408,22 @@ html[dir] .admin-atlas .messenger-bubble { border-radius:20px; }
  .admin-atlas .ax-content.st-content { max-width:none; padding:0; }
  .admin-atlas :is(.ad-card,.ax-roster,.ax-account-banner,.ax-ledger,.ad-field-panel) { box-shadow:none; break-inside:avoid; }
 }
+
+/* Keep the full management rail within a typical laptop viewport. */
+@media (min-width:1024px) {
+  .yc-workspace.admin-atlas .st-sidebar .st-brand { padding-block:16px; }
+  .yc-workspace.admin-atlas .st-sidebar .st-brand img { height:42px; width:42px; }
+  .yc-workspace.admin-atlas .st-navigation .st-nav-label { margin-block:12px 4px; }
+  .yc-workspace.admin-atlas .st-navigation .st-nav-label:first-child { margin-block-start:0; }
+  .yc-workspace.admin-atlas .st-navigation .st-nav-link { min-height:40px; padding-block:6px; margin-block:2px; }
+}
+@media (pointer:coarse) {
+  .yc-workspace.admin-atlas .st-navigation .st-nav-link { min-height:44px; }
+}
+.admin-atlas .ad-toolbar[data-inline-filters] { padding:14px 16px; }
+.admin-atlas .ad-toolbar[data-inline-filters]>label { display:grid; gap:5px; min-width:0; flex:1 1 200px; }
+.admin-atlas .ad-toolbar[data-inline-filters]>label :is(input,select) { width:100%; min-width:0; }
+
+.admin-atlas .messenger-greeting { min-height:0; }
+
+.admin-atlas .messenger-greeting .messenger-avatar { display:none; }

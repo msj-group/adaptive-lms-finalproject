@@ -75,8 +75,13 @@
       <a href="{{ url_for('account.settings') }}" data-research-id="nav_account"{% if request.blueprint == 'account' %} aria-current="page"{% endif %}><span class="workspace-menu-icon">{{ icon('user', 19) }}</span><span class="workspace-menu-copy"><strong>Account settings</strong><small>Password and profile photo</small></span>{{ icon('chevron', 14) }}</a>
       <button type="button" popovertarget="workspace-language-panel" data-research-id="nav_display" aria-haspopup="dialog"><span class="workspace-menu-icon">{{ icon('globe', 19) }}</span><span class="workspace-menu-copy"><strong>Language</strong></span>{{ icon('chevron', 14) }}</button>
       {% if config['DEVICE_PUSH_ENABLED'] %}
-      <button type="button" popovertarget="workspace-notifications-panel" data-research-id="nav_display" aria-haspopup="dialog" aria-controls="workspace-notifications-panel">
-        <span class="workspace-menu-icon">{{ icon('bell', 19) }}</span><span class="workspace-menu-copy"><strong>{{ _('Device notifications') }}</strong></span>{{ icon('chevron', 14) }}
+      <button type="button" popovertarget="workspace-notifications-panel" data-device-menu data-research-id="nav_display" aria-haspopup="dialog" aria-controls="workspace-notifications-panel">
+        <span class="workspace-menu-icon">{{ icon('bell', 19) }}</span><span class="workspace-menu-copy"><strong data-device-menu-label>{{ _('Enable notifications') }}</strong></span>{{ icon('chevron', 14) }}
+      </button>
+      {% endif %}
+      {% if user.role == 'administrator' %}
+      <button type="button" data-pwa-install hidden aria-haspopup="dialog" aria-controls="pwa-install-help">
+        <span class="workspace-menu-icon">{{ icon('graduation', 19) }}</span><span class="workspace-menu-copy"><strong>{{ _('Install app') }}</strong></span>{{ icon('chevron', 14) }}
       </button>
       {% endif %}
       <details class="workspace-theme-menu" data-theme-menu>

@@ -2,7 +2,7 @@
 {% import '_figma_ui.html' as planner_ui %}
 {% import 'admin/_macros.html' as planner_messages %}
 {% block title %}Calendar{% endblock %}
-{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static',filename='css/admin/focus_planner.css',v='planner-slot-20261025') }}">{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static',filename='css/admin/focus_planner.css',v='weekly-pattern-2') }}">{% endblock %}
 {% block admin_content %}
 <div class="fp-page{{ ' fp-page--schedules' if request.endpoint == 'admin.schedules_overview' else '' }}" data-planner-workspace data-planner-actor="{{ current_user.public_id }}:{{ current_user.auth_version }}:{{ current_user.role }}" data-planner-create-url="{{ url_for('admin.calendar_event_create') }}" data-planner-event-url="{{ url_for('admin.calendar_event_detail',event_public_id='__event__') }}" data-planner-group-url="{{ url_for('admin.group_schedules',group_public_id='__group__') }}" data-planner-slot-create-url="{{ url_for('admin.group_schedule_create',group_public_id='__group__') }}">
   <div class="fp-workspace-toolbar workspace-section-toolbar">

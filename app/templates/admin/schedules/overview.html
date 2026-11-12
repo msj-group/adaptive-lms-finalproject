@@ -1,6 +1,6 @@
 {% extends 'admin/planner/_base.html' %}
 {% block planner_content %}
-<div class="fp-schedule-heading"><div><h2>Recurring schedule records</h2><p class="fp-meta">Each record keeps its own weekday, time and status.</p></div><span class="fp-record-count">{{ _n('%(count)d record','%(count)d records',schedules|length) }}</span><details class="fp-filters" id="focus-schedule-filters"><summary>{{ planner_ui.icon('settings',16) }} Filters{% if has_filters %}<span class="fp-filter-dot" aria-label="Filters active"></span>{% endif %}</summary>{% include 'admin/planner/_schedule_filters.html' %}</details></div>
+<div class="fp-schedule-heading"><div><h2>Weekly teaching pattern</h2><p class="fp-meta">Compare recurring slots by day. Each slot lists its effective dates.</p></div><span class="fp-record-count">{{ _n('%(count)d record','%(count)d records',schedules|length) }}</span><details class="fp-filters" id="focus-schedule-filters"><summary>{{ planner_ui.icon('settings',16) }} Filters{% if has_filters %}<span class="fp-filter-dot" aria-label="Filters active"></span>{% endif %}</summary>{% include 'admin/planner/_schedule_filters.html' %}</details></div>
 {% include 'admin/planner/_group_choices.html' %}
 <div id="query-results">{% include 'admin/schedules/_query_results.html' %}</div>
 <footer class="fp-range-footer"><span>All matching records, including archived slots.</span></footer>

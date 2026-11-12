@@ -3,6 +3,18 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
 /* Admin announcements and shared role messaging. Native routes own data. */
 (function () {
   'use strict';
+  function updateAudience(form) {
+    const scope = form.elements.scope.value;
+    form.querySelectorAll('[data-announcement-target]').forEach(field => {
+      const selected = field.dataset.announcementTarget === scope;
+      field.hidden = !selected;
+      field.querySelector('select').disabled = !selected;
+    });
+  }
+  document.querySelectorAll('[data-announcement-audience]').forEach(updateAudience);
+  pageScope.listen(document, 'change', event => {
+    if (event.target.matches('[data-announcement-audience] select[name="scope"]')) updateAudience(event.target.form);
+  });
   if (!window.fetch || !window.AbortController || !window.DOMParser || !window.FormData ||
       !window.aelmsRegisterForms || !window.aelmsFormHasChanges || !window.aelmsConfirm ||
       !Element.prototype.replaceChildren || !history.pushState) return;
@@ -125,7 +137,10 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         committed = location.href;
         window.aelmsEnhanceMessages(content);
         document.dispatchEvent(new Event('aelms:communication-mounted'));
-      } else content.replaceChildren(node);
+      } else {
+        content.replaceChildren(node);
+        content.querySelectorAll('[data-announcement-audience]').forEach(updateAudience);
+      }
       current = displayURL;
       target = current;
       validationDraft = keepDraft;

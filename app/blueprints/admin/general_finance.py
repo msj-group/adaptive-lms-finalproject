@@ -133,7 +133,7 @@ def student_money_new(student_public_id):
             db.session.rollback()
             flash("The movement could not be saved. Reload and review its details." if isinstance(exc, IntegrityError) else str(exc), "danger")
         else:
-            flash("Money movement recorded.", "success")
+            flash("Money movement recorded.", "finance-saved-new")
             return redirect(_record_url(student))
     return render_template("admin/general_finance/form.html", form=form, student=student, title="Record money movement", facts=account_totals(student.id),
         description="Invoice context is optional. A payout records money actually returned to the student and cannot exceed current credit.")
@@ -188,7 +188,7 @@ def student_document_correct(student_public_id, kind, document_public_id):
             db.session.rollback()
             flash("The correction could not be saved. Reload and review its details." if isinstance(exc, IntegrityError) else str(exc), "danger")
             return redirect(url_for("admin.student_document_correct", student_public_id=student_public_id, kind=kind, document_public_id=document_public_id))
-        flash("Correction saved with its previous values and operator.", "success")
+        flash("Correction saved with its previous values and operator.", "finance-saved-correct")
         return redirect(_record_url(student))
     return render_template("admin/general_finance/form.html", form=form, student=student, title="Correct financial record", kind=kind, document=document, facts=account_totals(student.id),
         description="Corrections preserve the previous record. Deleting a recorded collection does not record a real payout; use Return credit to student when money actually changes hands.")

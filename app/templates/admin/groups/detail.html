@@ -10,12 +10,34 @@
   <header class="ad-page-head"><div><p class="ad-eyebrow">Group workspace</p><h1 data-workspace-page-heading>{{ group.name }}</h1><p class="ad-subtitle">{{ group.course.title }} · {{ group.academic_term.name }}</p></div><div class="ad-actions">{{ macros.status_badge(group.status) }}<a class="btn btn--secondary" href="{{ url_for('admin.group_edit', public_id=group.public_id) }}" data-group-edit-open data-group-public-id="{{ group.public_id }}">Edit Group</a></div></header>
   {% include "admin/groups/_atlas_tabs.html" %}
   {% set ancestor_archived = group.academic_term.status != "active" or group.course.status != "active" or group.course.level.status != "active" %}
-  {% if group.status == "active" and ancestor_archived %}<div class="alert alert--warning">This group is active, but one of its academic parents (Academic Term, Course, or Level) is archived. Guarded-lifecycle rules will not let it be reactivated once archived until every parent is active again.</div>{% endif %}
+  {% if group.status == 'archived' or ancestor_archived %}
+  <p class="alert alert--warning">{{ _('This group is archived.') if group.status == 'archived' else _('This group cannot accept enrollments while its term, course or level is archived.') }}</p>
+  {% endif %}
   <div class="ad-stats">
     <div class="ad-stat"><span>Active students</span><strong>{{ active_student_count }} / {{ group.capacity }}</strong><small>Current group memberships</small></div>
     <div class="ad-stat"><span>Eligible teachers</span><strong>{{ eligible_teacher_names|length }}</strong><small>Active teacher accounts</small></div>
     <div class="ad-stat"><span>Available places</span><strong>{{ group.capacity - active_student_count if group.capacity > active_student_count else 0 }}</strong><small>Within the configured capacity</small></div>
   </div>
+  {% set can_enroll = group.status == 'active' and not ancestor_archived and group.study_starts_at and group.course.price is not none and eligible_teacher_names and active_student_count < group.capacity %}
+  <section class="ad-card" aria-labelledby="group-enrollment-status">
+    <div class="ad-card-top"><h2 id="group-enrollment-status">{{ _('Enrollment readiness') }}</h2>
+      {% if can_enroll %}<a class="btn btn--primary" href="{{ url_for('admin.enrollment_operation', group_public_id=group.public_id, action='enroll') }}">{{ _('New enrollment') }}</a>{% endif %}
+    </div>
+    {% if can_enroll %}<p class="ad-meta">{{ _('This group can accept students.') }}</p>
+    {% else %}
+    <ul class="ad-meta">
+      {% if group.status == 'archived' %}<li><a href="{{ url_for('admin.groups_list', q=group.name) }}">{{ _('Review archived group') }}</a></li>{% endif %}
+      {% if group.academic_term.status != 'active' %}<li><a href="{{ url_for('admin.academic_terms_list') }}">{{ _('Review archived term') }}</a></li>{% endif %}
+      {% if group.course.status != 'active' %}<li><a href="{{ url_for('admin.courses_list') }}">{{ _('Review archived course') }}</a></li>{% endif %}
+      {% if group.course.level.status != 'active' %}<li><a href="{{ url_for('admin.levels_list') }}">{{ _('Review archived level') }}</a></li>{% endif %}
+      {% if not eligible_teacher_names %}<li><a href="{{ url_for('admin.group_members', group_public_id=group.public_id) }}">{{ _('Assign an active teacher') }}</a></li>{% endif %}
+      {% if not group.study_starts_at %}<li><a href="{{ url_for('admin.group_edit', public_id=group.public_id) }}">{{ _('Set the study start date') }}</a></li>{% endif %}
+      {% if group.course.price is none %}<li><a href="{{ url_for('admin.course_edit', public_id=group.course.public_id) }}">{{ _('Set the course price') }}</a></li>{% endif %}
+      {% if active_student_count >= group.capacity %}<li><a href="{{ url_for('admin.group_members', group_public_id=group.public_id) }}">{{ _('Group is full. Review members') }}</a></li>{% endif %}
+    </ul>
+    {% endif %}
+    {% if not has_active_schedule %}<p class="ad-meta"><a href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">{{ _('No active schedule. Review teaching slots') }}</a></p>{% endif %}
+  </section>
   <div class="ad-grid">
     <div class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Group information</h2></div><dl class="ad-definition">
       <dt>Group code</dt><dd>{{ group.code or "—" }}</dd>
@@ -28,7 +50,7 @@
     </dl></section></div>
     <aside class="ad-stack"><section class="ad-card"><div class="ad-card-top"><h2>Teaching setup</h2></div><div class="ad-list">
       <div class="ad-list-row"><div><h3>Teacher assignment</h3><p class="ad-meta">{% if eligible_teacher_names %}{{ eligible_teacher_names|join(', ') }}{% else %}No active teacher assigned{% endif %}</p></div><a class="ad-row-link" href="{{ url_for('admin.group_members', group_public_id=group.public_id) }}">Members <span aria-hidden="true">↗</span></a></div>
-      <div class="ad-list-row"><div><h3>Recurring schedule</h3><p class="ad-meta">Teaching times, rooms and effective dates.</p></div><a class="ad-row-link" href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">Schedule <span aria-hidden="true">↗</span></a></div>
+      <div class="ad-list-row"><div><h3>Recurring schedule</h3><p class="ad-meta">{{ _('Active teaching slots configured') if has_active_schedule else _('No active slots') }}</p></div><a class="ad-row-link" href="{{ url_for('admin.group_schedules', group_public_id=group.public_id) }}">Schedule <span aria-hidden="true">↗</span></a></div>
     </div></section>
     <section class="ad-card"><div class="ad-card-top"><h2>Continue working</h2></div><div class="ad-list"><div class="ad-list-row"><a class="ad-row-link" href="{{ url_for('admin.group_attendance', group_public_id=group.public_id) }}">Attendance sessions <span aria-hidden="true">↗</span></a></div><div class="ad-list-row"><a class="ad-row-link" href="{{ url_for('admin.group_gradebook', group_public_id=group.public_id) }}">Gradebook setup <span aria-hidden="true">↗</span></a></div></div></section></aside>
   </div>

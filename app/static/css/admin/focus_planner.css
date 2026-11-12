@@ -101,6 +101,8 @@
 .fp-page .fp-schedule-heading>div { margin-inline-end:auto; }
 .fp-page .fp-schedule-heading h2 { font:500 18px/1.4 var(--st-body); margin:0 0 4px; }
 .fp-page .fp-record-count { color:var(--ui-muted); font-size:12px; }
+.fp-page .fp-schedule-day+.fp-schedule-day { margin-block-start:24px; }
+.fp-page .fp-schedule-day>h3 { margin:0 0 10px; font-size:16px; }
 .fp-page .fp-schedule-list { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; }
 .fp-page .fp-schedule { min-width:0; padding:21px; border:1px solid var(--ui-line); border-radius:20px; background:var(--ui-surface); }
 .fp-page .fp-schedule--historical { border-style:dashed; }

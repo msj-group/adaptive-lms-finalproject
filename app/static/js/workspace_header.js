@@ -93,13 +93,8 @@ window.aelmsModules.register(document.currentScript, function (pageScope) {
         const panel = details.querySelector(":scope > form,:scope > div");
         if (panel) return {details, panel, summary: details.querySelector(":scope > summary")};
       }
-      const control = root.querySelector("[data-people-filter-toggle]");
-      if (control) {
-        const panel = document.getElementById(control.getAttribute("aria-controls"));
-        if (panel) return {control, panel};
-      }
       const panel = Array.from(root.querySelectorAll('form[method="get"]')).find(form =>
-        !form.closest("dialog") && form.querySelector("select,input[type=date]") &&
+        !form.closest("dialog") && !form.hasAttribute("data-inline-filters") && form.querySelector("select,input[type=date]") &&
         /filter/.test(form.className));
       return panel ? {panel} : null;
     }

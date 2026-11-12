@@ -3,6 +3,12 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
 /* Direct enrollment entry. Only GETs are enhanced; the signed save stays native. */
 (function () {
   "use strict";
+  pageScope.listen(document, "change", function (event) {
+    var picker = event.target.closest("[data-enrollment-picker]");
+    if (!picker || event.target.name !== "student") return;
+    picker.querySelector("[name='group']").value = "";
+    picker.requestSubmit(picker.querySelector("button[value='search']"));
+  });
   var dialog = document.querySelector("[data-enrollment-dialog]");
   if (!dialog || !dialog.showModal || !window.fetch || !window.AbortController ||
       !window.aelmsRegisterForms || !window.aelmsRegisterFinanceForms ||

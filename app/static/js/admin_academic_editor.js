@@ -28,7 +28,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   const release = (scope) => scope.querySelectorAll('form').forEach((form) => form.dispatchEvent(new Event('workspace:saved')));
   function status(text, error = false) {notice.textContent = t(text); notice.hidden = !text; notice.setAttribute('role',error?'alert':'status');}
   function pageNotice(text) {const n=root.querySelector('[data-academic-notice]'); n.textContent=t(text); n.hidden=!text;}
-  function blocked(text) {uncertain=true; pageNotice(text);const reload=root.querySelector('[data-academic-reload]');reload.href=location.href;reload.hidden=false;recovery.querySelector('a').href=location.href;root.querySelectorAll('.ah-status-select').forEach(select=>select.disabled=true);content.querySelectorAll('[type=submit]').forEach(button=>button.disabled=true);}
+  function blocked(text) {uncertain=true; pageNotice(text);const reload=root.querySelector('[data-academic-reload]');reload.href=location.href;reload.hidden=false;recovery.querySelector('a').href=location.href;root.querySelectorAll('[data-academic-status-form] button[type=submit]').forEach(button=>button.disabled=true);content.querySelectorAll('[type=submit]').forEach(button=>button.disabled=true);}
   function cancelRead() {revision++; controller?.abort(); controller=null;}
   function copyMessages(destination, page) {
     const source=page.querySelector('[data-academic-messages]');
@@ -160,10 +160,8 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   },true);
   function enhance() {
     root.dataset.editorEnhanced='true';
-    root.querySelectorAll('[data-academic-status-apply]').forEach(button=>button.hidden=true);
     window.aelmsRegisterForms(root);
   }
-  pageScope.listen(root, 'change',event=>{const form=event.target.closest('[data-academic-status-form]');if(form && event.target.matches('[name=status]'))form.requestSubmit();});
   pageScope.listen(root, 'submit',async event=>{
     const form=event.target;
     if(event.defaultPrevented || !form.matches('[data-academic-status-form]'))return;

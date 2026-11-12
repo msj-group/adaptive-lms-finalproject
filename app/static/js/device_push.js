@@ -34,6 +34,9 @@
     catch (_) { /* Native sign-in remains available if storage is restricted. */ }
   }
   function paint(message, enabled = false, disabled = false) {
+    document.querySelectorAll('[data-device-menu-label]').forEach(label => {
+      label.textContent = t(enabled ? 'Device notifications' : 'Enable notifications');
+    });
     document.querySelectorAll('[data-device-header]').forEach(button => {
       button.hidden = enabled;
     });

@@ -7,21 +7,28 @@
   <ol class="ad-stepper" aria-label="Enrollment operation"><li class="active" aria-current="step"><span>1</span>Student &amp; group</li><li><span>2</span>Details &amp; review</li></ol>
   {% if error %}<p class="alert alert--danger" role="alert">{{ _(error) }}</p>{% endif %}
   <form method="get" action="{{ url_for('admin.enrollment_start') }}" class="ad-enrollment-picker" data-enrollment-picker>
-    <details class="ad-enrollment-search"{% if student_search or group_search or more_students or more_groups %} open{% endif %}>
-      <summary>Find a student or group</summary>
+    <div class="ad-enrollment-search">
       <div class="ad-enrollment-fields">
         <label class="field" for="entry-student-search">Student name or email<input id="entry-student-search" name="student_search" value="{{ student_search }}" maxlength="100" type="search"></label>
         <label class="field" for="entry-group-search">Group name or course<input id="entry-group-search" name="group_search" value="{{ group_search }}" maxlength="100" type="search"></label>
       </div>
       <button class="btn" type="submit" name="step" value="search" formnovalidate>Search</button>
-    </details>
+    </div>
     <label class="field" for="entry-student">Student<select id="entry-student" name="student" required><option value="">Choose a student</option>{% for row in students %}<option value="{{ row.public_id }}"{% if selected_student and row.public_id == selected_student.public_id %} selected{% endif %}>{{ row.full_name }} · {{ row.email }}</option>{% endfor %}</select></label>
     {% if more_students %}<p class="ad-meta">Showing 50 matches. Search to find another student.</p>{% endif %}
     <label class="field" for="entry-group">Group<select id="entry-group" name="group" required><option value="">Choose a group</option>{% for row in groups %}<option value="{{ row.public_id }}" data-operation-url="{{ url_for('admin.enrollment_operation', group_public_id=row.public_id, action='enroll') }}"{% if selected_group and row.public_id == selected_group.public_id %} selected{% endif %}>{{ row.name }} · {{ row.course.title }} · {{ row.academic_term.name }}</option>{% endfor %}</select></label>
     {% if more_groups %}<p class="ad-meta">Showing 50 matches. Search to find another group.</p>{% endif %}
-    {% if not groups %}<p class="alert" role="status">No available groups match this selection. Check the group's academic status, teacher, study start, course price and capacity.</p>{% endif %}
+    {% if not groups %}<div class="alert" role="status"><strong>No available groups{% if group_search %} match this search{% endif %}.</strong><p>{{ _('Review the specific reasons below.') if unavailable_groups else _('Create a group or change the search to continue.') }}</p>{% if not unavailable_groups %}<a class="ad-row-link" href="{{ url_for('admin.group_create') }}">Create group</a>{% endif %}</div>{% endif %}
+    {% if unavailable_groups %}<details class="ad-enrollment-unavailable"{% if not groups %} open{% endif %}>
+      <summary>Groups that are not available for enrollment</summary>
+      <p class="ad-meta">These groups cannot be selected yet. Open a reason to review the related setup.</p>
+      {% for item in unavailable_groups %}<article class="ad-enrollment-readiness"><h3 dir="auto">{{ item.group.name }}</h3><p class="ad-meta" dir="auto">{{ item.group.course.title }} · {{ item.group.academic_term.name }} · {{ item.occupied }} / {{ item.group.capacity }} places used</p><ul>{% for reason, link in item.reasons %}<li><a href="{{ link }}">{{ _(reason) }}</a></li>{% endfor %}</ul></article>{% endfor %}
+      {% if more_unavailable %}<p class="ad-meta">Showing 10 unavailable groups. Narrow the group search to find another.</p>{% endif %}
+    </details>{% endif %}
     <p class="ad-meta">Availability is checked again before saving.</p>
-    <div class="ad-enrollment-picker-foot"><a class="ad-row-link" href="{{ url_for('admin.student_create') }}">{{ ui.icon('users',16) }} Add student</a><button class="btn btn--primary" type="submit" name="step" value="details">Continue to details {{ ui.icon('arrow',16) }}</button></div>
+    <div class="ad-enrollment-picker-foot"><a class="ad-row-link" href="{{ url_for('admin.student_create') }}">{{ ui.icon('users',16) }} Add student</a><button class="btn btn--primary" type="submit" name="step" value="details"{% if not groups or not students %} disabled{% endif %}>Continue to details {{ ui.icon('arrow',16) }}</button></div>
   </form>
 </section>
 {% endblock %}
+
+{% block body_scripts %}{{ super() }}<script src="{{ url_for('static',filename='js/admin_daily_desk.js',v='enrollment-review-20261111') }}" defer></script>{% endblock %}

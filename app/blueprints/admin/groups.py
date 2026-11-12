@@ -19,6 +19,7 @@ from app.models import (
     GroupTeacherAssignment,
     GroupTeacherAssignmentStatus,
     Level,
+    Schedule,
     User,
     UserRole,
     UserStatus,
@@ -206,6 +207,7 @@ def group_detail(public_id):
         group=group,
         eligible_teacher_names=eligible_teacher_names,
         active_student_count=active_student_enrollment_count(group.id),
+        has_active_schedule=db.session.query(Schedule.id).filter_by(group_id=group.id, status="active").first() is not None,
     )
 
 
