@@ -9,7 +9,7 @@
 
 {% macro toolbar() -%}
 <section class="book-notes-toolbar" id="book-notes-float" data-book-notes data-owner="{{ current_user.public_id }}" aria-label="{{ _('My book notes') }}" hidden
-         data-saved="{{ _('Saved') }}" data-saving="{{ _('Saving…') }}" data-retry="{{ _('Your notes are waiting to sync. Reconnecting…') }}"
+         data-saving="{{ _('Saving…') }}" data-retry="{{ _('Your notes are waiting to sync. Reconnecting…') }}"
          data-limit="{{ _('This page has many notes. Erase a mark before adding more.') }}"
          data-loading="{{ _('Loading your notes…') }}" data-empty="{{ _('Write a note') }}">
   <button class="book-notes-hub" type="button" data-note-hub aria-expanded="false" aria-controls="book-notes-toolbar" aria-label="{{ _('My book notes') }}" data-open-label="{{ _('My book notes') }}" data-close-label="{{ _('Close') }}">
@@ -21,21 +21,22 @@
     <button type="button" data-note-tool="text" aria-label="{{ _('Text note') }}" title="{{ _('Text note') }}" aria-pressed="false"><span aria-hidden="true">T</span></button>
     <button type="button" data-note-tool="eraser" aria-label="{{ _('Eraser') }}" title="{{ _('Eraser') }}" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m4 13 9-10 8 8-10 10H7l-5-5Z M8 9l8 8 M11 21h11"/></svg></button>
     <button type="button" data-note-options-toggle aria-label="{{ _('Ink color') }} · {{ _('Stroke width') }}" title="{{ _('Ink color') }} · {{ _('Stroke width') }}" aria-expanded="false" aria-controls="book-note-options"><span class="book-note-ink-swatch" aria-hidden="true"></span></button>
-    <button type="button" data-note-done aria-label="{{ _('Read') }}" title="{{ _('Read') }}">{{ ui.icon('book',19) }}</button>
     <button type="button" data-note-undo aria-label="{{ _('Undo') }}" title="{{ _('Undo') }}" disabled><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m8 4-5 5 5 5M3 9h10a7 7 0 0 1 0 14"/></svg></button>
     <button type="button" data-note-redo aria-label="{{ _('Redo') }}" title="{{ _('Redo') }}" disabled><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m16 4 5 5-5 5m5-5H11a7 7 0 0 0 0 14"/></svg></button>
   </div>
   <div class="book-note-options" id="book-note-options" data-note-options hidden>
-    <label><span>{{ _('Ink color') }}</span>
-      <select data-note-color aria-label="{{ _('Ink color') }}">
-        <option value="#255ec5">{{ _('Blue') }}</option><option value="#192f4a">{{ _('Dark') }}</option>
-        <option value="#de4545">{{ _('Red') }}</option><option value="#e8bd32">{{ _('Yellow') }}</option><option value="#35a77c">{{ _('Green') }}</option>
-      </select>
-    </label>
-    <label><span>{{ _('Stroke width') }}</span><select data-note-width aria-label="{{ _('Stroke width') }}">
-      <option value="thin">{{ _('Thin') }}</option><option value="medium" selected>{{ _('Medium') }}</option><option value="thick">{{ _('Thick') }}</option>
-    </select></label>
-    <button type="button" data-note-options-done>{{ _('Done') }}</button>
+    <header><h2>{{ _('Pen settings') }}</h2><button type="button" data-note-options-done aria-label="{{ _('Close') }}">{{ ui.icon('close',18) }}</button></header>
+    <input type="hidden" data-note-color value="#255ec5"><input type="hidden" data-note-width value="medium">
+    <fieldset><legend>{{ _('Ink color') }}</legend><div class="book-note-colors">
+      {% for color,name in [('#255ec5','Blue'),('#192f4a','Dark'),('#de4545','Red'),('#e8bd32','Yellow'),('#35a77c','Green')] %}
+      <button type="button" data-note-color-option="{{ color }}" style="--swatch-color:{{ color }}" aria-label="{{ _(name) }}" title="{{ _(name) }}" aria-pressed="{{ 'true' if loop.first else 'false' }}"><span aria-hidden="true"></span></button>
+      {% endfor %}
+    </div></fieldset>
+    <fieldset><legend>{{ _('Stroke width') }}</legend><div class="book-note-widths">
+      {% for value,name in [('thin','Thin'),('medium','Medium'),('thick','Thick')] %}
+      <button type="button" data-note-width-option="{{ value }}" aria-pressed="{{ 'true' if value == 'medium' else 'false' }}"><span aria-hidden="true"></span><small>{{ _(name) }}</small></button>
+      {% endfor %}
+    </div></fieldset>
   </div>
   <p class="book-notes-status" data-note-status role="status" aria-live="polite"></p>
 </section>

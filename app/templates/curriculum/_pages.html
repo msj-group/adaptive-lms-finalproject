@@ -59,13 +59,6 @@
   <header>
     <span class="cm-heading-icon" aria-hidden="true"><span class="cm-heading-audio">{{ media_icon('audio') }}</span><span class="cm-heading-video">{{ media_icon('video') }}</span></span>
     <button class="cm-drag-handle" type="button" data-player-drag aria-label="{{ _('Move media player with arrow keys') }}" title="{{ _('Move media player with arrow keys') }}"><span class="cm-grip" aria-hidden="true"></span><strong data-player-title dir="auto"></strong></button>
-    <details class="cm-window-settings" data-player-settings>
-      <summary aria-label="{{ _('Media size') }}" title="{{ _('Media size') }}">{{ ui.icon('settings',18) }}</summary>
-      <div class="cm-window-options">
-        <label>{{ _('Activity icon size') }}<input type="range" min="70" max="135" step="5" value="100" data-marker-size></label>
-        <button type="button" data-player-reset>{{ _('Reset size and position') }}</button>
-      </div>
-    </details>
     <button class="cm-close" type="button" data-close-player aria-label="{{ _('Close') }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   </header>
   <div class="course-media" data-course-media data-course-captions>
@@ -74,6 +67,6 @@
     {{ custom_media.controls() }}
   </div>
   <p data-player-error role="status" hidden>{{ _('This file could not be played.') }}</p>
-  <button class="cm-resize-handle" type="button" data-player-resize aria-label="{{ _('Resize media player') }}" title="{{ _('Resize media player') }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m9 20 11-11m-4 11 4-4"/></svg></button>
+  <button class="cm-resize-handle" type="button" data-player-resize aria-label="{{ _('Resize media player') }}" title="{{ _('Resize media player') }}"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 11v6h6m-2-10h6v6"/></svg></button>
 </dialog>
 {% endmacro %}

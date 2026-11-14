@@ -5609,8 +5609,6 @@
   "Hide floating pen": "إخفاء القلم العائم",
   "Read": "قراءة",
   "Move media player with arrow keys": "اسحب المشغّل أو حرّكه بمفاتيح الأسهم",
-  "Media size": "حجم المشغّل والأيقونة",
-  "Activity icon size": "حجم أيقونة النشاط",
-  "Reset size and position": "إعادة الحجم والموضع الافتراضيين",
-  "Resize media player": "اسحب الزاوية لتغيير حجم المشغّل"
+  "Resize media player": "اسحب الزاوية لتغيير حجم المشغّل",
+  "Pen settings": "إعدادات القلم"
 }

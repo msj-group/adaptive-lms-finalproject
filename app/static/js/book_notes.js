@@ -58,12 +58,17 @@ window.aelmsModules.register(document.currentScript, function(scope) {
       if (!orbitOpen && !drag && !active && !dialog.open) toolbar.classList.add('is-idle');
     },5500);
   }
+  function dockHub() {
+    if (toolbar.hidden || orbitOpen || drag || active || dialog.open) return;
+    scope.clearTimeout(idleTimer);
+    toolbar.classList.add('is-idle');
+  }
   function showOptions(value) {
     options.hidden=!value;
     toolbar.classList.toggle('has-options',value);
     tools.inert=value || !orbitOpen;
     optionsToggle.setAttribute('aria-expanded',String(value));
-    if (value) options.querySelector('select').focus({preventScroll:true});
+    if (value) options.querySelector('[data-note-color-option][aria-pressed=true]').focus({preventScroll:true});
   }
   function setMode(value) {
     cancelStroke(); mode=value;
@@ -93,12 +98,17 @@ window.aelmsModules.register(document.currentScript, function(scope) {
     position();
     wakeHub();
   }
-  function inkColor() { toolbar.style.setProperty('--note-ink',color.value); }
+  function inkColor() {
+    toolbar.style.setProperty('--note-ink',color.value);
+    options.querySelectorAll('[data-note-color-option]').forEach(button => {
+      button.setAttribute('aria-pressed',String(button.dataset.noteColorOption===color.value));
+    });
+  }
   function message() {
     const blocked = states.find(state => state.error);
     toolbar.classList.toggle('has-sync-error',Boolean(blocked));
     status.textContent = blocked ? toolbar.dataset[blocked.error] : states.some(state => state.pending.size || state.saving)
-      ? toolbar.dataset.saving : toolbar.dataset.saved;
+      ? toolbar.dataset.saving : '';
   }
   function persist(state) {
     try {
@@ -300,13 +310,20 @@ window.aelmsModules.register(document.currentScript, function(scope) {
   scope.listen(document,'click',event => {
     if (toolbar.hidden || dialog.open || toolbar.contains(event.target) || toggle.contains(event.target) || drag || active) return;
     if (orbitOpen) { setMode(null); openOrbit(false); }
-    scope.clearTimeout(idleTimer);
-    toolbar.classList.add('is-idle');
+    dockHub();
   });
+  scope.listen(reader,'scroll',dockHub,{capture:true,passive:true});
+  scope.listen(window,'scroll',dockHub,{passive:true});
   scope.listen(optionsToggle,'click',() => showOptions(options.hidden));
   scope.listen(toolbar.querySelector('[data-note-options-done]'),'click',() => { showOptions(false); optionsToggle.focus(); });
   scope.listen(color,'change',inkColor);
-  scope.listen(toolbar.querySelector('[data-note-done]'),'click',() => { setMode(null); openOrbit(false); });
+  for (const button of options.querySelectorAll('[data-note-color-option]')) scope.listen(button,'click',() => {
+    color.value=button.dataset.noteColorOption; inkColor();
+  });
+  for (const button of options.querySelectorAll('[data-note-width-option]')) scope.listen(button,'click',() => {
+    width.value=button.dataset.noteWidthOption;
+    options.querySelectorAll('[data-note-width-option]').forEach(option => option.setAttribute('aria-pressed',String(option===button)));
+  });
   for (const tool of toolbar.querySelectorAll('[data-note-tool]')) scope.listen(tool,'click',() => {
     const chosen=tool.dataset.noteTool;
     if (chosen!==mode && chosen!=='eraser') color.value=chosen==='highlight' ? '#e8bd32' : chosen==='text' ? '#192f4a' : '#255ec5';

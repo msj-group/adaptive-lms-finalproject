@@ -604,18 +604,15 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   for (const root of document.querySelectorAll("[data-curriculum-editor]")) prepareEditor(root);
   const account = document.querySelector('meta[name="aelms-device-account"]')?.content.split(':')[0] || 'local';
   const playerKey = `aelms-reader-player:${account}`;
-  const playerDefaults = {size:100,height:null,marker:100,position:null};
+  const playerDefaults = {size:100,height:null,position:null};
   let playerPreference = {...playerDefaults};
-  try { playerPreference = {...playerDefaults,...JSON.parse(localStorage.getItem(playerKey))}; } catch (_) {}
+  try {
+    const stored=JSON.parse(localStorage.getItem(playerKey));
+    playerPreference={size:stored?.size ?? 100,height:stored?.height ?? null,position:stored?.position ?? null};
+  } catch (_) {}
   const limit = (value,min,max) => Math.max(min,Math.min(max,value));
   function savePlayerPreference() {
     try { localStorage.setItem(playerKey,JSON.stringify(playerPreference)); } catch (_) {}
-  }
-  function updateMarkerSize() {
-    const scale = limit(Number(playerPreference.marker)||100,70,135)/100;
-    document.querySelectorAll('[data-pdf-viewer],.cb-reader').forEach(viewer => {
-      viewer.style.setProperty('--ce-marker-scale',String(scale));
-    });
   }
   for (const dialog of document.querySelectorAll("[data-media-player]")) {
     const viewer = dialog.previousElementSibling;
@@ -623,9 +620,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     const video = dialog.querySelector("video");
     const error = dialog.querySelector("[data-player-error]");
     const dragHandle = dialog.querySelector('[data-player-drag]');
-    const settings = dialog.querySelector('[data-player-settings]');
     const resizeHandle = dialog.querySelector('[data-player-resize]');
-    const markerSize = dialog.querySelector('[data-marker-size]');
     let drag = null;
     let resize = null;
     let playing = null;
@@ -641,13 +636,12 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     function restoreDialog() {
       if (!dialog.open || dialog.contains(document.fullscreenElement)) return;
       const size=limit(Number(playerPreference.size)||100,50,250);
-      const standard=innerWidth<=720 ? innerWidth-20 : playing===audio ? 470 : 580;
+      const standard=innerWidth<=720 ? innerWidth-20 : 580;
       dialog.style.setProperty('--cm-player-width',`${limit(standard*size/100,Math.min(275,innerWidth-20),innerWidth-20)}px`);
       dialog.classList.toggle('cm-user-resized',Boolean(playerPreference.height));
       if (playerPreference.height) {
         const controls=dialog.querySelector('.cm-controls')?.offsetHeight || 110;
-        const caption=playing===audio && !dialog.querySelector('[data-media-caption]').hidden ? 80 : 0;
-        const minimum=Math.min(innerHeight-20,Math.max(180,controls+75+(playing===video ? 90 : caption)));
+        const minimum=Math.min(innerHeight-20,Math.max(200,controls+190));
         dialog.style.setProperty('--cm-player-height',`${limit(playerPreference.height*innerHeight,minimum,innerHeight-20)}px`);
       }
       // Removing explicit coordinates restores the compact corner placement.
@@ -662,18 +656,14 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         dialog.style.removeProperty('left'); dialog.style.removeProperty('top');
       }
     }
-    if (dragHandle && settings && resizeHandle && markerSize) {
-      updateMarkerSize();
-      pageScope.listen(settings,'toggle',() => {
-        if (settings.open) markerSize.value=playerPreference.marker;
-      });
-      pageScope.listen(markerSize,'input',() => {
-        playerPreference.marker=Number(markerSize.value); updateMarkerSize(); savePlayerPreference();
-      });
-      pageScope.listen(dialog.querySelector('[data-player-reset]'),'click',() => {
-        playerPreference={...playerDefaults}; markerSize.value=100;
-        updateMarkerSize(); restoreDialog(); savePlayerPreference();
-      });
+    function resizeDialog(width,height,left,top) {
+      const standard=innerWidth<=720 ? innerWidth-20 : 580;
+      playerPreference.size=limit(width/standard*100,50,250);
+      playerPreference.height=limit(height/innerHeight,.18,1);
+      restoreDialog();
+      setDialogPosition(left,top);
+    }
+    if (dragHandle && resizeHandle) {
       pageScope.listen(dragHandle,'pointerdown',event => {
         if (event.button || !event.isPrimary) return;
         const box=dialog.getBoundingClientRect();
@@ -682,11 +672,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       });
       pageScope.listen(window,'pointermove',event => {
         if (resize && event.pointerId===resize.id) {
-          const standard=innerWidth<=720 ? innerWidth-20 : playing===audio ? 470 : 580;
-          playerPreference.size=limit((resize.width+event.clientX-resize.x)/standard*100,50,250);
-          playerPreference.height=limit((resize.height+event.clientY-resize.y)/innerHeight,.18,1);
-          restoreDialog();
-          setDialogPosition(resize.left,resize.top);
+          resizeDialog(resize.width+event.clientX-resize.x,resize.height+event.clientY-resize.y,resize.left,resize.top);
           return;
         }
         if (!drag || event.pointerId!==drag.id) return;
@@ -716,16 +702,13 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
         const grow={ArrowLeft:[-20,0],ArrowRight:[20,0],ArrowUp:[0,-20],ArrowDown:[0,20]}[event.key];
         if (!grow) return;
         event.preventDefault();
-        const box=dialog.getBoundingClientRect(), standard=innerWidth<=720 ? innerWidth-20 : playing===audio ? 470 : 580;
-        setDialogPosition(box.left,box.top);
-        playerPreference.size=limit((box.width+grow[0])/standard*100,50,250);
-        playerPreference.height=limit((box.height+grow[1])/innerHeight,.18,1);
-        restoreDialog(); setDialogPosition(box.left,box.top); savePlayerPreference();
+        const box=dialog.getBoundingClientRect();
+        resizeDialog(box.width+grow[0],box.height+grow[1],box.left,box.top);
+        savePlayerPreference();
       });
       pageScope.listen(window,'resize',restoreDialog,{passive:true});
       pageScope.listen(document,'fullscreenchange',restoreDialog);
       if (window.ResizeObserver) pageScope.createObserver(ResizeObserver,restoreDialog).observe(dialog);
-      pageScope.listen(document,'click',event => { if (settings.open && !settings.contains(event.target)) settings.open=false; });
     }
     function stopPlayback() {
       if (!playing) return;
@@ -769,7 +752,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
           || event.clientY < rect.top || event.clientY > rect.bottom)) dialog.close();
     });
     pageScope.listen(dialog, "close", () => {
-      if (!dialog.open) { if (settings) settings.open=false; drag=null; resize=null; stopPlayback(); }
+      if (!dialog.open) { drag=null; resize=null; stopPlayback(); }
     });
   }
 })();
