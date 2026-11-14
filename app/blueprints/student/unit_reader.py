@@ -1,7 +1,8 @@
 """Compose one continuous Unit using the existing own-Lesson/file guards."""
-from flask import abort, current_app
+from flask import abort, current_app, url_for
 from app.models.teaching_asset import TeachingAssetPin
 
+from app.services.book_links import book_links, book_references
 from app.services.student_lessons import outline_units, student_lesson_detail
 from app.services.unit_progress_tokens import make_unit_progress_token
 
@@ -64,10 +65,59 @@ def unit_reader_context(student_id, group_public_id, unit_public_id, lesson_publ
     view = dict(primary.view, course_document=document, materials=materials,
                 page_start=numbers[0] if numbers else None, page_end=numbers[-1] if numbers else None)
     versions = {page.progress.lesson_public_id: page.progress.version for page in pages}
+    reference_links = _reference_links(student_id, group_public_id,
+                                       book, document, numbers, outline, primary.progress.group_id,
+                                       group if book == 'workbook' else None,
+                                       mappings if book == 'workbook' else {})
     return primary, dict(view, reader_book=book,
         reader_lesson_endpoint='student.workbook_lesson' if book == 'workbook' else 'student.lesson_detail',
         lesson_units=reader_outline, unit_page_numbers=numbers, unit_page_args=owners, unit_page_pins=pins,
+        unit_book_links=reference_links,
         reader_entry_page=entry_page, reader_entry_material=entry_material,
         next_unit=next_link, unit_complete=all(page.progress.completed_at is not None for page in pages),
         unit_progress_state=make_unit_progress_token(actor_public_id, group_public_id, unit_public_id, book, versions),
         tz_name=current_app.config.get('APP_TIMEZONE', 'UTC'))
+
+
+def _reference_links(student_id, group_public_id, kind, document, numbers,
+                     outline, group_id, group, workbook_pages):
+    references = book_references(document, numbers)
+    if not references:
+        return {}
+    documents = {kind: document}
+    outlines = {kind: outline}
+    if kind == 'workbook' and any(ref[0] == 'main' for refs in references.values() for ref in refs):
+        from app.services.course_books import books_for_course
+        documents['main'] = books_for_course(group.course_id, group)['main']
+        outlines['main'] = outline_units(group_id, student_id)
+
+    destinations = {}
+    for target_kind, units in outlines.items():
+        book = documents[target_kind]
+        if book is None:
+            continue
+        destinations[target_kind] = (book.uploaded_file.sha256, {})
+        pages = destinations[target_kind][1]
+        for unit in units:
+            for lesson in unit['lessons']:
+                if target_kind == 'workbook':
+                    allowed = workbook_pages[lesson['public_id']]
+                elif lesson['page_start'] is not None and lesson['page_end'] <= book.page_count:
+                    allowed = range(lesson['page_start'], lesson['page_end'] + 1)
+                else:
+                    continue
+                for number in allowed:
+                    pages.setdefault(number, (unit['public_id'], lesson['public_id']))
+
+    def resolve(target_kind, checksum, number):
+        expected, pages = destinations.get(target_kind, (None, {}))
+        if checksum != expected or number not in pages:
+            return None
+        if target_kind == kind and number in numbers:
+            return f'#pdf-page-{number}'
+        target_unit, target_lesson = pages[number]
+        endpoint = 'student.workbook_lesson' if target_kind == 'workbook' else 'student.lesson_detail'
+        return url_for(endpoint, group_public_id=group_public_id, unit_public_id=target_unit,
+                       lesson_public_id=target_lesson, _anchor=f'pdf-page-{number}')
+
+    return book_links(document, numbers, resolve)

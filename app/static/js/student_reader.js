@@ -192,7 +192,13 @@ window.aelmsModules.register(document.currentScript, function (scope) {
   }
   // A deliberate Lesson choice still uses its scoped native route. The Unit
   // stays continuous, then opens at that Lesson's authorized book position.
-  if (!location.hash) scope.requestAnimationFrame(() => {
+  scope.requestAnimationFrame(() => {
+    const pageAnchor = /^#(?:pdf-page|teacher-book-page)-(\d+)$/.exec(location.hash);
+    if (location.hash && !pageAnchor) return;
+    if (pageAnchor) {
+      document.getElementById(pageAnchor[0].slice(1))?.scrollIntoView({block:'start', behavior:'instant'});
+      return;
+    }
     const number = Number(reader.dataset.readerEntryPage);
     let target = Number.isInteger(number) && number > 0
       ? reader.querySelector(`.ce-sheet[data-sheet="${number}"]`)?.closest('.ce-page') : null;

@@ -11,6 +11,10 @@
     </div>
   </div>
   <div class="sf-actions">
+    <a class="ce-reference-return" href="#" data-book-reference-return hidden
+       title="{{ _('Back to reading position') }}" aria-label="{{ _('Back to reading position') }}">
+      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M10 7 5 12l5 5m-5-5h10a4 4 0 0 0 0-8"/></svg>
+    </a>
     {% if can_annotate %}{{ notes.toggle() }}{% endif %}
     {{ caller() }}
     <button class="sf-fullscreen" type="button" data-reader-fullscreen aria-label="{{ _('Full screen') }}" title="{{ _('Full screen') }}" data-enter-label="{{ _('Full screen') }}" data-exit-label="{{ _('Exit full screen') }}">

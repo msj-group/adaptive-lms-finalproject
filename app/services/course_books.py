@@ -7,6 +7,7 @@ from app.extensions import db
 from app.models import CourseReferenceBook, Lesson, Material, Unit
 from app.models.course_document import CourseDocument
 from app.models.group_curriculum import GroupCurriculum
+from app.services.book_links import book_links
 from app.services.course_pdf import serve_pdf_page
 from app.services.material_serving import serve_uploaded_file
 
@@ -45,11 +46,23 @@ def private_render(template, **context):
 
 
 def read_book(course, kind, urls, group=None):
-    book = book_or_404(course.id, kind, group)
+    books = books_for_course(course.id, group)
+    book = books.get(kind)
+    if book is None or book.uploaded_file.extension != "pdf":
+        abort(404)
     page = request.args.get("page", default=1, type=int)
     if page is None or not 1 <= page <= book.page_count:
         abort(404)
     from app.services.teaching_assets import reference_pins
+    def resolve(target_kind, checksum, number):
+        target = books.get(target_kind)
+        if target is None or target.uploaded_file.sha256 != checksum or not 1 <= number <= target.page_count:
+            return None
+        if group is not None and target_kind == kind:
+            return f"#teacher-book-page-{number}"
+        return urls("read", kind=target_kind, page=number)
+
+    links = book_links(book, range(1, book.page_count + 1) if group else (page,), resolve)
     if group is not None:
         from collections import defaultdict
         from app.services.course_pdf import pdf_page_sizes
@@ -67,7 +80,7 @@ def read_book(course, kind, urls, group=None):
             endpoint = "teacher.teaching_asset_file"
         return private_render("teacher/book_reader.html", course=course, group=group,
             book=book, kind=kind, label=BOOK_LABELS[kind], page=page,
-            book_sizes=pdf_page_sizes(book), page_pins=pages, pin_endpoint=endpoint,
+            book_sizes=pdf_page_sizes(book), page_pins=pages, reference_links=links, pin_endpoint=endpoint,
             pin_args={"group_public_id":group.public_id}, book_urls=urls, enable_book_notes=True)
     if kind == "main":
         pins = _main_materials(course.id, group).filter(Material.pin_page == page).all()
@@ -77,7 +90,7 @@ def read_book(course, kind, urls, group=None):
         pin_endpoint = ("teacher" if group else "admin") + ".teaching_asset_file"
     return private_render("curriculum/book_reader.html", course=course, group=group,
                           book=book, kind=kind, label=BOOK_LABELS[kind], page=page,
-                          page_pins=pins, pin_endpoint=pin_endpoint,
+                          page_pins=pins, reference_links=links, pin_endpoint=pin_endpoint,
                           pin_args={"group_public_id": group.public_id} if group else {"public_id": course.public_id},
                           book_urls=urls, enable_book_notes=True,
                           reader_layout="layouts/portal_base.html" if group else "layouts/admin_base.html")

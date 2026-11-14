@@ -1,7 +1,7 @@
 {% extends "teacher/studio/_base.html" %}
 {% import "curriculum/_pages.html" as reader with context %}
 {% block extra_head %}{{ super() }}{% if course_document %}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css') }}">{% endif %}{% endblock %}
-{% block body_scripts %}{{ super() }}{% if course_document %}<script src="{{ url_for('static', filename='js/curriculum_editor.js',v='reader-move-3') }}" defer></script>{% endif %}{% endblock %}
+{% block body_scripts %}{{ super() }}{% if course_document %}<script src="{{ url_for('static', filename='js/curriculum_editor.js',v='book-reference-return-1') }}" defer></script>{% endif %}{% endblock %}
 {% block title %}Preview — {{ lesson.title }}{% endblock %}
 {% block studio_heading %}{% call studio.heading(lesson.title,unit.title) %}{{ studio.status(lesson.status) }}<a class="btn" href="{{ url_for('teacher.lesson_materials',group_public_id=group.public_id,unit_public_id=unit.public_id,lesson_public_id=lesson.public_id) }}">Back to materials</a>{% endcall %}{% endblock %}
 {% block studio_content %}

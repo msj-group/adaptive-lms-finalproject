@@ -121,7 +121,8 @@ def outline_units(group_id, student_id, *, include_material_index=False, book="m
     unit_ids = [u.id for u in units]
     lessons = (
         db.session.query(
-            Lesson.unit_id, Lesson.title, Lesson.public_id, LessonProgress.completed_at, Lesson.id
+            Lesson.unit_id, Lesson.title, Lesson.public_id, LessonProgress.completed_at, Lesson.id,
+            Lesson.page_start, Lesson.page_end,
         )
         .select_from(Lesson)
         .outerjoin(
@@ -152,9 +153,10 @@ def outline_units(group_id, student_id, *, include_material_index=False, book="m
             material_index.setdefault(lesson_id, []).append({"title": title, "public_id": public_id})
 
     lessons_by_unit = {}
-    for unit_id, title, public_id, completed_at, lesson_id in lessons:
+    for unit_id, title, public_id, completed_at, lesson_id, page_start, page_end in lessons:
         lessons_by_unit.setdefault(unit_id, []).append(
             {"title": title, "public_id": public_id, "is_completed": completed_at is not None,
+             "page_start": page_start, "page_end": page_end,
              "materials": material_index.get(lesson_id, [])}
         )
     return [

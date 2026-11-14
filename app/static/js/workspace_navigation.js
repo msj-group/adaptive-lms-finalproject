@@ -164,8 +164,9 @@
       .filter(script => !script.type || ["text/javascript", "application/javascript", "module"].includes(script.type));
     for (const script of scripts) script.remove();
 
-    const previousReader = document.querySelector('[data-student-reader]');
-    const nextReader = page.querySelector('[data-student-reader]');
+    const readerSelector = '[data-student-reader],[data-teacher-reader]';
+    const previousReader = document.querySelector(readerSelector);
+    const nextReader = page.querySelector(readerSelector);
     const fullscreenRoot = document.documentElement;
     const readerExpanded = document.fullscreenElement === fullscreenRoot || fullscreenRoot.hasAttribute('data-reader-expanded');
     const keepReader = readerExpanded && previousReader && nextReader &&
@@ -238,7 +239,7 @@
   window.aelmsReaderNavigate = async function (url, formData = null, researchForm = null) {
     if (readerRequest || (document.fullscreenElement !== document.documentElement &&
         !document.documentElement.hasAttribute('data-reader-expanded')) ||
-        !document.querySelector('[data-student-reader]')) return;
+        !document.querySelector('[data-student-reader],[data-teacher-reader]')) return;
     const destination = new URL(url, location.href);
     if (destination.origin !== location.origin) return;
     const controller = new AbortController();
@@ -263,7 +264,7 @@
   window.aelmsReaderNavigate.supportsExpandedReader = true;
   if (!window.navigation || !window.NavigationPrecommitController) window.addEventListener('popstate', () => {
     const previous = new URL(mountedURL);
-    if (document.querySelector('[data-student-reader]') &&
+    if (document.querySelector('[data-student-reader],[data-teacher-reader]') &&
         (previous.pathname !== location.pathname || previous.search !== location.search)) location.reload();
   });
 

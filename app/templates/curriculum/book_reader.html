@@ -14,6 +14,7 @@
       {% if enable_book_notes %}{{ notes.toggle() }}{% endif %}
     </div>
     <nav class="cb-reader-tools" aria-label="{{ _('Book pages') }}">
+    <a class="ce-reference-return" href="#" data-book-reference-return hidden>{{ _('Back to reading position') }}</a>
     {% if page > 1 %}<a class="btn btn--secondary" href="{{ book_urls('read', kind=kind, page=page-1) }}">{{ _('Previous page') }}</a>{% endif %}
     <form method="get" action="{{ book_urls('read', kind=kind) }}" class="cb-page-jump"><label>{{ _('Page') }} <input type="number" name="page" min="1" max="{{ book.page_count }}" value="{{ page }}" required></label><span>/ {{ book.page_count }}</span><button class="btn btn--secondary" type="submit">{{ _('Go') }}</button></form>
     {% if page < book.page_count %}<a class="btn btn--secondary" href="{{ book_urls('read', kind=kind, page=page+1) }}">{{ _('Next page') }}</a>{% endif %}
@@ -21,10 +22,10 @@
     </nav>
   </header>
   {% if enable_book_notes %}{{ notes.toolbar() }}{% endif %}
-  <div class="ce-pages"><div class="ce-sheet cb-page-frame" data-sheet="{{ page }}"><img class="cb-page" src="{{ book_urls('page', kind=kind, file_id=book.uploaded_file.public_id, page_number=page) }}" alt="{{ _('Book page %(page)d', page=page) }}">{% for pin in page_pins %}{{ media.media_pin(pin, pin_endpoint, pin_args) }}{% endfor %}</div></div>
+  <div class="ce-pages"><div class="ce-sheet cb-page-frame" data-sheet="{{ page }}"><img class="cb-page" src="{{ book_urls('page', kind=kind, file_id=book.uploaded_file.public_id, page_number=page) }}" alt="{{ _('Book page %(page)d', page=page) }}">{{ media.book_references(reference_links.get(page, ())) }}{% for pin in page_pins %}{{ media.media_pin(pin, pin_endpoint, pin_args) }}{% endfor %}</div></div>
   {{ media.player() }}
 </div>
 {% endmacro %}
 {% block admin_content %}{{ reader() }}{% endblock %}
 {% block portal_content %}{{ reader() }}{% endblock %}
-{% block body_scripts %}{{ super() }}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='reader-move-3') }}" defer></script>{% if enable_book_notes %}<script src="{{ url_for('static', filename='js/book_notes.js', v='circle-notes-2') }}" defer></script>{% endif %}{% endblock %}
+{% block body_scripts %}{{ super() }}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='book-reference-return-1') }}" defer></script>{% if enable_book_notes %}<script src="{{ url_for('static', filename='js/book_notes.js', v='circle-notes-2') }}" defer></script>{% endif %}{% endblock %}

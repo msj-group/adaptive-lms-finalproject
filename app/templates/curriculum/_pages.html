@@ -29,17 +29,28 @@
   {% endif %}
 {% endmacro %}
 
-{% macro pages(document, start, end, materials, page_endpoint, page_args, media_endpoint, media_args, editor=false, collect=false, pin_version=none, book_sizes=none, page_pins=none, page_owners=none, show_page_numbers=true, page_numbers=none, page_args_by_number=none) %}
+{% macro book_references(links) %}
+  {% for ref in links %}
+    {% set labels = {'main': _('Student book'), 'workbook': _('Workbook'), 'teacher_book': _("Teacher's book")} %}
+    {% set caption = _('%(book)s · Page %(page)s', book=labels[ref.kind], page=ref.printed) %}
+    <a class="ce-page-reference" id="{{ ref.anchor }}" href="{{ ref.href }}" data-book-reference
+       title="{{ caption }}" aria-label="{{ caption }}"
+       style="--ref-x:{{ ref.x }}%;--ref-y:{{ ref.y }}%;--ref-w:{{ ref.width }}%;--ref-h:{{ ref.height }}%;"></a>
+  {% endfor %}
+{% endmacro %}
+
+{% macro pages(document, start, end, materials, page_endpoint, page_args, media_endpoint, media_args, editor=false, collect=false, pin_version=none, book_sizes=none, page_pins=none, page_owners=none, show_page_numbers=true, page_numbers=none, page_args_by_number=none, reference_links=none) %}
 {% set book = book_sizes is not none %}
 <div class="ce-pages" id="ce-page-viewer" data-pdf-viewer{% if book %} data-image-scroll{% endif %} tabindex="0" aria-label="{{ _('PDF pages') if book else _('Lesson pages') }}">
   {% for number in (page_numbers if page_numbers is not none else range(start, end + 1)) %}
   {% set page_args = page_args_by_number[number] if page_args_by_number is not none else page_args %}
   {% set size = book_sizes[number - 1] if book and book_sizes|length >= number else (800, 1100) %}
-  <figure class="ce-page"{% if book %} id="pdf-page-{{ number }}" data-book-page="{{ number }}"{% endif %}>
+  <figure class="ce-page" id="pdf-page-{{ number }}"{% if book %} data-book-page="{{ number }}"{% endif %}>
     <div class="ce-sheet" data-sheet="{{ number }}"{% if page_owners is not none and number in page_owners %} data-media-action="{{ page_owners[number].save }}" data-lesson-preview="{{ page_owners[number].preview }}"{% endif %}>
       <img {{ 'data-pdf-src' if book else 'src' }}="{{ url_for(page_endpoint, document_id=document.uploaded_file.public_id, page_number=number, **page_args) }}"
            alt="{{ _('Course PDF page %(page)s', page=number) }}" width="{{ size[0] }}" height="{{ size[1] }}"
            {% if book %}style="aspect-ratio: {{ size[0] }} / {{ size[1] }}"{% else %}loading="{{ 'eager' if loop.first else 'lazy' }}"{% endif %} decoding="async" draggable="false">
+      {% if reference_links %}{{ book_references(reference_links.get(number, ())) }}{% endif %}
       {% set on_page = page_pins.get(number, ()) if page_pins is not none else materials|selectattr('pin_page', 'equalto', number) %}
       {% for material in on_page %}
         {{ media_pin(material, media_endpoint, media_args, editor, pin_version) }}

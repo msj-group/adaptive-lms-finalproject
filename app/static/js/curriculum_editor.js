@@ -6,6 +6,66 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   const deviceReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const allowsMotion = () => !deviceReducedMotion.matches;
 
+  const returnLink = document.querySelector("[data-book-reference-return]");
+  if (returnLink) {
+    const key = "aelms-book-reference-trail";
+    let trail = [];
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(key));
+      if (Array.isArray(saved)) trail = saved;
+    } catch (_) {}
+    const currentURL = () => location.pathname + location.search + location.hash;
+    const localURL = link => link.pathname + link.search + link.hash;
+    function storeTrail() {
+      trail = trail.slice(-16);
+      try { sessionStorage.setItem(key,JSON.stringify(trail)); } catch (_) {}
+    }
+    function restoreReference() {
+      // A history traversal may revisit a reader whose page scope was cached.
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(key));
+        if (Array.isArray(saved)) trail = saved;
+      } catch (_) {}
+      const last = trail.at(-1);
+      const active = last?.target === currentURL() &&
+        /^\/(?!\/)[^#]*#book-reference-\d+-\d+$/.test(last.source);
+      returnLink.hidden = !active;
+      returnLink.href = active ? last.source : "#";
+      const anchor = /^#book-reference-(\d+)-\d+$/.exec(location.hash);
+      if (!anchor) return;
+      const reference = document.getElementById(anchor[0].slice(1));
+      const page = document.getElementById("pdf-page-" + anchor[1]) ||
+        document.getElementById("teacher-book-page-" + anchor[1]);
+      (reference || page)?.scrollIntoView({block:reference ? "center" : "start",behavior:"instant"});
+      reference?.focus({preventScroll:true});
+    }
+    const reader = returnLink.closest(".sf-reader,.cb-reader");
+    pageScope.listen(reader, "click", event => {
+      const link = event.target.closest("[data-book-reference],[data-book-reference-return]");
+      if (!link || event.defaultPrevented || event.button || event.ctrlKey || event.metaKey ||
+          event.shiftKey || event.altKey || link.origin !== location.origin) return;
+      const target = localURL(link);
+      if (link === returnLink) {
+        if (trail.at(-1)?.target !== currentURL()) return;
+        trail.pop();
+      } else {
+        const source = location.pathname + location.search + "#" + link.id;
+        trail.push({source,target});
+      }
+      storeTrail();
+      const root = document.documentElement;
+      const expanded = document.fullscreenElement === root || root.hasAttribute("data-reader-expanded");
+      if (expanded && reader.matches("[data-student-reader],[data-teacher-reader]") &&
+          link.pathname + link.search !== location.pathname + location.search && window.aelmsReaderNavigate) {
+        event.preventDefault();
+        window.aelmsReaderNavigate(link.href);
+      }
+    });
+    pageScope.listen(window, "hashchange", restoreReference);
+    pageScope.listen(window, "pageshow", restoreReference);
+    pageScope.requestAnimationFrame(restoreReference);
+  }
+
   function prepareEditor(root) {
     const offline = root.querySelector("[data-editor-offline]");
     const sync = () => { offline.hidden = navigator.onLine; };
