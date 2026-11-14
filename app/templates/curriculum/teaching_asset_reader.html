@@ -3,7 +3,7 @@
 {% block title %}{{ asset.title }}{% endblock %}
 {% macro resource() %}
 <div class="workspace-document"><h2 dir="auto">{{ asset.title }}</h2><p>{{ _('Teachers only') }}</p>
-{{ custom_media.inline_player(resource_urls('file'), asset.uploaded_file.category) }}
+{{ custom_media.inline_player(resource_urls('file'), asset.uploaded_file.category, captions=true) }}
 <p><a class="btn btn--secondary" href="{{ resource_urls('list') }}">{{ _('Back to books') }}</a><a class="btn btn--secondary" href="{{ resource_urls('download') }}">{{ _('Download') }}</a></p></div>
 {% endmacro %}
 {% block admin_content %}{{ resource() }}{% endblock %}

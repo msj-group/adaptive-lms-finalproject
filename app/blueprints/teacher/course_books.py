@@ -30,7 +30,7 @@ def course_book_read(group_public_id, kind):
     return read_book(group.course, kind, _urls(group), group)
 
 
-@teacher_bp.get("/groups/<group_public_id>/books/<kind>/<file_id>/pages/<int:page_number>")
+@teacher_bp.route("/groups/<group_public_id>/books/<kind>/<file_id>/pages/<int:page_number>", methods=["GET", "POST"])
 @roles_required("teacher")
 def course_book_page(group_public_id, kind, file_id, page_number):
     group = _teacher_group_or_404(group_public_id)

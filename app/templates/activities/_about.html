@@ -1,0 +1,26 @@
+{% macro activity_about(kind, phase='overview') -%}
+{% set instructions = {
+  'assignment': _('Read the assignment instructions. Write your response or attach the requested file, then submit it. Return here to see your submission and feedback.'),
+  'quiz': _('Check the time limit and allowed attempts before starting. Choose an answer for each question and submit the attempt when you finish.'),
+  'listening': _('Play the recording and answer the questions about what you heard. You can replay it during your attempt. Submit when you finish.'),
+  'speaking': _('Read the speaking task. Record your response, listen to it, then submit the recording. Return here to see your teacher’s feedback.'),
+  'discussion': _('Read the discussion prompt and existing replies. Add your response when the topic is open, and reply respectfully to classmates.')
+} %}
+{% set current_step = {
+  ('quiz', 'question'): _('Select an answer. Use the question controls to review your answers before submitting. Keep an eye on the time remaining.'),
+  ('listening', 'question'): _('Listen to the recording, select an answer, then continue to the next question. Keep an eye on the time remaining.'),
+  ('quiz', 'result'): _('Review your score and which questions you answered correctly.'),
+  ('listening', 'result'): _('Review your score and the questions you answered correctly. Read the transcript here if your teacher made it available.'),
+  ('speaking', 'receipt'): _('Listen to the recording you submitted and read your teacher’s feedback when it is available.')
+} %}
+{% if kind in instructions %}
+<button class="btn btn--secondary activity-about-button" type="button" aria-haspopup="dialog" aria-controls="activity-about-dialog" data-activity-about-open>ⓘ {{ _('About') }}</button>
+<dialog class="activity-about-dialog" id="activity-about-dialog" data-activity-about-dialog aria-labelledby="activity-about-title">
+  <header>
+    <h2 id="activity-about-title">{{ _('About this activity') }}</h2>
+    <form method="dialog"><button class="activity-about-close" aria-label="{{ _('Close') }}">×</button></form>
+  </header>
+  <div class="activity-about-body"><p>{{ current_step.get((kind, phase), instructions[kind]) }}</p></div>
+</dialog>
+{% endif %}
+{%- endmacro %}

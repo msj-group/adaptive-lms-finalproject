@@ -47,7 +47,7 @@ def material_open(group_public_id, unit_public_id, lesson_public_id, material_pu
     uploaded_file = _authorized_uploaded_file(
         group_public_id, unit_public_id, lesson_public_id, material_public_id
     )
-    return serve_uploaded_file(uploaded_file, current_user.id, force_attachment=False)
+    return serve_uploaded_file(uploaded_file, current_user.id, force_attachment=False, course_captions=True)
 
 
 @student_bp.get(

@@ -68,7 +68,7 @@ def read_book(course, kind, urls, group=None):
         return private_render("teacher/book_reader.html", course=course, group=group,
             book=book, kind=kind, label=BOOK_LABELS[kind], page=page,
             book_sizes=pdf_page_sizes(book), page_pins=pages, pin_endpoint=endpoint,
-            pin_args={"group_public_id":group.public_id}, book_urls=urls)
+            pin_args={"group_public_id":group.public_id}, book_urls=urls, enable_book_notes=True)
     if kind == "main":
         pins = _main_materials(course.id, group).filter(Material.pin_page == page).all()
         pin_endpoint = ("teacher" if group else "admin") + ".course_book_material_file"
@@ -79,12 +79,13 @@ def read_book(course, kind, urls, group=None):
                           book=book, kind=kind, label=BOOK_LABELS[kind], page=page,
                           page_pins=pins, pin_endpoint=pin_endpoint,
                           pin_args={"group_public_id": group.public_id} if group else {"public_id": course.public_id},
-                          book_urls=urls, reader_layout="layouts/portal_base.html" if group else "layouts/admin_base.html")
+                          book_urls=urls, enable_book_notes=True,
+                          reader_layout="layouts/portal_base.html" if group else "layouts/admin_base.html")
 
 
 def book_page(course_id, kind, file_id, page_number, group=None):
     book = book_or_404(course_id, kind, group, file_id)
-    return serve_pdf_page(book, page_number)
+    return serve_pdf_page(book, page_number, allow_notes=True)
 
 
 def download_book(course_id, kind, file_id, group=None):
@@ -105,4 +106,4 @@ def main_material_file(course_id, public_id, group=None):
     material = _main_materials(course_id, group).filter(Material.public_id == public_id).first_or_404()
     if material.uploaded_file.category not in {"audio", "video"}:
         abort(404)
-    return serve_uploaded_file(material.uploaded_file, current_user.id, False)
+    return serve_uploaded_file(material.uploaded_file, current_user.id, False, course_captions=True)

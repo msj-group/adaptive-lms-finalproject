@@ -1,12 +1,21 @@
 {% extends 'layouts/student_atlas_base.html' if current_user.role == 'student' else 'layouts/portal_base.html' %}
 {% import 'activities/_ui.html' as activity_ui %}
+{% from 'activities/_about.html' import activity_about %}
 {% set activity_kind = activity_kind|default('hub') %}
 {% set activity_phase = activity_phase|default('overview') %}
+{% set show_activity_about = current_user.role == 'student' and activity_kind in ['assignment', 'quiz', 'listening', 'speaking'] %}
 {% block body_class %}{{ super() }} activity-workspace activity-kind-{{ activity_kind }} activity-phase-{{ activity_phase }}{% endblock %}
 {% block workspace_content_class %}{{ super() }} activity-workspace-page{% endblock %}
 {% block feature_styles %}{{ super() }}{% if current_user.role != 'student' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/activities.css', v='st2-density-20261010') }}">{% endif %}{% endblock %}
-{% block protected_styles %}{{ super() }}{% if current_user.role == 'teacher' %}<link rel="stylesheet" href="{{ url_for('static',filename='css/teacher/activity_studio.css',v='unified-activity-studio-1') }}">{% endif %}{% endblock %}
-{% block body_scripts %}{{ super() }}{% if current_user.role == 'teacher' %}<script src="{{ url_for('static',filename='js/teacher_activity_composer.js',v='unified-activity-studio-1') }}" defer></script>{% endif %}{% endblock %}
+{% block protected_styles %}{{ super() }}
+{% if current_user.role == 'teacher' %}<link rel="stylesheet" href="{{ url_for('static',filename='css/teacher/activity_studio.css',v='unified-activity-studio-1') }}">{% endif %}
+{% if show_activity_about %}<link rel="stylesheet" href="{{ url_for('static',filename='css/activity_about.css',v=1) }}">{% endif %}
+{% endblock %}
+{% block body_scripts %}{{ super() }}
+{% if current_user.role == 'teacher' %}<script src="{{ url_for('static',filename='js/teacher_activity_composer.js',v='unified-activity-studio-1') }}" defer></script>{% endif %}
+{% if show_activity_about %}<script src="{{ url_for('static',filename='js/activity_about.js',v=1) }}" defer></script>{% endif %}
+{% endblock %}
+{% block workspace_page_actions %}{% if show_activity_about %}{{ activity_about(activity_kind, activity_phase) }}{% endif %}{% endblock %}
 {% block workspace_context %}
   {% include 'activities/_context.html' %}
 {% endblock %}

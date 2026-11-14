@@ -6,7 +6,7 @@ from math import isfinite
 from threading import Lock
 
 import pypdfium2 as pdfium
-from flask import abort, send_file
+from flask import abort, request, send_file
 
 from app.extensions import db
 from app.models.course_document import CourseDocument
@@ -78,9 +78,14 @@ def pdf_page_sizes(document):
         return ()
 
 
-def serve_pdf_page(document, page_number, *, thumbnail=False):
+def serve_pdf_page(document, page_number, *, thumbnail=False, allow_notes=False):
     if not 1 <= page_number <= document.page_count:
         abort(404)
+    if allow_notes and request.args.get("notes") == "1":
+        from app.services.book_annotations import serve_book_annotations
+        return serve_book_annotations(document, page_number)
+    if request.method not in {"GET", "HEAD"}:
+        abort(400)
     try:
         path = open_stored_file(current_material_config(), document.uploaded_file.storage_key)
         output = BytesIO()

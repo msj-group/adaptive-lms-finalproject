@@ -402,6 +402,8 @@ __all__ = [
 
 from app.models.academic_revision import AcademicRevision
 from app.models.group_curriculum import GroupCurriculum
+from app.models.course_game import CourseGame
+from app.models.book_annotation import BookAnnotation
 from app.models.teaching_asset import CourseContentImport, GroupMaterialSource, TeachingAsset, TeachingAssetPin
 from app.models.attempt_submission_receipt import AttemptSubmissionReceipt
 from app.models.research_storage import ResearchConfigurationSequence, ResearchDataGap, ResearchExportSession

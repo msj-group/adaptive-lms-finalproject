@@ -5,6 +5,7 @@
 {% block portal_nav %}{% include "student/_portal_nav.html" %}{% endblock %}
 {% block workspace_page_actions %}
 <span class="workspace-page-actions badge badge--neutral listening-timer" dir="auto" data-quiz-timer data-deadline="{{ attempt.deadline_iso }}">Time left: <span data-timer-remaining dir="ltr">&mdash;</span></span>
+{{ super() }}
 {% endblock %}
 {% block portal_content %}
 <div class="activity-surface listening-question-surface" data-listening-workspace data-question-id="{{ question.public_id }}">

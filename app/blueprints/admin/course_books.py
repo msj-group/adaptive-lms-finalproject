@@ -110,7 +110,7 @@ def course_book_read(public_id, kind):
     return read_book(course, kind, _urls(course))
 
 
-@admin_bp.get("/courses/<public_id>/books/<kind>/<file_id>/pages/<int:page_number>")
+@admin_bp.route("/courses/<public_id>/books/<kind>/<file_id>/pages/<int:page_number>", methods=["GET", "POST"])
 @roles_required("administrator")
 def course_book_page(public_id, kind, file_id, page_number):
     return book_page(_course(public_id).id, kind, file_id, page_number)

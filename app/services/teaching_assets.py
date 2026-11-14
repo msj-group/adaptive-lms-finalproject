@@ -86,4 +86,4 @@ def asset_page(course_id, public_id, file_id, page_number):
 
 def asset_file(course_id, public_id, *, download=False):
     asset = asset_or_404(course_id, public_id)
-    return serve_uploaded_file(asset.uploaded_file, current_user.id, download)
+    return serve_uploaded_file(asset.uploaded_file, current_user.id, download, course_captions=True)

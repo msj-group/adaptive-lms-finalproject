@@ -240,4 +240,4 @@ def curriculum_file(public_id, item_id):
     material = _item_query(course.id, "material").filter(
         Material.public_id == item_id, Material.kind == "file"
     ).first_or_404()
-    return serve_uploaded_file(material.uploaded_file, current_user.id, force_attachment=False)
+    return serve_uploaded_file(material.uploaded_file, current_user.id, force_attachment=False, course_captions=True)

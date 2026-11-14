@@ -2,28 +2,38 @@
 
 {% macro controls(rates=none) -%}
 <div class="cm-controls" data-media-controls hidden>
-  <div class="cm-timeline"><progress data-media-buffer value="0" max="1" aria-hidden="true"></progress><input type="range" min="0" max="1000" step="1" value="0" data-media-seek aria-label="{{ _('Seek') }}"></div>
+  <div class="cm-progress-row">
+    <div class="cm-timeline"><progress data-media-buffer value="0" max="1" aria-hidden="true"></progress><input type="range" min="0" max="1000" step="1" value="0" data-media-seek aria-label="{{ _('Seek') }}"></div>
+    <span class="cm-time" dir="ltr"><span data-media-current>0:00</span> / <span data-media-duration>0:00</span></span>
+  </div>
   <div class="cm-transport">
     <div class="cm-playback">
+    <button type="button" data-media-skip="-10" aria-label="{{ _('Back 10 seconds') }}"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 8h6M4 8V2M4 8a9 9 0 1 1-1 8"/><text x="12" y="12.5" fill="currentColor" stroke="none" text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="750">10</text></svg></button>
     <button type="button" class="cm-play" data-media-play data-play-label="{{ _('Play') }}" data-pause-label="{{ _('Pause') }}" aria-label="{{ _('Play') }}"><span data-play-symbol aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path class="cm-glyph-play" d="M8 5v14l11-7Z"/><path class="cm-glyph-pause" d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg></span></button>
-    <button type="button" data-media-skip="-10" aria-label="{{ _('Back 10 seconds') }}"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 8h6M4 8V2M4 8a9 9 0 1 1-1 8"/></svg><small>10</small></button>
-    <button type="button" data-media-skip="10" aria-label="{{ _('Forward 10 seconds') }}"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 8h-6m6 0V2m0 6a9 9 0 1 0 1 8"/></svg><small>10</small></button>
-    <span class="cm-time" dir="ltr"><span data-media-current>0:00</span> / <span data-media-duration>0:00</span></span>
+    <button type="button" data-media-skip="10" aria-label="{{ _('Forward 10 seconds') }}"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 8h-6m6 0V2m0 6a9 9 0 1 0 1 8"/><text x="12" y="12.5" fill="currentColor" stroke="none" text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="750">10</text></svg></button>
     </div>
     <div class="cm-options">
+      <button type="button" data-media-captions aria-label="{{ _('English captions') }}" aria-pressed="true" hidden>CC</button>
       <button type="button" data-media-mute data-mute-label="{{ _('Mute') }}" data-unmute-label="{{ _('Unmute') }}" aria-label="{{ _('Mute') }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4Zm4 4a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg></button>
       <input class="cm-volume" type="range" min="0" max="1" step="0.05" value="1" data-media-volume aria-label="{{ _('Volume') }}">
       <select data-media-speed{% if rates is not none %} data-audio-speed-select data-research-id="audio_speed"{% endif %} aria-label="{{ _('Playback speed') }}"{% if rates is not none and rates|length <= 1 %} hidden{% endif %}>{% for rate in (rates if rates is not none else ['0.75','1','1.25','1.5','2']) %}<option value="{{ rate }}"{% if rate == '1' %} selected{% endif %}>{{ rate }}×</option>{% endfor %}</select>
+      <details class="cm-speed-menu" data-speed-menu hidden>
+        <summary aria-label="{{ _('Playback speed') }}" title="{{ _('Playback speed') }}"><span data-speed-current>1×</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <div class="cm-speed-options" aria-label="{{ _('Playback speed') }}" role="group">
+          {% for rate in ['0.75','1','1.25','1.5','2'] %}<button type="button" data-speed-rate="{{ rate }}" aria-pressed="{{ 'true' if rate == '1' else 'false' }}">{{ rate }}×</button>{% endfor %}
+        </div>
+      </details>
       <button type="button" data-media-pip aria-label="{{ _('Picture in picture') }}" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="11" width="8" height="6" rx="1"/></svg></button>
-      <button type="button" data-media-fullscreen aria-label="{{ _('Full screen') }}" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
+      <button type="button" data-media-fullscreen data-enter-label="{{ _('Full screen') }}" data-exit-label="{{ _('Exit full screen') }}" aria-label="{{ _('Full screen') }}" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
     </div>
   </div>
 </div>
 <p class="cm-status" data-media-status role="status" data-loading="{{ _('Loading media…') }}" data-failed="{{ _('This file could not be played.') }}"></p>
+<div class="cm-caption" data-media-caption dir="auto" aria-label="{{ _('English captions') }}" hidden></div>
 {%- endmacro %}
 
-{% macro inline_player(src, category, collect=false, label=none, research_media=none, preload="metadata") -%}
-<div class="course-media" data-course-media data-media-kind="{{ category }}">
+{% macro inline_player(src, category, collect=false, label=none, research_media=none, preload="metadata", captions=false) -%}
+<div class="course-media" data-course-media data-media-kind="{{ category }}"{% if captions %} data-course-captions{% endif %}>
   {% if category == 'video' %}<video class="cm-element" src="{{ src }}" controls playsinline preload="{{ preload }}"{% if collect %} data-research-media="lesson_video"{% endif %}></video>
   {% else %}<audio class="cm-element" src="{{ src }}" controls preload="{{ preload }}"{% if label %} aria-label="{{ label }}"{% endif %}{% if collect %} data-research-media="lesson_audio"{% elif research_media %} data-research-media="{{ research_media }}"{% endif %}></audio>{% endif %}
   {{ controls() }}

@@ -70,13 +70,13 @@ def workbook_lesson(group_public_id, unit_public_id, lesson_public_id):
 
 
 
-@student_bp.get("/groups/<group_public_id>/workbook/<document_id>/pages/<int:page_number>")
+@student_bp.route("/groups/<group_public_id>/workbook/<document_id>/pages/<int:page_number>", methods=["GET", "POST"])
 @roles_required("student")
 def workbook_page(group_public_id, document_id, page_number):
     _, book, _, _, allowed = workbook_context(current_user.id, group_public_id, document_id)
     if page_number not in allowed:
         abort(404)
-    return serve_pdf_page(book, page_number)
+    return serve_pdf_page(book, page_number, allow_notes=True)
 
 
 @student_bp.get("/groups/<group_public_id>/workbook/<document_id>/media/<material_public_id>")
@@ -87,4 +87,4 @@ def workbook_media(group_public_id, document_id, material_public_id):
         TeachingAsset.public_id == material_public_id).first()
     if row is None:
         abort(404)
-    return serve_uploaded_file(row[1].uploaded_file, current_user.id, False)
+    return serve_uploaded_file(row[1].uploaded_file, current_user.id, False, course_captions=True)

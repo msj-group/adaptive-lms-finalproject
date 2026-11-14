@@ -9,7 +9,7 @@ and ``app/blueprints/student/materials.py``) and only then call
 authorization decision.
 """
 
-from flask import abort, send_file
+from flask import abort, request, send_file
 
 from app.extensions import db
 from app.models import FileAccessAction, FileAccessLog
@@ -22,7 +22,7 @@ from app.services.material_config import current_material_config
 INLINE_SAFE_CATEGORIES = {"image", "audio", "video"}
 
 
-def serve_uploaded_file(uploaded_file, actor_id, force_attachment):
+def serve_uploaded_file(uploaded_file, actor_id, force_attachment, *, course_captions=False):
     """Authorize-then-serve an already-authorized `uploaded_file`'s
     bytes, persisting the access-log entry in the same request before
     any bytes are sent.
@@ -35,6 +35,9 @@ def serve_uploaded_file(uploaded_file, actor_id, force_attachment):
     call this function once, so exactly one log row is written per
     authorized HTTP request.
     """
+    if course_captions and not force_attachment and request.args.get("captions") == "1":
+        from app.services.course_captions import serve_caption
+        return serve_caption(uploaded_file)
     material_config = current_material_config()
     try:
         path = open_stored_file(material_config, uploaded_file.storage_key)

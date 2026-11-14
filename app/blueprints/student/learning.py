@@ -139,9 +139,9 @@ def _record_open(student_id, progress):
         )
 
 
-@student_bp.get(
+@student_bp.route(
     "/groups/<group_public_id>/units/<unit_public_id>/lessons/<lesson_public_id>"
-    "/document/<document_id>/pages/<int:page_number>"
+    "/document/<document_id>/pages/<int:page_number>", methods=["GET", "POST"]
 )
 @roles_required(_STUDENT)
 def lesson_document_page(group_public_id, unit_public_id, lesson_public_id, document_id, page_number):
@@ -153,7 +153,7 @@ def lesson_document_page(group_public_id, unit_public_id, lesson_public_id, docu
     if (document is None or document.uploaded_file.public_id != document_id
             or not lesson.page_start <= page_number <= lesson.page_end):
         abort(404)
-    return serve_pdf_page(document, page_number)
+    return serve_pdf_page(document, page_number, allow_notes=True)
 
 
 @student_bp.post(

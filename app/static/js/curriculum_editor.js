@@ -602,12 +602,131 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
   }
 
   for (const root of document.querySelectorAll("[data-curriculum-editor]")) prepareEditor(root);
+  const account = document.querySelector('meta[name="aelms-device-account"]')?.content.split(':')[0] || 'local';
+  const playerKey = `aelms-reader-player:${account}`;
+  const playerDefaults = {size:100,height:null,marker:100,position:null};
+  let playerPreference = {...playerDefaults};
+  try { playerPreference = {...playerDefaults,...JSON.parse(localStorage.getItem(playerKey))}; } catch (_) {}
+  const limit = (value,min,max) => Math.max(min,Math.min(max,value));
+  function savePlayerPreference() {
+    try { localStorage.setItem(playerKey,JSON.stringify(playerPreference)); } catch (_) {}
+  }
+  function updateMarkerSize() {
+    const scale = limit(Number(playerPreference.marker)||100,70,135)/100;
+    document.querySelectorAll('[data-pdf-viewer],.cb-reader').forEach(viewer => {
+      viewer.style.setProperty('--ce-marker-scale',String(scale));
+    });
+  }
   for (const dialog of document.querySelectorAll("[data-media-player]")) {
     const viewer = dialog.previousElementSibling;
     const audio = dialog.querySelector("audio");
     const video = dialog.querySelector("video");
     const error = dialog.querySelector("[data-player-error]");
+    const dragHandle = dialog.querySelector('[data-player-drag]');
+    const settings = dialog.querySelector('[data-player-settings]');
+    const resizeHandle = dialog.querySelector('[data-player-resize]');
+    const markerSize = dialog.querySelector('[data-marker-size]');
+    let drag = null;
+    let resize = null;
     let playing = null;
+    function movementBounds() {
+      return {x:Math.max(0,innerWidth-dialog.offsetWidth-20),y:Math.max(0,innerHeight-dialog.offsetHeight-20)};
+    }
+    function setDialogPosition(left,top) {
+      const bounds = movementBounds();
+      const x = limit(left-10,0,bounds.x), y = limit(top-10,0,bounds.y);
+      playerPreference.position = {x:bounds.x ? x/bounds.x : 0,y:bounds.y ? y/bounds.y : 0};
+      restoreDialog();
+    }
+    function restoreDialog() {
+      if (!dialog.open || dialog.contains(document.fullscreenElement)) return;
+      const size=limit(Number(playerPreference.size)||100,50,250);
+      const standard=innerWidth<=720 ? innerWidth-20 : playing===audio ? 470 : 580;
+      dialog.style.setProperty('--cm-player-width',`${limit(standard*size/100,Math.min(275,innerWidth-20),innerWidth-20)}px`);
+      dialog.classList.toggle('cm-user-resized',Boolean(playerPreference.height));
+      if (playerPreference.height) {
+        const controls=dialog.querySelector('.cm-controls')?.offsetHeight || 110;
+        const caption=playing===audio && !dialog.querySelector('[data-media-caption]').hidden ? 80 : 0;
+        const minimum=Math.min(innerHeight-20,Math.max(180,controls+75+(playing===video ? 90 : caption)));
+        dialog.style.setProperty('--cm-player-height',`${limit(playerPreference.height*innerHeight,minimum,innerHeight-20)}px`);
+      }
+      // Removing explicit coordinates restores the compact corner placement.
+      const position=playerPreference.position;
+      if (position) {
+        const bounds=movementBounds();
+        dialog.classList.add('cm-moved');
+        dialog.style.left=`${10+limit(Number(position.x)||0,0,1)*bounds.x}px`;
+        dialog.style.top=`${10+limit(Number(position.y)||0,0,1)*bounds.y}px`;
+      } else {
+        dialog.classList.remove('cm-moved');
+        dialog.style.removeProperty('left'); dialog.style.removeProperty('top');
+      }
+    }
+    if (dragHandle && settings && resizeHandle && markerSize) {
+      updateMarkerSize();
+      pageScope.listen(settings,'toggle',() => {
+        if (settings.open) markerSize.value=playerPreference.marker;
+      });
+      pageScope.listen(markerSize,'input',() => {
+        playerPreference.marker=Number(markerSize.value); updateMarkerSize(); savePlayerPreference();
+      });
+      pageScope.listen(dialog.querySelector('[data-player-reset]'),'click',() => {
+        playerPreference={...playerDefaults}; markerSize.value=100;
+        updateMarkerSize(); restoreDialog(); savePlayerPreference();
+      });
+      pageScope.listen(dragHandle,'pointerdown',event => {
+        if (event.button || !event.isPrimary) return;
+        const box=dialog.getBoundingClientRect();
+        drag={id:event.pointerId,x:event.clientX-box.left,y:event.clientY-box.top,moved:false};
+        dragHandle.setPointerCapture(event.pointerId);
+      });
+      pageScope.listen(window,'pointermove',event => {
+        if (resize && event.pointerId===resize.id) {
+          const standard=innerWidth<=720 ? innerWidth-20 : playing===audio ? 470 : 580;
+          playerPreference.size=limit((resize.width+event.clientX-resize.x)/standard*100,50,250);
+          playerPreference.height=limit((resize.height+event.clientY-resize.y)/innerHeight,.18,1);
+          restoreDialog();
+          setDialogPosition(resize.left,resize.top);
+          return;
+        }
+        if (!drag || event.pointerId!==drag.id) return;
+        drag.moved=true; setDialogPosition(event.clientX-drag.x,event.clientY-drag.y);
+      });
+      for (const type of ['pointerup','pointercancel']) pageScope.listen(window,type,event => {
+        if (resize && event.pointerId===resize.id) { resize=null; savePlayerPreference(); }
+        if (!drag || event.pointerId!==drag.id) return;
+        if (drag.moved) savePlayerPreference();
+        drag=null;
+      });
+      pageScope.listen(dragHandle,'keydown',event => {
+        const move={ArrowLeft:[-20,0],ArrowRight:[20,0],ArrowUp:[0,-20],ArrowDown:[0,20]}[event.key];
+        if (!move) return;
+        event.preventDefault();
+        const box=dialog.getBoundingClientRect(); setDialogPosition(box.left+move[0],box.top+move[1]); savePlayerPreference();
+      });
+      pageScope.listen(resizeHandle,'pointerdown',event => {
+        if (event.button || !event.isPrimary) return;
+        event.preventDefault();
+        const box=dialog.getBoundingClientRect();
+        setDialogPosition(box.left,box.top);
+        resize={id:event.pointerId,x:event.clientX,y:event.clientY,left:box.left,top:box.top,width:box.width,height:box.height};
+        resizeHandle.setPointerCapture(event.pointerId);
+      });
+      pageScope.listen(resizeHandle,'keydown',event => {
+        const grow={ArrowLeft:[-20,0],ArrowRight:[20,0],ArrowUp:[0,-20],ArrowDown:[0,20]}[event.key];
+        if (!grow) return;
+        event.preventDefault();
+        const box=dialog.getBoundingClientRect(), standard=innerWidth<=720 ? innerWidth-20 : playing===audio ? 470 : 580;
+        setDialogPosition(box.left,box.top);
+        playerPreference.size=limit((box.width+grow[0])/standard*100,50,250);
+        playerPreference.height=limit((box.height+grow[1])/innerHeight,.18,1);
+        restoreDialog(); setDialogPosition(box.left,box.top); savePlayerPreference();
+      });
+      pageScope.listen(window,'resize',restoreDialog,{passive:true});
+      pageScope.listen(document,'fullscreenchange',restoreDialog);
+      if (window.ResizeObserver) pageScope.createObserver(ResizeObserver,restoreDialog).observe(dialog);
+      pageScope.listen(document,'click',event => { if (settings.open && !settings.contains(event.target)) settings.open=false; });
+    }
     function stopPlayback() {
       if (!playing) return;
       const media = playing;
@@ -628,6 +747,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       dialog.querySelector("[data-player-title]").textContent = pin.dataset.mediaTitle;
       media.src = pin.dataset.mediaSrc;
       if (!dialog.open) dialog.show();
+      restoreDialog();
       media.play().catch((failure) => {
         if (dialog.open && playing === media && !["AbortError", "NotAllowedError"].includes(failure.name)) {
           error.hidden = false;
@@ -649,7 +769,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
           || event.clientY < rect.top || event.clientY > rect.bottom)) dialog.close();
     });
     pageScope.listen(dialog, "close", () => {
-      if (!dialog.open) stopPlayback();
+      if (!dialog.open) { if (settings) settings.open=false; drag=null; resize=null; stopPlayback(); }
     });
   }
 })();

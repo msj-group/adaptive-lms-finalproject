@@ -4,6 +4,7 @@ from app.security.decorators import roles_required
 from app.services import curriculum_editor as editor
 from app.services.curriculum_editor_scope import admin_editor
 
+
 @admin_bp.route("/courses/<public_id>/curriculum/division", methods=['GET', 'POST'])
 @roles_required("administrator")
 def curriculum_division(public_id):

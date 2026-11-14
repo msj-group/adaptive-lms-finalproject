@@ -2,18 +2,18 @@
 {% import '_figma_ui.html' as ui %}
 {% import 'curriculum/_pages.html' as reader with context %}
 {% import 'curriculum/_media.html' as custom_media %}
+{% import 'curriculum/_book_notes.html' as notes with context %}
+{% import 'curriculum/_reader_header.html' as reader_header with context %}
 {% set reader_lesson_endpoint = reader_lesson_endpoint|default('student.lesson_detail') %}
 {% block title %}{{ unit_title }} — {{ course_title }}{% endblock %}
 {% block body_class %}{{ super() }} sf-focused{% endblock %}
-{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='focus-reader-1') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/student_focus.css', v='reader-header-11') }}">{% endblock %}
-{% block body_scripts %}{{ super() }}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='focus-media-1') }}" defer></script><script src="{{ url_for('static', filename='js/student_reader.js', v='android-zoom-10') }}" defer></script>{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='focus-reader-1') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/student_focus.css', v='reader-header-12') }}">{% if course_document %}<link rel="stylesheet" href="{{ url_for('static', filename='css/book_notes.css', v='circle-notes-1') }}">{% endif %}{% endblock %}
+{% block body_scripts %}{{ super() }}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='reader-move-1') }}" defer></script><script src="{{ url_for('static', filename='js/student_reader.js', v='android-zoom-10') }}" defer></script>{% if course_document %}<script src="{{ url_for('static', filename='js/book_notes.js', v='circle-notes-1') }}" defer></script>{% endif %}{% endblock %}
 {% block content %}
 <a class="figma-skip-link" href="#workspace-content">{{ _('Skip to content') }}</a>
 <div class="sf-reader" data-student-reader data-reader-group="{{ group_public_id }}" data-reader-entry-page="{{ reader_entry_page if reader_entry_page is not none else '' }}" data-reader-entry-material="{{ reader_entry_material or '' }}" data-workspace-history='{{ workspace_navigation()|tojson }}'>
-  <header class="sf-header">
-    <div class="sf-context"><a class="sf-brand" href="{{ url_for('student.dashboard') }}" aria-label="{{ _('Youth Centre home') }}">{{ ui.brand_logo('',36,40) }}</a><a class="sf-back" aria-label="{{ _('My courses') }}" href="{{ url_for('workspace.student_courses') }}" data-research-action="navigate">{{ ui.icon('arrow',18) }}</a><div class="sf-reader-title"><h1 data-workspace-page-heading dir="auto">{{ unit_title }}</h1></div></div>
-    <div class="sf-actions">
-      <details class="sf-outline" data-focus-outline><summary aria-label="{{ _('Course contents') }}">{{ ui.icon('book',18) }}<span class="sf-header-label">{{ _('Course contents') }}</span></summary>
+  {% call reader_header.bar(url_for('student.dashboard'),url_for('workspace.student_courses'),_('My courses'),unit_title,course_document,workspace_heading=true) %}
+    <details class="sf-outline" data-focus-outline><summary aria-label="{{ _('Course contents') }}">{{ ui.icon('book',18) }}<span class="sf-header-label">{{ _('Course contents') }}</span></summary>
         <aside class="sf-outline-panel"><header><h2>{{ _('Course contents') }}</h2><button type="button" data-close-outline aria-label="{{ _('Close') }}">{{ ui.icon('close',18) }}</button></header><div class="sf-unit-list">
           {% for unit in lesson_units %}
           <details class="sf-outline-unit"{% if unit.public_id == unit_public_id %} open{% endif %}>
@@ -23,10 +23,8 @@
           {% endfor %}
         </div></aside>
       </details>
-      <button class="sf-fullscreen" type="button" data-reader-fullscreen aria-label="{{ _('Full screen') }}" data-enter-label="{{ _('Full screen') }}" data-exit-label="{{ _('Exit full screen') }}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path data-fullscreen-icon d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg><span class="sf-header-label" data-fullscreen-label>{{ _('Full screen') }}</span></button>
-    </div>
-    {% include 'layouts/_device_header_actions.html' %}
-  </header>
+    {% endcall %}
+  {% if course_document %}{{ notes.toolbar() }}{% endif %}
   <div class="sf-scroll" id="workspace-content" tabindex="-1" data-image-scroll>
     <div class="sf-flashes">{% with messages = get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="alert alert--{{ category }}">{{ message }}</div>{% endfor %}{% endwith %}</div>
     {% set course_materials = materials|selectattr('origin', 'equalto', 'course')|list %}
@@ -71,7 +69,7 @@
     <img class="material-media" src="{{ url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=material.reader_lesson_public_id|default(lesson_public_id), material_public_id=material.public_id) }}" alt="{{ material.title }}">
 
     {% elif material.kind == "file" and material.category in ['audio','video'] %}
-    {{ custom_media.inline_player(url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=material.reader_lesson_public_id|default(lesson_public_id), material_public_id=material.public_id), material.category, collect=true) }}
+    {{ custom_media.inline_player(url_for('student.material_open', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=material.reader_lesson_public_id|default(lesson_public_id), material_public_id=material.public_id), material.category, collect=true, captions=true) }}
 
     {% elif material.kind == "file" and material.extension == "pdf" %}
     <p class="ds-section__desc">{{ material.original_filename }} · {{ material.byte_size }} bytes. Documents open as downloads for security.</p><a class="btn btn--secondary" href="{{ url_for('student.material_download', group_public_id=group_public_id, unit_public_id=unit_public_id, lesson_public_id=material.reader_lesson_public_id|default(lesson_public_id), material_public_id=material.public_id) }}" data-research-id="material_download">Download PDF</a>

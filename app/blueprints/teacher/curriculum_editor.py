@@ -105,7 +105,7 @@ def curriculum_file(group_public_id, item_id):
     material = _material(teacher_editor(group_public_id), item_id)
     if material.kind != "file":
         abort(404)
-    return serve_uploaded_file(material.uploaded_file, current_user.id, force_attachment=False)
+    return serve_uploaded_file(material.uploaded_file, current_user.id, force_attachment=False, course_captions=True)
 
 
 @teacher_bp.route("/groups/<group_public_id>/curriculum/material/<item_id>/edit", methods=["GET", "POST"])

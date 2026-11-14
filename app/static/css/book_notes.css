@@ -1,0 +1,145 @@
+/* The floating hub stays independent of the book canvas and its zoom. */
+.book-notes-toolbar {
+  position:fixed;
+  left:var(--note-x,85vw);
+  top:var(--note-y,52dvh);
+  z-index:8;
+  width:0;
+  height:0;
+  color:var(--ui-text);
+  transition:top 240ms cubic-bezier(.2,.8,.2,1),left 240ms cubic-bezier(.2,.8,.2,1);
+}
+.book-notes-toolbar.is-dragging { transition:none; }
+.book-notes-toolbar[hidden],.book-notes-toolbar [hidden],.book-note-dialog [hidden] { display:none!important; }
+.book-notes-toggle { position:relative; }
+.book-notes-off-mark { display:none; }
+.book-notes-toggle[aria-pressed=false] .book-notes-off-mark {
+  position:absolute; top:50%; left:50%; display:block; width:24px; height:2px;
+  border-radius:2px; background:currentColor; transform:translate(-50%,-50%) rotate(44deg);
+}
+.book-notes-hub,.book-notes-tools > button {
+  position:absolute;
+  left:0;
+  top:0;
+  display:grid;
+  place-items:center;
+  inline-size:46px;
+  block-size:46px;
+  padding:0;
+  border:1px solid #ffffff45;
+  border-radius:50%;
+  font-family:inherit;
+  font-size:18px;
+  font-weight:600;
+  color:#fff;
+  box-shadow:0 5px 15px #12244533;
+  -webkit-tap-highlight-color:transparent;
+  cursor:pointer;
+}
+.book-notes-hub {
+  inline-size:50px;
+  block-size:50px;
+  transform:translate(-50%,-50%);
+  background:#142946;
+  z-index:2;
+  touch-action:none;
+  user-select:none;
+  cursor:grab;
+  transition:transform 280ms cubic-bezier(.2,.8,.2,1),opacity 250ms ease;
+}
+.book-notes-toolbar.is-idle .book-notes-hub {
+  transform:translate(calc(-50% + var(--note-dock-offset,0px)),-50%);
+  opacity:.48;
+}
+.book-notes-toolbar.is-dragging .book-notes-hub { transition:none; }
+.book-notes-toolbar.is-dragging .book-notes-hub { cursor:grabbing; }
+.book-notes-hub.is-writing { box-shadow:0 0 0 3px var(--note-ink,#255ec5),0 5px 15px #12244533; }
+.book-notes-hub > span { grid-area:1/1; display:grid; place-items:center; pointer-events:none; transition:transform 235ms ease,opacity 180ms ease; }
+.book-note-hub-close { opacity:0; transform:rotate(-80deg) scale(.55); }
+.is-open .book-note-hub-pen { opacity:0; transform:rotate(70deg) scale(.55); }
+.is-open .book-note-hub-close { opacity:1; transform:rotate(0) scale(1); }
+.book-notes-tools > button {
+  --orbit-x:calc(cos(var(--angle)) * var(--note-radius));
+  --orbit-y:calc(sin(var(--angle)) * var(--note-radius));
+  background:var(--tool-color,#33496a);
+  opacity:0;
+  pointer-events:none;
+  transform:translate(-50%,-50%) rotate(-30deg) scale(.25);
+  transition:transform 220ms cubic-bezier(.3,.1,.6,1),opacity 170ms ease;
+  touch-action:manipulation;
+}
+.book-notes-tools > button:nth-child(1) { --angle:-90deg; --step:0; --tool-color:#255ec5; }
+.book-notes-tools > button:nth-child(2) { --angle:-45deg; --step:1; --tool-color:#906316; }
+.book-notes-tools > button:nth-child(3) { --angle:0deg; --step:2; --tool-color:#6951b3; }
+.book-notes-tools > button:nth-child(4) { --angle:45deg; --step:3; --tool-color:#a53860; }
+.book-notes-tools > button:nth-child(5) { --angle:90deg; --step:4; --tool-color:#253a56; }
+.book-notes-tools > button:nth-child(6) { --angle:135deg; --step:5; --tool-color:#146d66; }
+.book-notes-tools > button:nth-child(7) { --angle:180deg; --step:6; }
+.book-notes-tools > button:nth-child(8) { --angle:225deg; --step:7; }
+.book-notes-toolbar.is-open:not(.has-options) .book-notes-tools > button {
+  opacity:1;
+  pointer-events:auto;
+  transform:translate(calc(-50% + var(--orbit-x)),calc(-50% + var(--orbit-y))) scale(1);
+  transition-timing-function:cubic-bezier(.18,.85,.27,1.12),ease;
+  transition-delay:calc(var(--step) * 12ms);
+}
+.book-notes-toolbar.is-open:not(.has-options) .book-notes-tools > button:disabled { opacity:.62; cursor:default; }
+.book-notes-tools > button[aria-pressed=true] { outline:2px solid var(--tool-color); outline-offset:3px; }
+.book-note-ink-swatch { inline-size:18px; block-size:18px; border:2px solid white; border-radius:50%; background:var(--note-ink,#255ec5); }
+.book-note-options {
+  position:fixed;
+  left:50%;
+  bottom:max(16px,env(safe-area-inset-bottom));
+  z-index:4;
+  transform:translateX(-50%);
+  width:min(210px,calc(100vw - 24px));
+  max-height:calc(100dvh - 32px);
+  overflow:auto;
+  box-sizing:border-box;
+  display:grid;
+  gap:10px;
+  padding:12px;
+  border:1px solid var(--ui-line);
+  border-radius:16px;
+  background:var(--ui-surface);
+  box-shadow:var(--ui-shadow-md);
+  font:inherit;
+}
+.book-note-options label { display:grid; gap:4px; font-size:12px; }
+.book-note-options :is(select,button) { min-height:40px; padding:5px 8px; border:1px solid var(--ui-line); border-radius:8px; color:inherit; background:var(--ui-page); font:inherit; }
+.book-notes-status {
+  position:absolute;
+  top:calc(var(--note-radius) + 27px);
+  left:0;
+  transform:translateX(-50%);
+  width:max-content;
+  max-width:210px;
+  margin:0;
+  padding:3px 10px;
+  border-radius:12px;
+  background:var(--ui-surface);
+  color:var(--ui-muted);
+  font-size:11px;
+  text-align:center;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity 160ms ease;
+}
+.book-notes-toolbar.is-open:not(.has-options) .book-notes-status:not(:empty) { opacity:1; }
+.book-notes-toolbar.has-sync-error:not(.is-open) .book-notes-hub::after { content:""; position:absolute; top:0; right:0; width:9px; height:9px; border:2px solid #fff; border-radius:50%; background:#ae412d; }
+.book-note-layer { position:absolute; inset:0; z-index:3; pointer-events:none; overflow:hidden; user-select:none; -webkit-user-select:none; }
+.book-note-layer svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+[data-note-mode] .book-note-layer { pointer-events:auto; touch-action:none; cursor:crosshair; }
+[data-note-mode=eraser] .book-note-layer { cursor:cell; }
+[data-note-mode=text] .book-note-layer { cursor:text; }
+.book-note-text { position:absolute; max-width:38cqw; max-height:35cqw; overflow:auto; padding:.4cqw .7cqw; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.4; border:1px solid #dabd5266; border-radius:.7cqw; background:#fff4bce8; user-select:none; }
+.book-note-dialog { position:fixed; inset:0; margin:auto; width:min(390px,calc(100vw - 24px)); height:fit-content; max-height:calc(100dvh - 24px); box-sizing:border-box; border:1px solid var(--ui-line); border-radius:16px; background:var(--ui-surface); color:var(--ui-ink); padding:14px; }
+.book-note-dialog::backdrop { background:#0c20465c; }
+.book-note-dialog header,.book-note-dialog footer { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.book-note-dialog h2 { margin:0; font-size:1rem; }
+.book-note-dialog textarea { box-sizing:border-box; width:100%; margin:12px 0; padding:10px; border:1px solid var(--ui-line); border-radius:9px; background:var(--ui-page); color:inherit; font:inherit; }
+.book-note-dialog button { border:0; border-radius:8px; background:var(--ui-soft); color:inherit; padding:8px 12px; cursor:pointer; }
+.book-notes-toolbar :focus-visible,.book-note-dialog :focus-visible { outline:2px solid var(--ui-focus,#255ec5); outline-offset:3px; }
+@media(prefers-reduced-motion:reduce) {
+  .book-notes-toolbar,.book-notes-hub,.book-notes-hub > span,.book-notes-tools > button,.book-notes-status { transition:none!important; }
+}

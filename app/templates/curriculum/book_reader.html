@@ -1,21 +1,30 @@
 {% extends reader_layout %}
 {% import "curriculum/_pages.html" as media with context %}
 {% import 'curriculum/_media.html' as custom_media %}
+{% import 'curriculum/_book_notes.html' as notes with context %}
+{% import '_figma_ui.html' as ui %}
 {% block title %}{{ _(label) }}{% endblock %}
-{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='group-editors-1') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/course_books.css', v='interactive-books-3') }}">{% endblock %}
+{% block protected_styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum_editor.css', v='group-editors-1') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/course_books.css', v='interactive-books-4') }}">{% if enable_book_notes %}<link rel="stylesheet" href="{{ url_for('static', filename='css/book_notes.css', v='circle-notes-1') }}">{% endif %}{% endblock %}
 {% macro reader() %}
 <div class="cb-reader">
-  <div class="cb-heading"><div><h1>{{ _(label) }}</h1><p class="cb-filename" dir="auto">{{ book.uploaded_file.original_filename }}</p></div><a class="btn btn--secondary" href="{{ book_urls('list') }}">{{ _('Back to books') if group else _('Back to course content') }}</a></div>
-  <nav class="cb-reader-tools" aria-label="{{ _('Book pages') }}">
+  <header class="cb-reading-header">
+    <div class="cb-reading-title">
+      <a class="cb-reader-back" href="{{ book_urls('list') }}" aria-label="{{ _('Back to course content') }}" title="{{ _('Back to course content') }}">{{ ui.icon('arrow',18) }}</a>
+      <div><h1 dir="auto">{{ _(label) }}</h1><p class="cb-filename" dir="auto">{{ book.uploaded_file.original_filename }}</p></div>
+      {% if enable_book_notes %}{{ notes.toggle() }}{% endif %}
+    </div>
+    <nav class="cb-reader-tools" aria-label="{{ _('Book pages') }}">
     {% if page > 1 %}<a class="btn btn--secondary" href="{{ book_urls('read', kind=kind, page=page-1) }}">{{ _('Previous page') }}</a>{% endif %}
     <form method="get" action="{{ book_urls('read', kind=kind) }}" class="cb-page-jump"><label>{{ _('Page') }} <input type="number" name="page" min="1" max="{{ book.page_count }}" value="{{ page }}" required></label><span>/ {{ book.page_count }}</span><button class="btn btn--secondary" type="submit">{{ _('Go') }}</button></form>
     {% if page < book.page_count %}<a class="btn btn--secondary" href="{{ book_urls('read', kind=kind, page=page+1) }}">{{ _('Next page') }}</a>{% endif %}
     <a class="btn btn--secondary" href="{{ book_urls('download', kind=kind, file_id=book.uploaded_file.public_id) }}">{{ _('Download PDF') }}</a>
-  </nav>
-  <div class="ce-pages"><div class="ce-sheet cb-page-frame"><img class="cb-page" src="{{ book_urls('page', kind=kind, file_id=book.uploaded_file.public_id, page_number=page) }}" alt="{{ _('Book page %(page)d', page=page) }}">{% for pin in page_pins %}{{ media.media_pin(pin, pin_endpoint, pin_args) }}{% endfor %}</div></div>
+    </nav>
+  </header>
+  {% if enable_book_notes %}{{ notes.toolbar() }}{% endif %}
+  <div class="ce-pages"><div class="ce-sheet cb-page-frame" data-sheet="{{ page }}"><img class="cb-page" src="{{ book_urls('page', kind=kind, file_id=book.uploaded_file.public_id, page_number=page) }}" alt="{{ _('Book page %(page)d', page=page) }}">{% for pin in page_pins %}{{ media.media_pin(pin, pin_endpoint, pin_args) }}{% endfor %}</div></div>
   {{ media.player() }}
 </div>
 {% endmacro %}
 {% block admin_content %}{{ reader() }}{% endblock %}
 {% block portal_content %}{{ reader() }}{% endblock %}
-{% block body_scripts %}{{ super() }}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='focus-media-1') }}" defer></script>{% endblock %}
+{% block body_scripts %}{{ super() }}{{ custom_media.assets() }}<script src="{{ url_for('static', filename='js/curriculum_editor.js', v='reader-move-1') }}" defer></script>{% if enable_book_notes %}<script src="{{ url_for('static', filename='js/book_notes.js', v='circle-notes-1') }}" defer></script>{% endif %}{% endblock %}

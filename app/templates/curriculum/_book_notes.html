@@ -1,0 +1,49 @@
+{% import '_figma_ui.html' as ui %}
+{% macro toggle() -%}
+<button class="sf-fullscreen book-notes-toggle" type="button" data-book-notes-toggle aria-pressed="true" aria-controls="book-notes-float"
+        aria-label="{{ _('Show floating pen') }}" title="{{ _('Show floating pen') }}"
+        data-show-label="{{ _('Show floating pen') }}" data-hide-label="{{ _('Hide floating pen') }}" hidden>
+  {{ ui.icon('pen',20) }}<span class="book-notes-off-mark" aria-hidden="true"></span>
+</button>
+{%- endmacro %}
+
+{% macro toolbar() -%}
+<section class="book-notes-toolbar" id="book-notes-float" data-book-notes data-owner="{{ current_user.public_id }}" aria-label="{{ _('My book notes') }}" hidden
+         data-saved="{{ _('Saved') }}" data-saving="{{ _('Saving…') }}" data-retry="{{ _('Your notes are waiting to sync. Reconnecting…') }}"
+         data-limit="{{ _('This page has many notes. Erase a mark before adding more.') }}"
+         data-loading="{{ _('Loading your notes…') }}" data-empty="{{ _('Write a note') }}">
+  <button class="book-notes-hub" type="button" data-note-hub aria-expanded="false" aria-controls="book-notes-toolbar" aria-label="{{ _('My book notes') }}" data-open-label="{{ _('My book notes') }}" data-close-label="{{ _('Close') }}">
+    <span class="book-note-hub-pen">{{ ui.icon('pen',21) }}</span><span class="book-note-hub-close">{{ ui.icon('close',21) }}</span>
+  </button>
+  <div class="book-notes-tools" id="book-notes-toolbar" data-note-tools role="group" aria-label="{{ _('Annotation tools') }}" inert>
+    <button type="button" data-note-tool="pen" aria-label="{{ _('Pen') }}" title="{{ _('Pen') }}" aria-pressed="false">{{ ui.icon('pen',19) }}</button>
+    <button type="button" data-note-tool="highlight" aria-label="{{ _('Highlight') }}" title="{{ _('Highlight') }}" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m14 3 7 7-8 8-7-7Z M6 11l-3 7 3 3 7-3M2 22h20"/></svg></button>
+    <button type="button" data-note-tool="text" aria-label="{{ _('Text note') }}" title="{{ _('Text note') }}" aria-pressed="false"><span aria-hidden="true">T</span></button>
+    <button type="button" data-note-tool="eraser" aria-label="{{ _('Eraser') }}" title="{{ _('Eraser') }}" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m4 13 9-10 8 8-10 10H7l-5-5Z M8 9l8 8 M11 21h11"/></svg></button>
+    <button type="button" data-note-options-toggle aria-label="{{ _('Ink color') }} · {{ _('Stroke width') }}" title="{{ _('Ink color') }} · {{ _('Stroke width') }}" aria-expanded="false" aria-controls="book-note-options"><span class="book-note-ink-swatch" aria-hidden="true"></span></button>
+    <button type="button" data-note-done aria-label="{{ _('Read') }}" title="{{ _('Read') }}">{{ ui.icon('book',19) }}</button>
+    <button type="button" data-note-undo aria-label="{{ _('Undo') }}" title="{{ _('Undo') }}" disabled><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m8 4-5 5 5 5M3 9h10a7 7 0 0 1 0 14"/></svg></button>
+    <button type="button" data-note-redo aria-label="{{ _('Redo') }}" title="{{ _('Redo') }}" disabled><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m16 4 5 5-5 5m5-5H11a7 7 0 0 0 0 14"/></svg></button>
+  </div>
+  <div class="book-note-options" id="book-note-options" data-note-options hidden>
+    <label><span>{{ _('Ink color') }}</span>
+      <select data-note-color aria-label="{{ _('Ink color') }}">
+        <option value="#255ec5">{{ _('Blue') }}</option><option value="#192f4a">{{ _('Dark') }}</option>
+        <option value="#de4545">{{ _('Red') }}</option><option value="#e8bd32">{{ _('Yellow') }}</option><option value="#35a77c">{{ _('Green') }}</option>
+      </select>
+    </label>
+    <label><span>{{ _('Stroke width') }}</span><select data-note-width aria-label="{{ _('Stroke width') }}">
+      <option value="thin">{{ _('Thin') }}</option><option value="medium" selected>{{ _('Medium') }}</option><option value="thick">{{ _('Thick') }}</option>
+    </select></label>
+    <button type="button" data-note-options-done>{{ _('Done') }}</button>
+  </div>
+  <p class="book-notes-status" data-note-status role="status" aria-live="polite"></p>
+</section>
+<dialog class="book-note-dialog" data-note-dialog aria-labelledby="book-note-title">
+  <form method="dialog">
+    <header><h2 id="book-note-title">{{ _('Text note') }}</h2><button type="button" data-note-cancel aria-label="{{ _('Close') }}">×</button></header>
+    <textarea data-note-text maxlength="1200" rows="4" aria-label="{{ _('Write a note') }}" placeholder="{{ _('Write a note') }}" dir="auto"></textarea>
+    <footer><button type="button" data-note-remove hidden>{{ _('Delete note') }}</button><button type="submit">{{ _('Save note') }}</button></footer>
+  </form>
+</dialog>
+{%- endmacro %}

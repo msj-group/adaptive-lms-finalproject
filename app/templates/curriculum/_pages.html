@@ -1,9 +1,10 @@
 {% import 'curriculum/_media.html' as custom_media %}
+{% import '_figma_ui.html' as ui %}
 {% macro media_icon(category) %}
   {% if category == 'video' %}
-    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="3"/><path d="m10 8 6 4-6 4Z"/></svg>
   {% else %}
-    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 9v6m4-10v14m4-12v10m4-13v16m4-11v6"/></svg>
+    {{ ui.icon('headphones') }}
   {% endif %}
 {% endmacro %}
 
@@ -18,8 +19,12 @@
             data-media-title="{{ file.original_filename|media_label }}"
         data-media-src="{{ url_for(media_endpoint, item_id=material.public_id, **media_args) if media_endpoint in ['admin.curriculum_file','teacher.curriculum_file'] else url_for(media_endpoint, material_public_id=material.public_id, **media_args) }}"
             {% if editor %}data-edit-pin="{{ material.public_id }}" data-material-version="{{ pin_version(material) }}"{% else %}data-play-pin{% endif %}
-            aria-label="{{ _('Move %(name)s', name=file.original_filename|media_label) if editor else _('Play %(name)s', name=file.original_filename|media_label) }}">
+            title="{{ _('Move %(name)s', name=file.original_filename|media_label) if editor else (_('Click to watch') if file.category == 'video' else _('Click to listen')) ~ ' · ' ~ (file.original_filename|media_label) }}"
+            aria-label="{{ _('Move %(name)s', name=file.original_filename|media_label) if editor else (_('Click to watch') if file.category == 'video' else _('Click to listen')) ~ ' · ' ~ (file.original_filename|media_label) }}">
       {{ media_icon(file.category) }}
+      {% if not editor %}<span class="ce-trigger-label" aria-hidden="true">
+        {{ _('Click to watch') if file.category == 'video' else _('Click to listen') }}
+      </span>{% endif %}
     </button>
   {% endif %}
 {% endmacro %}
@@ -52,14 +57,23 @@
 {% macro player(collect=false) %}
 <dialog class="ce-player cm-dialog" data-media-player aria-label="{{ _('Media player') }}">
   <header>
-    <strong data-player-title dir="auto"></strong>
+    <span class="cm-heading-icon" aria-hidden="true"><span class="cm-heading-audio">{{ media_icon('audio') }}</span><span class="cm-heading-video">{{ media_icon('video') }}</span></span>
+    <button class="cm-drag-handle" type="button" data-player-drag aria-label="{{ _('Move media player with arrow keys') }}" title="{{ _('Move media player with arrow keys') }}"><span class="cm-grip" aria-hidden="true"></span><strong data-player-title dir="auto"></strong></button>
+    <details class="cm-window-settings" data-player-settings>
+      <summary aria-label="{{ _('Media size') }}" title="{{ _('Media size') }}">{{ ui.icon('settings',18) }}</summary>
+      <div class="cm-window-options">
+        <label>{{ _('Activity icon size') }}<input type="range" min="70" max="135" step="5" value="100" data-marker-size></label>
+        <button type="button" data-player-reset>{{ _('Reset size and position') }}</button>
+      </div>
+    </details>
     <button class="cm-close" type="button" data-close-player aria-label="{{ _('Close') }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   </header>
-  <div class="course-media" data-course-media>
+  <div class="course-media" data-course-media data-course-captions>
     <audio controls preload="none" hidden{% if collect %} data-research-media="lesson_audio"{% endif %}></audio>
     <video controls playsinline preload="none" hidden{% if collect %} data-research-media="lesson_video"{% endif %}></video>
     {{ custom_media.controls() }}
   </div>
   <p data-player-error role="status" hidden>{{ _('This file could not be played.') }}</p>
+  <button class="cm-resize-handle" type="button" data-player-resize aria-label="{{ _('Resize media player') }}" title="{{ _('Resize media player') }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m9 20 11-11m-4 11 4-4"/></svg></button>
 </dialog>
 {% endmacro %}
