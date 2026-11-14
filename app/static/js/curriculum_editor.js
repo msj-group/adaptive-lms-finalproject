@@ -641,7 +641,7 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
       dialog.classList.toggle('cm-user-resized',Boolean(playerPreference.height));
       if (playerPreference.height) {
         const controls=dialog.querySelector('.cm-controls')?.offsetHeight || 110;
-        const minimum=Math.min(innerHeight-20,Math.max(200,controls+190));
+        const minimum=Math.min(innerHeight-20,Math.max(220,controls+110));
         dialog.style.setProperty('--cm-player-height',`${limit(playerPreference.height*innerHeight,minimum,innerHeight-20)}px`);
       }
       // Removing explicit coordinates restores the compact corner placement.
@@ -658,8 +658,10 @@ window.aelmsModules.register(document.currentScript, function (pageScope, pageSc
     }
     function resizeDialog(width,height,left,top) {
       const standard=innerWidth<=720 ? innerWidth-20 : 580;
-      playerPreference.size=limit(width/standard*100,50,250);
-      playerPreference.height=limit(height/innerHeight,.18,1);
+      const availableWidth=Math.max(1,innerWidth-left-10);
+      const availableHeight=Math.max(1,innerHeight-top-10);
+      playerPreference.size=limit(Math.min(width,availableWidth)/standard*100,50,250);
+      playerPreference.height=limit(Math.min(height,availableHeight)/innerHeight,.18,1);
       restoreDialog();
       setDialogPosition(left,top);
     }

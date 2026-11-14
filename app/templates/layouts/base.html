@@ -35,7 +35,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/platform_scroll.css', v='native-scroll-1') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/notices.css', v='quiet-notices-1') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/pwa.css', v='reader-expanded-3') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/course_media.css', v='circle-media-3') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/course_media.css', v='circle-media-4') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/device_push.css', v='device-header-controls-3') }}">
   <script src="{{ url_for('static', filename='js/platform_scroll.js', v='native-scroll-1') }}" defer></script>
   <script src="{{ url_for('static', filename='js/appearance.js', v='quiet-notices-2') }}" defer></script>
@@ -52,7 +52,7 @@
   </main>
   {% include 'appearance/_panels.html' %}
   {% include 'pwa/_install.html' %}
-  <script src="{{ url_for('static', filename='js/course_media.js', v='circle-media-3') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/course_media.js', v='circle-media-4') }}" defer></script>
   {% block body_scripts %}{% endblock %}
   {% if current_user.is_authenticated %}<script src="{{ url_for('static', filename='js/communication_live.js', v='3') }}" defer></script>{% endif %}
   {% if current_user.is_authenticated %}<script src="{{ url_for('static', filename='js/workspace_header.js', v='centre-header-5') }}" defer></script>{% endif %}

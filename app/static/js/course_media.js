@@ -26,32 +26,49 @@ window.aelmsModules.register(document.currentScript, function (scope) {
     const speedSummary = speedMenu?.querySelector('summary');
     const speedRates = speedMenu ? [...speedMenu.querySelectorAll('[data-speed-rate]')] : [];
     const fullscreen = root.querySelector('[data-media-fullscreen]'), status = root.querySelector('[data-media-status]');
+    const rotate = root.querySelector('[data-media-rotate]');
     const captionToggle = root.querySelector('[data-media-captions]');
     const captionLine = root.querySelector('[data-media-caption]');
     let captionsEnabled = true, captionElement = null, captionSource = null, captionText = '';
     let active = elements.find(el => el.hasAttribute('src')) || elements[0];
     let scrubbing = false;
+    let orientationLocked = false;
+    let nativeFullscreen = false;
     const hasSource = () => Boolean(active.currentSrc || active.getAttribute('src'));
+    function positionVideoCaption() {
+      if (active.tagName !== 'VIDEO' || captionLine.hidden) return;
+      const frame=active.getBoundingClientRect(), box=root.getBoundingClientRect();
+      if (!frame.width || !frame.height) return;
+      const ratio=active.videoWidth && active.videoHeight ? active.videoWidth/active.videoHeight : frame.width/frame.height;
+      const pictureHeight=Math.min(frame.height,frame.width/ratio);
+      const pictureTop=frame.top+(frame.height-pictureHeight)/2;
+      const pictureBottom=pictureTop+pictureHeight;
+      const bar=controls.getBoundingClientRect();
+      const bottom=box.bottom-pictureBottom+8;
+      const aboveControls=!root.classList.contains('cm-controls-hidden') && bar.top<pictureBottom ? box.bottom-bar.top+8 : bottom;
+      const maximum=Math.max(bottom,box.bottom-pictureTop-captionLine.offsetHeight-8);
+      root.style.setProperty('--cm-caption-bottom',`${Math.min(Math.max(bottom,aboveControls),maximum)}px`);
+    }
     function renderCaption() {
-      const audioTrack = active.tagName === 'AUDIO' ? captionElement : null;
-      const available = audioTrack && (audioTrack.readyState < 2 || audioTrack.track.cues?.length);
-      captionLine.hidden = !captionsEnabled || !available;
-      const text = captionLine.hidden ? '' : Array.from(audioTrack.track.activeCues || [],
+      const available=captionElement && (captionElement.readyState<2 || captionElement.track.cues?.length);
+      const text=!captionsEnabled || !available ? '' : Array.from(captionElement.track.activeCues || [],
         cue => cue.getCueAsHTML().textContent).join('\n');
-      if (text === captionText) return;
-      captionText = text;
+      captionLine.hidden=!captionsEnabled || !available || (active.tagName==='VIDEO' && (!text || nativeFullscreen));
+      if (text===captionText) { positionVideoCaption(); return; }
+      captionText=text;
       captionLine.replaceChildren();
       if (!text) return;
-      const cue = document.createElement('p');
-      cue.className = 'cm-caption-cue';
-      cue.textContent = text;
+      const cue=document.createElement('p');
+      cue.className='cm-caption-cue';
+      cue.textContent=text;
       captionLine.append(cue);
-      captionLine.scrollTop = 0;
+      captionLine.scrollTop=0;
+      positionVideoCaption();
     }
     function updateCaptionMode() {
       captionToggle.setAttribute('aria-pressed', String(captionsEnabled));
       if (captionElement) {
-        const mode = captionsEnabled ? (active.tagName === 'AUDIO' ? 'hidden' : 'showing') : 'disabled';
+        const mode = captionsEnabled ? (nativeFullscreen ? 'showing' : 'hidden') : 'disabled';
         if (captionElement.track.mode !== mode) captionElement.track.mode = mode;
       }
       renderCaption();
@@ -97,7 +114,7 @@ window.aelmsModules.register(document.currentScript, function (scope) {
       });
       active.append(element);
       // A hidden text track loads cues even when the user has switched captions off.
-      element.track.mode = active.tagName === 'VIDEO' && captionsEnabled ? 'showing' : 'hidden';
+      element.track.mode = 'hidden';
       renderCaption();
     }
     function update() {
@@ -124,18 +141,23 @@ window.aelmsModules.register(document.currentScript, function (scope) {
       }
       pip.hidden = active.tagName !== 'VIDEO' || !document.pictureInPictureEnabled || !active.requestPictureInPicture;
       fullscreen.hidden = active.tagName !== 'VIDEO' || (!root.requestFullscreen && typeof active.webkitEnterFullscreen !== 'function');
+      if (rotate) rotate.hidden=active.tagName!=='VIDEO' || document.fullscreenElement!==root || typeof screen.orientation?.lock!=='function' || !matchMedia('(pointer:coarse)').matches;
+      positionVideoCaption();
     }
     for (const media of elements) {
       media.controls = false;
+      if (media.tagName==='VIDEO') media.tabIndex=0;
       if (media.tagName === 'VIDEO') {
+        // Safari's native video screen owns its caption layer.
+        mediaScope.listen(media,'webkitbeginfullscreen',() => { nativeFullscreen=true; updateCaptionMode(); });
+        mediaScope.listen(media,'webkitendfullscreen',() => { nativeFullscreen=false; updateCaptionMode(); });
         mediaScope.listen(media, 'click', () => {
-          if (document.fullscreenElement !== root) return;
           if (speedMenu?.open) speedMenu.open = false;
           overlayHidden(!root.classList.contains('cm-controls-hidden'));
         });
       }
       mediaScope.listen(media, 'loadstart', () => {
-        if (media.getAttribute('src')) { active = media; loadCaptions(); update(); }
+        if (media.getAttribute('src')) { active = media; overlayHidden(false); loadCaptions(); update(); }
       });
       mediaScope.listen(media, 'play', () => {
         active = media;
@@ -183,9 +205,10 @@ window.aelmsModules.register(document.currentScript, function (scope) {
       root.classList.toggle('cm-controls-hidden',hidden);
       controls.inert=hidden;
       if (hidden) active.focus({preventScroll:true});
+      positionVideoCaption();
     }
     mediaScope.listen(root, 'keydown', event => {
-      if (document.fullscreenElement !== root || !root.classList.contains('cm-controls-hidden') || !['Enter',' '].includes(event.key)) return;
+      if (active.tagName !== 'VIDEO' || !root.classList.contains('cm-controls-hidden') || !['Enter',' '].includes(event.key)) return;
       event.preventDefault(); overlayHidden(false); play.focus({preventScroll:true});
     });
     mediaScope.listen(document, 'fullscreenchange', () => {
@@ -195,11 +218,25 @@ window.aelmsModules.register(document.currentScript, function (scope) {
       fullscreen.setAttribute('aria-label',label);
       fullscreen.title=label;
       fullscreen.setAttribute('aria-pressed',String(expanded));
-      for (const media of elements) if (media.tagName === 'VIDEO') media.tabIndex = expanded ? 0 : -1;
+      for (const media of elements) if (media.tagName === 'VIDEO') media.tabIndex=0;
+      if (!expanded && orientationLocked) { screen.orientation.unlock(); orientationLocked=false; }
+      update();
     });
     mediaScope.listen(fullscreen, 'click', () => { if (!root.requestFullscreen) { active.webkitEnterFullscreen?.(); return; } const request = document.fullscreenElement === root ? document.exitFullscreen() : root.requestFullscreen(); request?.catch(() => {}); });
+    if (rotate) mediaScope.listen(rotate,'click',async () => {
+      if (document.fullscreenElement!==root || typeof screen.orientation?.lock!=='function') return;
+      rotate.disabled=true;
+      try {
+        await screen.orientation.lock(screen.orientation.type.startsWith('landscape') ? 'portrait' : 'landscape');
+        if (document.fullscreenElement!==root || mediaScope.signal.aborted) { screen.orientation.unlock(); return; }
+        orientationLocked=true;
+      } catch (_) { if (!mediaScope.signal.aborted) status.textContent=rotate.dataset.failed; }
+      finally { rotate.disabled=false; }
+    });
+    if (window.ResizeObserver) mediaScope.createObserver(ResizeObserver,positionVideoCaption).observe(root);
     mediaScope.listen(pip, 'click', () => { const request = document.pictureInPictureElement ? document.exitPictureInPicture() : active.requestPictureInPicture(); request?.catch(() => {}); });
     mediaScope.signal.addEventListener('abort', () => {
+      if (orientationLocked) screen.orientation.unlock();
       for (const media of elements) { media.pause(); media.removeAttribute('src'); media.load(); }
     }, {once:true});
     const controller = {root,pauseExcept(media) { for (const element of elements) if (element !== media) element.pause(); },

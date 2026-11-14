@@ -5610,5 +5610,7 @@
   "Read": "قراءة",
   "Move media player with arrow keys": "اسحب المشغّل أو حرّكه بمفاتيح الأسهم",
   "Resize media player": "اسحب الزاوية لتغيير حجم المشغّل",
-  "Pen settings": "إعدادات القلم"
+  "Pen settings": "إعدادات القلم",
+  "Rotate screen": "تدوير الشاشة",
+  "Screen rotation is unavailable.": "تعذّر تدوير الشاشة على هذا الجهاز."
 }

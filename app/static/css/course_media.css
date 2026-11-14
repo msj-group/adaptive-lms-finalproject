@@ -126,6 +126,20 @@
   overscroll-behavior:contain;
 }
 .course-media .cm-caption-cue { margin:0; white-space:pre-line; overflow-wrap:anywhere; animation:cm-cue-in .2s ease-out both; }
+.course-media[data-media-kind=video] .cm-caption {
+  position:absolute; z-index:1; left:12px; right:12px; bottom:var(--cm-caption-bottom,10px);
+  block-size:auto; max-block-size:42%; margin:0; padding:6px 10px;
+  border-radius:8px; color:#fff; background:#142946dc;
+  font-size:clamp(12px,3.4cqw,17px); line-height:1.45; pointer-events:none;
+}
+.course-media[data-media-kind=video] .cm-controls {
+  position:absolute; z-index:2; left:8px; right:8px; bottom:8px;
+  box-sizing:border-box; border-radius:15px; background:#101e34e8;
+  transition:opacity 180ms ease,transform 180ms ease;
+}
+.course-media[data-media-kind=video].cm-controls-hidden .cm-controls { opacity:0; transform:translateY(8px); pointer-events:none; }
+.course-media[data-media-kind=video] .cm-status { position:absolute; top:10px; left:10px; border-radius:9px; background:var(--cm-surface); pointer-events:none; }
+.course-media video:focus { outline:none; box-shadow:none; }
 @keyframes cm-cue-in { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:translateY(0); } }
 .course-media:fullscreen {
   box-sizing:border-box;
@@ -160,6 +174,7 @@
   margin:0;
   width:var(--cm-player-width,min(580px,calc(100vw - 36px)));
   max-height:min(70dvh,620px);
+  min-height:min(220px,calc(100dvh - 20px));
   padding:9px 9px 36px;
   border:1px solid var(--ui-line);
   border-radius:22px;
@@ -194,6 +209,9 @@
 @container (max-width:300px) {
   .cm-controls { padding:7px; }
   .cm-playback,.cm-options { gap:2px; }
+}
+@container (max-width:360px) {
+  .course-media[data-media-kind=video] .cm-controls [data-media-mute] { display:none; }
 }
 @media (max-width:720px) {
   .ce-player.cm-dialog,.ce-player.cm-dialog:has([data-media-kind=audio]) { inset:auto 10px calc(94px + env(safe-area-inset-bottom)) auto; width:var(--cm-player-width,calc(100vw - 20px)); }
