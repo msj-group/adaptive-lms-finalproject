@@ -7,6 +7,7 @@ from app.extensions import limiter
 from app.models.user import User, UserRole
 from app.security.passwords import verify_password
 from app.security.redirects import get_safe_redirect_target
+from app.services.staff_activity import track
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -57,6 +58,7 @@ def login():
             login_user(user, remember=bool(form.remember_device.data))
             from app.services.device_push import detach_other_account
             detach_other_account(user.id)
+            track(user, "login")
             session.pop("workspace_opening_target", None)
             return redirect(login_target_for(user, request.args.get("next")))
         flash("Invalid email or password.", "danger")
@@ -101,6 +103,7 @@ def logout():
     # Phase 6: close this browser's research session, if any. Best-effort:
     # it never raises, so research can never prevent a logout.
     end_session_on_logout(authenticated_user_id())
+    track(current_user, "logout")
     session.pop("workspace_opening_target", None)
     # Device opt-in persists independently of this login session.
     logout_user()

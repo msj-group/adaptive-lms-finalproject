@@ -118,6 +118,9 @@ def password():
     except Exception:
         current_app.logger.warning("Could not close the research session after a password change")
     session.pop("workspace_opening_target", None)
+    from app.services.staff_activity import track
+
+    track(current_user, "logout", {"action": "password"})
     logout_user()
     flash("Your password was changed. Sign in again with your new password.", "success")
     return redirect(url_for("auth.login"))

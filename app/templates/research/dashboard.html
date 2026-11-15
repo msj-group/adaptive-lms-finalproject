@@ -4,6 +4,7 @@
 {% block title %}Research overview{% endblock %}
 {% block research_content %}
 {% call rs.heading('Overview','Follow real Study activity and control collection from one place.') %}
+<a class="btn btn--secondary" href="{{ url_for('research.staff_activity') }}">{{ icons.icon('users',18) }}{{ _('Staff activity') }}</a>
 <details class="rs-range-filter"><summary class="btn btn--secondary">{{ icons.icon('settings',18) }}{{ _('Filter') }}</summary><form method="get" class="workspace-filter-grid">{% for key,label in [('from','From'),('to','Through')] %}<div class="field"><label for="overview-{{ key }}">{{ _(label) }}</label><input class="field__input" type="date" name="{{ key }}" id="overview-{{ key }}" value="{{ analytics_filters[key] }}"></div>{% endfor %}<button class="btn btn--primary" type="submit">{{ _('Apply') }}</button><a href="{{ url_for('research.dashboard') }}">{{ _('Reset') }}</a></form></details>
 {% endcall %}
 {% include 'research/_live.html' %}

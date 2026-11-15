@@ -38,3 +38,4 @@ from app.blueprints.research import storage  # noqa: E402,F401
 from app.blueprints.research import collection_review  # noqa: E402,F401
 from app.blueprints.research import controls  # noqa: E402,F401
 from app.blueprints.research import live  # noqa: E402,F401
+from app.blueprints.research import staff_activity  # noqa: E402,F401

@@ -3,6 +3,7 @@
 {% for label,target,symbol,selected in [
 ('Overview','research.dashboard','dashboard',endpoint == 'research.dashboard'),
 ('Sessions','research.sessions','activity',endpoint in ['research.sessions','research.session_detail']),
+('Staff activity','research.staff_activity','users',endpoint == 'research.staff_activity'),
 ('Exports','research.exports','file',endpoint in ['research.exports','research.export_create','research.export_detail']),
 ('Management','research.manage','settings',endpoint == 'research.manage')
 ] %}<a class="st-nav-link rs-nav-link" href="{{ url_for(target) }}"{% if selected %} aria-current="page"{% endif %}>{{ ui.icon(symbol,18) }}<span>{{ _(label) }}</span></a>{% endfor %}

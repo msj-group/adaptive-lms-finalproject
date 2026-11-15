@@ -54,6 +54,7 @@ class Config:
     # an invalid value refuses to start the application rather than
     # silently narrowing/repairing it). See docs/DECISIONS.md, Part M12.
     MATERIAL_STORAGE_ROOT = os.environ.get("MATERIAL_STORAGE_ROOT", "storage/materials")
+    STAFF_ACTIVITY_ENABLED = os.environ.get("STAFF_ACTIVITY_ENABLED", "false").lower() == "true"
     MATERIAL_ALLOWED_EXTENSIONS = os.environ.get(
         "MATERIAL_ALLOWED_EXTENSIONS", "pdf,docx,png,jpg,jpeg,gif,webp,mp3,wav,mp4,webm"
     )
@@ -81,6 +82,7 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    STAFF_ACTIVITY_ENABLED = os.environ.get("STAFF_ACTIVITY_ENABLED", "true").lower() == "true"
 
 
 class TestingConfig(Config):

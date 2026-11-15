@@ -1,0 +1,60 @@
+{% extends 'layouts/research_base.html' %}
+{% import 'research/_ui.html' as rs %}
+{% block title %}{{ _('Staff activity') }}{% endblock %}
+{% block research_content %}
+{{ rs.heading('Staff activity', 'Review how teachers and administrators use the platform.') }}
+<section class="rs-card">
+  <p>{{ _('Operational records are kept for up to %(days)s days and are excluded from Study and training exports.', days=retention_days) }}</p>
+  <p>{{ _('Closing a browser leaves only the last recorded action. A submitted action shows the server response, which may include a validation error.') }}</p>
+  {% if not enabled %}
+    {{ rs.empty('Staff activity is disabled', 'This environment needs staff activity enabled before it can record events.', 'users') }}
+  {% else %}
+    <form class="workspace-filter-grid" method="get" action="{{ url_for('research.staff_activity') }}">
+      <div class="field"><label for="staff-day">{{ _('Log date (UTC), optional') }}</label>
+        <input class="field__input" id="staff-day" name="day" type="date" value="{{ day }}" min="{{ oldest }}" max="{{ today }}">
+      </div>
+      <div class="field"><label for="staff-role">{{ _('Role') }}</label>
+        <select class="field__input" id="staff-role" name="role">
+          <option value="">{{ _('All') }}</option>
+          {% for code, label in roles.items() %}<option value="{{ code }}"{% if code == role %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field"><label for="staff-search">{{ _('Name or sign-in email') }}</label>
+        <input class="field__input" id="staff-search" name="staff" type="search" maxlength="120" value="{{ search }}">
+      </div>
+      <button class="btn btn--primary" type="submit">{{ _('Apply') }}</button>
+      <a href="{{ url_for('research.staff_activity') }}">{{ _('Reset') }}</a>
+    </form>
+  {% endif %}
+</section>
+{% if failed %}
+  <div class="alert alert--danger" role="alert">{{ _('The staff activity log is temporarily unavailable.') }}</div>
+{% elif enabled %}
+  {% if quota %}<p class="alert alert--warning">{{ _('A day is near its log size limit. Recent events for that day may be missing.') }}</p>{% endif %}
+  {% if session_id %}<p>{{ _('Showing this session across all retained days.') }} <a href="{{ url_for('research.staff_activity', day=day, role=role, staff=search) }}">{{ _('Back to all sessions') }}</a></p>{% endif %}
+  {% set labels = {'login':'Signed in','logout':'Signed out','resumed':'Session first observed','view':'Opened page','submit':'Submitted action','download':'Downloaded file'} %}
+  {% if rows %}
+  <div class="rs-session-cards rs-session-grid">
+    {% for row in rows %}
+    <article class="rs-session-card">
+      <div class="rs-session-card-head"><strong>{{ row.name }}</strong><span class="badge badge--neutral">{{ _(roles[row.role]) }}</span></div>
+      <p style="overflow-wrap:anywhere"><bdi>{{ row.account }}</bdi> · <time datetime="{{ row.at }}"><bdi>{{ row.local_time.strftime('%Y-%m-%d %H:%M:%S %Z') }}</bdi></time></p>
+      <div class="rs-session-card-foot">
+        <strong>{{ _(labels[row.kind]) }}</strong>
+        {% if row.area %}<span>{{ _(row.area) }} · <bdi>{{ _(row.action.replace('_', ' ')|capitalize) }}</bdi></span>{% endif %}
+        {% if row.kind == 'logout' and row.action == 'password' %}<span>{{ _('Password changed') }}</span>{% endif %}
+        {% if row.kind == 'submit' %}<span dir="ltr">HTTP {{ row.status }}</span>{% endif %}
+        {% if not session_id %}<a href="{{ url_for('research.staff_activity', day=day, session_id=row.session) }}">{{ _('View this session') }}</a>{% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  <nav class="ds-row yc-actions" aria-label="{{ _('Staff activity pages') }}">
+    {% if prev_url %}<a class="btn btn--secondary" href="{{ prev_url }}">{{ _('Previous') }}</a>{% endif %}
+    {% if next_url %}<a class="btn btn--secondary" href="{{ next_url }}">{{ _('Next') }}</a>{% endif %}
+  </nav>
+  {% else %}
+  {{ rs.empty('No matching staff activity', 'Staff events will appear here after a teacher or administrator uses the platform.', 'users') }}
+  {% endif %}
+{% endif %}
+{% endblock %}

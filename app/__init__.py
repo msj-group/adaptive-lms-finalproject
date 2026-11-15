@@ -203,6 +203,9 @@ def create_app(config_name=None, **config_overrides):
     from app.blueprints.collector.hooks import flush_outcomes
 
     app.after_request(flush_outcomes)
+    from app.services.staff_activity import record_staff_response
+
+    app.after_request(record_staff_response)
 
     register_error_handlers(app)
 
