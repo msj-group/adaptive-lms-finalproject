@@ -30,6 +30,9 @@ def _student_json(view_func):
             return _json({"error": "authentication_required"}, 401)
         if current_user.role != _STUDENT:
             return _json({"error": "forbidden"}, 403)
+        from app.services.showcase_scope import is_showcase_student
+        if is_showcase_student(current_user):
+            return _json({"collecting": False})
         return view_func(*args, **kwargs)
 
     return wrapped

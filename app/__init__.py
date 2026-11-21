@@ -240,6 +240,9 @@ def create_app(config_name=None, **config_overrides):
         response.headers["Cache-Control"] = "no-store"
         return response
 
+    from app.blueprints.study_entry import register as register_study_entry
+    register_study_entry(app)
+
     from app.services.request_arrival import RequestArrivalMiddleware
 
     app.wsgi_app = RequestArrivalMiddleware(app.wsgi_app, app.config["MAX_CONTENT_LENGTH"])

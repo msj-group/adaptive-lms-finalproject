@@ -26,6 +26,12 @@
 {% set portal_blocks = self %}
 {% include 'layouts/_product_shell.html' %}
 {% if research %}{% include '_research_feedback.html' %}{% endif %}
+{% if experience_survey and not research %}
+<div data-experience-survey data-account="{{ current_user.public_id }}">
+  {% with research=experience_survey %}{% include '_research_feedback.html' %}{% endwith %}
+</div>
+<script src="{{ url_for('static', filename='js/experience_survey.js', v=1) }}" defer></script>
+{% endif %}
 {% endblock %}
 {% block workspace_page_label %}{{ ui.page_heading(self.title()) }}{% endblock %}
 {% block workspace_content_class %}{% endblock %}

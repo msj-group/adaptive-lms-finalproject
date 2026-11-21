@@ -1,0 +1,33 @@
+{% extends 'layouts/base.html' %}
+{% block title %}Youth Learn{% endblock %}
+{% block body_class %}study-welcome{% endblock %}
+{% block extra_head %}
+<style>
+.study-welcome{min-height:100dvh;display:grid;place-items:center;padding:24px;background:var(--color-bg-page,#eaf0fa)}
+.study-welcome>main{width:min(100%,480px)}
+.study-welcome-card{padding:clamp(24px,6vw,44px);border:1px solid var(--color-border,#cbd9ed);border-radius:32px;background:var(--color-bg-surface,#fff);box-shadow:0 20px 70px #193b7010;text-align:center}
+.study-welcome-card img{width:74px;height:74px;object-fit:contain;margin:0 auto 22px}
+.study-welcome-card h1{font-size:clamp(26px,7vw,36px);line-height:1.2;margin:0 0 16px;color:var(--color-text-primary,#153d7a)}
+.study-welcome-card p{line-height:1.8;margin:0 0 16px;color:var(--color-text-secondary,#4b6285)}
+.study-welcome-card .study-disclosure{font-size:14px;margin-bottom:24px}
+.study-welcome-card .btn{width:100%;min-height:52px;justify-content:center;border-radius:17px}
+</style>
+{% endblock %}
+{% block content %}
+<section class='study-welcome-card' dir='{{ "rtl" if ui_language()=="ar" else "ltr" }}'>
+  <img src='{{ url_for("static",filename="pwa/icon-clear-192.png") }}' alt='Youth Learn'>
+  <h1>{{ 'ابدأ رحلتك في التعلّم' if ui_language()=='ar' else 'Start your learning journey' }}</h1>
+  {% if account_conflict %}
+  <p>{{ 'لديك حساب آخر مفتوح. افتح الرابط في نافذة خاصة لبدء تجربة الطالب.' if ui_language()=='ar' else 'Another account is open. Use a private browser window to start the student experience.' }}</p>
+  {% elif unavailable %}
+  <p role='alert'>{{ 'تعذّر بدء التجربة الآن. حاول مرة أخرى بعد قليل.' if ui_language()=='ar' else 'We could not start your experience right now. Please try again shortly.' }}</p>
+  {% else %}
+  <p>{{ 'اقرأ الكتب، واستمع وشاهد، وأنجز المهام. يُحفظ تقدمك في حساب طالب خاص بك على هذا المتصفح.' if ui_language()=='ar' else 'Read, listen, watch and complete activities. Your progress is saved in your own student account on this browser.' }}</p>
+  {% endif %}
+  <p class='study-disclosure'>{{ 'يُحفظ عملك وتقدمك في التجربة. لا تُجمع تفاعلاتك أو إجابات الاستبيان ضمن الدراسة البحثية.' if ui_language()=='ar' else 'Your work and progress are saved. Your interactions and survey responses are not collected for the research study.' }}</p>
+  {% if not account_conflict %}<form method='post' action='{{ url_for("study_entry.begin") }}'>
+    <input type='hidden' name='csrf_token' value='{{ csrf_token() }}'>
+    <button class='btn btn--primary' name='participate' value='yes'>{{ 'ابدأ التعلّم' if ui_language()=='ar' else 'Start learning' }}</button>
+  </form>{% endif %}
+</section>
+{% endblock %}

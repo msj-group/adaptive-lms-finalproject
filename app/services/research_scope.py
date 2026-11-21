@@ -7,6 +7,7 @@ collected while all of these hold:
 
 1. the account is a **Student** and **active** (a suspended account cannot
    hold a session at all, and is refused here too);
+   public student-experience accounts are outside this real-study population;
 2. an existing subject has Study provenance. The owner-approved collect-all
    policy has no individual exclusion control; historical status rows are kept;
 3. a configuration is ``active`` **and collecting**;
@@ -39,6 +40,7 @@ from collections import namedtuple
 from datetime import datetime, timezone
 
 from app.extensions import db
+from app.services.showcase_scope import is_showcase_student, showcase_account_clause
 from app.models import (
     ResearchConfiguration,
     ResearchConfigurationStatus,
@@ -135,7 +137,7 @@ def collection_context(user_id):
         .join(ResearchConfiguration, ResearchConfiguration.current_marker == 1)
         .outerjoin(ResearchSubjectLink, ResearchSubjectLink.user_id == User.id)
         .outerjoin(ResearchSubject, ResearchSubject.id == ResearchSubjectLink.subject_id)
-        .filter(User.id == user_id)
+        .filter(User.id == user_id, ~showcase_account_clause())
         .first()
     )
     if row is None or row[0] != _STUDENT or row[1] != _USER_ACTIVE:
@@ -186,7 +188,8 @@ def configuration_is_live(configuration, moment):
 
 def account_is_eligible_student(user):
     """Rule 1 against a (locked) ``users`` row."""
-    return user is not None and user.role == _STUDENT and user.status == _USER_ACTIVE
+    return (user is not None and user.role == _STUDENT and user.status == _USER_ACTIVE
+            and not is_showcase_student(user))
 
 
 def subject_is_included(subject):
